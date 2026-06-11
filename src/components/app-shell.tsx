@@ -62,7 +62,7 @@ export function AppShell() {
           return (
             <Link
               key={item.to}
-              to={item.to}
+              to={item.to as never}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
                 active ? "text-primary" : "text-foreground/45",
