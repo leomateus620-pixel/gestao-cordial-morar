@@ -58,7 +58,7 @@ function Page() {
               <Tooltip
                 cursor={{ stroke: "rgba(196,101,74,0.3)" }}
                 contentStyle={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 12, fontSize: 11 }}
-                formatter={(v: number) => brl(v, { compact: true })}
+                formatter={(v) => brl(Number(v), { compact: true })}
               />
               <Area type="monotone" dataKey="total" stroke="hsl(18 55% 50%)" strokeWidth={2.4} fill="url(#g)" />
             </AreaChart>
