@@ -9,50 +9,288 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppMaisRouteImport } from './routes/_app.mais'
+import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
+import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
+import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
+import { Route as AppContratosRouteImport } from './routes/_app.contratos'
+import { Route as AppClientesRouteImport } from './routes/_app.clientes'
+import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
+import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMaisRoute = AppMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisRoute = AppImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCorretoresRoute = AppCorretoresRouteImport.update({
+  id: '/corretores',
+  path: '/corretores',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContratosRoute = AppContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesRoute = AppClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAtendimentosRoute = AppAtendimentosRouteImport.update({
+  id: '/atendimentos',
+  path: '/atendimentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/agenda': typeof AppAgendaRoute
+  '/atendimentos': typeof AppAtendimentosRoute
+  '/clientes': typeof AppClientesRoute
+  '/contratos': typeof AppContratosRoute
+  '/corretores': typeof AppCorretoresRoute
+  '/financeiro': typeof AppFinanceiroRoute
+  '/imoveis': typeof AppImoveisRoute
+  '/mais': typeof AppMaisRoute
+  '/relatorios': typeof AppRelatoriosRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/agenda': typeof AppAgendaRoute
+  '/atendimentos': typeof AppAtendimentosRoute
+  '/clientes': typeof AppClientesRoute
+  '/contratos': typeof AppContratosRoute
+  '/corretores': typeof AppCorretoresRoute
+  '/financeiro': typeof AppFinanceiroRoute
+  '/imoveis': typeof AppImoveisRoute
+  '/mais': typeof AppMaisRoute
+  '/relatorios': typeof AppRelatoriosRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/agenda': typeof AppAgendaRoute
+  '/_app/atendimentos': typeof AppAtendimentosRoute
+  '/_app/clientes': typeof AppClientesRoute
+  '/_app/contratos': typeof AppContratosRoute
+  '/_app/corretores': typeof AppCorretoresRoute
+  '/_app/financeiro': typeof AppFinanceiroRoute
+  '/_app/imoveis': typeof AppImoveisRoute
+  '/_app/mais': typeof AppMaisRoute
+  '/_app/relatorios': typeof AppRelatoriosRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/agenda'
+    | '/atendimentos'
+    | '/clientes'
+    | '/contratos'
+    | '/corretores'
+    | '/financeiro'
+    | '/imoveis'
+    | '/mais'
+    | '/relatorios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/agenda'
+    | '/atendimentos'
+    | '/clientes'
+    | '/contratos'
+    | '/corretores'
+    | '/financeiro'
+    | '/imoveis'
+    | '/mais'
+    | '/relatorios'
+    | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/agenda'
+    | '/_app/atendimentos'
+    | '/_app/clientes'
+    | '/_app/contratos'
+    | '/_app/corretores'
+    | '/_app/financeiro'
+    | '/_app/imoveis'
+    | '/_app/mais'
+    | '/_app/relatorios'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/relatorios': {
+      id: '/_app/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/mais': {
+      id: '/_app/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof AppMaisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis': {
+      id: '/_app/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof AppImoveisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/financeiro': {
+      id: '/_app/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/corretores': {
+      id: '/_app/corretores'
+      path: '/corretores'
+      fullPath: '/corretores'
+      preLoaderRoute: typeof AppCorretoresRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contratos': {
+      id: '/_app/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof AppContratosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes': {
+      id: '/_app/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/atendimentos': {
+      id: '/_app/atendimentos'
+      path: '/atendimentos'
+      fullPath: '/atendimentos'
+      preLoaderRoute: typeof AppAtendimentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda': {
+      id: '/_app/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
+  AppAtendimentosRoute: typeof AppAtendimentosRoute
+  AppClientesRoute: typeof AppClientesRoute
+  AppContratosRoute: typeof AppContratosRoute
+  AppCorretoresRoute: typeof AppCorretoresRoute
+  AppFinanceiroRoute: typeof AppFinanceiroRoute
+  AppImoveisRoute: typeof AppImoveisRoute
+  AppMaisRoute: typeof AppMaisRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
+  AppAtendimentosRoute: AppAtendimentosRoute,
+  AppClientesRoute: AppClientesRoute,
+  AppContratosRoute: AppContratosRoute,
+  AppCorretoresRoute: AppCorretoresRoute,
+  AppFinanceiroRoute: AppFinanceiroRoute,
+  AppImoveisRoute: AppImoveisRoute,
+  AppMaisRoute: AppMaisRoute,
+  AppRelatoriosRoute: AppRelatoriosRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
