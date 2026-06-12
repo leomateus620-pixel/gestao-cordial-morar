@@ -231,7 +231,7 @@ function Dashboard() {
     <>
       {/* ── Hero banner ─────────────────────────────────────────────────── */}
       <section
-        className="mb-5 overflow-hidden rounded-3xl p-5 text-white lg:p-7"
+        className="mb-5 w-full min-w-0 overflow-hidden rounded-3xl p-4 text-white sm:p-5 lg:p-7"
         style={{
           background: "linear-gradient(135deg, #174d61 0%, #1e647d 45%, #2a3038 100%)",
           boxShadow:
@@ -246,15 +246,15 @@ function Dashboard() {
             >
               Painel Gestão Cordial
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">
+            <h1 className="mt-1 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">
               Olá, {session?.nome ?? "bem-vindo"} 👋
             </h1>
-            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/65">
+            <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-white/65 sm:text-[13px]">
               Acompanhe atendimentos, imóveis, contratos e performance das duas
               imobiliárias em um só lugar.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
             <HeroStat
               label="Atend. pendentes"
@@ -277,7 +277,7 @@ function Dashboard() {
       <MetricsCarousel groups={metricGroups} />
 
       {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
-      <section className="mb-5 grid gap-4 lg:grid-cols-3">
+      <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
         <FinancialSummaryCard
           receita={valoresPrevistos}
           cobrancas={cobrancasAbertas}
@@ -288,7 +288,7 @@ function Dashboard() {
       </section>
 
       {/* ── Gráficos ────────────────────────────────────────────────────── */}
-      <section className="mb-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <ChartCard
           title="Evolução mensal de atendimentos"
           subtitle="Cordial, Morar e total"
@@ -596,11 +596,11 @@ function MetricsCarousel({ groups }: { groups: MetricCardData[][] }) {
 
       {/* Mobile: carrossel com scroll-snap por grupo */}
       <div className="sm:hidden">
-        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto px-4 pb-2">
+        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-2">
           {groups.map((group, gi) => (
             <div
               key={gi}
-              className="mr-3 grid w-[calc(100vw-2rem)] flex-none snap-start grid-cols-2 gap-2.5"
+              className="mr-3 grid w-[calc(100vw-2rem)] max-w-full flex-none snap-start grid-cols-2 gap-2.5 last:mr-0"
             >
               {group.map((card) => (
                 <MetricCard key={card.label} {...card} />
@@ -649,7 +649,7 @@ function MetricCard({
 
   return (
     <article
-      className="group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+      className="group relative min-w-0 overflow-hidden rounded-2xl p-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg sm:p-4"
       style={{
         background:
           "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
@@ -690,7 +690,7 @@ function MetricCard({
       <div className="mt-2 flex items-end justify-between gap-2">
         <span
           className={cn(
-            "text-2xl font-bold leading-none tracking-tight",
+            "truncate text-xl font-bold leading-none tracking-tight sm:text-2xl",
             toneValueClass[tone],
           )}
         >
@@ -858,7 +858,7 @@ function ComparativoCard() {
       </div>
 
       {/* Mobile: scroll horizontal com snap; Desktop: grid */}
-      <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 md:grid md:grid-cols-2 md:overflow-visible">
+      <div className="no-scrollbar -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0">
         {dashboardComparativoCordialMorar.map((item) => {
           const color = contextColors[item.imobiliaria] ?? chartSystem;
           const isCordial = item.imobiliaria === "Cordial";
@@ -866,7 +866,7 @@ function ComparativoCard() {
           return (
             <div
               key={item.imobiliaria}
-              className="w-[min(280px,80vw)] flex-none snap-start rounded-2xl p-4 transition-all hover:scale-[1.01] md:w-auto"
+              className="w-[85%] min-w-[260px] max-w-[320px] flex-none snap-start rounded-2xl p-4 transition-all hover:scale-[1.01] md:w-auto md:min-w-0 md:max-w-none"
               style={{
                 background: isCordial
                   ? "linear-gradient(135deg, rgba(43,127,163,0.08), rgba(43,127,163,0.04))"
@@ -944,7 +944,7 @@ function ChartCard({
   subtitle,
   children,
   className,
-  heightClassName = "h-60 lg:h-72",
+  heightClassName = "h-56 sm:h-60 lg:h-72",
 }: {
   title: string;
   subtitle?: string;
@@ -954,7 +954,7 @@ function ChartCard({
 }) {
   return (
     <section
-      className={cn("rounded-3xl p-5", className)}
+      className={cn("w-full min-w-0 overflow-hidden rounded-3xl p-3 sm:p-5", className)}
       style={{
         background:
           "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
@@ -965,15 +965,15 @@ function ChartCard({
       }}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
           {subtitle && (
             <p className="mt-0.5 text-[10px] text-foreground/45">{subtitle}</p>
           )}
         </div>
-        <span className="font-mono text-[10px] text-foreground/35">6 MESES</span>
+        <span className="shrink-0 font-mono text-[10px] text-foreground/35">6 MESES</span>
       </div>
-      <div className={heightClassName}>{children}</div>
+      <div className={cn("w-full min-w-0", heightClassName)}>{children}</div>
     </section>
   );
 }

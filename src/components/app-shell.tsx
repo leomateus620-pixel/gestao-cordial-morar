@@ -33,7 +33,7 @@ export function AppShell() {
   const bottomNav = getVisibleModules(session.modules, primaryModuleItems);
 
   return (
-    <div className="relative mx-auto flex min-h-screen w-full max-w-[1180px] flex-col font-sans text-foreground">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-full flex-col overflow-x-hidden font-sans text-foreground lg:max-w-[1180px]">
       <MeshBackground />
 
       {/* Sidebar desktop */}
@@ -67,18 +67,18 @@ export function AppShell() {
         {/* Header mobile — sticky com blur ao rolar */}
         <header
           className={cn(
-            "sticky top-0 z-30 flex flex-col gap-2.5 px-4 pt-4 pb-3 transition-all duration-300 lg:hidden",
+            "sticky top-0 z-30 flex flex-col gap-2 px-4 pt-3 pb-2 transition-all duration-300 lg:hidden",
             scrolled
               ? "bg-background/80 shadow-sm shadow-foreground/5 backdrop-blur-xl backdrop-saturate-150"
               : "bg-transparent",
           )}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
+              <span className="truncate text-[10px] font-bold uppercase tracking-[0.22em] text-primary">
                 Gestão Cordial
               </span>
-              <h1 className="truncate text-lg font-semibold tracking-tight leading-tight">
+              <h1 className="truncate text-base font-semibold tracking-tight leading-tight">
                 Olá, {session.nome}
               </h1>
             </div>
@@ -87,7 +87,7 @@ export function AppShell() {
                 <SheetTrigger asChild>
                   <button
                     className={cn(
-                      "grid size-10 place-items-center rounded-full text-primary transition-all",
+                      "grid size-9 place-items-center rounded-full text-primary transition-all",
                       scrolled ? "bg-white/70 shadow-sm" : "glass-panel",
                     )}
                     aria-label="Abrir módulos"
@@ -110,7 +110,7 @@ export function AppShell() {
               <Link
                 to="/mais"
                 className={cn(
-                  "grid size-10 place-items-center rounded-full text-sm font-bold text-primary transition-all",
+                  "grid size-9 place-items-center rounded-full text-xs font-bold text-primary transition-all",
                   scrolled ? "bg-white/70 shadow-sm" : "glass-panel",
                 )}
                 aria-label="Perfil"
@@ -170,13 +170,16 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-screen-2xl flex-1 px-4 pb-32 lg:px-8 lg:pt-2 lg:pb-10 xl:px-10">
+        <main className="mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10">
           <Outlet />
         </main>
       </div>
 
       {/* Bottom nav mobile */}
-      <nav className="bottom-nav-glass fixed bottom-5 left-1/2 z-40 flex h-16 w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-around rounded-full px-2 lg:hidden">
+      <nav
+        className="bottom-nav-glass fixed left-1/2 z-40 flex h-16 w-[calc(100vw-1.5rem)] max-w-[26rem] -translate-x-1/2 items-center justify-around rounded-full px-2 lg:hidden"
+        style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
         {bottomNav.map((item) => {
           const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
           const Icon = item.icon;
@@ -185,7 +188,7 @@ export function AppShell() {
               key={item.to}
               to={item.to as never}
               className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
+                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
                 active ? "text-primary" : "text-foreground/45",
               )}
             >
@@ -193,7 +196,7 @@ export function AppShell() {
                 className={cn("size-5", active && "drop-shadow-sm")}
                 strokeWidth={active ? 2.4 : 1.8}
               />
-              <span className="text-[9px] font-bold uppercase tracking-tighter">
+              <span className="max-w-full truncate text-[9px] font-bold uppercase tracking-tighter">
                 {item.shortLabel ?? item.label}
               </span>
               {active && <span className="absolute -bottom-1 size-1 rounded-full bg-primary" />}

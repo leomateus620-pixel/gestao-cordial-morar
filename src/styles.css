@@ -355,6 +355,28 @@ body {
   overflow-x: hidden;
 }
 
+html,
+#root {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Safe-area helpers para iOS notch / home indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-safe {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+.fab-safe-bottom {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .fab-safe-bottom {
+    bottom: 2rem;
+  }
+}
+
 /* Carrossel de métricas mobile — largura exata sem overflow */
 .metrics-snap-item {
   width: calc(100vw - 2rem);
