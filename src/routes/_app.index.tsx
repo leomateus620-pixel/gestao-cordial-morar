@@ -325,7 +325,7 @@ function Dashboard() {
               <Line
                 type="monotone"
                 dataKey="cordial"
-                stroke={chartColors.primary}
+                stroke={chartCordial}
                 strokeWidth={2.5}
                 dot={false}
                 name="Cordial"
@@ -333,7 +333,7 @@ function Dashboard() {
               <Line
                 type="monotone"
                 dataKey="morar"
-                stroke={chartColors.secondary}
+                stroke={chartMorar}
                 strokeWidth={2.5}
                 dot={false}
                 name="Morar"
@@ -341,7 +341,7 @@ function Dashboard() {
               <Line
                 type="monotone"
                 dataKey="total"
-                stroke={chartColors.tertiary}
+                stroke={chartSystem}
                 strokeWidth={2.5}
                 dot={false}
                 name="Total"
@@ -366,7 +366,7 @@ function Dashboard() {
                 paddingAngle={3}
               >
                 {origemChart.map((entry, index) => (
-                  <Cell key={entry.origem} fill={pieColors[index % pieColors.length]} />
+                  <Cell key={entry.origem} fill={pieSeries[index % pieSeries.length]} />
                 ))}
               </Pie>
               <Tooltip contentStyle={tooltipStyle} />
@@ -386,10 +386,10 @@ function Dashboard() {
               <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
               <YAxis hide />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="venda" fill={chartColors.primary} radius={[7, 7, 0, 0]} name="Venda" />
+              <Bar dataKey="venda" fill={chartCordial} radius={[7, 7, 0, 0]} name="Venda" />
               <Bar
                 dataKey="aluguel"
-                fill={chartColors.secondary}
+                fill={chartMorar}
                 radius={[7, 7, 0, 0]}
                 name="Aluguel"
               />
@@ -406,8 +406,8 @@ function Dashboard() {
             <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
               <defs>
                 <linearGradient id="receitaPrevista" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartColors.primary} stopOpacity={0.42} />
-                  <stop offset="100%" stopColor={chartColors.primary} stopOpacity={0.03} />
+                  <stop offset="0%" stopColor={chartCordial} stopOpacity={0.42} />
+                  <stop offset="100%" stopColor={chartCordial} stopOpacity={0.03} />
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="rgba(80,40,20,0.06)" vertical={false} />
@@ -427,7 +427,7 @@ function Dashboard() {
               <Area
                 type="monotone"
                 dataKey="receita"
-                stroke={chartColors.primary}
+                stroke={chartCordial}
                 strokeWidth={2.4}
                 fill="url(#receitaPrevista)"
                 name="Receita"
@@ -435,7 +435,7 @@ function Dashboard() {
               <Line
                 type="monotone"
                 dataKey="comissao"
-                stroke={chartColors.tertiary}
+                stroke={chartSystem}
                 strokeWidth={2.2}
                 dot={false}
                 name="Comissão"
@@ -443,7 +443,7 @@ function Dashboard() {
               <Line
                 type="monotone"
                 dataKey="aberto"
-                stroke={chartColors.danger}
+                stroke={chartDanger}
                 strokeWidth={2.2}
                 dot={false}
                 name="Em aberto"
@@ -477,13 +477,13 @@ function Dashboard() {
               />
               <Bar
                 dataKey="atendimentos"
-                fill={chartColors.primary}
+                fill={chartCordial}
                 radius={[0, 8, 8, 0]}
                 name="Atendimentos"
               />
               <Bar
                 dataKey="contratos"
-                fill={chartColors.secondary}
+                fill={chartMorar}
                 radius={[0, 8, 8, 0]}
                 name="Contratos"
               />
