@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useApp, useFiltered } from "@/store/app-store";
 import { ContractCard } from "@/components/shared/contract-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { StatusBadge } from "@/components/status-badge";
+import { brl } from "@/lib/format";
 
 const tabs = ["Todos", "Venda", "Aluguel"] as const;
 

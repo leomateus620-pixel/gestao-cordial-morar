@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Mail, Phone, Search } from "lucide-react";
 import { useApp, useFiltered } from "@/store/app-store";
 import { Fab } from "@/components/fab";
 import { NovoClienteSheet } from "@/components/sheets/novo-cliente";
 import { ClientCard } from "@/components/shared/client-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/clientes")({
   head: () => ({ meta: [{ title: "Clientes — Gestão Cordial" }] }),

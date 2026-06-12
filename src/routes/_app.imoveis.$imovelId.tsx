@@ -95,16 +95,17 @@ function Page() {
         ))}
       </Section>
       <Section title="Documentos" icon={FileText}>
-        {(
-          imovel.documentos ?? [
-            "Matrícula atualizada",
-            "IPTU",
-            "Laudo de vistoria",
-            "Fotos profissionais",
-          ]
+        {(imovel.documentos && imovel.documentos.length > 0
+          ? imovel.documentos.map((d) => ({ id: d.id, nome: d.nome }))
+          : [
+              { id: "fallback-1", nome: "Matrícula atualizada" },
+              { id: "fallback-2", nome: "IPTU" },
+              { id: "fallback-3", nome: "Laudo de vistoria" },
+              { id: "fallback-4", nome: "Fotos profissionais" },
+            ]
         ).map((d) => (
-          <div key={d} className="rounded-2xl bg-white/45 p-3 text-sm font-semibold">
-            {d}
+          <div key={d.id} className="rounded-2xl bg-white/45 p-3 text-sm font-semibold">
+            {d.nome}
           </div>
         ))}
       </Section>

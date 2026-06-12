@@ -43,7 +43,6 @@ export function NovoAtendimentoSheet({
       historico: [
         {
           data: new Date().toISOString(),
-          tipo: "Observação",
           descricao: "Atendimento criado pelo formulário.",
           responsavelId: corretorId,
         },
