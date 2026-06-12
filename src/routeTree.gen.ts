@@ -17,8 +17,8 @@ import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
 import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
 import { Route as AppMaisRouteImport } from './routes/_app.mais'
 import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
-import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
 import { Route as AppImoveisDestaqueRouteImport } from './routes/_app.imoveis-destaque'
+import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
 import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppDocumentosRouteImport } from './routes/_app.documentos'
 import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
@@ -71,14 +71,14 @@ const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
   path: '/integracoes',
   getParentRoute: () => AppRoute,
 } as any)
-const AppImoveisRoute = AppImoveisRouteImport.update({
-  id: '/imoveis',
-  path: '/imoveis',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppImoveisDestaqueRoute = AppImoveisDestaqueRouteImport.update({
   id: '/imoveis-destaque',
   path: '/imoveis-destaque',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisRoute = AppImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
@@ -349,18 +349,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIntegracoesRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/imoveis': {
-      id: '/_app/imoveis'
-      path: '/imoveis'
-      fullPath: '/imoveis'
-      preLoaderRoute: typeof AppImoveisRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/imoveis-destaque': {
       id: '/_app/imoveis-destaque'
       path: '/imoveis-destaque'
       fullPath: '/imoveis-destaque'
       preLoaderRoute: typeof AppImoveisDestaqueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis': {
+      id: '/_app/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof AppImoveisRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/financeiro': {
@@ -535,3 +535,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
