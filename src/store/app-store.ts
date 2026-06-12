@@ -43,6 +43,7 @@ import {
   type UsuarioSistema,
   type Venda,
 } from "@/lib/mock/data";
+import { notificationsSeed, type AppNotification } from "@/lib/mock/notifications";
 
 type AgencyFilter = AgencyId | "todas";
 

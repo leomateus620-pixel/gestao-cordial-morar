@@ -7,8 +7,10 @@ import { SidebarMenu } from "./sidebar-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "./notification-bell";
+import type { AppModule } from "@/lib/mock/permissions";
 
-type NavItem = { to: string; label: string; icon: typeof Home; exact?: boolean };
+type NavItem = { to: string; label: string; icon: typeof Home; module: AppModule; exact?: boolean };
 const navItems: NavItem[] = [
   { to: "/", label: "Início", icon: Home, exact: true },
   { to: "/atendimentos", label: "Atend.", icon: Inbox },
@@ -39,6 +41,8 @@ export function AppShell() {
   }, [session, navigate]);
 
   if (!session) return null;
+
+  const visibleNav = navItems.filter((item) => session.modules.includes(item.module));
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1180px] flex-col font-sans text-foreground">

@@ -16,6 +16,8 @@ import {
   Settings,
 } from "lucide-react";
 import { useSession, logout } from "@/lib/auth-mock";
+import { PermissionGuard } from "@/components/permission-guard";
+import type { AppModule } from "@/lib/mock/permissions";
 
 const items = [
   { to: "/atendimentos", label: "Atendimentos", desc: "Leads, visitas e propostas", icon: Inbox },
@@ -66,7 +68,9 @@ function Page() {
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{session?.nome}</p>
-          <p className="text-[11px] text-foreground/55">{session?.cargo}</p>
+          <p className="text-[11px] text-foreground/55">
+            {session?.perfilLabel} · {session?.cargo}
+          </p>
         </div>
       </section>
 

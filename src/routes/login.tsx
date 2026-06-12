@@ -76,7 +76,8 @@ function LoginPage() {
             Entrar
           </button>
           <p className="text-center text-[11px] text-foreground/50">
-            Demo: <strong>ricardo</strong> ou <strong>bruna</strong> · senha <strong>cordial</strong>
+            Perfis demo: <strong>ricardo</strong>, <strong>clara</strong>, <strong>marcos</strong>{" "}
+            ou <strong>daniela</strong> · senha <strong>cordial</strong>
           </p>
         </form>
       </div>

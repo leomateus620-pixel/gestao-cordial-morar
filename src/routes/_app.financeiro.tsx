@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Area,
   AreaChart,
@@ -17,6 +17,7 @@ import { FinancialSummaryCard } from "@/components/shared/financial-summary-card
 import { StatusBadge } from "@/components/status-badge";
 import { brl } from "@/lib/format";
 import { receitaMensal } from "@/lib/mock/data";
+import { PermissionGuard } from "@/components/permission-guard";
 
 export const Route = createFileRoute("/_app/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — Gestão Cordial" }] }),
@@ -152,8 +153,8 @@ function Page() {
               Disponível em breve
             </span>
           </div>
-        </div>
-      </section>
+        </Link>
+      </PermissionGuard>
     </>
   );
 }
