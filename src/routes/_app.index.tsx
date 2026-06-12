@@ -858,7 +858,7 @@ function ComparativoCard() {
       </div>
 
       {/* Mobile: scroll horizontal com snap; Desktop: grid */}
-      <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 md:grid md:grid-cols-2 md:overflow-visible">
+      <div className="no-scrollbar -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-3 px-3 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0">
         {dashboardComparativoCordialMorar.map((item) => {
           const color = contextColors[item.imobiliaria] ?? chartSystem;
           const isCordial = item.imobiliaria === "Cordial";
@@ -866,7 +866,7 @@ function ComparativoCard() {
           return (
             <div
               key={item.imobiliaria}
-              className="w-[min(280px,80vw)] flex-none snap-start rounded-2xl p-4 transition-all hover:scale-[1.01] md:w-auto"
+              className="w-[85%] min-w-[260px] max-w-[320px] flex-none snap-start rounded-2xl p-4 transition-all hover:scale-[1.01] md:w-auto md:min-w-0 md:max-w-none"
               style={{
                 background: isCordial
                   ? "linear-gradient(135deg, rgba(43,127,163,0.08), rgba(43,127,163,0.04))"
