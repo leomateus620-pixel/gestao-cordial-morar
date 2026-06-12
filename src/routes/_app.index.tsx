@@ -34,30 +34,36 @@ import {
 } from "@/lib/mock/data";
 import { NovoAtendimentoSheet } from "@/components/sheets/novo-atendimento";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-mock";
+import {
+  axisTick,
+  chartAccent,
+  chartCordial,
+  chartDanger,
+  chartGraphite,
+  chartMorar,
+  chartMuted,
+  chartSuccess,
+  chartSystem,
+  chartWarning,
+  gridStroke,
+  pieSeries,
+  tooltipStyle,
+} from "@/lib/chart-palette";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — Gestão Cordial" }] }),
   component: Dashboard,
 });
 
-const chartColors = {
-  primary: "hsl(18 55% 50%)",
-  secondary: "hsl(35 60% 65%)",
-  tertiary: "hsl(160 45% 42%)",
-  muted: "hsl(24 18% 72%)",
-  danger: "hsl(4 75% 55%)",
+const contextColors: Record<string, string> = {
+  Cordial: chartCordial,
+  Morar: chartMorar,
 };
-
-const pieColors = [
-  chartColors.primary,
-  chartColors.secondary,
-  chartColors.tertiary,
-  "hsl(212 42% 54%)",
-  chartColors.muted,
-];
 
 function Dashboard() {
   const [open, setOpen] = useState(false);
+  const session = useSession();
   const agency = useApp((s) => s.agency);
   const atendimentos = useFiltered(useApp((s) => s.atendimentos));
   const imoveis = useFiltered(useApp((s) => s.imoveis));
@@ -187,6 +193,49 @@ function Dashboard() {
 
   return (
     <>
+      <section
+        className="mb-6 overflow-hidden rounded-3xl p-6 text-white lg:p-7"
+        style={{
+          background:
+            "linear-gradient(135deg, #174d61 0%, #1e647d 45%, #2a3038 100%)",
+          boxShadow: "0 24px 60px -20px rgba(23,27,33,0.45)",
+        }}
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.24em]"
+              style={{ color: "#f0a86d" }}
+            >
+              Painel Gestão Cordial
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">
+              Olá, {session?.nome ?? "bem-vindo"}
+            </h1>
+            <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/70">
+              Acompanhe atendimentos, imóveis, contratos e performance das duas
+              imobiliárias em um só lugar.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3">
+            <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
+            <HeroStat
+              label="Atend. pendentes"
+              value={String(atendimentos.filter((a) => a.status !== "Fechado" && a.status !== "Perdido").length).padStart(2, "0")}
+            />
+            <HeroStat
+              label="Contratos ativos"
+              value={String(contratosAtivos).padStart(2, "0")}
+            />
+            <HeroStat
+              label="Previsão entrada"
+              value={brl(valoresPrevistos, { compact: true })}
+              accent
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {metricCards.map((card) => (
           <MetricCard key={card.label} {...card} />
@@ -214,35 +263,48 @@ function Dashboard() {
             </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {dashboardComparativoCordialMorar.map((item) => (
-              <div
-                key={item.imobiliaria}
-                className="rounded-2xl border border-white/60 bg-white/45 p-4 shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">{item.imobiliaria}</h3>
-                  <span className="rounded-full bg-primary/10 px-2 py-1 font-mono text-[10px] font-bold text-primary">
-                    {item.conversao}% conversão
-                  </span>
+            {dashboardComparativoCordialMorar.map((item) => {
+              const color = contextColors[item.imobiliaria] ?? chartSystem;
+              const ctx =
+                item.imobiliaria === "Cordial" ? "context-cordial" : "context-morar";
+              return (
+                <div
+                  key={item.imobiliaria}
+                  className={cn(
+                    "rounded-2xl border border-white/60 bg-white/55 p-4 shadow-sm",
+                    ctx,
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold" style={{ color }}>
+                      {item.imobiliaria}
+                    </h3>
+                    <span
+                      className="rounded-full px-2 py-1 font-mono text-[10px] font-bold"
+                      style={{ background: `${color}1f`, color }}
+                    >
+                      {item.conversao}% conversão
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <MiniStat label="Atend." value={item.atendimentos} />
+                    <MiniStat label="Aluguéis" value={item.alugueis} />
+                    <MiniStat label="Vendas" value={item.vendas} />
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-foreground/[0.04] p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-foreground/45">
+                      Receita prevista
+                    </p>
+                    <p className="mt-1 font-mono text-lg font-bold" style={{ color }}>
+                      {brl(item.receitaPrevista, { compact: true })}
+                    </p>
+                    <p className="mt-1 text-[10px] text-foreground/55">
+                      Origem: {item.origemContatos}
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <MiniStat label="Atend." value={item.atendimentos} />
-                  <MiniStat label="Aluguéis" value={item.alugueis} />
-                  <MiniStat label="Vendas" value={item.vendas} />
-                </div>
-                <div className="mt-4 rounded-2xl bg-foreground/[0.04] p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-foreground/45">
-                    Receita prevista
-                  </p>
-                  <p className="mt-1 font-mono text-lg font-bold text-primary">
-                    {brl(item.receitaPrevista, { compact: true })}
-                  </p>
-                  <p className="mt-1 text-[10px] text-foreground/55">
-                    Origem: {item.origemContatos}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
