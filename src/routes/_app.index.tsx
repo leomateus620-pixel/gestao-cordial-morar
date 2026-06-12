@@ -600,7 +600,7 @@ function MetricsCarousel({ groups }: { groups: MetricCardData[][] }) {
           {groups.map((group, gi) => (
             <div
               key={gi}
-              className="mr-3 grid w-[calc(100%-0.75rem)] min-w-[calc(100vw-3rem)] flex-none snap-start grid-cols-2 gap-2.5 last:mr-0"
+              className="mr-3 grid w-[calc(100vw-2rem)] max-w-full flex-none snap-start grid-cols-2 gap-2.5 last:mr-0"
             >
               {group.map((card) => (
                 <MetricCard key={card.label} {...card} />
