@@ -596,11 +596,11 @@ function MetricsCarousel({ groups }: { groups: MetricCardData[][] }) {
 
       {/* Mobile: carrossel com scroll-snap por grupo */}
       <div className="sm:hidden">
-        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto px-4 pb-2">
+        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-2">
           {groups.map((group, gi) => (
             <div
               key={gi}
-              className="mr-3 grid w-[calc(100vw-2rem)] flex-none snap-start grid-cols-2 gap-2.5"
+              className="mr-3 grid w-[calc(100%-0.75rem)] min-w-[calc(100vw-3rem)] flex-none snap-start grid-cols-2 gap-2.5 last:mr-0"
             >
               {group.map((card) => (
                 <MetricCard key={card.label} {...card} />
