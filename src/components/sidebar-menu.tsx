@@ -1,11 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth-mock";
-import {
-  getVisibleModules,
-  moduleItems,
-  type ModuleItem,
-} from "@/components/shared/module-menu";
+import { getVisibleModules, moduleItems, type ModuleItem } from "@/components/shared/module-menu";
 
 type SidebarMenuProps = {
   className?: string;

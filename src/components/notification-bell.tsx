@@ -2,10 +2,7 @@ import { Bell, CheckCheck, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useApp } from "@/store/app-store";
-import {
-  notificationLabels,
-  type NotificationPriority,
-} from "@/lib/mock/notifications";
+import { notificationLabels, type NotificationPriority } from "@/lib/mock/notifications";
 import { cn } from "@/lib/utils";
 
 const priorityTone: Record<NotificationPriority, string> = {
