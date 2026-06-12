@@ -74,6 +74,7 @@ export function AppShell() {
                   <SidebarMenu onNavigate={() => setMobileMenuOpen(false)} />
                 </SheetContent>
               </Sheet>
+              <NotificationBell />
               <Link
                 to="/mais"
                 className="glass-panel grid size-10 place-items-center rounded-full text-sm font-semibold text-primary"
@@ -99,13 +100,7 @@ export function AppShell() {
               <div className="w-full max-w-sm">
                 <AgencySwitcher />
               </div>
-              <button
-                type="button"
-                className="glass-panel grid size-10 shrink-0 place-items-center rounded-full text-primary transition-transform hover:scale-105"
-                aria-label="Notificações"
-              >
-                <Bell className="size-4" />
-              </button>
+              <NotificationBell />
               <Link
                 to="/mais"
                 className="glass-panel flex shrink-0 items-center gap-3 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-semibold text-primary transition-transform hover:scale-[1.02]"
