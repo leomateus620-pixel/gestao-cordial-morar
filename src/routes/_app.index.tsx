@@ -649,7 +649,7 @@ function MetricCard({
 
   return (
     <article
-      className="group relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+      className="group relative min-w-0 overflow-hidden rounded-2xl p-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg sm:p-4"
       style={{
         background:
           "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
@@ -690,7 +690,7 @@ function MetricCard({
       <div className="mt-2 flex items-end justify-between gap-2">
         <span
           className={cn(
-            "text-2xl font-bold leading-none tracking-tight",
+            "truncate text-xl font-bold leading-none tracking-tight sm:text-2xl",
             toneValueClass[tone],
           )}
         >
