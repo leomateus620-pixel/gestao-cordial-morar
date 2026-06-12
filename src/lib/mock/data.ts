@@ -1477,14 +1477,6 @@ export const configuracoesSeed: ConfiguracaoOperacional[] = [
     status: "Ativo",
     imobiliaria: "morar",
   },
-    descricao: "Despesa anúncio imóveis Santa Rosa",
-    categoria: "Despesa",
-    valor: 680,
-    data: "2026-05-28",
-    tipo: "saida",
-    imobiliaria: "morar",
-    status: "Atrasado",
-  },
 ];
 
 export type Aluguel = {
