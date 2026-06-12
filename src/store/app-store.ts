@@ -6,17 +6,14 @@ import {
   atendimentosSeed,
   campanhasMarketingSeed,
   clientesSeed,
+  configuracoesSeed,
   contratosSeed,
   corretoresSeed,
   documentosSeed,
   imoveisSeed,
   integracoesContaAzulSeed,
-  lancamentosSeed,
-  campanhasMarketingSeed,
-  configuracoesSeed,
-  documentosSeed,
   integracoesSeed,
-  notificacoesSeed,
+  lancamentosSeed,
   permissoesSeed,
   projecoesFinanceirasSeed,
   usuariosSistemaSeed,
@@ -27,17 +24,14 @@ import {
   type CampanhaMarketing,
   type Cliente,
   type Compromisso,
+  type ConfiguracaoOperacional,
   type Contrato,
   type Corretor,
-  type Documento,
+  type DocumentoOperacional,
   type Imovel,
   type IntegracaoContaAzul,
-  type Lancamento,
-  type CampanhaMarketing,
-  type ConfiguracaoOperacional,
-  type DocumentoOperacional,
   type IntegracaoOperacional,
-  type Notificacao,
+  type Lancamento,
   type Permissao,
   type ProjecaoFinanceira,
   type UsuarioSistema,
@@ -56,24 +50,24 @@ type State = {
   contratos: Contrato[];
   agenda: Compromisso[];
   lancamentos: Lancamento[];
+  alugueis: Aluguel[];
+  vendas: Venda[];
   campanhasMarketing: CampanhaMarketing[];
   documentos: DocumentoOperacional[];
   integracoes: IntegracaoOperacional[];
   configuracoes: ConfiguracaoOperacional[];
-  alugueis: Aluguel[];
-  vendas: Venda[];
-  documentos: Documento[];
-  notificacoes: Notificacao[];
   integracoesContaAzul: IntegracaoContaAzul[];
   permissoes: Permissao[];
   usuariosSistema: UsuarioSistema[];
-  campanhasMarketing: CampanhaMarketing[];
   projecoesFinanceiras: ProjecaoFinanceira[];
+  notifications: AppNotification[];
   setAgency: (a: AgencyFilter) => void;
   addCliente: (c: Omit<Cliente, "id" | "iniciais" | "criadoEm">) => void;
   addImovel: (i: Omit<Imovel, "id">) => void;
   addAtendimento: (a: Omit<Atendimento, "id" | "criadoEm">) => void;
   addCompromisso: (c: Omit<Compromisso, "id">) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
 };
 
 function iniciais(nome: string) {
@@ -94,19 +88,17 @@ export const useApp = create<State>()(
       contratos: contratosSeed,
       agenda: agendaSeed,
       lancamentos: lancamentosSeed,
+      alugueis: alugueisSeed,
+      vendas: vendasSeed,
       campanhasMarketing: campanhasMarketingSeed,
       documentos: documentosSeed,
       integracoes: integracoesSeed,
       configuracoes: configuracoesSeed,
-      alugueis: alugueisSeed,
-      vendas: vendasSeed,
-      documentos: documentosSeed,
-      notificacoes: notificacoesSeed,
       integracoesContaAzul: integracoesContaAzulSeed,
       permissoes: permissoesSeed,
       usuariosSistema: usuariosSistemaSeed,
-      campanhasMarketing: campanhasMarketingSeed,
       projecoesFinanceiras: projecoesFinanceirasSeed,
+      notifications: notificationsSeed,
       setAgency: (agency) => set({ agency }),
       addCliente: (c) =>
         set((s) => ({
@@ -121,6 +113,12 @@ export const useApp = create<State>()(
           atendimentos: [{ ...a, id: id(), criadoEm: new Date().toISOString() }, ...s.atendimentos],
         })),
       addCompromisso: (c) => set((s) => ({ agenda: [{ ...c, id: id() }, ...s.agenda] })),
+      markNotificationRead: (nid) =>
+        set((s) => ({
+          notifications: s.notifications.map((n) => (n.id === nid ? { ...n, read: true } : n)),
+        })),
+      markAllNotificationsRead: () =>
+        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
     }),
     { name: "gc.store.v1" },
   ),

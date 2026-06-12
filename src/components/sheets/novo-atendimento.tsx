@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FormSheet, Field, inputCls, submitCls } from "./form-shell";
 import { useApp } from "@/store/app-store";
-import type { AgencyId, AtendimentoStatus } from "@/lib/mock/data";
+import type { AgencyId, AtendimentoStatus, OrigemLead } from "@/lib/mock/data";
 
 export function NovoAtendimentoSheet({
   open,
@@ -19,9 +19,7 @@ export function NovoAtendimentoSheet({
   const [imovelId, setImovelId] = useState(imoveis[0]?.id ?? "");
   const [corretorId, setCorretorId] = useState(corretores[0]?.id ?? "");
   const [status, setStatus] = useState<AtendimentoStatus>("Novo");
-  const [origem, setOrigem] = useState<
-    "WhatsApp" | "Site" | "Indicação" | "Porta fria" | "Instagram"
-  >("WhatsApp");
+  const [origem, setOrigem] = useState<OrigemLead>("WhatsApp");
   const [prioridade, setPrioridade] = useState<"Baixa" | "Média" | "Alta">("Média");
   const [proximoRetorno, setProximoRetorno] = useState("");
   const [motivoPerda, setMotivoPerda] = useState("");
@@ -42,7 +40,14 @@ export function NovoAtendimentoSheet({
       prioridade,
       proximoRetorno: proximoRetorno ? new Date(proximoRetorno).toISOString() : undefined,
       motivoPerda: status === "Perdido" ? motivoPerda : undefined,
-      historico: ["Atendimento criado pelo formulário"],
+      historico: [
+        {
+          data: new Date().toISOString(),
+          tipo: "Observação",
+          descricao: "Atendimento criado pelo formulário.",
+          responsavelId: corretorId,
+        },
+      ],
     });
     onOpenChange(false);
     setObservacoes("");

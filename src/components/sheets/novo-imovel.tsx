@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FormSheet, Field, inputCls, submitCls } from "./form-shell";
 import { useApp } from "@/store/app-store";
-import type { AgencyId, Imovel } from "@/lib/mock/data";
+import type { AgencyId, Imovel, ImovelDocumento } from "@/lib/mock/data";
 import fallback from "@/assets/properties/apto-jardins.jpg";
 
 export function NovoImovelSheet({
@@ -54,7 +54,12 @@ export function NovoImovelSheet({
       documentos: documentos
         .split(",")
         .map((d) => d.trim())
-        .filter(Boolean),
+        .filter(Boolean)
+        .map<ImovelDocumento>((nome, idx) => ({
+          id: `doc-${Date.now()}-${idx}`,
+          nome,
+          status: "Recebido",
+        })),
     });
     onOpenChange(false);
     setTitulo("");
