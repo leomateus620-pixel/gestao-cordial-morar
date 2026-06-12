@@ -22,7 +22,8 @@ export type OrigemLead =
   | "Portal imobiliário"
   | "Site"
   | "Captação ativa"
-  | "Carteira antiga";
+  | "Carteira antiga"
+  | "Porta fria";
 
 export type DocumentoStatus =
   | "Pendente"
@@ -160,7 +161,6 @@ export type Cliente = {
   timeline?: ClienteTimeline[];
   imobiliaria: AgencyId;
   criadoEm: string;
-  origem?: "WhatsApp" | "Site" | "Indicação" | "Porta fria" | "Instagram";
   documento?: string;
   rendaMensal?: number;
   preferenciaContato?: "WhatsApp" | "Telefone" | "E-mail";
@@ -468,11 +468,7 @@ export type Imovel = {
   foto: string;
   fotos?: string[];
   suites?: number;
-  vagas?: number;
-  condominio?: number;
-  iptu?: number;
   proprietarioId?: string;
-  documentos?: string[];
   descricao?: string;
 };
 
@@ -737,11 +733,8 @@ export type Atendimento = {
   motivoPerda?: string;
   observacoes: string;
   criadoEm: string;
-  origem?: "WhatsApp" | "Site" | "Indicação" | "Porta fria" | "Instagram";
   prioridade?: "Baixa" | "Média" | "Alta";
   proximoRetorno?: string;
-  motivoPerda?: string;
-  historico?: string[];
 };
 
 export const atendimentosSeed: Atendimento[] = [
