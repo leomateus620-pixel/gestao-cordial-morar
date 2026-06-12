@@ -1057,7 +1057,7 @@ export const agendaSeed: Compromisso[] = [
   },
   {
     id: "ag3",
-    titulo: "Vistoria Casa Sulina",
+    titulo: "Vistoria Casa Bragança",
     tipo: "Vistoria",
     data: "2026-06-12T09:00:00",
     duracaoMin: 90,
