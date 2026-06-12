@@ -564,14 +564,6 @@ function Dashboard() {
   );
 }
 
-const axisTick = { fontSize: 10, fill: "rgba(50,30,15,0.5)" };
-const tooltipStyle = {
-  background: "rgba(255,255,255,0.94)",
-  border: "1px solid rgba(255,255,255,0.72)",
-  borderRadius: 12,
-  fontSize: 11,
-};
-
 type MetricCardProps = {
   label: string;
   value: string;
