@@ -10,6 +10,11 @@ export const Route = createFileRoute("/login")({
 
 const LOGO_SRC = "/logo-gestao-cordial-morar.svg";
 
+/*
+ * Perfis demo (uso interno de desenvolvimento — não exibir na interface):
+ * usuários: ricardo, bruna, clara, marcos, daniela · senha: cordial
+ */
+
 function LoginPage() {
   const navigate = useNavigate();
   const session = useSession();
@@ -41,157 +46,153 @@ function LoginPage() {
   }
 
   return (
-    <main className="login-premium-shell min-h-svh overflow-x-hidden px-4 py-6 text-[#1E2329] sm:px-6 lg:px-8">
+    <main className="login-shell relative min-h-svh overflow-x-hidden px-4 py-5 text-[#1E2329] sm:px-6 sm:py-8 lg:px-10">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="login-premium-grid absolute inset-0" />
-        <div className="animate-mesh absolute -left-24 top-[-18%] h-80 w-80 rounded-full bg-[#5FAFC7]/25 blur-[92px] sm:h-[32rem] sm:w-[32rem]" />
-        <div
-          className="animate-mesh absolute bottom-[-18%] right-[-18%] h-96 w-96 rounded-full bg-[#D9782D]/22 blur-[104px] sm:h-[34rem] sm:w-[34rem]"
-          style={{ animationDelay: "-8s" }}
-        />
-        <div className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FBF8F4]/8 blur-[120px]" />
+        <div className="login-shell-glow login-shell-glow--primary" />
+        <div className="login-shell-glow login-shell-glow--accent" />
+        <div className="login-shell-vignette absolute inset-0" />
       </div>
 
-      <section className="relative z-10 mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-5xl flex-col items-center justify-center gap-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0rem,env(safe-area-inset-top))] sm:gap-7">
-        <header className="login-premium-logo flex w-full max-w-[28rem] flex-col items-center text-center">
-          <div className="flex min-h-20 w-full items-center justify-center sm:min-h-24">
-            {logoDisponivel ? (
-              <img
-                src={LOGO_SRC}
-                alt="Gestão Cordial & Morar — Sistema Integrado de Gestão Imobiliária"
-                className="h-auto max-h-24 w-full max-w-[21rem] object-contain drop-shadow-[0_18px_34px_rgba(0,0,0,0.22)] sm:max-h-28 sm:max-w-[26rem]"
-                onError={() => setLogoDisponivel(false)}
-              />
-            ) : (
-              <div className="rounded-[1.75rem] border border-white/18 bg-white/10 px-5 py-4 shadow-2xl backdrop-blur-xl">
-                <p className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                  Gestão Cordial & Morar
-                </p>
-                <p className="mt-1 text-xs font-medium uppercase tracking-[0.22em] text-[#F5F1EB]/70">
-                  Sistema Integrado de Gestão Imobiliária
-                </p>
+      <section className="relative z-10 mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[64rem] items-center justify-center pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.25rem,env(safe-area-inset-top))] sm:min-h-[calc(100svh-4rem)]">
+        <div className="login-card-enter grid w-full overflow-hidden rounded-[1.5rem] ring-1 ring-white/10 shadow-[0_36px_90px_rgba(0,0,0,0.42)] sm:rounded-[1.75rem] lg:min-h-[37rem] lg:grid-cols-[1.05fr_1fr]">
+          {/* Painel institucional / branding */}
+          <aside className="login-brand relative flex items-center justify-center border-b border-white/8 px-6 py-9 sm:px-10 sm:py-11 lg:border-b-0 lg:border-r lg:px-12 lg:py-14">
+            <div className="login-brand-sheen" aria-hidden="true" />
+            <div className="relative flex w-full max-w-[24rem] flex-col items-center text-center">
+              {logoDisponivel ? (
+                <img
+                  src={LOGO_SRC}
+                  alt="Gestão Cordial & Morar — Sistema Integrado de Gestão Imobiliária"
+                  className="h-auto w-full max-w-[12.5rem] object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.32)] sm:max-w-[15rem] lg:max-w-[18.5rem]"
+                  onError={() => setLogoDisponivel(false)}
+                />
+              ) : (
+                <div className="rounded-2xl border border-white/12 bg-white/8 px-6 py-5">
+                  <p className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    Gestão Cordial & Morar
+                  </p>
+                </div>
+              )}
+
+              <p className="mt-6 hidden text-sm font-medium leading-6 tracking-[0.01em] text-[#F5F1EB]/70 lg:block">
+                Gestão imobiliária integrada
+              </p>
+
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:mt-6">
+                <span className="login-brand-badge">
+                  <span className="size-1.5 rounded-full bg-[#5FAFC7]" aria-hidden="true" />
+                  Cordial Imóveis
+                </span>
+                <span className="login-brand-badge">
+                  <span className="size-1.5 rounded-full bg-[#D9782D]" aria-hidden="true" />
+                  Morar Imóveis
+                </span>
               </div>
-            )}
-          </div>
-
-          <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs font-semibold text-[#F5F1EB]/82">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/9 px-3 py-1.5 backdrop-blur-md">
-              <span className="size-2 rounded-full bg-[#2B7FA3] shadow-[0_0_0_4px_rgba(43,127,163,0.16)]" />
-              Cordial Imóveis
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/9 px-3 py-1.5 backdrop-blur-md">
-              <span className="size-2 rounded-full bg-[#E07A2E] shadow-[0_0_0_4px_rgba(224,122,46,0.16)]" />
-              Morar Imóveis
-            </span>
-          </div>
-        </header>
-
-        <div className="login-card-enter w-full max-w-[27.5rem] rounded-[2rem] border border-white/45 bg-[#FBF8F4]/88 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.62)] backdrop-blur-[18px] sm:p-8">
-          <div className="mb-6 text-center sm:mb-7">
-            <div className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-[#1E647D]/10 text-[#1E647D] shadow-inner ring-1 ring-[#1E647D]/10">
-              <LockKeyhole className="size-5" aria-hidden="true" />
             </div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#D9782D]">
-              Acesso integrado
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#171B21] sm:text-4xl">
-              Acessar sistema
-            </h1>
-            <p className="mx-auto mt-3 max-w-[21rem] text-sm leading-6 text-[#6B7280]">
-              Informe seu usuário ou e-mail para acessar o painel integrado das imobiliárias.
-            </p>
-          </div>
+          </aside>
 
-          <form onSubmit={submit} className="space-y-4">
-            <label className="block">
-              <span className="text-sm font-semibold text-[#1E2329]">Usuário ou e-mail</span>
-              <div className="login-input-wrap mt-2 flex items-center gap-3 rounded-2xl border border-[#E6DDD2] bg-white/66 px-4 transition">
-                <UserRound className="size-5 shrink-0 text-[#6B7280]" aria-hidden="true" />
-                <input
-                  value={usuario}
-                  onChange={(e) => {
-                    setUsuario(e.target.value);
-                    setErro(null);
-                    setInfo(null);
-                  }}
-                  autoComplete="username"
-                  inputMode="email"
-                  placeholder="ex: ricardo ou ricardo@email.com"
-                  className="min-h-14 w-full bg-transparent text-base font-medium text-[#1E2329] outline-none placeholder:text-[#6B7280]/58"
-                />
-              </div>
-            </label>
+          {/* Painel do formulário */}
+          <div className="login-form-panel flex items-center px-5 py-8 sm:px-10 sm:py-12 lg:px-12">
+            <div className="mx-auto w-full max-w-[23.5rem]">
+              <header>
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#B95F20]">
+                  Acesso integrado
+                </p>
+                <h1 className="mt-2.5 text-[1.75rem] font-bold leading-tight tracking-tight text-[#171B21] sm:text-3xl">
+                  Acessar sistema
+                </h1>
+                <p className="mt-2.5 text-sm leading-6 text-[#6B7280]">
+                  Entre com seu usuário ou e-mail para continuar.
+                </p>
+              </header>
 
-            <label className="block">
-              <span className="text-sm font-semibold text-[#1E2329]">Senha</span>
-              <div className="login-input-wrap mt-2 flex items-center gap-3 rounded-2xl border border-[#E6DDD2] bg-white/66 px-4 transition">
-                <LockKeyhole className="size-5 shrink-0 text-[#6B7280]" aria-hidden="true" />
-                <input
-                  type={senhaVisivel ? "text" : "password"}
-                  value={senha}
-                  onChange={(e) => {
-                    setSenha(e.target.value);
-                    setErro(null);
-                    setInfo(null);
-                  }}
-                  autoComplete="current-password"
-                  placeholder="Digite sua senha"
-                  className="min-h-14 w-full bg-transparent text-base font-medium text-[#1E2329] outline-none placeholder:text-[#6B7280]/58"
-                />
+              <form onSubmit={submit} className="mt-7 space-y-4 sm:mt-8">
+                <label className="block">
+                  <span className="text-sm font-semibold text-[#1E2329]">Usuário ou e-mail</span>
+                  <div
+                    className={`login-input-wrap mt-2 flex items-center gap-3 rounded-xl border border-[#E6DDD2] bg-white px-4 transition ${erro ? "login-input-wrap--error" : ""}`}
+                  >
+                    <UserRound className="size-[18px] shrink-0 text-[#6B7280]" aria-hidden="true" />
+                    <input
+                      value={usuario}
+                      onChange={(e) => {
+                        setUsuario(e.target.value);
+                        setErro(null);
+                        setInfo(null);
+                      }}
+                      autoComplete="username"
+                      inputMode="email"
+                      placeholder="usuário ou e-mail"
+                      aria-invalid={erro ? true : undefined}
+                      className="min-h-[3.25rem] w-full bg-transparent text-[15px] font-medium text-[#1E2329] outline-none placeholder:text-[#6B7280]/55"
+                    />
+                  </div>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-semibold text-[#1E2329]">Senha</span>
+                  <div
+                    className={`login-input-wrap mt-2 flex items-center gap-3 rounded-xl border border-[#E6DDD2] bg-white px-4 transition ${erro ? "login-input-wrap--error" : ""}`}
+                  >
+                    <LockKeyhole className="size-[18px] shrink-0 text-[#6B7280]" aria-hidden="true" />
+                    <input
+                      type={senhaVisivel ? "text" : "password"}
+                      value={senha}
+                      onChange={(e) => {
+                        setSenha(e.target.value);
+                        setErro(null);
+                        setInfo(null);
+                      }}
+                      autoComplete="current-password"
+                      placeholder="Digite sua senha"
+                      aria-invalid={erro ? true : undefined}
+                      className="min-h-[3.25rem] w-full bg-transparent text-[15px] font-medium text-[#1E2329] outline-none placeholder:text-[#6B7280]/55"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSenhaVisivel((visivel) => !visivel)}
+                      className="-mr-1.5 grid size-9 shrink-0 place-items-center rounded-full text-[#2A3038] transition hover:bg-[#1E647D]/8 hover:text-[#1E647D] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E647D]/15"
+                      aria-label={senhaVisivel ? "Ocultar senha" : "Visualizar senha"}
+                    >
+                      {senhaVisivel ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                    </button>
+                  </div>
+                </label>
+
+                <div className="flex justify-end pt-0.5">
+                  <button
+                    type="button"
+                    onClick={solicitarRecuperacao}
+                    className="text-[13px] font-semibold text-[#1E647D] underline-offset-4 transition hover:text-[#174D61] hover:underline focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E647D]/15"
+                  >
+                    Esqueceu a senha?
+                  </button>
+                </div>
+
+                {erro && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-[#C94C4C]/25 bg-[#C94C4C]/8 px-4 py-3 text-sm font-medium text-[#9B3A3A]"
+                  >
+                    {erro}
+                  </p>
+                )}
+
+                {info && (
+                  <p className="rounded-xl border border-[#1E647D]/16 bg-[#1E647D]/8 px-4 py-3 text-sm font-medium text-[#174D61]">
+                    {info}
+                  </p>
+                )}
+
                 <button
-                  type="button"
-                  onClick={() => setSenhaVisivel((visivel) => !visivel)}
-                  className="-mr-1 grid size-10 shrink-0 place-items-center rounded-full text-[#2A3038] transition hover:bg-[#1E647D]/8 hover:text-[#1E647D] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E647D]/12"
-                  aria-label={senhaVisivel ? "Ocultar senha" : "Visualizar senha"}
+                  type="submit"
+                  className="login-submit mt-3 inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-bold text-white transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E647D]/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {senhaVisivel ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                  <LogIn className="size-[18px]" aria-hidden="true" />
+                  Entrar
                 </button>
-              </div>
-            </label>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={solicitarRecuperacao}
-                className="text-sm font-semibold text-[#1E647D] transition hover:text-[#B95F20] focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E647D]/12"
-              >
-                Esqueceu a senha?
-              </button>
+              </form>
             </div>
-
-            {erro && (
-              <p className="rounded-2xl border border-[#F0A86D]/35 bg-[#F0A86D]/14 px-4 py-3 text-sm font-medium text-[#8E4718]">
-                {erro}
-              </p>
-            )}
-
-            {info && (
-              <p className="rounded-2xl border border-[#1E647D]/16 bg-[#1E647D]/8 px-4 py-3 text-sm font-medium text-[#174D61]">
-                {info}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="login-submit group relative mt-2 flex min-h-14 w-full items-center justify-center overflow-hidden rounded-2xl px-5 text-base font-bold text-white shadow-[0_16px_35px_rgba(30,100,125,0.28)] transition active:scale-[0.99]"
-            >
-              <span className="absolute inset-y-0 right-0 w-24 translate-x-10 bg-[#D9782D]/22 blur-2xl transition group-hover:translate-x-0" />
-              <LogIn className="relative mr-2 size-5" aria-hidden="true" />
-              <span className="relative">Entrar no sistema</span>
-            </button>
-
-            <p className="px-2 text-center text-xs leading-5 text-[#6B7280]">
-              Acesso restrito aos usuários autorizados da Cordial Imóveis e Morar Imóveis.
-            </p>
-          </form>
-
-          <div className="mt-6 rounded-2xl border border-[#E6DDD2]/80 bg-white/46 px-4 py-3 text-center text-[11px] leading-5 text-[#6B7280]">
-            Perfis demo: <strong className="text-[#1E2329]">ricardo</strong>,{" "}
-            <strong className="text-[#1E2329]">bruna</strong>,{" "}
-            <strong className="text-[#1E2329]">clara</strong>,{" "}
-            <strong className="text-[#1E2329]">marcos</strong> ou{" "}
-            <strong className="text-[#1E2329]">daniela</strong> · senha{" "}
-            <strong className="text-[#1E2329]">cordial</strong>
           </div>
         </div>
       </section>

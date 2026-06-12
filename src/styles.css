@@ -309,30 +309,80 @@
   scrollbar-width: none;
 }
 
-.login-premium-shell {
+/* ---------------------------------------------------------------------------
+ * Tela de login (escopo isolado em classes login-*)
+ * ------------------------------------------------------------------------- */
+
+.login-shell {
   position: relative;
   background:
-    radial-gradient(circle at top left, rgba(95, 175, 199, 0.22), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(217, 120, 45, 0.18), transparent 32%),
-    linear-gradient(135deg, #171b21 0%, #1e2329 48%, #174d61 100%);
+    radial-gradient(115% 90% at 14% -12%, rgba(95, 175, 199, 0.12), transparent 52%),
+    radial-gradient(95% 85% at 108% 112%, rgba(23, 77, 97, 0.5), transparent 60%),
+    linear-gradient(158deg, #14171c 0%, #171b21 42%, #15303d 100%);
 }
 
-.login-premium-grid {
-  opacity: 0.18;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
+.login-shell-glow {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
 }
 
-.login-premium-logo,
+.login-shell-glow--primary {
+  top: -24%;
+  left: -14%;
+  width: 44rem;
+  height: 44rem;
+  background: radial-gradient(circle, rgba(95, 175, 199, 0.16), transparent 64%);
+  filter: blur(64px);
+}
+
+.login-shell-glow--accent {
+  right: -16%;
+  bottom: -28%;
+  width: 40rem;
+  height: 40rem;
+  background: radial-gradient(circle, rgba(217, 120, 45, 0.1), transparent 64%);
+  filter: blur(72px);
+}
+
+.login-shell-vignette {
+  background: radial-gradient(125% 100% at 50% 40%, transparent 52%, rgba(8, 10, 13, 0.5) 100%);
+}
+
+.login-brand {
+  background:
+    radial-gradient(120% 110% at 85% -5%, rgba(95, 175, 199, 0.1), transparent 55%),
+    radial-gradient(90% 80% at 0% 110%, rgba(30, 100, 125, 0.22), transparent 58%),
+    linear-gradient(168deg, #1c222a 0%, #171b21 48%, #143240 100%);
+}
+
+.login-brand-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%);
+  pointer-events: none;
+}
+
+.login-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(245, 241, 235, 0.85);
+}
+
+.login-form-panel {
+  background: linear-gradient(180deg, #fbf8f4 0%, #f5f1eb 100%);
+}
+
 .login-card-enter {
   animation: login-card-rise 0.55s ease-out both;
-}
-
-.login-card-enter {
-  animation-delay: 0.08s;
 }
 
 .login-input-wrap {
@@ -341,19 +391,40 @@
 
 .login-input-wrap:focus-within {
   border-color: #1e647d;
-  background: rgba(255, 255, 255, 0.82);
+  background: #fff;
   box-shadow:
     0 0 0 4px rgba(30, 100, 125, 0.12),
     inset 0 1px 2px rgba(23, 27, 33, 0.04);
 }
 
+.login-input-wrap--error {
+  border-color: rgba(201, 76, 76, 0.55);
+}
+
+.login-input-wrap--error:focus-within {
+  border-color: rgba(201, 76, 76, 0.7);
+  box-shadow:
+    0 0 0 4px rgba(201, 76, 76, 0.1),
+    inset 0 1px 2px rgba(23, 27, 33, 0.04);
+}
+
 .login-submit {
   background: linear-gradient(135deg, #1e647d, #174d61);
+  box-shadow: 0 14px 30px rgba(30, 100, 125, 0.3);
 }
 
 .login-submit:hover {
   background: linear-gradient(135deg, #174d61, #123d4e);
-  box-shadow: 0 18px 38px rgba(30, 100, 125, 0.34);
+  box-shadow: 0 18px 38px rgba(30, 100, 125, 0.36);
+}
+
+.login-submit:active {
+  box-shadow: 0 10px 22px rgba(30, 100, 125, 0.28);
+}
+
+.login-submit:disabled {
+  filter: saturate(0.7);
+  box-shadow: none;
 }
 
 @keyframes login-card-rise {
