@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MeshBackground } from "./mesh-background";
 import { AgencySwitcher } from "./agency-switcher";
 import { SidebarMenu } from "./sidebar-menu";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
@@ -15,6 +15,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -33,37 +34,62 @@ export function AppShell() {
   const bottomNav = getVisibleModules(session.modules, primaryModuleItems);
 
   return (
-    <div className="relative mx-auto flex min-h-screen w-full max-w-full flex-col overflow-x-hidden font-sans text-foreground lg:max-w-[1180px]">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-full flex-col overflow-x-hidden font-sans text-foreground">
       <MeshBackground />
 
       {/* Sidebar desktop */}
-      <aside className="sidebar-glass fixed inset-y-4 left-4 z-40 hidden w-72 flex-col overflow-hidden rounded-[2rem] p-4 lg:flex">
-        <div className="mb-5 flex items-center gap-3 px-2 pt-1">
-          <div
-            className="grid size-11 place-items-center rounded-2xl"
-            style={{ background: "rgba(95,175,199,0.18)", color: "#5fafc7" }}
-          >
+      <aside
+        className={cn(
+          "sidebar-glass fixed inset-y-4 left-4 z-40 hidden max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[1.75rem] p-3 transition-[width] duration-300 ease-out lg:flex",
+          sidebarCollapsed ? "w-20" : "w-64",
+        )}
+      >
+        <div
+          className={cn(
+            "mb-4 flex items-center gap-3 px-1 pt-1",
+            sidebarCollapsed && "justify-center",
+          )}
+        >
+          <div className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(145deg,rgba(95,175,199,0.26),rgba(255,255,255,0.06))] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_-22px_rgba(95,175,199,0.9)] ring-1 ring-cyan-200/15">
             <Building2 className="size-5" />
+            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.75)]" />
           </div>
-          <div className="min-w-0">
-            <span
-              className="text-[10px] font-bold uppercase tracking-[0.24em]"
-              style={{ color: "#5fafc7" }}
-            >
-              Gestão Cordial
-            </span>
-            <p className="truncate text-sm font-semibold text-white/85">Sistema Imobiliário</p>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="min-w-0">
+              <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-cyan-200/82">
+                Gestão Cordial
+              </span>
+              <p className="truncate text-sm font-semibold leading-tight tracking-[-0.01em] text-white/90">
+                Sistema Imobiliário
+              </p>
+            </div>
+          )}
         </div>
 
-        <SidebarMenu className="min-h-0 flex-1 overflow-y-auto pr-1" compact tone="dark" />
+        <SidebarMenu
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+          showToggle
+          tone="dark"
+        />
 
-        <div className="mt-3 border-t border-white/10 pt-3 text-[10px] uppercase tracking-[0.18em] text-white/35">
-          Cordial Imóveis + Morar Imóveis
+        <div
+          className={cn(
+            "mt-3 border-t border-white/10 pt-3 text-[9px] font-semibold uppercase leading-relaxed tracking-[0.16em] text-white/35",
+            sidebarCollapsed ? "text-center" : "px-1",
+          )}
+        >
+          {sidebarCollapsed ? "CI + MI" : "Cordial Imóveis + Morar Imóveis"}
         </div>
       </aside>
 
-      <div ref={mainRef} className="relative z-10 flex min-h-screen w-full flex-col lg:pl-80">
+      <div
+        ref={mainRef}
+        className={cn(
+          "relative z-10 flex min-h-screen w-full flex-col transition-[padding] duration-300 ease-out",
+          sidebarCollapsed ? "lg:pl-28" : "lg:pl-72",
+        )}
+      >
         {/* Header mobile — sticky com blur ao rolar */}
         <header
           className={cn(
@@ -98,12 +124,25 @@ export function AppShell() {
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="glass-panel-strong w-[88vw] max-w-[360px] overflow-y-auto border-white/60 bg-background/90 p-5 backdrop-blur-2xl lg:hidden"
+                  className="sidebar-glass flex h-dvh w-[88vw] max-w-[340px] flex-col overflow-hidden border-white/10 bg-[#141a20] p-4 text-white backdrop-blur-2xl lg:hidden [&>button]:text-white/70 [&>button]:hover:text-white"
                 >
-                  <SheetHeader className="mb-4 text-left">
-                    <SheetTitle className="text-base">Módulos</SheetTitle>
-                  </SheetHeader>
-                  <SidebarMenu onNavigate={() => setMobileMenuOpen(false)} />
+                  <div className="mb-5 flex items-center gap-3 pr-8">
+                    <div className="grid size-11 place-items-center rounded-2xl bg-cyan-300/16 text-cyan-100 ring-1 ring-cyan-200/15">
+                      <Building2 className="size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-cyan-200/82">
+                        Gestão Cordial
+                      </span>
+                      <p className="truncate text-sm font-semibold leading-tight text-white/90">
+                        Sistema Imobiliário
+                      </p>
+                    </div>
+                  </div>
+                  <SidebarMenu onNavigate={() => setMobileMenuOpen(false)} tone="dark" />
+                  <div className="mt-3 border-t border-white/10 px-1 pt-3 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/35">
+                    Cordial Imóveis + Morar Imóveis
+                  </div>
                 </SheetContent>
               </Sheet>
               <NotificationBell />
@@ -160,7 +199,9 @@ export function AppShell() {
                   {session.iniciais}
                 </span>
                 <span className="hidden text-left xl:block">
-                  <span className="block text-sm leading-tight text-foreground">{session.nome}</span>
+                  <span className="block text-sm leading-tight text-foreground">
+                    {session.nome}
+                  </span>
                   <span className="block text-[11px] leading-tight text-foreground/50">
                     {session.cargo}
                   </span>

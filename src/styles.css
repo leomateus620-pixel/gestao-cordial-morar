@@ -258,13 +258,44 @@
 }
 
 @utility sidebar-glass {
-  background: linear-gradient(180deg, rgba(23, 27, 33, 0.96), rgba(30, 35, 41, 0.94));
-  backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at 22% 0%, rgba(95, 175, 199, 0.16), transparent 34%),
+    linear-gradient(
+      180deg,
+      rgba(18, 24, 30, 0.98),
+      rgba(22, 28, 34, 0.96) 52%,
+      rgba(17, 22, 28, 0.98)
+    );
+  backdrop-filter: blur(24px) saturate(145%);
+  border: 1px solid rgba(170, 231, 244, 0.08);
   box-shadow:
-    0 30px 60px -20px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.86);
+    0 30px 70px -22px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.premium-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(95, 175, 199, 0.28) transparent;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+.premium-sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.premium-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.premium-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(95, 175, 199, 0.38), rgba(255, 255, 255, 0.12));
+  border-radius: 9999px;
+}
+
+.premium-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(103, 232, 249, 0.5), rgba(255, 255, 255, 0.18));
 }
 
 @utility bottom-nav-glass {
