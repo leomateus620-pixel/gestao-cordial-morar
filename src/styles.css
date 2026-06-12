@@ -309,6 +309,59 @@
   scrollbar-width: none;
 }
 
+/* ─── Rolagem inteligente ─────────────────────────────────────────────────── */
+
+/* Carrosséis horizontais com snap suave */
+.snap-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 0.75rem;
+}
+.snap-carousel::-webkit-scrollbar {
+  display: none;
+}
+.snap-carousel > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Previne layout shift em seções com overflow-x */
+.overflow-x-safe {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+/* Z-index stack consistente */
+/* z-10: conteúdo base | z-20: cards flutuantes | z-30: header | z-40: sidebar/nav | z-50: modais */
+
+/* Garante que o sticky header não seja coberto por elementos com transform */
+.sticky-header-safe {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  isolation: isolate;
+}
+
+/* Scroll suave global */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Previne overflow horizontal indesejado no body */
+body {
+  overflow-x: hidden;
+}
+
+/* Carrossel de métricas mobile — largura exata sem overflow */
+.metrics-snap-item {
+  width: calc(100vw - 2rem);
+  flex-shrink: 0;
+  scroll-snap-align: start;
+}
+
 /* ---------------------------------------------------------------------------
  * Tela de login (escopo isolado em classes login-*)
  * ------------------------------------------------------------------------- */
