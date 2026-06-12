@@ -1918,3 +1918,50 @@ export const receitaMensalLegado = [
   { mes: "Mai", vendas: 44, alugueis: 15 },
   { mes: "Jun", vendas: 61, alugueis: 18 },
 ];
+
+export const dashboardComparativoCordialMorar = [
+  { imobiliaria: "Cordial", conversao: 28, atendimentos: 142, alugueis: 18, vendas: 9, receitaPrevista: 480000, origemContatos: "Instagram" },
+  { imobiliaria: "Morar", conversao: 22, atendimentos: 96, alugueis: 24, vendas: 4, receitaPrevista: 280000, origemContatos: "Indicação" },
+];
+
+export const dashboardEvolucaoMensal = [
+  { mes: "Jan", cordial: 42, morar: 28, total: 70 },
+  { mes: "Fev", cordial: 51, morar: 33, total: 84 },
+  { mes: "Mar", cordial: 38, morar: 30, total: 68 },
+  { mes: "Abr", cordial: 64, morar: 41, total: 105 },
+  { mes: "Mai", cordial: 72, morar: 48, total: 120 },
+  { mes: "Jun", cordial: 88, morar: 55, total: 143 },
+];
+
+export const dashboardOrigemLeads = [
+  { origem: "Instagram", total: 62, cordial: 38, morar: 24 },
+  { origem: "Indicação", total: 48, cordial: 22, morar: 26 },
+  { origem: "Site", total: 36, cordial: 20, morar: 16 },
+  { origem: "WhatsApp", total: 28, cordial: 16, morar: 12 },
+  { origem: "Portais", total: 22, cordial: 12, morar: 10 },
+];
+
+export const dashboardAluguelVenda = [
+  { mes: "Jan", venda: 6, aluguel: 12 },
+  { mes: "Fev", venda: 8, aluguel: 14 },
+  { mes: "Mar", venda: 5, aluguel: 11 },
+  { mes: "Abr", venda: 11, aluguel: 18 },
+  { mes: "Mai", venda: 14, aluguel: 21 },
+  { mes: "Jun", venda: 17, aluguel: 25 },
+];
+
+export const dashboardPrevisaoFinanceira = [
+  { mes: "Jan", receita: 320000, comissao: 28000, aberto: 42000 },
+  { mes: "Fev", receita: 380000, comissao: 32000, aberto: 38000 },
+  { mes: "Mar", receita: 290000, comissao: 24000, aberto: 51000 },
+  { mes: "Abr", receita: 460000, comissao: 41000, aberto: 33000 },
+  { mes: "Mai", receita: 540000, comissao: 48000, aberto: 28000 },
+  { mes: "Jun", receita: 620000, comissao: 56000, aberto: 22000 },
+];
+
+export const dashboardDesempenhoCorretores = [
+  { nome: "Ana Souza", imobiliaria: "cordial" as AgencyId, atendimentos: 48, contratos: 9 },
+  { nome: "Bruno Lima", imobiliaria: "cordial" as AgencyId, atendimentos: 41, contratos: 7 },
+  { nome: "Camila Reis", imobiliaria: "morar" as AgencyId, atendimentos: 36, contratos: 6 },
+  { nome: "Diego Alves", imobiliaria: "morar" as AgencyId, atendimentos: 29, contratos: 4 },
+];
