@@ -1,12 +1,46 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Users, UserCog, FileText, Wallet, BarChart3, LogOut, Building2 } from "lucide-react";
+import {
+  Users,
+  UserCog,
+  FileText,
+  Wallet,
+  BarChart3,
+  LogOut,
+  Building2,
+  Inbox,
+  Calendar,
+  KeyRound,
+  BadgeDollarSign,
+  Megaphone,
+  Cable,
+  Settings,
+} from "lucide-react";
 import { useSession, logout } from "@/lib/auth-mock";
 
 const items = [
+  { to: "/atendimentos", label: "Atendimentos", desc: "Leads, visitas e propostas", icon: Inbox },
+  { to: "/imoveis", label: "Imóveis", desc: "Carteira completa", icon: Building2 },
+  { to: "/alugueis", label: "Aluguéis", desc: "Locações, contratos e atrasos", icon: KeyRound },
+  { to: "/vendas", label: "Vendas", desc: "VGV e oportunidades", icon: BadgeDollarSign },
   { to: "/clientes", label: "Clientes", desc: "Cadastro e histórico", icon: Users },
+  { to: "/agenda", label: "Agenda", desc: "Visitas e compromissos", icon: Calendar },
   { to: "/corretores", label: "Corretores", desc: "Equipe e performance", icon: UserCog },
   { to: "/contratos", label: "Contratos", desc: "Vendas e aluguéis", icon: FileText },
   { to: "/financeiro", label: "Financeiro", desc: "Receita e comissões", icon: Wallet },
+  { to: "/marketing", label: "Marketing", desc: "Campanhas e leads", icon: Megaphone },
+  {
+    to: "/documentos",
+    label: "Documentos",
+    desc: "Contratos, propostas e vistorias",
+    icon: FileText,
+  },
+  { to: "/integracoes", label: "Integrações", desc: "Conectores e sincronizações", icon: Cable },
+  {
+    to: "/configuracoes",
+    label: "Configurações",
+    desc: "Preferências operacionais",
+    icon: Settings,
+  },
   { to: "/relatorios", label: "Relatórios", desc: "Indicadores e ranking", icon: BarChart3 },
 ];
 
@@ -37,12 +71,18 @@ function Page() {
       </section>
 
       <section className="mb-5">
-        <h3 className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-foreground/55">Módulos</h3>
+        <h3 className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-foreground/55">
+          Módulos
+        </h3>
         <div className="glass-panel divide-y divide-white/50 overflow-hidden rounded-3xl">
           {items.map((i) => {
             const Icon = i.icon;
             return (
-              <Link key={i.to} to={i.to as never} className="flex items-center gap-3 px-4 py-3.5 active:bg-white/50">
+              <Link
+                key={i.to}
+                to={i.to as never}
+                className="flex items-center gap-3 px-4 py-3.5 active:bg-white/50"
+              >
                 <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                   <Icon className="size-4" />
                 </div>
@@ -57,17 +97,23 @@ function Page() {
       </section>
 
       <section className="mb-5">
-        <h3 className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-foreground/55">Imobiliárias</h3>
+        <h3 className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wider text-foreground/55">
+          Imobiliárias
+        </h3>
         <div className="glass-panel rounded-3xl p-4">
           <div className="flex items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary"><Building2 className="size-4" /></div>
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+              <Building2 className="size-4" />
+            </div>
             <div>
               <p className="text-sm font-semibold">Cordial Imóveis</p>
               <p className="text-[11px] text-foreground/55">Operação completa</p>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-3 border-t border-white/40 pt-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-700"><Building2 className="size-4" /></div>
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-700">
+              <Building2 className="size-4" />
+            </div>
             <div>
               <p className="text-sm font-semibold">Morar Imóveis</p>
               <p className="text-[11px] text-foreground/55">Operação completa</p>
