@@ -13,7 +13,18 @@ const navItems: NavItem[] = [
   { to: "/", label: "Início", icon: Home, exact: true },
   { to: "/atendimentos", label: "Atend.", icon: Inbox },
   { to: "/imoveis", label: "Imóveis", icon: Building2 },
+  { to: "/alugueis", label: "Aluguéis", icon: KeyRound },
+  { to: "/vendas", label: "Vendas", icon: BadgeDollarSign },
+  { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/agenda", label: "Agenda", icon: Calendar },
+  { to: "/corretores", label: "Equipe", icon: UserCog },
+  { to: "/contratos", label: "Contratos", icon: FileText },
+  { to: "/financeiro", label: "Finanças", icon: Wallet },
+  { to: "/marketing", label: "Marketing", icon: Megaphone },
+  { to: "/documentos", label: "Docs", icon: FileText },
+  { to: "/integracoes", label: "Integrações", icon: Cable },
+  { to: "/configuracoes", label: "Config.", icon: Settings },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/mais", label: "Mais", icon: LayoutGrid },
 ];
 

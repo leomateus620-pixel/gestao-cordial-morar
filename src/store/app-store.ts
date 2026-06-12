@@ -12,6 +12,10 @@ import {
   imoveisSeed,
   integracoesContaAzulSeed,
   lancamentosSeed,
+  campanhasMarketingSeed,
+  configuracoesSeed,
+  documentosSeed,
+  integracoesSeed,
   notificacoesSeed,
   permissoesSeed,
   projecoesFinanceirasSeed,
@@ -29,6 +33,10 @@ import {
   type Imovel,
   type IntegracaoContaAzul,
   type Lancamento,
+  type CampanhaMarketing,
+  type ConfiguracaoOperacional,
+  type DocumentoOperacional,
+  type IntegracaoOperacional,
   type Notificacao,
   type Permissao,
   type ProjecaoFinanceira,
@@ -47,6 +55,10 @@ type State = {
   contratos: Contrato[];
   agenda: Compromisso[];
   lancamentos: Lancamento[];
+  campanhasMarketing: CampanhaMarketing[];
+  documentos: DocumentoOperacional[];
+  integracoes: IntegracaoOperacional[];
+  configuracoes: ConfiguracaoOperacional[];
   alugueis: Aluguel[];
   vendas: Venda[];
   documentos: Documento[];
@@ -81,6 +93,10 @@ export const useApp = create<State>()(
       contratos: contratosSeed,
       agenda: agendaSeed,
       lancamentos: lancamentosSeed,
+      campanhasMarketing: campanhasMarketingSeed,
+      documentos: documentosSeed,
+      integracoes: integracoesSeed,
+      configuracoes: configuracoesSeed,
       alugueis: alugueisSeed,
       vendas: vendasSeed,
       documentos: documentosSeed,

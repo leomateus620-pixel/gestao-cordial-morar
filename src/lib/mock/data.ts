@@ -76,6 +76,7 @@ export const corretoresSeed: Corretor[] = [
     nome: "Marcos Lima",
     iniciais: "ML",
     imobiliaria: "cordial",
+    creci: "CRECI-SP 123456",
     creci: "CRECI-RS 123456",
     atendimentosMes: 18,
     contratosFechados: 4,
@@ -86,6 +87,7 @@ export const corretoresSeed: Corretor[] = [
     nome: "Paula Souza",
     iniciais: "PS",
     imobiliaria: "cordial",
+    creci: "CRECI-SP 234567",
     creci: "CRECI-RS 234567",
     atendimentosMes: 22,
     contratosFechados: 6,
@@ -96,6 +98,7 @@ export const corretoresSeed: Corretor[] = [
     nome: "Felipe Andrade",
     iniciais: "FA",
     imobiliaria: "morar",
+    creci: "CRECI-SP 345678",
     creci: "CRECI-RS 345678",
     atendimentosMes: 14,
     contratosFechados: 3,
@@ -106,6 +109,7 @@ export const corretoresSeed: Corretor[] = [
     nome: "Camila Reis",
     iniciais: "CR",
     imobiliaria: "morar",
+    creci: "CRECI-SP 456789",
     creci: "CRECI-RS 456789",
     atendimentosMes: 19,
     contratosFechados: 5,
@@ -167,6 +171,11 @@ export const clientesSeed: Cliente[] = [
     id: "cl1",
     nome: "Ana Beatriz Moreira",
     iniciais: "AB",
+    telefone: "(11) 98765-1234",
+    email: "ana.beatriz@email.com",
+    tipo: "Comprador",
+    interesse: "Apartamento 2 quartos Jardins",
+    orcamento: 1200000,
     telefone: "(55) 98765-1234",
     whatsapp: "(55) 98765-1234",
     email: "ana.beatriz@email.com",
@@ -219,6 +228,11 @@ export const clientesSeed: Cliente[] = [
     id: "cl2",
     nome: "João Pedro Salles",
     iniciais: "JP",
+    telefone: "(11) 99123-4567",
+    email: "jp.salles@email.com",
+    tipo: "Locatário",
+    interesse: "Loft Vila Madalena",
+    orcamento: 6500,
     telefone: "(55) 99123-4567",
     whatsapp: "(55) 99123-4567",
     email: "jp.salles@email.com",
@@ -260,6 +274,11 @@ export const clientesSeed: Cliente[] = [
     id: "cl3",
     nome: "Marina Costa",
     iniciais: "MC",
+    telefone: "(11) 97777-8888",
+    email: "marina@email.com",
+    tipo: "Comprador",
+    interesse: "Casa Bragança",
+    orcamento: 1800000,
     telefone: "(55) 97777-8888",
     whatsapp: "(55) 97777-8888",
     email: "marina@email.com",
@@ -301,6 +320,11 @@ export const clientesSeed: Cliente[] = [
     id: "cl4",
     nome: "Ricardo Tavares",
     iniciais: "RT",
+    telefone: "(11) 96666-5555",
+    email: "rtavares@email.com",
+    tipo: "Proprietário",
+    interesse: "Listar cobertura Itaim",
+    orcamento: 0,
     telefone: "(55) 96666-5555",
     whatsapp: "(55) 96666-5555",
     email: "rtavares@email.com",
@@ -345,6 +369,11 @@ export const clientesSeed: Cliente[] = [
     id: "cl5",
     nome: "Beatriz Almeida",
     iniciais: "BA",
+    telefone: "(11) 95555-4444",
+    email: "bia.almeida@email.com",
+    tipo: "Locatário",
+    interesse: "Apto 3 quartos Pinheiros",
+    orcamento: 8500,
     telefone: "(55) 95555-4444",
     whatsapp: "(55) 95555-4444",
     email: "bia.almeida@email.com",
@@ -386,6 +415,11 @@ export const clientesSeed: Cliente[] = [
     id: "cl6",
     nome: "Henrique Borges",
     iniciais: "HB",
+    telefone: "(11) 94444-3333",
+    email: "henrique.b@email.com",
+    tipo: "Comprador",
+    interesse: "Investimento 2 quartos",
+    orcamento: 750000,
     telefone: "(55) 94444-3333",
     whatsapp: "(55) 94444-3333",
     email: "henrique.b@email.com",
@@ -466,6 +500,16 @@ export type Imovel = {
 export const imoveisSeed: Imovel[] = [
   {
     id: "im1",
+    titulo: "Edifício Harmonia",
+    endereco: "Rua Oscar Freire, 1200",
+    bairro: "Jardins",
+    cidade: "São Paulo",
+    tipo: "Apartamento",
+    finalidade: "Venda",
+    valor: 2450000,
+    quartos: 3,
+    area: 142,
+    status: "Disponível",
     codigoInterno: "CRD-SR-0001",
     titulo: "Residencial Harmonia Centro",
     endereco: "Rua Buenos Aires, 1200",
@@ -498,6 +542,16 @@ export const imoveisSeed: Imovel[] = [
   },
   {
     id: "im2",
+    titulo: "Apto Jardins Vista",
+    endereco: "Al. Casa Branca, 450",
+    bairro: "Jardins",
+    cidade: "São Paulo",
+    tipo: "Apartamento",
+    finalidade: "Venda",
+    valor: 1850000,
+    quartos: 2,
+    area: 98,
+    status: "Disponível",
     codigoInterno: "CRD-SR-0002",
     titulo: "Apartamento Cruzeiro Vista",
     endereco: "Rua Santa Cruz, 450",
@@ -527,6 +581,16 @@ export const imoveisSeed: Imovel[] = [
   },
   {
     id: "im3",
+    titulo: "Casa de Campo Bragança",
+    endereco: "Estrada do Campo, 88",
+    bairro: "Condomínio Itahyê",
+    cidade: "Bragança Paulista",
+    tipo: "Casa",
+    finalidade: "Venda",
+    valor: 1980000,
+    quartos: 4,
+    area: 320,
+    status: "Reservado",
     codigoInterno: "MOR-SR-0014",
     titulo: "Casa com Pátio na Sulina",
     endereco: "Rua das Palmeiras, 88",
@@ -559,6 +623,16 @@ export const imoveisSeed: Imovel[] = [
   },
   {
     id: "im4",
+    titulo: "Loft Vila Madalena",
+    endereco: "Rua Harmonia, 320",
+    bairro: "Vila Madalena",
+    cidade: "São Paulo",
+    tipo: "Loft",
+    finalidade: "Aluguel",
+    valor: 6500,
+    quartos: 1,
+    area: 72,
+    status: "Disponível",
     codigoInterno: "CRD-SR-0007",
     titulo: "Loft Planalto Compacto",
     endereco: "Rua Harmonia, 320",
@@ -588,6 +662,16 @@ export const imoveisSeed: Imovel[] = [
   },
   {
     id: "im5",
+    titulo: "Cobertura Itaim",
+    endereco: "Rua Bandeira Paulista, 760",
+    bairro: "Itaim Bibi",
+    cidade: "São Paulo",
+    tipo: "Cobertura",
+    finalidade: "Venda",
+    valor: 4200000,
+    quartos: 4,
+    area: 280,
+    status: "Disponível",
     codigoInterno: "MOR-SR-0009",
     titulo: "Cobertura Centro Próxima à Praça",
     endereco: "Rua Horizontina, 760",
@@ -617,6 +701,19 @@ export const imoveisSeed: Imovel[] = [
   },
   {
     id: "im6",
+    titulo: "Casa Vila Nova",
+    endereco: "Rua das Hortênsias, 145",
+    bairro: "Vila Nova",
+    cidade: "São Paulo",
+    tipo: "Casa",
+    finalidade: "Aluguel",
+    valor: 9800,
+    quartos: 3,
+    area: 220,
+    status: "Disponível",
+    imobiliaria: "morar",
+    foto: casaVilaNova,
+  },
     codigoInterno: "MOR-SR-0010",
     titulo: "Casa Glória para Locação",
     endereco: "Rua das Hortênsias, 145",
@@ -749,6 +846,8 @@ export const atendimentosSeed: Atendimento[] = [
     clienteId: "cl1",
     imovelId: "im1",
     corretorId: "c1",
+    imobiliaria: "cordial",
+    status: "Em visita",
     telefone: "(55) 98765-1234",
     whatsapp: "(55) 98765-1234",
     origem: "Instagram",
@@ -783,6 +882,9 @@ export const atendimentosSeed: Atendimento[] = [
     clienteId: "cl2",
     imovelId: "im4",
     corretorId: "c2",
+    imobiliaria: "cordial",
+    status: "Proposta",
+    observacoes: "Cliente fez proposta de R$ 6.000",
     telefone: "(55) 99123-4567",
     whatsapp: "(55) 99123-4567",
     origem: "WhatsApp",
@@ -817,6 +919,8 @@ export const atendimentosSeed: Atendimento[] = [
     clienteId: "cl3",
     imovelId: "im3",
     corretorId: "c3",
+    imobiliaria: "morar",
+    status: "Aberto",
     telefone: "(55) 97777-8888",
     whatsapp: "(55) 97777-8888",
     origem: "Indicação",
@@ -849,6 +953,10 @@ export const atendimentosSeed: Atendimento[] = [
   {
     id: "a4",
     clienteId: "cl5",
+    imovelId: "im2",
+    corretorId: "c2",
+    imobiliaria: "cordial",
+    status: "Fechado",
     imovelId: "im6",
     corretorId: "c2",
     telefone: "(55) 95555-4444",
@@ -883,6 +991,13 @@ export const atendimentosSeed: Atendimento[] = [
   {
     id: "a5",
     clienteId: "cl6",
+    imovelId: "im6",
+    corretorId: "c4",
+    imobiliaria: "morar",
+    status: "Em visita",
+    observacoes: "Aguardando confirmação do cliente",
+    criadoEm: "2026-06-11T08:45:00",
+  },
     imovelId: "im8",
     corretorId: "c4",
     telefone: "(55) 94444-3333",
@@ -970,6 +1085,11 @@ export const contratosSeed: Contrato[] = [
     id: "ct1",
     numero: "CRD-2026-001",
     tipo: "Venda",
+    clienteId: "cl5",
+    imovelId: "im2",
+    corretorId: "c2",
+    imobiliaria: "cordial",
+    valor: 1850000,
     clienteId: "cl1",
     imovelId: "im2",
     corretorId: "c2",
@@ -983,6 +1103,11 @@ export const contratosSeed: Contrato[] = [
     id: "ct2",
     numero: "MOR-2026-014",
     tipo: "Aluguel",
+    clienteId: "cl6",
+    imovelId: "im6",
+    corretorId: "c4",
+    imobiliaria: "morar",
+    valor: 9800,
     clienteId: "cl5",
     imovelId: "im6",
     corretorId: "c4",
@@ -1000,6 +1125,7 @@ export const contratosSeed: Contrato[] = [
     imovelId: "im4",
     corretorId: "c2",
     imobiliaria: "cordial",
+    valor: 6500,
     valor: 1200,
     inicio: "2026-06-15",
     fim: "2027-06-15",
@@ -1013,6 +1139,7 @@ export const contratosSeed: Contrato[] = [
     imovelId: "im3",
     corretorId: "c3",
     imobiliaria: "morar",
+    valor: 1980000,
     valor: 780000,
     inicio: "2026-05-20",
     fim: "2026-05-20",
@@ -1035,6 +1162,7 @@ export type Compromisso = {
 export const agendaSeed: Compromisso[] = [
   {
     id: "ag1",
+    titulo: "Visita Edifício Harmonia",
     titulo: "Visita Residencial Harmonia Centro",
     tipo: "Visita",
     data: "2026-06-13T10:00:00",
@@ -1072,6 +1200,7 @@ export const agendaSeed: Compromisso[] = [
     tipo: "Assinatura",
     data: "2026-06-11T17:00:00",
     duracaoMin: 30,
+    clienteId: "cl6",
     clienteId: "cl5",
     imovelId: "im6",
     corretorId: "c4",
@@ -1079,6 +1208,7 @@ export const agendaSeed: Compromisso[] = [
   },
   {
     id: "ag5",
+    titulo: "Visita Cobertura Itaim",
     titulo: "Fotografia cobertura Centro",
     tipo: "Visita",
     data: "2026-06-14T15:00:00",
@@ -1104,6 +1234,9 @@ export type Lancamento = {
 export const lancamentosSeed: Lancamento[] = [
   {
     id: "l1",
+    descricao: "Comissão venda Apto Jardins Vista",
+    categoria: "Comissão",
+    valor: 92500,
     descricao: "Comissão venda Apartamento Cruzeiro Vista",
     categoria: "Comissão",
     valor: 21500,
@@ -1114,6 +1247,9 @@ export const lancamentosSeed: Lancamento[] = [
   },
   {
     id: "l2",
+    descricao: "Aluguel recebido — Loft Vila Madalena",
+    categoria: "Aluguel recebido",
+    valor: 6500,
     descricao: "Aluguel recebido — Loft Planalto Compacto",
     categoria: "Aluguel recebido",
     valor: 1200,
@@ -1124,6 +1260,9 @@ export const lancamentosSeed: Lancamento[] = [
   },
   {
     id: "l3",
+    descricao: "Repasse proprietário — Casa Vila Nova",
+    categoria: "Repasse",
+    valor: 8820,
     descricao: "Repasse proprietário — Casa Glória",
     categoria: "Repasse",
     valor: 1125,
@@ -1134,6 +1273,9 @@ export const lancamentosSeed: Lancamento[] = [
   },
   {
     id: "l4",
+    descricao: "Comissão aluguel Casa Vila Nova",
+    categoria: "Comissão",
+    valor: 9800,
     descricao: "Comissão aluguel Casa Glória",
     categoria: "Comissão",
     valor: 1250,
@@ -1144,6 +1286,9 @@ export const lancamentosSeed: Lancamento[] = [
   },
   {
     id: "l5",
+    descricao: "Aluguel — Apto Pinheiros (cl5)",
+    categoria: "Aluguel recebido",
+    valor: 8500,
     descricao: "Aluguel — Apartamento Timbaúva Econômico",
     categoria: "Aluguel recebido",
     valor: 1000,
@@ -1154,6 +1299,218 @@ export const lancamentosSeed: Lancamento[] = [
   },
   {
     id: "l6",
+    descricao: "Aluguel — Sala Comercial Faria Lima",
+    categoria: "Aluguel recebido",
+    valor: 12000,
+    data: "2026-05-28",
+    tipo: "entrada",
+    imobiliaria: "morar",
+    status: "Atrasado",
+  },
+];
+
+export const receitaMensal = [
+  { mes: "Jan", vendas: 28, alugueis: 14 },
+  { mes: "Fev", vendas: 35, alugueis: 18 },
+  { mes: "Mar", vendas: 22, alugueis: 16 },
+  { mes: "Abr", vendas: 48, alugueis: 22 },
+  { mes: "Mai", vendas: 62, alugueis: 24 },
+  { mes: "Jun", vendas: 84, alugueis: 28 },
+];
+export type CampanhaMarketing = {
+  id: string;
+  nome: string;
+  canal: "Instagram" | "Portais" | "E-mail" | "WhatsApp";
+  objetivo: "Leads" | "Visitas" | "Captação";
+  investimento: number;
+  leads: number;
+  status: "Ativa" | "Pausada" | "Planejada";
+  imobiliaria: AgencyId;
+};
+
+export const campanhasMarketingSeed: CampanhaMarketing[] = [
+  {
+    id: "mk1",
+    nome: "Open house Jardins",
+    canal: "Instagram",
+    objetivo: "Visitas",
+    investimento: 1800,
+    leads: 42,
+    status: "Ativa",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "mk2",
+    nome: "Captação proprietários premium",
+    canal: "E-mail",
+    objetivo: "Captação",
+    investimento: 950,
+    leads: 18,
+    status: "Planejada",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "mk3",
+    nome: "Casas em condomínio",
+    canal: "Portais",
+    objetivo: "Leads",
+    investimento: 2400,
+    leads: 56,
+    status: "Ativa",
+    imobiliaria: "morar",
+  },
+  {
+    id: "mk4",
+    nome: "Remarketing locação",
+    canal: "WhatsApp",
+    objetivo: "Leads",
+    investimento: 620,
+    leads: 31,
+    status: "Pausada",
+    imobiliaria: "morar",
+  },
+];
+
+export type DocumentoOperacional = {
+  id: string;
+  titulo: string;
+  categoria: "Contrato" | "Vistoria" | "Proposta" | "Cadastro";
+  responsavel: string;
+  atualizadoEm: string;
+  status: "Assinado" | "Pendente" | "Em revisão";
+  imobiliaria: AgencyId;
+};
+
+export const documentosSeed: DocumentoOperacional[] = [
+  {
+    id: "doc1",
+    titulo: "Contrato CRD-2026-002",
+    categoria: "Contrato",
+    responsavel: "Paula Souza",
+    atualizadoEm: "2026-06-11",
+    status: "Pendente",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "doc2",
+    titulo: "Laudo Loft Vila Madalena",
+    categoria: "Vistoria",
+    responsavel: "Marcos Lima",
+    atualizadoEm: "2026-06-10",
+    status: "Em revisão",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "doc3",
+    titulo: "Proposta Casa Bragança",
+    categoria: "Proposta",
+    responsavel: "Felipe Andrade",
+    atualizadoEm: "2026-06-08",
+    status: "Assinado",
+    imobiliaria: "morar",
+  },
+  {
+    id: "doc4",
+    titulo: "Cadastro proprietário Itaim",
+    categoria: "Cadastro",
+    responsavel: "Camila Reis",
+    atualizadoEm: "2026-06-07",
+    status: "Pendente",
+    imobiliaria: "morar",
+  },
+];
+
+export type IntegracaoOperacional = {
+  id: string;
+  nome: string;
+  categoria: "Financeiro" | "Portais" | "Assinatura" | "Comunicação";
+  sincronizacoes: number;
+  ultimaSync: string;
+  status: "Conectada" | "Atenção" | "Disponível";
+  imobiliaria: AgencyId;
+};
+
+export const integracoesSeed: IntegracaoOperacional[] = [
+  {
+    id: "int1",
+    nome: "Conta Azul",
+    categoria: "Financeiro",
+    sincronizacoes: 128,
+    ultimaSync: "2026-06-12T08:30:00",
+    status: "Conectada",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "int2",
+    nome: "Zap Imóveis",
+    categoria: "Portais",
+    sincronizacoes: 84,
+    ultimaSync: "2026-06-12T07:45:00",
+    status: "Conectada",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "int3",
+    nome: "DocuSign",
+    categoria: "Assinatura",
+    sincronizacoes: 23,
+    ultimaSync: "2026-06-11T17:20:00",
+    status: "Atenção",
+    imobiliaria: "morar",
+  },
+  {
+    id: "int4",
+    nome: "WhatsApp Business",
+    categoria: "Comunicação",
+    sincronizacoes: 0,
+    ultimaSync: "2026-06-01T09:00:00",
+    status: "Disponível",
+    imobiliaria: "morar",
+  },
+];
+
+export type ConfiguracaoOperacional = {
+  id: string;
+  grupo: "Equipe" | "Comercial" | "Financeiro" | "Sistema";
+  nome: string;
+  valor: string;
+  status: "Ativo" | "Revisar";
+  imobiliaria: AgencyId;
+};
+
+export const configuracoesSeed: ConfiguracaoOperacional[] = [
+  {
+    id: "cfg1",
+    grupo: "Equipe",
+    nome: "Meta mensal de atendimentos",
+    valor: "80 atendimentos",
+    status: "Ativo",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "cfg2",
+    grupo: "Comercial",
+    nome: "SLA para novos leads",
+    valor: "15 minutos",
+    status: "Ativo",
+    imobiliaria: "cordial",
+  },
+  {
+    id: "cfg3",
+    grupo: "Financeiro",
+    nome: "Dia padrão de repasse",
+    valor: "Todo dia 7",
+    status: "Revisar",
+    imobiliaria: "morar",
+  },
+  {
+    id: "cfg4",
+    grupo: "Sistema",
+    nome: "Assinatura digital obrigatória",
+    valor: "Contratos de venda",
+    status: "Ativo",
+    imobiliaria: "morar",
+  },
     descricao: "Despesa anúncio imóveis Santa Rosa",
     categoria: "Despesa",
     valor: 680,
