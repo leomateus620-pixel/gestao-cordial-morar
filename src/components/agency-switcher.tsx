@@ -11,7 +11,7 @@ export function AgencySwitcher() {
   const agency = useApp((s) => s.agency);
   const setAgency = useApp((s) => s.setAgency);
   return (
-    <div className="glass-panel flex gap-1 rounded-full p-1">
+    <div className="glass-panel flex w-full min-w-0 gap-1 rounded-full p-1 sm:max-w-xs">
       {options.map((o) => (
         <button
           key={o.id}
@@ -22,7 +22,7 @@ export function AgencySwitcher() {
               : undefined
           }
           className={cn(
-            "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
+            "min-w-0 flex-1 truncate rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all sm:text-xs",
             agency === o.id
               ? "shadow-[0_6px_18px_-6px_rgba(23,27,33,0.35)]"
               : "text-foreground/60 hover:text-foreground/85",

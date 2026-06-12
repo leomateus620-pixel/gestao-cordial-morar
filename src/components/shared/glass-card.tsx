@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const glassCardVariants = cva("liquid-panel", {
+const glassCardVariants = cva("liquid-panel min-w-0 w-full", {
   variants: {
     variant: {
       default: "",
