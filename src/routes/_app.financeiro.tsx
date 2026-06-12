@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { brl } from "@/lib/format";
 import { receitaMensal } from "@/lib/mock/data";
 import { PermissionGuard } from "@/components/permission-guard";
+import { axisTick, chartSystem, gridStroke, tooltipStyle } from "@/lib/chart-palette";
 
 export const Route = createFileRoute("/_app/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro — Gestão Cordial" }] }),
@@ -64,32 +65,22 @@ function Page() {
           <AreaChart data={data}>
             <defs>
               <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(18 55% 50%)" stopOpacity={0.45} />
-                <stop offset="100%" stopColor="hsl(18 55% 50%)" stopOpacity={0.02} />
+                <stop offset="0%" stopColor={chartSystem} stopOpacity={0.45} />
+                <stop offset="100%" stopColor={chartSystem} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="rgba(80,40,20,0.06)" vertical={false} />
-            <XAxis
-              dataKey="mes"
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 10, fill: "rgba(50,30,15,0.5)" }}
-            />
+            <CartesianGrid stroke={gridStroke} vertical={false} />
+            <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
             <YAxis hide />
             <Tooltip
-              cursor={{ stroke: "rgba(196,101,74,0.3)" }}
-              contentStyle={{
-                background: "rgba(255,255,255,0.9)",
-                border: "1px solid rgba(255,255,255,0.7)",
-                borderRadius: 12,
-                fontSize: 11,
-              }}
+              cursor={{ stroke: "rgba(30,100,125,0.3)" }}
+              contentStyle={tooltipStyle}
               formatter={(v) => brl(Number(v), { compact: true })}
             />
             <Area
               type="monotone"
               dataKey="total"
-              stroke="hsl(18 55% 50%)"
+              stroke={chartSystem}
               strokeWidth={2.4}
               fill="url(#g)"
             />
@@ -122,10 +113,11 @@ function Page() {
               </div>
               <div className="shrink-0 text-right">
                 <p
-                  className={
-                    "font-mono text-sm font-bold " +
-                    (l.tipo === "entrada" ? "text-emerald-700" : "text-foreground/70")
-                  }
+                  className="font-mono text-sm font-bold"
+                  style={{
+                    color:
+                      l.tipo === "entrada" ? "var(--success)" : "rgba(30,35,41,0.7)",
+                  }}
                 >
                   {l.tipo === "entrada" ? "+" : "−"} {brl(l.valor, { compact: true })}
                 </p>

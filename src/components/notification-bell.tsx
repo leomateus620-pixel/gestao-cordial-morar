@@ -5,10 +5,10 @@ import { useApp } from "@/store/app-store";
 import { notificationLabels, type NotificationPriority } from "@/lib/mock/notifications";
 import { cn } from "@/lib/utils";
 
-const priorityTone: Record<NotificationPriority, string> = {
-  alta: "bg-red-500/12 text-red-700",
-  media: "bg-amber-500/12 text-amber-700",
-  baixa: "bg-sky-500/12 text-sky-700",
+const priorityTone: Record<NotificationPriority, { bg: string; fg: string }> = {
+  alta: { bg: "rgba(201,76,76,0.14)", fg: "#a83838" },
+  media: { bg: "rgba(217,120,45,0.16)", fg: "#9a4f17" },
+  baixa: { bg: "rgba(59,130,160,0.14)", fg: "#235f7a" },
 };
 
 export function NotificationBell() {
@@ -29,7 +29,10 @@ export function NotificationBell() {
         >
           <Bell className="size-4 md:size-5" />
           {unread > 0 && (
-            <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm">
+            <span
+              className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-white shadow-sm"
+              style={{ background: "var(--system-accent)" }}
+            >
               {unread > 9 ? "9+" : unread}
             </span>
           )}
@@ -37,7 +40,7 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-[min(22rem,calc(100vw-2rem))] rounded-3xl border-white/60 bg-white/90 p-0 shadow-2xl backdrop-blur-xl"
+        className="premium-card w-[min(22rem,calc(100vw-2rem))] p-0"
       >
         <div className="border-b border-foreground/10 p-4">
           <div className="flex items-start justify-between gap-3">
@@ -70,10 +73,11 @@ export function NotificationBell() {
             >
               <div className="flex items-start gap-3">
                 <div
-                  className={cn(
-                    "mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl",
-                    priorityTone[notification.priority],
-                  )}
+                  className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl"
+                  style={{
+                    background: priorityTone[notification.priority].bg,
+                    color: priorityTone[notification.priority].fg,
+                  }}
                 >
                   <CircleAlert className="size-4" />
                 </div>
@@ -83,7 +87,10 @@ export function NotificationBell() {
                       {notificationLabels[notification.type]}
                     </span>
                     {!notification.read && (
-                      <span className="size-1.5 shrink-0 rounded-full bg-red-500" />
+                      <span
+                        className="size-1.5 shrink-0 rounded-full"
+                        style={{ background: "var(--system-accent)" }}
+                      />
                     )}
                   </div>
                   <p className="mt-0.5 truncate text-sm font-semibold">{notification.title}</p>
