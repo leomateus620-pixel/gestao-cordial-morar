@@ -16,8 +16,6 @@ import {
   MessagesSquare,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles,
-  Star,
   UserCog,
   Users,
   Wallet,
@@ -50,7 +48,6 @@ const navigationGroups: NavigationGroup[] = [
     children: [
       { to: "/", label: "Início", icon: Home, module: "dashboard", exact: true },
       { to: "/agenda", label: "Agenda do dia", icon: CalendarCheck2, module: "agenda" },
-      { to: "/imoveis-destaque", label: "Em Destaque", icon: Sparkles, module: "imoveis" },
     ],
   },
   {
@@ -75,7 +72,6 @@ const navigationGroups: NavigationGroup[] = [
     icon: Building2,
     children: [
       { to: "/imoveis", label: "Todos os imóveis", icon: House, module: "imoveis" },
-      { to: "/imoveis-destaque", label: "Imóveis em destaque", icon: Star, module: "imoveis" },
       {
         key: "status-imoveis",
         to: "/imoveis",

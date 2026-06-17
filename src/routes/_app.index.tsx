@@ -19,6 +19,7 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Fab } from "@/components/fab";
+import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
 import {
@@ -257,8 +258,7 @@ function Dashboard() {
         className="mb-5 w-full min-w-0 overflow-hidden rounded-3xl p-4 text-white sm:p-5 lg:p-7"
         style={{
           background: "linear-gradient(135deg, #174d61 0%, #1e647d 45%, #2a3038 100%)",
-          boxShadow:
-            "0 24px 60px -20px rgba(23,27,33,0.45), inset 0 1px 0 rgba(255,255,255,0.08)",
+          boxShadow: "0 24px 60px -20px rgba(23,27,33,0.45), inset 0 1px 0 rgba(255,255,255,0.08)",
         }}
       >
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -273,20 +273,14 @@ function Dashboard() {
               Olá, {session?.nome ?? "bem-vindo"} 👋
             </h1>
             <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-white/65 sm:text-[13px]">
-              Acompanhe atendimentos, imóveis, contratos e performance das duas
-              imobiliárias em um só lugar.
+              Acompanhe atendimentos, imóveis, contratos e performance das duas imobiliárias em um
+              só lugar.
             </p>
           </div>
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
-            <HeroStat
-              label="Atend. pendentes"
-              value={String(atendPendentes).padStart(2, "0")}
-            />
-            <HeroStat
-              label="Contratos ativos"
-              value={String(contratosAtivos).padStart(2, "0")}
-            />
+            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
+            <HeroStat label="Contratos ativos" value={String(contratosAtivos).padStart(2, "0")} />
             <HeroStat
               label="Previsão entrada"
               value={brl(valoresPrevistos, { compact: true })}
@@ -327,7 +321,11 @@ function Dashboard() {
                 contentStyle={tooltipStyle}
                 cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
               />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+              />
               <Line
                 type="monotone"
                 dataKey="cordial"
@@ -442,10 +440,7 @@ function Dashboard() {
           heightClassName="h-60 lg:h-72"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={dashboardPrevisaoFinanceira}
-              margin={{ left: -14, right: 12, top: 8 }}
-            >
+            <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
               <defs>
                 <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
@@ -470,7 +465,11 @@ function Dashboard() {
                 formatter={(v) => brl(Number(v), { compact: true })}
                 cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
               />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+              />
               <Area
                 type="monotone"
                 dataKey="receita"
@@ -560,39 +559,7 @@ function Dashboard() {
         </ChartCard>
       </section>
 
-      {/* ── Links para seções removidas da home ─────────────────────────── */}
-      <section className="mb-5 grid gap-3 sm:grid-cols-2">
-        <Link
-          to="/imoveis-destaque"
-          className="group premium-card flex items-center gap-4 rounded-2xl p-4 transition-all hover:scale-[1.01] hover:shadow-lg"
-        >
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary transition-colors group-hover:bg-primary/18">
-            <Building2 className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Imóveis em destaque</p>
-            <p className="text-[11px] text-foreground/55">
-              Ver carteira completa com filtros e detalhes
-            </p>
-          </div>
-          <ArrowUpRight className="ml-auto size-4 shrink-0 text-foreground/30 transition-colors group-hover:text-primary" />
-        </Link>
-        <Link
-          to="/atendimentos"
-          className="group premium-card flex items-center gap-4 rounded-2xl p-4 transition-all hover:scale-[1.01] hover:shadow-lg"
-        >
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent transition-colors group-hover:bg-accent/18">
-            <TrendingUp className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Atendimentos recentes</p>
-            <p className="text-[11px] text-foreground/55">
-              Funil completo, filtros e histórico de contatos
-            </p>
-          </div>
-          <ArrowUpRight className="ml-auto size-4 shrink-0 text-foreground/30 transition-colors group-hover:text-accent" />
-        </Link>
-      </section>
+      <RealEstateSitePreviewSection />
 
       <Fab onClick={() => setOpen(true)} label="Novo atendimento" />
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
@@ -667,8 +634,7 @@ function MetricCard({
   accent = "neutral",
   icon,
 }: MetricCardData) {
-  const TrendIcon =
-    accent === "up" ? ArrowUpRight : accent === "down" ? ArrowDownRight : null;
+  const TrendIcon = accent === "up" ? ArrowUpRight : accent === "down" ? ArrowDownRight : null;
 
   return (
     <article
@@ -765,8 +731,7 @@ function FinancialSummaryCard({
           "linear-gradient(160deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.58) 100%)",
         backdropFilter: "blur(22px) saturate(150%)",
         border: "1px solid rgba(255,255,255,0.65)",
-        boxShadow:
-          "0 20px 50px -16px rgba(23,27,33,0.14), inset 0 1px 0 rgba(255,255,255,0.9)",
+        boxShadow: "0 20px 50px -16px rgba(23,27,33,0.14), inset 0 1px 0 rgba(255,255,255,0.9)",
       }}
     >
       {/* Cabeçalho */}
@@ -864,8 +829,7 @@ function ComparativoCard() {
           "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
         backdropFilter: "blur(20px) saturate(145%)",
         border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow:
-          "0 18px 50px -14px rgba(23,27,33,0.12), inset 0 1px 0 rgba(255,255,255,0.85)",
+        boxShadow: "0 18px 50px -14px rgba(23,27,33,0.12), inset 0 1px 0 rgba(255,255,255,0.85)",
       }}
     >
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -875,9 +839,7 @@ function ComparativoCard() {
           </p>
           <h2 className="text-base font-semibold tracking-tight">Comparativo das operações</h2>
         </div>
-        <span className="text-[10px] text-foreground/40">
-          Atendimentos · conversão · receita
-        </span>
+        <span className="text-[10px] text-foreground/40">Atendimentos · conversão · receita</span>
       </div>
 
       {/* Mobile: scroll horizontal com snap; Desktop: grid */}
@@ -939,15 +901,7 @@ function ComparativoCard() {
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
+function MiniStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="rounded-xl bg-white/40 p-2.5">
       <p className="font-mono text-base font-bold" style={{ color }}>
@@ -983,16 +937,13 @@ function ChartCard({
           "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
         backdropFilter: "blur(18px) saturate(145%)",
         border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow:
-          "0 12px 36px -12px rgba(23,27,33,0.1), inset 0 1px 0 rgba(255,255,255,0.8)",
+        boxShadow: "0 12px 36px -12px rgba(23,27,33,0.1), inset 0 1px 0 rgba(255,255,255,0.8)",
       }}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-          {subtitle && (
-            <p className="mt-0.5 text-[10px] text-foreground/45">{subtitle}</p>
-          )}
+          {subtitle && <p className="mt-0.5 text-[10px] text-foreground/45">{subtitle}</p>}
         </div>
         <span className="shrink-0 font-mono text-[10px] text-foreground/35">6 MESES</span>
       </div>
@@ -1005,15 +956,7 @@ function ChartCard({
 /*  HeroStat                                                                    */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-function HeroStat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
+function HeroStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div
       className="rounded-2xl px-3 py-2.5 transition-all hover:scale-[1.02]"
