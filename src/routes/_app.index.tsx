@@ -50,7 +50,10 @@ import {
   BadgeDollarSign,
   Building2,
   FileText,
+  Instagram,
+  Sparkles,
   TrendingUp,
+  Users,
   Wallet,
 } from "lucide-react";
 
