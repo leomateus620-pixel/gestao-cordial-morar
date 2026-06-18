@@ -76,7 +76,7 @@ function Page() {
         </div>
       )}
 
-      <ClientFormModal open={open} onOpenChange={setOpen} onSubmit={createClient} />
+      {open && <ClientFormModal open={open} onOpenChange={setOpen} onSubmit={createClient} />}
     </div>
   );
 }

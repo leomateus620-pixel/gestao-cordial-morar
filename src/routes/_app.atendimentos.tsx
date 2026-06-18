@@ -139,7 +139,9 @@ function Page() {
         </div>
       )}
 
-      <AtendimentoFormModal open={open} onOpenChange={setOpen} onSubmit={createAtendimento} />
+      {open && (
+        <AtendimentoFormModal open={open} onOpenChange={setOpen} onSubmit={createAtendimento} />
+      )}
     </div>
   );
 }

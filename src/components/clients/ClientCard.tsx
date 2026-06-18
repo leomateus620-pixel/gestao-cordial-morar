@@ -1,5 +1,5 @@
 import { Building2, CalendarClock, Mail, MapPin, Phone, UserRound } from "lucide-react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import {
   clientCommercialText,
   clientSummaryLine,
@@ -56,7 +56,7 @@ const originTone: Record<LeadOrigin, string> = {
   outro: "bg-zinc-600/10 text-zinc-700",
 };
 
-export function ClientCard({ client }: { client: Client }) {
+function ClientCardImpl({ client }: { client: Client }) {
   const broker = client.assignedBrokerName || "Não definido";
 
   return (
@@ -120,6 +120,8 @@ export function ClientCard({ client }: { client: Client }) {
     </article>
   );
 }
+
+export const ClientCard = memo(ClientCardImpl);
 
 function Badge({ children, className }: { children: ReactNode; className?: string }) {
   return (

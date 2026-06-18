@@ -895,3 +895,57 @@ html,
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ─── Otimizações mobile (≤ 768px) ─────────────────────────────────────────
+ * Reduz custo de composição/paint em dispositivos touch sem alterar o
+ * visual do desktop. Mantém a identidade premium, apenas baixa o blur,
+ * desliga camadas 3D em hover (que touch não dispara) e pausa o mesh
+ * animado de fundo. */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-mesh {
+    animation: none;
+  }
+
+  /* Glass mais leve: blur menor + sem saturate caro */
+  .glass-panel,
+  .glass-panel-strong,
+  .liquid-panel,
+  .premium-card {
+    backdrop-filter: blur(10px);
+  }
+
+  .sidebar-glass {
+    backdrop-filter: blur(14px);
+  }
+
+  .bottom-nav-glass {
+    backdrop-filter: blur(14px);
+  }
+
+  /* Desliga camadas 3D em devices touch (hover não dispara mesmo) */
+  .client-create-card,
+  .atendimento-create-card,
+  .agenda-create-card {
+    transform-style: flat;
+    transform: none;
+  }
+
+  /* Animação de modal mais curta e sem morph de border-radius pesado */
+  .client-form-modal,
+  .atendimento-form-modal,
+  .agenda-form-modal {
+    animation-duration: 220ms;
+  }
+
+  /* Touch responsivo: elimina o delay de 300ms e gestos duplos */
+  a,
+  button,
+  [role="button"],
+  [role="link"] {
+    touch-action: manipulation;
+  }
+}
