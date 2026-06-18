@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
 import {
   defaultAgendaFilters,
   type AgendaFilters as AgendaFiltersState,
@@ -18,15 +18,11 @@ const periods: { value: AgendaPeriod; label: string }[] = [
 ];
 
 export function AgendaFilters({
-  query,
-  onQueryChange,
   filters,
   onFiltersChange,
   people,
   clients,
 }: {
-  query: string;
-  onQueryChange: (value: string) => void;
   filters: AgendaFiltersState;
   onFiltersChange: (filters: AgendaFiltersState) => void;
   people: Option[];
@@ -45,48 +41,32 @@ export function AgendaFilters({
 
   return (
     <section className="space-y-3" aria-label="Filtros da agenda">
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0">
-        {periods.map((period) => (
+      <div className="flex items-center gap-2">
+        <div className="no-scrollbar -mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0">
+          {periods.map((period) => (
+            <FilterChip
+              key={period.value}
+              active={filters.periodo === period.value}
+              onClick={() => onFiltersChange({ ...filters, periodo: period.value })}
+            >
+              {period.label}
+            </FilterChip>
+          ))}
           <FilterChip
-            key={period.value}
-            active={filters.periodo === period.value}
-            onClick={() => onFiltersChange({ ...filters, periodo: period.value })}
+            active={filters.periodo === "personalizado"}
+            onClick={() => {
+              onFiltersChange({ ...filters, periodo: "personalizado" });
+              setShowFilters(true);
+            }}
           >
-            {period.label}
+            Período personalizado
           </FilterChip>
-        ))}
-        <FilterChip
-          active={filters.periodo === "personalizado"}
-          onClick={() => {
-            onFiltersChange({ ...filters, periodo: "personalizado" });
-            setShowFilters(true);
-          }}
-        >
-          Período personalizado
-        </FilterChip>
-      </div>
-
-      <div className="flex gap-2">
-        <div className="glass-panel flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5">
-          <Search className="size-4 shrink-0 text-teal-700/65" />
-          <input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Buscar título, cliente, responsável, imóvel, endereço..."
-            aria-label="Buscar na agenda"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-foreground/40"
-          />
-          {query && (
-            <button type="button" onClick={() => onQueryChange("")} aria-label="Limpar busca">
-              <X className="size-4 text-foreground/40" />
-            </button>
-          )}
         </div>
         <button
           type="button"
           onClick={() => setShowFilters((current) => !current)}
           className={cn(
-            "glass-panel relative flex shrink-0 items-center gap-2 rounded-2xl px-3 text-xs font-semibold text-foreground/65",
+            "glass-panel relative flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2.5 text-xs font-semibold text-foreground/65",
             (showFilters || activeSecondary > 0) &&
               "bg-teal-700/10 text-teal-800 ring-1 ring-teal-700/15",
           )}

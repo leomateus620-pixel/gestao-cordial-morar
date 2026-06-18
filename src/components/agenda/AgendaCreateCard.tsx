@@ -15,18 +15,28 @@ const highlights = [
   { label: "Assinatura", icon: FileSignature },
 ] as const;
 
-export function AgendaCreateCard({ onClick, isOpen }: { onClick: () => void; isOpen: boolean }) {
+export function AgendaCreateCard({
+  onClick,
+  isOpen,
+  canCreate = true,
+}: {
+  onClick: () => void;
+  isOpen: boolean;
+  canCreate?: boolean;
+}) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      aria-label="Agendar novo compromisso"
+      onClick={canCreate ? onClick : undefined}
+      aria-label={canCreate ? "Agendar novo compromisso" : "Agenda da equipe"}
+      disabled={!canCreate}
       className={cn(
-        "agenda-create-card group relative w-full overflow-hidden rounded-[1.75rem] p-4 text-left sm:p-5",
+        "agenda-create-card group relative w-full overflow-hidden rounded-[1.75rem] p-5 text-left sm:p-6",
         "bg-[linear-gradient(135deg,rgba(8,72,78,0.98),rgba(19,111,108,0.94)_60%,rgba(24,80,91,0.96))] text-white",
         "shadow-xl shadow-teal-950/20 ring-1 ring-white/40",
         "transition-[opacity,transform,box-shadow] duration-300 ease-out",
         isOpen && "pointer-events-none opacity-65",
+        !canCreate && "cursor-default",
       )}
     >
       <span className="absolute -right-12 -top-20 size-52 rounded-full bg-cyan-200/14 blur-3xl" />
@@ -41,13 +51,13 @@ export function AgendaCreateCard({ onClick, isOpen }: { onClick: () => void; isO
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-teal-50/70 sm:text-[10px]">
             <Sparkles className="size-3 text-orange-200" />
-            Central operacional
+            Central operacional da equipe
           </span>
-          <span className="mt-1 block text-lg font-semibold tracking-tight sm:text-xl">
-            Novo compromisso
+          <span className="mt-1 block text-xl font-semibold tracking-tight sm:text-2xl">
+            Agenda
           </span>
           <span className="mt-1 block max-w-[48rem] text-xs leading-5 text-teal-50/78 sm:text-[13px]">
-            Agende visitas, fotos, vídeos, retornos, assinaturas e tarefas da equipe.
+            Organize e agende visitas, fotos, vídeos, retornos, assinaturas e tarefas da equipe.
           </span>
 
           <span className="mt-3 flex flex-wrap gap-1.5">
@@ -63,16 +73,20 @@ export function AgendaCreateCard({ onClick, isOpen }: { onClick: () => void; isO
           </span>
         </span>
 
-        <span className="hidden shrink-0 items-center gap-2 rounded-full bg-white/14 px-4 py-2.5 text-xs font-semibold ring-1 ring-white/20 transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-orange-200 group-hover:text-teal-950 sm:flex">
-          Agendar
-          <ArrowUpRight className="size-4" />
-        </span>
-        <span
-          aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-white/14 text-white ring-1 ring-white/20 transition duration-300 group-hover:bg-orange-200 group-hover:text-teal-950 sm:hidden"
-        >
-          <ArrowUpRight className="size-4" />
-        </span>
+        {canCreate && (
+          <>
+            <span className="hidden shrink-0 items-center gap-2 rounded-full bg-white/14 px-4 py-2.5 text-xs font-semibold ring-1 ring-white/20 transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-orange-200 group-hover:text-teal-950 sm:flex">
+              Agendar
+              <ArrowUpRight className="size-4" />
+            </span>
+            <span
+              aria-hidden="true"
+              className="grid size-10 shrink-0 place-items-center rounded-full bg-white/14 text-white ring-1 ring-white/20 transition duration-300 group-hover:bg-orange-200 group-hover:text-teal-950 sm:hidden"
+            >
+              <ArrowUpRight className="size-4" />
+            </span>
+          </>
+        )}
       </span>
     </button>
   );

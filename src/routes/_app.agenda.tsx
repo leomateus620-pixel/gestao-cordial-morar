@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck2, CheckCircle2, Cloud, UsersRound } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { AgendaCreateCard } from "@/components/agenda/AgendaCreateCard";
 import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
@@ -24,14 +24,13 @@ function AgendaPage() {
   const session = useSession();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AgendaEvent | undefined>();
-  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AgendaFiltersState>(defaultAgendaFilters);
   const [feedback, setFeedback] = useState<string | null>(null);
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
   const corretores = useApp((state) => state.corretores);
   const atendimentos = useApp((state) => state.atendimentos);
-  const { filteredEvents, stats, createEvent, editEvent, canEdit } = useAgenda(query, filters);
+  const { filteredEvents, stats, createEvent, editEvent, canEdit } = useAgenda("", filters);
 
   const people = useMemo(() => {
     const values = [
@@ -88,47 +87,18 @@ function AgendaPage() {
 
   return (
     <div className="space-y-4">
-      <section className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#164d5e_0%,#176b70_52%,#29363d_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(23,27,33,0.55)] sm:p-6">
-        <span className="absolute -right-12 -top-20 size-52 rounded-full bg-cyan-200/11 blur-3xl" />
-        <span className="absolute -bottom-20 left-1/3 size-44 rounded-full bg-orange-300/8 blur-3xl" />
-        <div className="relative flex items-start gap-3 sm:items-center">
-          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
-            <CalendarCheck2 className="size-6 text-orange-300" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
-              Central operacional da equipe
-            </p>
-            <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">Agenda</h1>
-            <p className="mt-1 max-w-3xl text-xs leading-5 text-white/68">
-              Organize visitas, retornos, fotos, vídeos, assinaturas e compromissos da equipe.
-            </p>
-          </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-2 text-[10px] font-semibold text-white/68 ring-1 ring-white/10">
-              <UsersRound className="size-3.5 text-orange-300" />
-              Equipe coordenada
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-2 text-[10px] font-semibold text-white/68 ring-1 ring-white/10">
-              <Cloud className="size-3.5 text-cyan-200" />
-              Integrações preparadas
-            </span>
-          </div>
-        </div>
-      </section>
+      <AgendaCreateCard
+        onClick={openCreate}
+        isOpen={open && !selected}
+        canCreate={Boolean(session?.permissions.includes("agenda:write"))}
+      />
 
       <AgendaFilters
-        query={query}
-        onQueryChange={setQuery}
         filters={filters}
         onFiltersChange={setFilters}
         people={people}
         clients={clientOptions}
       />
-
-      {session?.permissions.includes("agenda:write") && (
-        <AgendaCreateCard onClick={openCreate} isOpen={open && !selected} />
-      )}
 
       <AgendaSummaryCards stats={stats} />
 
