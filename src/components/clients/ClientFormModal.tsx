@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Check, ChevronRight, X } from "lucide-react";
 import {
   bedroomOptions,
@@ -95,17 +95,51 @@ export function ClientFormModal({
   const [form, setForm] = useState<FormState>(initialForm);
   const [validation, setValidation] = useState<ClientValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(open);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<number | null>(null);
 
   const brokerName = useMemo(() => {
     if (form.assignedBrokerId === "outro") return form.customBrokerName.trim() || "Outro";
     return brokerOptions.find((broker) => broker.id === form.assignedBrokerId)?.label;
   }, [form.assignedBrokerId, form.customBrokerName]);
 
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      onOpenChange(false);
+    }, 160);
+  }, [closing, onOpenChange]);
+
   useEffect(() => {
-    if (!open || typeof document === "undefined") return;
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+      return;
+    }
+    if (!mounted) return;
+    // External close — play exit animation then unmount.
+    setClosing(true);
+    const t = window.setTimeout(() => {
+      setMounted(false);
+      setClosing(false);
+    }, 160);
+    return () => window.clearTimeout(t);
+  }, [open, mounted]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || typeof document === "undefined") return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onOpenChange(false);
+      if (event.key === "Escape") requestClose();
     };
 
     document.addEventListener("keydown", onKeyDown);
@@ -115,9 +149,9 @@ export function ClientFormModal({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = "";
     };
-  }, [onOpenChange, open]);
+  }, [mounted, requestClose]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -161,37 +195,43 @@ export function ClientFormModal({
     if (!result.ok) return;
 
     setSaving(true);
-    window.setTimeout(() => {
-      onSubmit(input);
-      setSaving(false);
-      setForm(initialForm);
-      setValidation({});
-      onOpenChange(false);
-    }, 180);
+    onSubmit(input);
+    setSaving(false);
+    setForm(initialForm);
+    setValidation({});
+    requestClose();
   }
 
   return (
-    <div className="client-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-stone-950/28 p-0 backdrop-blur-[3px] sm:items-center sm:p-6">
+    <div
+      className={cn(
+        "client-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-stone-950/45 p-0 sm:items-center sm:p-6 sm:bg-stone-950/30 sm:backdrop-blur-sm",
+        closing && "client-modal-backdrop--closing",
+      )}
+    >
       <button
         type="button"
         aria-label="Fechar cadastro"
         className="absolute inset-0 cursor-default"
-        onClick={() => onOpenChange(false)}
+        onClick={requestClose}
       />
 
       <form
         onSubmit={submit}
-        className="client-form-modal relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-white/65 bg-background/96 shadow-2xl shadow-stone-950/25 backdrop-blur-2xl sm:max-h-[88vh] sm:max-w-[920px] sm:rounded-[2rem]"
+        className={cn(
+          "client-form-modal relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-white/65 bg-background shadow-2xl shadow-stone-950/25 sm:max-h-[88vh] sm:max-w-[920px] sm:rounded-[2rem]",
+          closing && "client-form-modal--closing",
+        )}
       >
-        <header className="border-b border-white/55 bg-white/45 px-5 py-4 sm:px-6">
+        <header className="border-b border-white/55 bg-white/55 px-5 py-3 sm:px-6 sm:py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-teal-800/70">
                 <span className="size-2 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.65)]" />
                 Cadastro inteligente
               </div>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight">Novo cliente</h2>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-foreground/58">
+              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">Novo cliente</h2>
+              <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
                 Preencha o essencial agora e deixe dados opcionais prontos para enriquecer
                 relatórios futuros.
               </p>
@@ -199,14 +239,14 @@ export function ClientFormModal({
             <button
               type="button"
               aria-label="Fechar"
-              onClick={() => onOpenChange(false)}
+              onClick={requestClose}
               className="grid size-10 shrink-0 place-items-center rounded-full bg-white/65 text-foreground/65 shadow-sm transition hover:text-foreground active:scale-95"
             >
               <X className="size-4" />
             </button>
           </div>
 
-          <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
+          <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto sm:mt-4">
             {sections.map((section, index) => (
               <span
                 key={section}
@@ -489,10 +529,10 @@ export function ClientFormModal({
           </div>
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-white/60 bg-white/55 px-5 py-4 sm:px-6">
+        <footer className="flex items-center justify-between gap-3 border-t border-white/60 bg-white/55 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={requestClose}
             className="rounded-2xl bg-white/70 px-4 py-3 text-sm font-semibold text-foreground/70 shadow-sm transition hover:text-foreground active:scale-[0.98]"
           >
             Cancelar

@@ -655,3 +655,49 @@ html,
   transform-origin: top center;
   animation: client-form-island-in 360ms cubic-bezier(0.2, 0.9, 0.18, 1.08) both;
 }
+
+@keyframes client-modal-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes client-form-island-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
+
+.client-modal-backdrop--closing {
+  animation: client-modal-backdrop-out 140ms ease-in both;
+}
+
+.client-form-modal--closing {
+  animation: client-form-island-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@media (max-width: 640px) {
+  .client-form-modal {
+    animation-duration: 240ms;
+  }
+}
+
+@media (hover: none) {
+  .client-create-card:hover {
+    transform: perspective(900px) rotateX(0deg) translateY(0) scale(1);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-modal-backdrop,
+  .client-form-modal,
+  .client-modal-backdrop--closing,
+  .client-form-modal--closing {
+    animation-duration: 0.01ms !important;
+  }
+}

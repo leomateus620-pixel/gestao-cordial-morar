@@ -290,7 +290,7 @@ function clientToStoreRecord(client: Client, legacy: LegacyClient = {}): Cliente
     telefone: legacy.telefone ?? client.phone,
     whatsapp: legacy.whatsapp ?? client.phone,
     email: legacy.email ?? client.email ?? "",
-    tipo: legacy.tipo ?? mapClientTypeToLegacy(client.clientType),
+    tipo: (legacy.tipo as Cliente["tipo"] | undefined) ?? mapClientTypeToLegacy(client.clientType),
     interesse: legacy.interesse ?? buildInterestText(client),
     orcamento: budget,
     perfilBusca: legacy.perfilBusca ?? client.notes,
