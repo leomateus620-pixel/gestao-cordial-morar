@@ -43,7 +43,7 @@ export function AtendimentoSummaryCards({
 }: {
   stats: AtendimentoStats;
   activeStatus: "todos" | AtendimentoStatus;
-  onStatusChange: (status: AtendimentoStatus) => void;
+  onStatusChange: (status: "todos" | AtendimentoStatus) => void;
 }) {
   const insights = [
     { label: "Compra", value: stats.compra.toString(), icon: ShoppingBag },
@@ -66,7 +66,7 @@ export function AtendimentoSummaryCards({
             <button
               key={item.status}
               type="button"
-              onClick={() => onStatusChange(item.status)}
+              onClick={() => onStatusChange(active ? "todos" : item.status)}
               className={cn(
                 "glass-panel min-w-24 shrink-0 rounded-2xl px-3 py-3 text-left transition hover:-translate-y-0.5 hover:bg-white/70 lg:min-w-0",
                 active && "bg-teal-700/10 ring-1 ring-teal-700/25",

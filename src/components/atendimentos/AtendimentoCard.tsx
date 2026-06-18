@@ -160,7 +160,11 @@ export function AtendimentoCard({
           </AlertDialogContent>
         </AlertDialog>
 
-        {secondaryActions.map(({ label, icon: Icon }) => (
+        {secondaryActions
+          .filter(({ label }) =>
+            label === "Marcar motivo de perda" ? atendimento.status !== "perdido" : true,
+          )
+          .map(({ label, icon: Icon }) => (
           <button
             key={label}
             type="button"

@@ -326,6 +326,7 @@ export function AtendimentoFormModal({
                   onChange={(event) => update("clienteNome", event.target.value)}
                   className={inputClass(validation.clienteNome)}
                   autoComplete="name"
+                  autoFocus
                   required
                 />
               </Field>

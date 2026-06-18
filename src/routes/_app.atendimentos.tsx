@@ -37,7 +37,10 @@ function Page() {
 
   function createAtendimento(input: AtendimentoCreateInput) {
     addAtendimento(input);
-    setFeedback(`Atendimento de ${input.clienteNome} salvo.`);
+    window.setTimeout(
+      () => setFeedback(`Atendimento de ${input.clienteNome} salvo.`),
+      220,
+    );
   }
 
   function convertAtendimento(id: string) {
@@ -49,7 +52,7 @@ function Page() {
     );
   }
 
-  function setStatus(status: AtendimentoStatus) {
+  function setStatus(status: "todos" | AtendimentoStatus) {
     setFilters((current) => ({ ...current, status }));
   }
 
