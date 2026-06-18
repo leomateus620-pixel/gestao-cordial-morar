@@ -1,5 +1,5 @@
 import { ExternalLink, Globe2, Link2, MonitorSmartphone } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,25 +27,45 @@ const realEstateSites = [
 
 type RealEstateSite = (typeof realEstateSites)[number];
 
+function mshotsUrl(url: string, width: number, height?: number) {
+  const base = `https://s.wordpress.com/mshots/v1/${encodeURIComponent(url)}?w=${width}`;
+  return height ? `${base}&h=${height}` : base;
+}
+
 export function RealEstateSitePreviewSection() {
   const [selectedSite, setSelectedSite] = useState<RealEstateSite | null>(null);
-  const [previewLoaded, setPreviewLoaded] = useState(false);
-  const [previewUnavailable, setPreviewUnavailable] = useState(false);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [attempt, setAttempt] = useState(0);
+  const retryRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!selectedSite) return;
-
-    setPreviewLoaded(false);
-    setPreviewUnavailable(false);
-
-    const fallbackTimer = window.setTimeout(() => {
-      setPreviewUnavailable(true);
-    }, 6500);
-
-    return () => window.clearTimeout(fallbackTimer);
+    setStatus("loading");
+    setAttempt(0);
   }, [selectedSite]);
 
+  useEffect(() => {
+    if (!selectedSite || status !== "loading") return;
+    if (retryRef.current) window.clearTimeout(retryRef.current);
+    retryRef.current = window.setTimeout(() => {
+      setStatus((current) => {
+        if (current !== "loading") return current;
+        if (attempt === 0) {
+          setAttempt(1);
+          return "loading";
+        }
+        return "error";
+      });
+    }, 5000);
+    return () => {
+      if (retryRef.current) window.clearTimeout(retryRef.current);
+    };
+  }, [selectedSite, status, attempt]);
+
   const domain = selectedSite ? new URL(selectedSite.url).hostname.replace("www.", "") : "";
+  const previewSrc = selectedSite
+    ? `${mshotsUrl(selectedSite.url, 1280, 900)}${attempt > 0 ? `&r=${attempt}` : ""}`
+    : "";
 
   return (
     <section className="mb-5">
@@ -83,6 +103,21 @@ export function RealEstateSitePreviewSection() {
                 <p className="mt-2 text-sm leading-relaxed text-foreground/60">
                   {site.description}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSite(site)}
+                  className="mt-3 block w-full overflow-hidden rounded-2xl border border-border/60 bg-white/40 transition hover:border-primary/40 hover:shadow-md"
+                  aria-label={`Pré-visualizar ${site.name}`}
+                >
+                  <img
+                    src={mshotsUrl(site.url, 800)}
+                    alt={`Prévia do site ${site.name}`}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    className="aspect-[16/9] w-full object-cover object-top"
+                  />
+                </button>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                   <Button asChild className="rounded-xl">
                     <a href={site.url} target="_blank" rel="noopener noreferrer">
@@ -116,7 +151,7 @@ export function RealEstateSitePreviewSection() {
                   Pré-visualização — {selectedSite.name}
                 </DialogTitle>
                 <DialogDescription>
-                  Se a prévia não carregar por proteção do site, abra em uma nova aba.
+                  Prévia gerada a partir de uma captura recente do site oficial.
                 </DialogDescription>
               </DialogHeader>
 
@@ -133,7 +168,7 @@ export function RealEstateSitePreviewSection() {
                   </div>
 
                   <div className="relative aspect-[16/11] min-h-[420px] bg-muted/35 max-sm:aspect-[9/13] max-sm:min-h-[520px]">
-                    {!previewLoaded && (
+                    {status === "loading" && (
                       <div className="absolute inset-0 z-10 space-y-4 bg-background/95 p-5">
                         <Skeleton className="h-8 w-2/3" />
                         <Skeleton className="h-32 w-full rounded-2xl" />
@@ -142,40 +177,46 @@ export function RealEstateSitePreviewSection() {
                           <Skeleton className="h-20 rounded-2xl" />
                           <Skeleton className="h-20 rounded-2xl" />
                         </div>
-                        {previewUnavailable && (
-                          <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-border bg-background/95 p-4 text-center shadow-lg">
-                            <p className="text-sm font-semibold">
-                              A pré-visualização deste site não está disponível aqui.
-                            </p>
-                            <Button asChild className="mt-3 rounded-xl">
-                              <a href={selectedSite.url} target="_blank" rel="noopener noreferrer">
-                                Abrir site em nova aba
-                                <ExternalLink className="size-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     )}
-                    <iframe
-                      key={selectedSite.id}
-                      title={`Pré-visualização do site ${selectedSite.name}`}
-                      src={selectedSite.url}
-                      loading="lazy"
-                      className="size-full border-0"
-                      onLoad={() => setPreviewLoaded(true)}
-                      onError={() => setPreviewUnavailable(true)}
-                    />
+                    {status === "error" ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 p-6 text-center">
+                        <p className="text-sm font-semibold">
+                          Não foi possível gerar a prévia agora.
+                        </p>
+                        <p className="text-xs text-foreground/55">
+                          O site oficial continua acessível normalmente.
+                        </p>
+                        <Button asChild className="rounded-xl">
+                          <a href={selectedSite.url} target="_blank" rel="noopener noreferrer">
+                            Abrir site em nova aba
+                            <ExternalLink className="size-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    ) : (
+                      <img
+                        key={`${selectedSite.id}-${attempt}`}
+                        src={previewSrc}
+                        alt={`Pré-visualização do site ${selectedSite.name}`}
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onLoad={() => setStatus("ready")}
+                        onError={() => setStatus("error")}
+                        className="size-full object-cover object-top"
+                      />
+                    )}
                   </div>
                 </div>
 
                 <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-border/60 bg-white/55 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold">
-                      A pré-visualização deste site não está disponível aqui?
+                      Precisa navegar pelos imóveis?
                     </p>
                     <p className="text-xs text-foreground/50">
-                      A consulta de imóveis permanece nos sites oficiais das imobiliárias.
+                      A consulta completa permanece nos sites oficiais das imobiliárias.
                     </p>
                   </div>
                   <Button asChild variant="outline" className="rounded-xl bg-white/70">
