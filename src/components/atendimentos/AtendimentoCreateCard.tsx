@@ -24,7 +24,7 @@ export function AtendimentoCreateCard({
         "bg-[linear-gradient(135deg,rgba(10,77,82,0.98),rgba(16,112,105,0.92))] text-white",
         "shadow-xl shadow-teal-950/18 ring-1 ring-white/40",
         "transition-[opacity,transform,box-shadow] duration-300 ease-out",
-        isOpen && "scale-[0.985] opacity-65",
+        isOpen && "pointer-events-none opacity-65",
       )}
     >
       <span className="absolute -right-10 -top-16 size-44 rounded-full bg-cyan-200/14 blur-3xl" />
