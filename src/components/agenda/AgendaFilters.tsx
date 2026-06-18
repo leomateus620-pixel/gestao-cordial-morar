@@ -198,7 +198,7 @@ export function AgendaFilters({
 
         {filters.periodo === "personalizado" && (
           <>
-            <label className="glass-panel rounded-2xl px-3 py-2 xl:rounded-full">
+            <label className="glass-panel col-span-1 rounded-2xl px-3 py-2 xl:rounded-full">
               <span className="sr-only">Data inicial</span>
               <input
                 type="date"
@@ -209,7 +209,7 @@ export function AgendaFilters({
                 className="w-full bg-transparent text-xs font-semibold outline-none"
               />
             </label>
-            <label className="glass-panel rounded-2xl px-3 py-2 xl:rounded-full">
+            <label className="glass-panel col-span-1 rounded-2xl px-3 py-2 xl:rounded-full">
               <span className="sr-only">Data final</span>
               <input
                 type="date"
