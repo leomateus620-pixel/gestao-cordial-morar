@@ -106,12 +106,19 @@ export function AgendaFormModal({
   const [errors, setErrors] = useState<ReturnType<typeof validateAgendaEvent>>({});
   const [closing, setClosing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     setForm(initialForm(event, currentUser));
     setErrors({});
-    setClosing(false);
   }, [currentUser, event, open]);
 
   useEffect(() => {
@@ -121,6 +128,24 @@ export function AgendaFormModal({
     return () => {
       document.body.style.overflow = previous;
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open && mounted && !closing) {
+      setClosing(true);
+      const timer = window.setTimeout(() => setMounted(false), 200);
+      return () => window.clearTimeout(timer);
+    }
+  }, [open, mounted, closing]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") requestClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const selectedClient = clients.find((client) => client.id === form.clienteId);
@@ -134,7 +159,7 @@ export function AgendaFormModal({
     [form.participantesIds, people],
   );
 
-  if (!open || typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
 
   function requestClose() {
     if (closing) return;
