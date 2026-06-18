@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import {
   atendimentoBrokerOptions,
   atendimentoFinalidadeOptions,
@@ -14,14 +14,6 @@ import {
 } from "@/hooks/useAtendimentos";
 import { cn } from "@/lib/utils";
 
-type AgencyFilter = "todas" | "cordial" | "morar";
-
-const agencyOptions = [
-  { value: "todas", label: "Todas" },
-  { value: "cordial", label: "Cordial" },
-  { value: "morar", label: "Morar" },
-] as const;
-
 const periodOptions = [
   { value: "todos", label: "Todo período" },
   { value: "hoje", label: "Hoje" },
@@ -32,15 +24,11 @@ const periodOptions = [
 export function AtendimentoFilters({
   query,
   onQueryChange,
-  agency,
-  onAgencyChange,
   filters,
   onFiltersChange,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
-  agency: AgencyFilter;
-  onAgencyChange: (value: AgencyFilter) => void;
   filters: AtendimentoFiltersState;
   onFiltersChange: (filters: AtendimentoFiltersState) => void;
 }) {
@@ -57,24 +45,6 @@ export function AtendimentoFilters({
 
   return (
     <section className="space-y-3">
-      <div className="glass-panel flex gap-1 rounded-full p-1">
-        {agencyOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onAgencyChange(option.value)}
-            className={cn(
-              "flex-1 rounded-full px-3 py-2 text-xs font-semibold transition-all",
-              agency === option.value
-                ? "bg-teal-700 text-white shadow-md shadow-teal-900/18"
-                : "text-foreground/58 hover:bg-white/50 hover:text-foreground",
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex gap-2">
         <label className="glass-panel flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5">
           <Search className="size-4 shrink-0 text-teal-700/65" />
@@ -94,10 +64,11 @@ export function AtendimentoFilters({
           type="button"
           onClick={() => setShowFilters((current) => !current)}
           className={cn(
-            "glass-panel relative flex shrink-0 items-center gap-2 rounded-2xl px-3 text-xs font-semibold text-foreground/65 lg:hidden",
+            "glass-panel relative flex shrink-0 items-center gap-2 rounded-2xl px-3 text-xs font-semibold text-foreground/65",
             (showFilters || activeSecondary > 0) &&
               "bg-teal-700/10 text-teal-800 ring-1 ring-teal-700/15",
           )}
+          aria-expanded={showFilters}
         >
           <SlidersHorizontal className="size-4" />
           Filtros
@@ -106,12 +77,18 @@ export function AtendimentoFilters({
               {activeSecondary}
             </span>
           )}
+          <ChevronDown
+            className={cn(
+              "size-3.5 transition-transform",
+              showFilters && "rotate-180",
+            )}
+          />
         </button>
         {activeSecondary > 0 && (
           <button
             type="button"
             onClick={() => onFiltersChange(defaultAtendimentoFilters)}
-            className="glass-panel flex shrink-0 items-center gap-1.5 rounded-2xl px-3 text-xs font-semibold text-foreground/65 lg:hidden"
+            className="glass-panel flex shrink-0 items-center gap-1.5 rounded-2xl px-3 text-xs font-semibold text-foreground/65"
             aria-label="Limpar filtros"
           >
             <RotateCcw className="size-3.5" />
@@ -138,7 +115,10 @@ export function AtendimentoFilters({
       </div>
 
       <div
-        className={cn("gap-2", showFilters ? "grid grid-cols-2" : "hidden", "lg:flex lg:flex-wrap")}
+        className={cn(
+          "gap-2 animate-accordion-down",
+          showFilters ? "grid grid-cols-2 lg:flex lg:flex-wrap" : "hidden",
+        )}
       >
         <FilterShell>
           <Select
