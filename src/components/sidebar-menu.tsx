@@ -24,9 +24,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { getVisibleModules, type ModuleItem } from "@/components/shared/module-menu";
 import { useSession } from "@/lib/auth-mock";
-import { getVisibleModules, moduleItems, type ModuleItem } from "@/components/shared/module-menu";
+import { cn } from "@/lib/utils";
 
 export type NavigationChild = Pick<ModuleItem, "to" | "label" | "module" | "exact"> & {
   key?: string;
@@ -34,39 +34,51 @@ export type NavigationChild = Pick<ModuleItem, "to" | "label" | "module" | "exac
 };
 
 export type NavigationGroup = {
+  type: "group";
   label: string;
   desc: string;
   icon: LucideIcon;
   children: NavigationChild[];
 };
 
-const navigationGroups: NavigationGroup[] = [
+export type NavigationDirectItem = Pick<
+  ModuleItem,
+  "to" | "label" | "desc" | "module" | "exact"
+> & {
+  type: "item";
+  icon: LucideIcon;
+};
+
+export type NavigationEntry = NavigationGroup | NavigationDirectItem;
+
+const navigationEntries: NavigationEntry[] = [
   {
+    type: "group",
     label: "Painel",
     desc: "Visão executiva",
     icon: LayoutDashboard,
-    children: [
-      { to: "/", label: "Início", icon: Home, module: "dashboard", exact: true },
-      { to: "/agenda", label: "Agenda do dia", icon: CalendarCheck2, module: "agenda" },
-    ],
+    children: [{ to: "/", label: "Início", icon: Home, module: "dashboard", exact: true }],
   },
   {
+    type: "item",
+    to: "/agenda",
+    label: "Agenda",
+    desc: "Visitas, retornos e compromissos",
+    icon: CalendarCheck2,
+    module: "agenda",
+  },
+  {
+    type: "group",
     label: "Relacionamento",
     desc: "Leads e clientes",
     icon: MessagesSquare,
     children: [
       { to: "/atendimentos", label: "Atendimentos", icon: Handshake, module: "atendimentos" },
       { to: "/clientes", label: "Clientes", icon: Users, module: "clientes" },
-      {
-        key: "agenda-relacionamento",
-        to: "/agenda",
-        label: "Agenda",
-        icon: CalendarCheck2,
-        module: "agenda",
-      },
     ],
   },
   {
+    type: "group",
     label: "Imóveis",
     desc: "Carteira e status",
     icon: Building2,
@@ -82,6 +94,7 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
   {
+    type: "group",
     label: "Negócios",
     desc: "Operações e contratos",
     icon: BriefcaseBusiness,
@@ -92,6 +105,7 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
   {
+    type: "group",
     label: "Gestão",
     desc: "Equipe e resultados",
     icon: BarChart3,
@@ -112,7 +126,7 @@ type SidebarMenuProps = {
   tone?: "light" | "dark";
 };
 
-function isRouteActive(pathname: string, item: Pick<NavigationChild, "to" | "exact">) {
+function isRouteActive(pathname: string, item: Pick<ModuleItem, "to" | "exact">) {
   if (item.exact) return pathname === item.to;
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 }
@@ -125,26 +139,36 @@ export function SidebarMenu({
   showToggle = false,
   tone = "dark",
 }: SidebarMenuProps) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const session = useSession();
   const isDark = tone === "dark";
-  const visibleGroups = useMemo(
+  const visibleEntries = useMemo(
     () =>
-      navigationGroups
-        .map((group) => ({
-          ...group,
-          children: getVisibleModules(
+      navigationEntries
+        .map((entry) => {
+          if (entry.type === "item") {
+            return getVisibleModules(session?.modules, [entry]).length > 0 ? entry : null;
+          }
+
+          const children = getVisibleModules(
             session?.modules,
-            group.children as ModuleItem[],
-          ) as NavigationChild[],
-        }))
-        .filter((group) => group.children.length > 0),
+            entry.children as ModuleItem[],
+          ) as NavigationChild[];
+          return children.length > 0 ? { ...entry, children } : null;
+        })
+        .filter((entry): entry is NavigationEntry => entry !== null),
     [session?.modules],
   );
-  const activeGroup = visibleGroups.find((group) =>
-    group.children.some((child) => isRouteActive(pathname, child)),
+  const activeEntry = visibleEntries.find((entry) =>
+    entry.type === "item"
+      ? isRouteActive(pathname, entry)
+      : entry.children.some((child) => isRouteActive(pathname, child)),
   );
-  const [openGroup, setOpenGroup] = useState(activeGroup?.label ?? visibleGroups[0]?.label ?? "");
+  const activeGroup = activeEntry?.type === "group" ? activeEntry : undefined;
+  const firstGroup = visibleEntries.find(
+    (entry): entry is NavigationGroup => entry.type === "group",
+  );
+  const [openGroup, setOpenGroup] = useState(activeGroup?.label ?? firstGroup?.label ?? "");
 
   useEffect(() => {
     if (activeGroup?.label) setOpenGroup(activeGroup.label);
@@ -174,10 +198,70 @@ export function SidebarMenu({
           className="premium-sidebar-scroll min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden pr-1"
           aria-label="Navegação principal"
         >
-          {visibleGroups.map((group) => {
-            const groupActive = activeGroup?.label === group.label;
-            const open = openGroup === group.label && !collapsed;
-            const Icon = group.icon;
+          {visibleEntries.map((entry) => {
+            if (entry.type === "item") {
+              const active = isRouteActive(pathname, entry);
+              const Icon = entry.icon;
+              const directLink = (
+                <Link
+                  to={entry.to as never}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={collapsed ? `${entry.label}: ${entry.desc}` : undefined}
+                  className={cn(
+                    "group relative flex w-full items-center gap-3 rounded-2xl text-left text-sm transition-all duration-200 active:scale-[0.99]",
+                    collapsed ? "justify-center px-2 py-3" : "px-3 py-3",
+                    isDark && active
+                      ? "bg-[linear-gradient(135deg,rgba(95,175,199,0.22),rgba(255,255,255,0.08))] text-white shadow-[inset_3px_0_0_var(--system-primary-light),0_14px_30px_-24px_rgba(95,175,199,0.9)]"
+                      : isDark
+                        ? "text-white/72 hover:bg-white/[0.07] hover:text-white"
+                        : active
+                          ? "bg-primary/12 text-primary shadow-[inset_3px_0_0_var(--system-primary)]"
+                          : "text-foreground/70 hover:bg-white/65 hover:text-primary",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
+                      active
+                        ? "bg-cyan-300/18 text-cyan-100 ring-1 ring-cyan-200/25"
+                        : "bg-white/[0.06] text-white/68 group-hover:bg-white/[0.1] group-hover:text-cyan-100",
+                    )}
+                  >
+                    <Icon className="size-4.5" strokeWidth={active ? 2.35 : 1.9} />
+                  </span>
+                  {!collapsed && (
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold leading-tight tracking-[-0.01em]">
+                        {entry.label}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-white/42">
+                        {entry.desc}
+                      </span>
+                    </span>
+                  )}
+                </Link>
+              );
+
+              return collapsed ? (
+                <Tooltip key={entry.to}>
+                  <TooltipTrigger asChild>{directLink}</TooltipTrigger>
+                  <TooltipContent
+                    side="right"
+                    className="border border-cyan-200/15 bg-[#14212a] text-cyan-50 shadow-xl"
+                  >
+                    <p className="font-semibold">{entry.label}</p>
+                    <p className="text-[10px] text-cyan-50/60">{entry.desc}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <div key={entry.to}>{directLink}</div>
+              );
+            }
+
+            const groupActive = activeGroup?.label === entry.label;
+            const open = openGroup === entry.label && !collapsed;
+            const Icon = entry.icon;
             const groupButton = (
               <button
                 type="button"
@@ -195,12 +279,13 @@ export function SidebarMenu({
                 onClick={() => {
                   if (collapsed) {
                     onCollapsedChange?.(false);
-                    setOpenGroup(group.label);
+                    setOpenGroup(entry.label);
                     return;
                   }
-                  setOpenGroup(open ? "" : group.label);
+                  setOpenGroup(open ? "" : entry.label);
                 }}
                 aria-expanded={open}
+                aria-label={collapsed ? entry.label : undefined}
               >
                 <span
                   className={cn(
@@ -216,10 +301,10 @@ export function SidebarMenu({
                   <>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold leading-tight tracking-[-0.01em]">
-                        {group.label}
+                        {entry.label}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-white/42">
-                        {group.desc}
+                        {entry.desc}
                       </span>
                     </span>
                     <ChevronDown
@@ -235,9 +320,9 @@ export function SidebarMenu({
 
             return (
               <Collapsible
-                key={group.label}
+                key={entry.label}
                 open={open}
-                onOpenChange={(value) => setOpenGroup(value ? group.label : "")}
+                onOpenChange={(value) => setOpenGroup(value ? entry.label : "")}
               >
                 <CollapsibleTrigger asChild>
                   {collapsed ? (
@@ -247,7 +332,7 @@ export function SidebarMenu({
                         side="right"
                         className="border border-cyan-200/15 bg-[#14212a] text-cyan-50 shadow-xl"
                       >
-                        {group.label}
+                        {entry.label}
                       </TooltipContent>
                     </Tooltip>
                   ) : (
@@ -258,7 +343,7 @@ export function SidebarMenu({
                 {!collapsed && (
                   <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
                     <div className="ml-[1.6rem] mt-1 space-y-1 border-l border-cyan-200/12 pl-3">
-                      {group.children.map((child) => {
+                      {entry.children.map((child) => {
                         const active = isRouteActive(pathname, child);
                         const ChildIcon = child.icon;
                         return (
@@ -266,6 +351,7 @@ export function SidebarMenu({
                             key={child.key ?? child.to}
                             to={child.to as never}
                             onClick={onNavigate}
+                            aria-current={active ? "page" : undefined}
                             className={cn(
                               "group/sub relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-200 active:scale-[0.99]",
                               active

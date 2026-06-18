@@ -762,6 +762,84 @@ html,
   animation: atendimento-form-island-out 170ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
+@keyframes agenda-form-island-in {
+  0% {
+    opacity: 0;
+    transform: translateY(38px) scale(0.72, 0.18);
+    border-radius: 3rem;
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.014, 1.008);
+  }
+
+  78% {
+    transform: translateY(1px) scale(0.997);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes agenda-form-island-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(22px) scale(0.9, 0.68);
+    border-radius: 3rem;
+  }
+}
+
+.agenda-create-card {
+  transform-style: preserve-3d;
+  transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
+}
+
+.agenda-create-card::after {
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.16), transparent 40%);
+  content: "";
+  pointer-events: none;
+}
+
+.agenda-create-card:hover {
+  transform: perspective(1000px) rotateX(2.6deg) translateY(-3px) scale(1.008);
+  box-shadow:
+    0 28px 50px -25px rgba(5, 58, 62, 0.76),
+    0 14px 26px -18px rgba(234, 115, 45, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22);
+}
+
+.agenda-create-card:active {
+  transform: perspective(1000px) rotateX(0deg) translateY(2px) scale(0.98);
+}
+
+.agenda-modal-backdrop {
+  animation: client-modal-backdrop-in 180ms ease-out both;
+}
+
+.agenda-form-modal {
+  transform-origin: 50% 12%;
+  animation: agenda-form-island-in 380ms cubic-bezier(0.18, 0.9, 0.2, 1.08) both;
+}
+
+.agenda-modal-backdrop--closing {
+  animation: client-modal-backdrop-out 150ms ease-in both;
+}
+
+.agenda-form-modal--closing {
+  animation: agenda-form-island-out 170ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 @media (max-width: 640px) {
   .client-form-modal {
     animation-duration: 240ms;
@@ -775,6 +853,15 @@ html,
   .atendimento-form-modal--closing {
     animation: atendimento-form-island-out 150ms cubic-bezier(0.32, 0, 0.67, 0) both;
   }
+
+  .agenda-form-modal {
+    transform-origin: 50% 100%;
+    animation-duration: 280ms;
+  }
+
+  .agenda-form-modal--closing {
+    animation: agenda-form-island-out 150ms cubic-bezier(0.32, 0, 0.67, 0) both;
+  }
 }
 
 @media (hover: none) {
@@ -784,6 +871,10 @@ html,
   }
 
   .atendimento-create-card:hover {
+    transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
+  }
+
+  .agenda-create-card:hover {
     transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
   }
 }
@@ -796,7 +887,11 @@ html,
   .atendimento-modal-backdrop,
   .atendimento-form-modal,
   .atendimento-modal-backdrop--closing,
-  .atendimento-form-modal--closing {
+  .atendimento-form-modal--closing,
+  .agenda-modal-backdrop,
+  .agenda-form-modal,
+  .agenda-modal-backdrop--closing,
+  .agenda-form-modal--closing {
     animation-duration: 0.01ms !important;
   }
 }

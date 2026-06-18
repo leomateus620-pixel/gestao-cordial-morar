@@ -45,6 +45,8 @@ import {
 } from "@/services/atendimentos";
 import type { Atendimento, AtendimentoCreateInput } from "@/types/atendimento";
 import type { ClientCreateInput } from "@/types/client";
+import { normalizeAgendaEvent, toLegacyAgendaEvent } from "@/services/agenda";
+import type { AgendaEvent } from "@/types/agenda";
 
 type AgencyFilter = AgencyId | "todas";
 
@@ -56,6 +58,7 @@ type State = {
   atendimentos: Atendimento[];
   contratos: Contrato[];
   agenda: Compromisso[];
+  agendaEvents: AgendaEvent[];
   lancamentos: Lancamento[];
   alugueis: Aluguel[];
   vendas: Venda[];
@@ -74,6 +77,7 @@ type State = {
   addAtendimento: (a: AtendimentoCreateInput) => void;
   convertAtendimentoToCliente: (id: string) => string | undefined;
   addCompromisso: (c: Omit<Compromisso, "id">) => void;
+  upsertAgendaEvent: (event: AgendaEvent) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
 };
@@ -81,6 +85,13 @@ type State = {
 const id = () => Math.random().toString(36).slice(2, 10);
 const normalizedAtendimentosSeed = atendimentosSeed.map((atendimento) =>
   normalizeAtendimento(atendimento, {
+    clientes: clientesSeed,
+    corretores: corretoresSeed,
+    imoveis: imoveisSeed,
+  }),
+);
+const normalizedAgendaSeed = agendaSeed.map((event) =>
+  normalizeAgendaEvent(event, {
     clientes: clientesSeed,
     corretores: corretoresSeed,
     imoveis: imoveisSeed,
@@ -97,6 +108,7 @@ export const useApp = create<State>()(
       atendimentos: normalizedAtendimentosSeed,
       contratos: contratosSeed,
       agenda: agendaSeed,
+      agendaEvents: normalizedAgendaSeed,
       lancamentos: lancamentosSeed,
       alugueis: alugueisSeed,
       vendas: vendasSeed,
@@ -191,7 +203,31 @@ export const useApp = create<State>()(
         });
         return convertedClientId;
       },
-      addCompromisso: (c) => set((s) => ({ agenda: [{ ...c, id: id() }, ...s.agenda] })),
+      addCompromisso: (c) =>
+        set((s) => {
+          const legacyEvent = { ...c, id: id() };
+          const event = normalizeAgendaEvent(legacyEvent, {
+            clientes: s.clientes,
+            corretores: s.corretores,
+            imoveis: s.imoveis,
+          });
+          return {
+            agenda: [legacyEvent, ...s.agenda],
+            agendaEvents: [event, ...s.agendaEvents],
+          };
+        }),
+      upsertAgendaEvent: (event) =>
+        set((s) => {
+          const exists = s.agendaEvents.some((item) => item.id === event.id);
+          return {
+            agendaEvents: exists
+              ? s.agendaEvents.map((item) => (item.id === event.id ? event : item))
+              : [event, ...s.agendaEvents],
+            agenda: exists
+              ? s.agenda.map((item) => (item.id === event.id ? toLegacyAgendaEvent(event) : item))
+              : [toLegacyAgendaEvent(event), ...s.agenda],
+          };
+        }),
       markNotificationRead: (nid) =>
         set((s) => ({
           notifications: s.notifications.map((n) => (n.id === nid ? { ...n, read: true } : n)),
@@ -211,6 +247,10 @@ export const useApp = create<State>()(
         const rawAtendimentos =
           (persistedState as { atendimentos?: unknown[] } | undefined)?.atendimentos ??
           current.atendimentos;
+        const rawAgendaEvents =
+          (persistedState as { agendaEvents?: unknown[] } | undefined)?.agendaEvents ??
+          (persistedState as { agenda?: unknown[] } | undefined)?.agenda ??
+          current.agendaEvents;
 
         return {
           ...current,
@@ -220,6 +260,9 @@ export const useApp = create<State>()(
           imoveis,
           atendimentos: rawAtendimentos.map((atendimento) =>
             normalizeAtendimento(atendimento, { clientes, corretores, imoveis }),
+          ),
+          agendaEvents: rawAgendaEvents.map((event) =>
+            normalizeAgendaEvent(event, { clientes, corretores, imoveis }),
           ),
         };
       },
