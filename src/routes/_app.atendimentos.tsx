@@ -12,7 +12,6 @@ import {
   useAtendimentos,
   type AtendimentoFilters as AtendimentoFiltersState,
 } from "@/hooks/useAtendimentos";
-import { useApp } from "@/store/app-store";
 import type { AtendimentoCreateInput, AtendimentoStatus } from "@/types/atendimento";
 
 export const Route = createFileRoute("/_app/atendimentos")({
