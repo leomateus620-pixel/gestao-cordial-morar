@@ -49,7 +49,7 @@ function Page() {
     );
   }
 
-  function setStatus(status: AtendimentoStatus) {
+  function setStatus(status: "todos" | AtendimentoStatus) {
     setFilters((current) => ({ ...current, status }));
   }
 
