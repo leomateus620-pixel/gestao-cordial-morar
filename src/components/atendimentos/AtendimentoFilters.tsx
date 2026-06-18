@@ -107,6 +107,16 @@ export function AtendimentoFilters({
             </span>
           )}
         </button>
+        {activeSecondary > 0 && (
+          <button
+            type="button"
+            onClick={() => onFiltersChange(defaultAtendimentoFilters)}
+            className="glass-panel flex shrink-0 items-center gap-1.5 rounded-2xl px-3 text-xs font-semibold text-foreground/65 lg:hidden"
+            aria-label="Limpar filtros"
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5">
