@@ -42,12 +42,12 @@ export function AppShell() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  if (!session) return null;
-
   const bottomNav = useMemo(
-    () => getVisibleModules(session.modules, primaryModuleItems),
-    [session.modules],
+    () => (session ? getVisibleModules(session.modules, primaryModuleItems) : []),
+    [session],
   );
+
+  if (!session) return null;
 
   return (
     <div className="relative mx-auto flex min-h-dvh w-full max-w-full flex-col overflow-x-hidden font-sans text-foreground">
