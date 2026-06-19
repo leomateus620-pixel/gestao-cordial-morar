@@ -132,16 +132,6 @@ function normalizeChecklist(input?: Partial<AgenciamentoChecklist>): Agenciament
   };
 }
 
-function isValidUrl(value: string) {
-  if (!value.trim()) return true;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function digits(value: string) {
   return value.replace(/\D/g, "");
 }
