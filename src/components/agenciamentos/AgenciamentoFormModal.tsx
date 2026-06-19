@@ -49,9 +49,6 @@ type FormState = {
   origem: AgenciamentoOrigem;
   status: AgenciamentoStatus;
   checklist: AgenciamentoChecklist;
-  driveFolderUrl: string;
-  siteUrl: string;
-  observacoesInternas: string;
 };
 
 type AgenciamentoFormModalProps = {
@@ -126,9 +123,6 @@ function initialForm(
       videoRealizado: false,
       validado: false,
     },
-    driveFolderUrl: agenciamento?.driveFolderUrl ?? "",
-    siteUrl: agenciamento?.siteUrl ?? "",
-    observacoesInternas: agenciamento?.observacoesInternas ?? "",
   };
 }
 
@@ -244,9 +238,9 @@ export function AgenciamentoFormModal({
       origem: form.origem,
       status: form.checklist.validado ? "validado" : form.status,
       checklist: form.checklist,
-      driveFolderUrl: form.driveFolderUrl.trim(),
-      siteUrl: form.siteUrl.trim(),
-      observacoesInternas: form.observacoesInternas.trim(),
+      driveFolderUrl: agenciamento?.driveFolderUrl ?? "",
+      siteUrl: agenciamento?.siteUrl ?? "",
+      observacoesInternas: agenciamento?.observacoesInternas ?? "",
       criadoPorId: agenciamento?.criadoPorId,
       criadoPorNome: agenciamento?.criadoPorNome,
       validadoPorId: agenciamento?.validadoPorId,
@@ -572,33 +566,6 @@ export function AgenciamentoFormModal({
                     );
                   })}
                 </div>
-              </FormSection>
-
-              <FormSection title="Links e observações" step="05">
-                <Field label="Link da pasta do Drive" error={errors.driveFolderUrl}>
-                  <input
-                    value={form.driveFolderUrl}
-                    onChange={(event) => update("driveFolderUrl", event.target.value)}
-                    className={inputClassName}
-                    placeholder="https://drive.google.com/..."
-                  />
-                </Field>
-                <Field label="Link do imóvel no site" error={errors.siteUrl}>
-                  <input
-                    value={form.siteUrl}
-                    onChange={(event) => update("siteUrl", event.target.value)}
-                    className={inputClassName}
-                    placeholder="https://..."
-                  />
-                </Field>
-                <Field label="Observações internas">
-                  <textarea
-                    value={form.observacoesInternas}
-                    onChange={(event) => update("observacoesInternas", event.target.value)}
-                    className={cn(inputClassName, "h-auto min-h-28 resize-none py-3")}
-                    placeholder="Pendências, combinados, validações e contexto para gestão."
-                  />
-                </Field>
               </FormSection>
             </div>
           </div>

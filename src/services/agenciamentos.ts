@@ -19,10 +19,7 @@ import type {
 type LegacyAgenciamento = Partial<Agenciamento> & { id: string };
 
 export type AgenciamentoValidationErrors = Partial<
-  Record<
-    keyof AgenciamentoInput | "checklist" | "driveFolderUrl" | "siteUrl" | "permissaoValidacao",
-    string
-  >
+  Record<keyof AgenciamentoInput | "checklist" | "permissaoValidacao", string>
 >;
 
 const DEFAULT_CHECKLIST: AgenciamentoChecklist = {
@@ -133,16 +130,6 @@ function normalizeChecklist(input?: Partial<AgenciamentoChecklist>): Agenciament
     videoRealizado: Boolean(input?.videoRealizado),
     validado: Boolean(input?.validado),
   };
-}
-
-function isValidUrl(value: string) {
-  if (!value.trim()) return true;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 function digits(value: string) {
@@ -465,12 +452,6 @@ export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: b
   if (!input.dataAgenciamento.trim()) errors.dataAgenciamento = "Informe a data.";
   if (!input.origem) errors.origem = "Informe a origem.";
   if (!input.status) errors.status = "Informe o status.";
-  if (input.driveFolderUrl && !isValidUrl(input.driveFolderUrl)) {
-    errors.driveFolderUrl = "Use um link valido.";
-  }
-  if (input.siteUrl && !isValidUrl(input.siteUrl)) {
-    errors.siteUrl = "Use um link valido.";
-  }
   if (input.checklist.validado && !canManage) {
     errors.permissaoValidacao = "Somente administradores podem validar o agenciamento.";
   }
