@@ -45,6 +45,7 @@ function CorretorCardComponent({ corretor, onSelect }: CorretorCardProps) {
 
   const handlePointerMove = useCallback((event: PointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === "touch") return;
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width - 0.5;
     const y = (event.clientY - rect.top) / rect.height - 0.5;

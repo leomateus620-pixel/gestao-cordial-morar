@@ -97,6 +97,7 @@ type MetricCardData = {
 function Dashboard() {
   const [open, setOpen] = useState(false);
   const session = useSession();
+  const isAdminOwner = session?.perfil === "admin_owner";
   const {
     agency,
     rawAtendimentos,
@@ -120,8 +121,7 @@ function Dashboard() {
     dashboardSummary: equipeSummary,
     dashboardRanking: equipeRanking,
     dashboardChart: equipeChart,
-  } = useCorretores();
-  const isAdminOwner = session?.perfil === "admin_owner";
+  } = useCorretores({ skipDashboard: !isAdminOwner });
   const filterByAgency = <T extends { imobiliaria: "cordial" | "morar" | "ambas" }>(items: T[]) =>
     agency === "todas"
       ? items
@@ -323,7 +323,7 @@ function Dashboard() {
             subtitle="Atendimentos, contratos e conversão"
             heightClassName="h-64 lg:h-72"
           >
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart
                 data={equipeChart}
                 layout="vertical"

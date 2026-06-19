@@ -16,6 +16,7 @@ import type { CorretorFiltersState } from "@/types/corretor";
 type UseCorretoresOptions = {
   initialFilters?: Partial<CorretorFiltersState>;
   agencyOverride?: AgencyFilter;
+  skipDashboard?: boolean;
 };
 
 export function useCorretores(options: UseCorretoresOptions = {}) {
@@ -62,8 +63,11 @@ export function useCorretores(options: UseCorretoresOptions = {}) {
   );
 
   const dashboardCorretores = useMemo(
-    () => agencyCorretores.filter((corretor) => corretor.status === "ativo"),
-    [agencyCorretores],
+    () =>
+      options.skipDashboard
+        ? []
+        : agencyCorretores.filter((corretor) => corretor.status === "ativo"),
+    [agencyCorretores, options.skipDashboard],
   );
 
   const dashboardSummary = useMemo(

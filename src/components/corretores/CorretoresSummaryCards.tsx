@@ -88,7 +88,7 @@ export function CorretoresSummaryCards({ summary }: CorretoresSummaryCardsProps)
                 <Icon className="size-4" />
               </span>
             </div>
-            <p className="mt-2 truncate font-mono text-2xl font-bold leading-none tracking-tight text-foreground sm:text-3xl">
+            <p className="mt-2 truncate font-mono text-2xl font-bold leading-none tracking-tight text-foreground sm:text-[1.65rem] 2xl:text-3xl">
               {card.value}
             </p>
             <p className="mt-2 truncate text-[11px] font-medium text-foreground/52">

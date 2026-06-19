@@ -47,7 +47,7 @@ export function CorretorDetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex h-dvh w-full max-w-full flex-col overflow-hidden border-white/20 bg-[#f7f3ed]/95 p-0 text-foreground backdrop-blur-2xl sm:max-w-xl lg:max-w-2xl [&>button]:right-5 [&>button]:top-5"
+        className="flex h-dvh w-full max-w-full flex-col overflow-hidden border-white/20 bg-[#f7f3ed]/95 p-0 text-foreground backdrop-blur-2xl sm:max-w-xl lg:max-w-2xl [&>button]:right-5 [&>button]:top-5 [&>button]:z-20"
       >
         {corretor && (
           <>
@@ -85,7 +85,7 @@ export function CorretorDetailDrawer({
               </div>
             </SheetHeader>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <MiniStat label="Atend." value={corretor.atendimentosRecebidos} />
                 <MiniStat label="Fechados" value={corretor.contratosFechados} accent />

@@ -47,6 +47,7 @@ export function CorretoresFilters({
   onReset,
 }: CorretoresFiltersProps) {
   const selectedBroker = corretores.find((corretor) => corretor.nome === filters.busca);
+  const brokerSelectValue = selectedBroker ? selectedBroker.nome : "todos";
 
   return (
     <section className="premium-card p-3 sm:p-4">
@@ -139,7 +140,7 @@ export function CorretoresFilters({
         </Select>
 
         <Select
-          value={selectedBroker ? selectedBroker.nome : "todos"}
+          value={brokerSelectValue}
           onValueChange={(value) => onFiltersChange({ busca: value === "todos" ? "" : value })}
         >
           <SelectTrigger className="h-11 rounded-2xl border-white/[0.65] bg-white/[0.58]">

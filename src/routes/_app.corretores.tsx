@@ -147,7 +147,9 @@ function HeroPill({ label, value, accent }: { label: string; value: string; acce
       <p className="truncate text-[9px] font-bold uppercase tracking-[0.16em] text-white/50">
         {label}
       </p>
-      <p className="mt-1 truncate font-mono text-lg font-black text-white">{value}</p>
+      <p className="mt-1 truncate font-mono text-base font-black text-white sm:text-lg">
+        {value}
+      </p>
     </div>
   );
 }
