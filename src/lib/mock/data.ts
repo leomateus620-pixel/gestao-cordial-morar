@@ -5,6 +5,9 @@ import loftVilaMadalena from "@/assets/properties/loft-vila-madalena.jpg";
 import coberturaItaim from "@/assets/properties/cobertura-itaim.jpg";
 import casaVilaNova from "@/assets/properties/casa-vila-nova.jpg";
 import type { Client } from "@/types/client";
+import type { Corretor } from "@/types/corretor";
+
+export type { Corretor } from "@/types/corretor";
 
 export type AgencyId = "cordial" | "morar";
 
@@ -61,17 +64,6 @@ export type AtendimentoStatus =
   | "Perdido"
   | "Pausado";
 
-export type Corretor = {
-  id: string;
-  nome: string;
-  iniciais: string;
-  imobiliaria: AgencyId;
-  creci: string;
-  atendimentosMes: number;
-  contratosFechados: number;
-  comissaoMes: number;
-};
-
 export const corretoresSeed: Corretor[] = [
   {
     id: "c1",
@@ -79,9 +71,30 @@ export const corretoresSeed: Corretor[] = [
     iniciais: "ML",
     imobiliaria: "cordial",
     creci: "CRECI-RS 123456",
+    status: "ativo",
     atendimentosMes: 18,
+    atendimentosRecebidos: 18,
+    atendimentosEmAndamento: 7,
+    visitasRealizadas: 11,
+    propostasFeitas: 7,
     contratosFechados: 4,
+    vendasFechadas: 2,
+    alugueisFechados: 2,
+    agenciamentosFeitos: 7,
+    agenciamentosComPlaca: 4,
+    agenciamentosComFotos: 7,
+    agenciamentosNoSite: 5,
+    agenciamentosValidados: 4,
+    comissaoPrevista: 14600,
+    comissaoPaga: 9800,
     comissaoMes: 12400,
+    taxaConversao: 22,
+    mediaMensalContratos: 3.8,
+    ticketMedio: 3650,
+    performanceTrend: "estavel",
+    ultimoAtendimentoEm: "2026-06-18T16:30:00.000Z",
+    observacaoGestao:
+      "Carteira equilibrada entre venda e locação; bom ritmo de retorno pós-visita.",
   },
   {
     id: "c2",
@@ -89,9 +102,29 @@ export const corretoresSeed: Corretor[] = [
     iniciais: "PS",
     imobiliaria: "cordial",
     creci: "CRECI-RS 234567",
+    status: "ativo",
     atendimentosMes: 22,
+    atendimentosRecebidos: 22,
+    atendimentosEmAndamento: 8,
+    visitasRealizadas: 15,
+    propostasFeitas: 9,
     contratosFechados: 6,
+    vendasFechadas: 3,
+    alugueisFechados: 3,
+    agenciamentosFeitos: 9,
+    agenciamentosComPlaca: 6,
+    agenciamentosComFotos: 9,
+    agenciamentosNoSite: 7,
+    agenciamentosValidados: 5,
+    comissaoPrevista: 21400,
+    comissaoPaga: 15600,
     comissaoMes: 18900,
+    taxaConversao: 27,
+    mediaMensalContratos: 5.4,
+    ticketMedio: 3567,
+    performanceTrend: "alta",
+    ultimoAtendimentoEm: "2026-06-19T11:45:00.000Z",
+    observacaoGestao: "Melhor conversão do período e forte disciplina em propostas qualificadas.",
   },
   {
     id: "c3",
@@ -99,9 +132,30 @@ export const corretoresSeed: Corretor[] = [
     iniciais: "FA",
     imobiliaria: "morar",
     creci: "CRECI-RS 345678",
+    status: "ativo",
     atendimentosMes: 14,
+    atendimentosRecebidos: 14,
+    atendimentosEmAndamento: 6,
+    visitasRealizadas: 8,
+    propostasFeitas: 5,
     contratosFechados: 3,
+    vendasFechadas: 1,
+    alugueisFechados: 2,
+    agenciamentosFeitos: 8,
+    agenciamentosComPlaca: 4,
+    agenciamentosComFotos: 8,
+    agenciamentosNoSite: 6,
+    agenciamentosValidados: 3,
+    comissaoPrevista: 10750,
+    comissaoPaga: 7200,
     comissaoMes: 9200,
+    taxaConversao: 21,
+    mediaMensalContratos: 3.1,
+    ticketMedio: 3583,
+    performanceTrend: "estavel",
+    ultimoAtendimentoEm: "2026-06-17T14:20:00.000Z",
+    observacaoGestao:
+      "Boa constância em locações; próximo ganho está em acelerar cadastros no site.",
   },
   {
     id: "c4",
@@ -109,9 +163,60 @@ export const corretoresSeed: Corretor[] = [
     iniciais: "CR",
     imobiliaria: "morar",
     creci: "CRECI-RS 456789",
+    status: "ativo",
     atendimentosMes: 19,
+    atendimentosRecebidos: 19,
+    atendimentosEmAndamento: 9,
+    visitasRealizadas: 13,
+    propostasFeitas: 8,
     contratosFechados: 5,
+    vendasFechadas: 2,
+    alugueisFechados: 3,
+    agenciamentosFeitos: 6,
+    agenciamentosComPlaca: 3,
+    agenciamentosComFotos: 6,
+    agenciamentosNoSite: 5,
+    agenciamentosValidados: 4,
+    comissaoPrevista: 16800,
+    comissaoPaga: 11800,
     comissaoMes: 14800,
+    taxaConversao: 26,
+    mediaMensalContratos: 4.6,
+    ticketMedio: 3360,
+    performanceTrend: "alta",
+    ultimoAtendimentoEm: "2026-06-18T09:10:00.000Z",
+    observacaoGestao: "Destaque em visitas e bom equilíbrio entre contratos de venda e aluguel.",
+  },
+  {
+    id: "c5",
+    nome: "Rafael Duarte",
+    iniciais: "RD",
+    imobiliaria: "ambas",
+    creci: "CRECI-RS 567890",
+    status: "inativo",
+    atendimentosMes: 6,
+    atendimentosRecebidos: 6,
+    atendimentosEmAndamento: 1,
+    visitasRealizadas: 3,
+    propostasFeitas: 2,
+    contratosFechados: 1,
+    vendasFechadas: 0,
+    alugueisFechados: 1,
+    agenciamentosFeitos: 3,
+    agenciamentosComPlaca: 1,
+    agenciamentosComFotos: 2,
+    agenciamentosNoSite: 1,
+    agenciamentosValidados: 1,
+    comissaoPrevista: 4200,
+    comissaoPaga: 4200,
+    comissaoMes: 4200,
+    taxaConversao: 17,
+    mediaMensalContratos: 1.2,
+    ticketMedio: 4200,
+    performanceTrend: "queda",
+    ultimoAtendimentoEm: "2026-05-28T10:00:00.000Z",
+    observacaoGestao:
+      "Mantido no histórico para leitura gerencial; sem operação ativa neste período.",
   },
 ];
 

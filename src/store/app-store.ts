@@ -43,6 +43,7 @@ import {
   createAtendimentoRecord,
   normalizeAtendimento,
 } from "@/services/atendimentos";
+import { normalizeCorretores } from "@/services/corretores";
 import type { Atendimento, AtendimentoCreateInput } from "@/types/atendimento";
 import type { ClientCreateInput } from "@/types/client";
 import { normalizeAgendaEvent, toLegacyAgendaEvent } from "@/services/agenda";
@@ -83,17 +84,18 @@ type State = {
 };
 
 const id = () => Math.random().toString(36).slice(2, 10);
+const normalizedCorretoresSeed = normalizeCorretores(corretoresSeed);
 const normalizedAtendimentosSeed = atendimentosSeed.map((atendimento) =>
   normalizeAtendimento(atendimento, {
     clientes: clientesSeed,
-    corretores: corretoresSeed,
+    corretores: normalizedCorretoresSeed,
     imoveis: imoveisSeed,
   }),
 );
 const normalizedAgendaSeed = agendaSeed.map((event) =>
   normalizeAgendaEvent(event, {
     clientes: clientesSeed,
-    corretores: corretoresSeed,
+    corretores: normalizedCorretoresSeed,
     imoveis: imoveisSeed,
   }),
 );
@@ -104,7 +106,7 @@ export const useApp = create<State>()(
       agency: "todas",
       clientes: clientesSeed,
       imoveis: imoveisSeed,
-      corretores: corretoresSeed,
+      corretores: normalizedCorretoresSeed,
       atendimentos: normalizedAtendimentosSeed,
       contratos: contratosSeed,
       agenda: agendaSeed,
@@ -242,7 +244,9 @@ export const useApp = create<State>()(
         const clientes = (persistedState?.clientes ?? current.clientes).map((cliente) =>
           normalizeStoreClient(cliente),
         );
-        const corretores = persistedState?.corretores ?? current.corretores;
+        const corretores = normalizeCorretores(
+          ((persistedState?.corretores ?? current.corretores) as Corretor[]) ?? [],
+        );
         const imoveis = persistedState?.imoveis ?? current.imoveis;
         const rawAtendimentos =
           (persistedState as { atendimentos?: unknown[] } | undefined)?.atendimentos ??
