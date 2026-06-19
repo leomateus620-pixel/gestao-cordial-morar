@@ -28,6 +28,7 @@ import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
 import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
+import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
@@ -126,6 +127,11 @@ const AppAgendaRoute = AppAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
+  id: '/agenciamentos',
+  path: '/agenciamentos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
   id: '/$imovelId',
   path: '/$imovelId',
@@ -145,6 +151,7 @@ const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/agenciamentos': typeof AppAgenciamentosRoute
   '/agenda': typeof AppAgendaRoute
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/agenciamentos': typeof AppAgenciamentosRoute
   '/agenda': typeof AppAgendaRoute
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/agenciamentos': typeof AppAgenciamentosRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/alugueis': typeof AppAlugueisRoute
   '/_app/atendimentos': typeof AppAtendimentosRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/agenciamentos'
     | '/agenda'
     | '/alugueis'
     | '/atendimentos'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/agenciamentos'
     | '/agenda'
     | '/alugueis'
     | '/atendimentos'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/agenciamentos'
     | '/_app/agenda'
     | '/_app/alugueis'
     | '/_app/atendimentos'
@@ -426,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/agenciamentos': {
+      id: '/_app/agenciamentos'
+      path: '/agenciamentos'
+      fullPath: '/agenciamentos'
+      preLoaderRoute: typeof AppAgenciamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/imoveis/$imovelId': {
       id: '/_app/imoveis/$imovelId'
       path: '/$imovelId'
@@ -487,6 +506,7 @@ const AppImoveisRouteWithChildren = AppImoveisRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAgenciamentosRoute: typeof AppAgenciamentosRoute
   AppAgendaRoute: typeof AppAgendaRoute
   AppAlugueisRoute: typeof AppAlugueisRoute
   AppAtendimentosRoute: typeof AppAtendimentosRoute
@@ -507,6 +527,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAgenciamentosRoute: AppAgenciamentosRoute,
   AppAgendaRoute: AppAgendaRoute,
   AppAlugueisRoute: AppAlugueisRoute,
   AppAtendimentosRoute: AppAtendimentosRoute,

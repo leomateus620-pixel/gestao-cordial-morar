@@ -4,6 +4,7 @@ import {
   Building2,
   Cable,
   CalendarCheck2,
+  ClipboardCheck,
   FileText,
   FolderArchive,
   Home,
@@ -59,6 +60,13 @@ export const moduleItems: ModuleItem[] = [
     icon: Building2,
     module: "imoveis",
     primary: true,
+  },
+  {
+    to: "/agenciamentos",
+    label: "Agenciamentos",
+    desc: "Captacoes, placas e fotos",
+    icon: ClipboardCheck,
+    module: "agenciamentos",
   },
   {
     to: "/agenda",

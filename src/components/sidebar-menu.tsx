@@ -6,6 +6,7 @@ import {
   CalendarCheck2,
   ChevronDown,
   CircleDollarSign,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   Handshake,
@@ -26,6 +27,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getVisibleModules, type ModuleItem } from "@/components/shared/module-menu";
 import { useSession } from "@/lib/auth-mock";
+import { roleDefinitions } from "@/lib/mock/permissions";
 import { cn } from "@/lib/utils";
 
 export type NavigationChild = Pick<ModuleItem, "to" | "label" | "module" | "exact"> & {
@@ -91,6 +93,12 @@ const navigationEntries: NavigationEntry[] = [
         icon: ClipboardList,
         module: "imoveis",
       },
+      {
+        to: "/agenciamentos",
+        label: "Agenciamentos",
+        icon: ClipboardCheck,
+        module: "agenciamentos",
+      },
     ],
   },
   {
@@ -142,22 +150,29 @@ export function SidebarMenu({
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const session = useSession();
   const isDark = tone === "dark";
+  const sessionModules = useMemo(
+    () =>
+      session
+        ? Array.from(new Set([...session.modules, ...roleDefinitions[session.perfil].modules]))
+        : undefined,
+    [session],
+  );
   const visibleEntries = useMemo(
     () =>
       navigationEntries
         .map((entry) => {
           if (entry.type === "item") {
-            return getVisibleModules(session?.modules, [entry]).length > 0 ? entry : null;
+            return getVisibleModules(sessionModules, [entry]).length > 0 ? entry : null;
           }
 
           const children = getVisibleModules(
-            session?.modules,
+            sessionModules,
             entry.children as ModuleItem[],
           ) as NavigationChild[];
           return children.length > 0 ? { ...entry, children } : null;
         })
         .filter((entry): entry is NavigationEntry => entry !== null),
-    [session?.modules],
+    [sessionModules],
   );
   const activeEntry = visibleEntries.find((entry) =>
     entry.type === "item"

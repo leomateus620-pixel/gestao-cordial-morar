@@ -10,6 +10,10 @@ import {
   rankCorretores,
   type AgencyFilter,
 } from "@/services/corretores";
+import {
+  applyAgenciamentoStatsToCorretores,
+  normalizeAgenciamentos,
+} from "@/services/agenciamentos";
 import { useApp } from "@/store/app-store";
 import type { CorretorFiltersState } from "@/types/corretor";
 
@@ -20,9 +24,10 @@ type UseCorretoresOptions = {
 };
 
 export function useCorretores(options: UseCorretoresOptions = {}) {
-  const { rawCorretores, agency, setAgency } = useApp(
+  const { rawCorretores, rawAgenciamentos, agency, setAgency } = useApp(
     useShallow((state) => ({
       rawCorretores: state.corretores,
+      rawAgenciamentos: state.agenciamentos,
       agency: state.agency,
       setAgency: state.setAgency,
     })),
@@ -35,7 +40,19 @@ export function useCorretores(options: UseCorretoresOptions = {}) {
 
   const effectiveAgency = options.agencyOverride ?? agency;
 
-  const normalizedCorretores = useMemo(() => normalizeCorretores(rawCorretores), [rawCorretores]);
+  const normalizedAgenciamentos = useMemo(
+    () => normalizeAgenciamentos(rawAgenciamentos),
+    [rawAgenciamentos],
+  );
+
+  const normalizedCorretores = useMemo(
+    () =>
+      applyAgenciamentoStatsToCorretores(
+        normalizeCorretores(rawCorretores),
+        normalizedAgenciamentos,
+      ),
+    [normalizedAgenciamentos, rawCorretores],
+  );
 
   const agencyCorretores = useMemo(
     () => filterCorretoresByAgency(normalizedCorretores, effectiveAgency),

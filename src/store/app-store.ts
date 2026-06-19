@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   agendaSeed,
+  agenciamentosSeed,
   alugueisSeed,
   atendimentosSeed,
   campanhasMarketingSeed,
@@ -18,6 +19,7 @@ import {
   projecoesFinanceirasSeed,
   usuariosSistemaSeed,
   vendasSeed,
+  type Agenciamento,
   type AgencyId,
   type Aluguel,
   type CampanhaMarketing,
@@ -44,6 +46,13 @@ import {
   normalizeAtendimento,
 } from "@/services/atendimentos";
 import { normalizeCorretores } from "@/services/corretores";
+import {
+  createAgenciamentoRecord,
+  normalizeAgenciamentos,
+  updateAgenciamentoRecord,
+  validateAgenciamentoRecord,
+} from "@/services/agenciamentos";
+import type { AgenciamentoInput } from "@/types/agenciamento";
 import type { Atendimento, AtendimentoCreateInput } from "@/types/atendimento";
 import type { ClientCreateInput } from "@/types/client";
 import { normalizeAgendaEvent, toLegacyAgendaEvent } from "@/services/agenda";
@@ -55,6 +64,7 @@ type State = {
   agency: AgencyFilter;
   clientes: Cliente[];
   imoveis: Imovel[];
+  agenciamentos: Agenciamento[];
   corretores: Corretor[];
   atendimentos: Atendimento[];
   contratos: Contrato[];
@@ -75,6 +85,9 @@ type State = {
   setAgency: (a: AgencyFilter) => void;
   addCliente: (c: ClientCreateInput) => void;
   addImovel: (i: Omit<Imovel, "id">) => void;
+  addAgenciamento: (a: AgenciamentoInput) => string;
+  updateAgenciamento: (id: string, patch: Partial<AgenciamentoInput>) => void;
+  validateAgenciamento: (id: string, validator: { id: string; nome: string }) => void;
   addAtendimento: (a: AtendimentoCreateInput) => void;
   convertAtendimentoToCliente: (id: string) => string | undefined;
   addCompromisso: (c: Omit<Compromisso, "id">) => void;
@@ -85,6 +98,7 @@ type State = {
 
 const id = () => Math.random().toString(36).slice(2, 10);
 const normalizedCorretoresSeed = normalizeCorretores(corretoresSeed);
+const normalizedAgenciamentosSeed = normalizeAgenciamentos(agenciamentosSeed);
 const normalizedAtendimentosSeed = atendimentosSeed.map((atendimento) =>
   normalizeAtendimento(atendimento, {
     clientes: clientesSeed,
@@ -106,6 +120,7 @@ export const useApp = create<State>()(
       agency: "todas",
       clientes: clientesSeed,
       imoveis: imoveisSeed,
+      agenciamentos: normalizedAgenciamentosSeed,
       corretores: normalizedCorretoresSeed,
       atendimentos: normalizedAtendimentosSeed,
       contratos: contratosSeed,
@@ -129,6 +144,23 @@ export const useApp = create<State>()(
           clientes: [createStoreClientRecord(c), ...s.clientes],
         })),
       addImovel: (i) => set((s) => ({ imoveis: [{ ...i, id: id() }, ...s.imoveis] })),
+      addAgenciamento: (input) => {
+        const record = createAgenciamentoRecord(input);
+        set((s) => ({ agenciamentos: [record, ...s.agenciamentos] }));
+        return record.id;
+      },
+      updateAgenciamento: (agenciamentoId, patch) =>
+        set((s) => ({
+          agenciamentos: s.agenciamentos.map((item) =>
+            item.id === agenciamentoId ? updateAgenciamentoRecord(item, patch) : item,
+          ),
+        })),
+      validateAgenciamento: (agenciamentoId, validator) =>
+        set((s) => ({
+          agenciamentos: s.agenciamentos.map((item) =>
+            item.id === agenciamentoId ? validateAgenciamentoRecord(item, validator) : item,
+          ),
+        })),
       addAtendimento: (a) =>
         set((s) => ({
           atendimentos: [createAtendimentoRecord(a), ...s.atendimentos],
@@ -248,6 +280,10 @@ export const useApp = create<State>()(
           ((persistedState?.corretores ?? current.corretores) as Corretor[]) ?? [],
         );
         const imoveis = persistedState?.imoveis ?? current.imoveis;
+        const agenciamentos = normalizeAgenciamentos(
+          ((persistedState as { agenciamentos?: unknown[] } | undefined)?.agenciamentos ??
+            current.agenciamentos) as Agenciamento[],
+        );
         const rawAtendimentos =
           (persistedState as { atendimentos?: unknown[] } | undefined)?.atendimentos ??
           current.atendimentos;
@@ -262,6 +298,7 @@ export const useApp = create<State>()(
           clientes,
           corretores,
           imoveis,
+          agenciamentos,
           atendimentos: rawAtendimentos.map((atendimento) =>
             normalizeAtendimento(atendimento, { clientes, corretores, imoveis }),
           ),

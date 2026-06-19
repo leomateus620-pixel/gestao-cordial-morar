@@ -5,6 +5,7 @@ export type AppModule =
   | "clientes"
   | "atendimentos"
   | "imoveis"
+  | "agenciamentos"
   | "alugueis"
   | "vendas"
   | "agenda"
@@ -24,6 +25,9 @@ export type Permission =
   | "atendimentos:write"
   | "imoveis:read"
   | "imoveis:write"
+  | "agenciamentos:read"
+  | "agenciamentos:write"
+  | "agenciamentos:manage"
   | "alugueis:read"
   | "alugueis:write"
   | "vendas:read"
@@ -58,6 +62,7 @@ const allModules: AppModule[] = [
   "clientes",
   "atendimentos",
   "imoveis",
+  "agenciamentos",
   "alugueis",
   "vendas",
   "agenda",
@@ -78,6 +83,9 @@ const allPermissions: Permission[] = [
   "atendimentos:write",
   "imoveis:read",
   "imoveis:write",
+  "agenciamentos:read",
+  "agenciamentos:write",
+  "agenciamentos:manage",
   "alugueis:read",
   "alugueis:write",
   "vendas:read",
@@ -143,6 +151,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "atendimentos",
       "clientes",
       "imoveis",
+      "agenciamentos",
       "agenda",
       "vendas",
       "alugueis",
@@ -153,6 +162,8 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "atendimentos:read",
       "atendimentos:write",
       "imoveis:read",
+      "agenciamentos:read",
+      "agenciamentos:write",
       "agenda:read",
       "agenda:write",
       "vendas:read",

@@ -9,6 +9,7 @@ import { useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { getVisibleModules, primaryModuleItems } from "./shared/module-menu";
+import { roleDefinitions } from "@/lib/mock/permissions";
 
 export function AppShell() {
   const session = useSession();
@@ -18,6 +19,13 @@ export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+  const sessionModules = useMemo(
+    () =>
+      session
+        ? Array.from(new Set([...session.modules, ...roleDefinitions[session.perfil].modules]))
+        : undefined,
+    [session],
+  );
 
   useEffect(() => {
     if (session === null) navigate({ to: "/login" });
@@ -43,8 +51,8 @@ export function AppShell() {
   }, []);
 
   const bottomNav = useMemo(
-    () => (session ? getVisibleModules(session.modules, primaryModuleItems) : []),
-    [session],
+    () => (session ? getVisibleModules(sessionModules, primaryModuleItems) : []),
+    [session, sessionModules],
   );
 
   if (!session) return null;

@@ -86,7 +86,14 @@ function readStorage(): MockUser | null {
   const raw = window.localStorage.getItem(KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as MockUser;
+    const stored = JSON.parse(raw) as MockUser;
+    const role = roleDefinitions[stored.perfil];
+    return {
+      ...stored,
+      perfilLabel: role.label,
+      modules: role.modules,
+      permissions: role.permissions,
+    };
   } catch {
     return null;
   }
