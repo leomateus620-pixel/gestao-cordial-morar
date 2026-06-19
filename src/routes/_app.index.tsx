@@ -323,7 +323,7 @@ function Dashboard() {
             subtitle="Atendimentos, contratos e conversão"
             heightClassName="h-64 lg:h-72"
           >
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart
                 data={equipeChart}
                 layout="vertical"
