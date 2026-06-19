@@ -1,113 +1,59 @@
-# Auditoria mobile — Gestão Cordial/Morar
 
-Foco: deixar o mobile (≈390px) muito mais fluido em navegação, scroll, cliques, modais e filtros, **sem alterar o layout desktop, identidade visual premium, regras de negócio ou dados mock**.
+## Resultado da auditoria do menu Corretores
 
-## Gargalos identificados na auditoria
+A implementação está completa e coerente com o escopo:
 
-1. **Background animado pesado em todas as rotas** (`src/components/mesh-background.tsx`)
-   - 3 blobs com `blur(110–130px)` em escala 70–80vw, animando `transform/scale` 22s em loop infinito → repaint contínuo de área enorme no mobile. Custo gigante de composição em GPUs móveis.
+- Rota `/corretores` com guard `admin_owner` + `corretores:read` e fallback "Acesso restrito".
+- Permissões: módulo `corretores` exclusivo do `admin_owner` (sidebar e roteamento já restringem corretor, secretária e financeiro).
+- `useCorretores` centraliza store, normalização, filtros, ranking, summary e dados para o dashboard, com `useMemo` em todas as derivações.
+- Service com normalização defensiva (fallback para `LegacyCorretor`), filtros, ranking, summary, chart e cálculo de checklist.
+- Tela com hero gradient + 6 KPIs + filtros + ranking compacto (Top 3 + destaques) + grid de cards 3D + drawer com 4 abas (Desempenho, Agenciamentos, Comissões, Histórico).
+- Dashboard tem `TeamPerformanceCard` e gráfico admin-only com link "Ver corretores".
 
-2. **Backdrop-filter em excesso** (`src/styles.css`)
-   - `glass-panel`, `glass-panel-strong`, `liquid-panel`, `premium-card`, `sidebar-glass`, `bottom-nav-glass` todos com `backdrop-filter: blur(18–26px) saturate()`. Cards de cliente/atendimento/agenda usam `glass-panel` em **cada item da lista** → cada card faz blur de área atrás dele a cada frame de scroll.
-   - Headers mobile e desktop adicionam `backdrop-blur-xl backdrop-saturate-150` ao rolar (`app-shell.tsx`).
+Restam ajustes finos, sem reescrever nada.
 
-3. **Listas sem memoização e sem `React.memo`** (`ClientList`, `AgendaTimeline`, `AtendimentoList`)
-   - Cada filtro/busca/digitação re-renderiza todos os cards. `ClientCard`, `AtendimentoCard`, `AgendaEventCard` são pesados (≥160 linhas, vários `Badge`s, ícones lucide, classes utilitárias longas).
+## Bugs e polimento a corrigir
 
-4. **Modais sempre montados** (`ClientFormModal` 628 linhas, `AtendimentoFormModal` 675, `AgendaFormModal` 1120)
-   - Renderizados na árvore mesmo com `open=false`. Custo de mount + listeners de form state pesa, especialmente o de agenda (1120 linhas).
+1. **Performance no Dashboard para perfis não-admin** — `_app.index.tsx` chama `useCorretores()` sempre, calculando ranking/summary/chart mesmo quando `isAdminOwner` é falso. Ajuste: tornar essas derivações `dashboard*` lazy (calcular só quando necessário) — solução mínima é renomear o hook para aceitar `{ skipDashboard?: boolean }` ou condicionar no consumidor via `useMemo` baseado em `isAdminOwner`. Manter API atual; só evitar trabalho extra.
 
-5. **Animações premium 3D em hover ativas no mobile**
-   - `.client-create-card`, `.atendimento-create-card`, `.agenda-create-card` declaram `transform-style: preserve-3d` + `perspective(900–1000px)`. O bloco `@media (hover: none)` só zera o hover, mas o `preserve-3d` permanece — força camada de composição 3D em devices touch. Animações de modal usam `border-radius` animado, que é custoso.
+2. **`CorretoresFilters` — input de busca dessincroniza com o Select de corretor** — digitar no input livre coloca um valor parcial em `filters.busca`, e o Select cai para "todos" (porque não encontra match exato). Ajuste mínimo: separar conceitos — input livre escreve em `filters.busca`; quando usuário escolhe no Select, também grava em `filters.busca` (já faz), mas ao limpar o input não voltar para "todos" com flicker. Solução: usar `selectedBroker?.nome ?? ""` como valor controlado e adicionar `placeholder` "Todos os corretores" no trigger quando vazio.
 
-6. **Scroll handler sem throttling no AppShell** — `window.scroll` dispara setState em todo scroll → re-render do header e dos botões/Link de avatar com classes condicionais.
+3. **`CorretorCard` — tilt 3D no mobile** — `handlePointerMove` já ignora `touch`, mas `transformStyle: preserve-3d` + `perspective` permanecem ativos. No mobile (≤768px) reduzir para sem tilt: aplicar `@media (max-width: 768px)` na regra de transform via classe utilitária, mantendo só hover `scale` em desktop. Reduz custo de composição em listas longas.
 
-7. **Sidebar mobile (Sheet) mantém-se na árvore com `SidebarMenu` interno** — `SidebarMenu` recomputa `visibleEntries`/`activeGroup` a cada render, e o Sheet do Radix mantém montado se controlado dessa forma.
+4. **Hero da rota — pílulas no mobile** — `grid grid-cols-3` ocupa linha inteira; em telas estreitas (390px), o valor `45%` quebra. Aplicar `min-w-0` + `text-base` no mobile e `sm:text-lg`. Pequeno ajuste tipográfico.
 
-8. **Bottom nav re-renderiza com cada mudança de pathname** chamando `getVisibleModules` sem memoização.
+5. **`CorretoresSummaryCards` — `xl:grid-cols-6`** — em 1280–1366px os 6 cards ficam com largura 200px e o valor `R$ 19,5k` se aproxima do limite. Mudar fallback para `lg:grid-cols-3 xl:grid-cols-6 2xl:grid-cols-6` está OK; reduzir `text-3xl` para `text-2xl` no xl mantém leitura sem corte.
 
-9. **`smooth scroll` global** (`html { scroll-behavior: smooth }`) deixa navegação entre rotas/âncoras lenta em mobile.
+6. **`CorretorDetailDrawer` — close button** — Já posicionado com `[&>button]:right-5 [&>button]:top-5`. Adicionar `z-10` para garantir cliques acima do header em algumas resoluções.
 
-10. **Dashboard (`_app.index.tsx` 1162 linhas)** importa Recharts e múltiplos cards pesados no bundle inicial — atrasa hidratação no mobile.
+7. **`CorretorDetailDrawer` — drawer no mobile** — `side="right"` em `w-full max-w-full` no mobile vira full-screen — ok, mas a animação lateral é menos natural que bottom-sheet. Como já está no escopo "bottom-sheet ou full-screen", manter full-screen e apenas garantir `h-dvh` (já está) e `overscroll-behavior: contain` no container scrollável para evitar puxar a página atrás.
 
-11. **Filtros (`ClientFilters` 216, `AtendimentoFilters` 267, `AgendaFilters` 262)** com muitos chips sempre visíveis no mobile e re-render do pai a cada toggle (passados por callback inline).
+8. **Console warnings de recharts** (`width(-1) and height(-1)`) — vêm de ResponsiveContainer renderizando antes do layout estabilizar. No `ChartCard "Performance da equipe"` adicionar `minWidth={0}` no container e garantir que o pai tenha `min-w-0`. Bug pré-existente do Dashboard que toca a equipe; aproveitar para mitigar.
 
-## Mudanças propostas (somente otimização)
+9. **Dados mock** — confirmar que `corretoresSeed` tem ao menos 4 corretores (Marcos, Paula, Felipe, Camila), distribuídos entre Cordial/Morar/Ambas, com 1 inativo. Se não tiver, completar em `src/lib/mock/data.ts` mantendo o formato `LegacyCorretor` (normalização preenche o resto).
 
-### A. CSS global — `src/styles.css`
-- Adicionar bloco `@media (max-width: 768px)` que:
-  - Reduz blur de `glass-panel`, `glass-panel-strong`, `liquid-panel`, `premium-card`, `bottom-nav-glass`, `sidebar-glass` para `blur(10px) saturate(120%)` (ou remove em listas).
-  - Remove `transform-style: preserve-3d` e troca `perspective(...)` por `none` em `.client-create-card`, `.atendimento-create-card`, `.agenda-create-card`.
-  - Reduz duração das animações de modal `client-/atendimento-/agenda-form-modal` para ≤200ms e remove animação de `border-radius`.
-  - Aplica `scroll-behavior: auto` no html para mobile.
-  - Adiciona `touch-action: manipulation` em botões/links principais via uma classe utilitária aplicada nos componentes-chave.
-- Pausa `animate-mesh` em mobile via `@media (max-width: 768px) { .animate-mesh { animation: none; } }`.
+10. **Validação rápida** — após as edições, rodar:
+    - `bunx tsc --noEmit` (verificação de tipos local) — opcional, build do harness cobre.
+    - Navegação manual via Playwright a `/corretores` em viewport 390 e 1366; abrir drawer; trocar filtros; checar console.
 
-### B. MeshBackground — `src/components/mesh-background.tsx`
-- No mobile, renderizar apenas o gradiente base (sem os 3 blobs animados). Detectar via media query CSS (classes `hidden md:block` nos blobs). Mantém visual idêntico no desktop.
+## Não fazer
 
-### C. AppShell — `src/components/app-shell.tsx`
-- Memorizar `bottomNav` com `useMemo`.
-- Throttle do scroll: usar `requestAnimationFrame` + early-return se valor não mudou.
-- Render condicional do `<SheetContent>` (já é, mas garantir `forceMount` desligado) e desmontar `SidebarMenu` quando `mobileMenuOpen` for false (renderizar children apenas dentro de `{mobileMenuOpen && ...}` na prop `children` do Sheet — Radix Sheet já desmonta por padrão; só remover dependências caras).
-- Reduzir blur do header mobile rolado para `backdrop-blur-md`.
-- Adicionar `touch-action: manipulation` nos botões do header e bottom nav.
+- Não introduzir banco real / Supabase / APIs externas.
+- Não tocar em Agenciamentos.
+- Não refatorar arquitetura nem alterar identidade visual.
+- Não mexer em outras rotas além dos ajustes mínimos de performance no Dashboard.
 
-### D. Cards de lista — memoizar
-- `React.memo` em `ClientCard`, `AtendimentoCard`, `AgendaEventCard`.
-- `ClientList`, `AgendaTimeline`, lista de atendimentos: extrair `Link`+card como componente memoizado; passar `client`/`event` como prop estável.
-- Hooks `useClients`, `useAgenda`, `useAtendimentos`: garantir que `filteredX`/`stats` venham de `useMemo` com dependências corretas (verificar e ajustar onde faltar).
+## Arquivos a editar
 
-### E. Modais — montar sob demanda
-- Em `_app.clientes.tsx`, `_app.agenda.tsx`, `_app.atendimentos.tsx`: renderizar `<XFormModal />` apenas quando `open` (ou via `{open && <Modal .../>}`) para evitar carregar/montar formulário pesado em cada navegação para a rota.
-- Lazy-load os modais grandes com `React.lazy` + `Suspense` (especialmente `AgendaFormModal` 1120 linhas).
+- `src/routes/_app.index.tsx` (lazy dashboard derivations, minWidth no chart)
+- `src/routes/_app.corretores.tsx` (hero pills polish)
+- `src/components/corretores/CorretoresFilters.tsx` (sincronia busca/select)
+- `src/components/corretores/CorretoresSummaryCards.tsx` (tipografia xl)
+- `src/components/corretores/CorretorCard.tsx` (desativar tilt no mobile)
+- `src/components/corretores/CorretorDetailDrawer.tsx` (z-index do close + overscroll)
+- `src/hooks/useCorretores.ts` (opção `skipDashboard`)
+- `src/lib/mock/data.ts` (apenas se faltar corretor do seed)
 
-### F. Filtros mobile
-- Em `ClientFilters`, `AtendimentoFilters`, `AgendaFilters`: no mobile, manter visíveis somente busca + chip de status principal; demais filtros entram em um `<Sheet>` "Mais filtros". Já existe `filter-sheet.tsx` reutilizável.
-- `useCallback` nos handlers de toggle para que `React.memo` nos componentes filhos surta efeito.
+## Checklist final a reportar após implementar
 
-### G. Bottom nav
-- Memoizar `bottomNav` items e a função de `active` por item. Substituir `pathname.startsWith` por checagem memoizada.
-
-### H. Dashboard (`_app.index.tsx`)
-- Lazy-load das seções pesadas com gráficos (Recharts) usando `React.lazy` + `Suspense` com skeleton leve. Não alterar conteúdo/layout — apenas split.
-
-### I. Scroll containers
-- Auditar e remover `overflow-y` aninhado dentro do `<main>` em rotas mobile. Garantir que apenas o body/main role.
-- Trocar `min-h-screen` por `min-h-dvh` no container principal de `AppShell` para evitar pulo com barra de URL do iOS.
-
-## Não será alterado
-
-- Identidade visual, paletas, tipografia, animações desktop, layout dos cards.
-- Lógica de Clientes/Atendimentos/Agenda, store Zustand (apenas leitura/escrita preservadas), mocks, integrações.
-- Estrutura de rotas, sidebar desktop, formulários, regras de permissão.
-
-## Arquivos previstos para edição
-
-```
-src/styles.css
-src/components/mesh-background.tsx
-src/components/app-shell.tsx
-src/components/sidebar-menu.tsx              (memoização leve)
-src/components/clients/ClientCard.tsx        (React.memo wrapper)
-src/components/clients/ClientList.tsx
-src/components/clients/ClientFilters.tsx     (mobile: agrupar em sheet)
-src/components/atendimentos/AtendimentoCard.tsx
-src/components/atendimentos/AtendimentoFilters.tsx
-src/components/agenda/AgendaEventCard.tsx
-src/components/agenda/AgendaTimeline.tsx
-src/components/agenda/AgendaFilters.tsx
-src/routes/_app.clientes.tsx                 (modal sob demanda)
-src/routes/_app.atendimentos.tsx             (modal sob demanda)
-src/routes/_app.agenda.tsx                   (modal sob demanda + lazy)
-src/routes/_app.index.tsx                    (lazy de seções com Recharts)
-src/hooks/useClients.ts | useAgenda.ts | useAtendimentos.ts  (garantir useMemo)
-```
-
-## Validação final
-
-- Build passa, sem novos erros TS/ESLint.
-- Preview mobile 390px: navegação, scroll, abrir/fechar drawer, bottom nav, abrir/fechar modais de Novo Cliente/Atendimento/Compromisso, filtros — todos com resposta visível mais rápida.
-- Desktop ≥1280px: header, sidebar expandida/recolhida, cards e modais permanecem com efeitos premium e 3D originais.
-- Console sem warnings novos.
-- Relatório final listando: gargalos encontrados, arquivos alterados, otimizações aplicadas, estado do desktop e do mobile.
+build, rota `/corretores`, guard admin-only, filtros isolados/combinados, ranking, cards, drawer, comissões previstas/pagas, seção do Dashboard, link "Ver corretores", desktop 1366px, mobile 390px, console sem warnings novos.
