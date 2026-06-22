@@ -1,13 +1,13 @@
 import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/lib/auth-mock";
 import {
-  agendaMatchesSearch,
-  canEditAgendaEvent,
-  createAgendaEvent,
-  normalizeAgendaEvent,
-  updateAgendaEvent,
-} from "@/services/agenda";
-import { useApp } from "@/store/app-store";
+  listAgendaEvents,
+  upsertAgendaEvent,
+  softDeleteAgendaEvent,
+  completeAgendaEvent,
+} from "@/lib/agenda/agenda.functions";
+import { agendaMatchesSearch, canEditAgendaEvent } from "@/services/agenda";
 import type {
   AgendaEvent,
   AgendaEventInput,
@@ -16,6 +16,9 @@ import type {
   AgendaStatus,
   AgendaTipo,
 } from "@/types/agenda";
+
+
+
 
 export type AgendaPeriod = "hoje" | "sete_dias" | "mes" | "todos" | "personalizado";
 
@@ -45,56 +48,75 @@ export const defaultAgendaFilters: AgendaFilters = {
   dataFim: "",
 };
 
+export const AGENDA_QUERY_KEY = ["agenda", "events"] as const;
+
 export function useAgenda(query: string, filters: AgendaFilters) {
   const user = useSession();
-  const agency = useApp((state) => state.agency);
-  const rawEvents = useApp((state) => state.agendaEvents);
-  const clientes = useApp((state) => state.clientes);
-  const corretores = useApp((state) => state.corretores);
-  const imoveis = useApp((state) => state.imoveis);
-  const upsertAgendaEvent = useApp((state) => state.upsertAgendaEvent);
+  const qc = useQueryClient();
 
-  const events = useMemo(
-    () =>
-      rawEvents
-        .map((event) => normalizeAgendaEvent(event, { clientes, corretores, imoveis }))
-        .filter(
-          (event) =>
-            agency === "todas" || event.imobiliaria === agency || event.imobiliaria === "ambas",
-        ),
-    [agency, clientes, corretores, imoveis, rawEvents],
-  );
+  const eventsQuery = useQuery({
+    queryKey: AGENDA_QUERY_KEY,
+    queryFn: () => listAgendaEvents(),
+    enabled: Boolean(user),
+    staleTime: 15_000,
+  });
+
+  const events = eventsQuery.data ?? [];
 
   const filteredEvents = useMemo(
     () =>
       events
         .filter((event) => agendaMatchesSearch(event, query))
         .filter((event) => matchesFilters(event, filters))
-        .sort((left, right) => left.inicio.localeCompare(right.inicio)),
+        .sort((a, b) => a.inicio.localeCompare(b.inicio)),
     [events, filters, query],
   );
 
   const stats = useMemo(() => getAgendaStats(events), [events]);
 
-  function createEvent(input: AgendaEventInput) {
-    const event = createAgendaEvent(input, user);
-    upsertAgendaEvent(event);
-    return event;
-  }
+  const invalidate = () => qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY });
 
-  function editEvent(current: AgendaEvent, input: AgendaEventInput) {
+  const upsert = useMutation({
+    mutationFn: (payload: { id?: string; input: AgendaEventInput }) =>
+      upsertAgendaEvent({ data: payload }),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => softDeleteAgendaEvent({ data: { id } }),
+    onSuccess: invalidate,
+  });
+  const complete = useMutation({
+    mutationFn: (id: string) => completeAgendaEvent({ data: { id } }),
+    onSuccess: invalidate,
+  });
+
+  async function createEvent(input: AgendaEventInput) {
+    return upsert.mutateAsync({ input });
+  }
+  async function editEvent(current: AgendaEvent, input: AgendaEventInput) {
     if (!canEditAgendaEvent(current, user)) return undefined;
-    const event = updateAgendaEvent(current, input, user);
-    upsertAgendaEvent(event);
-    return event;
+    return upsert.mutateAsync({ id: current.id, input });
+  }
+  async function deleteEvent(id: string) {
+    return remove.mutateAsync(id);
+  }
+  async function completeEvent(id: string) {
+    return complete.mutateAsync(id);
   }
 
   return {
     events,
     filteredEvents,
     stats,
+    isLoading: eventsQuery.isLoading,
+    isError: eventsQuery.isError,
+    error: eventsQuery.error as Error | null,
+    refetch: () => eventsQuery.refetch(),
+    isSaving: upsert.isPending,
     createEvent,
     editEvent,
+    deleteEvent,
+    completeEvent,
     canEdit: (event: AgendaEvent) => canEditAgendaEvent(event, user),
   };
 }

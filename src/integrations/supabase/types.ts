@@ -14,6 +14,213 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenda_event_checklist: {
+        Row: {
+          created_at: string
+          done: boolean
+          event_id: string
+          id: string
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          event_id: string
+          id?: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          event_id?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_checklist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agenda_event_participants: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          nome: string
+          papel: Database["public"]["Enums"]["agenda_participant_papel"]
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          nome: string
+          papel?: Database["public"]["Enums"]["agenda_participant_papel"]
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          nome?: string
+          papel?: Database["public"]["Enums"]["agenda_participant_papel"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agenda_event_reminders: {
+        Row: {
+          antecedencia_min: number
+          ativo: boolean
+          canal_futuro: boolean
+          created_at: string
+          event_id: string
+          id: string
+          tipo: Database["public"]["Enums"]["agenda_reminder_tipo"]
+        }
+        Insert: {
+          antecedencia_min?: number
+          ativo?: boolean
+          canal_futuro?: boolean
+          created_at?: string
+          event_id: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["agenda_reminder_tipo"]
+        }
+        Update: {
+          antecedencia_min?: number
+          ativo?: boolean
+          canal_futuro?: boolean
+          created_at?: string
+          event_id?: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["agenda_reminder_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agenda_events: {
+        Row: {
+          atendimento_id: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          concluido_em: string | null
+          created_at: string
+          created_by: string
+          criado_por_nome: string | null
+          deleted_at: string | null
+          descricao: string | null
+          dia_inteiro: boolean
+          duracao_min: number | null
+          fim: string | null
+          google_calendar_sync_status: string
+          id: string
+          imobiliaria: Database["public"]["Enums"]["agenda_imobiliaria"]
+          imovel_descricao: string | null
+          imovel_id: string | null
+          inicio: string
+          local: string | null
+          observacoes: string | null
+          owner_user_id: string | null
+          prioridade: Database["public"]["Enums"]["agenda_prioridade"]
+          repeticao: string
+          responsavel_nome: string | null
+          status: Database["public"]["Enums"]["agenda_status"]
+          tipo: Database["public"]["Enums"]["agenda_tipo"]
+          titulo: string
+          updated_at: string
+          video_call_url: string | null
+        }
+        Insert: {
+          atendimento_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          concluido_em?: string | null
+          created_at?: string
+          created_by: string
+          criado_por_nome?: string | null
+          deleted_at?: string | null
+          descricao?: string | null
+          dia_inteiro?: boolean
+          duracao_min?: number | null
+          fim?: string | null
+          google_calendar_sync_status?: string
+          id?: string
+          imobiliaria?: Database["public"]["Enums"]["agenda_imobiliaria"]
+          imovel_descricao?: string | null
+          imovel_id?: string | null
+          inicio: string
+          local?: string | null
+          observacoes?: string | null
+          owner_user_id?: string | null
+          prioridade?: Database["public"]["Enums"]["agenda_prioridade"]
+          repeticao?: string
+          responsavel_nome?: string | null
+          status?: Database["public"]["Enums"]["agenda_status"]
+          tipo?: Database["public"]["Enums"]["agenda_tipo"]
+          titulo: string
+          updated_at?: string
+          video_call_url?: string | null
+        }
+        Update: {
+          atendimento_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          concluido_em?: string | null
+          created_at?: string
+          created_by?: string
+          criado_por_nome?: string | null
+          deleted_at?: string | null
+          descricao?: string | null
+          dia_inteiro?: boolean
+          duracao_min?: number | null
+          fim?: string | null
+          google_calendar_sync_status?: string
+          id?: string
+          imobiliaria?: Database["public"]["Enums"]["agenda_imobiliaria"]
+          imovel_descricao?: string | null
+          imovel_id?: string | null
+          inicio?: string
+          local?: string | null
+          observacoes?: string | null
+          owner_user_id?: string | null
+          prioridade?: Database["public"]["Enums"]["agenda_prioridade"]
+          repeticao?: string
+          responsavel_nome?: string | null
+          status?: Database["public"]["Enums"]["agenda_status"]
+          tipo?: Database["public"]["Enums"]["agenda_tipo"]
+          titulo?: string
+          updated_at?: string
+          video_call_url?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           cargo: string | null
@@ -70,6 +277,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
+      agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -79,6 +288,28 @@ export type Database = {
       }
     }
     Enums: {
+      agenda_imobiliaria: "cordial" | "morar" | "ambas"
+      agenda_participant_papel: "responsavel" | "participante" | "acompanhante"
+      agenda_prioridade: "baixa" | "media" | "alta" | "urgente"
+      agenda_reminder_tipo: "interno" | "email" | "whatsapp" | "google_calendar"
+      agenda_status:
+        | "agendado"
+        | "confirmado"
+        | "em_andamento"
+        | "concluido"
+        | "cancelado"
+        | "reagendado"
+      agenda_tipo:
+        | "visita"
+        | "fotos"
+        | "video"
+        | "assinatura"
+        | "reuniao"
+        | "retorno"
+        | "vistoria"
+        | "captacao"
+        | "interno"
+        | "outro"
       app_role: "admin" | "secretaria" | "corretor" | "financeiro"
     }
     CompositeTypes: {
@@ -207,6 +438,30 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agenda_imobiliaria: ["cordial", "morar", "ambas"],
+      agenda_participant_papel: ["responsavel", "participante", "acompanhante"],
+      agenda_prioridade: ["baixa", "media", "alta", "urgente"],
+      agenda_reminder_tipo: ["interno", "email", "whatsapp", "google_calendar"],
+      agenda_status: [
+        "agendado",
+        "confirmado",
+        "em_andamento",
+        "concluido",
+        "cancelado",
+        "reagendado",
+      ],
+      agenda_tipo: [
+        "visita",
+        "fotos",
+        "video",
+        "assinatura",
+        "reuniao",
+        "retorno",
+        "vistoria",
+        "captacao",
+        "interno",
+        "outro",
+      ],
       app_role: ["admin", "secretaria", "corretor", "financeiro"],
     },
   },
