@@ -29,8 +29,8 @@ export function AppShell() {
   );
 
   useEffect(() => {
-    if (session === null) navigate({ to: "/login" });
-  }, [session, navigate]);
+    if (authReady && session === null) navigate({ to: "/login" });
+  }, [authReady, session, navigate]);
 
   useEffect(() => {
     let ticking = false;
