@@ -160,7 +160,8 @@ export async function login(
   }
   const session = await loadSession(data.user.id);
   current = session;
-  listeners.forEach((l) => l(current));
+  ready = true;
+  notify();
   return { user: session, error: null };
 }
 
