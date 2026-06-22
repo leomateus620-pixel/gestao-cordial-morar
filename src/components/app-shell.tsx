@@ -5,7 +5,7 @@ import { MeshBackground } from "./mesh-background";
 import { AgencySwitcher } from "./agency-switcher";
 import { SidebarMenu } from "./sidebar-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useSession } from "@/lib/auth-mock";
+import { useAuthReady, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { getVisibleModules, primaryModuleItems } from "./shared/module-menu";
@@ -13,6 +13,7 @@ import { roleDefinitions } from "@/lib/mock/permissions";
 
 export function AppShell() {
   const session = useSession();
+  const authReady = useAuthReady();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -28,8 +29,8 @@ export function AppShell() {
   );
 
   useEffect(() => {
-    if (session === null) navigate({ to: "/login" });
-  }, [session, navigate]);
+    if (authReady && session === null) navigate({ to: "/login" });
+  }, [authReady, session, navigate]);
 
   useEffect(() => {
     let ticking = false;

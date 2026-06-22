@@ -1,4 +1,9 @@
-import { useSyncExternalStore } from "react";
+// Compatibility shim: keeps the original API surface (useSession, login, logout, mockUsers, MockUser)
+// but reads from real Lovable Cloud auth (Supabase). The "Mock" naming is kept only to avoid
+// touching every existing import site; nothing here is mocked anymore.
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   roleDefinitions,
   type AppModule,
@@ -17,135 +22,179 @@ export type MockUser = {
   permissions: Permission[];
 };
 
-type MockUserWithPassword = Omit<MockUser, "perfilLabel" | "modules" | "permissions"> & {
-  senha: string;
+// Legacy export — no longer carries demo accounts. Kept as empty so any
+// `Object.values(mockUsers)` call still compiles and yields a safe empty list.
+export const mockUsers: Record<string, MockUser> = {};
+
+type ProfileRow = {
+  id: string;
+  nome: string;
+  email: string;
+  cargo: string | null;
+  iniciais: string | null;
 };
 
-const withProfile = (
-  user: MockUserWithPassword,
-): MockUserWithPassword & Pick<MockUser, "perfilLabel" | "modules" | "permissions"> => ({
-  ...user,
-  perfilLabel: roleDefinitions[user.perfil].label,
-  modules: roleDefinitions[user.perfil].modules,
-  permissions: roleDefinitions[user.perfil].permissions,
-});
+function pickHighestRole(roles: UserProfile[]): UserProfile {
+  const order: UserProfile[] = ["admin_owner", "financeiro_admin", "secretaria", "corretor"];
+  for (const r of order) if (roles.includes(r)) return r;
+  return "corretor";
+}
 
-export const mockUsers: Record<
-  string,
-  MockUserWithPassword & Pick<MockUser, "perfilLabel" | "modules" | "permissions">
-> = {
-  ricardo: withProfile({
-    id: "ricardo",
-    nome: "Ricardo",
-    iniciais: "RC",
-    cargo: "Sócio-diretor",
-    perfil: "admin_owner",
-    senha: "cordial",
-  }),
-  bruna: withProfile({
-    id: "bruna",
-    nome: "Bruna",
-    iniciais: "BR",
-    cargo: "Sócia-diretora",
-    perfil: "admin_owner",
-    senha: "cordial",
-  }),
-  clara: withProfile({
-    id: "clara",
-    nome: "Clara",
-    iniciais: "CL",
-    cargo: "Secretária",
-    perfil: "secretaria",
-    senha: "cordial",
-  }),
-  marcos: withProfile({
-    id: "marcos",
-    nome: "Marcos",
-    iniciais: "ML",
-    cargo: "Corretor",
-    perfil: "corretor",
-    senha: "cordial",
-  }),
-  daniela: withProfile({
-    id: "daniela",
-    nome: "Daniela",
-    iniciais: "DA",
-    cargo: "Financeiro/Administrativo",
-    perfil: "financeiro_admin",
-    senha: "cordial",
-  }),
-};
-
-const KEY = "gc.session";
-const listeners = new Set<() => void>();
-let cached: MockUser | null = null;
-let hydrated = false;
-
-function readStorage(): MockUser | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(KEY);
-  if (!raw) return null;
-  try {
-    const stored = JSON.parse(raw) as MockUser;
-    const role = roleDefinitions[stored.perfil];
-    return {
-      ...stored,
-      perfilLabel: role.label,
-      modules: role.modules,
-      permissions: role.permissions,
-    };
-  } catch {
-    return null;
+// Map DB enum (app_role) -> existing UserProfile keys used by permissions.
+function mapDbRole(role: string): UserProfile {
+  switch (role) {
+    case "admin":
+      return "admin_owner";
+    case "financeiro":
+      return "financeiro_admin";
+    case "secretaria":
+      return "secretaria";
+    case "corretor":
+    default:
+      return "corretor";
   }
 }
 
-function emit() {
-  cached = readStorage();
+function buildSession(profile: ProfileRow, perfil: UserProfile): MockUser {
+  const role = roleDefinitions[perfil];
+  return {
+    id: profile.id,
+    nome: profile.nome,
+    iniciais: (profile.iniciais ?? profile.nome.slice(0, 2)).toUpperCase(),
+    cargo: profile.cargo ?? role.label,
+    perfil,
+    perfilLabel: role.label,
+    modules: role.modules,
+    permissions: role.permissions,
+  };
+}
+
+async function loadSession(userId: string): Promise<MockUser | null> {
+  const [{ data: profile }, { data: roles }] = await Promise.all([
+    supabase.from("profiles").select("id,nome,email,cargo,iniciais").eq("id", userId).maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", userId),
+  ]);
+  if (!profile) return null;
+  const mapped = (roles ?? []).map((r) => mapDbRole(r.role));
+  const perfil = pickHighestRole(mapped.length ? mapped : ["corretor"]);
+  return buildSession(profile as ProfileRow, perfil);
+}
+
+// Simple subscriber store so all hook instances share one load.
+const listeners = new Set<() => void>();
+let current: MockUser | null = null;
+let ready = false;
+let initialized = false;
+
+function notify() {
   listeners.forEach((l) => l());
 }
 
-export function getSession(): MockUser | null {
-  if (!hydrated && typeof window !== "undefined") {
-    cached = readStorage();
-    hydrated = true;
+async function refresh() {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    current = null;
+  } else {
+    current = await loadSession(data.session.user.id);
   }
-  return cached;
+  ready = true;
+  notify();
 }
 
-export function login(usuario: string, senha: string): MockUser | null {
-  const u = mockUsers[usuario.toLowerCase()];
-  if (!u || u.senha !== senha) return null;
-  const session: MockUser = {
-    id: u.id,
-    nome: u.nome,
-    iniciais: u.iniciais,
-    cargo: u.cargo,
-    perfil: u.perfil,
-    perfilLabel: u.perfilLabel,
-    modules: u.modules,
-    permissions: u.permissions,
-  };
-  window.localStorage.setItem(KEY, JSON.stringify(session));
-  emit();
-  return session;
-}
-
-export function logout() {
-  window.localStorage.removeItem(KEY);
-  emit();
-}
-
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  return () => {
-    listeners.delete(cb);
-  };
+function ensureInitialized() {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (!session) {
+      current = null;
+      ready = true;
+      notify();
+      return;
+    }
+    // Defer DB lookup to avoid auth callback deadlocks.
+    setTimeout(() => {
+      void refresh();
+    }, 0);
+  });
+  void refresh();
 }
 
 export function useSession(): MockUser | null {
-  return useSyncExternalStore(
-    subscribe,
-    () => getSession(),
-    () => null,
-  );
+  const [, force] = useState(0);
+  useEffect(() => {
+    ensureInitialized();
+    const cb = () => force((n) => n + 1);
+    listeners.add(cb);
+    cb();
+    return () => {
+      listeners.delete(cb);
+    };
+  }, []);
+  return current;
+}
+
+export function useAuthReady(): boolean {
+  const [, force] = useState(0);
+  useEffect(() => {
+    ensureInitialized();
+    const cb = () => force((n) => n + 1);
+    listeners.add(cb);
+    cb();
+    return () => {
+      listeners.delete(cb);
+    };
+  }, []);
+  return ready;
+}
+
+export async function login(
+  email: string,
+  senha: string,
+): Promise<{ user: MockUser | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password: senha,
+  });
+  if (error || !data.user) {
+    return { user: null, error: error?.message ?? "Não foi possível entrar." };
+  }
+  const session = await loadSession(data.user.id);
+  current = session;
+  ready = true;
+  notify();
+  return { user: session, error: null };
+}
+
+export async function signUp(
+  email: string,
+  senha: string,
+  nome: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  const redirect = typeof window !== "undefined" ? window.location.origin : undefined;
+  const { error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password: senha,
+    options: {
+      emailRedirectTo: redirect,
+      data: { nome: nome.trim() },
+    },
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, error: null };
+}
+
+export async function requestPasswordReset(email: string): Promise<{ ok: boolean; error: string | null }> {
+  const redirect =
+    typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: redirect,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, error: null };
+}
+
+export async function logout() {
+  await supabase.auth.signOut();
+  current = null;
+  notify();
 }
