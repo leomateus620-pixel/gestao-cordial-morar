@@ -30,7 +30,17 @@ function AgendaPage() {
   const imoveis = useApp((state) => state.imoveis);
   const corretores = useApp((state) => state.corretores);
   const atendimentos = useApp((state) => state.atendimentos);
-  const { filteredEvents, stats, createEvent, editEvent, canEdit } = useAgenda("", filters);
+  const {
+    filteredEvents,
+    stats,
+    createEvent,
+    editEvent,
+    canEdit,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useAgenda("", filters);
 
   const people = useMemo(() => {
     const values = [
@@ -71,18 +81,23 @@ function AgendaPage() {
     setOpen(true);
   }
 
-  function save(input: AgendaEventInput) {
-    if (selected) {
-      const updated = editEvent(selected, input);
-      setFeedback(
-        updated
-          ? `Compromisso “${updated.titulo}” atualizado.`
-          : "Você não pode editar este compromisso.",
-      );
-      return;
+  async function save(input: AgendaEventInput) {
+    try {
+      if (selected) {
+        const updated = await editEvent(selected, input);
+        setFeedback(
+          updated
+            ? `Compromisso “${updated.titulo}” atualizado.`
+            : "Você não pode editar este compromisso.",
+        );
+        return;
+      }
+      const created = await createEvent(input);
+      setFeedback(`Compromisso “${created.titulo}” agendado.`);
+    } catch (err) {
+      setFeedback(`Não foi possível salvar: ${(err as Error).message}`);
+      throw err;
     }
-    const created = createEvent(input);
-    setFeedback(`Compromisso “${created.titulo}” agendado.`);
   }
 
   return (
@@ -115,7 +130,28 @@ function AgendaPage() {
             Agenda da equipe
           </span>
         </div>
-        <AgendaTimeline events={filteredEvents} onOpen={openEvent} canEdit={canEdit} />
+        {isLoading ? (
+          <div className="glass-panel rounded-2xl p-6 text-sm text-foreground/60">
+            Carregando compromissos…
+          </div>
+        ) : isError ? (
+          <div className="glass-panel flex items-center justify-between gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+            <span>Não foi possível carregar a agenda. {error?.message}</span>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : filteredEvents.length === 0 ? (
+          <div className="glass-panel rounded-2xl p-6 text-center text-sm text-foreground/60">
+            Nenhum compromisso encontrado para o recorte atual.
+          </div>
+        ) : (
+          <AgendaTimeline events={filteredEvents} onOpen={openEvent} canEdit={canEdit} />
+        )}
       </section>
 
       {feedback && (

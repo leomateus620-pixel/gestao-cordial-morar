@@ -255,7 +255,7 @@ export function AgendaFormModal({
     }));
   }
 
-  function submit(submitEvent: FormEvent) {
+  async function submit(submitEvent: FormEvent) {
     submitEvent.preventDefault();
     if (!canEdit) return;
     const input = buildInput(
@@ -270,9 +270,14 @@ export function AgendaFormModal({
     if (Object.keys(validation).length > 0) return;
 
     setSaving(true);
-    onSubmit(input);
-    setSaving(false);
-    requestClose();
+    try {
+      await Promise.resolve(onSubmit(input));
+      requestClose();
+    } catch {
+      // mantém o formulário aberto para o usuário corrigir
+    } finally {
+      setSaving(false);
+    }
   }
 
   return createPortal(
