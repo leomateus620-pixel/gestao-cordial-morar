@@ -27,7 +27,13 @@ function Page() {
 
   return (
     <>
+      <section className="mb-5">
+        <SectionHeader title="Conexões da sua conta" />
+        <GoogleCalendarCard />
+      </section>
+
       <section className="mb-5 grid grid-cols-3 gap-3">
+
         <KpiCard
           label="Conectadas"
           value={conectadas.toString()}
