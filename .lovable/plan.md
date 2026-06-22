@@ -1,57 +1,51 @@
 ## Objetivo
-Enviar lembretes automáticos por e-mail para cada compromisso da Agenda nos intervalos **1 dia antes, 1 hora antes e 10 minutos antes** do início, marcados como **alta prioridade** na caixa de entrada (cabeçalhos `Importance: High` + `X-Priority: 1`).
+As próximas 2 contas criadas pela tela de login devem ser cadastradas como **admin**, além do admin atual já existente.
 
-## Como vai funcionar
+## Como funciona hoje
+A função `public.handle_new_user()` (trigger de signup) só marca como `admin` se a tabela `user_roles` estiver vazia. Como já existe 1 admin (você), qualquer novo cadastro vira `corretor`.
 
-1. **Infra de e-mail Lovable**
-   - Verificar domínio de e-mail. Se não existir, abrir o diálogo de setup (passo bloqueante).
-   - Rodar `setup_email_infra` (cria filas, cron, tabelas `email_send_log`, `suppressed_emails`, etc.).
-   - Rodar `scaffold_transactional_email` (cria rotas `/lovable/email/transactional/send`, preview, unsubscribe, suppression).
+## Mudança proposta
+Ajustar `handle_new_user()` para: se a quantidade atual de admins em `user_roles` for **menor que 3**, o novo usuário recebe `admin`; caso contrário, `corretor` (comportamento padrão).
 
-2. **Template do lembrete** (`src/lib/email-templates/agenda-reminder.tsx`)
-   - React Email com identidade do app (mesma paleta do dashboard).
-   - Campos: título do compromisso, quando (`1 dia / 1 hora / 10 minutos`), data/hora formatada (America/Sao_Paulo), tipo, local/link de vídeo, cliente, imóvel, responsável, observações, link para `/agenda`.
-   - Subject dinâmico: `⏰ {janela} — {titulo}` (ex.: `⏰ Em 10 minutos — Visita Apto 302`).
-   - Registrar em `src/lib/email-templates/registry.ts`.
-
-3. **Agendamento das notificações**
-   - Nova tabela `public.agenda_event_notifications` com:
-     `event_id`, `recipient_user_id`, `recipient_email`, `window` (`1d` | `1h` | `10m`), `scheduled_for` (timestamptz), `sent_at`, `status` (`pending` | `sent` | `skipped` | `error`), `error`, `idempotency_key` (único: `event_id + recipient + window + inicio_iso`).
-   - RLS + GRANTs padrão; índice em `(status, scheduled_for)`.
-   - Função `public.schedule_agenda_notifications(_event_id uuid)` (SECURITY DEFINER) que:
-     - Lê o evento + responsável + participantes (com e-mail via `auth.users`).
-     - Para cada destinatário e cada janela, faz UPSERT em `agenda_event_notifications` com `scheduled_for = inicio - intervalo`.
-     - Marca `skipped` quando `scheduled_for < now()` ou evento `cancelado/concluido`.
-   - Chamar `schedule_agenda_notifications` dentro de `upsertAgendaEvent`, `softDeleteAgendaEvent` e `completeAgendaEvent` (substituindo/cancelando as pendentes quando o `inicio` muda ou o status sai de ativo).
-
-4. **Worker que envia (cron a cada 1 min)**
-   - Rota `src/routes/api/public/hooks/agenda-reminders.ts`:
-     - Auth via `apikey` (anon key) — padrão Lovable para `pg_cron`.
-     - Seleciona até 200 linhas `pending` com `scheduled_for <= now() + 30s`.
-     - Para cada uma, chama `/lovable/email/transactional/send` (service-role interno) com:
-       - `templateName: 'agenda-reminder'`
-       - `recipientEmail`, `idempotencyKey` (= coluna `idempotency_key`)
-       - `templateData` montado a partir do evento atual
-       - `headers: { Importance: 'High', 'X-Priority': '1', 'X-MSMail-Priority': 'High' }` (extensão pequena no send route p/ aceitar `headers` opcionais — somente para esse template).
-     - Atualiza `status` para `sent` ou `error` + `sent_at`/`error`.
-   - `pg_cron` (via `supabase--insert`, não migration): `*/1 * * * *` chamando essa rota.
-
-5. **Prioridade alta no inbox**
-   - Cabeçalhos `Importance: High`, `X-Priority: 1 (Highest)`, `X-MSMail-Priority: High` enviados pelo provider.
-   - Assunto começa com `⏰` para destaque visual.
-
-6. **UI (mínima, não intrusiva)**
-   - No `AgendaEventCard`, badge discreto "Lembretes por e-mail: 1d · 1h · 10min" quando o evento estiver no futuro e tiver destinatários.
-   - Nenhum controle novo: as 3 janelas são padrão fixo conforme pedido.
+Resultado prático:
+- Hoje há 1 admin → as próximas 2 contas viram admin (totalizando 3).
+- A partir da 4ª conta, volta a ser `corretor` automaticamente.
 
 ## Detalhes técnicos
+Migração única substituindo a função:
 
-- **Destinatários**: responsável principal + participantes com `user_id` válido. E-mails buscados em `auth.users` via função SECURITY DEFINER (não expor lista ao cliente).
-- **Reagendamento**: ao editar `inicio`, deletar pendentes (`status='pending'`) e recriar. Eventos `concluido`/`cancelado` cancelam pendentes.
-- **Idempotência**: chave inclui `inicio_iso` — se a data muda, gera nova chave e o worker não duplica.
-- **Janela de tolerância**: worker pega `<= now() + 30s` para compensar jitter do cron.
-- **Logs**: `email_send_log` (Lovable) + `agenda_event_notifications.status` (auditoria por janela).
-- **Fuso**: formatação no template usa `America/Sao_Paulo`.
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_nome TEXT;
+  v_iniciais TEXT;
+  v_admin_count INT;
+  v_role public.app_role;
+BEGIN
+  -- (mesmo bloco de nome/iniciais de hoje)
+  ...
 
-## Pré-requisitos / perguntas
-- O domínio de e-mail Lovable **ainda não está configurado** neste projeto. Vou precisar abrir o diálogo de setup antes de implementar os itens 1–4. Confirma que posso seguir por aí (e-mails saindo do seu domínio próprio)?
+  INSERT INTO public.profiles (id, nome, email, iniciais)
+  VALUES (NEW.id, v_nome, NEW.email, v_iniciais);
+
+  SELECT COUNT(*) INTO v_admin_count
+  FROM public.user_roles WHERE role = 'admin';
+
+  v_role := CASE WHEN v_admin_count < 3
+                 THEN 'admin'::public.app_role
+                 ELSE 'corretor'::public.app_role END;
+
+  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, v_role);
+  RETURN NEW;
+END; $$;
+```
+
+Sem alterações de UI — apenas a função do banco.
+
+## Observação de segurança
+Promover automaticamente novos signups a admin é um risco: qualquer pessoa que conseguir criar conta nesse intervalo vira admin. Recomendo, assim que os 2 admins entrarem, reverter a função para o comportamento original (somente o primeiro usuário vira admin). Posso já incluir esse "reset" como um passo opcional depois — confirme se prefere fazer manualmente.
