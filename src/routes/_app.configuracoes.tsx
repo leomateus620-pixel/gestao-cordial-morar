@@ -4,6 +4,7 @@ import { Building2, SlidersHorizontal, UsersRound } from "lucide-react";
 import { KpiCard } from "@/components/kpi-card";
 import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
+import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 import { agencies } from "@/lib/mock/data";
 import { useApp, useFiltered } from "@/store/app-store";
 
@@ -50,6 +51,11 @@ function Page() {
           </button>
         ))}
       </div>
+
+      <section className="mb-5">
+        <SectionHeader title="Integrações" />
+        <GoogleCalendarCard />
+      </section>
 
       <section className="mb-5">
         <SectionHeader title="Imobiliárias" />
