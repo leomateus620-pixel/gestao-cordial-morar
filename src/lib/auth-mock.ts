@@ -81,9 +81,14 @@ async function loadSession(userId: string): Promise<MockUser | null> {
 }
 
 // Simple subscriber store so all hook instances share one load.
-const listeners = new Set<(s: MockUser | null) => void>();
+const listeners = new Set<() => void>();
 let current: MockUser | null = null;
+let ready = false;
 let initialized = false;
+
+function notify() {
+  listeners.forEach((l) => l());
+}
 
 async function refresh() {
   const { data } = await supabase.auth.getSession();
@@ -92,7 +97,8 @@ async function refresh() {
   } else {
     current = await loadSession(data.session.user.id);
   }
-  listeners.forEach((l) => l(current));
+  ready = true;
+  notify();
 }
 
 function ensureInitialized() {
@@ -101,7 +107,8 @@ function ensureInitialized() {
   supabase.auth.onAuthStateChange((_event, session) => {
     if (!session) {
       current = null;
-      listeners.forEach((l) => l(null));
+      ready = true;
+      notify();
       return;
     }
     // Defer DB lookup to avoid auth callback deadlocks.
@@ -113,17 +120,31 @@ function ensureInitialized() {
 }
 
 export function useSession(): MockUser | null {
-  const [state, setState] = useState<MockUser | null>(current);
+  const [, force] = useState(0);
   useEffect(() => {
     ensureInitialized();
-    const cb = (s: MockUser | null) => setState(s);
+    const cb = () => force((n) => n + 1);
     listeners.add(cb);
-    setState(current);
+    cb();
     return () => {
       listeners.delete(cb);
     };
   }, []);
-  return state;
+  return current;
+}
+
+export function useAuthReady(): boolean {
+  const [, force] = useState(0);
+  useEffect(() => {
+    ensureInitialized();
+    const cb = () => force((n) => n + 1);
+    listeners.add(cb);
+    cb();
+    return () => {
+      listeners.delete(cb);
+    };
+  }, []);
+  return ready;
 }
 
 export async function login(
