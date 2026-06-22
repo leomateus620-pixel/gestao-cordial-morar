@@ -27,12 +27,12 @@ export function GoogleCalendarCard() {
     if (search.google === "connected") {
       toast.success("Google Agenda conectada com sucesso");
       qc.invalidateQueries({ queryKey: QK });
-      navigate({ to: "/configuracoes", replace: true, search: {} as never });
+      window.history.replaceState({}, "", "/configuracoes");
     } else if (search.google === "error") {
       toast.error(`Falha ao conectar com Google: ${search.detail ?? "tente novamente"}`);
-      navigate({ to: "/configuracoes", replace: true, search: {} as never });
+      window.history.replaceState({}, "", "/configuracoes");
     }
-  }, [search.google, search.detail, qc, navigate]);
+  }, [search.google, search.detail, qc]);
 
   const connectMut = useMutation({
     mutationFn: async () => {
