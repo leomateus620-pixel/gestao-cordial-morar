@@ -14,7 +14,6 @@ const QK = ["google-calendar", "connection"] as const;
 
 export function GoogleCalendarCard() {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { google?: string; detail?: string };
 
   const connection = useQuery({
