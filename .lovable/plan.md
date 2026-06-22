@@ -1,55 +1,54 @@
-## Verificação da configuração Google OAuth + teste
+## Por que eu não consigo "fazer o teste" sozinho
 
-### 1. Ajuste pendente no Google Cloud Console (você precisa fazer)
+O fluxo OAuth do Google **exige interação humana real**: abrir o popup do Google, escolher a conta `leomateus620@gmail.com`, digitar senha, passar pelo 2FA se houver, e clicar em "Permitir" na tela de consentimento. Nada disso pode ser automatizado do meu lado — e mesmo que pudesse, eu precisaria das suas credenciais, o que não devo pedir nem armazenar.
 
-Você cadastrou **apenas 1 URI de redirecionamento** (preview). Falta o de produção. Sem ele, qualquer tentativa de conectar pelo domínio publicado vai falhar com `redirect_uri_mismatch`.
+O que eu **posso** fazer agora (quando você aprovar este plano e eu entrar em modo build) é validar tudo que **não** depende do clique humano:
 
-**Adicione em "URIs de redirecionamento autorizados":**
+### Validações automáticas que farei
 
-```
-https://gestao-cordial-morar.lovable.app/api/public/google-calendar/callback
-https://id-preview--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app/api/public/google-calendar/callback
-```
+1. **Secrets presentes no backend**
+   - Conferir via `fetch_secrets` que `GOOGLE_OAUTH_CLIENT_ID` e `GOOGLE_OAUTH_CLIENT_SECRET` existem.
 
-(o segundo você já tem — confirme que termina exatamente com `/api/public/google-calendar/callback`, a imagem corta no final)
+2. **Rota de callback viva**
+   - `GET /api/public/google-calendar/callback` sem parâmetros deve redirecionar 303 para `/configuracoes?google=error&detail=missing_code`. Se vier 404/500, o roteamento está quebrado e eu corrijo antes de você testar.
 
-As "Origens JavaScript autorizadas" já estão corretas.
+3. **Geração da URL de consentimento**
+   - Invocar o server function `startGoogleOAuth` autenticado como você e conferir que a URL retornada:
+     - aponta para `accounts.google.com/o/oauth2/v2/auth`
+     - tem `client_id` igual ao secret cadastrado
+     - tem `redirect_uri` exatamente igual ao que você cadastrou no Google Cloud (preview ou produção, conforme o `origin` da requisição)
+     - inclui escopo `calendar.events` + `openid email profile`
+     - tem `access_type=offline` e `prompt=consent` (necessários pro `refresh_token` vir)
 
-### 2. Tela de consentimento OAuth
+4. **Schema do banco**
+   - Conferir que `google_calendar_connections`, colunas em `agenda_events` (`google_event_id`, `google_calendar_sync_status`, `google_synced_at`, `google_calendar_sync_error`) e `notifications` existem com RLS+GRANT corretos.
 
-Como o app provavelmente está em modo **Testing**, o Google só deixa entrar e-mails listados como *test users*. Adicione `leomateus620@gmail.com` em:
-**OAuth consent screen → Test users → + Add users**
+5. **Logs do callback**
+   - Verificar se há tentativas anteriores suas no log com erro silencioso que ainda não apareceu na UI.
 
-Scopes mínimos que devem estar marcados:
-- `.../auth/userinfo.email`
-- `.../auth/userinfo.profile`
-- `openid`
-- `https://www.googleapis.com/auth/calendar.events`
+### O que **você** precisa fazer (2 min, é insubstituível)
 
-### 3. Por que eu não consigo "testar com seu e-mail" sozinho
+Depois que eu confirmar os 5 pontos acima:
 
-O fluxo OAuth do Google exige que **você** faça login na sua conta Google em um navegador real e clique em "Permitir". Não dá pra automatizar isso do meu lado sem suas credenciais — e pedir sua senha seria errado. O que eu **posso** validar, com sua autorização (modo build), é:
+1. Garantir no Google Cloud Console:
+   - **URIs de redirecionamento autorizados** contém **ambos**:
+     - `https://gestao-cordial-morar.lovable.app/api/public/google-calendar/callback`
+     - `https://id-preview--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app/api/public/google-calendar/callback`
+   - **OAuth consent screen → Test users**: `leomateus620@gmail.com` está listado.
+2. No app, ir em **Configurações → Google Agenda → Conectar Google Agenda**.
+3. Login com `leomateus620@gmail.com`, "Avançado → Acessar mesmo assim", marcar permissão de Calendar e clicar Permitir.
+4. Volta pra `/configuracoes` com toast verde.
+5. Criar um compromisso novo na Agenda → confirmar que aparece no Google Calendar dessa conta com lembrete.
 
-- Que os secrets `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` estão presentes no backend.
-- Que a rota `/api/public/google-calendar/callback` responde (200/302/erro esperado).
-- Que `startGoogleOAuth` gera uma URL de consentimento válida.
-- Logar erros do callback de forma mais visível pra acelerar diagnóstico se o teste falhar.
+### Se algo falhar
 
-### 4. Roteiro de teste que **você** executa (2 minutos)
+Você me manda **literalmente o texto do toast vermelho** (ou a URL com `?google=error&detail=...`) e eu corrijo cirurgicamente. Os erros mais comuns e a causa exata:
 
-1. Faça os ajustes 1 e 2 acima no Google Cloud.
-2. No app (preview ou produção), vá em **Configurações → Google Agenda → Conectar Google Agenda**.
-3. Faça login com `leomateus620@gmail.com` e aceite os escopos (vai aparecer aviso "App não verificado" → *Avançado → Acessar mesmo assim*).
-4. Você deve voltar pra `/configuracoes` com toast verde "Google Agenda conectada".
-5. Crie um compromisso novo na Agenda. Em segundos ele deve aparecer no Google Calendar dessa conta, com lembrete popup/e-mail conforme configurado.
-6. Edite o compromisso → muda no Google. Cancele → some do Google.
+- `redirect_uri_mismatch` → falta uma das URIs no Google Cloud (passo 1).
+- `access_denied` → e-mail não está na lista de test users (passo 1).
+- `invalid_client` → secret errado no backend.
+- `sem refresh_token` → já autorizou antes; revogue em https://myaccount.google.com/permissions e tente de novo.
 
-Se algo falhar, me mande **a mensagem do toast vermelho** (vem do parâmetro `?google=error&detail=...`) ou o que aparecer no card do compromisso ("Falha"). Daí eu corrijo cirurgicamente.
+### Nenhuma mudança de código neste plano
 
-### O que eu farei se você aprovar este plano
-
-Apenas uma melhoria pequena de observabilidade no callback OAuth, sem mudar comportamento:
-
-- `src/routes/api/public/google-calendar.callback.ts`: logar `console.error` com `stack` antes do redirect de erro, e propagar `detail` mais legível (ex.: `redirect_uri_mismatch`, `access_denied`, `invalid_client`).
-
-Nada mais será alterado. Sem mudanças de schema, sem mudanças em outras telas.
+Apenas execução das 5 validações automáticas acima. Sem alterar arquivos, schema ou UI.
