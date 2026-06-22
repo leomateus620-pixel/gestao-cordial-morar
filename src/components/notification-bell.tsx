@@ -1,8 +1,15 @@
 import { Bell, CheckCheck, CircleAlert } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useApp } from "@/store/app-store";
+import { useSession } from "@/lib/auth-mock";
 import { notificationLabels, type NotificationPriority } from "@/lib/mock/notifications";
+import {
+  listMyNotifications,
+  markNotificationRead as markRemoteRead,
+  markAllNotificationsRead as markAllRemoteRead,
+} from "@/lib/notifications/notifications.functions";
 import { cn } from "@/lib/utils";
 
 const priorityTone: Record<NotificationPriority, { bg: string; fg: string }> = {
@@ -11,11 +18,35 @@ const priorityTone: Record<NotificationPriority, { bg: string; fg: string }> = {
   baixa: { bg: "rgba(59,130,160,0.14)", fg: "#235f7a" },
 };
 
+const REMOTE_QK = ["notifications", "mine"] as const;
+
 export function NotificationBell() {
+  const user = useSession();
+  const qc = useQueryClient();
   const notifications = useApp((s) => s.notifications);
   const markNotificationRead = useApp((s) => s.markNotificationRead);
   const markAllNotificationsRead = useApp((s) => s.markAllNotificationsRead);
-  const unread = notifications.filter((n) => !n.read).length;
+
+  const remote = useQuery({
+    queryKey: REMOTE_QK,
+    queryFn: () => listMyNotifications(),
+    enabled: Boolean(user),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const remoteList = remote.data ?? [];
+  const remoteUnread = remoteList.filter((n) => !n.lida).length;
+
+  const markRemote = useMutation({
+    mutationFn: (id: string) => markRemoteRead({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: REMOTE_QK }),
+  });
+  const markAllRemote = useMutation({
+    mutationFn: () => markAllRemoteRead(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: REMOTE_QK }),
+  });
+
+  const unread = notifications.filter((n) => !n.read).length + remoteUnread;
   const latest = [...notifications]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
