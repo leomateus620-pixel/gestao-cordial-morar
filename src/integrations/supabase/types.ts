@@ -139,7 +139,10 @@ export type Database = {
           dia_inteiro: boolean
           duracao_min: number | null
           fim: string | null
+          google_calendar_sync_error: string | null
           google_calendar_sync_status: string
+          google_event_id: string | null
+          google_synced_at: string | null
           id: string
           imobiliaria: Database["public"]["Enums"]["agenda_imobiliaria"]
           imovel_descricao: string | null
@@ -170,7 +173,10 @@ export type Database = {
           dia_inteiro?: boolean
           duracao_min?: number | null
           fim?: string | null
+          google_calendar_sync_error?: string | null
           google_calendar_sync_status?: string
+          google_event_id?: string | null
+          google_synced_at?: string | null
           id?: string
           imobiliaria?: Database["public"]["Enums"]["agenda_imobiliaria"]
           imovel_descricao?: string | null
@@ -201,7 +207,10 @@ export type Database = {
           dia_inteiro?: boolean
           duracao_min?: number | null
           fim?: string | null
+          google_calendar_sync_error?: string | null
           google_calendar_sync_status?: string
+          google_event_id?: string | null
+          google_synced_at?: string | null
           id?: string
           imobiliaria?: Database["public"]["Enums"]["agenda_imobiliaria"]
           imovel_descricao?: string | null
@@ -218,6 +227,78 @@ export type Database = {
           titulo?: string
           updated_at?: string
           video_call_url?: string | null
+        }
+        Relationships: []
+      }
+      google_calendar_connections: {
+        Row: {
+          access_token: string
+          calendar_id: string
+          created_at: string
+          expires_at: string
+          google_email: string
+          last_error: string | null
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id?: string
+          created_at?: string
+          expires_at: string
+          google_email: string
+          last_error?: string | null
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string
+          created_at?: string
+          expires_at?: string
+          google_email?: string
+          last_error?: string | null
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          lida: boolean
+          link: string | null
+          mensagem: string | null
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          link?: string | null
+          mensagem?: string | null
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          link?: string | null
+          mensagem?: string | null
+          tipo?: string
+          titulo?: string
+          user_id?: string
         }
         Relationships: []
       }
