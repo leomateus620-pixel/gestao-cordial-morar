@@ -53,6 +53,11 @@ function Page() {
       </div>
 
       <section className="mb-5">
+        <SectionHeader title="Integrações" />
+        <GoogleCalendarCard />
+      </section>
+
+      <section className="mb-5">
         <SectionHeader title="Imobiliárias" />
         <div className="glass-panel rounded-3xl p-4">
           {agencies.map((agency) => (
