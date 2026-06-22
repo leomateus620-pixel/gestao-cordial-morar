@@ -52,6 +52,7 @@ export const Route = createFileRoute("/api/public/google-calendar/callback")({
           return redirectTo("connected");
         } catch (e) {
           const msg = e instanceof Error ? e.message : "erro desconhecido";
+          console.error("[google-calendar.callback] erro:", e instanceof Error ? e.stack : e);
           return redirectTo("error", msg);
         }
       },
