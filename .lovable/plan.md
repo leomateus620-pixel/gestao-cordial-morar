@@ -1,54 +1,57 @@
-## Por que eu não consigo "fazer o teste" sozinho
+## Objetivo
+Enviar lembretes automáticos por e-mail para cada compromisso da Agenda nos intervalos **1 dia antes, 1 hora antes e 10 minutos antes** do início, marcados como **alta prioridade** na caixa de entrada (cabeçalhos `Importance: High` + `X-Priority: 1`).
 
-O fluxo OAuth do Google **exige interação humana real**: abrir o popup do Google, escolher a conta `leomateus620@gmail.com`, digitar senha, passar pelo 2FA se houver, e clicar em "Permitir" na tela de consentimento. Nada disso pode ser automatizado do meu lado — e mesmo que pudesse, eu precisaria das suas credenciais, o que não devo pedir nem armazenar.
+## Como vai funcionar
 
-O que eu **posso** fazer agora (quando você aprovar este plano e eu entrar em modo build) é validar tudo que **não** depende do clique humano:
+1. **Infra de e-mail Lovable**
+   - Verificar domínio de e-mail. Se não existir, abrir o diálogo de setup (passo bloqueante).
+   - Rodar `setup_email_infra` (cria filas, cron, tabelas `email_send_log`, `suppressed_emails`, etc.).
+   - Rodar `scaffold_transactional_email` (cria rotas `/lovable/email/transactional/send`, preview, unsubscribe, suppression).
 
-### Validações automáticas que farei
+2. **Template do lembrete** (`src/lib/email-templates/agenda-reminder.tsx`)
+   - React Email com identidade do app (mesma paleta do dashboard).
+   - Campos: título do compromisso, quando (`1 dia / 1 hora / 10 minutos`), data/hora formatada (America/Sao_Paulo), tipo, local/link de vídeo, cliente, imóvel, responsável, observações, link para `/agenda`.
+   - Subject dinâmico: `⏰ {janela} — {titulo}` (ex.: `⏰ Em 10 minutos — Visita Apto 302`).
+   - Registrar em `src/lib/email-templates/registry.ts`.
 
-1. **Secrets presentes no backend**
-   - Conferir via `fetch_secrets` que `GOOGLE_OAUTH_CLIENT_ID` e `GOOGLE_OAUTH_CLIENT_SECRET` existem.
+3. **Agendamento das notificações**
+   - Nova tabela `public.agenda_event_notifications` com:
+     `event_id`, `recipient_user_id`, `recipient_email`, `window` (`1d` | `1h` | `10m`), `scheduled_for` (timestamptz), `sent_at`, `status` (`pending` | `sent` | `skipped` | `error`), `error`, `idempotency_key` (único: `event_id + recipient + window + inicio_iso`).
+   - RLS + GRANTs padrão; índice em `(status, scheduled_for)`.
+   - Função `public.schedule_agenda_notifications(_event_id uuid)` (SECURITY DEFINER) que:
+     - Lê o evento + responsável + participantes (com e-mail via `auth.users`).
+     - Para cada destinatário e cada janela, faz UPSERT em `agenda_event_notifications` com `scheduled_for = inicio - intervalo`.
+     - Marca `skipped` quando `scheduled_for < now()` ou evento `cancelado/concluido`.
+   - Chamar `schedule_agenda_notifications` dentro de `upsertAgendaEvent`, `softDeleteAgendaEvent` e `completeAgendaEvent` (substituindo/cancelando as pendentes quando o `inicio` muda ou o status sai de ativo).
 
-2. **Rota de callback viva**
-   - `GET /api/public/google-calendar/callback` sem parâmetros deve redirecionar 303 para `/configuracoes?google=error&detail=missing_code`. Se vier 404/500, o roteamento está quebrado e eu corrijo antes de você testar.
+4. **Worker que envia (cron a cada 1 min)**
+   - Rota `src/routes/api/public/hooks/agenda-reminders.ts`:
+     - Auth via `apikey` (anon key) — padrão Lovable para `pg_cron`.
+     - Seleciona até 200 linhas `pending` com `scheduled_for <= now() + 30s`.
+     - Para cada uma, chama `/lovable/email/transactional/send` (service-role interno) com:
+       - `templateName: 'agenda-reminder'`
+       - `recipientEmail`, `idempotencyKey` (= coluna `idempotency_key`)
+       - `templateData` montado a partir do evento atual
+       - `headers: { Importance: 'High', 'X-Priority': '1', 'X-MSMail-Priority': 'High' }` (extensão pequena no send route p/ aceitar `headers` opcionais — somente para esse template).
+     - Atualiza `status` para `sent` ou `error` + `sent_at`/`error`.
+   - `pg_cron` (via `supabase--insert`, não migration): `*/1 * * * *` chamando essa rota.
 
-3. **Geração da URL de consentimento**
-   - Invocar o server function `startGoogleOAuth` autenticado como você e conferir que a URL retornada:
-     - aponta para `accounts.google.com/o/oauth2/v2/auth`
-     - tem `client_id` igual ao secret cadastrado
-     - tem `redirect_uri` exatamente igual ao que você cadastrou no Google Cloud (preview ou produção, conforme o `origin` da requisição)
-     - inclui escopo `calendar.events` + `openid email profile`
-     - tem `access_type=offline` e `prompt=consent` (necessários pro `refresh_token` vir)
+5. **Prioridade alta no inbox**
+   - Cabeçalhos `Importance: High`, `X-Priority: 1 (Highest)`, `X-MSMail-Priority: High` enviados pelo provider.
+   - Assunto começa com `⏰` para destaque visual.
 
-4. **Schema do banco**
-   - Conferir que `google_calendar_connections`, colunas em `agenda_events` (`google_event_id`, `google_calendar_sync_status`, `google_synced_at`, `google_calendar_sync_error`) e `notifications` existem com RLS+GRANT corretos.
+6. **UI (mínima, não intrusiva)**
+   - No `AgendaEventCard`, badge discreto "Lembretes por e-mail: 1d · 1h · 10min" quando o evento estiver no futuro e tiver destinatários.
+   - Nenhum controle novo: as 3 janelas são padrão fixo conforme pedido.
 
-5. **Logs do callback**
-   - Verificar se há tentativas anteriores suas no log com erro silencioso que ainda não apareceu na UI.
+## Detalhes técnicos
 
-### O que **você** precisa fazer (2 min, é insubstituível)
+- **Destinatários**: responsável principal + participantes com `user_id` válido. E-mails buscados em `auth.users` via função SECURITY DEFINER (não expor lista ao cliente).
+- **Reagendamento**: ao editar `inicio`, deletar pendentes (`status='pending'`) e recriar. Eventos `concluido`/`cancelado` cancelam pendentes.
+- **Idempotência**: chave inclui `inicio_iso` — se a data muda, gera nova chave e o worker não duplica.
+- **Janela de tolerância**: worker pega `<= now() + 30s` para compensar jitter do cron.
+- **Logs**: `email_send_log` (Lovable) + `agenda_event_notifications.status` (auditoria por janela).
+- **Fuso**: formatação no template usa `America/Sao_Paulo`.
 
-Depois que eu confirmar os 5 pontos acima:
-
-1. Garantir no Google Cloud Console:
-   - **URIs de redirecionamento autorizados** contém **ambos**:
-     - `https://gestao-cordial-morar.lovable.app/api/public/google-calendar/callback`
-     - `https://id-preview--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app/api/public/google-calendar/callback`
-   - **OAuth consent screen → Test users**: `leomateus620@gmail.com` está listado.
-2. No app, ir em **Configurações → Google Agenda → Conectar Google Agenda**.
-3. Login com `leomateus620@gmail.com`, "Avançado → Acessar mesmo assim", marcar permissão de Calendar e clicar Permitir.
-4. Volta pra `/configuracoes` com toast verde.
-5. Criar um compromisso novo na Agenda → confirmar que aparece no Google Calendar dessa conta com lembrete.
-
-### Se algo falhar
-
-Você me manda **literalmente o texto do toast vermelho** (ou a URL com `?google=error&detail=...`) e eu corrijo cirurgicamente. Os erros mais comuns e a causa exata:
-
-- `redirect_uri_mismatch` → falta uma das URIs no Google Cloud (passo 1).
-- `access_denied` → e-mail não está na lista de test users (passo 1).
-- `invalid_client` → secret errado no backend.
-- `sem refresh_token` → já autorizou antes; revogue em https://myaccount.google.com/permissions e tente de novo.
-
-### Nenhuma mudança de código neste plano
-
-Apenas execução das 5 validações automáticas acima. Sem alterar arquivos, schema ou UI.
+## Pré-requisitos / perguntas
+- O domínio de e-mail Lovable **ainda não está configurado** neste projeto. Vou precisar abrir o diálogo de setup antes de implementar os itens 1–4. Confirma que posso seguir por aí (e-mails saindo do seu domínio próprio)?
