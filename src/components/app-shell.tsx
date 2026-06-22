@@ -13,6 +13,7 @@ import { roleDefinitions } from "@/lib/mock/permissions";
 
 export function AppShell() {
   const session = useSession();
+  const authReady = useAuthReady();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
