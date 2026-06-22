@@ -136,9 +136,10 @@ export function AgendaEventCard({
             <span className="rounded-full bg-white/50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-teal-800 ring-1 ring-white/65">
               {agendaImobiliariaLabel[event.imobiliaria]}
             </span>
+            <GoogleSyncBadge event={event} />
             {event.observacoes && (
               <span className="min-w-0 flex-1 truncate text-[10px] italic text-foreground/44">
-                “{event.observacoes}”
+                "{event.observacoes}"
               </span>
             )}
             <span className="ml-auto hidden items-center gap-1 text-[9px] font-semibold text-foreground/38 sm:flex">
@@ -149,6 +150,38 @@ export function AgendaEventCard({
         </div>
       </div>
     </button>
+  );
+}
+
+function GoogleSyncBadge({ event }: { event: AgendaEvent }) {
+  const status = event.googleCalendarSyncStatus;
+  if (status === "sincronizado") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-emerald-600/12 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-800"
+        title="Sincronizado com Google Agenda"
+      >
+        <CheckCircle2 className="size-3" /> Google
+      </span>
+    );
+  }
+  if (status === "preparado") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-rose-500/14 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-800"
+        title="Falha na sincronização com o Google"
+      >
+        <TriangleAlert className="size-3" /> Falha sync
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-slate-400/14 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-700"
+      title="Conecte sua conta Google em Configurações para sincronizar"
+    >
+      <RefreshCw className="size-3" /> Não sincronizado
+    </span>
   );
 }
 
