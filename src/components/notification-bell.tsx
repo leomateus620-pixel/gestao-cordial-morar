@@ -85,7 +85,10 @@ export function NotificationBell() {
               variant="ghost"
               size="sm"
               className="h-8 px-2 text-[11px]"
-              onClick={markAllNotificationsRead}
+              onClick={() => {
+                markAllNotificationsRead();
+                if (remoteUnread > 0) markAllRemote.mutate();
+              }}
             >
               <CheckCheck className="size-3" /> Ler tudo
             </Button>
@@ -93,6 +96,64 @@ export function NotificationBell() {
         </div>
 
         <div className="max-h-[24rem] overflow-y-auto p-2">
+          {remoteList.length > 0 && (
+            <>
+              <p className="px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-foreground/55">
+                Alertas do sistema
+              </p>
+              {remoteList.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => !n.lida && markRemote.mutate(n.id)}
+                  className={cn(
+                    "w-full rounded-2xl p-3 text-left transition hover:bg-primary/5",
+                    !n.lida && "bg-primary/5",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl"
+                      style={{
+                        background: priorityTone.media.bg,
+                        color: priorityTone.media.fg,
+                      }}
+                    >
+                      <CircleAlert className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-[10px] font-bold uppercase tracking-wider text-primary">
+                          {n.tipo.replace(/_/g, " ")}
+                        </span>
+                        {!n.lida && (
+                          <span
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ background: "var(--system-accent)" }}
+                          />
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{n.titulo}</p>
+                      {n.mensagem && (
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-foreground/60">
+                          {n.mensagem}
+                        </p>
+                      )}
+                      <p className="mt-1 text-[10px] text-foreground/45">
+                        {new Date(n.created_at).toLocaleString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+              <div className="my-2 h-px bg-foreground/10" />
+            </>
+          )}
+
           {latest.map((notification) => (
             <button
               key={notification.id}
