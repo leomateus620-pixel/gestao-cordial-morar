@@ -196,5 +196,5 @@ export async function requestPasswordReset(email: string): Promise<{ ok: boolean
 export async function logout() {
   await supabase.auth.signOut();
   current = null;
-  listeners.forEach((l) => l(null));
+  notify();
 }
