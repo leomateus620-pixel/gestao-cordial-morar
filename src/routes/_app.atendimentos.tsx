@@ -44,7 +44,14 @@ function Page() {
     error,
     addAtendimento,
     convertAtendimento,
+    updateAtendimento,
   } = useAttendances(query, filters);
+
+  const qc = useQueryClient();
+  const createVisitMutation = useMutation({
+    mutationFn: (input: AgendaEventInput) => upsertAgendaEvent({ data: { input } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY }),
+  });
 
   useEffect(() => {
     if (isError && error) toast.error(error.message ?? "Erro ao carregar atendimentos.");
