@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   CalendarPlus,
   CheckCircle2,
@@ -21,6 +22,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  AtendimentoActionsDialog,
+  type AtendimentoActionKind,
+  type AtendimentoActionPayload,
+} from "@/components/atendimentos/AtendimentoActionsDialog";
+import {
   atendimentoInterestLine,
   formatAtendimentoBudget,
   formatDateTime,
@@ -35,23 +41,24 @@ import {
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
 
-const secondaryActions = [
-  { label: "Vincular corretor", icon: UserRoundCog },
-  { label: "Criar visita", icon: CalendarPlus },
-  { label: "Criar tarefa de retorno", icon: Clock3 },
-  { label: "Registrar histórico", icon: History },
-  { label: "Marcar motivo de perda", icon: XCircle },
-] as const;
+const secondaryActions: { kind: AtendimentoActionKind; label: string; icon: typeof UserRoundCog }[] = [
+  { kind: "vincular-corretor", label: "Vincular corretor", icon: UserRoundCog },
+  { kind: "criar-visita", label: "Criar visita", icon: CalendarPlus },
+  { kind: "criar-retorno", label: "Criar tarefa de retorno", icon: Clock3 },
+  { kind: "registrar-historico", label: "Registrar histórico", icon: History },
+  { kind: "motivo-perda", label: "Marcar motivo de perda", icon: XCircle },
+];
 
 export function AtendimentoCard({
   atendimento,
   onConvert,
-  onMockAction,
+  onAction,
 }: {
   atendimento: Atendimento;
   onConvert: (id: string) => void;
-  onMockAction: (action: string, contactName: string) => void;
+  onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
 }) {
+  const [activeKind, setActiveKind] = useState<AtendimentoActionKind | null>(null);
   const converted = atendimento.convertidoEmCliente || Boolean(atendimento.clienteConvertidoId);
   const initials = getInitials(atendimento.clienteNome);
 
@@ -161,20 +168,18 @@ export function AtendimentoCard({
         </AlertDialog>
 
         {secondaryActions
-          .filter(({ label }) =>
-            label === "Marcar motivo de perda" ? atendimento.status !== "perdido" : true,
-          )
-          .map(({ label, icon: Icon }) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => onMockAction(label, atendimento.clienteNome)}
-            className="flex items-center gap-1.5 rounded-xl bg-white/52 px-2.5 py-2 text-left text-[10px] font-semibold text-foreground/60 transition hover:bg-teal-700/9 hover:text-teal-800 active:scale-[0.98]"
-          >
-            <Icon className="size-3.5 shrink-0" />
-            <span className="truncate">{label}</span>
-          </button>
-        ))}
+          .filter(({ kind }) => (kind === "motivo-perda" ? atendimento.status !== "perdido" : true))
+          .map(({ kind, label, icon: Icon }) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => setActiveKind(kind)}
+              className="flex items-center gap-1.5 rounded-xl bg-white/52 px-2.5 py-2 text-left text-[10px] font-semibold text-foreground/60 transition hover:bg-teal-700/9 hover:text-teal-800 active:scale-[0.98]"
+            >
+              <Icon className="size-3.5 shrink-0" />
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
       </div>
 
       {atendimento.status === "perdido" && (
@@ -183,6 +188,16 @@ export function AtendimentoCard({
           Motivo: {atendimento.motivoPerda ?? "Não informado"}
         </div>
       )}
+
+      <AtendimentoActionsDialog
+        kind={activeKind}
+        atendimento={atendimento}
+        open={activeKind !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveKind(null);
+        }}
+        onSubmit={(payload) => onAction(payload, atendimento)}
+      />
     </article>
   );
 }

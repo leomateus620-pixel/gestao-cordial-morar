@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Plus, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
+import {
+  buildLocalIso,
+  type AtendimentoActionPayload,
+} from "@/components/atendimentos/AtendimentoActionsDialog";
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
@@ -12,7 +17,14 @@ import {
   useAttendances,
   type AtendimentoFilters as AtendimentoFiltersState,
 } from "@/hooks/useAttendances";
-import type { AtendimentoCreateInput, AtendimentoStatus } from "@/types/atendimento";
+import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
+import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
+import type {
+  Atendimento,
+  AtendimentoCreateInput,
+  AtendimentoStatus,
+} from "@/types/atendimento";
+import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
   head: () => ({ meta: [{ title: "Atendimentos — Gestão Cordial" }] }),
@@ -32,7 +44,14 @@ function Page() {
     error,
     addAtendimento,
     convertAtendimento,
+    updateAtendimento,
   } = useAttendances(query, filters);
+
+  const qc = useQueryClient();
+  const createVisitMutation = useMutation({
+    mutationFn: (input: AgendaEventInput) => upsertAgendaEvent({ data: { input } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY }),
+  });
 
   useEffect(() => {
     if (isError && error) toast.error(error.message ?? "Erro ao carregar atendimentos.");
@@ -58,6 +77,103 @@ function Page() {
       toast.error(err instanceof Error ? err.message : "Não foi possível converter.");
     }
   }
+
+  async function handleAction(payload: AtendimentoActionPayload, atendimento: Atendimento) {
+    try {
+      if (payload.kind === "vincular-corretor") {
+        await updateAtendimento({
+          id: atendimento.id,
+          patch: { corretorId: payload.corretorId, corretorNome: payload.corretorNome },
+        });
+        toast.success(`Corretor vinculado: ${payload.corretorNome}.`);
+        return;
+      }
+      if (payload.kind === "criar-visita") {
+        const startIso = buildLocalIso(payload.data, payload.hora);
+        if (!startIso) throw new Error("Data/horário inválidos.");
+        const startDate = new Date(startIso);
+        const endIso = new Date(
+          startDate.getTime() + payload.duracaoMin * 60_000,
+        ).toISOString();
+        const input: AgendaEventInput = {
+          titulo: `Visita — ${atendimento.clienteNome}`,
+          descricao: payload.observacoes || undefined,
+          tipo: "visita",
+          status: "agendado",
+          prioridade: atendimento.prioridade === "urgente" ? "urgente" : "media",
+          inicio: startIso,
+          fim: endIso,
+          duracaoMin: payload.duracaoMin,
+          diaInteiro: false,
+          repeticao: "nao",
+          imobiliaria: atendimento.imobiliaria,
+          clienteId: atendimento.clienteConvertidoId ?? atendimento.clienteId,
+          clienteNome: atendimento.clienteNome,
+          atendimentoId: atendimento.id,
+          imovelId: atendimento.imovelId,
+          imovelDescricao: atendimento.imovelDescricao,
+          local: payload.local || undefined,
+          responsavelPrincipalId: atendimento.corretorId,
+          responsavelPrincipalNome: atendimento.corretorNome,
+          participantes: [],
+          lembretes: [],
+          checklist: [],
+          observacoes: payload.observacoes || undefined,
+          googleCalendarSyncStatus: "nao_sincronizado",
+        };
+        await createVisitMutation.mutateAsync(input);
+        await updateAtendimento({
+          id: atendimento.id,
+          patch: { status: "visita_agendada", proximoRetorno: startIso },
+        });
+        toast.success("Visita criada na agenda.");
+        return;
+      }
+      if (payload.kind === "criar-retorno") {
+        const iso = buildLocalIso(payload.data, payload.hora || "09:00");
+        if (!iso) throw new Error("Data inválida.");
+        await updateAtendimento({
+          id: atendimento.id,
+          patch: {
+            proximoRetorno: iso,
+            proximoPasso: payload.proximoPasso,
+            status: "aguardando_retorno",
+          },
+        });
+        toast.success("Tarefa de retorno agendada.");
+        return;
+      }
+      if (payload.kind === "registrar-historico") {
+        const stamp = new Date();
+        const prefix = `[${pad(stamp.getDate())}/${pad(stamp.getMonth() + 1)} ${pad(stamp.getHours())}:${pad(stamp.getMinutes())}]`;
+        const next = atendimento.observacoes
+          ? `${atendimento.observacoes}\n${prefix} ${payload.texto}`
+          : `${prefix} ${payload.texto}`;
+        await updateAtendimento({
+          id: atendimento.id,
+          patch: { observacoes: next },
+        });
+        toast.success("Histórico registrado.");
+        return;
+      }
+      if (payload.kind === "motivo-perda") {
+        await updateAtendimento({
+          id: atendimento.id,
+          patch: { status: "perdido", motivoPerda: payload.motivoPerda },
+        });
+        toast.success("Atendimento marcado como perdido.");
+        return;
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao executar ação.");
+      throw err;
+    }
+  }
+
+  function pad(n: number) {
+    return String(n).padStart(2, "0");
+  }
+
 
   function setStatus(status: "todos" | AtendimentoStatus) {
     setFilters((current) => ({ ...current, status }));
@@ -143,7 +259,7 @@ function Page() {
                 key={atendimento.id}
                 atendimento={atendimento}
                 onConvert={handleConvert}
-                onMockAction={(action) => toast.info(`${action}: em breve.`)}
+                onAction={handleAction}
               />
             ))}
           </div>
