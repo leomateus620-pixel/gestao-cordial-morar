@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useAttendances";
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
+import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import type {
   Atendimento,
   AtendimentoCreateInput,
