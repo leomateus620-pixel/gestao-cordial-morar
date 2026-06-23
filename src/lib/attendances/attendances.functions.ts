@@ -228,7 +228,7 @@ export const updateAttendance = createServerFn({ method: "POST" })
 
     const { data: updated, error } = await context.supabase
       .from("attendances")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id)
       .select("*")
       .single();
