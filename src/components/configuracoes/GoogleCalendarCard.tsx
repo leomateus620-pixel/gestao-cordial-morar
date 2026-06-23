@@ -2,13 +2,14 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { CalendarCheck2, CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   startGoogleOAuth,
   getMyGoogleConnection,
   disconnectGoogleCalendar,
 } from "@/lib/google-calendar/google-calendar.functions";
+import googleCalendarLogo from "@/assets/google-calendar.svg";
 
 const QK = ["google-calendar", "connection"] as const;
 
