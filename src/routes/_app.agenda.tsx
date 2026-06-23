@@ -104,6 +104,11 @@ function AgendaPage() {
 
   return (
     <div className="space-y-4">
+      <section className="space-y-2">
+        <SectionHeader title="Conexões da sua conta" />
+        <GoogleCalendarCard />
+      </section>
+
       <AgendaCreateCard
         onClick={openCreate}
         isOpen={open && !selected}
