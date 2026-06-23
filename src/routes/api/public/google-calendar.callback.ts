@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/public/google-calendar/callback")({
         const origin = url.origin;
 
         const redirectTo = (status: string, detail?: string) => {
-          const target = new URL("/configuracoes", origin);
+          const target = new URL("/agenda", origin);
           target.searchParams.set("google", status);
           if (detail) target.searchParams.set("detail", detail.slice(0, 200));
           return Response.redirect(target.toString(), 303);
