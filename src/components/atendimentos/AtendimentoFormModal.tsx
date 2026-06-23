@@ -52,7 +52,8 @@ type FormState = {
   orcamentoMax: string;
   imovelId: string;
   imovelDescricao: string;
-  proximoRetorno: string;
+  proximoRetornoData: string;
+  proximoRetornoHora: string;
   proximoPasso: "" | ProximoPassoAtendimento;
   observacoes: string;
   historicoInicial: string;
@@ -78,7 +79,8 @@ const initialForm: FormState = {
   orcamentoMax: "",
   imovelId: "",
   imovelDescricao: "",
-  proximoRetorno: "",
+  proximoRetornoData: "",
+  proximoRetornoHora: "",
   proximoPasso: "",
   observacoes: "",
   historicoInicial: "",
@@ -209,7 +211,7 @@ export function AtendimentoFormModal({
       imovelDescricao: optional(form.imovelDescricao) ?? selectedProperty?.titulo,
       prioridade: form.prioridade,
       status: form.status,
-      proximoRetorno: form.proximoRetorno ? new Date(form.proximoRetorno).toISOString() : undefined,
+      proximoRetorno: buildProximoRetornoIso(form.proximoRetornoData, form.proximoRetornoHora),
       proximoPasso: form.proximoPasso || undefined,
       observacoes: optional(form.observacoes),
       historicoInicial: optional(form.historicoInicial),
@@ -533,14 +535,26 @@ export function AtendimentoFormModal({
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Próximo retorno">
-                  <input
-                    type="datetime-local"
-                    value={form.proximoRetorno}
-                    onInput={(event) =>
-                      update("proximoRetorno", (event.target as HTMLInputElement).value)
-                    }
-                    className={inputClass()}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={form.proximoRetornoData}
+                      onChange={(event) => update("proximoRetornoData", event.target.value)}
+                      className={cn(inputClass(), "flex-1")}
+                      aria-label="Data do próximo retorno"
+                    />
+                    <input
+                      type="time"
+                      value={form.proximoRetornoHora}
+                      onChange={(event) => update("proximoRetornoHora", event.target.value)}
+                      className={cn(inputClass(), "w-28")}
+                      aria-label="Horário do próximo retorno (opcional)"
+                      placeholder="09:00"
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-foreground/45">
+                    Horário opcional — sem informar, usamos 09:00.
+                  </p>
                 </Field>
                 <Field label="Tipo de próximo passo">
                   <select
