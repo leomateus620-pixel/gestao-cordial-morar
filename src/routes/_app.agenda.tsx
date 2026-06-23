@@ -6,6 +6,8 @@ import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
 import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
 import { AgendaTimeline } from "@/components/agenda/AgendaTimeline";
+import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
+import { SectionHeader } from "@/components/section-header";
 import {
   defaultAgendaFilters,
   useAgenda,
@@ -102,6 +104,11 @@ function AgendaPage() {
 
   return (
     <div className="space-y-4">
+      <section className="space-y-2">
+        <SectionHeader title="Conexões da sua conta" />
+        <GoogleCalendarCard />
+      </section>
+
       <AgendaCreateCard
         onClick={openCreate}
         isOpen={open && !selected}

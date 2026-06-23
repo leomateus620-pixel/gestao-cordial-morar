@@ -4,7 +4,7 @@ import { Cable, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { KpiCard } from "@/components/kpi-card";
 import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
-import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
+
 import { useApp, useFiltered } from "@/store/app-store";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
@@ -27,12 +27,8 @@ function Page() {
 
   return (
     <>
-      <section className="mb-5">
-        <SectionHeader title="Conexões da sua conta" />
-        <GoogleCalendarCard />
-      </section>
-
       <section className="mb-5 grid grid-cols-3 gap-3">
+
 
         <KpiCard
           label="Conectadas"

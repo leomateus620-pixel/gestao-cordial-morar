@@ -1,51 +1,24 @@
-## Objetivo
-As próximas 2 contas criadas pela tela de login devem ser cadastradas como **admin**, além do admin atual já existente.
+## Mover conexão Google Agenda para o menu Agenda
 
-## Como funciona hoje
-A função `public.handle_new_user()` (trigger de signup) só marca como `admin` se a tabela `user_roles` estiver vazia. Como já existe 1 admin (você), qualquer novo cadastro vira `corretor`.
+Tirar o card "Conexões da sua conta" da página **Integrações** e mostrá-lo no topo da página **Agenda**, com a logo oficial do Google Agenda no lugar do ícone genérico. Sem mudanças de rota nem de fluxo OAuth.
 
-## Mudança proposta
-Ajustar `handle_new_user()` para: se a quantidade atual de admins em `user_roles` for **menor que 3**, o novo usuário recebe `admin`; caso contrário, `corretor` (comportamento padrão).
+### Mudanças
 
-Resultado prático:
-- Hoje há 1 admin → as próximas 2 contas viram admin (totalizando 3).
-- A partir da 4ª conta, volta a ser `corretor` automaticamente.
+1. **`src/components/configuracoes/GoogleCalendarCard.tsx`**
+   - Substituir o ícone `CalendarCheck2` (lucide) por um `<img>` da logo oficial do Google Agenda (SVG inline ou asset em `src/assets/google-calendar.svg`) dentro do mesmo container `size-10`, mantendo o restante do layout intacto.
+   - Atualizar os dois `window.history.replaceState({}, "", "/configuracoes")` para `"/agenda"`, já que o card agora vive na Agenda (o callback continua redirecionando para `/configuracoes?google=connected`, então também ajustar o callback — ver item 4).
 
-## Detalhes técnicos
-Migração única substituindo a função:
+2. **`src/routes/_app.agenda.tsx`**
+   - Importar `GoogleCalendarCard` e renderizá-lo no topo da página, dentro de uma `<section>` com `SectionHeader title="Conexões da sua conta"`, antes do `AgendaCreateCard`.
+   - Quando `conn` existir, o card pode aparecer em modo compacto (mesmo componente, mesmo visual da screenshot enviada).
 
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_nome TEXT;
-  v_iniciais TEXT;
-  v_admin_count INT;
-  v_role public.app_role;
-BEGIN
-  -- (mesmo bloco de nome/iniciais de hoje)
-  ...
+3. **`src/routes/_app.integracoes.tsx`**
+   - Remover a `<section>` que renderiza `<GoogleCalendarCard />` e o import correspondente. A página continua existindo e funcionando com os demais conectores.
 
-  INSERT INTO public.profiles (id, nome, email, iniciais)
-  VALUES (NEW.id, v_nome, NEW.email, v_iniciais);
+4. **`src/routes/api/public/google-calendar.callback.ts`**
+   - Trocar `new URL("/configuracoes", origin)` por `new URL("/agenda", origin)` para que o retorno do OAuth caia direto na Agenda, onde o card agora vive e exibe o toast de sucesso/erro.
 
-  SELECT COUNT(*) INTO v_admin_count
-  FROM public.user_roles WHERE role = 'admin';
+### Notas técnicas
 
-  v_role := CASE WHEN v_admin_count < 3
-                 THEN 'admin'::public.app_role
-                 ELSE 'corretor'::public.app_role END;
-
-  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, v_role);
-  RETURN NEW;
-END; $$;
-```
-
-Sem alterações de UI — apenas a função do banco.
-
-## Observação de segurança
-Promover automaticamente novos signups a admin é um risco: qualquer pessoa que conseguir criar conta nesse intervalo vira admin. Recomendo, assim que os 2 admins entrarem, reverter a função para o comportamento original (somente o primeiro usuário vira admin). Posso já incluir esse "reset" como um passo opcional depois — confirme se prefere fazer manualmente.
+- A logo do Google Agenda será adicionada como `src/assets/google-calendar.svg` (arquivo SVG estático da marca) e importada como URL: `import googleCalendarLogo from "@/assets/google-calendar.svg";`.
+- Nenhuma rota nova, nenhuma server function alterada, nenhuma mudança no fluxo de conexão/desconexão. Apenas reposicionamento visual + troca de ícone + ajuste do destino do redirect pós-OAuth para alinhar com o novo local do card.

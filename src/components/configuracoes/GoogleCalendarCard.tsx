@@ -2,13 +2,14 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { CalendarCheck2, CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   startGoogleOAuth,
   getMyGoogleConnection,
   disconnectGoogleCalendar,
 } from "@/lib/google-calendar/google-calendar.functions";
+import googleCalendarLogo from "@/assets/google-calendar.svg";
 
 const QK = ["google-calendar", "connection"] as const;
 
@@ -27,10 +28,10 @@ export function GoogleCalendarCard() {
     if (search.google === "connected") {
       toast.success("Google Agenda conectada com sucesso");
       qc.invalidateQueries({ queryKey: QK });
-      window.history.replaceState({}, "", "/configuracoes");
+      window.history.replaceState({}, "", "/agenda");
     } else if (search.google === "error") {
       toast.error(`Falha ao conectar com Google: ${search.detail ?? "tente novamente"}`);
-      window.history.replaceState({}, "", "/configuracoes");
+      window.history.replaceState({}, "", "/agenda");
     }
   }, [search.google, search.detail, qc]);
 
@@ -56,8 +57,8 @@ export function GoogleCalendarCard() {
   return (
     <div className="glass-panel rounded-3xl p-4">
       <div className="flex items-start gap-3">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <CalendarCheck2 className="size-5" />
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
+          <img src={googleCalendarLogo} alt="Google Agenda" className="size-7" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
