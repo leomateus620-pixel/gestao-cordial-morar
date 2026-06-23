@@ -28,10 +28,10 @@ export function GoogleCalendarCard() {
     if (search.google === "connected") {
       toast.success("Google Agenda conectada com sucesso");
       qc.invalidateQueries({ queryKey: QK });
-      window.history.replaceState({}, "", "/configuracoes");
+      window.history.replaceState({}, "", "/agenda");
     } else if (search.google === "error") {
       toast.error(`Falha ao conectar com Google: ${search.detail ?? "tente novamente"}`);
-      window.history.replaceState({}, "", "/configuracoes");
+      window.history.replaceState({}, "", "/agenda");
     }
   }, [search.google, search.detail, qc]);
 
