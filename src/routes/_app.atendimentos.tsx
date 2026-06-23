@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useAttendances";
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
+import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import type {
   Atendimento,
   AtendimentoCreateInput,
@@ -59,15 +60,36 @@ function Page() {
 
   async function createAtendimento(input: AtendimentoCreateInput) {
     try {
-      await addAtendimento(input);
-      toast.success(`Atendimento de ${input.clienteNome} salvo.`);
+      const created = await addAtendimento(input);
       setOpen(false);
+      // Dispara e-mail automático (server-side). Não bloqueia o cadastro.
+      void (async () => {
+        try {
+          const res = await sendFirstAttendanceEmail({ data: { attendanceId: created.id } });
+          if (res.status === "sent") {
+            toast.success(`Atendimento de ${input.clienteNome} salvo e e-mail enviado ao cliente.`);
+          } else if (res.status === "skipped" && res.reason === "no_email") {
+            toast.success(`Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (cliente sem e-mail).`);
+          } else if (res.status === "skipped" && res.reason === "invalid_email") {
+            toast.success(`Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (endereço inválido).`);
+          } else if (res.status === "failed") {
+            toast.success(`Atendimento de ${input.clienteNome} salvo.`);
+            toast.error("Não foi possível enviar o e-mail automático agora.");
+          } else {
+            toast.success(`Atendimento de ${input.clienteNome} salvo.`);
+          }
+        } catch {
+          toast.success(`Atendimento de ${input.clienteNome} salvo.`);
+          toast.error("Não foi possível enviar o e-mail automático agora.");
+        }
+      })();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao salvar atendimento.";
       toast.error(message);
       throw err;
     }
   }
+
 
   async function handleConvert(id: string) {
     try {
