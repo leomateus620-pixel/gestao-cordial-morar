@@ -745,6 +745,21 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion;
 }
 
+function useIsCompactViewport() {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsCompact(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  return isCompact;
+}
+
 function getFeatureIndex(index: number) {
   return ((index % FEATURE_COUNT) + FEATURE_COUNT) % FEATURE_COUNT;
 }
