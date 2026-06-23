@@ -33,6 +33,7 @@ import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamento
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -154,6 +155,12 @@ const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   path: '/$clienteId',
   getParentRoute: () => AppClientesRoute,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCalendarCallbackRoute =
   ApiPublicGoogleCalendarCallbackRouteImport.update({
     id: '/api/public/google-calendar/callback',
@@ -186,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -212,6 +220,7 @@ export interface FileRoutesByTo {
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -240,6 +249,7 @@ export interface FileRoutesById {
   '/_app/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
     | '/api/public/google-calendar/callback'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
     | '/api/public/google-calendar/callback'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/_app'
@@ -321,6 +333,7 @@ export interface FileRouteTypes {
     | '/_app/contratos/$contratoId'
     | '/_app/imoveis/$imovelId'
     | '/api/public/google-calendar/callback'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -328,6 +341,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -500,6 +514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesClienteIdRouteImport
       parentRoute: typeof AppClientesRoute
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google-calendar/callback': {
       id: '/api/public/google-calendar/callback'
       path: '/api/public/google-calendar/callback'
@@ -595,6 +616,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
