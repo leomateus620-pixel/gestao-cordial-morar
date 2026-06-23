@@ -1,52 +1,49 @@
-## Diagnóstico
+## Objetivo
+Hoje "Transformar em cliente" só marca o atendimento como `convertidoEmCliente=true`, sem criar nada no menu **Clientes**. Vou refazer o fluxo para realmente promover o atendimento a um cadastro de cliente, registrar isso no histórico do atendimento e deixar o registro disponível na tela de Clientes.
 
-No `AtendimentoCard.tsx`, somente **Transformar em cliente** está ligado (chama `convertAtendimento`). As outras 5 ações chamam `onMockAction` → `toast.info("…: em breve")`. Nada redireciona, nada persiste.
+## Fluxo novo
+1. Usuário clica em **Transformar em cliente** no card de atendimento.
+2. Confirmação (mantém o `AlertDialog` atual).
+3. Sistema:
+   - Cria um registro em `clients` usando os dados do atendimento (nome, telefone, e-mail, imobiliária, origem, finalidade, tipo de imóvel, dormitórios, bairro, orçamento, corretor, observações).
+   - Atualiza o atendimento com `convertidoEmCliente=true` e `clienteConvertidoId=<id do novo cliente>`.
+   - Acrescenta uma linha ao histórico (campo `observacoes` com prefixo `[dd/mm HH:mm] Cliente vinculado: <nome>` — mesmo padrão usado por "Registrar histórico").
+4. Toast: "Cliente cadastrado em Clientes." com confirmação.
+5. Botão passa a mostrar "Cliente vinculado" (já existe).
+6. Caches de `['attendances']` e `['clients']` são invalidados para refletir nos dois menus.
 
-A infraestrutura backend já cobre os fluxos necessários:
-- `updateAttendance` aceita patch de `status`, `motivoPerda`, `proximoRetorno`, `proximoPasso`, `corretorId/Nome`, `observacoes`.
-- `upsertAgendaEvent` cria visitas vinculadas via `atendimentoId`.
-- Histórico hoje é derivado no `rowToAtendimento` (não há tabela `attendance_history`).
-
-Faltam só os fluxos de UI + ações de mutação. Não vou criar tabela nova de histórico nesta rodada (uso `observacoes` com timestamp prefixado para "Registrar histórico", evitando migração para esta entrega; posso promover a tabela depois se você quiser histórico estruturado).
-
-## Atalhos: comportamento alvo
-
-| Atalho | Ação |
+## Mapeamento atendimento → cliente
+| Atendimento | Cliente |
 |---|---|
-| **Transformar em cliente** | já funciona (mantém) |
-| **Vincular corretor** | dialog com select de `atendimentoBrokerOptions` → `updateAttendance({ corretorId, corretorNome })` |
-| **Criar visita** | abre `AgendaFormModal` pré-preenchido (`tipo=visita`, `clienteNome`, `atendimentoId`, `imovelDescricao`, `imobiliaria`, `responsavelPrincipalNome=corretor`) → salva via `upsertAgendaEvent` e atualiza status do atendimento para `visita_agendada` + grava `proximoRetorno = inicio` |
-| **Criar tarefa de retorno** | dialog leve com `date` + `time` (mesmo helper anti-timezone do form) + select `proximoPasso` → `updateAttendance({ proximoRetorno, proximoPasso, status:"aguardando_retorno" })` |
-| **Registrar histórico** | textarea → append em `observacoes` com prefixo `[dd/mm HH:mm] texto` (sem nova tabela) → `updateAttendance({ observacoes })` |
-| **Marcar motivo de perda** | dialog com select de motivos comuns + textarea livre → `updateAttendance({ status:"perdido", motivoPerda })`. Já fica oculto se `status==="perdido"` (regra atual mantida) |
+| `clienteNome` | `fullName` |
+| `telefone` | `phone` |
+| `email` | `email` |
+| `contatoPreferencial` | `contactPreference` |
+| `origem` | `leadOrigin` |
+| `imobiliaria` | `brand` |
+| `corretorId` / `corretorNome` | `assignedBrokerId` / `assignedBrokerName` |
+| `finalidade` (`venda`→`compra`, demais 1:1) | `purpose` |
+| `tipoImovel` | `propertyType` |
+| `dormitorios` | `bedrooms` |
+| `bairroInteresse` | `neighborhood` |
+| `orcamentoMin/Max` | `minBudget/maxBudget` |
+| `observacoes` + `historicoInicial` | `notes` |
+| `proximoPasso`, `proximoRetorno` | `nextStep`, `nextFollowUpAt` |
+| `status` (mapeado) | `status` |
+| `clientType` | default `comprador` (não existe no atendimento) |
 
-## Arquivos a criar/alterar
+Se já existir `clienteConvertidoId` no atendimento, apenas avisa e não duplica.
 
-**Novos componentes** (`src/components/atendimentos/actions/`):
-- `VincularCorretorDialog.tsx`
-- `CriarVisitaDialog.tsx` (wrapper que reusa `AgendaFormModal` com `initialEvent`)
-- `CriarRetornoDialog.tsx`
-- `RegistrarHistoricoDialog.tsx`
-- `MotivoPerdaDialog.tsx`
+## Alterações
+- **`src/hooks/useAttendances.ts`** — `convertAtendimento(id)`:
+  1. Lê o atendimento atual do cache.
+  2. Chama `createClient` (server fn) com o payload mapeado.
+  3. Chama `updateAttendance` com `convertidoEmCliente`, `clienteConvertidoId` e `observacoes` atualizadas.
+  4. Invalida `['attendances']` e `['clients']`.
+- **`src/components/atendimentos/AtendimentoCard.tsx`** — sem mudança de UI, só ajuste da mensagem do toast/confirm para refletir que o cadastro vai para Clientes.
+- **`src/routes/_app.atendimentos.tsx`** — toast atualizado ("Cadastro criado em Clientes.").
+- Nenhum migration novo, nenhum componente novo, nenhuma mudança no menu Clientes (já lista tudo de `clients`).
 
-**Alterar**:
-- `src/components/atendimentos/AtendimentoCard.tsx` — substituir botões mock por triggers reais; receber callbacks tipados (`onVincularCorretor`, `onCriarVisita`, `onCriarRetorno`, `onRegistrarHistorico`, `onMarcarPerda`) ao invés de `onMockAction`.
-- `src/routes/_app.atendimentos.tsx` — fiar as mutações: `updateAtendimento` (já existe no hook) e nova mutação `useMutation(upsertAgendaEvent)` para a visita; invalidar `ATTENDANCES_QUERY_KEY` e `AGENDA_QUERY_KEY`.
-- `src/components/agenda/AgendaFormModal.tsx` — confirmar suporte a `initialEvent` para pré-preencher (verificar e ajustar se preciso).
-
-**Sem migration nova** (uso colunas já existentes em `attendances` + tabela `agenda_events` já pronta).
-
-## Validações
-
-- `tsgo --noEmit`
-- Criar atendimento → testar cada atalho na preview:
-  - vincular corretor → card mostra novo nome
-  - criar visita → aparece em /agenda com vínculo, status do atendimento vira `visita_agendada`
-  - criar retorno → `proximoRetorno` atualiza no card sem timezone shift
-  - registrar histórico → observação aparece com timestamp
-  - marcar perda → badge `Perdido`, botão some
-
-## Limites conhecidos
-
-- "Registrar histórico" grava em `observacoes` (append), não em tabela dedicada. Posso promover para `attendance_history` em uma segunda rodada se quiser timeline estruturada por usuário/data.
-- Lista de corretores é estática (`atendimentoBrokerOptions`); quando a tabela `corretores` virar fonte de verdade, troco o select.
+## Validação
+- `tsgo --noEmit`.
+- Manual: criar atendimento → Transformar em cliente → conferir no menu Clientes e no histórico do card.
