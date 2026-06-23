@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Plus, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
+import {
+  buildLocalIso,
+  type AtendimentoActionPayload,
+} from "@/components/atendimentos/AtendimentoActionsDialog";
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
@@ -12,7 +17,14 @@ import {
   useAttendances,
   type AtendimentoFilters as AtendimentoFiltersState,
 } from "@/hooks/useAttendances";
-import type { AtendimentoCreateInput, AtendimentoStatus } from "@/types/atendimento";
+import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
+import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
+import type {
+  Atendimento,
+  AtendimentoCreateInput,
+  AtendimentoStatus,
+} from "@/types/atendimento";
+import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
   head: () => ({ meta: [{ title: "Atendimentos — Gestão Cordial" }] }),
