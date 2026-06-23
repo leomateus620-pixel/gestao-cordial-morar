@@ -223,5 +223,4 @@ function mapOrigem(origem: Cliente["origem"]) {
   return "whatsapp";
 }
 
-// `useApp` removido: cadastro agora persiste direto no Supabase via mutation.
-void useApp;
+
