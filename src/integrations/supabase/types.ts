@@ -230,6 +230,105 @@ export type Database = {
         }
         Relationships: []
       }
+      attendances: {
+        Row: {
+          bairro_interesse: string | null
+          cliente_convertido_id: string | null
+          cliente_id: string | null
+          cliente_nome: string
+          contato_preferencial: string
+          convertido_em_cliente: boolean
+          corretor_id: string | null
+          corretor_nome: string | null
+          created_at: string
+          created_by: string
+          dormitorios: string | null
+          email: string | null
+          finalidade: string
+          historico_inicial: string | null
+          id: string
+          imobiliaria: string
+          imovel_descricao: string | null
+          imovel_id: string | null
+          motivo_perda: string | null
+          observacoes: string | null
+          orcamento_max: number | null
+          orcamento_min: number | null
+          origem: string
+          prioridade: string
+          proximo_passo: string | null
+          proximo_retorno: string | null
+          status: string
+          telefone: string
+          tipo_imovel: string
+          updated_at: string
+        }
+        Insert: {
+          bairro_interesse?: string | null
+          cliente_convertido_id?: string | null
+          cliente_id?: string | null
+          cliente_nome: string
+          contato_preferencial?: string
+          convertido_em_cliente?: boolean
+          corretor_id?: string | null
+          corretor_nome?: string | null
+          created_at?: string
+          created_by: string
+          dormitorios?: string | null
+          email?: string | null
+          finalidade?: string
+          historico_inicial?: string | null
+          id?: string
+          imobiliaria: string
+          imovel_descricao?: string | null
+          imovel_id?: string | null
+          motivo_perda?: string | null
+          observacoes?: string | null
+          orcamento_max?: number | null
+          orcamento_min?: number | null
+          origem?: string
+          prioridade?: string
+          proximo_passo?: string | null
+          proximo_retorno?: string | null
+          status?: string
+          telefone: string
+          tipo_imovel?: string
+          updated_at?: string
+        }
+        Update: {
+          bairro_interesse?: string | null
+          cliente_convertido_id?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string
+          contato_preferencial?: string
+          convertido_em_cliente?: boolean
+          corretor_id?: string | null
+          corretor_nome?: string | null
+          created_at?: string
+          created_by?: string
+          dormitorios?: string | null
+          email?: string | null
+          finalidade?: string
+          historico_inicial?: string | null
+          id?: string
+          imobiliaria?: string
+          imovel_descricao?: string | null
+          imovel_id?: string | null
+          motivo_perda?: string | null
+          observacoes?: string | null
+          orcamento_max?: number | null
+          orcamento_min?: number | null
+          origem?: string
+          prioridade?: string
+          proximo_passo?: string | null
+          proximo_retorno?: string | null
+          status?: string
+          telefone?: string
+          tipo_imovel?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       google_calendar_connections: {
         Row: {
           access_token: string

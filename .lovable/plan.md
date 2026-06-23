@@ -1,67 +1,94 @@
-## Refinar carrossel de features do login (mobile + fluidez)
+## Objetivo
+Finalizar o menu **Atendimentos** para uso real: CTA integrado no card principal, remoção total do mock e persistência segura na nuvem (Supabase) com isolamento por usuário/imobiliária.
 
-Objetivo: deixar a vitrine animada do `LoginFeatureShowcase` mais leve no mobile (menor, menos efeitos pesados) e com transição mais suave em todos os tamanhos, sem alterar o conteúdo nem o comportamento de navegação.
+---
 
-### 1. `src/components/login-feature-showcase.tsx`
+## 1. UI do menu (`src/routes/_app.atendimentos.tsx`)
 
-**Detectar mobile + reduzir trabalho por frame:**
-- Adicionar hook `useIsCompactViewport()` (matchMedia `(max-width: 640px)`) com listener, retornando boolean reativo.
-- Em `applyPosition`, quando `compact` for true:
-  - Reduzir profundidade 3D: `depth = 28 - softDistance*22` (em vez de 56/42)
-  - Reduzir `sideRotate` para `clamp(-distance * 3, -7, 7)` (menos rotação Y → menos repaint/compositing)
-  - Reduzir `blur` para `Math.max(0, absDistance - 0.5) * 0.6` (blur é o filtro mais caro no mobile)
-  - Manter `saturate`/`brightness` mais próximos de 1 (1.02 / 1.0) — reduz custo de filtros encadeados
-  - `sideLift` cai para `softDistance * 4`
-- Não escrever `--feature-saturate` e `--feature-brightness` no mobile (deixar CSS usar fallback 1) para evitar pipeline de filtros.
+**Card superior — vira o ponto de entrada do cadastro**
+- Substituir o chip estático *"Pré-atendimento · Corretor · Conversão"* por um botão real `+ Novo atendimento` (visível em desktop e mobile, com microinteração de hover/active e foco acessível).
+- Manter o subtítulo atual; logo abaixo do título adicionar uma linha auxiliar curta tipo *"Pré-atendimento · Corretor · Conversão"* como texto de apoio (não-clicável), preservando o conceito visual original.
+- O botão dispara o mesmo `setOpen(true)` que abre o `AtendimentoFormModal`.
+- Em mobile, o botão ocupa largura total dentro do card; em desktop fica alinhado à direita do header.
 
-**Suavidade da física:**
-- Trocar os coeficientes do animator (`0.145` / `0.765`) por valores mais críticos-amortecidos para evitar micro-oscilação no fim: `velocity = (velocity + distance * 0.12) * 0.82`.
-- Aumentar threshold de "settled" para `0.004` (corta 1–2 frames extras em telas de 60Hz).
+**Remoção do card duplicado**
+- Excluir o uso de `AtendimentoCreateCard` da página e remover o componente `src/components/atendimentos/AtendimentoCreateCard.tsx` (e qualquer import órfão).
 
-**Throttle de pointermove + tilt 3D só no desktop:**
-- Já há guard de `(max-width: 768px)` no `handlePointerMove` interno do card; alinhar com o novo `compact` (640px) e também ignorar quando `pointerType !== "mouse"`.
+**Estado vazio profissional**
+- Quando não houver atendimentos reais (lista total = 0), renderizar `EmptyState` com:
+  - Título: *"Nenhum atendimento cadastrado ainda."*
+  - Descrição: *"Clique em Novo atendimento para registrar o primeiro contato comercial."*
+  - Botão que abre o modal.
+- Quando houver atendimentos mas o filtro zerar o resultado, manter o estado vazio "Nenhum atendimento encontrado".
 
-**Auto-play mais calmo no mobile:**
-- `AUTO_SHOWCASE_DWELL_MS` 3600 → no mobile usar 4400 (menos transições por segundo).
+---
 
-### 2. `src/styles.css` (bloco `.login-feature-*`)
+## 2. Remoção do mock
 
-**Altura/tamanho responsivos:**
-- `.login-feature-viewport`: altura `13.5rem` no base, `15.55rem` em `@media (min-width: 640px)`.
-- `.login-feature-card`: `width: 13.5rem; min-height: 11rem;` no base; manter `15.85rem/12.75rem` em `≥640px`.
-- Reduzir `padding` interno do card no mobile (`p-3.5` via classe ou override CSS) e `gap` do track para `0.7rem`.
-- Tipografia: reduzir `.login-feature-card-title` para `1.05rem` no mobile, texto `.login-feature-card-text` para `0.78rem` line-height 1.4.
+- Zerar `atendimentosSeed` em `src/lib/mock/data.ts` (manter o export como `[]` para não quebrar imports) e remover qualquer card/métrica fake do menu.
+- Remover do `app-store` (`src/store/app-store.ts`) a alimentação inicial de atendimentos a partir do seed e o caminho de persistência local apenas para atendimentos — a fonte da verdade passa a ser o Supabase via React Query.
+- Métricas (Compra / Aluguel / Ticket médio / Leads do mês) e contadores do pipeline passam a ser calculados em cima dos dados reais retornados do banco.
 
-**Efeitos mais leves no mobile (`@media (max-width: 639px)`):**
-- `.login-feature-card`: trocar `backdrop-filter: blur(18px) saturate(145%)` por `blur(10px) saturate(120%)` (ou remover `saturate`); reduzir as 4 sombras para 2 (`0 18px 32px -28px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.18)`).
-- `.login-feature-card-ambient` e `.login-feature-card-noise`: `opacity: 0.35` e desativar animação `login-feature-glow-pulse` (`animation: none`).
-- `.login-feature-card::before` (shine radial): `opacity: 0.35`.
-- `.login-feature-viewport::before/::after` (máscaras laterais): largura `1.4rem`.
+---
 
-**Transições mais suaves (todos os tamanhos):**
-- Trocar a curva da transição do card de `cubic-bezier(0.19, 0.88, 0.28, 1)` 280ms para `cubic-bezier(0.22, 0.61, 0.36, 1)` 360ms em `transform/opacity/filter`. Curva mais "ease-out" longo reduz sensação de "trava" no fim.
-- Adicionar `transition: transform 420ms cubic-bezier(0.22, 0.61, 0.36, 1)` em `.login-feature-track` para o caso de mudança via pip no mobile.
-- `.login-feature-progress-fill`: transição `width 220ms linear` → `260ms ease-out`.
+## 3. Backend (Lovable Cloud / Supabase)
 
-**Hint de composição:**
-- Adicionar `transform: translateZ(0)` em `.login-feature-card-ambient` e `.login-feature-card-noise` para forçar camadas separadas (anti-jank em Safari mobile).
-- Manter `will-change: transform` no track; remover `will-change` dos cards no mobile (`@media (max-width: 639px) { .login-feature-card { will-change: auto; } }`) — `will-change` em muitos elementos custa GPU em telas pequenas.
+**Migration `attendances` (nova)** — campos alinhados ao tipo `Atendimento` já existente para minimizar refactor:
+- `id uuid pk`, `created_by uuid` (auth.users), `imobiliaria text check in ('cordial','morar','ambas')`
+- Contato: `cliente_id uuid null`, `cliente_nome text not null`, `telefone text not null`, `email text`, `contato_preferencial text`, `origem text`
+- Interesse: `finalidade text`, `tipo_imovel text`, `dormitorios text`, `bairro_interesse text`, `orcamento_min numeric`, `orcamento_max numeric`, `imovel_id uuid`, `imovel_descricao text`
+- Operação: `corretor_id text`, `corretor_nome text`, `prioridade text`, `status text`, `proximo_retorno timestamptz`, `proximo_passo text`, `observacoes text`, `historico_inicial text`, `motivo_perda text`
+- Conversão: `convertido_em_cliente bool default false`, `cliente_convertido_id uuid`
+- `created_at`, `updated_at` + trigger `touch_updated_at`.
 
-### 3. Sem mudanças funcionais
+**GRANTs + RLS**
+- `GRANT SELECT, INSERT, UPDATE, DELETE ON public.attendances TO authenticated;`
+- `GRANT ALL ON public.attendances TO service_role;` (sem `anon`).
+- `ENABLE ROW LEVEL SECURITY`.
+- Policies (isolamento por usuário + admin):
+  - **SELECT**: `created_by = auth.uid() OR has_role(auth.uid(),'admin')`.
+  - **INSERT**: `created_by = auth.uid()` (WITH CHECK).
+  - **UPDATE/DELETE**: mesma regra do SELECT.
+- Filtro por imobiliária é aplicado pela query do front (já existe o switcher Todas/Cordial/Morar). O backend garante isolamento por usuário; admin enxerga tudo (consistente com `handle_new_user` já no projeto).
 
-- Rotas, auto-play, drag, navegação por pips, acessibilidade (`aria-*`) permanecem idênticos.
-- Conteúdo dos features (textos, ícones, cores) inalterado.
-- Comportamento desktop continua igual visualmente; ganha apenas curva de easing mais suave.
+**Server functions** (`src/lib/attendances/attendances.functions.ts`, protegidas por `requireSupabaseAuth`):
+- `listAttendances()` — retorna atendimentos do usuário, ordenados por `created_at desc`.
+- `createAttendance(input)` — valida com Zod, força `created_by = userId`, insere e devolve o registro.
+- `updateAttendance(id, patch)` — para mudanças de status, conversão, etc. (preparado para as ações já existentes nos cards).
+- `deleteAttendance(id)` — opcional, para arquivar.
 
-### Resumo do impacto
+Não criar tabelas auxiliares (history/notes/events) nesta entrega — o tipo atual já carrega `historicoInicial`/`observacoes` e não há UI consumindo histórico estruturado. Fica como evolução futura para não inflar o escopo.
 
-| Aspecto | Antes | Depois (mobile) |
-|---|---|---|
-| Altura viewport | 15.55rem | 13.5rem |
-| Card width | 15.85rem | 13.5rem |
-| Backdrop filter | blur(18px) sat(145%) | blur(10px) sat(120%) |
-| Sombras por card | 4 | 2 |
-| Rotação Y máx | 15° | 7° |
-| Blur lateral máx | ~2.9px | ~1.3px |
-| Animação ambient pulse | sim | desligada |
-| Curva transição | 280ms (snappy) | 360ms (ease-out suave) |
+---
+
+## 4. Integração no front
+
+- Novo hook `useAttendances()` usando TanStack Query:
+  - `queryKey: ['attendances']` → chama `listAttendances` via `useServerFn`.
+  - Mapeia o registro do banco para o tipo `Atendimento` já consumido pelos componentes (mantém compatibilidade com `AtendimentoCard`, filtros, summary).
+  - Aplica o filtro de imobiliária (`agency` do store) e busca em memória, igual ao `useAtendimentos` atual.
+- `AtendimentoFormModal` continua igual visualmente; o `onSubmit` da página passa a chamar a mutation `createAttendance` (com loading no botão Salvar, toast `sonner` em sucesso/erro, `invalidateQueries(['attendances'])`).
+- Botão Salvar do modal mostra spinner durante o request e preserva o formulário se a API retornar erro.
+- Ação "Transformar em cliente" passa a chamar uma mutation que atualiza `convertido_em_cliente`/`cliente_convertido_id` (a criação do cliente em si já existe no store; será adaptada para consumir o atendimento retornado pelo backend). Outras ações que ainda não têm backend (encaminhar corretor, gerar relatório fora desse escopo) continuam exibindo toast informativo "Em breve" — sem simular sucesso falso.
+
+---
+
+## 5. Garantia de segurança / aceite
+
+- Usuário só vê os próprios registros (RLS via `created_by`); admin vê todos.
+- Insert força `created_by = auth.uid()` no servidor (não confia no client).
+- Switcher Cordial/Morar é apenas filtro de visualização; a persistência grava a imobiliária selecionada no cadastro.
+- Após cadastrar: registro aparece imediatamente na lista (invalidate), persiste após refresh (vem do Supabase), métricas e pipeline recalculam.
+
+---
+
+## 6. Validação final
+- `bun run build` e lint.
+- Testes manuais: cadastrar atendimento real → refresh → continua; logar com outro usuário → não vê dados alheios; menu sem dados → estado vazio com CTA; busca/filtros operando sobre os dados reais; mobile (≤640px) com CTA acessível.
+
+---
+
+## Arquivos previstos
+- **Editar**: `src/routes/_app.atendimentos.tsx`, `src/store/app-store.ts`, `src/lib/mock/data.ts`, `src/hooks/useAtendimentos.ts` (refatorado para consumir o hook novo) ou substituído por `src/hooks/useAttendances.ts`, `src/components/atendimentos/AtendimentoFormModal.tsx` (loading no submit).
+- **Criar**: migration `attendances` + policies, `src/lib/attendances/attendances.functions.ts`, `src/hooks/useAttendances.ts`.
+- **Remover**: `src/components/atendimentos/AtendimentoCreateCard.tsx`.
