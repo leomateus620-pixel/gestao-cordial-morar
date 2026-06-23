@@ -123,6 +123,9 @@ type DragState = {
 
 export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
+  const isCompact = useIsCompactViewport();
+  const isCompactRef = useRef(isCompact);
+  isCompactRef.current = isCompact;
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeRenderIndex, setActiveRenderIndex] = useState(FEATURE_BASE_INDEX);
   const viewportRef = useRef<HTMLDivElement | null>(null);
