@@ -89,6 +89,20 @@ const initialForm: FormState = {
 
 const sections = ["Entrada", "Interesse", "Operação", "Próximo passo"] as const;
 
+function buildProximoRetornoIso(data: string, hora: string): string | undefined {
+  if (!data) return undefined;
+  const dateMatch = data.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!dateMatch) return undefined;
+  const [, y, m, d] = dateMatch;
+  const timeMatch = (hora || "09:00").match(/^(\d{1,2}):(\d{2})$/);
+  const hh = timeMatch ? Number(timeMatch[1]) : 9;
+  const mm = timeMatch ? Number(timeMatch[2]) : 0;
+  // Local-time construction avoids the UTC midnight shift that flips the day in BRT.
+  const local = new Date(Number(y), Number(m) - 1, Number(d), hh, mm, 0, 0);
+  if (Number.isNaN(local.getTime())) return undefined;
+  return local.toISOString();
+}
+
 export function AtendimentoFormModal({
   open,
   onOpenChange,
