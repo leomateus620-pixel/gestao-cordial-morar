@@ -4,7 +4,7 @@ import { Cable, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { KpiCard } from "@/components/kpi-card";
 import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
-import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
+
 import { useApp, useFiltered } from "@/store/app-store";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
