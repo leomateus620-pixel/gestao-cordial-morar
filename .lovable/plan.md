@@ -1,36 +1,30 @@
-## Objetivo
+## Bug
 
-No cabeçalho do sidebar (desktop e drawer mobile) aparece um ícone genérico de "prédio" (Lucide `Building2`) dentro de um chip ciano. Substituir esse ícone pela logomarca real da Gestão Cordial — a mesma usada no favicon / `public/logo-gestao-cordial-morar.svg`.
+O campo **Próximo retorno** no modal "Novo atendimento" usa `<input type="datetime-local">`. Esse tipo só é considerado válido pelo navegador quando data **e** hora estão preenchidas. Ao digitar/selecionar só a data (ex.: `23/06/2026`), o browser bloqueia o submit com "Insira um valor válido. O campo está incompleto ou tem uma data inválida.", como na captura.
 
-## Onde está hoje
+Além disso, no submit fazemos `new Date(form.proximoRetorno).toISOString()` — com string parcial `"2026-06-23"` isso é parseado como UTC midnight e desloca o dia em fusos negativos (BRT vira 22/06), o problema clássico descrito no guia interno de parsing de datas.
 
-`src/components/app-shell.tsx`:
-- Linhas 78-81 — chip do brand no sidebar desktop usa `<Building2 className="size-5" />`.
-- Linhas 155-157 — mesmo chip no `SheetContent` mobile usa `<Building2 className="size-5" />`.
-- Import de `Building2` em `lucide-react` (linha 2) fica órfão depois da troca.
+## Correção
 
-O SVG completo em `public/logo-gestao-cordial-morar.svg` é a versão "horizontal" (980×280, marca + wordmark). Não serve cru para um chip quadrado de 44px — só a parte do símbolo (logomark) deve aparecer ali. O `favicon.ico` já é o símbolo recortado, mas .ico não é ideal para renderizar nítido em 44px @2x num chip.
+Editar `src/components/atendimentos/AtendimentoFormModal.tsx` (somente UI/serialização do form — sem mudar schema, server function ou banco):
 
-## Plano
+1. **Dividir o campo em dois inputs** dentro do mesmo `Field "Próximo retorno"`:
+   - `<input type="date">` (obrigatório quando o usuário quer agendar retorno; opcional no geral).
+   - `<input type="time">` ao lado, rotulado como "Horário (opcional)". Se vazio, assume `09:00` como horário padrão de retorno comercial.
+2. **Manter `form.proximoRetorno` como string única** internamente, mas derivada de dois sub-estados `proximoRetornoData` e `proximoRetornoHora` no `FormState`. O `datetime-local` atual é removido.
+3. **Serialização segura no submit** (substitui o `new Date(...).toISOString()` atual na linha 212): construir a data via `Date.UTC` a partir dos componentes year/month/day/hour/minute aplicando o offset local, evitando o shift de fuso descrito no guia de parsing. Se `proximoRetornoData` estiver vazio, envia `undefined`.
+4. **Sem regressões de leitura**: `AtendimentoCard` continua usando `formatDateTime(atendimento.proximoRetorno)` com ISO completo; o card seguirá mostrando data + hora (default 09:00 quando o usuário não informou).
 
-1. **Criar componente de logomark dedicado** `src/components/brand/BrandMark.tsx`:
-   - Componente React que retorna apenas o `<svg>` do símbolo (viewBox recortado para o miolo do logo atual, sem o wordmark e sem o fundo bege `#FBF8F4`).
-   - Aceita `className` para tamanho/cor; usa `currentColor` ou cores do design system (ciano) para casar com o tema escuro do sidebar.
-   - Fonte: paths já presentes em `public/logo-gestao-cordial-morar.svg` (área aproximada `x 49–236, y 56–230`), reaproveitados num viewBox próprio (ex.: `0 0 200 200`).
+## Arquivos alterados
 
-2. **Atualizar `src/components/app-shell.tsx`**:
-   - Importar `BrandMark` no lugar de `Building2`.
-   - Linha 78-81: trocar `<Building2 className="size-5" />` por `<BrandMark className="size-6" />`. Manter o chip arredondado, o anel ciano e o "dotinho" pulsante para preservar o visual premium atual.
-   - Linha 155-157: mesma troca no header do drawer mobile.
-   - Remover `Building2` do import de `lucide-react` (somente nesse arquivo; outros arquivos que usam `Building2` em outros contextos não são tocados).
+- `src/components/atendimentos/AtendimentoFormModal.tsx` — único arquivo tocado.
 
-3. **Sem mudanças em texto/labels**: "Gestão Cordial" / "Sistema Imobiliário" continuam iguais. Só o glifo muda.
+## Validação
 
-4. **Validação**:
-   - `tsgo --noEmit` para checar imports.
-   - Conferência visual via Playwright em desktop (1280px) e mobile (375px) abrindo `/` e o drawer mobile, confirmando que o chip exibe a logo real e mantém alinhamento/sombra.
+- `tsgo --noEmit`.
+- Playwright (headless): abrir `/atendimentos`, clicar "Novo atendimento", preencher mínimo + apenas a data do próximo retorno, submeter, screenshot confirmando que não aparece mais o tooltip de validação e que o atendimento é salvo (toast de sucesso).
+- Caso com data + hora preenchidas: confirmar que ISO salvo bate com o horário local escolhido (sem shift de dia).
 
 ## Fora de escopo
 
-- Não mexer no favicon, no `__root.tsx`, em outras telas (login, headers de páginas) nem em outros usos de `Building2` em filtros/cards.
-- Não alterar layout, cores do chip, animação do badge ou texto ao lado.
+Schema do banco, server functions, tipos de domínio, outros campos do formulário, outros menus.

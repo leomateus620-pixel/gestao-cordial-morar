@@ -52,7 +52,8 @@ type FormState = {
   orcamentoMax: string;
   imovelId: string;
   imovelDescricao: string;
-  proximoRetorno: string;
+  proximoRetornoData: string;
+  proximoRetornoHora: string;
   proximoPasso: "" | ProximoPassoAtendimento;
   observacoes: string;
   historicoInicial: string;
@@ -78,7 +79,8 @@ const initialForm: FormState = {
   orcamentoMax: "",
   imovelId: "",
   imovelDescricao: "",
-  proximoRetorno: "",
+  proximoRetornoData: "",
+  proximoRetornoHora: "",
   proximoPasso: "",
   observacoes: "",
   historicoInicial: "",
@@ -86,6 +88,20 @@ const initialForm: FormState = {
 };
 
 const sections = ["Entrada", "Interesse", "Operação", "Próximo passo"] as const;
+
+function buildProximoRetornoIso(data: string, hora: string): string | undefined {
+  if (!data) return undefined;
+  const dateMatch = data.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!dateMatch) return undefined;
+  const [, y, m, d] = dateMatch;
+  const timeMatch = (hora || "09:00").match(/^(\d{1,2}):(\d{2})$/);
+  const hh = timeMatch ? Number(timeMatch[1]) : 9;
+  const mm = timeMatch ? Number(timeMatch[2]) : 0;
+  // Local-time construction avoids the UTC midnight shift that flips the day in BRT.
+  const local = new Date(Number(y), Number(m) - 1, Number(d), hh, mm, 0, 0);
+  if (Number.isNaN(local.getTime())) return undefined;
+  return local.toISOString();
+}
 
 export function AtendimentoFormModal({
   open,
@@ -209,7 +225,7 @@ export function AtendimentoFormModal({
       imovelDescricao: optional(form.imovelDescricao) ?? selectedProperty?.titulo,
       prioridade: form.prioridade,
       status: form.status,
-      proximoRetorno: form.proximoRetorno ? new Date(form.proximoRetorno).toISOString() : undefined,
+      proximoRetorno: buildProximoRetornoIso(form.proximoRetornoData, form.proximoRetornoHora),
       proximoPasso: form.proximoPasso || undefined,
       observacoes: optional(form.observacoes),
       historicoInicial: optional(form.historicoInicial),
@@ -533,14 +549,26 @@ export function AtendimentoFormModal({
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Próximo retorno">
-                  <input
-                    type="datetime-local"
-                    value={form.proximoRetorno}
-                    onInput={(event) =>
-                      update("proximoRetorno", (event.target as HTMLInputElement).value)
-                    }
-                    className={inputClass()}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={form.proximoRetornoData}
+                      onChange={(event) => update("proximoRetornoData", event.target.value)}
+                      className={cn(inputClass(), "flex-1")}
+                      aria-label="Data do próximo retorno"
+                    />
+                    <input
+                      type="time"
+                      value={form.proximoRetornoHora}
+                      onChange={(event) => update("proximoRetornoHora", event.target.value)}
+                      className={cn(inputClass(), "w-28")}
+                      aria-label="Horário do próximo retorno (opcional)"
+                      placeholder="09:00"
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] text-foreground/45">
+                    Horário opcional — sem informar, usamos 09:00.
+                  </p>
                 </Field>
                 <Field label="Tipo de próximo passo">
                   <select
