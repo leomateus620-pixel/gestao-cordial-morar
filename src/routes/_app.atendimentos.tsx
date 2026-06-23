@@ -259,7 +259,7 @@ function Page() {
                 key={atendimento.id}
                 atendimento={atendimento}
                 onConvert={handleConvert}
-                onMockAction={(action) => toast.info(`${action}: em breve.`)}
+                onAction={handleAction}
               />
             ))}
           </div>
