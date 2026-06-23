@@ -1,30 +1,26 @@
 ## Objetivo
 
-Finalizar a ativação do sistema de e-mails (cron da fila) e disparar um e-mail real de teste para `leomateus620@gmail.com` usando o template `first-attendance-thank-you`.
-
-## Domínio
-
-`notify.cordialgestao.com` está verificado. Nenhuma ação de DNS é necessária.
+Disparar o e-mail de teste para `leomateus620@gmail.com` agora que o app foi publicado e as rotas `/lovable/email/transactional/send` e `/lovable/email/queue/process` estão ativas em produção.
 
 ## Passos
 
-1. **Ativar a fila** — executar `email_domain--setup_email_infra` (idempotente) para garantir que o cron `process-email-queue` esteja registrado e disparando a cada 5s contra `/lovable/email/queue/process`.
+1. **Confirmar rota viva** — `GET`/`POST` em `https://cordialgestao.com/lovable/email/transactional/send` para garantir que retorna 401 (rota deployada) e não 404.
 
-2. **Disparar e-mail de teste** — chamar `POST /lovable/email/transactional/send` com a sessão autenticada do preview, payload:
+2. **Disparar envio autenticado** — chamar `POST /lovable/email/transactional/send` via `stack_modern--invoke-server-function` (que injeta o JWT da sessão do preview), payload:
    - `templateName: "first-attendance-thank-you"`
    - `recipientEmail: "leomateus620@gmail.com"`
    - `idempotencyKey: "manual-test-<timestamp>"`
-   - `templateData`: dados realistas de exemplo (clienteNome "Leonardo Mateus", imobiliaria "cordial", finalidade "compra", tipoImovel "apartamento", regiao "Centro", orçamento exemplo).
+   - `templateData`: `{ clienteNome: "Leonardo Mateus", imobiliaria: "cordial", finalidade: "compra", tipoImovel: "apartamento", regiao: "Centro", orcamentoMin: 300000, orcamentoMax: 500000 }`.
 
-3. **Validar** — em até ~10s consultar `email_send_log` filtrando pelo `message_id` retornado e confirmar `status = 'sent'`. Se ficar em `pending`, aguardar próximo ciclo do cron; se `failed`/`dlq`, ler `error_message` e reportar.
+3. **Validar** — após ~10s consultar `email_send_log` pelo `message_id`/`recipient_email` e confirmar `status = 'sent'`. Se ficar `pending`, aguardar mais um ciclo do cron (5s). Se `failed`/`suppressed`/`dlq`, ler `error_message` e reportar a causa.
 
-4. **Reportar ao usuário** — confirmar envio (ou expor a causa exata da falha) e lembrar de checar a caixa de entrada / spam.
+4. **Reportar** ao usuário com o resultado final e pedir para conferir caixa de entrada e spam.
 
 ## Arquivos
 
-Nenhum arquivo de código será alterado. Apenas chamadas de infraestrutura e uma requisição HTTP de teste.
+Nenhuma alteração de código. Apenas requisição HTTP autenticada + leitura de tabela.
 
 ## Limitações
 
-- Primeiro e-mail para um domínio novo pode cair em spam até o IP de envio aquecer.
-- Se o destinatário já estiver em `suppressed_emails`, o envio retorna `email_suppressed` — nesse caso removeremos a supressão e tentaremos de novo.
+- Primeiro envio do domínio pode cair em spam.
+- Se `leomateus620@gmail.com` estiver em `suppressed_emails`, removo a supressão e tento de novo.
