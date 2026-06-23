@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FormSheet, Field, inputCls, submitCls } from "./form-shell";
-import { useApp } from "@/store/app-store";
+// store legacy não é mais usado aqui — cadastro persiste no Supabase
 import { createClient } from "@/lib/clients/clients.functions";
 import { CLIENTS_QUERY_KEY } from "@/hooks/useClients";
 import type { AgencyId, Cliente } from "@/lib/mock/data";
