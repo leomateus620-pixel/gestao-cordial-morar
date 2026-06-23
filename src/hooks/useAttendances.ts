@@ -118,18 +118,98 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
     refetch: () => attendancesQuery.refetch(),
     isSaving: createMutation.isPending,
     addAtendimento: (input: AtendimentoCreateInput) => createMutation.mutateAsync(input),
-    convertAtendimento: (id: string, clientId?: string) =>
-      updateMutation.mutateAsync({
+    convertAtendimento: async (id: string) => {
+      const atendimento = atendimentos.find((a) => a.id === id);
+      if (!atendimento) throw new Error("Atendimento não encontrado.");
+      if (atendimento.clienteConvertidoId) {
+        throw new Error("Este atendimento já foi vinculado a um cliente.");
+      }
+      const clientInput = atendimentoToClientInput(atendimento);
+      const created = await createClient({ data: clientInput });
+      const stamp = formatHistoryStamp(new Date());
+      const historyLine = `[${stamp}] Cliente vinculado: cadastro criado em Clientes.`;
+      const observacoes = atendimento.observacoes?.trim()
+        ? `${atendimento.observacoes.trim()}\n${historyLine}`
+        : historyLine;
+      await updateMutation.mutateAsync({
         id,
         patch: {
           convertidoEmCliente: true,
-          clienteConvertidoId: clientId ?? null,
+          clienteConvertidoId: created.id,
+          observacoes,
         },
-      }),
+      });
+      qc.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
+      return created;
+    },
     updateAtendimento: updateMutation.mutateAsync,
     removeAtendimento: removeMutation.mutateAsync,
   };
 }
+
+function formatHistoryStamp(date: Date) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm} ${hh}:${mi}`;
+}
+
+const ORIGIN_MAP: Record<OrigemLeadAtendimento, LeadOrigin> = {
+  whatsapp: "whatsapp",
+  instagram: "instagram",
+  indicacao: "indicacao",
+  site: "site",
+  portal: "portal",
+  presencial: "presencial",
+  porta_fria: "outro",
+  outro: "outro",
+};
+
+const STATUS_MAP: Record<AtendimentoStatus, ClientStatus> = {
+  novo: "novo",
+  em_atendimento: "em_atendimento",
+  aguardando_retorno: "aguardando_retorno",
+  visita_agendada: "visita_agendada",
+  proposta_enviada: "proposta_enviada",
+  negociacao: "em_negociacao",
+  fechado: "fechado",
+  perdido: "perdido",
+  sem_retorno: "sem_retorno",
+  arquivado: "perdido",
+};
+
+function finalidadeToPurpose(value: AtendimentoFinalidade): ClientPurpose {
+  return value === "compra" ? "compra" : value === "aluguel" ? "aluguel" : "ambos";
+}
+
+function atendimentoToClientInput(a: Atendimento): ClientCreateInput {
+  const notesParts = [a.observacoes?.trim(), a.historicoInicial?.trim()].filter(
+    (v): v is string => Boolean(v && v.length),
+  );
+  return {
+    fullName: a.clienteNome,
+    phone: a.telefone,
+    email: a.email,
+    clientType: "comprador",
+    contactPreference: a.contatoPreferencial,
+    leadOrigin: ORIGIN_MAP[a.origem] ?? "outro",
+    brand: a.imobiliaria,
+    assignedBrokerId: a.corretorId,
+    assignedBrokerName: a.corretorNome,
+    purpose: finalidadeToPurpose(a.finalidade),
+    propertyType: a.tipoImovel,
+    bedrooms: a.dormitorios,
+    neighborhood: a.bairroInteresse,
+    minBudget: a.orcamentoMin,
+    maxBudget: a.orcamentoMax,
+    notes: notesParts.length ? notesParts.join("\n\n") : undefined,
+    nextStep: a.proximoPasso,
+    nextFollowUpAt: a.proximoRetorno,
+    status: STATUS_MAP[a.status] ?? "novo",
+  };
+}
+
 
 function getStats(atendimentos: Atendimento[]) {
   const status = atendimentos.reduce<Partial<Record<AtendimentoStatus, number>>>((acc, item) => {
