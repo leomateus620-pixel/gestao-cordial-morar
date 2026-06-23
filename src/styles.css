@@ -694,11 +694,11 @@ html,
     scale(var(--feature-carousel-scale)) scale(var(--feature-hover-scale));
   transform-style: preserve-3d;
   transition:
-    transform 280ms cubic-bezier(0.19, 0.88, 0.28, 1),
-    opacity 280ms ease,
-    filter 280ms ease,
-    box-shadow 280ms ease,
-    border-color 280ms ease;
+    transform 360ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 360ms ease,
+    filter 360ms ease,
+    box-shadow 360ms ease,
+    border-color 360ms ease;
   will-change: transform, opacity, filter;
   contain: layout paint style;
 }
