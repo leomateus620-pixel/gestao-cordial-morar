@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
@@ -40,6 +41,11 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/agenda': typeof AppAgendaRoute
   '/alugueis': typeof AppAlugueisRoute
@@ -228,6 +235,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/agenda': typeof AppAgendaRoute
   '/alugueis': typeof AppAlugueisRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/alugueis': typeof AppAlugueisRoute
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/reset-password'
+    | '/unsubscribe'
     | '/agenciamentos'
     | '/agenda'
     | '/alugueis'
@@ -325,6 +335,7 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/reset-password'
+    | '/unsubscribe'
     | '/agenciamentos'
     | '/agenda'
     | '/alugueis'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/reset-password'
+    | '/unsubscribe'
     | '/_app/agenciamentos'
     | '/_app/agenda'
     | '/_app/alugueis'
@@ -390,6 +402,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
@@ -400,6 +413,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -697,6 +717,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
