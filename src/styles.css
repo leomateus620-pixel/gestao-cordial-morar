@@ -968,7 +968,7 @@ html,
   border-radius: inherit;
   background: linear-gradient(90deg, #5fafc7, #f0a86d 64%, #d9782d);
   box-shadow: 0 0 18px rgba(240, 168, 109, 0.26);
-  transition: width 120ms linear;
+  transition: width 260ms ease-out;
 }
 
 .login-feature-pips {
