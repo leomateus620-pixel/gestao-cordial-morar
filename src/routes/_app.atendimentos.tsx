@@ -72,11 +72,12 @@ function Page() {
   async function handleConvert(id: string) {
     try {
       await convertAtendimento(id);
-      toast.success("Atendimento transformado em cliente.");
+      toast.success("Cadastro criado em Clientes.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível converter.");
     }
   }
+
 
   async function handleAction(payload: AtendimentoActionPayload, atendimento: Atendimento) {
     try {
