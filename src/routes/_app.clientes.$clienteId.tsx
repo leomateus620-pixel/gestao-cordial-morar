@@ -1,9 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CalendarDays, FileText, Home, Mail, Phone, UserRound } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
 import { atendimentoStatusLabel } from "@/types/atendimento";
+import { CLIENTS_QUERY_KEY } from "@/hooks/useClients";
+import { listClients } from "@/lib/clients/clients.functions";
+import { useSession } from "@/lib/auth-mock";
+import {
+  clientTypeLabel,
+  contactPreferenceLabel,
+  leadOriginLabel,
+  realEstateBrandLabel,
+} from "@/types/client";
+import { formatBudgetRange, getClientInitials } from "@/services/clients";
 
 export const Route = createFileRoute("/_app/clientes/$clienteId")({
   head: () => ({ meta: [{ title: "Detalhe do cliente — Gestão Cordial" }] }),
@@ -14,11 +25,19 @@ const tabs = ["Resumo", "Atendimentos", "Imóveis", "Contratos", "Documentos"] a
 
 function Page() {
   const { clienteId } = Route.useParams();
-  const cliente = useApp((s) => s.clientes.find((c) => c.id === clienteId));
+  const user = useSession();
+  const clientsQuery = useQuery({
+    queryKey: CLIENTS_QUERY_KEY,
+    queryFn: () => listClients(),
+    enabled: Boolean(user),
+    staleTime: 15_000,
+  });
+  const cliente = clientsQuery.data?.find((c) => c.id === clienteId);
   const atendimentos = useApp((s) => s.atendimentos.filter((a) => a.clienteId === clienteId));
   const imoveis = useApp((s) => s.imoveis);
   const contratos = useApp((s) => s.contratos.filter((c) => c.clienteId === clienteId));
 
+  if (clientsQuery.isLoading) return <Empty message="Carregando cliente..." />;
   if (!cliente) return <Empty message="Cliente não encontrado." />;
 
   return (
@@ -32,27 +51,27 @@ function Page() {
       <section className="grid gap-4 md:grid-cols-[280px_1fr]">
         <aside className="glass-panel rounded-3xl p-4 md:sticky md:top-32 md:self-start">
           <div className="grid size-16 place-items-center rounded-2xl bg-primary/12 text-lg font-bold text-primary">
-            {cliente.iniciais}
+            {getClientInitials(cliente.fullName)}
           </div>
-          <h2 className="mt-3 text-xl font-semibold">{cliente.nome}</h2>
+          <h2 className="mt-3 text-xl font-semibold">{cliente.fullName}</h2>
           <p className="text-xs text-foreground/55">
-            {cliente.tipo} · origem {cliente.origem ?? "WhatsApp"}
+            {clientTypeLabel(cliente.clientType)} · origem {leadOriginLabel(cliente.leadOrigin)}
           </p>
           <div className="mt-4 space-y-2 text-xs text-foreground/65">
             <p className="flex items-center gap-2">
-              <Phone className="size-3.5" /> {cliente.telefone}
+              <Phone className="size-3.5" /> {cliente.phone || "Telefone não informado"}
             </p>
             <p className="flex items-center gap-2">
-              <Mail className="size-3.5" /> {cliente.email}
+              <Mail className="size-3.5" /> {cliente.email || "E-mail não informado"}
             </p>
             <p className="flex items-center gap-2">
-              <UserRound className="size-3.5" /> {cliente.documento ?? "CPF/CNPJ pendente"}
+              <UserRound className="size-3.5" /> {cliente.document ?? "CPF/CNPJ pendente"}
             </p>
           </div>
           <div className="mt-4 rounded-2xl bg-white/45 p-3">
             <p className="text-[10px] uppercase tracking-wider text-foreground/45">Orçamento</p>
             <p className="font-mono text-lg font-bold text-primary">
-              {cliente.orcamento ? brl(cliente.orcamento) : "A definir"}
+              {formatBudgetRange(cliente)}
             </p>
           </div>
         </aside>
@@ -69,32 +88,38 @@ function Page() {
             ))}
           </div>
           <Card title="Resumo comercial" icon={UserRound}>
-            <p className="text-sm text-foreground/70">{cliente.interesse}</p>
+            <p className="text-sm text-foreground/70">
+              {cliente.notes ?? "Sem observações cadastradas."}
+            </p>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
-              <Metric label="Preferência" value={cliente.preferenciaContato ?? "WhatsApp"} />
+              <Metric
+                label="Preferência"
+                value={contactPreferenceLabel(cliente.contactPreference)}
+              />
               <Metric
                 label="Renda"
-                value={cliente.rendaMensal ? brl(cliente.rendaMensal) : "Não informada"}
+                value={cliente.approximateIncome ? brl(cliente.approximateIncome) : "Não informada"}
               />
               <Metric
                 label="Criado em"
-                value={new Date(cliente.criadoEm).toLocaleDateString("pt-BR")}
+                value={new Date(cliente.createdAt).toLocaleDateString("pt-BR")}
               />
-              <Metric
-                label="Imobiliária"
-                value={cliente.imobiliaria === "cordial" ? "Cordial" : "Morar"}
-              />
+              <Metric label="Imobiliária" value={realEstateBrandLabel(cliente.brand)} />
             </div>
           </Card>
           <Card title="Atendimentos" icon={CalendarDays}>
-            <div className="space-y-2">
-              {atendimentos.map((a) => (
-                <div key={a.id} className="rounded-2xl bg-white/45 p-3">
-                  <StatusBadge status={atendimentoStatusLabel(a.status)} />
-                  <p className="mt-2 text-xs text-foreground/65">{a.observacoes}</p>
-                </div>
-              ))}
-            </div>
+            {atendimentos.length ? (
+              <div className="space-y-2">
+                {atendimentos.map((a) => (
+                  <div key={a.id} className="rounded-2xl bg-white/45 p-3">
+                    <StatusBadge status={atendimentoStatusLabel(a.status)} />
+                    <p className="mt-2 text-xs text-foreground/65">{a.observacoes}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-foreground/55">Sem atendimentos vinculados.</p>
+            )}
           </Card>
           <Card title="Imóveis de interesse" icon={Home}>
             <div className="grid gap-2 md:grid-cols-2">

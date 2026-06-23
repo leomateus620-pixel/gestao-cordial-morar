@@ -270,7 +270,7 @@ export const useApp = create<State>()(
         set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
     }),
     {
-      name: "gc.store.v1",
+      name: "gc.store.v2",
       merge: (persisted, current) => {
         const persistedState = persisted as Partial<State> | undefined;
         const clientes = (persistedState?.clientes ?? current.clientes).map((cliente) =>

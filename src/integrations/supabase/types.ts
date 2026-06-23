@@ -329,6 +329,96 @@ export type Database = {
         }
         Relationships: []
       }
+      clients: {
+        Row: {
+          approximate_income: number | null
+          assigned_broker_id: string | null
+          assigned_broker_name: string | null
+          bedrooms: string | null
+          brand: string
+          client_type: string
+          contact_preference: string
+          created_at: string
+          created_by: string
+          document: string | null
+          email: string | null
+          full_name: string
+          id: string
+          lead_origin: string
+          max_budget: number | null
+          min_budget: number | null
+          neighborhood: string | null
+          next_follow_up_at: string | null
+          next_step: string | null
+          notes: string | null
+          phone: string
+          profession: string | null
+          property_type: string
+          purpose: string
+          restrictions: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approximate_income?: number | null
+          assigned_broker_id?: string | null
+          assigned_broker_name?: string | null
+          bedrooms?: string | null
+          brand?: string
+          client_type?: string
+          contact_preference?: string
+          created_at?: string
+          created_by?: string
+          document?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          lead_origin?: string
+          max_budget?: number | null
+          min_budget?: number | null
+          neighborhood?: string | null
+          next_follow_up_at?: string | null
+          next_step?: string | null
+          notes?: string | null
+          phone?: string
+          profession?: string | null
+          property_type?: string
+          purpose?: string
+          restrictions?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approximate_income?: number | null
+          assigned_broker_id?: string | null
+          assigned_broker_name?: string | null
+          bedrooms?: string | null
+          brand?: string
+          client_type?: string
+          contact_preference?: string
+          created_at?: string
+          created_by?: string
+          document?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          lead_origin?: string
+          max_budget?: number | null
+          min_budget?: number | null
+          neighborhood?: string | null
+          next_follow_up_at?: string | null
+          next_step?: string | null
+          notes?: string | null
+          phone?: string
+          profession?: string | null
+          property_type?: string
+          purpose?: string
+          restrictions?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       google_calendar_connections: {
         Row: {
           access_token: string

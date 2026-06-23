@@ -90,7 +90,7 @@ export function ClientFormModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (client: ClientCreateInput) => void;
+  onSubmit: (client: ClientCreateInput) => void | Promise<void>;
 }) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [validation, setValidation] = useState<ClientValidationResult["errors"]>({});
@@ -160,8 +160,9 @@ export function ClientFormModal({
     }
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
 
     const input: ClientCreateInput = {
       fullName: form.fullName,
@@ -195,11 +196,16 @@ export function ClientFormModal({
     if (!result.ok) return;
 
     setSaving(true);
-    onSubmit(input);
-    setSaving(false);
-    setForm(initialForm);
-    setValidation({});
-    requestClose();
+    try {
+      await onSubmit(input);
+      setForm(initialForm);
+      setValidation({});
+      requestClose();
+    } catch {
+      // erro já comunicado pelo chamador via toast; manter formulário aberto
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

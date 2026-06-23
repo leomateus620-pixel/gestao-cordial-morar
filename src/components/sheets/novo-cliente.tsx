@@ -1,7 +1,12 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { FormSheet, Field, inputCls, submitCls } from "./form-shell";
-import { useApp } from "@/store/app-store";
+// store legacy não é mais usado aqui — cadastro persiste no Supabase
+import { createClient } from "@/lib/clients/clients.functions";
+import { CLIENTS_QUERY_KEY } from "@/hooks/useClients";
 import type { AgencyId, Cliente } from "@/lib/mock/data";
+import type { ClientCreateInput } from "@/types/client";
 
 export function NovoClienteSheet({
   open,
@@ -10,7 +15,12 @@ export function NovoClienteSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const addCliente = useApp((s) => s.addCliente);
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (input: ClientCreateInput) => createClient({ data: input }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY }),
+  });
+
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
@@ -25,36 +35,41 @@ export function NovoClienteSheet({
     useState<Cliente["preferenciaContato"]>("WhatsApp");
   const [observacoes, setObservacoes] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) return;
-    addCliente({
-      fullName: nome,
-      phone: telefone,
-      email,
-      clientType: mapTipo(tipo),
-      contactPreference: mapPreferencia(preferenciaContato),
-      leadOrigin: mapOrigem(origem),
-      brand: imobiliaria,
-      purpose: tipo === "Locatário" ? "aluguel" : "compra",
-      propertyType: "apartamento",
-      bedrooms: "nao_aplica",
-      minBudget: orcamento || undefined,
-      maxBudget: orcamento || undefined,
-      approximateIncome: rendaMensal || undefined,
-      document: documento,
-      notes: observacoes || interesse,
-      status: "novo",
-    });
-    onOpenChange(false);
-    setNome("");
-    setTelefone("");
-    setEmail("");
-    setInteresse("");
-    setOrcamento(0);
-    setDocumento("");
-    setRendaMensal(0);
-    setObservacoes("");
+    try {
+      await mutation.mutateAsync({
+        fullName: nome,
+        phone: telefone,
+        email,
+        clientType: mapTipo(tipo),
+        contactPreference: mapPreferencia(preferenciaContato),
+        leadOrigin: mapOrigem(origem),
+        brand: imobiliaria,
+        purpose: tipo === "Locatário" ? "aluguel" : "compra",
+        propertyType: "apartamento",
+        bedrooms: "nao_aplica",
+        minBudget: orcamento || undefined,
+        maxBudget: orcamento || undefined,
+        approximateIncome: rendaMensal || undefined,
+        document: documento,
+        notes: observacoes || interesse,
+        status: "novo",
+      });
+      toast.success(`Cadastro de ${nome} salvo.`);
+      onOpenChange(false);
+      setNome("");
+      setTelefone("");
+      setEmail("");
+      setInteresse("");
+      setOrcamento(0);
+      setDocumento("");
+      setRendaMensal(0);
+      setObservacoes("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar o cliente.");
+    }
   }
 
   return (
@@ -181,8 +196,8 @@ export function NovoClienteSheet({
             placeholder="Preferências, restrições e próximos passos..."
           />
         </Field>
-        <button type="submit" className={submitCls}>
-          Cadastrar cliente
+        <button type="submit" disabled={mutation.isPending} className={submitCls}>
+          {mutation.isPending ? "Salvando..." : "Cadastrar cliente"}
         </button>
       </form>
     </FormSheet>
@@ -207,3 +222,5 @@ function mapOrigem(origem: Cliente["origem"]) {
   if (origem === "Site") return "site";
   return "whatsapp";
 }
+
+

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { ClientCreateCard } from "@/components/clients/ClientCreateCard";
 import { ClientFilters } from "@/components/clients/ClientFilters";
 import { ClientFormModal } from "@/components/clients/ClientFormModal";
@@ -23,20 +23,33 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<ClientFiltersState>(defaultClientFilters);
-  const [success, setSuccess] = useState<string | null>(null);
   const setAgency = useApp((state) => state.setAgency);
-  const { agency, filteredClients, stats, addClient } = useClients(query, filters);
+  const {
+    agency,
+    clients,
+    filteredClients,
+    stats,
+    addClient,
+    isLoading,
+    isError,
+    error,
+  } = useClients(query, filters);
 
-  useEffect(() => {
-    if (!success) return;
-    const timer = window.setTimeout(() => setSuccess(null), 2600);
-    return () => window.clearTimeout(timer);
-  }, [success]);
-
-  function createClient(client: ClientCreateInput) {
-    addClient(client);
-    setSuccess(client.fullName);
+  async function createClient(client: ClientCreateInput) {
+    try {
+      await addClient(client);
+      toast.success(`Cadastro de ${client.fullName} salvo.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Não foi possível salvar o cliente.";
+      toast.error(message);
+      throw err;
+    }
   }
+
+  const hasAnyClient = clients.length > 0;
+  const hasFiltersOrSearch =
+    query.trim().length > 0 ||
+    Object.entries(filters).some(([, value]) => value !== "todos");
 
   return (
     <div className="space-y-4">
@@ -66,17 +79,55 @@ function Page() {
             Comercial
           </span>
         </div>
-        <ClientList clients={filteredClients} isLoading={false} error={null} />
+
+        {!isLoading && !isError && !hasAnyClient ? (
+          <EmptyState onCreate={() => setOpen(true)} />
+        ) : !isLoading && !isError && hasAnyClient && filteredClients.length === 0 ? (
+          <NoMatchState filtered={hasFiltersOrSearch} />
+        ) : (
+          <ClientList
+            clients={filteredClients}
+            isLoading={isLoading}
+            error={isError ? (error?.message ?? "Erro ao carregar clientes.") : null}
+          />
+        )}
       </section>
 
-      {success && (
-        <div className="fixed left-1/2 top-5 z-[60] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-2xl border border-white/70 bg-white/88 px-4 py-3 text-sm font-semibold text-teal-900 shadow-xl shadow-stone-950/12 backdrop-blur-xl">
-          <CheckCircle2 className="size-4 text-emerald-700" />
-          Cadastro de {success} salvo.
-        </div>
-      )}
-
       {open && <ClientFormModal open={open} onOpenChange={setOpen} onSubmit={createClient} />}
+    </div>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="glass-panel rounded-3xl p-8 text-center">
+      <p className="text-base font-semibold text-foreground">
+        Nenhum cliente cadastrado ainda.
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-foreground/55">
+        Clique em <span className="font-semibold text-foreground/80">Criar cadastro</span> para
+        registrar o primeiro cliente e alimentar seus relatórios comerciais.
+      </p>
+      <button
+        type="button"
+        onClick={onCreate}
+        className="mt-4 inline-flex items-center justify-center rounded-full bg-teal-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800"
+      >
+        Criar cadastro
+      </button>
+    </div>
+  );
+}
+
+function NoMatchState({ filtered }: { filtered: boolean }) {
+  return (
+    <div className="glass-panel rounded-3xl p-6 text-center">
+      <p className="text-sm font-semibold">
+        {filtered ? "Nenhum cliente encontrado com os filtros atuais." : "Nenhum cliente nesta visão."}
+      </p>
+      <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-foreground/55">
+        Ajuste os filtros ou limpe a busca para ver mais resultados.
+      </p>
     </div>
   );
 }
