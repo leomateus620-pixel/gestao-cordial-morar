@@ -1,26 +1,39 @@
-## Objetivo
+## Problema
 
-Disparar o e-mail de teste para `leomateus620@gmail.com` agora que o app foi publicado e as rotas `/lovable/email/transactional/send` e `/lovable/email/queue/process` estão ativas em produção.
+A função `sendFirstAttendanceEmail` (disparada ao salvar um atendimento) usa o cliente Supabase autenticado do usuário, que respeita RLS. A tabela `public.email_logs` foi criada com RLS ligado mas:
 
-## Passos
+- só tem política de **SELECT** (`Owners and admins can read email logs`);
+- não tem `GRANT` explícito para `authenticated`;
+- não tem políticas de `INSERT` nem `UPDATE`.
 
-1. **Confirmar rota viva** — `GET`/`POST` em `https://cordialgestao.com/lovable/email/transactional/send` para garantir que retorna 401 (rota deployada) e não 404.
+Resultado: o primeiro `insert` em `email_logs` (status `pending`) falha por RLS, a função retorna `failed` e o e-mail nunca é enfileirado. Nenhuma linha aparece em `email_logs`, e `email_send_log` só registra o teste manual.
 
-2. **Disparar envio autenticado** — chamar `POST /lovable/email/transactional/send` via `stack_modern--invoke-server-function` (que injeta o JWT da sessão do preview), payload:
-   - `templateName: "first-attendance-thank-you"`
-   - `recipientEmail: "leomateus620@gmail.com"`
-   - `idempotencyKey: "manual-test-<timestamp>"`
-   - `templateData`: `{ clienteNome: "Leonardo Mateus", imobiliaria: "cordial", finalidade: "compra", tipoImovel: "apartamento", regiao: "Centro", orcamentoMin: 300000, orcamentoMax: 500000 }`.
+## Correção
 
-3. **Validar** — após ~10s consultar `email_send_log` pelo `message_id`/`recipient_email` e confirmar `status = 'sent'`. Se ficar `pending`, aguardar mais um ciclo do cron (5s). Se `failed`/`suppressed`/`dlq`, ler `error_message` e reportar a causa.
+Criar uma migration que:
 
-4. **Reportar** ao usuário com o resultado final e pedir para conferir caixa de entrada e spam.
+1. `GRANT SELECT, INSERT, UPDATE ON public.email_logs TO authenticated;` e `GRANT ALL ... TO service_role;`
+2. Adiciona políticas:
+   - `INSERT` para `authenticated` com `WITH CHECK (created_by = auth.uid())`.
+   - `UPDATE` para `authenticated` com `USING (created_by = auth.uid())` e mesmo `WITH CHECK` (necessário para o `update` final que marca `status='sent'`/`failed`).
+   - Mantém a SELECT atual.
+   - `service_role` continua ignorando RLS (já tem bypass).
+
+Isso é suficiente porque `sendFirstAttendanceEmail` sempre grava `created_by = userId` e atualiza só o próprio log pelo `id`.
+
+## Validação
+
+1. Cadastrar um novo atendimento de teste pelo preview com e-mail real.
+2. Conferir `email_logs` (deve aparecer linha `pending` → `sent`) e `email_send_log` (linha `sent` para `first-attendance-thank-you`).
+3. Conferir caixa de entrada / spam do destinatário.
+4. Se algum atendimento anterior (Camila, Ricardo, Leonardo Streoschein) deva receber o e-mail retroativo, disparo manualmente via `sendFirstAttendanceEmail` por `attendanceId` — confirmar com você antes.
 
 ## Arquivos
 
-Nenhuma alteração de código. Apenas requisição HTTP autenticada + leitura de tabela.
+- Nova migration `supabase/migrations/<timestamp>_email_logs_rls.sql` com os GRANTs e políticas acima.
+- Nenhuma mudança em código de aplicação.
 
 ## Limitações
 
-- Primeiro envio do domínio pode cair em spam.
-- Se `leomateus620@gmail.com` estiver em `suppressed_emails`, removo a supressão e tento de novo.
+- Não altero o template nem o conteúdo do e-mail.
+- Não mexo nas tabelas de infra de e-mail (`email_send_log`, `email_send_state`, `suppressed_emails`, `email_unsubscribe_tokens`).
