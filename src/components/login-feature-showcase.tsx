@@ -22,143 +22,344 @@ type LoginFeature = {
   title: string;
   text: string;
   eyebrow: string;
+  detail: string;
+  signal: string;
   icon: LucideIcon;
   accent: string;
   glow: string;
   priority?: boolean;
 };
 
-const AUTO_SHOWCASE_DURATION_MS = 4000;
+const AUTO_SHOWCASE_DWELL_MS = 3600;
+const RESUME_AFTER_TOUCH_MS = 900;
+const FEATURE_REPEAT_COUNT = 3;
 
 const loginFeatures: LoginFeature[] = [
   {
     title: "Agenda",
     text: "Compromissos, visitas e rotinas comerciais em uma visão clara.",
     eyebrow: "Prioridade operacional",
+    detail: "Calendário central",
+    signal: "Foco do dia",
     icon: CalendarClock,
     accent: "#5FAFC7",
-    glow: "rgba(95, 175, 199, 0.28)",
+    glow: "rgba(95, 175, 199, 0.34)",
     priority: true,
   },
   {
     title: "Corretores",
     text: "Equipe organizada por atuação, agenda e relacionamento.",
     eyebrow: "Equipe comercial",
+    detail: "Atuação integrada",
+    signal: "Equipe em campo",
     icon: UsersRound,
     accent: "#2B7FA3",
-    glow: "rgba(43, 127, 163, 0.24)",
+    glow: "rgba(43, 127, 163, 0.3)",
   },
   {
     title: "Atendimento",
     text: "Fluxo de atendimento do primeiro contato até o fechamento.",
     eyebrow: "Relacionamento",
+    detail: "Jornada comercial",
+    signal: "Contato ativo",
     icon: Headphones,
     accent: "#D9782D",
-    glow: "rgba(217, 120, 45, 0.24)",
+    glow: "rgba(217, 120, 45, 0.28)",
   },
   {
     title: "Clientes",
     text: "Base comercial estruturada para relacionamento e conversão.",
-    eyebrow: "Carteira ativa",
+    eyebrow: "Carteira",
+    detail: "Base qualificada",
+    signal: "Relacionamento",
     icon: ClipboardCheck,
     accent: "#F0A86D",
-    glow: "rgba(240, 168, 109, 0.22)",
+    glow: "rgba(240, 168, 109, 0.24)",
   },
   {
     title: "Agenciamento",
     text: "Captação e gestão de imóveis com processo padronizado.",
     eyebrow: "Captação",
+    detail: "Imóveis em fluxo",
+    signal: "Processo padrão",
     icon: Home,
     accent: "#1E647D",
-    glow: "rgba(30, 100, 125, 0.24)",
+    glow: "rgba(30, 100, 125, 0.3)",
   },
   {
     title: "Relatórios",
     text: "Indicadores para acompanhar operação, carteira e resultados.",
-    eyebrow: "Gestão visual",
+    eyebrow: "Inteligência",
+    detail: "Leitura executiva",
+    signal: "Indicadores",
     icon: BarChart3,
     accent: "#B95F20",
-    glow: "rgba(185, 95, 32, 0.24)",
+    glow: "rgba(185, 95, 32, 0.28)",
   },
 ];
+
+const FEATURE_COUNT = loginFeatures.length;
+const FEATURE_BASE_INDEX = FEATURE_COUNT;
+const renderedFeatures = Array.from(
+  { length: FEATURE_COUNT * FEATURE_REPEAT_COUNT },
+  (_, index) => ({
+    feature: loginFeatures[index % FEATURE_COUNT],
+    featureIndex: index % FEATURE_COUNT,
+    renderIndex: index,
+  }),
+);
 
 type LoginFeatureShowcaseProps = {
   className?: string;
 };
 
+type DragState = {
+  pointerId: number;
+  startX: number;
+  startPosition: number;
+  moved: boolean;
+};
+
 export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [activeRenderIndex, setActiveRenderIndex] = useState(FEATURE_BASE_INDEX);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const progressRef = useRef<HTMLSpanElement | null>(null);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
   const frameRef = useRef<number | null>(null);
   const animateRef = useRef<FrameRequestCallback | null>(null);
-  const positionRef = useRef(0);
+  const resumeTimerRef = useRef<number | null>(null);
+  const positionRef = useRef(FEATURE_BASE_INDEX);
   const velocityRef = useRef(0);
-  const targetPositionRef = useRef(0);
+  const targetPositionRef = useRef(FEATURE_BASE_INDEX);
+  const cardStepRef = useRef(1);
   const activeIndexRef = useRef(0);
-  const autoStartRef = useRef(0);
-  const pausedRef = useRef(false);
+  const activeRenderIndexRef = useRef(FEATURE_BASE_INDEX);
+  const slideStartedAtRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
-  const pausedTotalRef = useRef(0);
-  const autoFinishedRef = useRef(false);
+  const pausedRef = useRef(false);
+  const hoveringRef = useRef(false);
+  const draggingRef = useRef(false);
+  const dragStateRef = useRef<DragState | null>(null);
 
-  const applyPosition = useCallback((position: number) => {
-    const viewport = viewportRef.current;
-    const track = trackRef.current;
-    const firstCard = cardRefs.current[0];
-
-    if (!viewport || !track || !firstCard || typeof window === "undefined") return;
-
-    const viewportWidth = viewport.getBoundingClientRect().width;
-    const cardWidth = firstCard.getBoundingClientRect().width;
-    const styles = window.getComputedStyle(track);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 12;
-    const offset = viewportWidth / 2 - cardWidth / 2 - position * (cardWidth + gap);
-
-    track.style.transform = `translate3d(${offset.toFixed(2)}px, 0, 0)`;
+  const setProgress = useCallback((progress: number) => {
+    progressRef.current?.style.setProperty("--feature-progress", `${Math.round(progress * 100)}%`);
   }, []);
+
+  const updateActiveFromPosition = useCallback((position: number) => {
+    const renderIndex = Math.round(position);
+    const featureIndex = getFeatureIndex(renderIndex);
+
+    if (featureIndex !== activeIndexRef.current) {
+      activeIndexRef.current = featureIndex;
+      setActiveIndex(featureIndex);
+    }
+
+    if (renderIndex !== activeRenderIndexRef.current) {
+      activeRenderIndexRef.current = renderIndex;
+      setActiveRenderIndex(renderIndex);
+    }
+  }, []);
+
+  const applyPosition = useCallback(
+    (position: number) => {
+      const viewport = viewportRef.current;
+      const track = trackRef.current;
+      const firstCard = cardRefs.current[FEATURE_BASE_INDEX] ?? cardRefs.current[0];
+
+      if (!viewport || !track || !firstCard || typeof window === "undefined") return;
+
+      const viewportWidth = viewport.getBoundingClientRect().width;
+      const cardWidth = firstCard.offsetWidth;
+      const styles = window.getComputedStyle(track);
+      const gap = Number.parseFloat(styles.columnGap || styles.gap) || 14;
+      const cardStep = cardWidth + gap;
+      cardStepRef.current = cardStep;
+
+      const offset = viewportWidth / 2 - cardWidth / 2 - position * cardStep;
+      track.style.transform = `translate3d(${offset.toFixed(2)}px, 0, 0)`;
+
+      cardRefs.current.forEach((node, index) => {
+        if (!node) return;
+
+        const distance = index - position;
+        const absDistance = Math.abs(distance);
+        const softDistance = Math.min(absDistance, 2.6);
+        const depth = 56 - softDistance * 42;
+        const sideLift = softDistance * 8;
+        const sideRotate = clamp(-distance * 7, -15, 15);
+        const scale = clamp(1.03 - softDistance * 0.105, 0.76, 1.04);
+        const opacity = clamp(1 - softDistance * 0.36, 0.14, 1);
+        const blur = Math.max(0, absDistance - 0.38) * 1.35;
+        const saturate = clamp(1.08 - softDistance * 0.12, 0.78, 1.08);
+        const brightness = clamp(1.04 - softDistance * 0.09, 0.76, 1.05);
+
+        node.style.setProperty("--feature-carousel-scale", scale.toFixed(3));
+        node.style.setProperty("--feature-depth", `${depth.toFixed(2)}px`);
+        node.style.setProperty("--feature-side-y", `${sideLift.toFixed(2)}px`);
+        node.style.setProperty("--feature-side-rotate", `${sideRotate.toFixed(2)}deg`);
+        node.style.setProperty("--feature-opacity", opacity.toFixed(3));
+        node.style.setProperty("--feature-blur", `${blur.toFixed(2)}px`);
+        node.style.setProperty("--feature-saturate", saturate.toFixed(3));
+        node.style.setProperty("--feature-brightness", brightness.toFixed(3));
+        node.style.zIndex = String(100 - Math.round(absDistance * 10));
+      });
+
+      updateActiveFromPosition(position);
+    },
+    [updateActiveFromPosition],
+  );
 
   const queueFrame = useCallback(() => {
     if (prefersReducedMotion) {
       positionRef.current = targetPositionRef.current;
       velocityRef.current = 0;
       applyPosition(positionRef.current);
+      setProgress(1);
       return;
     }
 
     if (frameRef.current === null && animateRef.current) {
       frameRef.current = window.requestAnimationFrame(animateRef.current);
     }
-  }, [applyPosition, prefersReducedMotion]);
+  }, [applyPosition, prefersReducedMotion, setProgress]);
 
-  const pauseShowcase = useCallback(() => {
-    if (pausedRef.current || autoFinishedRef.current) return;
-    pausedRef.current = true;
-    pausedAtRef.current = performance.now();
+  const clearResumeTimer = useCallback(() => {
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
   }, []);
 
-  const resumeShowcase = useCallback(() => {
-    if (!pausedRef.current) return;
+  const pauseShowcase = useCallback(() => {
+    if (prefersReducedMotion || pausedRef.current) return;
 
-    pausedRef.current = false;
-    if (pausedAtRef.current !== null) {
-      pausedTotalRef.current += performance.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
-    }
-    queueFrame();
-  }, [queueFrame]);
+    clearResumeTimer();
+    pausedRef.current = true;
+    pausedAtRef.current = performance.now();
+  }, [clearResumeTimer, prefersReducedMotion]);
 
-  const moveToFeature = useCallback(
-    (index: number) => {
-      autoFinishedRef.current = true;
-      targetPositionRef.current = index;
-      setActiveIndex(index);
-      activeIndexRef.current = index;
+  const resumeShowcase = useCallback(
+    (delay = 420) => {
+      if (prefersReducedMotion) return;
+
+      clearResumeTimer();
+      resumeTimerRef.current = window.setTimeout(() => {
+        resumeTimerRef.current = null;
+        if (!pausedRef.current || draggingRef.current) return;
+
+        const now = performance.now();
+        if (pausedAtRef.current !== null) {
+          slideStartedAtRef.current += now - pausedAtRef.current;
+          pausedAtRef.current = null;
+        }
+
+        pausedRef.current = false;
+        queueFrame();
+      }, delay);
+    },
+    [clearResumeTimer, prefersReducedMotion, queueFrame],
+  );
+
+  const moveToRenderIndex = useCallback(
+    (renderIndex: number) => {
+      targetPositionRef.current = renderIndex;
+      slideStartedAtRef.current = performance.now();
+      setProgress(0);
       queueFrame();
     },
-    [queueFrame],
+    [queueFrame, setProgress],
+  );
+
+  const moveToFeature = useCallback(
+    (featureIndex: number) => {
+      const renderIndex = closestRenderIndexForFeature(featureIndex, positionRef.current);
+      moveToRenderIndex(renderIndex);
+    },
+    [moveToRenderIndex],
+  );
+
+  const handlePointerEnter = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (event.pointerType === "mouse") {
+        hoveringRef.current = true;
+        pauseShowcase();
+      }
+    },
+    [pauseShowcase],
+  );
+
+  const handlePointerLeave = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (event.pointerType === "mouse") {
+        hoveringRef.current = false;
+        if (!draggingRef.current) resumeShowcase(520);
+      }
+    },
+    [resumeShowcase],
+  );
+
+  const handlePointerDown = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 && event.pointerType === "mouse") return;
+
+      pauseShowcase();
+      dragStateRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startPosition: positionRef.current,
+        moved: false,
+      };
+      draggingRef.current = false;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    [pauseShowcase],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId || prefersReducedMotion) return;
+
+      const deltaX = event.clientX - dragState.startX;
+      if (Math.abs(deltaX) < 3 && !dragState.moved) return;
+
+      dragState.moved = true;
+      draggingRef.current = true;
+      const nextPosition = dragState.startPosition - deltaX / cardStepRef.current;
+
+      positionRef.current = nextPosition;
+      targetPositionRef.current = nextPosition;
+      velocityRef.current = 0;
+      setProgress(0);
+      applyPosition(nextPosition);
+    },
+    [applyPosition, prefersReducedMotion, setProgress],
+  );
+
+  const finishDrag = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      dragStateRef.current = null;
+
+      const nextTarget = normalizeRenderTarget(Math.round(positionRef.current));
+      draggingRef.current = false;
+      targetPositionRef.current = nextTarget;
+      slideStartedAtRef.current = performance.now();
+      setProgress(0);
+      queueFrame();
+
+      if (event.pointerType === "mouse" && hoveringRef.current) return;
+      resumeShowcase(event.pointerType === "touch" ? RESUME_AFTER_TOUCH_MS : 500);
+    },
+    [queueFrame, resumeShowcase, setProgress],
   );
 
   useEffect(() => {
@@ -187,56 +388,79 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
       frameRef.current = null;
     }
 
-    positionRef.current = 0;
+    positionRef.current = FEATURE_BASE_INDEX;
     velocityRef.current = 0;
-    targetPositionRef.current = 0;
+    targetPositionRef.current = FEATURE_BASE_INDEX;
     activeIndexRef.current = 0;
-    setActiveIndex(0);
-    applyPosition(0);
-
-    if (prefersReducedMotion) return;
-
-    autoStartRef.current = performance.now();
-    pausedTotalRef.current = 0;
+    activeRenderIndexRef.current = FEATURE_BASE_INDEX;
+    slideStartedAtRef.current = performance.now();
     pausedAtRef.current = null;
     pausedRef.current = false;
-    autoFinishedRef.current = false;
+    hoveringRef.current = false;
+    draggingRef.current = false;
+    dragStateRef.current = null;
+    setActiveIndex(0);
+    setActiveRenderIndex(FEATURE_BASE_INDEX);
+    setProgress(prefersReducedMotion ? 1 : 0);
+    applyPosition(FEATURE_BASE_INDEX);
+
+    if (prefersReducedMotion) return;
 
     const animate: FrameRequestCallback = (timestamp) => {
       frameRef.current = null;
 
-      if (!autoFinishedRef.current && !pausedRef.current) {
-        const elapsed = timestamp - autoStartRef.current - pausedTotalRef.current;
-        const progress = Math.min(Math.max(elapsed / AUTO_SHOWCASE_DURATION_MS, 0), 1);
-        targetPositionRef.current = easeInOut(progress) * (loginFeatures.length - 1);
-        if (progress >= 1) autoFinishedRef.current = true;
-      }
-
       const target = targetPositionRef.current;
       const distance = target - positionRef.current;
-      velocityRef.current = (velocityRef.current + distance * 0.14) * 0.74;
+      const isSettled = Math.abs(distance) < 0.002 && Math.abs(velocityRef.current) < 0.002;
+      const wasMoving = !isSettled;
+
+      if (!pausedRef.current && !draggingRef.current && isSettled) {
+        const elapsed = timestamp - slideStartedAtRef.current;
+        const progress = Math.min(Math.max(elapsed / AUTO_SHOWCASE_DWELL_MS, 0), 1);
+        setProgress(progress);
+
+        if (progress >= 1) {
+          targetPositionRef.current = target + 1;
+          slideStartedAtRef.current = timestamp;
+          setProgress(0);
+        }
+      }
+
+      const nextTarget = targetPositionRef.current;
+      const nextDistance = nextTarget - positionRef.current;
+      velocityRef.current = (velocityRef.current + nextDistance * 0.145) * 0.765;
       positionRef.current += velocityRef.current;
 
-      if (Math.abs(distance) < 0.001 && Math.abs(velocityRef.current) < 0.001) {
-        positionRef.current = target;
+      if (Math.abs(nextDistance) < 0.0015 && Math.abs(velocityRef.current) < 0.0015) {
+        positionRef.current = nextTarget;
         velocityRef.current = 0;
+      }
+
+      const settledAfterMove =
+        Math.abs(targetPositionRef.current - positionRef.current) < 0.002 &&
+        Math.abs(velocityRef.current) < 0.002;
+
+      if (settledAfterMove && !draggingRef.current) {
+        if (wasMoving) {
+          slideStartedAtRef.current = timestamp;
+          setProgress(0);
+        }
+
+        const normalizedTarget = normalizeRenderTarget(targetPositionRef.current);
+        if (normalizedTarget !== targetPositionRef.current) {
+          const shift = normalizedTarget - targetPositionRef.current;
+          targetPositionRef.current = normalizedTarget;
+          positionRef.current += shift;
+        }
       }
 
       applyPosition(positionRef.current);
 
-      const nextActiveIndex = Math.min(
-        loginFeatures.length - 1,
-        Math.max(0, Math.round(positionRef.current)),
-      );
-      if (nextActiveIndex !== activeIndexRef.current) {
-        activeIndexRef.current = nextActiveIndex;
-        setActiveIndex(nextActiveIndex);
-      }
-
       const shouldContinue =
-        !autoFinishedRef.current ||
-        Math.abs(target - positionRef.current) > 0.001 ||
-        Math.abs(velocityRef.current) > 0.001;
+        !pausedRef.current ||
+        draggingRef.current ||
+        Math.abs(targetPositionRef.current - positionRef.current) > 0.002 ||
+        Math.abs(velocityRef.current) > 0.002;
 
       if (shouldContinue) {
         frameRef.current = window.requestAnimationFrame(animate);
@@ -247,31 +471,28 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
     frameRef.current = window.requestAnimationFrame(animate);
 
     return () => {
+      clearResumeTimer();
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
       }
     };
-  }, [applyPosition, prefersReducedMotion]);
-
-  const progress = ((activeIndex + 1) / loginFeatures.length) * 100;
+  }, [applyPosition, clearResumeTimer, prefersReducedMotion, setProgress]);
 
   return (
     <section
       className={cn("login-feature-showcase", className)}
       aria-label="Principais recursos do Gestão Cordial & Morar"
-      onPointerMove={pauseShowcase}
-      onPointerLeave={resumeShowcase}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       onFocusCapture={pauseShowcase}
-      onBlurCapture={resumeShowcase}
-      onTouchStart={pauseShowcase}
-      onTouchEnd={resumeShowcase}
+      onBlurCapture={() => resumeShowcase(520)}
     >
-      <div className="mx-auto max-w-[19.5rem] text-center sm:max-w-[23.5rem]">
-        <p className="login-feature-kicker text-[11px] font-bold uppercase tracking-[0.22em] text-[#F0A86D]/88">
+      <div className="login-feature-copy mx-auto max-w-[20.5rem] text-center sm:max-w-[24rem]">
+        <p className="login-feature-kicker text-[11px] font-bold uppercase text-[#F0A86D]/90">
           Operação imobiliária em movimento
         </p>
-        <p className="mt-2 text-balance text-xs leading-5 text-[#F5F1EB]/64 sm:text-[13px] lg:text-sm">
+        <p className="login-feature-subtitle mt-2 text-balance text-xs leading-5 text-[#F5F1EB]/68 sm:text-[13px] lg:text-sm">
           Agenda, corretores, atendimentos e relatórios integrados em uma experiência única.
         </p>
       </div>
@@ -281,45 +502,46 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
         className="login-feature-viewport mt-4"
         role="group"
         aria-roledescription="carrossel"
+        aria-label="Apresentação automática das áreas do sistema"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishDrag}
+        onPointerCancel={finishDrag}
       >
         <div ref={trackRef} className="login-feature-track">
-          {loginFeatures.map((feature, index) => (
+          {renderedFeatures.map(({ feature, featureIndex, renderIndex }) => (
             <Feature3DCard
-              key={feature.title}
+              key={`${feature.title}-${renderIndex}`}
               refCallback={(node) => {
-                cardRefs.current[index] = node;
+                cardRefs.current[renderIndex] = node;
               }}
               feature={feature}
-              active={activeIndex === index}
+              active={activeRenderIndex === renderIndex}
+              ariaHidden={activeRenderIndex !== renderIndex}
               motionEnabled={!prefersReducedMotion}
+              renderIndex={renderIndex}
+              featureIndex={featureIndex}
             />
           ))}
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-center gap-3">
-        <div
-          className="h-1 w-24 overflow-hidden rounded-full bg-white/12 ring-1 ring-white/10"
-          aria-hidden="true"
-        >
-          <span
-            className="block h-full rounded-full bg-gradient-to-r from-[#5FAFC7] via-[#F0A86D] to-[#D9782D] transition-[width] duration-300"
-            style={{ width: `${progress}%` }}
-          />
+      <div className="login-feature-controls mt-3" aria-label="Progresso da vitrine">
+        <div className="login-feature-progress-track" aria-hidden="true">
+          <span ref={progressRef} className="login-feature-progress-fill" />
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="login-feature-pips" aria-label="Selecionar recurso em destaque">
           {loginFeatures.map((feature, index) => (
             <button
               key={feature.title}
               type="button"
-              className={cn(
-                "size-1.5 rounded-full transition-all duration-300",
-                activeIndex === index ? "w-4 bg-[#F5F1EB]" : "bg-[#F5F1EB]/28",
-              )}
+              className={cn("login-feature-pip", activeIndex === index && "is-active")}
               aria-label={`Mostrar ${feature.title}`}
               aria-current={activeIndex === index ? "true" : undefined}
               onClick={() => moveToFeature(index)}
-            />
+            >
+              <span className="sr-only">{feature.title}</span>
+            </button>
           ))}
         </div>
       </div>
@@ -330,39 +552,48 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
 type Feature3DCardProps = {
   feature: LoginFeature;
   active: boolean;
+  ariaHidden: boolean;
   motionEnabled: boolean;
+  renderIndex: number;
+  featureIndex: number;
   refCallback: (node: HTMLElement | null) => void;
 };
 
 const Feature3DCard = memo(function Feature3DCard({
   feature,
   active,
+  ariaHidden,
   motionEnabled,
+  renderIndex,
+  featureIndex,
   refCallback,
 }: Feature3DCardProps) {
   const Icon = feature.icon;
 
   const handlePointerMove = useCallback(
     (event: PointerEvent<HTMLElement>) => {
-      if (!motionEnabled || event.pointerType === "touch") return;
+      if (!motionEnabled || event.pointerType === "touch" || !active) return;
       if (window.matchMedia("(max-width: 768px)").matches) return;
 
       const rect = event.currentTarget.getBoundingClientRect();
       const x = (event.clientX - rect.left) / rect.width - 0.5;
       const y = (event.clientY - rect.top) / rect.height - 0.5;
 
-      event.currentTarget.style.setProperty("--feature-tilt-x", `${(-y * 7).toFixed(2)}deg`);
-      event.currentTarget.style.setProperty("--feature-tilt-y", `${(x * 8).toFixed(2)}deg`);
-      event.currentTarget.style.setProperty("--feature-parallax-x", `${(x * 8).toFixed(2)}px`);
-      event.currentTarget.style.setProperty("--feature-parallax-y", `${(y * 6).toFixed(2)}px`);
-      event.currentTarget.style.setProperty("--feature-soft-x", `${(-x * 7).toFixed(2)}px`);
-      event.currentTarget.style.setProperty("--feature-soft-y", `${(-y * 5).toFixed(2)}px`);
-      event.currentTarget.style.setProperty("--feature-shine-x", `${(50 + x * 38).toFixed(2)}%`);
-      event.currentTarget.style.setProperty("--feature-shine-y", `${(44 + y * 34).toFixed(2)}%`);
-      event.currentTarget.style.setProperty("--feature-lift", "-5px");
-      event.currentTarget.style.setProperty("--feature-scale", feature.priority ? "1.018" : "1.012");
+      event.currentTarget.style.setProperty("--feature-tilt-x", `${(-y * 5.5).toFixed(2)}deg`);
+      event.currentTarget.style.setProperty("--feature-tilt-y", `${(x * 6.5).toFixed(2)}deg`);
+      event.currentTarget.style.setProperty("--feature-parallax-x", `${(x * 9).toFixed(2)}px`);
+      event.currentTarget.style.setProperty("--feature-parallax-y", `${(y * 7).toFixed(2)}px`);
+      event.currentTarget.style.setProperty("--feature-soft-x", `${(-x * 8).toFixed(2)}px`);
+      event.currentTarget.style.setProperty("--feature-soft-y", `${(-y * 6).toFixed(2)}px`);
+      event.currentTarget.style.setProperty("--feature-shine-x", `${(50 + x * 34).toFixed(2)}%`);
+      event.currentTarget.style.setProperty("--feature-shine-y", `${(42 + y * 30).toFixed(2)}%`);
+      event.currentTarget.style.setProperty("--feature-lift", "-6px");
+      event.currentTarget.style.setProperty(
+        "--feature-hover-scale",
+        feature.priority ? "1.018" : "1.012",
+      );
     },
-    [feature.priority, motionEnabled],
+    [active, feature.priority, motionEnabled],
   );
 
   const resetMotion = useCallback((event: PointerEvent<HTMLElement>) => {
@@ -373,25 +604,34 @@ const Feature3DCard = memo(function Feature3DCard({
     event.currentTarget.style.setProperty("--feature-soft-x", "0px");
     event.currentTarget.style.setProperty("--feature-soft-y", "0px");
     event.currentTarget.style.setProperty("--feature-shine-x", "50%");
-    event.currentTarget.style.setProperty("--feature-shine-y", "44%");
+    event.currentTarget.style.setProperty("--feature-shine-y", "42%");
     event.currentTarget.style.setProperty("--feature-lift", "0px");
-    event.currentTarget.style.setProperty("--feature-scale", "1");
+    event.currentTarget.style.setProperty("--feature-hover-scale", "1");
   }, []);
 
-  const pressCard = useCallback((event: PointerEvent<HTMLElement>) => {
-    event.currentTarget.style.setProperty("--feature-scale", "0.99");
-    event.currentTarget.style.setProperty("--feature-lift", "-1px");
-  }, []);
+  const pressCard = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (!active) return;
+      event.currentTarget.style.setProperty("--feature-hover-scale", "0.992");
+      event.currentTarget.style.setProperty("--feature-lift", "-1px");
+    },
+    [active],
+  );
 
   const releaseCard = useCallback(
     (event: PointerEvent<HTMLElement>) => {
-      event.currentTarget.style.setProperty("--feature-scale", feature.priority ? "1.018" : "1.012");
+      if (!active || event.pointerType === "touch") {
+        resetMotion(event);
+        return;
+      }
+
       event.currentTarget.style.setProperty(
-        "--feature-lift",
-        event.pointerType === "touch" ? "0px" : "-5px",
+        "--feature-hover-scale",
+        feature.priority ? "1.018" : "1.012",
       );
+      event.currentTarget.style.setProperty("--feature-lift", "-6px");
     },
-    [feature.priority],
+    [active, feature.priority, resetMotion],
   );
 
   return (
@@ -413,42 +653,59 @@ const Feature3DCard = memo(function Feature3DCard({
           "--feature-soft-x": "0px",
           "--feature-soft-y": "0px",
           "--feature-shine-x": "50%",
-          "--feature-shine-y": "44%",
+          "--feature-shine-y": "42%",
           "--feature-lift": "0px",
-          "--feature-scale": "1",
+          "--feature-hover-scale": "1",
+          "--feature-carousel-scale": active ? "1.03" : "0.92",
+          "--feature-depth": active ? "56px" : "0px",
+          "--feature-side-y": active ? "0px" : "8px",
+          "--feature-side-rotate": "0deg",
+          "--feature-opacity": active ? "1" : "0.5",
+          "--feature-blur": active ? "0px" : "1px",
+          "--feature-saturate": active ? "1.08" : "0.9",
+          "--feature-brightness": active ? "1.04" : "0.88",
         } as CSSProperties
       }
+      aria-hidden={ariaHidden}
+      data-feature-index={featureIndex}
+      data-render-index={renderIndex}
       onPointerMove={handlePointerMove}
       onPointerLeave={resetMotion}
       onPointerCancel={resetMotion}
       onPointerDown={pressCard}
       onPointerUp={releaseCard}
     >
-      <span className="login-feature-card-glow" aria-hidden="true" />
+      <span className="login-feature-card-ambient" aria-hidden="true" />
+      <span className="login-feature-card-noise" aria-hidden="true" />
       <span className="login-feature-card-line" aria-hidden="true" />
 
       <div className="login-feature-card-layer relative z-10 flex items-start justify-between gap-3">
         <span className="login-feature-icon grid size-11 shrink-0 place-items-center rounded-2xl text-white">
           <Icon className="size-5" aria-hidden="true" />
         </span>
-        {feature.priority && (
-          <span className="rounded-full bg-[#F0A86D]/14 px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#F7C08B] ring-1 ring-[#F0A86D]/24">
-            Foco
-          </span>
-        )}
+        <span
+          className={cn("login-feature-badge", feature.priority && "login-feature-badge--priority")}
+        >
+          {feature.priority ? "Foco" : feature.signal}
+        </span>
       </div>
 
       <div className="login-feature-card-copy relative z-10 mt-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#F5F1EB]/48">
-          {feature.eyebrow}
-        </p>
-        <h3 className="mt-1 text-lg font-black tracking-tight text-white">{feature.title}</h3>
-        <p className="mt-2 text-[12px] leading-5 text-[#F5F1EB]/66">{feature.text}</p>
+        <p className="login-feature-card-eyebrow">{feature.eyebrow}</p>
+        <h3 className="login-feature-card-title">{feature.title}</h3>
+        <p className="login-feature-card-text">{feature.text}</p>
       </div>
 
-      <div className="login-feature-card-meta relative z-10 mt-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#F5F1EB]/50">
-        <span className="size-1.5 rounded-full" style={{ backgroundColor: feature.accent }} />
-        <span>Sistema integrado</span>
+      <div className="login-feature-card-footer relative z-10 mt-4">
+        <span className="login-feature-status">
+          <span className="login-feature-status-dot" aria-hidden="true" />
+          {feature.detail}
+        </span>
+        <span className="login-feature-mini-bars" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
       </div>
     </article>
   );
@@ -472,6 +729,35 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion;
 }
 
-function easeInOut(progress: number) {
-  return progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+function getFeatureIndex(index: number) {
+  return ((index % FEATURE_COUNT) + FEATURE_COUNT) % FEATURE_COUNT;
+}
+
+function closestRenderIndexForFeature(featureIndex: number, currentPosition: number) {
+  let closest = featureIndex;
+  let shortestDistance = Number.POSITIVE_INFINITY;
+
+  for (
+    let renderIndex = featureIndex;
+    renderIndex < FEATURE_COUNT * FEATURE_REPEAT_COUNT;
+    renderIndex += FEATURE_COUNT
+  ) {
+    const distance = Math.abs(renderIndex - currentPosition);
+    if (distance < shortestDistance) {
+      shortestDistance = distance;
+      closest = renderIndex;
+    }
+  }
+
+  return closest;
+}
+
+function normalizeRenderTarget(index: number) {
+  if (index >= FEATURE_BASE_INDEX + FEATURE_COUNT) return index - FEATURE_COUNT;
+  if (index < FEATURE_BASE_INDEX) return index + FEATURE_COUNT;
+  return index;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
