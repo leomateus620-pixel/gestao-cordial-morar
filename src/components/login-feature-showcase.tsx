@@ -588,8 +588,8 @@ const Feature3DCard = memo(function Feature3DCard({
 
   const handlePointerMove = useCallback(
     (event: PointerEvent<HTMLElement>) => {
-      if (!motionEnabled || event.pointerType === "touch" || !active) return;
-      if (window.matchMedia("(max-width: 768px)").matches) return;
+      if (!motionEnabled || event.pointerType !== "mouse" || !active) return;
+      if (window.matchMedia("(max-width: 640px)").matches) return;
 
       const rect = event.currentTarget.getBoundingClientRect();
       const x = (event.clientX - rect.left) / rect.width - 0.5;
