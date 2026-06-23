@@ -1,13 +1,17 @@
 import { useMemo } from "react";
-import { useApp } from "@/store/app-store";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "@/lib/auth-mock";
 import {
-  clientMatchesBrand,
-  clientMatchesSearch,
-  isClientCreatedThisMonth,
-  normalizeClient,
-} from "@/services/clients";
+  createClient,
+  deleteClient,
+  listClients,
+  updateClient,
+} from "@/lib/clients/clients.functions";
+import { useApp } from "@/store/app-store";
+import { clientMatchesBrand, clientMatchesSearch, isClientCreatedThisMonth } from "@/services/clients";
 import type {
   Client,
+  ClientCreateInput,
   ClientPurpose,
   ClientStatus,
   ClientType,
@@ -37,12 +41,39 @@ export const defaultClientFilters: ClientFilters = {
   budget: "todos",
 };
 
-export function useClients(query: string, filters: ClientFilters) {
-  const agency = useApp((state) => state.agency);
-  const rawClients = useApp((state) => state.clientes);
-  const addClient = useApp((state) => state.addCliente);
+export const CLIENTS_QUERY_KEY = ["clients"] as const;
 
-  const clients = useMemo(() => rawClients.map((client) => normalizeClient(client)), [rawClients]);
+export function useClients(query: string, filters: ClientFilters) {
+  const user = useSession();
+  const agency = useApp((state) => state.agency);
+  const qc = useQueryClient();
+
+  const clientsQuery = useQuery({
+    queryKey: CLIENTS_QUERY_KEY,
+    queryFn: () => listClients(),
+    enabled: Boolean(user),
+    staleTime: 15_000,
+  });
+
+  const clients: Client[] = clientsQuery.data ?? [];
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
+
+  const createMutation = useMutation({
+    mutationFn: (input: ClientCreateInput) => createClient({ data: input }),
+    onSuccess: invalidate,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: string; patch: Partial<ClientCreateInput> }) =>
+      updateClient({ data: vars }),
+    onSuccess: invalidate,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => deleteClient({ data: { id } }),
+    onSuccess: invalidate,
+  });
 
   const brandClients = useMemo(
     () => clients.filter((client) => clientMatchesBrand(client, agency)),
@@ -71,7 +102,14 @@ export function useClients(query: string, filters: ClientFilters) {
     clients: brandClients,
     filteredClients,
     stats,
-    addClient,
+    isLoading: clientsQuery.isLoading,
+    isError: clientsQuery.isError,
+    error: clientsQuery.error as Error | null,
+    isSaving: createMutation.isPending,
+    addClient: (input: ClientCreateInput) => createMutation.mutateAsync(input),
+    updateClient: updateMutation.mutateAsync,
+    removeClient: removeMutation.mutateAsync,
+    refetch: () => clientsQuery.refetch(),
   };
 }
 
