@@ -106,8 +106,7 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
     }
 
     // Chama a rota interna de envio transacional (que enfileira o e-mail).
-    const origin = new URL((globalThis as any).Request ? "http://localhost" : "http://localhost");
-    // Em runtime de Worker, request URL é absoluta — usamos a rota relativa via fetch global.
+
     try {
       const server = await import("@tanstack/react-start/server");
       const token = server.getRequestHeader?.("authorization") ?? "";
