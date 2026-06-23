@@ -109,9 +109,9 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
     const origin = new URL((globalThis as any).Request ? "http://localhost" : "http://localhost");
     // Em runtime de Worker, request URL é absoluta — usamos a rota relativa via fetch global.
     try {
-      const token =
-        (await (await import("@tanstack/react-start/server")).getRequestHeader?.("authorization")) ?? "";
-      const reqUrl = (await import("@tanstack/react-start/server")).getRequestUrl();
+      const server = await import("@tanstack/react-start/server");
+      const token = server.getRequestHeader?.("authorization") ?? "";
+      const reqUrl = server.getRequestUrl();
       const base = `${reqUrl.protocol}//${reqUrl.host}`;
       const resp = await fetch(`${base}/lovable/email/transactional/send`, {
         method: "POST",
@@ -126,7 +126,11 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
           templateData,
         }),
       });
-      const json = (await resp.json().catch(() => ({}))) as any;
+      const json = (await resp.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        reason?: string;
+      };
       if (!resp.ok || json?.success === false) {
         const msg = json?.error || json?.reason || `HTTP ${resp.status}`;
         await supabase
@@ -141,7 +145,6 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
         .eq("id", pending.id);
       return { status: "sent", logId: pending.id };
     } catch (err) {
-      void origin;
       const msg = err instanceof Error ? err.message : String(err);
       await supabase
         .from("email_logs")
@@ -150,3 +153,4 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
       return { status: "failed", error: msg };
     }
   });
+
