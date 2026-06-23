@@ -694,11 +694,11 @@ html,
     scale(var(--feature-carousel-scale)) scale(var(--feature-hover-scale));
   transform-style: preserve-3d;
   transition:
-    transform 280ms cubic-bezier(0.19, 0.88, 0.28, 1),
-    opacity 280ms ease,
-    filter 280ms ease,
-    box-shadow 280ms ease,
-    border-color 280ms ease;
+    transform 360ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 360ms ease,
+    filter 360ms ease,
+    box-shadow 360ms ease,
+    border-color 360ms ease;
   will-change: transform, opacity, filter;
   contain: layout paint style;
 }
@@ -968,7 +968,7 @@ html,
   border-radius: inherit;
   background: linear-gradient(90deg, #5fafc7, #f0a86d 64%, #d9782d);
   box-shadow: 0 0 18px rgba(240, 168, 109, 0.26);
-  transition: width 120ms linear;
+  transition: width 260ms ease-out;
 }
 
 .login-feature-pips {
@@ -1018,6 +1018,93 @@ html,
 
   50% {
     opacity: 0.88;
+  }
+}
+
+@media (max-width: 639px) {
+  .login-feature-viewport {
+    height: 13.6rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+  }
+
+  .login-feature-viewport::before,
+  .login-feature-viewport::after {
+    width: 1.4rem;
+  }
+
+  .login-feature-track {
+    gap: 0.7rem;
+    padding: 0.6rem 0 1.1rem;
+  }
+
+  .login-feature-card {
+    width: 13.6rem;
+    min-height: 11.1rem;
+    padding: 0.85rem;
+    border-radius: 1.2rem;
+    backdrop-filter: blur(10px) saturate(120%);
+    box-shadow:
+      0 18px 32px -28px rgba(0, 0, 0, 0.88),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    will-change: auto;
+    transition:
+      transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 320ms ease,
+      box-shadow 320ms ease,
+      border-color 320ms ease;
+  }
+
+  .login-feature-card.is-active {
+    box-shadow:
+      0 22px 38px -28px rgba(0, 0, 0, 0.92),
+      0 14px 28px -22px var(--feature-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .login-feature-card::before {
+    opacity: 0.32;
+    transition: opacity 320ms ease;
+  }
+
+  .login-feature-card.is-active::before {
+    opacity: 0.5;
+  }
+
+  .login-feature-card-ambient {
+    opacity: 0.42;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .login-feature-card.is-active .login-feature-card-ambient {
+    animation: none;
+    opacity: 0.55;
+  }
+
+  .login-feature-card-noise {
+    opacity: 0.1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .login-feature-card-title {
+    font-size: 1.05rem;
+    line-height: 1.22rem;
+  }
+
+  .login-feature-card-text {
+    margin-top: 0.5rem;
+    font-size: 0.74rem;
+    line-height: 1.05rem;
+    max-width: 11.6rem;
+  }
+
+  .login-feature-card-footer {
+    padding-top: 0.7rem;
+  }
+
+  .login-feature-icon {
+    width: 2.4rem;
+    height: 2.4rem;
   }
 }
 

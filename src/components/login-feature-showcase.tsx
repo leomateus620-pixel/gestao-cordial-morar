@@ -31,6 +31,7 @@ type LoginFeature = {
 };
 
 const AUTO_SHOWCASE_DWELL_MS = 3600;
+const AUTO_SHOWCASE_DWELL_MS_COMPACT = 4400;
 const RESUME_AFTER_TOUCH_MS = 900;
 const FEATURE_REPEAT_COUNT = 3;
 
@@ -122,6 +123,9 @@ type DragState = {
 
 export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
+  const isCompact = useIsCompactViewport();
+  const isCompactRef = useRef(isCompact);
+  isCompactRef.current = isCompact;
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeRenderIndex, setActiveRenderIndex] = useState(FEATURE_BASE_INDEX);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -184,17 +188,26 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
       cardRefs.current.forEach((node, index) => {
         if (!node) return;
 
+        const compact = isCompactRef.current;
         const distance = index - position;
         const absDistance = Math.abs(distance);
         const softDistance = Math.min(absDistance, 2.6);
-        const depth = 56 - softDistance * 42;
-        const sideLift = softDistance * 8;
-        const sideRotate = clamp(-distance * 7, -15, 15);
-        const scale = clamp(1.03 - softDistance * 0.105, 0.76, 1.04);
-        const opacity = clamp(1 - softDistance * 0.36, 0.14, 1);
-        const blur = Math.max(0, absDistance - 0.38) * 1.35;
-        const saturate = clamp(1.08 - softDistance * 0.12, 0.78, 1.08);
-        const brightness = clamp(1.04 - softDistance * 0.09, 0.76, 1.05);
+        const depth = compact ? 28 - softDistance * 22 : 56 - softDistance * 42;
+        const sideLift = softDistance * (compact ? 4 : 8);
+        const sideRotate = compact
+          ? clamp(-distance * 3, -7, 7)
+          : clamp(-distance * 7, -15, 15);
+        const scale = clamp(
+          (compact ? 1.02 : 1.03) - softDistance * (compact ? 0.08 : 0.105),
+          compact ? 0.82 : 0.76,
+          compact ? 1.03 : 1.04,
+        );
+        const opacity = clamp(1 - softDistance * (compact ? 0.32 : 0.36), 0.16, 1);
+        const blur = compact
+          ? Math.max(0, absDistance - 0.5) * 0.6
+          : Math.max(0, absDistance - 0.38) * 1.35;
+        const saturate = compact ? 1 : clamp(1.08 - softDistance * 0.12, 0.78, 1.08);
+        const brightness = compact ? 1 : clamp(1.04 - softDistance * 0.09, 0.76, 1.05);
 
         node.style.setProperty("--feature-carousel-scale", scale.toFixed(3));
         node.style.setProperty("--feature-depth", `${depth.toFixed(2)}px`);
@@ -415,8 +428,11 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
       const wasMoving = !isSettled;
 
       if (!pausedRef.current && !draggingRef.current && isSettled) {
+        const dwell = isCompactRef.current
+          ? AUTO_SHOWCASE_DWELL_MS_COMPACT
+          : AUTO_SHOWCASE_DWELL_MS;
         const elapsed = timestamp - slideStartedAtRef.current;
-        const progress = Math.min(Math.max(elapsed / AUTO_SHOWCASE_DWELL_MS, 0), 1);
+        const progress = Math.min(Math.max(elapsed / dwell, 0), 1);
         setProgress(progress);
 
         if (progress >= 1) {
@@ -428,10 +444,10 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
 
       const nextTarget = targetPositionRef.current;
       const nextDistance = nextTarget - positionRef.current;
-      velocityRef.current = (velocityRef.current + nextDistance * 0.145) * 0.765;
+      velocityRef.current = (velocityRef.current + nextDistance * 0.12) * 0.82;
       positionRef.current += velocityRef.current;
 
-      if (Math.abs(nextDistance) < 0.0015 && Math.abs(velocityRef.current) < 0.0015) {
+      if (Math.abs(nextDistance) < 0.004 && Math.abs(velocityRef.current) < 0.004) {
         positionRef.current = nextTarget;
         velocityRef.current = 0;
       }
@@ -572,8 +588,8 @@ const Feature3DCard = memo(function Feature3DCard({
 
   const handlePointerMove = useCallback(
     (event: PointerEvent<HTMLElement>) => {
-      if (!motionEnabled || event.pointerType === "touch" || !active) return;
-      if (window.matchMedia("(max-width: 768px)").matches) return;
+      if (!motionEnabled || event.pointerType !== "mouse" || !active) return;
+      if (window.matchMedia("(max-width: 640px)").matches) return;
 
       const rect = event.currentTarget.getBoundingClientRect();
       const x = (event.clientX - rect.left) / rect.width - 0.5;
@@ -727,6 +743,21 @@ function usePrefersReducedMotion() {
   }, []);
 
   return prefersReducedMotion;
+}
+
+function useIsCompactViewport() {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsCompact(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  return isCompact;
 }
 
 function getFeatureIndex(index: number) {
