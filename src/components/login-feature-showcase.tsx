@@ -428,8 +428,11 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
       const wasMoving = !isSettled;
 
       if (!pausedRef.current && !draggingRef.current && isSettled) {
+        const dwell = isCompactRef.current
+          ? AUTO_SHOWCASE_DWELL_MS_COMPACT
+          : AUTO_SHOWCASE_DWELL_MS;
         const elapsed = timestamp - slideStartedAtRef.current;
-        const progress = Math.min(Math.max(elapsed / AUTO_SHOWCASE_DWELL_MS, 0), 1);
+        const progress = Math.min(Math.max(elapsed / dwell, 0), 1);
         setProgress(progress);
 
         if (progress >= 1) {
@@ -441,10 +444,10 @@ export function LoginFeatureShowcase({ className }: LoginFeatureShowcaseProps) {
 
       const nextTarget = targetPositionRef.current;
       const nextDistance = nextTarget - positionRef.current;
-      velocityRef.current = (velocityRef.current + nextDistance * 0.145) * 0.765;
+      velocityRef.current = (velocityRef.current + nextDistance * 0.12) * 0.82;
       positionRef.current += velocityRef.current;
 
-      if (Math.abs(nextDistance) < 0.0015 && Math.abs(velocityRef.current) < 0.0015) {
+      if (Math.abs(nextDistance) < 0.004 && Math.abs(velocityRef.current) < 0.004) {
         positionRef.current = nextTarget;
         velocityRef.current = 0;
       }
