@@ -7,6 +7,8 @@ import {
   listAttendances,
   updateAttendance,
 } from "@/lib/attendances/attendances.functions";
+import { createClient } from "@/lib/clients/clients.functions";
+import { CLIENTS_QUERY_KEY } from "@/hooks/useClients";
 import { useApp } from "@/store/app-store";
 import { atendimentoMatchesAgency, atendimentoMatchesSearch } from "@/services/atendimentos";
 import type {
@@ -18,6 +20,13 @@ import type {
   PrioridadeAtendimento,
   TipoImovelInteresse,
 } from "@/types/atendimento";
+import type {
+  ClientCreateInput,
+  ClientPurpose,
+  ClientStatus,
+  LeadOrigin,
+} from "@/types/client";
+
 
 export type AtendimentoPeriodFilter = "todos" | "hoje" | "sete_dias" | "mes";
 
