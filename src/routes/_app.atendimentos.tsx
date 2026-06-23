@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Inbox, Workflow } from "lucide-react";
+import { Inbox, Plus, Workflow } from "lucide-react";
+import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
-import { AtendimentoCreateCard } from "@/components/atendimentos/AtendimentoCreateCard";
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   defaultAtendimentoFilters,
-  useAtendimentos,
+  useAttendances,
   type AtendimentoFilters as AtendimentoFiltersState,
-} from "@/hooks/useAtendimentos";
+} from "@/hooks/useAttendances";
 import type { AtendimentoCreateInput, AtendimentoStatus } from "@/types/atendimento";
 
 export const Route = createFileRoute("/_app/atendimentos")({
@@ -23,61 +23,83 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const { filteredAtendimentos, stats, addAtendimento, convertAtendimentoToCliente } =
-    useAtendimentos(query, filters);
+  const {
+    atendimentos,
+    filteredAtendimentos,
+    stats,
+    isLoading,
+    isError,
+    error,
+    addAtendimento,
+    convertAtendimento,
+  } = useAttendances(query, filters);
 
   useEffect(() => {
-    if (!feedback) return;
-    const timer = window.setTimeout(() => setFeedback(null), 2800);
-    return () => window.clearTimeout(timer);
-  }, [feedback]);
+    if (isError && error) toast.error(error.message ?? "Erro ao carregar atendimentos.");
+  }, [isError, error]);
 
-  function createAtendimento(input: AtendimentoCreateInput) {
-    addAtendimento(input);
-    window.setTimeout(
-      () => setFeedback(`Atendimento de ${input.clienteNome} salvo.`),
-      220,
-    );
+  async function createAtendimento(input: AtendimentoCreateInput) {
+    try {
+      await addAtendimento(input);
+      toast.success(`Atendimento de ${input.clienteNome} salvo.`);
+      setOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao salvar atendimento.";
+      toast.error(message);
+      throw err;
+    }
   }
 
-  function convertAtendimento(id: string) {
-    const clientId = convertAtendimentoToCliente(id);
-    setFeedback(
-      clientId
-        ? "Atendimento transformado em cliente com sucesso."
-        : "Não foi possível transformar este atendimento.",
-    );
+  async function handleConvert(id: string) {
+    try {
+      await convertAtendimento(id);
+      toast.success("Atendimento transformado em cliente.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível converter.");
+    }
   }
 
   function setStatus(status: "todos" | AtendimentoStatus) {
     setFilters((current) => ({ ...current, status }));
   }
 
+  const hasAtendimentos = atendimentos.length > 0;
+
   return (
     <div className="space-y-4">
       <section className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#174d61_0%,#1e647d_48%,#28333b_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(23,27,33,0.55)] sm:p-6">
         <span className="absolute -right-10 -top-16 size-44 rounded-full bg-cyan-200/10 blur-3xl" />
-        <div className="relative flex items-start gap-3 sm:items-center">
-          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
-            <Inbox className="size-6 text-orange-300" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
+              <Inbox className="size-6 text-orange-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
+                Central de entrada comercial
+              </p>
+              <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">
+                Atendimentos
+              </h1>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-white/64">
+                Do primeiro contato ao encaminhamento, com dados prontos para revelar o nicho real
+                da imobiliária.
+              </p>
+              <p className="mt-2 hidden items-center gap-1.5 text-[10px] font-semibold text-white/55 md:flex">
+                <Workflow className="size-3 text-orange-300" />
+                Pré-atendimento · Corretor · Conversão
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
-              Central de entrada comercial
-            </p>
-            <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">
-              Atendimentos
-            </h1>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-white/64">
-              Do primeiro contato ao encaminhamento, com dados prontos para revelar o nicho real da
-              imobiliária.
-            </p>
-          </div>
-          <span className="hidden items-center gap-2 rounded-full bg-white/8 px-3 py-2 text-[10px] font-semibold text-white/68 ring-1 ring-white/10 md:flex">
-            <Workflow className="size-3.5 text-orange-300" />
-            Pré-atendimento · Corretor · Conversão
-          </span>
+
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="group relative inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-400 px-4 py-3 text-sm font-semibold text-stone-900 shadow-[0_10px_30px_-12px_rgba(251,146,60,0.65)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 hover:shadow-[0_18px_40px_-12px_rgba(251,146,60,0.7)] active:scale-[0.98] sm:w-auto"
+          >
+            <Plus className="size-4 transition-transform group-hover:rotate-90" />
+            Novo atendimento
+          </button>
         </div>
       </section>
 
@@ -87,8 +109,6 @@ function Page() {
         filters={filters}
         onFiltersChange={setFilters}
       />
-
-      <AtendimentoCreateCard onClick={() => setOpen(true)} isOpen={open} />
 
       <AtendimentoSummaryCards
         stats={stats}
@@ -110,34 +130,47 @@ function Page() {
           </span>
         </div>
 
-        {filteredAtendimentos.length > 0 ? (
+        {isLoading ? (
+          <EmptyState
+            title="Carregando atendimentos..."
+            description="Buscando registros na nuvem."
+            icon={<Inbox className="size-5" />}
+          />
+        ) : filteredAtendimentos.length > 0 ? (
           <div className="grid gap-3 xl:grid-cols-2">
             {filteredAtendimentos.map((atendimento) => (
               <AtendimentoCard
                 key={atendimento.id}
                 atendimento={atendimento}
-                onConvert={convertAtendimento}
-                onMockAction={(action, contactName) =>
-                  setFeedback(`${action} para ${contactName}: fluxo preparado no modo local.`)
-                }
+                onConvert={handleConvert}
+                onMockAction={(action) => toast.info(`${action}: em breve.`)}
               />
             ))}
           </div>
+        ) : hasAtendimentos ? (
+          <EmptyState
+            title="Nenhum atendimento encontrado com os filtros atuais."
+            description="Ajuste a busca ou os filtros para ver outros registros."
+            icon={<Inbox className="size-5" />}
+          />
         ) : (
           <EmptyState
-            title="Nenhum atendimento encontrado"
-            description="Ajuste a busca ou os filtros. Você também pode registrar uma nova entrada comercial acima."
+            title="Nenhum atendimento cadastrado ainda."
+            description="Clique em Novo atendimento para registrar o primeiro contato comercial."
             icon={<Inbox className="size-5" />}
+            action={
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-700/25 transition hover:bg-teal-800 active:scale-[0.98]"
+              >
+                <Plus className="size-3.5" />
+                Novo atendimento
+              </button>
+            }
           />
         )}
       </section>
-
-      {feedback && (
-        <div className="fixed left-1/2 top-5 z-[70] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-2 rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-sm font-semibold text-teal-900 shadow-xl shadow-stone-950/12 backdrop-blur-xl">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
-          {feedback}
-        </div>
-      )}
 
       {open && (
         <AtendimentoFormModal open={open} onOpenChange={setOpen} onSubmit={createAtendimento} />

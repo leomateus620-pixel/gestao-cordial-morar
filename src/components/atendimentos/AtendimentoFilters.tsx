@@ -11,7 +11,7 @@ import {
 import {
   defaultAtendimentoFilters,
   type AtendimentoFilters as AtendimentoFiltersState,
-} from "@/hooks/useAtendimentos";
+} from "@/hooks/useAttendances";
 import { cn } from "@/lib/utils";
 
 const periodOptions = [

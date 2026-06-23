@@ -94,7 +94,7 @@ export function AtendimentoFormModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: AtendimentoCreateInput) => void;
+  onSubmit: (input: AtendimentoCreateInput) => void | Promise<void>;
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
@@ -184,8 +184,9 @@ export function AtendimentoFormModal({
     setValidation((current) => ({ ...current, status: undefined }));
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     const broker = atendimentoBrokerOptions.find((item) => item.id === form.corretorId);
     const selectedProperty = imoveis.find((item) => item.id === form.imovelId);
     const input: AtendimentoCreateInput = {
@@ -220,11 +221,16 @@ export function AtendimentoFormModal({
     if (!result.ok) return;
 
     setSaving(true);
-    onSubmit(input);
-    setSaving(false);
-    setForm(initialForm);
-    setValidation({});
-    requestClose();
+    try {
+      await onSubmit(input);
+      setForm(initialForm);
+      setValidation({});
+      requestClose();
+    } catch {
+      // erro tratado pelo caller (toast). Mantém o modal aberto e os dados.
+    } finally {
+      setSaving(false);
+    }
   }
 
   const hasErrors = Object.keys(validation).length > 0;
