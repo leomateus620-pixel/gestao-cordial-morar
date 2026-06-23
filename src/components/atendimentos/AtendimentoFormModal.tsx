@@ -94,7 +94,7 @@ export function AtendimentoFormModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: AtendimentoCreateInput) => void;
+  onSubmit: (input: AtendimentoCreateInput) => void | Promise<void>;
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
