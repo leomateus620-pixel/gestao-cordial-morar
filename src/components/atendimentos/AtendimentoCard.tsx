@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   CalendarPlus,
   CheckCircle2,
@@ -21,6 +22,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  AtendimentoActionsDialog,
+  type AtendimentoActionKind,
+  type AtendimentoActionPayload,
+} from "@/components/atendimentos/AtendimentoActionsDialog";
+import {
   atendimentoInterestLine,
   formatAtendimentoBudget,
   formatDateTime,
@@ -35,23 +41,24 @@ import {
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
 
-const secondaryActions = [
-  { label: "Vincular corretor", icon: UserRoundCog },
-  { label: "Criar visita", icon: CalendarPlus },
-  { label: "Criar tarefa de retorno", icon: Clock3 },
-  { label: "Registrar histórico", icon: History },
-  { label: "Marcar motivo de perda", icon: XCircle },
-] as const;
+const secondaryActions: { kind: AtendimentoActionKind; label: string; icon: typeof UserRoundCog }[] = [
+  { kind: "vincular-corretor", label: "Vincular corretor", icon: UserRoundCog },
+  { kind: "criar-visita", label: "Criar visita", icon: CalendarPlus },
+  { kind: "criar-retorno", label: "Criar tarefa de retorno", icon: Clock3 },
+  { kind: "registrar-historico", label: "Registrar histórico", icon: History },
+  { kind: "motivo-perda", label: "Marcar motivo de perda", icon: XCircle },
+];
 
 export function AtendimentoCard({
   atendimento,
   onConvert,
-  onMockAction,
+  onAction,
 }: {
   atendimento: Atendimento;
   onConvert: (id: string) => void;
-  onMockAction: (action: string, contactName: string) => void;
+  onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
 }) {
+  const [activeKind, setActiveKind] = useState<AtendimentoActionKind | null>(null);
   const converted = atendimento.convertidoEmCliente || Boolean(atendimento.clienteConvertidoId);
   const initials = getInitials(atendimento.clienteNome);
 
