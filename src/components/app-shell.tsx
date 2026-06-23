@@ -1,5 +1,6 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Building2, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
+import { BrandMark } from "./brand/BrandMark";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MeshBackground } from "./mesh-background";
 import { AgencySwitcher } from "./agency-switcher";
@@ -75,8 +76,8 @@ export function AppShell() {
             sidebarCollapsed && "justify-center",
           )}
         >
-          <div className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(145deg,rgba(95,175,199,0.26),rgba(255,255,255,0.06))] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_-22px_rgba(95,175,199,0.9)] ring-1 ring-cyan-200/15">
-            <Building2 className="size-5" />
+          <div className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(145deg,rgba(95,175,199,0.26),rgba(255,255,255,0.06))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_-22px_rgba(95,175,199,0.9)] ring-1 ring-cyan-200/15">
+            <BrandMark className="size-7" />
             <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.75)]" />
           </div>
           {!sidebarCollapsed && (
@@ -152,8 +153,8 @@ export function AppShell() {
                   className="sidebar-glass flex h-dvh w-[88vw] max-w-[340px] flex-col overflow-hidden border-white/10 bg-[#141a20] p-4 text-white backdrop-blur-2xl lg:hidden [&>button]:text-white/70 [&>button]:hover:text-white"
                 >
                   <div className="mb-5 flex items-center gap-3 pr-8">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-cyan-300/16 text-cyan-100 ring-1 ring-cyan-200/15">
-                      <Building2 className="size-5" />
+                    <div className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-cyan-300/16 ring-1 ring-cyan-200/15">
+                      <BrandMark className="size-7" />
                     </div>
                     <div className="min-w-0">
                       <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-cyan-200/82">
