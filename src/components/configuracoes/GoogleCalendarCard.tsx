@@ -57,8 +57,8 @@ export function GoogleCalendarCard() {
   return (
     <div className="glass-panel rounded-3xl p-4">
       <div className="flex items-start gap-3">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <CalendarCheck2 className="size-5" />
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
+          <img src={googleCalendarLogo} alt="Google Agenda" className="size-7" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
