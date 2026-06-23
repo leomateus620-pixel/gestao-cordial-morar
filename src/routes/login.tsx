@@ -16,6 +16,7 @@ import {
   signUp,
   useSession,
 } from "@/lib/auth-mock";
+import { LoginFeatureShowcase } from "@/components/login-feature-showcase";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Entrar — Gestão Cordial & Morar" }] }),
@@ -134,15 +135,15 @@ function LoginPage() {
       </div>
 
       <section className="relative z-10 mx-auto flex min-h-[calc(100svh-2.5rem)] w-full max-w-[64rem] items-center justify-center pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.25rem,env(safe-area-inset-top))] sm:min-h-[calc(100svh-4rem)]">
-        <div className="login-card-enter grid w-full overflow-hidden rounded-[1.5rem] ring-1 ring-white/10 shadow-[0_36px_90px_rgba(0,0,0,0.42)] sm:rounded-[1.75rem] lg:min-h-[37rem] lg:grid-cols-[1.05fr_1fr]">
-          <aside className="login-brand relative flex items-center justify-center border-b border-white/8 px-6 py-9 sm:px-10 sm:py-11 lg:border-b-0 lg:border-r lg:px-12 lg:py-14">
+        <div className="login-card-enter grid min-w-0 w-full overflow-hidden rounded-[1.5rem] ring-1 ring-white/10 shadow-[0_36px_90px_rgba(0,0,0,0.42)] sm:rounded-[1.75rem] lg:min-h-[42rem] lg:grid-cols-[1.05fr_1fr]">
+          <aside className="login-brand relative flex min-w-0 items-center justify-center border-b border-white/8 px-6 py-8 sm:px-10 sm:py-10 lg:border-b-0 lg:border-r lg:px-12 lg:py-12">
             <div className="login-brand-sheen" aria-hidden="true" />
-            <div className="relative flex w-full max-w-[24rem] flex-col items-center text-center">
+            <div className="relative flex min-w-0 w-full max-w-[22rem] flex-col items-center text-center sm:max-w-[24rem] lg:max-w-[25.5rem]">
               {logoDisponivel ? (
                 <img
                   src={LOGO_SRC}
                   alt="Gestão Cordial & Morar"
-                  className="h-auto w-full max-w-[12.5rem] object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.32)] sm:max-w-[15rem] lg:max-w-[18.5rem]"
+                  className="h-auto w-full max-w-[11.5rem] object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.32)] sm:max-w-[13.5rem] lg:max-w-[14.75rem]"
                   onError={() => setLogoDisponivel(false)}
                 />
               ) : (
@@ -165,10 +166,11 @@ function LoginPage() {
                   Morar Imóveis
                 </span>
               </div>
+              <LoginFeatureShowcase className="mt-6 lg:mt-8" />
             </div>
           </aside>
 
-          <div className="login-form-panel flex items-center px-5 py-8 sm:px-10 sm:py-12 lg:px-12">
+          <div className="login-form-panel flex min-w-0 items-center px-5 py-8 sm:px-10 sm:py-12 lg:px-12">
             <div className="mx-auto w-full max-w-[23.5rem]">
               <header>
                 <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#B95F20]">
