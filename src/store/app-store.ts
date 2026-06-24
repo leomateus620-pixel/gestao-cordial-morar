@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   agendaSeed,
-  agenciamentosSeed,
   alugueisSeed,
   atendimentosSeed,
   campanhasMarketingSeed,
@@ -19,7 +18,6 @@ import {
   projecoesFinanceirasSeed,
   usuariosSistemaSeed,
   vendasSeed,
-  type Agenciamento,
   type AgencyId,
   type Aluguel,
   type CampanhaMarketing,
@@ -46,17 +44,11 @@ import {
   normalizeAtendimento,
 } from "@/services/atendimentos";
 import { normalizeCorretores } from "@/services/corretores";
-import {
-  createAgenciamentoRecord,
-  normalizeAgenciamentos,
-  updateAgenciamentoRecord,
-  validateAgenciamentoRecord,
-} from "@/services/agenciamentos";
-import type { AgenciamentoInput } from "@/types/agenciamento";
 import type { Atendimento, AtendimentoCreateInput } from "@/types/atendimento";
 import type { ClientCreateInput } from "@/types/client";
 import { normalizeAgendaEvent, toLegacyAgendaEvent } from "@/services/agenda";
 import type { AgendaEvent } from "@/types/agenda";
+
 
 type AgencyFilter = AgencyId | "todas";
 
