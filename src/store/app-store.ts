@@ -108,7 +108,6 @@ export const useApp = create<State>()(
       agency: "todas",
       clientes: clientesSeed,
       imoveis: imoveisSeed,
-      agenciamentos: normalizedAgenciamentosSeed,
       corretores: normalizedCorretoresSeed,
       atendimentos: normalizedAtendimentosSeed,
       contratos: contratosSeed,
@@ -132,27 +131,11 @@ export const useApp = create<State>()(
           clientes: [createStoreClientRecord(c), ...s.clientes],
         })),
       addImovel: (i) => set((s) => ({ imoveis: [{ ...i, id: id() }, ...s.imoveis] })),
-      addAgenciamento: (input) => {
-        const record = createAgenciamentoRecord(input);
-        set((s) => ({ agenciamentos: [record, ...s.agenciamentos] }));
-        return record.id;
-      },
-      updateAgenciamento: (agenciamentoId, patch) =>
-        set((s) => ({
-          agenciamentos: s.agenciamentos.map((item) =>
-            item.id === agenciamentoId ? updateAgenciamentoRecord(item, patch) : item,
-          ),
-        })),
-      validateAgenciamento: (agenciamentoId, validator) =>
-        set((s) => ({
-          agenciamentos: s.agenciamentos.map((item) =>
-            item.id === agenciamentoId ? validateAgenciamentoRecord(item, validator) : item,
-          ),
-        })),
       addAtendimento: (a) =>
         set((s) => ({
           atendimentos: [createAtendimentoRecord(a), ...s.atendimentos],
         })),
+
       convertAtendimentoToCliente: (atendimentoId) => {
         let convertedClientId: string | undefined;
         set((s) => {
