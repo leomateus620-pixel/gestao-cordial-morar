@@ -83,35 +83,50 @@ function Page() {
   }, []);
 
   const handleSubmit = useCallback(
-    (input: AgenciamentoInput) => {
+    async (input: AgenciamentoInput) => {
       if (editingAgenciamento) {
-        const updated = updateAgenciamento(editingAgenciamento.id, input);
-        showFeedback(
-          updated
-            ? "Agenciamento atualizado com sucesso."
-            : "Nao foi possivel editar este agenciamento.",
-        );
+        try {
+          const updated = await updateAgenciamento(editingAgenciamento.id, input);
+          showFeedback(
+            updated
+              ? "Agenciamento atualizado com sucesso."
+              : "Nao foi possivel editar este agenciamento.",
+          );
+        } catch (error) {
+          showFeedback(
+            error instanceof Error ? error.message : "Erro ao atualizar agenciamento.",
+          );
+        }
         setSelectedAgenciamento(null);
         setEditingAgenciamento(null);
         return;
       }
 
-      const id = createAgenciamento(input);
-      showFeedback(id ? "Agenciamento cadastrado com sucesso." : "Cadastro nao permitido.");
+      try {
+        const id = await createAgenciamento(input);
+        showFeedback(id ? "Agenciamento cadastrado com sucesso." : "Cadastro nao permitido.");
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : "Erro ao cadastrar agenciamento.");
+      }
     },
     [createAgenciamento, editingAgenciamento, showFeedback, updateAgenciamento],
   );
 
   const handleValidate = useCallback(
-    (agenciamento: Agenciamento) => {
-      const validated = validateAgenciamento(agenciamento.id);
-      showFeedback(
-        validated ? "Agenciamento validado pela gestao." : "Apenas administradores podem validar.",
-      );
-      if (validated) setSelectedAgenciamento(null);
+    async (agenciamento: Agenciamento) => {
+      try {
+        const validated = await validateAgenciamento(agenciamento.id);
+        showFeedback(
+          validated ? "Agenciamento validado pela gestao." : "Apenas administradores podem validar.",
+        );
+        if (validated) setSelectedAgenciamento(null);
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : "Erro ao validar agenciamento.");
+      }
     },
     [showFeedback, validateAgenciamento],
   );
+
 
   if (!canRead) {
     return (
