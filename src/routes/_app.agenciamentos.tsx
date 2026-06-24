@@ -25,6 +25,7 @@ function Page() {
     canManage,
     isAdmin,
     currentBroker,
+    effectiveBrokerId,
     corretores,
     filters,
     setFilters,
@@ -35,6 +36,9 @@ function Page() {
     createAgenciamento,
     updateAgenciamento,
     validateAgenciamento,
+    isLoading,
+    isError,
+    error,
   } = useAgenciamentos();
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
@@ -57,15 +61,16 @@ function Page() {
   const selectedCanEdit = useMemo(
     () =>
       selectedAgenciamento
-        ? canEditAgenciamento(selectedAgenciamento, session, currentBroker?.id)
+        ? canEditAgenciamento(selectedAgenciamento, session, effectiveBrokerId)
         : false,
-    [currentBroker?.id, selectedAgenciamento, session],
+    [effectiveBrokerId, selectedAgenciamento, session],
   );
 
   const canEditItem = useCallback(
-    (item: Agenciamento) => canEditAgenciamento(item, session, currentBroker?.id),
-    [currentBroker?.id, session],
+    (item: Agenciamento) => canEditAgenciamento(item, session, effectiveBrokerId),
+    [effectiveBrokerId, session],
   );
+
 
   const openCreate = useCallback(() => {
     setEditingAgenciamento(null);
