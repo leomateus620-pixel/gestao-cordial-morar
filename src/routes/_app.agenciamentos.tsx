@@ -25,6 +25,7 @@ function Page() {
     canManage,
     isAdmin,
     currentBroker,
+    effectiveBrokerId,
     corretores,
     filters,
     setFilters,
@@ -35,6 +36,9 @@ function Page() {
     createAgenciamento,
     updateAgenciamento,
     validateAgenciamento,
+    isLoading,
+    isError,
+    error,
   } = useAgenciamentos();
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
@@ -57,15 +61,16 @@ function Page() {
   const selectedCanEdit = useMemo(
     () =>
       selectedAgenciamento
-        ? canEditAgenciamento(selectedAgenciamento, session, currentBroker?.id)
+        ? canEditAgenciamento(selectedAgenciamento, session, effectiveBrokerId)
         : false,
-    [currentBroker?.id, selectedAgenciamento, session],
+    [effectiveBrokerId, selectedAgenciamento, session],
   );
 
   const canEditItem = useCallback(
-    (item: Agenciamento) => canEditAgenciamento(item, session, currentBroker?.id),
-    [currentBroker?.id, session],
+    (item: Agenciamento) => canEditAgenciamento(item, session, effectiveBrokerId),
+    [effectiveBrokerId, session],
   );
+
 
   const openCreate = useCallback(() => {
     setEditingAgenciamento(null);
@@ -83,35 +88,50 @@ function Page() {
   }, []);
 
   const handleSubmit = useCallback(
-    (input: AgenciamentoInput) => {
+    async (input: AgenciamentoInput) => {
       if (editingAgenciamento) {
-        const updated = updateAgenciamento(editingAgenciamento.id, input);
-        showFeedback(
-          updated
-            ? "Agenciamento atualizado com sucesso."
-            : "Nao foi possivel editar este agenciamento.",
-        );
+        try {
+          const updated = await updateAgenciamento(editingAgenciamento.id, input);
+          showFeedback(
+            updated
+              ? "Agenciamento atualizado com sucesso."
+              : "Nao foi possivel editar este agenciamento.",
+          );
+        } catch (error) {
+          showFeedback(
+            error instanceof Error ? error.message : "Erro ao atualizar agenciamento.",
+          );
+        }
         setSelectedAgenciamento(null);
         setEditingAgenciamento(null);
         return;
       }
 
-      const id = createAgenciamento(input);
-      showFeedback(id ? "Agenciamento cadastrado com sucesso." : "Cadastro nao permitido.");
+      try {
+        const id = await createAgenciamento(input);
+        showFeedback(id ? "Agenciamento cadastrado com sucesso." : "Cadastro nao permitido.");
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : "Erro ao cadastrar agenciamento.");
+      }
     },
     [createAgenciamento, editingAgenciamento, showFeedback, updateAgenciamento],
   );
 
   const handleValidate = useCallback(
-    (agenciamento: Agenciamento) => {
-      const validated = validateAgenciamento(agenciamento.id);
-      showFeedback(
-        validated ? "Agenciamento validado pela gestao." : "Apenas administradores podem validar.",
-      );
-      if (validated) setSelectedAgenciamento(null);
+    async (agenciamento: Agenciamento) => {
+      try {
+        const validated = await validateAgenciamento(agenciamento.id);
+        showFeedback(
+          validated ? "Agenciamento validado pela gestao." : "Apenas administradores podem validar.",
+        );
+        if (validated) setSelectedAgenciamento(null);
+      } catch (error) {
+        showFeedback(error instanceof Error ? error.message : "Erro ao validar agenciamento.");
+      }
     },
     [showFeedback, validateAgenciamento],
   );
+
 
   if (!canRead) {
     return (
@@ -206,20 +226,29 @@ function Page() {
           ))}
         </section>
 
-        {agenciamentos.length === 0 && (
+        {isLoading && (
+          <div className="rounded-2xl border border-border/40 bg-card/50 px-4 py-6 text-center text-sm text-foreground/60">
+            Carregando agenciamentos...
+          </div>
+        )}
+
+        {isError && !isLoading && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
+            Falha ao carregar agenciamentos: {error instanceof Error ? error.message : "erro desconhecido"}.
+          </div>
+        )}
+
+        {!isLoading && !isError && agenciamentos.length === 0 && (
           <EmptyState
-            title={
-              isAdmin
-                ? "Nenhum agenciamento encontrado"
-                : "Voce ainda nao possui agenciamentos cadastrados"
-            }
+            title="Nenhum agenciamento cadastrado ainda."
             description={
               isAdmin
-                ? "Ajuste os filtros para rever os imoveis captados pela equipe."
-                : "Cadastre um imovel captado para acompanhar fotos, placa, Drive, site e validacao."
+                ? "Quando a equipe cadastrar imóveis captados, eles aparecerão aqui. Use os filtros para revisar registros existentes."
+                : "Clique em Cadastrar agenciamento para registrar o primeiro imóvel captado."
             }
           />
         )}
+
       </div>
 
       <AgenciamentoFormModal

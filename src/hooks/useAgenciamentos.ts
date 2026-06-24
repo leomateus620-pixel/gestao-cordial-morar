@@ -1,15 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   calculateAgenciamentosSummary,
   canEditAgenciamento,
   filterAgenciamentos,
   getAgenciamentosVisibleToUser,
   getDefaultAgenciamentoFilters,
-  normalizeAgenciamentos,
   rankAgenciamentosByCorretor,
   validateAgenciamentoInput,
 } from "@/services/agenciamentos";
+import {
+  createAgenciamento as createAgenciamentoFn,
+  deleteAgenciamento as deleteAgenciamentoFn,
+  listAgenciamentos,
+  updateAgenciamento as updateAgenciamentoFn,
+  validateAgenciamentoFn,
+} from "@/lib/agenciamentos/agenciamentos.functions";
 import { useSession } from "@/lib/auth-mock";
 import { hasPermission } from "@/lib/mock/permissions";
 import { useApp } from "@/store/app-store";
@@ -52,21 +60,46 @@ function resolveCurrentBroker(
 
 export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const session = useSession();
-  const {
-    rawAgenciamentos,
-    corretores,
-    addAgenciamento,
-    updateAgenciamento,
-    validateAgenciamento,
-  } = useApp(
-    useShallow((state) => ({
-      rawAgenciamentos: state.agenciamentos,
-      corretores: state.corretores,
-      addAgenciamento: state.addAgenciamento,
-      updateAgenciamento: state.updateAgenciamento,
-      validateAgenciamento: state.validateAgenciamento,
-    })),
-  );
+  const queryClient = useQueryClient();
+  const corretores = useApp(useShallow((state) => state.corretores));
+
+  const list = useServerFn(listAgenciamentos);
+  const createFn = useServerFn(createAgenciamentoFn);
+  const updateFn = useServerFn(updateAgenciamentoFn);
+  const validateFn = useServerFn(validateAgenciamentoFn);
+  const removeFn = useServerFn(deleteAgenciamentoFn);
+
+  const enabled = Boolean(session);
+  const query = useQuery<Agenciamento[]>({
+    queryKey: ["agenciamentos"],
+    queryFn: () => list(),
+    enabled,
+    staleTime: 30_000,
+  });
+
+  const rawAgenciamentos = useMemo(() => query.data ?? [], [query.data]);
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["agenciamentos"] });
+  }, [queryClient]);
+
+  const createMutation = useMutation({
+    mutationFn: (input: AgenciamentoInput) => createFn({ data: input }),
+    onSuccess: invalidate,
+  });
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: string; patch: Partial<AgenciamentoInput> }) =>
+      updateFn({ data: vars }),
+    onSuccess: invalidate,
+  });
+  const validateMutation = useMutation({
+    mutationFn: (vars: { id: string; validadoPorNome?: string }) => validateFn({ data: vars }),
+    onSuccess: invalidate,
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => removeFn({ data: { id } }),
+    onSuccess: invalidate,
+  });
 
   const [filters, setFilterState] = useState<AgenciamentoFiltersState>(() => ({
     ...getDefaultAgenciamentoFilters(),
@@ -75,42 +108,41 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
 
   const canRead = Boolean(
     session &&
-    (session.permissions.includes("agenciamentos:read") ||
-      hasPermission(session.perfil, "agenciamentos:read")),
+      (session.permissions.includes("agenciamentos:read") ||
+        hasPermission(session.perfil, "agenciamentos:read")),
   );
   const canCreate = Boolean(
     session &&
-    (session.permissions.includes("agenciamentos:write") ||
-      hasPermission(session.perfil, "agenciamentos:write")),
+      (session.permissions.includes("agenciamentos:write") ||
+        hasPermission(session.perfil, "agenciamentos:write")),
   );
   const canManage = Boolean(
     session &&
-    (session.permissions.includes("agenciamentos:manage") ||
-      hasPermission(session.perfil, "agenciamentos:manage")),
+      (session.permissions.includes("agenciamentos:manage") ||
+        hasPermission(session.perfil, "agenciamentos:manage")),
   );
   const isAdmin = session?.perfil === "admin_owner" && canManage;
-
-  const normalizedAgenciamentos = useMemo(
-    () => normalizeAgenciamentos(rawAgenciamentos),
-    [rawAgenciamentos],
-  );
 
   const currentBroker = useMemo(
     () => resolveCurrentBroker(session?.nome, session?.iniciais, corretores),
     [corretores, session?.iniciais, session?.nome],
   );
 
+  // Effective broker id: real corretor record match, or fallback to auth user id.
+  const effectiveBrokerId = currentBroker?.id ?? session?.id;
+  const effectiveBrokerNome = currentBroker?.nome ?? session?.nome ?? "";
+
   const visibleAgenciamentos = useMemo(
-    () => getAgenciamentosVisibleToUser(normalizedAgenciamentos, session, currentBroker?.id),
-    [currentBroker?.id, normalizedAgenciamentos, session],
+    () => getAgenciamentosVisibleToUser(rawAgenciamentos, session, effectiveBrokerId),
+    [effectiveBrokerId, rawAgenciamentos, session],
   );
 
   const effectiveFilters = useMemo(
     () => ({
       ...filters,
-      corretorId: isAdmin ? filters.corretorId : (currentBroker?.id ?? "__sem_corretor__"),
+      corretorId: isAdmin ? filters.corretorId : (effectiveBrokerId ?? "__sem_corretor__"),
     }),
-    [currentBroker?.id, filters, isAdmin],
+    [effectiveBrokerId, filters, isAdmin],
   );
 
   const agenciamentos = useMemo(
@@ -154,16 +186,15 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   );
 
   const create = useCallback(
-    (input: AgenciamentoInput) => {
+    async (input: AgenciamentoInput) => {
       if (!session || !canCreate) return undefined;
 
-      const forcedBroker =
-        !canManage && currentBroker
-          ? {
-              corretorId: currentBroker.id,
-              corretorNome: currentBroker.nome,
-            }
-          : {};
+      const forcedBroker = !canManage
+        ? {
+            corretorId: effectiveBrokerId ?? session.id,
+            corretorNome: effectiveBrokerNome || session.nome,
+          }
+        : {};
       const safeInput: AgenciamentoInput = {
         ...input,
         ...forcedBroker,
@@ -176,16 +207,22 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
         criadoPorNome: session.nome,
       };
 
-      return addAgenciamento(safeInput);
+      try {
+        const created = await createMutation.mutateAsync(safeInput);
+        return created.id;
+      } catch (error) {
+        console.error("[agenciamentos] create failed", error);
+        throw error;
+      }
     },
-    [addAgenciamento, canCreate, canManage, currentBroker, session],
+    [canCreate, canManage, createMutation, effectiveBrokerId, effectiveBrokerNome, session],
   );
 
   const update = useCallback(
-    (id: string, patch: Partial<AgenciamentoInput>) => {
+    async (id: string, patch: Partial<AgenciamentoInput>) => {
       if (!session) return false;
-      const current = normalizedAgenciamentos.find((item) => item.id === id);
-      if (!current || !canEditAgenciamento(current, session, currentBroker?.id)) return false;
+      const current = rawAgenciamentos.find((item) => item.id === id);
+      if (!current || !canEditAgenciamento(current, session, effectiveBrokerId)) return false;
 
       const safePatch: Partial<AgenciamentoInput> = canManage
         ? patch
@@ -199,24 +236,45 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
               validado: current.checklist.validado,
             },
             status: patch.status === "validado" ? current.status : patch.status,
-            validadoPorId: current.validadoPorId,
-            validadoPorNome: current.validadoPorNome,
-            validadoEm: current.validadoEm,
           };
 
-      updateAgenciamento(id, safePatch);
-      return true;
+      try {
+        await updateMutation.mutateAsync({ id, patch: safePatch });
+        return true;
+      } catch (error) {
+        console.error("[agenciamentos] update failed", error);
+        return false;
+      }
     },
-    [canManage, currentBroker?.id, normalizedAgenciamentos, session, updateAgenciamento],
+    [canManage, effectiveBrokerId, rawAgenciamentos, session, updateMutation],
   );
 
   const validate = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (!session || !canManage) return false;
-      validateAgenciamento(id, { id: session.id, nome: session.nome });
-      return true;
+      try {
+        await validateMutation.mutateAsync({ id, validadoPorNome: session.nome });
+        return true;
+      } catch (error) {
+        console.error("[agenciamentos] validate failed", error);
+        return false;
+      }
     },
-    [canManage, session, validateAgenciamento],
+    [canManage, session, validateMutation],
+  );
+
+  const remove = useCallback(
+    async (id: string) => {
+      if (!session || !canManage) return false;
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch (error) {
+        console.error("[agenciamentos] delete failed", error);
+        return false;
+      }
+    },
+    [canManage, deleteMutation, session],
   );
 
   return {
@@ -226,7 +284,9 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     canManage,
     isAdmin,
     currentBroker,
+    effectiveBrokerId,
     corretores,
+
     filters,
     setFilters,
     resetFilters,
@@ -240,5 +300,14 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     createAgenciamento: create,
     updateAgenciamento: update,
     validateAgenciamento: validate,
+    deleteAgenciamento: remove,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    isSaving:
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      validateMutation.isPending ||
+      deleteMutation.isPending,
   };
 }
