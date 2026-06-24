@@ -312,6 +312,10 @@ function Dashboard() {
       {/* ── Métricas — carrossel horizontal com scroll-snap ─────────────── */}
       <MetricsCarousel groups={metricGroups} />
 
+      {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
+      <AgenciamentosQuickStrip summary={agenciamentosSummary} />
+
+
       {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
       <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
         <FinancialSummaryCard
