@@ -222,7 +222,7 @@ export const corretoresSeed: Corretor[] = [
   },
 ];
 
-export const agenciamentosSeed: Agenciamento[] = [];
+
 
 
 export type ClienteHistorico = {
