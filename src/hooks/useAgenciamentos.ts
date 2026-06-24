@@ -284,7 +284,9 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     canManage,
     isAdmin,
     currentBroker,
+    effectiveBrokerId,
     corretores,
+
     filters,
     setFilters,
     resetFilters,
