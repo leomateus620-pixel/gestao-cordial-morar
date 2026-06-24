@@ -251,10 +251,6 @@ export const useApp = create<State>()(
           ((persistedState?.corretores ?? current.corretores) as Corretor[]) ?? [],
         );
         const imoveis = persistedState?.imoveis ?? current.imoveis;
-        const agenciamentos = normalizeAgenciamentos(
-          ((persistedState as { agenciamentos?: unknown[] } | undefined)?.agenciamentos ??
-            current.agenciamentos) as Agenciamento[],
-        );
         const rawAtendimentos =
           (persistedState as { atendimentos?: unknown[] } | undefined)?.atendimentos ??
           current.atendimentos;
@@ -269,7 +265,7 @@ export const useApp = create<State>()(
           clientes,
           corretores,
           imoveis,
-          agenciamentos,
+
           atendimentos: rawAtendimentos.map((atendimento) =>
             normalizeAtendimento(atendimento, { clientes, corretores, imoveis }),
           ),
