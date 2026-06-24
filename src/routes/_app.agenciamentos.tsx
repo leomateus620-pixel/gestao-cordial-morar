@@ -226,20 +226,29 @@ function Page() {
           ))}
         </section>
 
-        {agenciamentos.length === 0 && (
+        {isLoading && (
+          <div className="rounded-2xl border border-border/40 bg-card/50 px-4 py-6 text-center text-sm text-foreground/60">
+            Carregando agenciamentos...
+          </div>
+        )}
+
+        {isError && !isLoading && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
+            Falha ao carregar agenciamentos: {error instanceof Error ? error.message : "erro desconhecido"}.
+          </div>
+        )}
+
+        {!isLoading && !isError && agenciamentos.length === 0 && (
           <EmptyState
-            title={
-              isAdmin
-                ? "Nenhum agenciamento encontrado"
-                : "Voce ainda nao possui agenciamentos cadastrados"
-            }
+            title="Nenhum agenciamento cadastrado ainda."
             description={
               isAdmin
-                ? "Ajuste os filtros para rever os imoveis captados pela equipe."
-                : "Cadastre um imovel captado para acompanhar fotos, placa, Drive, site e validacao."
+                ? "Quando a equipe cadastrar imóveis captados, eles aparecerão aqui. Use os filtros para revisar registros existentes."
+                : "Clique em Cadastrar agenciamento para registrar o primeiro imóvel captado."
             }
           />
         )}
+
       </div>
 
       <AgenciamentoFormModal
