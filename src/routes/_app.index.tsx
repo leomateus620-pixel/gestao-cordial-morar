@@ -21,6 +21,7 @@ import type { AgenciamentoCorretorRanking, AgenciamentoSummary } from "@/types/a
 import type { Corretor, CorretoresSummary } from "@/types/corretor";
 import { useState } from "react";
 import { Fab } from "@/components/fab";
+import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
