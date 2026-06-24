@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenciamentos: {
+        Row: {
+          bairro: string | null
+          cadastrado_site: boolean
+          cidade: string | null
+          corretor_id: string
+          corretor_nome: string
+          created_at: string
+          created_by: string
+          criado_por_nome: string | null
+          data_agenciamento: string
+          descricao_imovel: string | null
+          drive_folder_url: string | null
+          endereco: string
+          fotos_drive: boolean
+          fotos_realizadas: boolean
+          id: string
+          imobiliaria: string
+          observacoes_internas: string | null
+          origem: string
+          placa_instalada: boolean
+          proprietario_contato_preferencial: string | null
+          proprietario_nome: string
+          proprietario_observacoes: string | null
+          proprietario_telefone: string
+          site_url: string | null
+          status: string
+          tipo_imovel: string
+          updated_at: string
+          validado: boolean
+          validado_em: string | null
+          validado_por_id: string | null
+          validado_por_nome: string | null
+          video_realizado: boolean
+        }
+        Insert: {
+          bairro?: string | null
+          cadastrado_site?: boolean
+          cidade?: string | null
+          corretor_id: string
+          corretor_nome: string
+          created_at?: string
+          created_by: string
+          criado_por_nome?: string | null
+          data_agenciamento: string
+          descricao_imovel?: string | null
+          drive_folder_url?: string | null
+          endereco: string
+          fotos_drive?: boolean
+          fotos_realizadas?: boolean
+          id?: string
+          imobiliaria: string
+          observacoes_internas?: string | null
+          origem?: string
+          placa_instalada?: boolean
+          proprietario_contato_preferencial?: string | null
+          proprietario_nome: string
+          proprietario_observacoes?: string | null
+          proprietario_telefone: string
+          site_url?: string | null
+          status?: string
+          tipo_imovel: string
+          updated_at?: string
+          validado?: boolean
+          validado_em?: string | null
+          validado_por_id?: string | null
+          validado_por_nome?: string | null
+          video_realizado?: boolean
+        }
+        Update: {
+          bairro?: string | null
+          cadastrado_site?: boolean
+          cidade?: string | null
+          corretor_id?: string
+          corretor_nome?: string
+          created_at?: string
+          created_by?: string
+          criado_por_nome?: string | null
+          data_agenciamento?: string
+          descricao_imovel?: string | null
+          drive_folder_url?: string | null
+          endereco?: string
+          fotos_drive?: boolean
+          fotos_realizadas?: boolean
+          id?: string
+          imobiliaria?: string
+          observacoes_internas?: string | null
+          origem?: string
+          placa_instalada?: boolean
+          proprietario_contato_preferencial?: string | null
+          proprietario_nome?: string
+          proprietario_observacoes?: string | null
+          proprietario_telefone?: string
+          site_url?: string | null
+          status?: string
+          tipo_imovel?: string
+          updated_at?: string
+          validado?: boolean
+          validado_em?: string | null
+          validado_por_id?: string | null
+          validado_por_nome?: string | null
+          video_realizado?: boolean
+        }
+        Relationships: []
+      }
       agenda_event_checklist: {
         Row: {
           created_at: string
