@@ -56,7 +56,6 @@ type State = {
   agency: AgencyFilter;
   clientes: Cliente[];
   imoveis: Imovel[];
-  agenciamentos: Agenciamento[];
   corretores: Corretor[];
   atendimentos: Atendimento[];
   contratos: Contrato[];
@@ -77,9 +76,6 @@ type State = {
   setAgency: (a: AgencyFilter) => void;
   addCliente: (c: ClientCreateInput) => void;
   addImovel: (i: Omit<Imovel, "id">) => void;
-  addAgenciamento: (a: AgenciamentoInput) => string;
-  updateAgenciamento: (id: string, patch: Partial<AgenciamentoInput>) => void;
-  validateAgenciamento: (id: string, validator: { id: string; nome: string }) => void;
   addAtendimento: (a: AtendimentoCreateInput) => void;
   convertAtendimentoToCliente: (id: string) => string | undefined;
   addCompromisso: (c: Omit<Compromisso, "id">) => void;
@@ -90,7 +86,7 @@ type State = {
 
 const id = () => Math.random().toString(36).slice(2, 10);
 const normalizedCorretoresSeed = normalizeCorretores(corretoresSeed);
-const normalizedAgenciamentosSeed = normalizeAgenciamentos(agenciamentosSeed);
+
 const normalizedAtendimentosSeed = atendimentosSeed.map((atendimento) =>
   normalizeAtendimento(atendimento, {
     clientes: clientesSeed,
