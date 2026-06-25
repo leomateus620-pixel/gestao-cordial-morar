@@ -1,72 +1,48 @@
-## Objetivo
+## Bug
 
-Transformar o card **"Performance da equipe"** (atualmente no dashboard inicial, dados mock vindos da store Zustand) em um gráfico real, alimentado por dados do banco (atendimentos + agenciamentos), com uma terceira métrica de **Agenciamentos** e visual mais moderno.
+No `AgenciamentoFormModal`, o `handleSubmit` chama `onSubmit(input)` sem aguardar — e a função do pai (`createAgenciamento` / `updateAgenciamento`) é assíncrona. Hoje o fluxo é:
 
-## Escopo
+```
+setTimeout(() => {
+  onSubmit(input);   // promise ignorada
+  setSaving(false);  // libera UI
+  requestClose();    // fecha modal "no escuro"
+}, 120);
+```
 
-Somente o card "Performance da equipe" do `/` (admin/owner). Os demais cards do dashboard, o `TeamPerformanceCard` (ranking top 3) e o `AgenciamentosTeamCard` não serão alterados.
+Resultado prático: a chamada de salvar dispara, mas o `requestClose` pode ser anulado/recriado quando o React re-renderiza com `currentBroker`/`agenciamento` recém-invalidados pela query, e o `useEffect` de reset (`if (open) setForm(...)`) reinicia o formulário com `open` ainda `true`. Em parte dos casos a modal continua visível mesmo após o registro ter sido persistido (visível na lista). Além disso, se o servidor rejeitar (ex.: RLS / validação), a modal já fechou e o usuário perde o que digitou.
 
-## 1. Backend — nova rota de dados agregados
+## Correção
 
-Criar `src/lib/equipe/equipe.functions.ts` com `getEquipePerformance`:
+Tornar o submit verdadeiramente assíncrono e só fechar a modal quando o salvamento concluir com sucesso.
 
-- `createServerFn({ method: "GET" }).middleware([requireSupabaseAuth])`
-- Verifica `has_role(userId, 'admin')` — se não, retorna `[]` (admin-only).
-- Lê em paralelo:
-  - `attendances`: `corretor_id, corretor_nome, status, imobiliaria, created_at`
-  - `agenciamentos`: `corretor_id, corretor_nome, imobiliaria, data_agenciamento`
-- Filtra por período (`mes` | `ultimos_30` | `trimestre` | `ano` — default `mes`) e por imobiliária (opcional).
-- Agrega por `corretor_id` (fallback `corretor_nome`):
-  - `atendimentos` = total de atendimentos no período
-  - `contratos` = atendimentos com `status = 'fechado'`
-  - `agenciamentos` = total de agenciamentos no período
-  - `conversao` = `round(contratos / atendimentos * 100)`
-- Retorna DTO ordenado por `atendimentos` desc, top 6:
-  ```ts
-  { corretorId: string; nome: string; primeiroNome: string;
-    atendimentos: number; contratos: number; agenciamentos: number; conversao: number; }[]
-  ```
+### 1. `src/components/agenciamentos/AgenciamentoFormModal.tsx`
+- Trocar a prop:
+  - de `onSubmit: (input: AgenciamentoInput) => void`
+  - para `onSubmit: (input: AgenciamentoInput) => Promise<boolean | void>`.
+- Reescrever `handleSubmit`:
+  - `event.preventDefault()`, validar, setar erros.
+  - `setSaving(true)`; `try { const ok = await onSubmit(input); if (ok !== false) requestClose(); } catch { /* mantém aberto */ } finally { setSaving(false); }`
+  - Remover o `window.setTimeout(..., 120)`.
+- Desabilitar o botão "Cadastrar/Atualizar agenciamento" e o botão "Cancelar" enquanto `saving` for `true` (já existe `saving`, hoje não bloqueia clique duplo).
+- Quando `saving` for `true`, ignorar `requestClose` por Esc / overlay para evitar fechamento durante o save.
 
-Input validator com Zod aceita `{ periodo, imobiliaria }`.
+### 2. `src/routes/_app.agenciamentos.tsx`
+- `handleSubmit` passa a **retornar `boolean`**:
+  - `true` quando `createAgenciamento` retornar um `id` truthy ou `updateAgenciamento` retornar `true`.
+  - `false` quando a operação for negada (sem permissão) ou lançar erro (já tratado com `showFeedback`).
+- Sem mudanças de UI/copy além do retorno; o fechamento da modal passa a ser responsabilidade do próprio modal após `await`.
 
-Sem migração de banco (todas as tabelas e RLS já existem; o admin lê todas as linhas via política existente).
+### 3. Nada a mexer em
+- `src/hooks/useAgenciamentos.ts` (já retorna `id`/`boolean` corretamente).
+- `src/lib/agenciamentos/agenciamentos.functions.ts` (server fn ok).
+- Banco / RLS / migrations.
 
-## 2. Frontend — hook + chart
+## Validação manual após a correção
+1. Abrir "Cadastrar agenciamento", preencher campos válidos, clicar em salvar → modal fecha sozinha, toast "Agenciamento cadastrado com sucesso." aparece, novo card surge na lista.
+2. Preencher telefone inválido → modal permanece aberta com o erro inline (comportamento atual preservado).
+3. Editar um agenciamento existente → mesmo comportamento, modal fecha no sucesso.
+4. Forçar erro (ex.: trocar para um corretor inexistente) → modal continua aberta com toast de erro, dados preservados.
+5. Clique duplo no botão salvar → só dispara uma vez (botão desabilitado durante `saving`).
 
-**Hook** `src/hooks/useEquipePerformance.ts`:
-- `useSuspenseQuery`-livre (`useQuery` com `enabled = isAdminOwner`), `queryKey: ['equipe-performance', periodo, agency]`.
-- Retorna `{ data, isLoading, totals: { atendimentos, contratos, agenciamentos, conversaoMedia } }`.
-
-**`src/routes/_app.index.tsx`**:
-- Remover uso de `dashboardChart: equipeChart` do `useCorretores`.
-- Substituir o `<ChartCard>` por um novo componente `TeamPerformanceChart` (arquivo dedicado) que:
-  - Header com título, subtítulo e **três KPIs em destaque** (Atendimentos / Contratos / Agenciamentos totais do período) com cores correspondentes.
-  - Eyebrow continua "6 MESES" → trocar para label dinâmico do período (ex.: "Este mês").
-  - Gráfico horizontal `BarChart` com **3 séries**:
-    - Atendimentos — `chartCordial` (azul) — gradient
-    - Contratos — `chartMorar` (laranja) — gradient
-    - Agenciamentos — `chartSystem` (azul-petróleo) — gradient (cor nova, conforme pedido)
-  - `barSize` reduzido, espaçamento maior, cantos `[0,8,8,0]`.
-  - `LabelList` no fim de cada barra com o valor (destaca os números).
-  - Tooltip rica com a taxa de conversão por corretor.
-  - Estado vazio: `EmptyState` "Sem atividade no período".
-  - Estado loading: skeleton de 4 linhas.
-- Manter a `ResponsiveContainer` e alturas atuais.
-
-## 3. Limpeza de mock
-
-- `getCorretoresDashboardChart` e o retorno `dashboardChart` de `useCorretores` deixam de ser consumidos pelo dashboard. Manter a função (ainda usada internamente para tipagem ou futuro), mas remover o consumo no `_app.index.tsx`.
-- Nada removido da store Zustand: `equipeRanking`/`equipeSummary` ainda alimentam `TeamPerformanceCard` (fora do escopo).
-
-## 4. Validação
-
-- `bunx tsgo --noEmit` limpo.
-- `supabase--read_query` para conferir contagem por corretor (sanity check do agregado vs. SQL direto).
-- Verificação visual via Playwright em `/` autenticado: card renderiza 3 barras por corretor + KPIs no header.
-
-## Arquivos
-
-- **novo** `src/lib/equipe/equipe.functions.ts`
-- **novo** `src/hooks/useEquipePerformance.ts`
-- **novo** `src/components/dashboard/TeamPerformanceChart.tsx`
-- **editado** `src/routes/_app.index.tsx` (substituir o ChartCard inline)
+Escopo restrito ao bug; não altera estilo, layout, regras de negócio ou banco.

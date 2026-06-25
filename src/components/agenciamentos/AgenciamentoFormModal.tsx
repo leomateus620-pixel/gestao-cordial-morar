@@ -58,7 +58,7 @@ type AgenciamentoFormModalProps = {
   currentBroker?: Corretor;
   canManage: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: AgenciamentoInput) => void;
+  onSubmit: (input: AgenciamentoInput) => Promise<boolean | void> | boolean | void;
 };
 
 const contactOptions: Array<{ value: AgenciamentoContatoPreferencial; label: string }> = [
@@ -182,7 +182,7 @@ export function AgenciamentoFormModal({
   if (!mounted || typeof document === "undefined") return null;
 
   function requestClose() {
-    if (closing) return;
+    if (closing || saving) return;
     setClosing(true);
     window.setTimeout(() => onOpenChange(false), 170);
   }
@@ -249,18 +249,25 @@ export function AgenciamentoFormModal({
     };
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const input = toInput();
     const nextErrors = validateAgenciamentoInput(input, canManage);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     setSaving(true);
-    window.setTimeout(() => {
-      onSubmit(input);
+    try {
+      const result = await onSubmit(input);
+      if (result !== false) {
+        setClosing(true);
+        window.setTimeout(() => onOpenChange(false), 170);
+      }
+    } catch {
+      // mantém o modal aberto preservando os dados digitados
+    } finally {
       setSaving(false);
-      requestClose();
-    }, 120);
+    }
   }
 
   const content = (
@@ -580,6 +587,7 @@ export function AgenciamentoFormModal({
             variant="ghost"
             className="h-11 rounded-2xl text-foreground/70 hover:text-foreground"
             onClick={requestClose}
+            disabled={saving}
           >
             Cancelar
           </Button>
@@ -588,8 +596,8 @@ export function AgenciamentoFormModal({
             className="h-11 rounded-2xl bg-[#174d61] text-white hover:bg-[#1e647d]"
             disabled={saving}
           >
-            {saving ? <Check className="size-4" /> : <Save className="size-4" />}
-            {isEditing ? "Salvar alterações" : "Cadastrar agenciamento"}
+            {saving ? <Check className="size-4 animate-pulse" /> : <Save className="size-4" />}
+            {saving ? "Salvando..." : isEditing ? "Salvar alterações" : "Cadastrar agenciamento"}
             <ChevronRight className="size-4" />
           </Button>
         </div>
