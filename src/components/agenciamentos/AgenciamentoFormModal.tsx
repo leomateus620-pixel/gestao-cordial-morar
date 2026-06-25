@@ -184,7 +184,10 @@ export function AgenciamentoFormModal({
   function requestClose() {
     if (closing || saving) return;
     setClosing(true);
-    window.setTimeout(() => onOpenChange(false), 170);
+    window.setTimeout(() => {
+      setMounted(false);
+      onOpenChange(false);
+    }, 170);
   }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
