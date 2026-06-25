@@ -43,6 +43,12 @@ export interface AgendaReminder {
   canalFuturo?: boolean;
 }
 
+export interface AgendaGuest {
+  email: string;
+  nome?: string;
+  responseStatus?: "needsAction" | "accepted" | "declined" | "tentative";
+}
+
 export interface AgendaEvent {
   id: string;
   titulo: string;
