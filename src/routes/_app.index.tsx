@@ -129,10 +129,10 @@ function Dashboard() {
   const {
     dashboardSummary: equipeSummary,
     dashboardRanking: equipeRanking,
-    dashboardChart: equipeChart,
   } = useCorretores({ skipDashboard: !isAdminOwner });
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
+  const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
   const filterByAgency = <T extends { imobiliaria: "cordial" | "morar" | "ambas" }>(items: T[]) =>
     agency === "todas"
       ? items
