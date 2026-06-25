@@ -346,10 +346,10 @@ export function LeadOriginCard({ className }: { className?: string }) {
                       isAnimationActive={shouldAnimate}
                       animationBegin={120}
                       animationDuration={820}
-                      onMouseEnter={(row: { payload: { origin: string } }) => setHoveredOrigin(row.payload.origin)}
+                      onMouseEnter={(row: { payload: { origin: LeadOrigin } }) => setHoveredOrigin(row.payload.origin)}
                       onMouseLeave={() => setHoveredOrigin(null)}
-                      onClick={(row: { payload: { origin: string } }) => toggleOrigin(row.payload.origin)}
-                      onTouchStart={(row: { payload: { origin: string } }) => {
+                      onClick={(row: { payload: { origin: LeadOrigin } }) => toggleOrigin(row.payload.origin)}
+                      onTouchStart={(row: { payload: { origin: LeadOrigin } }) => {
                         setHoveredOrigin(row.payload.origin);
                         setSelectedOrigin(row.payload.origin);
                       }}
