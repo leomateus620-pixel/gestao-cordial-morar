@@ -768,7 +768,7 @@ export function AgendaFormModal({
 
 
             <FormSection
-              step="5"
+              step="6"
               title="Lembretes e notificações"
               description="Canais externos ficam preparados, sem chamadas de API nesta fase."
               className="lg:col-span-2"
