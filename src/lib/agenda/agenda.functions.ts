@@ -218,6 +218,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     await context.supabase.from("agenda_event_participants").delete().eq("event_id", eventId);
     await context.supabase.from("agenda_event_checklist").delete().eq("event_id", eventId);
     await context.supabase.from("agenda_event_reminders").delete().eq("event_id", eventId);
+    await context.supabase.from("agenda_event_guests").delete().eq("event_id", eventId);
 
     const participants = (input.participantes ?? [])
       .filter((p) => p.nome?.trim())
