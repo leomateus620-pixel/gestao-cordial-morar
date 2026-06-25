@@ -126,10 +126,9 @@ function Dashboard() {
       rawClientes: s.clientes,
     })),
   );
-  const {
-    dashboardSummary: equipeSummary,
-    dashboardRanking: equipeRanking,
-  } = useCorretores({ skipDashboard: !isAdminOwner });
+  const { dashboardSummary: equipeSummary, dashboardRanking: equipeRanking } = useCorretores({
+    skipDashboard: !isAdminOwner,
+  });
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
   const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
@@ -317,7 +316,6 @@ function Dashboard() {
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
       <AgenciamentosQuickStrip summary={agenciamentosSummary} />
 
-
       {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
       <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
         <FinancialSummaryCard
@@ -339,6 +337,8 @@ function Dashboard() {
             periodo={equipePerformance.periodo}
             onPeriodoChange={equipePerformance.setPeriodo}
             isLoading={equipePerformance.isLoading}
+            isFetching={equipePerformance.isFetching}
+            isError={equipePerformance.isError}
           />
         </section>
       )}
