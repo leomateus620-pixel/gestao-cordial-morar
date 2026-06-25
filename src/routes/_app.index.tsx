@@ -22,6 +22,8 @@ import type { Corretor, CorretoresSummary } from "@/types/corretor";
 import { useState } from "react";
 import { Fab } from "@/components/fab";
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
+import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
+import { useEquipePerformance } from "@/hooks/useEquipePerformance";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
@@ -127,10 +129,10 @@ function Dashboard() {
   const {
     dashboardSummary: equipeSummary,
     dashboardRanking: equipeRanking,
-    dashboardChart: equipeChart,
   } = useCorretores({ skipDashboard: !isAdminOwner });
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
+  const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
   const filterByAgency = <T extends { imobiliaria: "cordial" | "morar" | "ambas" }>(items: T[]) =>
     agency === "todas"
       ? items
@@ -332,59 +334,12 @@ function Dashboard() {
           <TeamPerformanceCard summary={equipeSummary} ranking={equipeRanking.slice(0, 3)} />
           <AgenciamentosTeamCard summary={agenciamentosSummary} ranking={agenciamentosRanking} />
 
-          <ChartCard
-            title="Performance da equipe"
-            subtitle="Atendimentos, contratos e conversão"
-            heightClassName="h-64 lg:h-72"
-          >
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart
-                data={equipeChart}
-                layout="vertical"
-                margin={{ left: 8, right: 10, top: 8 }}
-              >
-                <defs>
-                  <linearGradient id="gradTeamAtend" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={chartCordial} stopOpacity={0.9} />
-                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.58} />
-                  </linearGradient>
-                  <linearGradient id="gradTeamContr" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={chartMorar} stopOpacity={0.9} />
-                    <stop offset="100%" stopColor={chartMorar} stopOpacity={0.62} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={gridStroke} horizontal={false} />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="nome"
-                  type="category"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={axisTick}
-                  width={58}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(v, name) => (name === "Conversão" ? `${v}%` : v)}
-                />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                <Bar
-                  dataKey="atendimentos"
-                  fill="url(#gradTeamAtend)"
-                  radius={[0, 6, 6, 0]}
-                  name="Atendimentos"
-                  animationDuration={900}
-                />
-                <Bar
-                  dataKey="contratos"
-                  fill="url(#gradTeamContr)"
-                  radius={[0, 6, 6, 0]}
-                  name="Contratos"
-                  animationDuration={1100}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+          <TeamPerformanceChart
+            data={equipePerformance.data}
+            periodo={equipePerformance.periodo}
+            onPeriodoChange={equipePerformance.setPeriodo}
+            isLoading={equipePerformance.isLoading}
+          />
         </section>
       )}
 
