@@ -341,7 +341,7 @@ export function LeadOriginCard({ className }: { className?: string }) {
                       outerRadius={106}
                       paddingAngle={chartRows.length > 1 ? 3 : 0}
                       cornerRadius={8}
-                      activeIndex={activeIndex as never}
+                      activeIndex={activeIndex}
                       activeShape={renderActiveSector}
                       isAnimationActive={shouldAnimate}
                       animationBegin={120}
