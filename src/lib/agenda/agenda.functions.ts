@@ -106,6 +106,11 @@ function rowToEvent(row: DbEvent): AgendaEvent {
       nome: p.nome,
       papel: p.papel,
     })),
+    convidados: (row.agenda_event_guests ?? []).map((g) => ({
+      email: g.email,
+      nome: g.nome ?? undefined,
+      responseStatus: (g.response_status ?? "needsAction") as AgendaGuest["responseStatus"],
+    })),
     lembretes: (row.agenda_event_reminders ?? []).map((r) => ({
       id: r.id,
       tipo: (r.tipo === "google_calendar" ? "interno" : r.tipo) as AgendaReminder["tipo"],
@@ -128,7 +133,7 @@ function rowToEvent(row: DbEvent): AgendaEvent {
 }
 
 const SELECT =
-  "*, agenda_event_participants(user_id,nome,papel), agenda_event_checklist(id,label,done,sort_order), agenda_event_reminders(id,tipo,antecedencia_min,ativo,canal_futuro)";
+  "*, agenda_event_participants(user_id,nome,papel), agenda_event_checklist(id,label,done,sort_order), agenda_event_reminders(id,tipo,antecedencia_min,ativo,canal_futuro), agenda_event_guests(email,nome,response_status)";
 
 function validate(input: AgendaEventInput) {
   if (!input.titulo?.trim()) throw new Error("Título obrigatório");
