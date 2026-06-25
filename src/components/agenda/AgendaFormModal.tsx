@@ -650,6 +650,90 @@ export function AgendaFormModal({
 
             <FormSection
               step="5"
+              title="Convidados externos"
+              description="Envie convite por e-mail. O Google Agenda dispara o e-mail e cria o evento na agenda de cada convidado, com tipo do evento e quem convidou na descrição."
+              className="lg:col-span-2"
+            >
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <input
+                  type="email"
+                  value={form.convidadoEmailInput}
+                  onChange={(event) => update("convidadoEmailInput", event.target.value)}
+                  className={inputClass(guestEmailError)}
+                  placeholder="email@exemplo.com"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addGuest();
+                    }
+                  }}
+                />
+                <input
+                  value={form.convidadoNomeInput}
+                  onChange={(event) => update("convidadoNomeInput", event.target.value)}
+                  className={inputClass()}
+                  placeholder="Nome (opcional)"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addGuest();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addGuest}
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-xs font-semibold text-white shadow-md shadow-teal-900/15 transition hover:bg-teal-800 active:scale-[0.98]"
+                >
+                  <Plus className="size-3.5" /> Adicionar
+                </button>
+              </div>
+              {guestEmailError && (
+                <p className="text-[11px] font-medium text-destructive">{guestEmailError}</p>
+              )}
+              {form.convidados.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {form.convidados.map((guest) => (
+                    <span
+                      key={guest.email}
+                      className="inline-flex items-center gap-2 rounded-full bg-white/72 px-3 py-1.5 text-[11px] font-medium text-foreground/78 ring-1 ring-teal-700/15 shadow-sm"
+                    >
+                      <Mail className="size-3 text-teal-700" />
+                      <span className="max-w-[200px] truncate">
+                        {guest.nome ? `${guest.nome} · ` : ""}
+                        {guest.email}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeGuest(guest.email)}
+                        className="text-foreground/35 transition hover:text-rose-600"
+                        aria-label={`Remover ${guest.email}`}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] leading-5 text-foreground/52">
+                  Nenhum convidado adicionado. Os convidados recebem e-mail do Google Agenda e o
+                  evento aparece automaticamente na agenda deles.
+                </p>
+              )}
+              <div className="flex items-start gap-2 rounded-2xl border border-dashed border-teal-700/20 bg-teal-700/6 px-3 py-2.5 text-[10px] leading-5 text-teal-900/70">
+                <Mail className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  O convite é enviado a partir da conta Google do responsável principal. Se ele não
+                  tiver o Google Agenda conectado, o cadastro é salvo, mas o convite não é
+                  disparado.
+                </span>
+              </div>
+            </FormSection>
+
+
+
+            <FormSection
+              step="5"
               title="Lembretes e notificações"
               description="Canais externos ficam preparados, sem chamadas de API nesta fase."
               className="lg:col-span-2"
