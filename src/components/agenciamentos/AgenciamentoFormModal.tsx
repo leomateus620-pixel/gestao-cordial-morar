@@ -249,18 +249,25 @@ export function AgenciamentoFormModal({
     };
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const input = toInput();
     const nextErrors = validateAgenciamentoInput(input, canManage);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     setSaving(true);
-    window.setTimeout(() => {
-      onSubmit(input);
+    try {
+      const result = await onSubmit(input);
+      if (result !== false) {
+        setClosing(true);
+        window.setTimeout(() => onOpenChange(false), 170);
+      }
+    } catch {
+      // mantém o modal aberto preservando os dados digitados
+    } finally {
       setSaving(false);
-      requestClose();
-    }, 120);
+    }
   }
 
   const content = (
