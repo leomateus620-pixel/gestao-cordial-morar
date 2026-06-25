@@ -4,6 +4,7 @@ import type {
   AgendaChecklistItem,
   AgendaEvent,
   AgendaEventInput,
+  AgendaGuest,
   AgendaImobiliaria,
   AgendaParticipant,
   AgendaPrioridade,
