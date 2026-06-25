@@ -364,7 +364,8 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
     const payload = buildEventPayload(event);
 
     let googleEventId = event.google_event_id;
-    let createdJson: { id: string; attendees?: Array<{ email: string; responseStatus?: string }> } | null = null;
+    type CreatedJson = { id: string; attendees?: Array<{ email: string; responseStatus?: string }> };
+    let createdJson: CreatedJson | null = null;
     if (googleEventId) {
       const res = await callCalendar(
         accessToken,
