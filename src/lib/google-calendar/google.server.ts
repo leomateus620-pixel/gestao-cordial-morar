@@ -333,13 +333,16 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
     const accessToken = await getValidAccessToken(conn as ConnectionRow);
     const calendarId = (conn as ConnectionRow).calendar_id || "primary";
 
+    const hasGuests = (event.agenda_event_guests ?? []).length > 0;
+    const sendUpdates = hasGuests ? "all" : "none";
+
     // Cancelado/soft-deleted: deletar do Google se já existir.
     if (event.status === "cancelado" || event.deleted_at) {
       if (event.google_event_id) {
         const res = await callCalendar(
           accessToken,
           calendarId,
-          `/events/${encodeURIComponent(event.google_event_id)}`,
+          `/events/${encodeURIComponent(event.google_event_id)}?sendUpdates=${sendUpdates}`,
           { method: "DELETE" },
         );
         if (!res.ok && res.status !== 404 && res.status !== 410) {
@@ -361,11 +364,12 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
     const payload = buildEventPayload(event);
 
     let googleEventId = event.google_event_id;
+    let createdJson: { id: string; attendees?: Array<{ email: string; responseStatus?: string }> } | null = null;
     if (googleEventId) {
       const res = await callCalendar(
         accessToken,
         calendarId,
-        `/events/${encodeURIComponent(googleEventId)}`,
+        `/events/${encodeURIComponent(googleEventId)}?sendUpdates=${sendUpdates}`,
         { method: "PATCH", body: JSON.stringify(payload) },
       );
       if (res.status === 404 || res.status === 410) {
@@ -373,16 +377,30 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
         googleEventId = null;
       } else if (!res.ok) {
         throw new Error(`PATCH falhou: ${res.status} ${await res.text()}`);
+      } else {
+        createdJson = (await res.json()) as typeof createdJson;
       }
     }
     if (!googleEventId) {
-      const res = await callCalendar(accessToken, calendarId, `/events`, {
+      const res = await callCalendar(accessToken, calendarId, `/events?sendUpdates=${sendUpdates}`, {
         method: "POST",
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`POST falhou: ${res.status} ${await res.text()}`);
-      const created = (await res.json()) as { id: string };
-      googleEventId = created.id;
+      createdJson = (await res.json()) as typeof createdJson;
+      googleEventId = createdJson!.id;
+    }
+
+    // Atualiza response_status dos convidados conforme retorno do Google (best-effort).
+    if (createdJson?.attendees?.length) {
+      for (const att of createdJson.attendees) {
+        if (!att.email) continue;
+        await supabaseAdmin
+          .from("agenda_event_guests")
+          .update({ response_status: att.responseStatus ?? "needsAction" })
+          .eq("event_id", eventId)
+          .eq("email", att.email.toLowerCase());
+      }
     }
 
     await supabaseAdmin
