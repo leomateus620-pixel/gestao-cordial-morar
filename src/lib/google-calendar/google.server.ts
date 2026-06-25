@@ -304,7 +304,7 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
   const { data: ev, error } = await supabaseAdmin
     .from("agenda_events")
     .select(
-      "id,titulo,descricao,observacoes,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo)",
+      "id,titulo,descricao,observacoes,tipo,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,responsavel_nome,criado_por_nome,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo),agenda_event_guests(email,nome,response_status)",
     )
     .eq("id", eventId)
     .maybeSingle();
