@@ -260,6 +260,41 @@ export function AgendaFormModal({
     }));
   }
 
+  const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function addGuest() {
+    const email = form.convidadoEmailInput.trim().toLowerCase();
+    const nome = form.convidadoNomeInput.trim();
+    if (!email) {
+      setGuestEmailError("Informe um e-mail.");
+      return;
+    }
+    if (!EMAIL_RE.test(email)) {
+      setGuestEmailError("E-mail inválido.");
+      return;
+    }
+    if (form.convidados.some((g) => g.email === email)) {
+      setGuestEmailError("E-mail já adicionado.");
+      return;
+    }
+    setGuestEmailError(undefined);
+    setForm((current) => ({
+      ...current,
+      convidados: [...current.convidados, { email, nome: nome || undefined, responseStatus: "needsAction" }],
+      convidadoEmailInput: "",
+      convidadoNomeInput: "",
+    }));
+  }
+
+  function removeGuest(email: string) {
+    setForm((current) => ({
+      ...current,
+      convidados: current.convidados.filter((g) => g.email !== email),
+    }));
+  }
+
+
+
   async function submit(submitEvent: FormEvent) {
     submitEvent.preventDefault();
     if (!canEdit) return;
