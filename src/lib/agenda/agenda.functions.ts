@@ -260,6 +260,27 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const seenEmails = new Set<string>();
+    const guests = (input.convidados ?? [])
+      .map((g) => ({ email: g.email?.trim().toLowerCase() ?? "", nome: g.nome?.trim() || null }))
+      .filter((g) => {
+        if (!EMAIL_RE.test(g.email)) return false;
+        if (seenEmails.has(g.email)) return false;
+        seenEmails.add(g.email);
+        return true;
+      })
+      .map((g) => ({
+        event_id: eventId!,
+        email: g.email,
+        nome: g.nome,
+        response_status: "needsAction",
+      }));
+    if (guests.length) {
+      const { error } = await context.supabase.from("agenda_event_guests").insert(guests);
+      if (error) throw new Error(error.message);
+    }
+
     // Best-effort push para o Google Agenda do responsável (não bloqueia em caso de erro).
     try {
       const { syncAgendaEventToGoogle } = await import(
