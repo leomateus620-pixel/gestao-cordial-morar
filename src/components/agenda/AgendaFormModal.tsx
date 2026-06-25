@@ -27,6 +27,7 @@ import {
   type AgendaChecklistItem,
   type AgendaEvent,
   type AgendaEventInput,
+  type AgendaGuest,
   type AgendaImobiliaria,
   type AgendaPrioridade,
   type AgendaRecorrencia,
