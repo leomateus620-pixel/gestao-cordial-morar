@@ -182,7 +182,7 @@ export function AgenciamentoFormModal({
   if (!mounted || typeof document === "undefined") return null;
 
   function requestClose() {
-    if (closing) return;
+    if (closing || saving) return;
     setClosing(true);
     window.setTimeout(() => onOpenChange(false), 170);
   }
