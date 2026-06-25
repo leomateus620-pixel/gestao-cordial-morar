@@ -139,6 +139,7 @@ function Page() {
           responsavelPrincipalId: atendimento.corretorId,
           responsavelPrincipalNome: atendimento.corretorNome,
           participantes: [],
+          convidados: [],
           lembretes: [],
           checklist: [],
           observacoes: payload.observacoes || undefined,

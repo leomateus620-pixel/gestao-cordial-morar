@@ -43,6 +43,12 @@ export interface AgendaReminder {
   canalFuturo?: boolean;
 }
 
+export interface AgendaGuest {
+  email: string;
+  nome?: string;
+  responseStatus?: "needsAction" | "accepted" | "declined" | "tentative";
+}
+
 export interface AgendaEvent {
   id: string;
   titulo: string;
@@ -66,6 +72,7 @@ export interface AgendaEvent {
   responsavelPrincipalId?: string;
   responsavelPrincipalNome?: string;
   participantes: AgendaParticipant[];
+  convidados: AgendaGuest[];
   lembretes: AgendaReminder[];
   checklist: AgendaChecklistItem[];
   observacoes?: string;

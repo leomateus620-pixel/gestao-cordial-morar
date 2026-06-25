@@ -82,6 +82,7 @@ export function normalizeAgendaEvent(
     responsavelPrincipalId,
     responsavelPrincipalNome: clean(record.responsavelPrincipalNome) ?? recordName(broker),
     participantes: normalizeParticipants(record.participantes),
+    convidados: [],
     lembretes: normalizeReminders(record.lembretes),
     checklist: normalizeChecklist(record.checklist),
     observacoes: clean(record.observacoes),

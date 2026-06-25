@@ -330,7 +330,8 @@ export function LeadOriginCard({ className }: { className?: string }) {
                         </linearGradient>
                       ))}
                     </defs>
-                    <Pie
+                    {(() => { const PieAny = Pie as unknown as React.FC<Record<string, unknown>>; return (
+                    <PieAny
                       data={chartRows}
                       dataKey="value"
                       nameKey="label"
@@ -345,10 +346,10 @@ export function LeadOriginCard({ className }: { className?: string }) {
                       isAnimationActive={shouldAnimate}
                       animationBegin={120}
                       animationDuration={820}
-                      onMouseEnter={(row) => setHoveredOrigin(row.payload.origin)}
+                      onMouseEnter={(row: { payload: { origin: LeadOrigin } }) => setHoveredOrigin(row.payload.origin)}
                       onMouseLeave={() => setHoveredOrigin(null)}
-                      onClick={(row) => toggleOrigin(row.payload.origin)}
-                      onTouchStart={(row) => {
+                      onClick={(row: { payload: { origin: LeadOrigin } }) => toggleOrigin(row.payload.origin)}
+                      onTouchStart={(row: { payload: { origin: LeadOrigin } }) => {
                         setHoveredOrigin(row.payload.origin);
                         setSelectedOrigin(row.payload.origin);
                       }}
@@ -373,7 +374,8 @@ export function LeadOriginCard({ className }: { className?: string }) {
                           />
                         );
                       })}
-                    </Pie>
+                    </PieAny>
+                    ); })()}
                   </PieChart>
                 </ResponsiveContainer>
                 <LeadOriginTooltip row={activeRow} periodLabel={periodLabel} total={total} />

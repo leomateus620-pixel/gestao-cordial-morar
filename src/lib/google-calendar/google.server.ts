@@ -170,12 +170,14 @@ async function notify(userId: string, titulo: string, mensagem: string, tipo = "
 }
 
 type ReminderRow = { tipo: string; antecedencia_min: number; ativo: boolean };
+type GuestRow = { email: string; nome: string | null; response_status: string | null };
 
 type EventRow = {
   id: string;
   titulo: string;
   descricao: string | null;
   observacoes: string | null;
+  tipo: string | null;
   inicio: string;
   fim: string | null;
   duracao_min: number | null;
@@ -185,13 +187,29 @@ type EventRow = {
   imovel_descricao: string | null;
   owner_user_id: string | null;
   created_by: string;
+  responsavel_nome: string | null;
+  criado_por_nome: string | null;
   status: string;
   deleted_at: string | null;
   google_event_id: string | null;
   agenda_event_reminders: ReminderRow[];
+  agenda_event_guests: GuestRow[];
 };
 
 const TIMEZONE = "America/Sao_Paulo";
+
+const TIPO_LABEL: Record<string, string> = {
+  visita: "Visita",
+  fotos: "Fotos do imóvel",
+  video: "Vídeo do imóvel",
+  assinatura: "Assinatura de contrato",
+  reuniao: "Reunião",
+  retorno: "Retorno para cliente",
+  vistoria: "Vistoria",
+  captacao: "Captação/Agenciamento",
+  interno: "Compromisso interno",
+  outro: "Outro",
+};
 
 function buildEventPayload(ev: EventRow) {
   const startISO = ev.inicio;
@@ -201,8 +219,13 @@ function buildEventPayload(ev: EventRow) {
       new Date(ev.inicio).getTime() + Math.max(1, ev.duracao_min ?? 60) * 60_000,
     ).toISOString();
 
+  const tipoLabel = ev.tipo ? TIPO_LABEL[ev.tipo] ?? ev.tipo : null;
+  const inviter = ev.responsavel_nome || ev.criado_por_nome || null;
+
   const descricaoParts = [
     ev.descricao,
+    tipoLabel ? `Tipo: ${tipoLabel}` : null,
+    inviter ? `Convidado por: ${inviter}` : null,
     ev.cliente_nome ? `Cliente: ${ev.cliente_nome}` : null,
     ev.imovel_descricao ? `Imóvel: ${ev.imovel_descricao}` : null,
     ev.observacoes ? `Obs.: ${ev.observacoes}` : null,
@@ -217,6 +240,13 @@ function buildEventPayload(ev: EventRow) {
       minutes: Math.max(0, Math.min(40320, r.antecedencia_min)),
     }));
 
+  const attendees = (ev.agenda_event_guests ?? [])
+    .filter((g) => g.email)
+    .map((g) => ({
+      email: g.email,
+      ...(g.nome ? { displayName: g.nome } : {}),
+    }));
+
   const base: Record<string, unknown> = {
     summary: ev.titulo,
     description: descricaoParts.join("\n"),
@@ -226,6 +256,12 @@ function buildEventPayload(ev: EventRow) {
       : { useDefault: true },
     status: ev.status === "cancelado" ? "cancelled" : "confirmed",
   };
+
+  if (attendees.length) {
+    base.attendees = attendees;
+    base.guestsCanInviteOthers = false;
+    base.guestsCanModify = false;
+  }
 
   if (ev.dia_inteiro) {
     base.start = { date: startISO.slice(0, 10) };
@@ -268,7 +304,7 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
   const { data: ev, error } = await supabaseAdmin
     .from("agenda_events")
     .select(
-      "id,titulo,descricao,observacoes,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo)",
+      "id,titulo,descricao,observacoes,tipo,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,responsavel_nome,criado_por_nome,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo),agenda_event_guests(email,nome,response_status)",
     )
     .eq("id", eventId)
     .maybeSingle();
@@ -297,13 +333,16 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
     const accessToken = await getValidAccessToken(conn as ConnectionRow);
     const calendarId = (conn as ConnectionRow).calendar_id || "primary";
 
+    const hasGuests = (event.agenda_event_guests ?? []).length > 0;
+    const sendUpdates = hasGuests ? "all" : "none";
+
     // Cancelado/soft-deleted: deletar do Google se já existir.
     if (event.status === "cancelado" || event.deleted_at) {
       if (event.google_event_id) {
         const res = await callCalendar(
           accessToken,
           calendarId,
-          `/events/${encodeURIComponent(event.google_event_id)}`,
+          `/events/${encodeURIComponent(event.google_event_id)}?sendUpdates=${sendUpdates}`,
           { method: "DELETE" },
         );
         if (!res.ok && res.status !== 404 && res.status !== 410) {
@@ -325,11 +364,13 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
     const payload = buildEventPayload(event);
 
     let googleEventId = event.google_event_id;
+    type CreatedJson = { id: string; attendees?: Array<{ email: string; responseStatus?: string }> };
+    let createdJson: CreatedJson | null = null;
     if (googleEventId) {
       const res = await callCalendar(
         accessToken,
         calendarId,
-        `/events/${encodeURIComponent(googleEventId)}`,
+        `/events/${encodeURIComponent(googleEventId)}?sendUpdates=${sendUpdates}`,
         { method: "PATCH", body: JSON.stringify(payload) },
       );
       if (res.status === 404 || res.status === 410) {
@@ -337,16 +378,30 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
         googleEventId = null;
       } else if (!res.ok) {
         throw new Error(`PATCH falhou: ${res.status} ${await res.text()}`);
+      } else {
+        createdJson = (await res.json()) as CreatedJson;
       }
     }
     if (!googleEventId) {
-      const res = await callCalendar(accessToken, calendarId, `/events`, {
+      const res = await callCalendar(accessToken, calendarId, `/events?sendUpdates=${sendUpdates}`, {
         method: "POST",
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`POST falhou: ${res.status} ${await res.text()}`);
-      const created = (await res.json()) as { id: string };
-      googleEventId = created.id;
+      createdJson = (await res.json()) as CreatedJson;
+      googleEventId = createdJson!.id;
+    }
+
+    // Atualiza response_status dos convidados conforme retorno do Google (best-effort).
+    if (createdJson?.attendees?.length) {
+      for (const att of createdJson.attendees) {
+        if (!att.email) continue;
+        await supabaseAdmin
+          .from("agenda_event_guests")
+          .update({ response_status: att.responseStatus ?? "needsAction" })
+          .eq("event_id", eventId)
+          .eq("email", att.email.toLowerCase());
+      }
     }
 
     await supabaseAdmin

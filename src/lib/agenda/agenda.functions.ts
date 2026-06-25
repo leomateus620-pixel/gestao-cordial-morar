@@ -4,6 +4,7 @@ import type {
   AgendaChecklistItem,
   AgendaEvent,
   AgendaEventInput,
+  AgendaGuest,
   AgendaImobiliaria,
   AgendaParticipant,
   AgendaPrioridade,
@@ -64,6 +65,11 @@ type DbEvent = {
     ativo: boolean;
     canal_futuro: boolean;
   }>;
+  agenda_event_guests?: Array<{
+    email: string;
+    nome: string | null;
+    response_status: string | null;
+  }>;
 };
 
 function rowToEvent(row: DbEvent): AgendaEvent {
@@ -100,6 +106,11 @@ function rowToEvent(row: DbEvent): AgendaEvent {
       nome: p.nome,
       papel: p.papel,
     })),
+    convidados: (row.agenda_event_guests ?? []).map((g) => ({
+      email: g.email,
+      nome: g.nome ?? undefined,
+      responseStatus: (g.response_status ?? "needsAction") as AgendaGuest["responseStatus"],
+    })),
     lembretes: (row.agenda_event_reminders ?? []).map((r) => ({
       id: r.id,
       tipo: (r.tipo === "google_calendar" ? "interno" : r.tipo) as AgendaReminder["tipo"],
@@ -122,7 +133,7 @@ function rowToEvent(row: DbEvent): AgendaEvent {
 }
 
 const SELECT =
-  "*, agenda_event_participants(user_id,nome,papel), agenda_event_checklist(id,label,done,sort_order), agenda_event_reminders(id,tipo,antecedencia_min,ativo,canal_futuro)";
+  "*, agenda_event_participants(user_id,nome,papel), agenda_event_checklist(id,label,done,sort_order), agenda_event_reminders(id,tipo,antecedencia_min,ativo,canal_futuro), agenda_event_guests(email,nome,response_status)";
 
 function validate(input: AgendaEventInput) {
   if (!input.titulo?.trim()) throw new Error("Título obrigatório");
@@ -207,6 +218,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     await context.supabase.from("agenda_event_participants").delete().eq("event_id", eventId);
     await context.supabase.from("agenda_event_checklist").delete().eq("event_id", eventId);
     await context.supabase.from("agenda_event_reminders").delete().eq("event_id", eventId);
+    await context.supabase.from("agenda_event_guests").delete().eq("event_id", eventId);
 
     const participants = (input.participantes ?? [])
       .filter((p) => p.nome?.trim())
@@ -245,6 +257,27 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     }));
     if (reminders.length) {
       const { error } = await context.supabase.from("agenda_event_reminders").insert(reminders);
+      if (error) throw new Error(error.message);
+    }
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const seenEmails = new Set<string>();
+    const guests = (input.convidados ?? [])
+      .map((g) => ({ email: g.email?.trim().toLowerCase() ?? "", nome: g.nome?.trim() || null }))
+      .filter((g) => {
+        if (!EMAIL_RE.test(g.email)) return false;
+        if (seenEmails.has(g.email)) return false;
+        seenEmails.add(g.email);
+        return true;
+      })
+      .map((g) => ({
+        event_id: eventId!,
+        email: g.email,
+        nome: g.nome,
+        response_status: "needsAction",
+      }));
+    if (guests.length) {
+      const { error } = await context.supabase.from("agenda_event_guests").insert(guests);
       if (error) throw new Error(error.message);
     }
 

@@ -157,6 +157,44 @@ export type Database = {
           },
         ]
       }
+      agenda_event_guests: {
+        Row: {
+          created_at: string
+          email: string
+          event_id: string
+          id: string
+          nome: string | null
+          response_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          event_id: string
+          id?: string
+          nome?: string | null
+          response_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          event_id?: string
+          id?: string
+          nome?: string | null
+          response_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_guests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_event_participants: {
         Row: {
           created_at: string
