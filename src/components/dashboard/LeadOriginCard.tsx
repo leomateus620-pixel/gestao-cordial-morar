@@ -330,7 +330,8 @@ export function LeadOriginCard({ className }: { className?: string }) {
                         </linearGradient>
                       ))}
                     </defs>
-                    <Pie
+                    {(() => { const PieAny = Pie as unknown as React.FC<Record<string, unknown>>; return (
+                    <PieAny
                       data={chartRows}
                       dataKey="value"
                       nameKey="label"
