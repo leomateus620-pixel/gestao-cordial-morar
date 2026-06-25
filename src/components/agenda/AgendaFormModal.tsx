@@ -367,7 +367,7 @@ export function AgendaFormModal({
           </div>
 
           <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto sm:mt-4">
-            {["Tipo e título", "Data e horário", "Vínculos", "Responsáveis", "Lembretes"].map(
+            {["Tipo e título", "Data e horário", "Vínculos", "Responsáveis", "Convidados", "Lembretes"].map(
               (section, index) => (
                 <span
                   key={section}
