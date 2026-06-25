@@ -374,7 +374,8 @@ export function LeadOriginCard({ className }: { className?: string }) {
                           />
                         );
                       })}
-                    </Pie>
+                    </PieAny>
+                    ); })()}
                   </PieChart>
                 </ResponsiveContainer>
                 <LeadOriginTooltip row={activeRow} periodLabel={periodLabel} total={total} />
