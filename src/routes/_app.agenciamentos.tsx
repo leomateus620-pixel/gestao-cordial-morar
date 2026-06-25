@@ -100,14 +100,8 @@ function Page() {
           }
           return Boolean(updated);
         } catch (error) {
-<<<<<<< HEAD
           showFeedback(error instanceof Error ? error.message : "Erro ao atualizar agenciamento.");
-=======
-          showFeedback(
-            error instanceof Error ? error.message : "Erro ao atualizar agenciamento.",
-          );
           return false;
->>>>>>> 3a78f737f34d2dea925811992090b905b3dd0d97
         }
       }
 
