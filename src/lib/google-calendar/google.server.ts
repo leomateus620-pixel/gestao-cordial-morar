@@ -170,12 +170,14 @@ async function notify(userId: string, titulo: string, mensagem: string, tipo = "
 }
 
 type ReminderRow = { tipo: string; antecedencia_min: number; ativo: boolean };
+type GuestRow = { email: string; nome: string | null; response_status: string | null };
 
 type EventRow = {
   id: string;
   titulo: string;
   descricao: string | null;
   observacoes: string | null;
+  tipo: string | null;
   inicio: string;
   fim: string | null;
   duracao_min: number | null;
@@ -185,10 +187,13 @@ type EventRow = {
   imovel_descricao: string | null;
   owner_user_id: string | null;
   created_by: string;
+  responsavel_nome: string | null;
+  criado_por_nome: string | null;
   status: string;
   deleted_at: string | null;
   google_event_id: string | null;
   agenda_event_reminders: ReminderRow[];
+  agenda_event_guests: GuestRow[];
 };
 
 const TIMEZONE = "America/Sao_Paulo";
