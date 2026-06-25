@@ -5,11 +5,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +19,7 @@ import { useState } from "react";
 import { Fab } from "@/components/fab";
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
+import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
@@ -30,7 +28,6 @@ import { brl } from "@/lib/format";
 import {
   dashboardAluguelVenda,
   dashboardComparativoCordialMorar,
-  dashboardOrigemLeads,
   dashboardPrevisaoFinanceira,
 } from "@/lib/mock/data";
 import { NovoAtendimentoSheet } from "@/components/sheets/novo-atendimento";
@@ -45,7 +42,6 @@ import {
   chartMorar,
   chartSystem,
   gridStroke,
-  pieSeries,
   tooltipStyle,
 } from "@/lib/chart-palette";
 import { useShallow } from "zustand/react/shallow";
@@ -265,11 +261,6 @@ function Dashboard() {
     ],
   ];
 
-  const origemChart = dashboardOrigemLeads.map((item) => ({
-    ...item,
-    total: agency === "todas" ? item.total : item[agency],
-  }));
-
   return (
     <>
       {/* ── Hero banner ─────────────────────────────────────────────────── */}
@@ -346,37 +337,7 @@ function Dashboard() {
       <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <AttendanceEvolutionCard />
 
-        <ChartCard
-          title="Origem dos leads"
-          subtitle="Distribuição dos contatos"
-          heightClassName="h-56 lg:h-64"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={origemChart}
-                dataKey="total"
-                nameKey="origem"
-                innerRadius={52}
-                outerRadius={82}
-                paddingAngle={3}
-                animationBegin={200}
-                animationDuration={900}
-              >
-                {origemChart.map((entry, index) => (
-                  <Cell
-                    key={entry.origem}
-                    fill={pieSeries[index % pieSeries.length]}
-                    stroke="rgba(255,255,255,0.6)"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <LeadOriginCard />
 
         <ChartCard title="Aluguel x venda" subtitle="Negócios por mês">
           <ResponsiveContainer width="100%" height="100%">
