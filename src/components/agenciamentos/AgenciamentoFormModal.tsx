@@ -264,7 +264,10 @@ export function AgenciamentoFormModal({
       const result = await onSubmit(input);
       if (result !== false) {
         setClosing(true);
-        window.setTimeout(() => onOpenChange(false), 170);
+        window.setTimeout(() => {
+          setMounted(false);
+          onOpenChange(false);
+        }, 170);
       }
     } catch {
       // mantém o modal aberto preservando os dados digitados
