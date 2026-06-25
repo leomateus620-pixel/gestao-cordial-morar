@@ -65,6 +65,11 @@ type DbEvent = {
     ativo: boolean;
     canal_futuro: boolean;
   }>;
+  agenda_event_guests?: Array<{
+    email: string;
+    nome: string | null;
+    response_status: string | null;
+  }>;
 };
 
 function rowToEvent(row: DbEvent): AgendaEvent {
