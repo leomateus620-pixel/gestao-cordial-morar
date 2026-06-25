@@ -915,6 +915,11 @@ function buildInput(
       .filter((item) => item.label.trim())
       .map((item) => ({ ...item, label: item.label.trim() })),
     observacoes: optional(form.observacoes),
+    convidados: form.convidados.map((g) => ({
+      email: g.email.trim().toLowerCase(),
+      nome: g.nome?.trim() || undefined,
+      responseStatus: g.responseStatus ?? "needsAction",
+    })),
     googleCalendarSyncStatus: "preparado",
   };
 }
