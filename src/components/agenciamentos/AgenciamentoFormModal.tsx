@@ -58,7 +58,7 @@ type AgenciamentoFormModalProps = {
   currentBroker?: Corretor;
   canManage: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: AgenciamentoInput) => void;
+  onSubmit: (input: AgenciamentoInput) => Promise<boolean | void> | boolean | void;
 };
 
 const contactOptions: Array<{ value: AgenciamentoContatoPreferencial; label: string }> = [
