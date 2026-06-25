@@ -152,12 +152,12 @@ export function AgenciamentoFormModal({
   }, [agenciamento, currentBroker, open]);
 
   useEffect(() => {
-    if (!open && mounted && !closing) {
+    if (!open && mounted) {
       setClosing(true);
       const timer = window.setTimeout(() => setMounted(false), 180);
       return () => window.clearTimeout(timer);
     }
-  }, [closing, mounted, open]);
+  }, [mounted, open]);
 
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
@@ -184,7 +184,10 @@ export function AgenciamentoFormModal({
   function requestClose() {
     if (closing || saving) return;
     setClosing(true);
-    window.setTimeout(() => onOpenChange(false), 170);
+    window.setTimeout(() => {
+      setMounted(false);
+      onOpenChange(false);
+    }, 170);
   }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -261,7 +264,10 @@ export function AgenciamentoFormModal({
       const result = await onSubmit(input);
       if (result !== false) {
         setClosing(true);
-        window.setTimeout(() => onOpenChange(false), 170);
+        window.setTimeout(() => {
+          setMounted(false);
+          onOpenChange(false);
+        }, 170);
       }
     } catch {
       // mantém o modal aberto preservando os dados digitados
