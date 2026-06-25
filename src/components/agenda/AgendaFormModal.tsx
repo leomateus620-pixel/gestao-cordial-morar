@@ -69,6 +69,9 @@ type FormState = {
   whatsappAtivo: boolean;
   observacoes: string;
   checklist: AgendaChecklistItem[];
+  convidados: AgendaGuest[];
+  convidadoEmailInput: string;
+  convidadoNomeInput: string;
 };
 
 const checklistSeed = [
