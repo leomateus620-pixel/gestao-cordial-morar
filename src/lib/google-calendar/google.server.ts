@@ -388,7 +388,7 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`POST falhou: ${res.status} ${await res.text()}`);
-      createdJson = (await res.json()) as typeof createdJson;
+      createdJson = (await res.json()) as CreatedJson;
       googleEventId = createdJson!.id;
     }
 
