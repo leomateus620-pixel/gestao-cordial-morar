@@ -7,6 +7,7 @@ import {
   CircleAlert,
   Clock3,
   Cloud,
+  Mail,
   Plus,
   RefreshCcw,
   Save,
