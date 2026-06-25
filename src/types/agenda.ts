@@ -72,6 +72,7 @@ export interface AgendaEvent {
   responsavelPrincipalId?: string;
   responsavelPrincipalNome?: string;
   participantes: AgendaParticipant[];
+  convidados: AgendaGuest[];
   lembretes: AgendaReminder[];
   checklist: AgendaChecklistItem[];
   observacoes?: string;
