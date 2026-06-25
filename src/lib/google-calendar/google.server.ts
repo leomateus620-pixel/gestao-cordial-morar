@@ -379,7 +379,7 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
       } else if (!res.ok) {
         throw new Error(`PATCH falhou: ${res.status} ${await res.text()}`);
       } else {
-        createdJson = (await res.json()) as typeof createdJson;
+        createdJson = (await res.json()) as CreatedJson;
       }
     }
     if (!googleEventId) {
