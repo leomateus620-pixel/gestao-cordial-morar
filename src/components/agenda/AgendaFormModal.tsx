@@ -968,6 +968,9 @@ function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption):
     checklist: event?.checklist.length
       ? event.checklist.map((item) => ({ ...item }))
       : checklistSeed.map((label, index) => ({ id: `check-${index}`, label, done: false })),
+    convidados: event?.convidados ? event.convidados.map((g) => ({ ...g })) : [],
+    convidadoEmailInput: "",
+    convidadoNomeInput: "",
   };
 }
 
