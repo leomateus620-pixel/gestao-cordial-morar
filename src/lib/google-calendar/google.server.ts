@@ -198,6 +198,19 @@ type EventRow = {
 
 const TIMEZONE = "America/Sao_Paulo";
 
+const TIPO_LABEL: Record<string, string> = {
+  visita: "Visita",
+  fotos: "Fotos do imóvel",
+  video: "Vídeo do imóvel",
+  assinatura: "Assinatura de contrato",
+  reuniao: "Reunião",
+  retorno: "Retorno para cliente",
+  vistoria: "Vistoria",
+  captacao: "Captação/Agenciamento",
+  interno: "Compromisso interno",
+  outro: "Outro",
+};
+
 function buildEventPayload(ev: EventRow) {
   const startISO = ev.inicio;
   const endISO =
@@ -206,8 +219,13 @@ function buildEventPayload(ev: EventRow) {
       new Date(ev.inicio).getTime() + Math.max(1, ev.duracao_min ?? 60) * 60_000,
     ).toISOString();
 
+  const tipoLabel = ev.tipo ? TIPO_LABEL[ev.tipo] ?? ev.tipo : null;
+  const inviter = ev.responsavel_nome || ev.criado_por_nome || null;
+
   const descricaoParts = [
     ev.descricao,
+    tipoLabel ? `Tipo: ${tipoLabel}` : null,
+    inviter ? `Convidado por: ${inviter}` : null,
     ev.cliente_nome ? `Cliente: ${ev.cliente_nome}` : null,
     ev.imovel_descricao ? `Imóvel: ${ev.imovel_descricao}` : null,
     ev.observacoes ? `Obs.: ${ev.observacoes}` : null,
@@ -222,6 +240,13 @@ function buildEventPayload(ev: EventRow) {
       minutes: Math.max(0, Math.min(40320, r.antecedencia_min)),
     }));
 
+  const attendees = (ev.agenda_event_guests ?? [])
+    .filter((g) => g.email)
+    .map((g) => ({
+      email: g.email,
+      ...(g.nome ? { displayName: g.nome } : {}),
+    }));
+
   const base: Record<string, unknown> = {
     summary: ev.titulo,
     description: descricaoParts.join("\n"),
@@ -231,6 +256,12 @@ function buildEventPayload(ev: EventRow) {
       : { useDefault: true },
     status: ev.status === "cancelado" ? "cancelled" : "confirmed",
   };
+
+  if (attendees.length) {
+    base.attendees = attendees;
+    base.guestsCanInviteOthers = false;
+    base.guestsCanModify = false;
+  }
 
   if (ev.dia_inteiro) {
     base.start = { date: startISO.slice(0, 10) };
