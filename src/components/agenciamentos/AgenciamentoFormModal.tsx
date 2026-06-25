@@ -152,12 +152,12 @@ export function AgenciamentoFormModal({
   }, [agenciamento, currentBroker, open]);
 
   useEffect(() => {
-    if (!open && mounted && !closing) {
+    if (!open && mounted) {
       setClosing(true);
       const timer = window.setTimeout(() => setMounted(false), 180);
       return () => window.clearTimeout(timer);
     }
-  }, [closing, mounted, open]);
+  }, [mounted, open]);
 
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
