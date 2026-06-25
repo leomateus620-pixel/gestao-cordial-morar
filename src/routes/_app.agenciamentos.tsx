@@ -6,7 +6,6 @@ import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/Agenciament
 import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
 import { AgenciamentoSummaryCards } from "@/components/agenciamentos/AgenciamentoSummaryCards";
-import { AgenciamentosRanking } from "@/components/agenciamentos/AgenciamentosRanking";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento } from "@/services/agenciamentos";
@@ -32,7 +31,6 @@ function Page() {
     resetFilters,
     agenciamentos,
     summary,
-    ranking,
     createAgenciamento,
     updateAgenciamento,
     validateAgenciamento,
@@ -71,7 +69,6 @@ function Page() {
     [effectiveBrokerId, session],
   );
 
-
   const openCreate = useCallback(() => {
     setEditingAgenciamento(null);
     setFormOpen(true);
@@ -103,10 +100,7 @@ function Page() {
           }
           return Boolean(updated);
         } catch (error) {
-          showFeedback(
-            error instanceof Error ? error.message : "Erro ao atualizar agenciamento.",
-          );
-          return false;
+          showFeedback(error instanceof Error ? error.message : "Erro ao atualizar agenciamento.");
         }
       }
 
@@ -127,7 +121,9 @@ function Page() {
       try {
         const validated = await validateAgenciamento(agenciamento.id);
         showFeedback(
-          validated ? "Agenciamento validado pela gestao." : "Apenas administradores podem validar.",
+          validated
+            ? "Agenciamento validado pela gestao."
+            : "Apenas administradores podem validar.",
         );
         if (validated) setSelectedAgenciamento(null);
       } catch (error) {
@@ -136,7 +132,6 @@ function Page() {
     },
     [showFeedback, validateAgenciamento],
   );
-
 
   if (!canRead) {
     return (
@@ -215,8 +210,6 @@ function Page() {
           onReset={resetFilters}
         />
 
-        {isAdmin && <AgenciamentosRanking ranking={ranking} />}
-
         <section className="grid min-w-0 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {agenciamentos.map((agenciamento) => (
             <AgenciamentoCard
@@ -239,7 +232,8 @@ function Page() {
 
         {isError && !isLoading && (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
-            Falha ao carregar agenciamentos: {error instanceof Error ? error.message : "erro desconhecido"}.
+            Falha ao carregar agenciamentos:{" "}
+            {error instanceof Error ? error.message : "erro desconhecido"}.
           </div>
         )}
 
@@ -253,7 +247,6 @@ function Page() {
             }
           />
         )}
-
       </div>
 
       <AgenciamentoFormModal
