@@ -85,7 +85,7 @@ function Page() {
   }, []);
 
   const handleSubmit = useCallback(
-    async (input: AgenciamentoInput) => {
+    async (input: AgenciamentoInput): Promise<boolean> => {
       if (editingAgenciamento) {
         try {
           const updated = await updateAgenciamento(editingAgenciamento.id, input);
@@ -94,19 +94,30 @@ function Page() {
               ? "Agenciamento atualizado com sucesso."
               : "Nao foi possivel editar este agenciamento.",
           );
+          if (updated) {
+            setSelectedAgenciamento(null);
+            setEditingAgenciamento(null);
+          }
+          return Boolean(updated);
         } catch (error) {
+<<<<<<< HEAD
           showFeedback(error instanceof Error ? error.message : "Erro ao atualizar agenciamento.");
+=======
+          showFeedback(
+            error instanceof Error ? error.message : "Erro ao atualizar agenciamento.",
+          );
+          return false;
+>>>>>>> 3a78f737f34d2dea925811992090b905b3dd0d97
         }
-        setSelectedAgenciamento(null);
-        setEditingAgenciamento(null);
-        return;
       }
 
       try {
         const id = await createAgenciamento(input);
         showFeedback(id ? "Agenciamento cadastrado com sucesso." : "Cadastro nao permitido.");
+        return Boolean(id);
       } catch (error) {
         showFeedback(error instanceof Error ? error.message : "Erro ao cadastrar agenciamento.");
+        return false;
       }
     },
     [createAgenciamento, editingAgenciamento, showFeedback, updateAgenciamento],
