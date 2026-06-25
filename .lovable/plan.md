@@ -1,73 +1,49 @@
+## Causa
 
-## Objetivo
+O Google retorna `Erro 400: redirect_uri_mismatch` porque o app envia, no fluxo OAuth, o `redirect_uri`:
 
-Na criação/edição de compromissos da Agenda, permitir adicionar **convidados externos por e-mail**. O evento é criado tanto na agenda do responsável (já existe) quanto na agenda de cada convidado, com convite enviado automaticamente pelo Google Calendar contendo título, descrição, tipo de evento e quem convidou.
-
-## Como funciona
-
-O Google Calendar já tem suporte nativo a convidados: ao incluir o campo `attendees` (lista de e-mails) no evento e usar `sendUpdates=all` no POST/PATCH, o Google dispara o e-mail de convite a partir da conta do responsável conectada. Os convidados recebem o convite na caixa de entrada e o evento aparece automaticamente na agenda deles (Google, Outlook, Apple etc., já que o convite segue padrão iCal).
-
-Não é preciso provedor de e-mail próprio nem segundo OAuth — a conta Google já conectada do responsável faz o envio.
-
-## Mudanças
-
-### 1. Banco de dados (migration)
-
-Nova tabela `agenda_event_guests`:
-- `event_id` (FK → `agenda_events`, cascade delete)
-- `email` (text, validado)
-- `nome` (text, opcional)
-- `response_status` (text default `needsAction`: needsAction/accepted/declined/tentative — preenchido depois do sync)
-- `created_at`
-
-GRANTs + RLS espelhando as policies atuais de `agenda_event_participants` (quem pode ver/editar o evento pode ver/editar seus convidados). SELECT incluso no select da agenda.
-
-### 2. Tipos (`src/types/agenda.ts`)
-
-Adicionar:
-```ts
-export interface AgendaGuest { email: string; nome?: string; responseStatus?: string }
 ```
-e incluir `convidados: AgendaGuest[]` em `AgendaEvent` / `AgendaEventInput`.
+https://cordialgestao.com/api/public/google-calendar/callback
+```
 
-### 3. Server function (`src/lib/agenda/agenda.functions.ts`)
+…mas no **Google Cloud Console** (OAuth Client ID usado pelas variáveis `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`) só estão registrados os domínios antigos (provavelmente `*.lovable.app` e/ou `www.cordialgestao.com`), não o domínio **raiz `cordialgestao.com`**.
 
-- Incluir `agenda_event_guests(email,nome,response_status)` no `SELECT`.
-- Mapear em `rowToEvent`.
-- No `upsertAgendaEvent`: deletar + reinserir convidados igual aos demais filhos.
-- Validar formato de e-mail.
+O código está correto — ele calcula o `redirect_uri` a partir do `origin` da requisição (`getRedirectUri(origin)` em `src/lib/google-calendar/google.server.ts`) e usa o mesmo valor na troca do `code`. O Google só aceita se o URI estiver **idêntico** (esquema + host + path) à lista de "Authorized redirect URIs" do OAuth Client.
 
-### 4. Sync Google (`src/lib/google-calendar/google.server.ts`)
+Como o usuário agora acessa o app pelo domínio customizado `cordialgestao.com`, qualquer host não cadastrado quebra o login.
 
-- Selecionar `agenda_event_guests(email,nome)` junto com o evento.
-- No `buildEventPayload`:
-  - adicionar `attendees: [{ email, displayName? }, ...]`
-  - acrescentar à `description` uma linha com o tipo de evento e "Convidado por: <nome do responsável/criador>" (usar `responsavel_nome` ou `criado_por_nome`).
-  - `guestsCanInviteOthers: false`, `guestsCanModify: false` (padrões seguros).
-- Em `callCalendar` para POST/PATCH, anexar `?sendUpdates=all` na URL quando houver convidados (para o Google disparar o e-mail). Para DELETE também, para notificar cancelamento.
-- Após o response, ler `attendees[].responseStatus` retornado e atualizar `response_status` em `agenda_event_guests` (best-effort).
+## Correção (sem mudança de código)
 
-### 5. UI (`src/components/agenda/AgendaFormModal.tsx`)
+No Google Cloud Console → APIs & Services → Credentials → o OAuth 2.0 Client ID em uso → **Authorized redirect URIs**, adicionar **todos** os domínios pelos quais o app é acessado hoje:
 
-Nova seção "Convidados externos" (na coluna de Responsáveis ou logo abaixo), com:
-- input de e-mail + input de nome (opcional) + botão "Adicionar"
-- validação de e-mail
-- lista em chips com botão remover
-- texto auxiliar: "Receberão convite por e-mail e o compromisso será criado automaticamente na agenda deles."
-- aviso discreto quando a conta Google do responsável não está conectada (sem conexão → convite não é enviado; o cadastro é salvo, mas com badge "convite pendente").
+```
+https://cordialgestao.com/api/public/google-calendar/callback
+https://www.cordialgestao.com/api/public/google-calendar/callback
+https://gestao-cordial-morar.lovable.app/api/public/google-calendar/callback
+https://project--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app/api/public/google-calendar/callback
+https://id-preview--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app/api/public/google-calendar/callback
+```
 
-Estado `convidados: AgendaGuest[]` no `FormState`, refletido em `buildInput`.
+E em **Authorized JavaScript origins** os mesmos hosts sem o path:
 
-### 6. Detalhe do evento (`AgendaEventCard` / `AgendaDetailDrawer` se houver)
+```
+https://cordialgestao.com
+https://www.cordialgestao.com
+https://gestao-cordial-morar.lovable.app
+https://project--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app
+https://id-preview--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app
+```
 
-Mostrar convidados com seu `responseStatus` (✓ aceito, ✕ recusou, ? talvez, • aguardando).
+Salvar. A propagação no Google leva de alguns segundos a ~5 minutos. Depois disso o "Conectar Google Agenda" volta a funcionar em todos os domínios.
 
-## Não muda
+## Endurecimento opcional (mudança pequena de código)
 
-- Fluxo OAuth, rotas existentes, lógica de lembretes, layout geral do modal — apenas adições.
-- Continua sem provedor de e-mail próprio: o envio é feito pelo Google a partir da conta conectada do responsável.
+Para evitar que o usuário fique preso quando entrar pelo apex (`cordialgestao.com`) sem ter cadastrado os dois hosts, podemos forçar o OAuth a sempre sair de `www.cordialgestao.com` (canônico). Faríamos um redirect 308 de `cordialgestao.com/api/public/google-calendar/*` para `www.cordialgestao.com/...` antes do `startGoogleOAuth`. Isso reduz a lista de URIs que precisa manter no Google.
 
-## Observações
+Se você quiser, posso aplicar esse redirect canônico depois — mas o desbloqueio imediato é só atualizar a lista no Google Cloud Console acima.
 
-- Se o responsável não tiver Google conectado, o evento é salvo normalmente, mas nenhum convite é disparado. UI sinaliza isso.
-- Se o e-mail do convidado for inválido, o Google rejeita o POST → tratado no catch já existente, com mensagem clara.
+## Como confirmar que está resolvido
+
+1. Aplicar as URIs no Google Cloud Console e salvar.
+2. Abrir `https://cordialgestao.com/agenda` → "Conectar Google Agenda".
+3. Esperado: tela de consentimento normal do Google → volta para `/agenda?google=connected` com toast "Google Agenda conectada com sucesso".
