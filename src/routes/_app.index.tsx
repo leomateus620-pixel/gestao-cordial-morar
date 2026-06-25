@@ -8,7 +8,6 @@ import {
   Cell,
   Legend,
   Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -22,6 +21,7 @@ import type { Corretor, CorretoresSummary } from "@/types/corretor";
 import { useState } from "react";
 import { Fab } from "@/components/fab";
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
+import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
@@ -30,7 +30,6 @@ import { brl } from "@/lib/format";
 import {
   dashboardAluguelVenda,
   dashboardComparativoCordialMorar,
-  dashboardEvolucaoMensal,
   dashboardOrigemLeads,
   dashboardPrevisaoFinanceira,
 } from "@/lib/mock/data";
@@ -345,60 +344,7 @@ function Dashboard() {
 
       {/* ── Gráficos ────────────────────────────────────────────────────── */}
       <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <ChartCard
-          title="Evolução mensal de atendimentos"
-          subtitle="Cordial, Morar e total"
-          className="xl:col-span-2"
-          heightClassName="h-60 lg:h-72"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dashboardEvolucaoMensal} margin={{ left: -20, right: 12, top: 8 }}>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
-              <YAxis tickLine={false} axisLine={false} tick={axisTick} width={30} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
-              />
-              <Legend
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="cordial"
-                stroke={chartCordial}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-                name="Cordial"
-                animationDuration={900}
-              />
-              <Line
-                type="monotone"
-                dataKey="morar"
-                stroke={chartMorar}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-                name="Morar"
-                animationDuration={1100}
-              />
-              <Line
-                type="monotone"
-                dataKey="total"
-                stroke={chartSystem}
-                strokeWidth={2}
-                dot={false}
-                strokeDasharray="5 3"
-                activeDot={{ r: 4, strokeWidth: 0 }}
-                name="Total"
-                animationDuration={1300}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        <AttendanceEvolutionCard />
 
         <ChartCard
           title="Origem dos leads"
