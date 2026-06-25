@@ -587,6 +587,7 @@ export function AgenciamentoFormModal({
             variant="ghost"
             className="h-11 rounded-2xl text-foreground/70 hover:text-foreground"
             onClick={requestClose}
+            disabled={saving}
           >
             Cancelar
           </Button>
@@ -595,8 +596,8 @@ export function AgenciamentoFormModal({
             className="h-11 rounded-2xl bg-[#174d61] text-white hover:bg-[#1e647d]"
             disabled={saving}
           >
-            {saving ? <Check className="size-4" /> : <Save className="size-4" />}
-            {isEditing ? "Salvar alterações" : "Cadastrar agenciamento"}
+            {saving ? <Check className="size-4 animate-pulse" /> : <Save className="size-4" />}
+            {saving ? "Salvando..." : isEditing ? "Salvar alterações" : "Cadastrar agenciamento"}
             <ChevronRight className="size-4" />
           </Button>
         </div>
