@@ -199,7 +199,7 @@ export function TeamPerformanceChart({
                   position="right"
                   className="text-[10px] font-bold"
                   fill={SERIES.atendimentos.color}
-                  formatter={(v: number) => (v > 0 ? String(v) : "")}
+                  formatter={(v) => (typeof v === "number" && v > 0 ? String(v) : "")}
                 />
               </Bar>
               <Bar
@@ -215,7 +215,7 @@ export function TeamPerformanceChart({
                   position="right"
                   className="text-[10px] font-bold"
                   fill={SERIES.contratos.color}
-                  formatter={(v: number) => (v > 0 ? String(v) : "")}
+                  formatter={(v) => (typeof v === "number" && v > 0 ? String(v) : "")}
                 />
               </Bar>
               <Bar
@@ -231,7 +231,7 @@ export function TeamPerformanceChart({
                   position="right"
                   className="text-[10px] font-bold"
                   fill={SERIES.agenciamentos.color}
-                  formatter={(v: number) => (v > 0 ? String(v) : "")}
+                  formatter={(v) => (typeof v === "number" && v > 0 ? String(v) : "")}
                 />
               </Bar>
             </BarChart>
