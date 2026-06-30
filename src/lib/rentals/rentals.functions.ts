@@ -272,25 +272,22 @@ export const listRentalContracts = createServerFn({ method: "GET" })
       ((tenants.data as unknown as TenantRow[]) ?? []).map((t) => [t.id, mapTenant(t)]),
     );
     const gMap = new Map(
-      (((guarantors.data ?? []) as unknown as GuarantorRow[]) ?? []).map((g) => [
-        g.id,
-        mapGuarantor(g),
-      ]),
+      ((guarantors.data ?? []) as unknown as GuarantorRow[]).map((g) => [g.id, mapGuarantor(g)]),
     );
 
-    return rows
-      .map((r) => {
-        const property = pMap.get(r.property_id);
-        const tenant = tMap.get(r.tenant_id);
-        if (!property || !tenant) return null;
-        return {
-          ...mapContract(r),
-          property,
-          tenant,
-          guarantor: r.guarantor_id ? (gMap.get(r.guarantor_id) ?? null) : null,
-        } satisfies RentalContractFull;
-      })
-      .filter((v): v is RentalContractFull => v !== null);
+    const result: RentalContractFull[] = [];
+    for (const r of rows) {
+      const property = pMap.get(r.property_id);
+      const tenant = tMap.get(r.tenant_id);
+      if (!property || !tenant) continue;
+      result.push({
+        ...mapContract(r),
+        property,
+        tenant,
+        guarantor: r.guarantor_id ? (gMap.get(r.guarantor_id) ?? null) : null,
+      });
+    }
+    return result;
   });
 
 // ============================ KPIs ============================
