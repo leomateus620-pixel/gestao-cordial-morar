@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { CalendarClock, Home, Wallet } from "lucide-react";
-import { KpiCard } from "@/components/kpi-card";
-import { SectionHeader } from "@/components/section-header";
-import { StatusBadge } from "@/components/status-badge";
-import { brl } from "@/lib/format";
-import { useApp, useFiltered } from "@/store/app-store";
-
-const filters = ["Todos", "Disponíveis", "Contratos", "Atrasos"] as const;
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { useRentals } from "@/hooks/useRentals";
+import { RentalKpiCards } from "@/components/alugueis/RentalKpiCards";
+import { RentalFilters } from "@/components/alugueis/RentalFilters";
+import { RentalCard } from "@/components/alugueis/RentalCard";
+import { RentalExpandedDetails } from "@/components/alugueis/RentalExpandedDetails";
+import { RentalFormModal } from "@/components/alugueis/RentalFormModal";
+import { RentalSkeleton } from "@/components/alugueis/RentalSkeleton";
+import { EmptyRentalState } from "@/components/alugueis/EmptyRentalState";
+import type { RentalContractFull } from "@/types/rental";
 
 export const Route = createFileRoute("/_app/alugueis")({
   head: () => ({ meta: [{ title: "Aluguéis — Gestão Cordial" }] }),
@@ -15,98 +17,96 @@ export const Route = createFileRoute("/_app/alugueis")({
 });
 
 function Page() {
-  const [filter, setFilter] = useState<(typeof filters)[number]>("Todos");
-  const imoveis = useFiltered(useApp((s) => s.imoveis));
-  const contratos = useFiltered(useApp((s) => s.contratos));
-  const lancamentos = useFiltered(useApp((s) => s.lancamentos));
-  const clientes = useApp((s) => s.clientes);
-
-  const imoveisAluguel = imoveis.filter((i) => i.finalidade === "Aluguel");
-  const contratosAluguel = contratos.filter((c) => c.tipo === "Aluguel");
-  const recebimentos = lancamentos.filter((l) => l.categoria === "Aluguel recebido");
-  const atrasados = recebimentos.filter((l) => l.status === "Atrasado");
-  const receitaMensal = recebimentos.reduce((total, l) => total + l.valor, 0);
-
-  const cards = useMemo(() => {
-    if (filter === "Disponíveis") return imoveisAluguel.filter((i) => i.status === "Disponível");
-    if (filter === "Contratos")
-      return imoveisAluguel.filter((i) => contratosAluguel.some((c) => c.imovelId === i.id));
-    if (filter === "Atrasos")
-      return imoveisAluguel.filter((i) => atrasados.some((l) => l.descricao.includes(i.titulo)));
-    return imoveisAluguel;
-  }, [atrasados, contratosAluguel, filter, imoveisAluguel]);
+  const r = useRentals();
+  const [openForm, setOpenForm] = useState(false);
+  const [selected, setSelected] = useState<RentalContractFull | null>(null);
 
   return (
     <>
-      <section className="mb-5 grid grid-cols-3 gap-3">
-        <KpiCard
-          label="Receita"
-          value={brl(receitaMensal, { compact: true })}
-          tone="primary"
-          delta="mês"
-        />
-        <KpiCard label="Contratos" value={contratosAluguel.length.toString()} delta="ativos" />
-        <KpiCard
-          label="Atrasos"
-          value={atrasados.length.toString()}
-          delta="alertas"
-          accent="down"
-        />
-      </section>
-
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {filters.map((item) => (
-          <button
-            key={item}
-            onClick={() => setFilter(item)}
-            className={
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition " +
-              (filter === item
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                : "glass-panel text-foreground/65")
-            }
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
-      <section className="mb-5">
-        <SectionHeader title="Carteira de locação" />
-        <div className="space-y-3">
-          {cards.map((imovel) => {
-            const contrato = contratosAluguel.find((c) => c.imovelId === imovel.id);
-            const cliente = clientes.find((c) => c.id === contrato?.clienteId);
-            return (
-              <article key={imovel.id} className="glass-panel rounded-3xl p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{imovel.titulo}</p>
-                    <p className="truncate text-[11px] text-foreground/55">
-                      {imovel.bairro} · {imovel.cidade}
-                    </p>
-                  </div>
-                  <StatusBadge status={contrato?.status ?? imovel.status} />
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/40 pt-3 text-[11px] text-foreground/60">
-                  <span className="flex items-center gap-1">
-                    <Wallet className="size-3" />
-                    {brl(imovel.valor)}/mês
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Home className="size-3" />
-                    {imovel.area} m²
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CalendarClock className="size-3" />
-                    {cliente?.nome ?? "Sem locatário"}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Aluguéis</h1>
+          <p className="text-[11px] text-foreground/60">
+            Controle real de contratos, locatários e pagamentos.
+          </p>
         </div>
+        <button
+          onClick={() => setOpenForm(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.99]"
+        >
+          <Plus className="size-3.5" /> Novo aluguel
+        </button>
+      </header>
+
+      <section className="mb-4">
+        <RentalKpiCards kpis={r.kpis} />
       </section>
+
+      <section className="mb-4">
+        <RentalFilters
+          filter={r.filter}
+          onFilterChange={r.setFilter}
+          search={r.search}
+          onSearchChange={r.setSearch}
+        />
+      </section>
+
+      <section>
+        {r.isLoading ? (
+          <RentalSkeleton />
+        ) : r.isError ? (
+          <div className="glass-panel rounded-3xl p-6 text-center text-xs text-rose-700">
+            Erro ao carregar aluguéis. Tente novamente.
+          </div>
+        ) : r.allContracts.length === 0 ? (
+          <EmptyRentalState onCreate={() => setOpenForm(true)} />
+        ) : r.contracts.length === 0 ? (
+          <div className="glass-panel rounded-3xl p-6 text-center text-xs text-foreground/60">
+            Nenhum contrato encontrado para este filtro.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {r.contracts.map((c) => (
+              <RentalCard key={c.id} contract={c} onClick={() => setSelected(c)} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <RentalFormModal
+        open={openForm}
+        onOpenChange={setOpenForm}
+        properties={r.properties}
+        tenants={r.tenants}
+        onSubmit={r.createRental}
+        isSaving={r.isSaving}
+      />
+
+      <RentalExpandedDetails
+        contract={selected}
+        open={selected !== null}
+        onOpenChange={(o) => !o && setSelected(null)}
+        onClose={async (id) => {
+          await r.closeRental(id);
+          setSelected(null);
+        }}
+        onRenew={async (id) => {
+          if (!selected) return;
+          const d = new Date(selected.dataFim);
+          d.setFullYear(d.getFullYear() + 1);
+          await r.renewRental(id, d.toISOString().slice(0, 10));
+          setSelected(null);
+        }}
+        onMarkPaid={async (id) => {
+          await r.markPaid(id);
+        }}
+        onDelete={async (id) => {
+          if (!window.confirm("Excluir este contrato? Esta ação não pode ser desfeita."))
+            return;
+          await r.deleteRental(id);
+          setSelected(null);
+        }}
+      />
     </>
   );
 }
