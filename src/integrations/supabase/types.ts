@@ -807,6 +807,256 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_contracts: {
+        Row: {
+          brand: Database["public"]["Enums"]["rental_brand"]
+          created_at: string
+          created_by: string
+          data_encerramento: string | null
+          data_fim: string
+          data_inicio: string
+          dia_vencimento: number
+          guarantor_id: string | null
+          id: string
+          observacoes: string | null
+          payment_status: Database["public"]["Enums"]["rental_payment_status"]
+          property_id: string
+          proximo_vencimento: string | null
+          status: Database["public"]["Enums"]["rental_contract_status"]
+          tenant_id: string
+          updated_at: string
+          valor_caucao: number | null
+          valor_mensal: number
+        }
+        Insert: {
+          brand?: Database["public"]["Enums"]["rental_brand"]
+          created_at?: string
+          created_by?: string
+          data_encerramento?: string | null
+          data_fim: string
+          data_inicio: string
+          dia_vencimento?: number
+          guarantor_id?: string | null
+          id?: string
+          observacoes?: string | null
+          payment_status?: Database["public"]["Enums"]["rental_payment_status"]
+          property_id: string
+          proximo_vencimento?: string | null
+          status?: Database["public"]["Enums"]["rental_contract_status"]
+          tenant_id: string
+          updated_at?: string
+          valor_caucao?: number | null
+          valor_mensal: number
+        }
+        Update: {
+          brand?: Database["public"]["Enums"]["rental_brand"]
+          created_at?: string
+          created_by?: string
+          data_encerramento?: string | null
+          data_fim?: string
+          data_inicio?: string
+          dia_vencimento?: number
+          guarantor_id?: string | null
+          id?: string
+          observacoes?: string | null
+          payment_status?: Database["public"]["Enums"]["rental_payment_status"]
+          property_id?: string
+          proximo_vencimento?: string | null
+          status?: Database["public"]["Enums"]["rental_contract_status"]
+          tenant_id?: string
+          updated_at?: string
+          valor_caucao?: number | null
+          valor_mensal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_contracts_guarantor_id_fkey"
+            columns: ["guarantor_id"]
+            isOneToOne: false
+            referencedRelation: "rental_guarantors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_contracts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "rental_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rental_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_guarantors: {
+        Row: {
+          cpf_cnpj: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          profissao: string | null
+          telefone: string | null
+          updated_at: string
+          vinculo: string | null
+        }
+        Insert: {
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          profissao?: string | null
+          telefone?: string | null
+          updated_at?: string
+          vinculo?: string | null
+        }
+        Update: {
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          profissao?: string | null
+          telefone?: string | null
+          updated_at?: string
+          vinculo?: string | null
+        }
+        Relationships: []
+      }
+      rental_properties: {
+        Row: {
+          apelido: string
+          area_m2: number | null
+          bairro: string | null
+          banheiros: number | null
+          brand: Database["public"]["Enums"]["rental_brand"]
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          created_at: string
+          created_by: string
+          id: string
+          logradouro: string
+          numero: string | null
+          observacoes: string | null
+          quartos: number | null
+          status: Database["public"]["Enums"]["rental_property_status"]
+          tipo: Database["public"]["Enums"]["rental_property_type"]
+          uf: string | null
+          updated_at: string
+          vagas: number | null
+          valor_sugerido: number | null
+        }
+        Insert: {
+          apelido: string
+          area_m2?: number | null
+          bairro?: string | null
+          banheiros?: number | null
+          brand?: Database["public"]["Enums"]["rental_brand"]
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          logradouro?: string
+          numero?: string | null
+          observacoes?: string | null
+          quartos?: number | null
+          status?: Database["public"]["Enums"]["rental_property_status"]
+          tipo?: Database["public"]["Enums"]["rental_property_type"]
+          uf?: string | null
+          updated_at?: string
+          vagas?: number | null
+          valor_sugerido?: number | null
+        }
+        Update: {
+          apelido?: string
+          area_m2?: number | null
+          bairro?: string | null
+          banheiros?: number | null
+          brand?: Database["public"]["Enums"]["rental_brand"]
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          logradouro?: string
+          numero?: string | null
+          observacoes?: string | null
+          quartos?: number | null
+          status?: Database["public"]["Enums"]["rental_property_status"]
+          tipo?: Database["public"]["Enums"]["rental_property_type"]
+          uf?: string | null
+          updated_at?: string
+          vagas?: number | null
+          valor_sugerido?: number | null
+        }
+        Relationships: []
+      }
+      rental_tenants: {
+        Row: {
+          cpf_cnpj: string | null
+          created_at: string
+          created_by: string
+          data_nascimento: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          profissao: string | null
+          renda_aproximada: number | null
+          telefone: string
+          updated_at: string
+        }
+        Insert: {
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          profissao?: string | null
+          renda_aproximada?: number | null
+          telefone?: string
+          updated_at?: string
+        }
+        Update: {
+          cpf_cnpj?: string | null
+          created_at?: string
+          created_by?: string
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          profissao?: string | null
+          renda_aproximada?: number | null
+          telefone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -916,6 +1166,32 @@ export type Database = {
         | "interno"
         | "outro"
       app_role: "admin" | "secretaria" | "corretor" | "financeiro"
+      rental_brand: "cordial" | "morar" | "ambas"
+      rental_contract_status:
+        | "ativo"
+        | "pendente_assinatura"
+        | "vencido"
+        | "encerrado"
+        | "cancelado"
+      rental_payment_status:
+        | "em_dia"
+        | "vence_hoje"
+        | "atrasado"
+        | "pago"
+        | "pendente"
+      rental_property_status:
+        | "disponivel"
+        | "alugado"
+        | "manutencao"
+        | "reservado"
+        | "inativo"
+      rental_property_type:
+        | "casa"
+        | "apartamento"
+        | "sala_comercial"
+        | "terreno"
+        | "kitnet"
+        | "outro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1068,6 +1344,36 @@ export const Constants = {
         "outro",
       ],
       app_role: ["admin", "secretaria", "corretor", "financeiro"],
+      rental_brand: ["cordial", "morar", "ambas"],
+      rental_contract_status: [
+        "ativo",
+        "pendente_assinatura",
+        "vencido",
+        "encerrado",
+        "cancelado",
+      ],
+      rental_payment_status: [
+        "em_dia",
+        "vence_hoje",
+        "atrasado",
+        "pago",
+        "pendente",
+      ],
+      rental_property_status: [
+        "disponivel",
+        "alugado",
+        "manutencao",
+        "reservado",
+        "inativo",
+      ],
+      rental_property_type: [
+        "casa",
+        "apartamento",
+        "sala_comercial",
+        "terreno",
+        "kitnet",
+        "outro",
+      ],
     },
   },
 } as const
