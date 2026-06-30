@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Home, User, ShieldCheck, FileText, KeyRound, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,24 +15,106 @@ import type {
 } from "@/types/rental";
 
 const inputCls =
-  "w-full rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/15";
+  "w-full rounded-xl border border-border/70 bg-background px-3.5 py-2.5 text-sm font-medium text-foreground shadow-sm transition outline-none placeholder:text-foreground/40 hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:opacity-50";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  children,
+  className = "",
+}: {
+  label: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <label className="block">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/55">
+    <div className={`block ${className}`}>
+      <label
+        htmlFor={htmlFor}
+        className="text-[11px] font-semibold uppercase tracking-wide text-foreground/75"
+      >
         {label}
-      </span>
-      <div className="mt-1">{children}</div>
-    </label>
+      </label>
+      <div className="mt-1.5">{children}</div>
+    </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionCard({
+  icon: Icon,
+  title,
+  subtitle,
+  action,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground/55">
-      {children}
-    </h3>
+    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_28px_-18px_rgba(15,23,42,0.25)]">
+      <div className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-primary/70 via-primary/40 to-transparent" />
+      <header className="flex items-start justify-between gap-3 border-b border-border/50 bg-muted/30 px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="size-4" />
+          </div>
+          <div>
+            <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-foreground">
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+        </div>
+        {action}
+      </header>
+      <div className="p-4 sm:p-5">{children}</div>
+    </section>
+  );
+}
+
+function ModeToggle({
+  value,
+  onChange,
+  disableExisting,
+}: {
+  value: Mode;
+  onChange: (m: Mode) => void;
+  disableExisting?: boolean;
+}) {
+  const baseBtn =
+    "relative flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition";
+  return (
+    <div className="inline-flex w-full max-w-[280px] rounded-full bg-muted/70 p-1">
+      <button
+        type="button"
+        onClick={() => onChange("existing")}
+        disabled={disableExisting}
+        className={`${baseBtn} ${
+          value === "existing"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-foreground/65 hover:text-foreground"
+        } disabled:cursor-not-allowed disabled:opacity-40`}
+      >
+        Existente
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("new")}
+        className={`${baseBtn} ${
+          value === "new"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-foreground/65 hover:text-foreground"
+        }`}
+      >
+        Novo
+      </button>
+    </div>
   );
 }
 
@@ -219,204 +302,201 @@ export function RentalFormModal({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="mx-auto max-h-[92vh] max-w-[560px] overflow-y-auto rounded-t-3xl border-white/60 bg-background/95 backdrop-blur-xl"
+        side="right"
+        className="flex w-full flex-col gap-0 border-l border-border/60 bg-background p-0 sm:max-w-[680px]"
       >
-        <SheetHeader className="text-left">
-          <SheetTitle>Novo aluguel</SheetTitle>
-          <SheetDescription className="text-[11px]">
-            Cadastre imóvel, locatário e contrato em um único fluxo.
-          </SheetDescription>
+        {/* Header sticky */}
+        <SheetHeader className="sticky top-0 z-10 space-y-0 border-b border-border/60 bg-background/95 px-5 py-4 text-left backdrop-blur-xl sm:px-7 sm:py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-md shadow-primary/25">
+                <KeyRound className="size-5" />
+              </div>
+              <div>
+                <SheetTitle className="text-xl font-bold tracking-tight sm:text-2xl">
+                  Novo aluguel
+                </SheetTitle>
+                <SheetDescription className="text-sm text-muted-foreground">
+                  Cadastre imóvel, locatário e contrato em um único fluxo.
+                </SheetDescription>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="grid size-9 shrink-0 place-items-center rounded-full text-foreground/60 transition hover:bg-muted hover:text-foreground"
+              aria-label="Fechar"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-5">
-          {/* Imóvel */}
-          <div className="liquid-panel space-y-3 rounded-2xl p-4">
-            <SectionTitle>Imóvel</SectionTitle>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPropMode("existing")}
-                disabled={properties.length === 0}
-                className={`flex-1 rounded-full px-3 py-1.5 text-xs font-medium ${
-                  propMode === "existing"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-white/60 text-foreground/65"
-                } disabled:opacity-40`}
-              >
-                Existente
-              </button>
-              <button
-                type="button"
-                onClick={() => setPropMode("new")}
-                className={`flex-1 rounded-full px-3 py-1.5 text-xs font-medium ${
-                  propMode === "new"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-white/60 text-foreground/65"
-                }`}
-              >
-                Novo
-              </button>
-            </div>
-            {propMode === "existing" ? (
-              <Field label="Selecione o imóvel">
-                <select
-                  required
-                  value={propId}
-                  onChange={(e) => setPropId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">—</option>
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.apelido} · {p.bairro ?? ""}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                  <Field label="Apelido / referência">
+        {/* Scrollable form */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-7">
+            {/* Imóvel */}
+            <SectionCard
+              icon={Home}
+              title="Imóvel"
+              subtitle="Selecione ou cadastre o imóvel do contrato"
+              action={
+                <ModeToggle
+                  value={propMode}
+                  onChange={setPropMode}
+                  disableExisting={properties.length === 0}
+                />
+              }
+            >
+              {propMode === "existing" ? (
+                <Field label="Selecione o imóvel">
+                  <select
+                    required
+                    value={propId}
+                    onChange={(e) => setPropId(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">—</option>
+                    {properties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.apelido} · {p.bairro ?? ""}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+                  <Field label="Apelido / referência" className="sm:col-span-4">
                     <input
                       required
+                      placeholder="Ex.: Edifício Aurora 401"
                       value={apelido}
                       onChange={(e) => setApelido(e.target.value)}
                       className={inputCls}
                     />
                   </Field>
-                </div>
-                <Field label="Tipo">
-                  <select
-                    value={tipo}
-                    onChange={(e) => setTipo(e.target.value as RentalPropertyType)}
-                    className={inputCls}
-                  >
-                    {PROPERTY_TYPES.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="UF">
-                  <input value={uf} onChange={(e) => setUf(e.target.value)} className={inputCls} />
-                </Field>
-                <div className="col-span-2">
-                  <Field label="Logradouro">
+                  <Field label="Tipo" className="sm:col-span-2">
+                    <select
+                      value={tipo}
+                      onChange={(e) => setTipo(e.target.value as RentalPropertyType)}
+                      className={inputCls}
+                    >
+                      {PROPERTY_TYPES.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Logradouro" className="sm:col-span-4">
                     <input
                       required
+                      placeholder="Rua, avenida..."
                       value={logradouro}
                       onChange={(e) => setLogradouro(e.target.value)}
                       className={inputCls}
                     />
                   </Field>
+                  <Field label="Número" className="sm:col-span-1">
+                    <input
+                      value={numero}
+                      onChange={(e) => setNumero(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="UF" className="sm:col-span-1">
+                    <input
+                      maxLength={2}
+                      value={uf}
+                      onChange={(e) => setUf(e.target.value.toUpperCase())}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Bairro" className="sm:col-span-3">
+                    <input
+                      value={bairro}
+                      onChange={(e) => setBairro(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Cidade" className="sm:col-span-3">
+                    <input
+                      value={cidade}
+                      onChange={(e) => setCidade(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Área (m²)" className="sm:col-span-3">
+                    <input
+                      type="number"
+                      value={areaM2}
+                      onChange={(e) => setAreaM2(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Quartos" className="sm:col-span-2">
+                    <input
+                      type="number"
+                      value={quartos}
+                      onChange={(e) => setQuartos(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Banheiros" className="sm:col-span-2">
+                    <input
+                      type="number"
+                      value={banheiros}
+                      onChange={(e) => setBanheiros(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Vagas" className="sm:col-span-2">
+                    <input
+                      type="number"
+                      value={vagas}
+                      onChange={(e) => setVagas(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
                 </div>
-                <Field label="Número">
-                  <input
-                    value={numero}
-                    onChange={(e) => setNumero(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Bairro">
-                  <input
-                    value={bairro}
-                    onChange={(e) => setBairro(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Cidade">
-                  <input
-                    value={cidade}
-                    onChange={(e) => setCidade(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Área (m²)">
-                  <input
-                    type="number"
-                    value={areaM2}
-                    onChange={(e) => setAreaM2(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Quartos">
-                  <input
-                    type="number"
-                    value={quartos}
-                    onChange={(e) => setQuartos(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Banheiros">
-                  <input
-                    type="number"
-                    value={banheiros}
-                    onChange={(e) => setBanheiros(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Vagas">
-                  <input
-                    type="number"
-                    value={vagas}
-                    onChange={(e) => setVagas(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-            )}
-          </div>
+              )}
+            </SectionCard>
 
-          {/* Locatário */}
-          <div className="liquid-panel space-y-3 rounded-2xl p-4">
-            <SectionTitle>Locatário</SectionTitle>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setTenantMode("existing")}
-                disabled={tenants.length === 0}
-                className={`flex-1 rounded-full px-3 py-1.5 text-xs font-medium ${
-                  tenantMode === "existing"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-white/60 text-foreground/65"
-                } disabled:opacity-40`}
-              >
-                Existente
-              </button>
-              <button
-                type="button"
-                onClick={() => setTenantMode("new")}
-                className={`flex-1 rounded-full px-3 py-1.5 text-xs font-medium ${
-                  tenantMode === "new"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-white/60 text-foreground/65"
-                }`}
-              >
-                Novo
-              </button>
-            </div>
-            {tenantMode === "existing" ? (
-              <Field label="Selecione o locatário">
-                <select
-                  required
-                  value={tenantId}
-                  onChange={(e) => setTenantId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">—</option>
-                  {tenants.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                  <Field label="Nome completo">
+            {/* Locatário */}
+            <SectionCard
+              icon={User}
+              title="Locatário"
+              subtitle="Dados do inquilino responsável pelo contrato"
+              action={
+                <ModeToggle
+                  value={tenantMode}
+                  onChange={setTenantMode}
+                  disableExisting={tenants.length === 0}
+                />
+              }
+            >
+              {tenantMode === "existing" ? (
+                <Field label="Selecione o locatário">
+                  <select
+                    required
+                    value={tenantId}
+                    onChange={(e) => setTenantId(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">—</option>
+                    {tenants.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Nome completo" className="sm:col-span-2">
                     <input
                       required
                       value={tenantNome}
@@ -424,47 +504,46 @@ export function RentalFormModal({
                       className={inputCls}
                     />
                   </Field>
-                </div>
-                <Field label="Telefone / WhatsApp">
-                  <input
-                    required
-                    value={tenantTel}
-                    onChange={(e) => setTenantTel(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="E-mail">
-                  <input
-                    type="email"
-                    value={tenantEmail}
-                    onChange={(e) => setTenantEmail(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="CPF/CNPJ">
-                  <input
-                    value={tenantCpf}
-                    onChange={(e) => setTenantCpf(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Profissão">
-                  <input
-                    value={tenantProf}
-                    onChange={(e) => setTenantProf(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Renda aproximada">
-                  <input
-                    type="number"
-                    value={tenantRenda}
-                    onChange={(e) => setTenantRenda(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <div className="col-span-2">
-                  <Field label="Endereço atual">
+                  <Field label="Telefone / WhatsApp">
+                    <input
+                      required
+                      placeholder="(00) 00000-0000"
+                      value={tenantTel}
+                      onChange={(e) => setTenantTel(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="E-mail">
+                    <input
+                      type="email"
+                      value={tenantEmail}
+                      onChange={(e) => setTenantEmail(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="CPF / CNPJ">
+                    <input
+                      value={tenantCpf}
+                      onChange={(e) => setTenantCpf(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Profissão">
+                    <input
+                      value={tenantProf}
+                      onChange={(e) => setTenantProf(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Renda aproximada (R$)" className="sm:col-span-2">
+                    <input
+                      type="number"
+                      value={tenantRenda}
+                      onChange={(e) => setTenantRenda(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Endereço atual" className="sm:col-span-2">
                     <input
                       value={tenantEnd}
                       onChange={(e) => setTenantEnd(e.target.value)}
@@ -472,25 +551,29 @@ export function RentalFormModal({
                     />
                   </Field>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </SectionCard>
 
-          {/* Fiador */}
-          <div className="liquid-panel space-y-3 rounded-2xl p-4">
-            <label className="flex items-center justify-between">
-              <SectionTitle>Fiador (opcional)</SectionTitle>
-              <input
-                type="checkbox"
-                checked={hasGuarantor}
-                onChange={(e) => setHasGuarantor(e.target.checked)}
-                className="size-4"
-              />
-            </label>
-            {hasGuarantor && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                  <Field label="Nome">
+            {/* Fiador */}
+            <SectionCard
+              icon={ShieldCheck}
+              title="Fiador"
+              subtitle="Opcional — adicione um garantidor ao contrato"
+              action={
+                <label className="flex cursor-pointer items-center gap-2 rounded-full bg-muted/70 px-3 py-1.5 text-xs font-semibold text-foreground/75">
+                  <input
+                    type="checkbox"
+                    checked={hasGuarantor}
+                    onChange={(e) => setHasGuarantor(e.target.checked)}
+                    className="size-4 accent-primary"
+                  />
+                  Incluir fiador
+                </label>
+              }
+            >
+              {hasGuarantor ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Nome" className="sm:col-span-2">
                     <input
                       required
                       value={guarNome}
@@ -498,126 +581,146 @@ export function RentalFormModal({
                       className={inputCls}
                     />
                   </Field>
-                </div>
-                <Field label="Telefone">
-                  <input
-                    value={guarTel}
-                    onChange={(e) => setGuarTel(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="E-mail">
-                  <input
-                    type="email"
-                    value={guarEmail}
-                    onChange={(e) => setGuarEmail(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <div className="col-span-2">
-                  <Field label="Vínculo com locatário">
+                  <Field label="Telefone">
                     <input
+                      value={guarTel}
+                      onChange={(e) => setGuarTel(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="E-mail">
+                    <input
+                      type="email"
+                      value={guarEmail}
+                      onChange={(e) => setGuarEmail(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Vínculo com locatário" className="sm:col-span-2">
+                    <input
+                      placeholder="Ex.: pai, irmão, sócio"
                       value={guarVinculo}
                       onChange={(e) => setGuarVinculo(e.target.value)}
                       className={inputCls}
                     />
                   </Field>
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum fiador será vinculado a este contrato.
+                </p>
+              )}
+            </SectionCard>
+
+            {/* Contrato */}
+            <SectionCard
+              icon={FileText}
+              title="Contrato"
+              subtitle="Valores, vigência e condições do aluguel"
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+                <Field label="Valor mensal (R$)" className="sm:col-span-3">
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={valor}
+                    onChange={(e) => setValor(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Caução (R$)" className="sm:col-span-3">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={caucao}
+                    onChange={(e) => setCaucao(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Início" className="sm:col-span-2">
+                  <input
+                    type="date"
+                    required
+                    value={dataInicio}
+                    onChange={(e) => setDataInicio(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Fim" className="sm:col-span-2">
+                  <input
+                    type="date"
+                    required
+                    value={dataFim}
+                    onChange={(e) => setDataFim(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Dia de vencimento" className="sm:col-span-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={dia}
+                    onChange={(e) => setDia(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Status" className="sm:col-span-6">
+                  <select
+                    value={status}
+                    onChange={(e) =>
+                      setStatus(e.target.value as "ativo" | "pendente_assinatura")
+                    }
+                    className={inputCls}
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="pendente_assinatura">Pendente assinatura</option>
+                  </select>
+                </Field>
+                <Field label="Observações" className="sm:col-span-6">
+                  <textarea
+                    value={obs}
+                    onChange={(e) => setObs(e.target.value)}
+                    rows={3}
+                    placeholder="Cláusulas específicas, combinados, observações internas..."
+                    className={`${inputCls} resize-none`}
+                  />
+                </Field>
+              </div>
+            </SectionCard>
+
+            {error && (
+              <div
+                role="alert"
+                className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+              >
+                {error}
               </div>
             )}
           </div>
 
-          {/* Contrato */}
-          <div className="liquid-panel space-y-3 rounded-2xl p-4">
-            <SectionTitle>Contrato</SectionTitle>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Valor mensal (R$)">
-                <input
-                  type="number"
-                  required
-                  min={0}
-                  step="0.01"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Caução (R$)">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={caucao}
-                  onChange={(e) => setCaucao(e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Início">
-                <input
-                  type="date"
-                  required
-                  value={dataInicio}
-                  onChange={(e) => setDataInicio(e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Fim">
-                <input
-                  type="date"
-                  required
-                  value={dataFim}
-                  onChange={(e) => setDataFim(e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Dia de vencimento">
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={dia}
-                  onChange={(e) => setDia(e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Status">
-                <select
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as "ativo" | "pendente_assinatura")
-                  }
-                  className={inputCls}
-                >
-                  <option value="ativo">Ativo</option>
-                  <option value="pendente_assinatura">Pendente assinatura</option>
-                </select>
-              </Field>
-              <div className="col-span-2">
-                <Field label="Observações">
-                  <textarea
-                    value={obs}
-                    onChange={(e) => setObs(e.target.value)}
-                    rows={2}
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-            </div>
+          {/* Footer sticky */}
+          <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-border/60 bg-background/95 px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-end sm:gap-3 sm:px-7">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl border border-border/70 bg-background px-5 py-2.5 text-sm font-semibold text-foreground/80 transition hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
+            >
+              {isSaving ? "Salvando…" : "Cadastrar aluguel"}
+            </button>
           </div>
-
-          {error && (
-            <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-700">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 active:scale-[0.99] disabled:opacity-60"
-          >
-            {isSaving ? "Salvando…" : "Cadastrar aluguel"}
-          </button>
         </form>
       </SheetContent>
     </Sheet>
