@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 import type { AgenciamentoCorretorRanking, AgenciamentoSummary } from "@/types/agenciamento";
 import type { Corretor, CorretoresSummary } from "@/types/corretor";
 import { useState } from "react";
-import { Fab } from "@/components/fab";
+
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
@@ -455,7 +455,7 @@ function Dashboard() {
 
       <RealEstateSitePreviewSection />
 
-      <Fab onClick={() => setOpen(true)} label="Novo atendimento" />
+      
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
     </>
   );
