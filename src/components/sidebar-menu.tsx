@@ -1,22 +1,27 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  BadgeDollarSign,
   BarChart3,
-  BriefcaseBusiness,
   Building2,
+  Cable,
   CalendarCheck2,
   ChevronDown,
-  CircleDollarSign,
   ClipboardCheck,
-  FileText,
+  CircleDollarSign,
   ExternalLink,
+  FileText,
+  FolderArchive,
   Globe,
   Handshake,
   Home,
   KeyRound,
   LayoutDashboard,
+  Megaphone,
   MessagesSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
+  Sparkles,
   UserCog,
   Users,
   Wallet,
@@ -30,6 +35,127 @@ import { useSession } from "@/lib/auth-mock";
 import { roleDefinitions } from "@/lib/mock/permissions";
 import { cn } from "@/lib/utils";
 
+type Accent =
+  | "cyan"
+  | "indigo"
+  | "violet"
+  | "emerald"
+  | "amber"
+  | "rose"
+  | "teal"
+  | "slate";
+
+type AccentTokens = {
+  ring: string;
+  iconBg: string;
+  iconText: string;
+  iconRing: string;
+  activeBg: string;
+  activeShadow: string;
+  activeText: string;
+  activeIndicator: string;
+  hoverIcon: string;
+};
+
+const accentMap: Record<Accent, AccentTokens> = {
+  cyan: {
+    ring: "ring-cyan-200/25",
+    iconBg: "bg-cyan-300/18",
+    iconText: "text-cyan-100",
+    iconRing: "ring-1 ring-cyan-200/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(103,232,249,0.20),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(103,232,249,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-cyan-300",
+    hoverIcon: "group-hover:text-cyan-100",
+  },
+  indigo: {
+    ring: "ring-indigo-200/25",
+    iconBg: "bg-indigo-400/18",
+    iconText: "text-indigo-100",
+    iconRing: "ring-1 ring-indigo-300/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(165,180,252,0.20),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(129,140,248,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-indigo-300",
+    hoverIcon: "group-hover:text-indigo-100",
+  },
+  violet: {
+    ring: "ring-violet-200/25",
+    iconBg: "bg-violet-400/18",
+    iconText: "text-violet-100",
+    iconRing: "ring-1 ring-violet-300/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(196,181,253,0.22),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(167,139,250,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-violet-300",
+    hoverIcon: "group-hover:text-violet-100",
+  },
+  emerald: {
+    ring: "ring-emerald-200/25",
+    iconBg: "bg-emerald-400/18",
+    iconText: "text-emerald-100",
+    iconRing: "ring-1 ring-emerald-300/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(110,231,183,0.22),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(52,211,153,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-emerald-300",
+    hoverIcon: "group-hover:text-emerald-100",
+  },
+  amber: {
+    ring: "ring-amber-200/25",
+    iconBg: "bg-amber-400/18",
+    iconText: "text-amber-100",
+    iconRing: "ring-1 ring-amber-300/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(252,211,77,0.22),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(251,191,36,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-amber-300",
+    hoverIcon: "group-hover:text-amber-100",
+  },
+  rose: {
+    ring: "ring-rose-200/25",
+    iconBg: "bg-rose-400/18",
+    iconText: "text-rose-100",
+    iconRing: "ring-1 ring-rose-300/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(253,164,175,0.22),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(251,113,133,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-rose-300",
+    hoverIcon: "group-hover:text-rose-100",
+  },
+  teal: {
+    ring: "ring-teal-200/25",
+    iconBg: "bg-teal-400/18",
+    iconText: "text-teal-100",
+    iconRing: "ring-1 ring-teal-300/25",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(94,234,212,0.22),rgba(255,255,255,0.06))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(45,212,191,0.9)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-teal-300",
+    hoverIcon: "group-hover:text-teal-100",
+  },
+  slate: {
+    ring: "ring-slate-200/20",
+    iconBg: "bg-slate-300/12",
+    iconText: "text-slate-100",
+    iconRing: "ring-1 ring-slate-200/20",
+    activeBg:
+      "bg-[linear-gradient(135deg,rgba(203,213,225,0.16),rgba(255,255,255,0.05))]",
+    activeShadow: "shadow-[0_14px_30px_-24px_rgba(148,163,184,0.8)]",
+    activeText: "text-white",
+    activeIndicator: "before:bg-slate-300",
+    hoverIcon: "group-hover:text-slate-100",
+  },
+};
+
 export type NavigationChild = Pick<ModuleItem, "to" | "label" | "module" | "exact"> & {
   key?: string;
   icon: LucideIcon;
@@ -42,6 +168,7 @@ export type NavigationGroup = {
   label: string;
   desc: string;
   icon: LucideIcon;
+  accent: Accent;
   children: NavigationChild[];
 };
 
@@ -51,88 +178,141 @@ export type NavigationDirectItem = Pick<
 > & {
   type: "item";
   icon: LucideIcon;
+  accent: Accent;
 };
 
 export type NavigationEntry = NavigationGroup | NavigationDirectItem;
 
-const navigationEntries: NavigationEntry[] = [
+type Section = {
+  label: string;
+  entries: NavigationEntry[];
+};
+
+const sections: Section[] = [
   {
-    type: "group",
-    label: "Painel",
-    desc: "Visão executiva",
-    icon: LayoutDashboard,
-    children: [{ to: "/", label: "Início", icon: Home, module: "dashboard", exact: true }],
-  },
-  {
-    type: "item",
-    to: "/agenda",
-    label: "Agenda",
-    desc: "Visitas, retornos e compromissos",
-    icon: CalendarCheck2,
-    module: "agenda",
-  },
-  {
-    type: "group",
-    label: "Relacionamento",
-    desc: "Leads e clientes",
-    icon: MessagesSquare,
-    children: [
-      { to: "/atendimentos", label: "Atendimentos", icon: Handshake, module: "atendimentos" },
-      { to: "/clientes", label: "Clientes", icon: Users, module: "clientes" },
-    ],
-  },
-  {
-    type: "group",
-    label: "Imóveis",
-    desc: "Sites das imobiliárias",
-    icon: Building2,
-    children: [
+    label: "Operação",
+    entries: [
       {
-        key: "site-cordial",
-        to: "/imoveis",
-        href: "https://www.cordialimoveis.com/",
-        external: true,
-        label: "Site Cordial Imóveis",
-        icon: Globe,
-        module: "imoveis",
+        type: "group",
+        label: "Painel",
+        desc: "Visão executiva",
+        icon: LayoutDashboard,
+        accent: "cyan",
+        children: [{ to: "/", label: "Início", icon: Home, module: "dashboard", exact: true }],
       },
       {
-        key: "site-morar",
-        to: "/imoveis",
-        href: "https://www.imobiliariamorarimoveis.com.br/",
-        external: true,
-        label: "Site Morar Imóveis",
-        icon: Globe,
-        module: "imoveis",
-      },
-      {
-        to: "/agenciamentos",
-        label: "Agenciamentos",
-        icon: ClipboardCheck,
-        module: "agenciamentos",
+        type: "item",
+        to: "/agenda",
+        label: "Agenda",
+        desc: "Visitas, retornos e compromissos",
+        icon: CalendarCheck2,
+        module: "agenda",
+        accent: "teal",
       },
     ],
   },
   {
-    type: "group",
-    label: "Negócios",
-    desc: "Operações e contratos",
-    icon: BriefcaseBusiness,
-    children: [
-      { to: "/alugueis", label: "Aluguéis", icon: KeyRound, module: "alugueis" },
-      { to: "/vendas", label: "Vendas", icon: CircleDollarSign, module: "vendas" },
-      { to: "/contratos", label: "Contratos", icon: FileText, module: "contratos" },
+    label: "Relacionamento & Negócios",
+    entries: [
+      {
+        type: "group",
+        label: "Relacionamento",
+        desc: "Leads e clientes",
+        icon: MessagesSquare,
+        accent: "indigo",
+        children: [
+          { to: "/atendimentos", label: "Atendimentos", icon: Handshake, module: "atendimentos" },
+          { to: "/clientes", label: "Clientes", icon: Users, module: "clientes" },
+        ],
+      },
+      {
+        type: "group",
+        label: "Imóveis",
+        desc: "Sites das imobiliárias",
+        icon: Building2,
+        accent: "emerald",
+        children: [
+          {
+            key: "site-cordial",
+            to: "/imoveis",
+            href: "https://www.cordialimoveis.com/",
+            external: true,
+            label: "Site Cordial Imóveis",
+            icon: Globe,
+            module: "imoveis",
+          },
+          {
+            key: "site-morar",
+            to: "/imoveis",
+            href: "https://www.imobiliariamorarimoveis.com.br/",
+            external: true,
+            label: "Site Morar Imóveis",
+            icon: Globe,
+            module: "imoveis",
+          },
+          {
+            to: "/agenciamentos",
+            label: "Agenciamentos",
+            icon: ClipboardCheck,
+            module: "agenciamentos",
+          },
+        ],
+      },
+      {
+        type: "group",
+        label: "Negócios",
+        desc: "Operações e contratos",
+        icon: BadgeDollarSign,
+        accent: "amber",
+        children: [
+          { to: "/alugueis", label: "Aluguéis", icon: KeyRound, module: "alugueis" },
+          { to: "/vendas", label: "Vendas", icon: CircleDollarSign, module: "vendas" },
+          { to: "/contratos", label: "Contratos", icon: FileText, module: "contratos" },
+        ],
+      },
     ],
   },
   {
-    type: "group",
-    label: "Gestão",
-    desc: "Equipe e resultados",
-    icon: BarChart3,
-    children: [
-      { to: "/corretores", label: "Corretores", icon: UserCog, module: "corretores" },
-      { to: "/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
-      { to: "/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
+    label: "Gestão & Crescimento",
+    entries: [
+      {
+        type: "group",
+        label: "Gestão",
+        desc: "Equipe e resultados",
+        icon: BarChart3,
+        accent: "violet",
+        children: [
+          { to: "/corretores", label: "Corretores", icon: UserCog, module: "corretores" },
+          { to: "/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
+          { to: "/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
+        ],
+      },
+      {
+        type: "group",
+        label: "Crescimento",
+        desc: "Marketing e integrações",
+        icon: Sparkles,
+        accent: "rose",
+        children: [
+          { to: "/marketing", label: "Marketing", icon: Megaphone, module: "marketing" },
+          { to: "/documentos", label: "Documentos", icon: FolderArchive, module: "documentos" },
+          { to: "/integracoes", label: "Integrações", icon: Cable, module: "integracoes" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Sistema",
+    entries: [
+      {
+        type: "item",
+        to: "/configuracoes",
+        label: "Configurações",
+        desc: "Preferências operacionais",
+        icon: Settings,
+        module: "configuracoes",
+        accent: "slate",
+      },
     ],
   },
 ];
@@ -162,6 +342,7 @@ export function SidebarMenu({
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const session = useSession();
   const isDark = tone === "dark";
+
   const sessionModules = useMemo(
     () =>
       session
@@ -169,30 +350,39 @@ export function SidebarMenu({
         : undefined,
     [session],
   );
-  const visibleEntries = useMemo(
-    () =>
-      navigationEntries
-        .map((entry) => {
-          if (entry.type === "item") {
-            return getVisibleModules(sessionModules, [entry]).length > 0 ? entry : null;
-          }
 
-          const children = getVisibleModules(
-            sessionModules,
-            entry.children as ModuleItem[],
-          ) as NavigationChild[];
-          return children.length > 0 ? { ...entry, children } : null;
-        })
-        .filter((entry): entry is NavigationEntry => entry !== null),
-    [sessionModules],
+  const visibleSections = useMemo(() => {
+    return sections
+      .map((section) => {
+        const entries = section.entries
+          .map((entry) => {
+            if (entry.type === "item") {
+              return getVisibleModules(sessionModules, [entry]).length > 0 ? entry : null;
+            }
+            const children = getVisibleModules(
+              sessionModules,
+              entry.children as ModuleItem[],
+            ) as NavigationChild[];
+            return children.length > 0 ? { ...entry, children } : null;
+          })
+          .filter((entry): entry is NavigationEntry => entry !== null);
+        return entries.length > 0 ? { ...section, entries } : null;
+      })
+      .filter((section): section is Section => section !== null);
+  }, [sessionModules]);
+
+  const allEntries = useMemo(
+    () => visibleSections.flatMap((s) => s.entries),
+    [visibleSections],
   );
-  const activeEntry = visibleEntries.find((entry) =>
+
+  const activeEntry = allEntries.find((entry) =>
     entry.type === "item"
       ? isRouteActive(pathname, entry)
       : entry.children.some((child) => isRouteActive(pathname, child)),
   );
   const activeGroup = activeEntry?.type === "group" ? activeEntry : undefined;
-  const firstGroup = visibleEntries.find(
+  const firstGroup = allEntries.find(
     (entry): entry is NavigationGroup => entry.type === "group",
   );
   const [openGroup, setOpenGroup] = useState(activeGroup?.label ?? firstGroup?.label ?? "");
@@ -222,208 +412,255 @@ export function SidebarMenu({
         )}
 
         <nav
-          className="premium-sidebar-scroll min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden pr-1"
+          className="premium-sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-1"
           aria-label="Navegação principal"
         >
-          {visibleEntries.map((entry) => {
-            if (entry.type === "item") {
-              const active = isRouteActive(pathname, entry);
-              const Icon = entry.icon;
-              const directLink = (
-                <Link
-                  to={entry.to as never}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  aria-label={collapsed ? `${entry.label}: ${entry.desc}` : undefined}
+          {visibleSections.map((section, sectionIndex) => (
+            <div key={section.label} className="space-y-1.5">
+              {!collapsed && (
+                <div
                   className={cn(
-                    "group relative flex w-full items-center gap-3 rounded-2xl text-left text-sm transition-all duration-200 active:scale-[0.99]",
-                    collapsed ? "justify-center px-2 py-3" : "px-3 py-3",
-                    isDark && active
-                      ? "bg-[linear-gradient(135deg,rgba(95,175,199,0.22),rgba(255,255,255,0.08))] text-white shadow-[inset_3px_0_0_var(--system-primary-light),0_14px_30px_-24px_rgba(95,175,199,0.9)]"
-                      : isDark
-                        ? "text-white/72 hover:bg-white/[0.07] hover:text-white"
-                        : active
-                          ? "bg-primary/12 text-primary shadow-[inset_3px_0_0_var(--system-primary)]"
-                          : "text-foreground/70 hover:bg-white/65 hover:text-primary",
+                    "px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.22em]",
+                    isDark ? "text-white/32" : "text-foreground/38",
+                    sectionIndex === 0 && "pt-0",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
-                      active
-                        ? "bg-cyan-300/18 text-cyan-100 ring-1 ring-cyan-200/25"
-                        : "bg-white/[0.06] text-white/68 group-hover:bg-white/[0.1] group-hover:text-cyan-100",
-                    )}
-                  >
-                    <Icon className="size-4.5" strokeWidth={active ? 2.35 : 1.9} />
-                  </span>
-                  {!collapsed && (
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold leading-tight tracking-[-0.01em]">
-                        {entry.label}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-white/42">
-                        {entry.desc}
-                      </span>
-                    </span>
-                  )}
-                </Link>
-              );
+                  {section.label}
+                </div>
+              )}
+              {collapsed && sectionIndex > 0 && (
+                <div className="mx-3 h-px bg-white/[0.06]" aria-hidden="true" />
+              )}
 
-              return collapsed ? (
-                <Tooltip key={entry.to}>
-                  <TooltipTrigger asChild>{directLink}</TooltipTrigger>
-                  <TooltipContent
-                    side="right"
-                    className="border border-cyan-200/15 bg-[#14212a] text-cyan-50 shadow-xl"
-                  >
-                    <p className="font-semibold">{entry.label}</p>
-                    <p className="text-[10px] text-cyan-50/60">{entry.desc}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <div key={entry.to}>{directLink}</div>
-              );
-            }
-
-            const groupActive = activeGroup?.label === entry.label;
-            const open = openGroup === entry.label && !collapsed;
-            const Icon = entry.icon;
-            const groupButton = (
-              <button
-                type="button"
-                className={cn(
-                  "group relative flex w-full items-center gap-3 rounded-2xl text-left text-sm transition-all duration-200 active:scale-[0.99]",
-                  collapsed ? "justify-center px-2 py-3" : "px-3 py-3",
-                  isDark && groupActive
-                    ? "bg-[linear-gradient(135deg,rgba(95,175,199,0.22),rgba(255,255,255,0.08))] text-white shadow-[inset_3px_0_0_var(--system-primary-light),0_14px_30px_-24px_rgba(95,175,199,0.9)]"
-                    : isDark
-                      ? "text-white/72 hover:bg-white/[0.07] hover:text-white"
-                      : groupActive
-                        ? "bg-primary/12 text-primary shadow-[inset_3px_0_0_var(--system-primary)]"
-                        : "text-foreground/70 hover:bg-white/65 hover:text-primary",
-                )}
-                onClick={() => {
-                  if (collapsed) {
-                    onCollapsedChange?.(false);
-                    setOpenGroup(entry.label);
-                    return;
-                  }
-                  setOpenGroup(open ? "" : entry.label);
-                }}
-                aria-expanded={open}
-                aria-label={collapsed ? entry.label : undefined}
-              >
-                <span
-                  className={cn(
-                    "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
-                    groupActive
-                      ? "bg-cyan-300/18 text-cyan-100 ring-1 ring-cyan-200/25"
-                      : "bg-white/[0.06] text-white/68 group-hover:bg-white/[0.1] group-hover:text-cyan-100",
-                  )}
-                >
-                  <Icon className="size-4.5" strokeWidth={groupActive ? 2.35 : 1.9} />
-                </span>
-                {!collapsed && (
-                  <>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold leading-tight tracking-[-0.01em]">
-                        {entry.label}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-white/42">
-                        {entry.desc}
-                      </span>
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "size-4 text-white/45 transition-transform duration-300",
-                        open && "rotate-180 text-cyan-100/75",
-                      )}
-                    />
-                  </>
-                )}
-              </button>
-            );
-
-            return (
-              <Collapsible
-                key={entry.label}
-                open={open}
-                onOpenChange={(value) => setOpenGroup(value ? entry.label : "")}
-              >
-                <CollapsibleTrigger asChild>
-                  {collapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>{groupButton}</TooltipTrigger>
-                      <TooltipContent
-                        side="right"
-                        className="border border-cyan-200/15 bg-[#14212a] text-cyan-50 shadow-xl"
+              <div className="space-y-1">
+                {section.entries.map((entry) => {
+                  const accent = accentMap[entry.accent];
+                  if (entry.type === "item") {
+                    const active = isRouteActive(pathname, entry);
+                    const Icon = entry.icon;
+                    const directLink = (
+                      <Link
+                        to={entry.to as never}
+                        onClick={onNavigate}
+                        aria-current={active ? "page" : undefined}
+                        aria-label={collapsed ? `${entry.label}: ${entry.desc}` : undefined}
+                        className={cn(
+                          "group relative flex w-full items-center gap-3 rounded-2xl text-left transition-all duration-200 active:scale-[0.99]",
+                          "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:rounded-r-full before:transition-all",
+                          collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5 hover:translate-x-[1px]",
+                          active
+                            ? cn(
+                                accent.activeBg,
+                                accent.activeShadow,
+                                accent.activeText,
+                                accent.activeIndicator,
+                                "before:h-6 before:w-[3px]",
+                              )
+                            : isDark
+                              ? "text-white/72 hover:bg-white/[0.05] hover:text-white before:h-0 before:w-0"
+                              : "text-foreground/70 hover:bg-white/65 hover:text-primary before:h-0 before:w-0",
+                        )}
                       >
-                        {entry.label}
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    groupButton
-                  )}
-                </CollapsibleTrigger>
+                        <span
+                          className={cn(
+                            "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
+                            active
+                              ? cn(accent.iconBg, accent.iconText, accent.iconRing)
+                              : cn(
+                                  "bg-white/[0.05] text-white/68 group-hover:bg-white/[0.09]",
+                                  accent.hoverIcon,
+                                ),
+                          )}
+                        >
+                          <Icon className="size-[18px]" strokeWidth={active ? 2.35 : 1.9} />
+                        </span>
+                        {!collapsed && (
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13.5px] font-semibold leading-tight tracking-[-0.01em]">
+                              {entry.label}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-white/38">
+                              {entry.desc}
+                            </span>
+                          </span>
+                        )}
+                      </Link>
+                    );
 
-                {!collapsed && (
-                  <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                    <div className="ml-[1.6rem] mt-1 space-y-1 border-l border-cyan-200/12 pl-3">
-                      {entry.children.map((child) => {
-                        const isExternal = Boolean(child.external && child.href);
-                        const active = !isExternal && isRouteActive(pathname, child);
-                        const ChildIcon = child.icon;
-                        const childClass = cn(
-                          "group/sub relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-200 active:scale-[0.99]",
-                          active
-                            ? "bg-white/[0.09] text-white shadow-[inset_2px_0_0_var(--system-primary-light)]"
-                            : "text-white/58 hover:bg-white/[0.055] hover:text-white/88",
-                        );
-                        const iconClass = cn(
-                          "size-3.5 shrink-0 transition-colors",
-                          active
-                            ? "text-cyan-200"
-                            : "text-white/38 group-hover/sub:text-cyan-100/75",
-                        );
-                        if (isExternal) {
-                          return (
-                            <a
-                              key={child.key ?? child.href}
-                              href={child.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={onNavigate}
-                              className={childClass}
-                            >
-                              <ChildIcon className={iconClass} strokeWidth={1.9} />
-                              <span className="flex-1 truncate">{child.label}</span>
-                              <ExternalLink className="size-3 text-white/35" />
-                            </a>
-                          );
+                    return collapsed ? (
+                      <Tooltip key={entry.to}>
+                        <TooltipTrigger asChild>{directLink}</TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          className="border border-white/10 bg-[#14212a] text-white shadow-xl"
+                        >
+                          <p className="font-semibold">{entry.label}</p>
+                          <p className="text-[10px] text-white/60">{entry.desc}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <div key={entry.to}>{directLink}</div>
+                    );
+                  }
+
+                  const groupActive = activeGroup?.label === entry.label;
+                  const open = openGroup === entry.label && !collapsed;
+                  const Icon = entry.icon;
+                  const groupButton = (
+                    <button
+                      type="button"
+                      className={cn(
+                        "group relative flex w-full items-center gap-3 rounded-2xl text-left transition-all duration-200 active:scale-[0.99]",
+                        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:rounded-r-full before:transition-all",
+                        collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5 hover:translate-x-[1px]",
+                        groupActive
+                          ? cn(
+                              accent.activeBg,
+                              accent.activeShadow,
+                              accent.activeText,
+                              accent.activeIndicator,
+                              "before:h-6 before:w-[3px]",
+                            )
+                          : isDark
+                            ? "text-white/72 hover:bg-white/[0.05] hover:text-white before:h-0 before:w-0"
+                            : "text-foreground/70 hover:bg-white/65 hover:text-primary before:h-0 before:w-0",
+                      )}
+                      onClick={() => {
+                        if (collapsed) {
+                          onCollapsedChange?.(false);
+                          setOpenGroup(entry.label);
+                          return;
                         }
-                        return (
-                          <Link
-                            key={child.key ?? child.to}
-                            to={child.to as never}
-                            onClick={onNavigate}
-                            aria-current={active ? "page" : undefined}
-                            className={childClass}
+                        setOpenGroup(open ? "" : entry.label);
+                      }}
+                      aria-expanded={open}
+                      aria-label={collapsed ? entry.label : undefined}
+                    >
+                      <span
+                        className={cn(
+                          "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
+                          groupActive
+                            ? cn(accent.iconBg, accent.iconText, accent.iconRing)
+                            : cn(
+                                "bg-white/[0.05] text-white/68 group-hover:bg-white/[0.09]",
+                                accent.hoverIcon,
+                              ),
+                        )}
+                      >
+                        <Icon className="size-[18px]" strokeWidth={groupActive ? 2.35 : 1.9} />
+                      </span>
+                      {!collapsed && (
+                        <>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13.5px] font-semibold leading-tight tracking-[-0.01em]">
+                              {entry.label}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-white/38">
+                              {entry.desc}
+                            </span>
+                          </span>
+                          <ChevronDown
+                            className={cn(
+                              "size-4 text-white/40 transition-transform duration-300",
+                              open && "rotate-180 text-white/75",
+                            )}
+                          />
+                        </>
+                      )}
+                    </button>
+                  );
+
+                  return (
+                    <Collapsible
+                      key={entry.label}
+                      open={open}
+                      onOpenChange={(value) => setOpenGroup(value ? entry.label : "")}
+                    >
+                      <CollapsibleTrigger asChild>
+                        {collapsed ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>{groupButton}</TooltipTrigger>
+                            <TooltipContent
+                              side="right"
+                              className="border border-white/10 bg-[#14212a] text-white shadow-xl"
+                            >
+                              {entry.label}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          groupButton
+                        )}
+                      </CollapsibleTrigger>
+
+                      {!collapsed && (
+                        <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                          <div
+                            className={cn(
+                              "ml-[1.6rem] mt-1 space-y-0.5 border-l pl-3",
+                              "border-white/[0.08]",
+                            )}
                           >
-                            <ChildIcon
-                              className={iconClass}
-                              strokeWidth={active ? 2.4 : 1.9}
-                            />
-                            <span className="truncate">{child.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleContent>
-                )}
-              </Collapsible>
-            );
-          })}
+                            {entry.children.map((child) => {
+                              const isExternal = Boolean(child.external && child.href);
+                              const active = !isExternal && isRouteActive(pathname, child);
+                              const ChildIcon = child.icon;
+                              const childClass = cn(
+                                "group/sub relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium tracking-[-0.005em] transition-all duration-200 active:scale-[0.99]",
+                                active
+                                  ? cn(
+                                      "bg-white/[0.08] text-white",
+                                      "shadow-[inset_2px_0_0_currentColor]",
+                                      accent.iconText,
+                                    )
+                                  : "text-white/62 hover:bg-white/[0.05] hover:text-white/95 hover:translate-x-[1px]",
+                              );
+                              const iconClass = cn(
+                                "size-3.5 shrink-0 transition-colors",
+                                active
+                                  ? accent.iconText
+                                  : "text-white/40 group-hover/sub:text-white/80",
+                              );
+                              if (isExternal) {
+                                return (
+                                  <a
+                                    key={child.key ?? child.href}
+                                    href={child.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={onNavigate}
+                                    className={childClass}
+                                  >
+                                    <ChildIcon className={iconClass} strokeWidth={1.9} />
+                                    <span className="flex-1 truncate">{child.label}</span>
+                                    <ExternalLink className="size-3 text-white/35" />
+                                  </a>
+                                );
+                              }
+                              return (
+                                <Link
+                                  key={child.key ?? child.to}
+                                  to={child.to as never}
+                                  onClick={onNavigate}
+                                  aria-current={active ? "page" : undefined}
+                                  className={childClass}
+                                >
+                                  <ChildIcon
+                                    className={iconClass}
+                                    strokeWidth={active ? 2.4 : 1.9}
+                                  />
+                                  <span className="truncate">{child.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </CollapsibleContent>
+                      )}
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </div>
     </TooltipProvider>
