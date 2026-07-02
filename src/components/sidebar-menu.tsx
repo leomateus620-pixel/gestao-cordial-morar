@@ -1,27 +1,24 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  BadgeDollarSign,
   BarChart3,
-  Building2,
+  BriefcaseBusiness,
   Cable,
   CalendarCheck2,
+  ChartNoAxesCombined,
   ChevronDown,
-  ClipboardCheck,
   CircleDollarSign,
-  ExternalLink,
   FileText,
   FolderArchive,
-  Globe,
   Handshake,
-  Home,
+  HousePlus,
   KeyRound,
   LayoutDashboard,
   Megaphone,
-  MessagesSquare,
+  MessageCircleMore,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  Sparkles,
+  TrendingUp,
   UserCog,
   Users,
   Wallet,
@@ -35,15 +32,7 @@ import { useSession } from "@/lib/auth-mock";
 import { roleDefinitions } from "@/lib/mock/permissions";
 import { cn } from "@/lib/utils";
 
-type Accent =
-  | "cyan"
-  | "indigo"
-  | "violet"
-  | "emerald"
-  | "amber"
-  | "rose"
-  | "teal"
-  | "slate";
+type Accent = "cyan" | "indigo" | "violet" | "emerald" | "amber" | "rose" | "teal" | "slate";
 
 type AccentTokens = {
   ring: string;
@@ -60,84 +49,77 @@ type AccentTokens = {
 const accentMap: Record<Accent, AccentTokens> = {
   cyan: {
     ring: "ring-cyan-200/25",
-    iconBg: "bg-cyan-300/18",
+    iconBg: "bg-cyan-200/16",
     iconText: "text-cyan-100",
     iconRing: "ring-1 ring-cyan-200/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(103,232,249,0.20),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(103,232,249,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(103,232,249,0.17),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(103,232,249,0.78)]",
     activeText: "text-white",
     activeIndicator: "before:bg-cyan-300",
     hoverIcon: "group-hover:text-cyan-100",
   },
   indigo: {
     ring: "ring-indigo-200/25",
-    iconBg: "bg-indigo-400/18",
+    iconBg: "bg-indigo-300/16",
     iconText: "text-indigo-100",
     iconRing: "ring-1 ring-indigo-300/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(165,180,252,0.20),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(129,140,248,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(165,180,252,0.17),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(129,140,248,0.78)]",
     activeText: "text-white",
     activeIndicator: "before:bg-indigo-300",
     hoverIcon: "group-hover:text-indigo-100",
   },
   violet: {
     ring: "ring-violet-200/25",
-    iconBg: "bg-violet-400/18",
+    iconBg: "bg-violet-300/16",
     iconText: "text-violet-100",
     iconRing: "ring-1 ring-violet-300/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(196,181,253,0.22),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(167,139,250,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(196,181,253,0.18),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(167,139,250,0.78)]",
     activeText: "text-white",
     activeIndicator: "before:bg-violet-300",
     hoverIcon: "group-hover:text-violet-100",
   },
   emerald: {
     ring: "ring-emerald-200/25",
-    iconBg: "bg-emerald-400/18",
+    iconBg: "bg-emerald-300/16",
     iconText: "text-emerald-100",
     iconRing: "ring-1 ring-emerald-300/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(110,231,183,0.22),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(52,211,153,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(110,231,183,0.18),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(52,211,153,0.78)]",
     activeText: "text-white",
     activeIndicator: "before:bg-emerald-300",
     hoverIcon: "group-hover:text-emerald-100",
   },
   amber: {
     ring: "ring-amber-200/25",
-    iconBg: "bg-amber-400/18",
+    iconBg: "bg-amber-300/16",
     iconText: "text-amber-100",
     iconRing: "ring-1 ring-amber-300/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(252,211,77,0.22),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(251,191,36,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(252,211,77,0.18),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(251,191,36,0.76)]",
     activeText: "text-white",
     activeIndicator: "before:bg-amber-300",
     hoverIcon: "group-hover:text-amber-100",
   },
   rose: {
     ring: "ring-rose-200/25",
-    iconBg: "bg-rose-400/18",
+    iconBg: "bg-rose-300/16",
     iconText: "text-rose-100",
     iconRing: "ring-1 ring-rose-300/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(253,164,175,0.22),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(251,113,133,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(253,164,175,0.17),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(251,113,133,0.76)]",
     activeText: "text-white",
     activeIndicator: "before:bg-rose-300",
     hoverIcon: "group-hover:text-rose-100",
   },
   teal: {
     ring: "ring-teal-200/25",
-    iconBg: "bg-teal-400/18",
+    iconBg: "bg-teal-300/16",
     iconText: "text-teal-100",
     iconRing: "ring-1 ring-teal-300/25",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(94,234,212,0.22),rgba(255,255,255,0.06))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(45,212,191,0.9)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(94,234,212,0.18),rgba(255,255,255,0.055))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(45,212,191,0.78)]",
     activeText: "text-white",
     activeIndicator: "before:bg-teal-300",
     hoverIcon: "group-hover:text-teal-100",
@@ -147,9 +129,8 @@ const accentMap: Record<Accent, AccentTokens> = {
     iconBg: "bg-slate-300/12",
     iconText: "text-slate-100",
     iconRing: "ring-1 ring-slate-200/20",
-    activeBg:
-      "bg-[linear-gradient(135deg,rgba(203,213,225,0.16),rgba(255,255,255,0.05))]",
-    activeShadow: "shadow-[0_14px_30px_-24px_rgba(148,163,184,0.8)]",
+    activeBg: "bg-[linear-gradient(135deg,rgba(203,213,225,0.16),rgba(255,255,255,0.05))]",
+    activeShadow: "shadow-[0_18px_32px_-26px_rgba(148,163,184,0.68)]",
     activeText: "text-white",
     activeIndicator: "before:bg-slate-300",
     hoverIcon: "group-hover:text-slate-100",
@@ -159,8 +140,6 @@ const accentMap: Record<Accent, AccentTokens> = {
 export type NavigationChild = Pick<ModuleItem, "to" | "label" | "module" | "exact"> & {
   key?: string;
   icon: LucideIcon;
-  href?: string;
-  external?: boolean;
 };
 
 export type NavigationGroup = {
@@ -193,21 +172,32 @@ const sections: Section[] = [
     label: "Operação",
     entries: [
       {
-        type: "group",
+        type: "item",
+        to: "/",
         label: "Painel",
-        desc: "Visão executiva",
+        desc: "Visão geral",
         icon: LayoutDashboard,
+        module: "dashboard",
+        exact: true,
         accent: "cyan",
-        children: [{ to: "/", label: "Início", icon: Home, module: "dashboard", exact: true }],
       },
       {
         type: "item",
         to: "/agenda",
         label: "Agenda",
-        desc: "Visitas, retornos e compromissos",
+        desc: "Visitas e retornos",
         icon: CalendarCheck2,
         module: "agenda",
         accent: "teal",
+      },
+      {
+        type: "item",
+        to: "/agenciamentos",
+        label: "Agenciamentos",
+        desc: "Captação e imóveis",
+        icon: HousePlus,
+        module: "agenciamentos",
+        accent: "emerald",
       },
     ],
   },
@@ -218,7 +208,7 @@ const sections: Section[] = [
         type: "group",
         label: "Relacionamento",
         desc: "Leads e clientes",
-        icon: MessagesSquare,
+        icon: MessageCircleMore,
         accent: "indigo",
         children: [
           { to: "/atendimentos", label: "Atendimentos", icon: Handshake, module: "atendimentos" },
@@ -227,42 +217,9 @@ const sections: Section[] = [
       },
       {
         type: "group",
-        label: "Imóveis",
-        desc: "Sites das imobiliárias",
-        icon: Building2,
-        accent: "emerald",
-        children: [
-          {
-            key: "site-cordial",
-            to: "/imoveis",
-            href: "https://www.cordialimoveis.com/",
-            external: true,
-            label: "Site Cordial Imóveis",
-            icon: Globe,
-            module: "imoveis",
-          },
-          {
-            key: "site-morar",
-            to: "/imoveis",
-            href: "https://www.imobiliariamorarimoveis.com.br/",
-            external: true,
-            label: "Site Morar Imóveis",
-            icon: Globe,
-            module: "imoveis",
-          },
-          {
-            to: "/agenciamentos",
-            label: "Agenciamentos",
-            icon: ClipboardCheck,
-            module: "agenciamentos",
-          },
-        ],
-      },
-      {
-        type: "group",
         label: "Negócios",
-        desc: "Operações e contratos",
-        icon: BadgeDollarSign,
+        desc: "Contratos e operações",
+        icon: BriefcaseBusiness,
         accent: "amber",
         children: [
           { to: "/alugueis", label: "Aluguéis", icon: KeyRound, module: "alugueis" },
@@ -279,7 +236,7 @@ const sections: Section[] = [
         type: "group",
         label: "Gestão",
         desc: "Equipe e resultados",
-        icon: BarChart3,
+        icon: ChartNoAxesCombined,
         accent: "violet",
         children: [
           { to: "/corretores", label: "Corretores", icon: UserCog, module: "corretores" },
@@ -290,8 +247,8 @@ const sections: Section[] = [
       {
         type: "group",
         label: "Crescimento",
-        desc: "Marketing e integrações",
-        icon: Sparkles,
+        desc: "Marketing e evolução",
+        icon: TrendingUp,
         accent: "rose",
         children: [
           { to: "/marketing", label: "Marketing", icon: Megaphone, module: "marketing" },
@@ -371,10 +328,7 @@ export function SidebarMenu({
       .filter((section): section is Section => section !== null);
   }, [sessionModules]);
 
-  const allEntries = useMemo(
-    () => visibleSections.flatMap((s) => s.entries),
-    [visibleSections],
-  );
+  const allEntries = useMemo(() => visibleSections.flatMap((s) => s.entries), [visibleSections]);
 
   const activeEntry = allEntries.find((entry) =>
     entry.type === "item"
@@ -382,14 +336,55 @@ export function SidebarMenu({
       : entry.children.some((child) => isRouteActive(pathname, child)),
   );
   const activeGroup = activeEntry?.type === "group" ? activeEntry : undefined;
-  const firstGroup = allEntries.find(
-    (entry): entry is NavigationGroup => entry.type === "group",
-  );
-  const [openGroup, setOpenGroup] = useState(activeGroup?.label ?? firstGroup?.label ?? "");
+  const [openGroup, setOpenGroup] = useState(activeGroup?.label ?? "");
 
   useEffect(() => {
     if (activeGroup?.label) setOpenGroup(activeGroup.label);
   }, [activeGroup?.label]);
+
+  const focusRing =
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-100/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111719]";
+  const itemBase =
+    "group relative flex w-full items-center gap-3 rounded-2xl border text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] transition-[background,border-color,box-shadow,color,transform] duration-200 ease-out active:scale-[0.985]";
+  const indicatorBase =
+    "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:rounded-r-full before:transition-all before:duration-200";
+  const itemSizing = collapsed
+    ? "min-h-[2.75rem] justify-center px-2 py-2.5"
+    : "min-h-[3.35rem] px-3 py-2.5 hover:translate-x-[1px]";
+  const inactiveTone = isDark
+    ? "border-white/[0.065] bg-white/[0.025] text-white/74 hover:border-white/[0.13] hover:bg-white/[0.065] hover:text-white hover:shadow-[0_14px_26px_-24px_rgba(0,0,0,0.9)] before:h-0 before:w-0"
+    : "border-foreground/8 bg-white/45 text-foreground/70 hover:border-primary/15 hover:bg-white/75 hover:text-primary before:h-0 before:w-0";
+  const activeTone = (accent: AccentTokens) =>
+    cn(
+      accent.activeBg,
+      accent.activeShadow,
+      accent.activeText,
+      accent.activeIndicator,
+      accent.ring,
+      "border-white/[0.16] ring-1 before:h-7 before:w-[3px]",
+    );
+  const iconClass = (active: boolean, accent: AccentTokens) =>
+    cn(
+      "grid size-9 shrink-0 place-items-center rounded-xl transition-[background,color,box-shadow,transform] duration-200",
+      active
+        ? cn(
+            accent.iconBg,
+            accent.iconText,
+            accent.iconRing,
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]",
+          )
+        : cn("bg-white/[0.045] text-white/66 group-hover:bg-white/[0.09]", accent.hoverIcon),
+    );
+  const textBlock = (label: string, desc: string) => (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-[13.5px] font-semibold leading-tight tracking-normal">
+        {label}
+      </span>
+      <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight tracking-normal text-white/52">
+        {desc}
+      </span>
+    </span>
+  );
 
   return (
     <TooltipProvider delayDuration={120}>
@@ -398,7 +393,10 @@ export function SidebarMenu({
           <div className={cn("mb-3 flex", collapsed ? "justify-center" : "justify-end")}>
             <button
               type="button"
-              className="grid size-9 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/70 transition-all hover:border-cyan-300/30 hover:bg-cyan-300/10 hover:text-white active:scale-95"
+              className={cn(
+                "grid size-9 place-items-center rounded-2xl border border-white/[0.085] bg-white/[0.045] text-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-200 hover:border-teal-100/25 hover:bg-teal-100/10 hover:text-white active:scale-95",
+                focusRing,
+              )}
               onClick={() => onCollapsedChange?.(!collapsed)}
               aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
             >
@@ -441,49 +439,24 @@ export function SidebarMenu({
                     const directLink = (
                       <Link
                         to={entry.to as never}
-                        onClick={onNavigate}
+                        onClick={() => {
+                          setOpenGroup("");
+                          onNavigate?.();
+                        }}
                         aria-current={active ? "page" : undefined}
-                        aria-label={collapsed ? `${entry.label}: ${entry.desc}` : undefined}
+                        aria-label={`${entry.label}: ${entry.desc}`}
                         className={cn(
-                          "group relative flex w-full items-center gap-3 rounded-2xl text-left transition-all duration-200 active:scale-[0.99]",
-                          "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:rounded-r-full before:transition-all",
-                          collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5 hover:translate-x-[1px]",
-                          active
-                            ? cn(
-                                accent.activeBg,
-                                accent.activeShadow,
-                                accent.activeText,
-                                accent.activeIndicator,
-                                "before:h-6 before:w-[3px]",
-                              )
-                            : isDark
-                              ? "text-white/72 hover:bg-white/[0.05] hover:text-white before:h-0 before:w-0"
-                              : "text-foreground/70 hover:bg-white/65 hover:text-primary before:h-0 before:w-0",
+                          itemBase,
+                          indicatorBase,
+                          itemSizing,
+                          focusRing,
+                          active ? activeTone(accent) : inactiveTone,
                         )}
                       >
-                        <span
-                          className={cn(
-                            "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
-                            active
-                              ? cn(accent.iconBg, accent.iconText, accent.iconRing)
-                              : cn(
-                                  "bg-white/[0.05] text-white/68 group-hover:bg-white/[0.09]",
-                                  accent.hoverIcon,
-                                ),
-                          )}
-                        >
+                        <span className={iconClass(active, accent)}>
                           <Icon className="size-[18px]" strokeWidth={active ? 2.35 : 1.9} />
                         </span>
-                        {!collapsed && (
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13.5px] font-semibold leading-tight tracking-[-0.01em]">
-                              {entry.label}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-white/38">
-                              {entry.desc}
-                            </span>
-                          </span>
-                        )}
+                        {!collapsed && textBlock(entry.label, entry.desc)}
                       </Link>
                     );
 
@@ -510,20 +483,11 @@ export function SidebarMenu({
                     <button
                       type="button"
                       className={cn(
-                        "group relative flex w-full items-center gap-3 rounded-2xl text-left transition-all duration-200 active:scale-[0.99]",
-                        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:rounded-r-full before:transition-all",
-                        collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5 hover:translate-x-[1px]",
-                        groupActive
-                          ? cn(
-                              accent.activeBg,
-                              accent.activeShadow,
-                              accent.activeText,
-                              accent.activeIndicator,
-                              "before:h-6 before:w-[3px]",
-                            )
-                          : isDark
-                            ? "text-white/72 hover:bg-white/[0.05] hover:text-white before:h-0 before:w-0"
-                            : "text-foreground/70 hover:bg-white/65 hover:text-primary before:h-0 before:w-0",
+                        itemBase,
+                        indicatorBase,
+                        itemSizing,
+                        focusRing,
+                        groupActive ? activeTone(accent) : inactiveTone,
                       )}
                       onClick={() => {
                         if (collapsed) {
@@ -534,34 +498,21 @@ export function SidebarMenu({
                         setOpenGroup(open ? "" : entry.label);
                       }}
                       aria-expanded={open}
-                      aria-label={collapsed ? entry.label : undefined}
+                      aria-label={
+                        collapsed
+                          ? `${entry.label}: ${entry.desc}`
+                          : `${open ? "Recolher" : "Expandir"} ${entry.label}`
+                      }
                     >
-                      <span
-                        className={cn(
-                          "grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-200",
-                          groupActive
-                            ? cn(accent.iconBg, accent.iconText, accent.iconRing)
-                            : cn(
-                                "bg-white/[0.05] text-white/68 group-hover:bg-white/[0.09]",
-                                accent.hoverIcon,
-                              ),
-                        )}
-                      >
+                      <span className={iconClass(groupActive, accent)}>
                         <Icon className="size-[18px]" strokeWidth={groupActive ? 2.35 : 1.9} />
                       </span>
                       {!collapsed && (
                         <>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13.5px] font-semibold leading-tight tracking-[-0.01em]">
-                              {entry.label}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[10.5px] font-medium uppercase leading-tight tracking-[0.12em] text-white/38">
-                              {entry.desc}
-                            </span>
-                          </span>
+                          {textBlock(entry.label, entry.desc)}
                           <ChevronDown
                             className={cn(
-                              "size-4 text-white/40 transition-transform duration-300",
+                              "size-4 text-white/42 transition-transform duration-300 ease-out",
                               open && "rotate-180 text-white/75",
                             )}
                           />
@@ -596,23 +547,22 @@ export function SidebarMenu({
                         <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
                           <div
                             className={cn(
-                              "ml-[1.6rem] mt-1 space-y-0.5 border-l pl-3",
-                              "border-white/[0.08]",
+                              "ml-[1.6rem] mt-1.5 space-y-1 border-l pl-3",
+                              "border-white/[0.075]",
                             )}
                           >
                             {entry.children.map((child) => {
-                              const isExternal = Boolean(child.external && child.href);
-                              const active = !isExternal && isRouteActive(pathname, child);
+                              const active = isRouteActive(pathname, child);
                               const ChildIcon = child.icon;
                               const childClass = cn(
-                                "group/sub relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium tracking-[-0.005em] transition-all duration-200 active:scale-[0.99]",
+                                "group/sub relative flex min-h-10 items-center gap-2.5 rounded-xl border px-3 py-2 text-[13px] font-medium tracking-normal transition-[background,border-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.99]",
+                                focusRing,
                                 active
                                   ? cn(
-                                      "bg-white/[0.08] text-white",
-                                      "shadow-[inset_2px_0_0_currentColor]",
+                                      "border-white/[0.12] bg-white/[0.085] text-white shadow-[inset_2px_0_0_currentColor]",
                                       accent.iconText,
                                     )
-                                  : "text-white/62 hover:bg-white/[0.05] hover:text-white/95 hover:translate-x-[1px]",
+                                  : "border-transparent text-white/64 hover:translate-x-[1px] hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-white/95",
                               );
                               const iconClass = cn(
                                 "size-3.5 shrink-0 transition-colors",
@@ -620,22 +570,6 @@ export function SidebarMenu({
                                   ? accent.iconText
                                   : "text-white/40 group-hover/sub:text-white/80",
                               );
-                              if (isExternal) {
-                                return (
-                                  <a
-                                    key={child.key ?? child.href}
-                                    href={child.href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={onNavigate}
-                                    className={childClass}
-                                  >
-                                    <ChildIcon className={iconClass} strokeWidth={1.9} />
-                                    <span className="flex-1 truncate">{child.label}</span>
-                                    <ExternalLink className="size-3 text-white/35" />
-                                  </a>
-                                );
-                              }
                               return (
                                 <Link
                                   key={child.key ?? child.to}
