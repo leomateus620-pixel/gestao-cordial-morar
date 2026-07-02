@@ -259,30 +259,31 @@
 
 @utility sidebar-glass {
   background:
-    radial-gradient(circle at 22% 0%, rgba(95, 175, 199, 0.16), transparent 34%),
+    radial-gradient(circle at 18% -8%, rgba(111, 191, 174, 0.14), transparent 36%),
+    radial-gradient(circle at 102% 104%, rgba(217, 120, 45, 0.08), transparent 42%),
     linear-gradient(
       180deg,
-      rgba(18, 24, 30, 0.98),
-      rgba(22, 28, 34, 0.96) 52%,
-      rgba(17, 22, 28, 0.98)
+      rgba(17, 23, 25, 0.982),
+      rgba(21, 29, 31, 0.965) 48%,
+      rgba(15, 20, 22, 0.985)
     );
-  backdrop-filter: blur(24px) saturate(145%);
-  border: 1px solid rgba(170, 231, 244, 0.08);
+  backdrop-filter: blur(24px) saturate(128%);
+  border: 1px solid rgba(205, 232, 223, 0.085);
   box-shadow:
-    0 30px 70px -22px rgba(0, 0, 0, 0.58),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 28px 62px -24px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color: rgba(255, 255, 255, 0.88);
 }
 
 .premium-sidebar-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(95, 175, 199, 0.28) transparent;
+  scrollbar-color: rgba(205, 232, 223, 0.2) transparent;
   scroll-behavior: smooth;
   overscroll-behavior: contain;
 }
 
 .premium-sidebar-scroll::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 
 .premium-sidebar-scroll::-webkit-scrollbar-track {
@@ -290,12 +291,12 @@
 }
 
 .premium-sidebar-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(95, 175, 199, 0.38), rgba(255, 255, 255, 0.12));
+  background: linear-gradient(180deg, rgba(205, 232, 223, 0.22), rgba(255, 255, 255, 0.08));
   border-radius: 9999px;
 }
 
 .premium-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(103, 232, 249, 0.5), rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(205, 232, 223, 0.36), rgba(255, 255, 255, 0.14));
 }
 
 @utility bottom-nav-glass {
@@ -1130,6 +1131,15 @@ html,
 
   .login-feature-card {
     transform: none !important;
+  }
+
+  .sidebar-glass *,
+  .premium-sidebar-scroll,
+  .premium-sidebar-scroll * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

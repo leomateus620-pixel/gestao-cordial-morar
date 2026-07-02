@@ -66,7 +66,7 @@ export function AppShell() {
       {/* Sidebar desktop */}
       <aside
         className={cn(
-          "sidebar-glass fixed inset-y-4 left-4 z-40 hidden max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[1.75rem] p-3 transition-[width] duration-300 ease-out lg:flex",
+          "sidebar-glass fixed inset-y-4 left-4 z-40 hidden max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[1.6rem] p-3 transition-[width] duration-300 ease-out lg:flex",
           sidebarCollapsed ? "w-20" : "w-64",
         )}
       >
@@ -76,13 +76,13 @@ export function AppShell() {
             sidebarCollapsed && "justify-center",
           )}
         >
-          <div className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(145deg,rgba(95,175,199,0.26),rgba(255,255,255,0.06))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_-22px_rgba(95,175,199,0.9)] ring-1 ring-cyan-200/15">
+          <div className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(145deg,rgba(111,191,174,0.18),rgba(255,255,255,0.055))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_-24px_rgba(30,100,93,0.76)] ring-1 ring-teal-100/15">
             <BrandMark className="size-7" />
-            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.75)]" />
+            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-teal-200 shadow-[0_0_16px_rgba(94,234,212,0.58)]" />
           </div>
           {!sidebarCollapsed && (
             <div className="min-w-0">
-              <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-cyan-200/82">
+              <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-teal-100/78">
                 Gestão Cordial
               </span>
               <p className="truncate text-sm font-semibold leading-tight tracking-[-0.01em] text-white/90">
@@ -150,14 +150,14 @@ export function AppShell() {
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="sidebar-glass flex h-dvh w-[88vw] max-w-[340px] flex-col overflow-hidden border-white/10 bg-[#141a20] p-4 text-white backdrop-blur-2xl lg:hidden [&>button]:text-white/70 [&>button]:hover:text-white"
+                  className="sidebar-glass flex h-dvh w-[88vw] max-w-[340px] flex-col overflow-hidden border-white/10 bg-[#111719] p-4 text-white backdrop-blur-2xl lg:hidden [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:focus-visible:ring-teal-100/70"
                 >
                   <div className="mb-5 flex items-center gap-3 pr-8">
-                    <div className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-cyan-300/16 ring-1 ring-cyan-200/15">
+                    <div className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-teal-200/12 ring-1 ring-teal-100/15">
                       <BrandMark className="size-7" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-cyan-200/82">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-teal-100/78">
                         Gestão Cordial
                       </span>
                       <p className="truncate text-sm font-semibold leading-tight text-white/90">
