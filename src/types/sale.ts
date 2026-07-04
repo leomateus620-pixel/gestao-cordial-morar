@@ -45,6 +45,7 @@ export type SaleRecord = {
   commissionValue?: number;
   commissionPercentage?: number;
   responsibleAgent?: string;
+  contractFilePath?: string;
   contractFileUrl?: string;
   contractFileName?: string;
   supportingDocumentFileName?: string;
