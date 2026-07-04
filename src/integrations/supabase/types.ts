@@ -807,6 +807,117 @@ export type Database = {
         }
         Relationships: []
       }
+      real_estate_sales: {
+        Row: {
+          area_m2: number | null
+          bathrooms: number | null
+          bedrooms: number | null
+          buyer_address: string | null
+          buyer_document: string | null
+          buyer_email: string | null
+          buyer_name: string
+          buyer_observations: string | null
+          buyer_phone: string | null
+          commission_percentage: number | null
+          commission_value: number | null
+          contract_file_name: string | null
+          contract_file_path: string | null
+          created_at: string
+          document_status: string
+          id: string
+          imobiliaria: string
+          notes: string | null
+          payment_details: string | null
+          payment_method: string | null
+          previous_asking_price: number | null
+          property_address: string
+          property_city_state: string | null
+          property_id: string | null
+          property_name: string
+          property_neighborhood: string | null
+          property_type: string
+          responsible_agent: string | null
+          sale_date: string
+          sale_status: string
+          sale_value: number
+          supporting_document_file_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area_m2?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          buyer_address?: string | null
+          buyer_document?: string | null
+          buyer_email?: string | null
+          buyer_name: string
+          buyer_observations?: string | null
+          buyer_phone?: string | null
+          commission_percentage?: number | null
+          commission_value?: number | null
+          contract_file_name?: string | null
+          contract_file_path?: string | null
+          created_at?: string
+          document_status?: string
+          id?: string
+          imobiliaria?: string
+          notes?: string | null
+          payment_details?: string | null
+          payment_method?: string | null
+          previous_asking_price?: number | null
+          property_address: string
+          property_city_state?: string | null
+          property_id?: string | null
+          property_name: string
+          property_neighborhood?: string | null
+          property_type?: string
+          responsible_agent?: string | null
+          sale_date: string
+          sale_status?: string
+          sale_value: number
+          supporting_document_file_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area_m2?: number | null
+          bathrooms?: number | null
+          bedrooms?: number | null
+          buyer_address?: string | null
+          buyer_document?: string | null
+          buyer_email?: string | null
+          buyer_name?: string
+          buyer_observations?: string | null
+          buyer_phone?: string | null
+          commission_percentage?: number | null
+          commission_value?: number | null
+          contract_file_name?: string | null
+          contract_file_path?: string | null
+          created_at?: string
+          document_status?: string
+          id?: string
+          imobiliaria?: string
+          notes?: string | null
+          payment_details?: string | null
+          payment_method?: string | null
+          previous_asking_price?: number | null
+          property_address?: string
+          property_city_state?: string | null
+          property_id?: string | null
+          property_name?: string
+          property_neighborhood?: string | null
+          property_type?: string
+          responsible_agent?: string | null
+          sale_date?: string
+          sale_status?: string
+          sale_value?: number
+          supporting_document_file_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rental_contracts: {
         Row: {
           brand: Database["public"]["Enums"]["rental_brand"]
