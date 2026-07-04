@@ -222,9 +222,6 @@ export const corretoresSeed: Corretor[] = [
   },
 ];
 
-
-
-
 export type ClienteHistorico = {
   data: string;
   tipo: "Ligação" | "WhatsApp" | "Visita" | "Proposta" | "E-mail" | "Contrato" | "Observação";
@@ -1074,10 +1071,44 @@ export type Venda = {
   valorVenda: number;
   comissaoPercentual: number;
   sinal: number;
-  formaPagamento: "À vista" | "Financiamento" | "Consórcio" | "Permuta";
+  formaPagamento: "À vista" | "Financiamento" | "Consórcio" | "Permuta" | "Parcelado" | "Outro";
   etapa: "Proposta" | "Documentação" | "Assinatura" | "Registro" | "Concluída" | "Perdida";
   previsaoEscritura: string;
   imobiliaria: AgencyId;
+  propertyName?: string;
+  propertyAddress?: string;
+  propertyNeighborhood?: string;
+  propertyCityState?: string;
+  propertyType?: ImovelTipo | "Fazenda" | "Outro";
+  bedrooms?: number;
+  bathrooms?: number;
+  areaM2?: number;
+  previousAskingPrice?: number;
+  buyerName?: string;
+  buyerDocument?: string;
+  buyerPhone?: string;
+  buyerEmail?: string;
+  buyerAddress?: string;
+  buyerObservations?: string;
+  saleDate?: string;
+  saleStatus?: "concluida" | "aguardando_assinatura" | "em_analise" | "cancelada";
+  paymentMethod?: "À vista" | "Financiamento" | "Consórcio" | "Permuta" | "Parcelado" | "Outro";
+  paymentDetails?: string;
+  commissionValue?: number;
+  commissionPercentage?: number;
+  responsibleAgent?: string;
+  contractFileUrl?: string;
+  contractFileName?: string;
+  supportingDocumentFileName?: string;
+  documentStatus?:
+    | "contrato_anexado"
+    | "contrato_pendente"
+    | "aguardando_assinatura"
+    | "em_analise"
+    | "cancelado";
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export const vendasSeed: Venda[] = [
