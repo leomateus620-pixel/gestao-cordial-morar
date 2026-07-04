@@ -39,6 +39,7 @@ export function SaleDetailsDrawer({
   onEdit,
   onReplaceContract,
   onCancel,
+  onOpenContract,
 }: {
   sale: SaleRecord | null;
   open: boolean;
@@ -46,6 +47,7 @@ export function SaleDetailsDrawer({
   onEdit: (sale: SaleRecord) => void;
   onReplaceContract: (sale: SaleRecord) => void;
   onCancel: (sale: SaleRecord) => void;
+  onOpenContract?: () => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -163,7 +165,16 @@ export function SaleDetailsDrawer({
                   label="Status documental"
                   value={<SaleStatusBadge status={sale.documentStatus} type="document" />}
                 />
-                {sale.contractFileUrl ? (
+                {sale.contractFilePath && onOpenContract ? (
+                  <button
+                    type="button"
+                    onClick={onOpenContract}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition hover:brightness-110"
+                  >
+                    <ExternalLink className="size-4" />
+                    Abrir contrato
+                  </button>
+                ) : sale.contractFileUrl ? (
                   <a
                     href={sale.contractFileUrl}
                     target="_blank"
@@ -175,8 +186,7 @@ export function SaleDetailsDrawer({
                   </a>
                 ) : (
                   <p className="rounded-2xl bg-white/50 px-3 py-3 text-xs font-medium leading-5 text-foreground/58 ring-1 ring-white/70">
-                    O cadastro atual registra o nome do arquivo. A abertura do contrato depende da
-                    conexão futura com Supabase Storage ou outro repositório de documentos.
+                    Nenhum contrato anexado a este registro.
                   </p>
                 )}
               </Panel>

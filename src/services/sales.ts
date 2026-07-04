@@ -84,9 +84,8 @@ function clientePhone(cliente?: Cliente) {
   return cliente.telefone || cliente.phone || cliente.whatsapp;
 }
 
-function clienteAddress(cliente?: Cliente) {
-  if (!cliente) return undefined;
-  return cliente.endereco || cliente.address;
+function clienteAddress(_cliente?: Cliente) {
+  return undefined;
 }
 
 export function createVendaRecord(input: SaleRecordInput, options?: UpsertOptions): Venda {

@@ -216,7 +216,11 @@ export function SaleForm({
   agents: Corretor[];
   defaultAgency: AgencyId;
   initialRecord?: SaleRecord | null;
-  onSubmit: (input: SaleRecordInput, id?: string) => Promise<unknown> | unknown;
+  onSubmit: (
+    input: SaleRecordInput,
+    files: { contract?: File; support?: File },
+    id?: string,
+  ) => Promise<unknown> | unknown;
   isSaving?: boolean;
 }) {
   const contractInputRef = useRef<HTMLInputElement | null>(null);
@@ -254,7 +258,9 @@ export function SaleForm({
 
   const [documentStatus, setDocumentStatus] = useState<SaleDocumentStatus>("contrato_pendente");
   const [contractFile, setContractFile] = useState<FileMeta | null>(null);
+  const [contractFileObj, setContractFileObj] = useState<File | null>(null);
   const [supportingFile, setSupportingFile] = useState<FileMeta | null>(null);
+  const [supportingFileObj, setSupportingFileObj] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = Boolean(initialRecord);
@@ -293,9 +299,11 @@ export function SaleForm({
     setNotes(record?.notes ?? "");
     setDocumentStatus(record?.documentStatus ?? "contrato_pendente");
     setContractFile(record?.contractFileName ? { name: record.contractFileName } : null);
+    setContractFileObj(null);
     setSupportingFile(
       record?.supportingDocumentFileName ? { name: record.supportingDocumentFileName } : null,
     );
+    setSupportingFileObj(null);
     setError(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (supportInputRef.current) supportInputRef.current.value = "";
@@ -338,20 +346,24 @@ export function SaleForm({
     const meta = { name: file.name, size: file.size, type: file.type };
     if (kind === "contract") {
       setContractFile(meta);
+      setContractFileObj(file);
       if (documentStatus === "contrato_pendente") setDocumentStatus("contrato_anexado");
     } else {
       setSupportingFile(meta);
+      setSupportingFileObj(file);
     }
   }
 
   function removeContractFile() {
     setContractFile(null);
+    setContractFileObj(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (documentStatus === "contrato_anexado") setDocumentStatus("contrato_pendente");
   }
 
   function removeSupportingFile() {
     setSupportingFile(null);
+    setSupportingFileObj(null);
     if (supportInputRef.current) supportInputRef.current.value = "";
   }
 
@@ -426,7 +438,11 @@ export function SaleForm({
     };
 
     try {
-      await onSubmit(input, initialRecord?.id);
+      await onSubmit(
+        input,
+        { contract: contractFileObj ?? undefined, support: supportingFileObj ?? undefined },
+        initialRecord?.id,
+      );
       reset(null);
       onOpenChange(false);
     } catch (err) {
