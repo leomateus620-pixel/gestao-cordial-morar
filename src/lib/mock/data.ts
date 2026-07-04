@@ -7,9 +7,15 @@ import casaVilaNova from "@/assets/properties/casa-vila-nova.jpg";
 import type { Client } from "@/types/client";
 import type { Corretor } from "@/types/corretor";
 import type { Agenciamento } from "@/types/agenciamento";
+import type {
+  MarketingCampaign,
+  MarketingDailyMetric,
+  MarketingLocationBreakdown,
+} from "@/types/marketing";
 
 export type { Corretor } from "@/types/corretor";
 export type { Agenciamento } from "@/types/agenciamento";
+export type { MarketingCampaign } from "@/types/marketing";
 
 export type AgencyId = "cordial" | "morar";
 
@@ -32,20 +38,9 @@ export type OrigemLead =
   | "Porta fria";
 
 export type DocumentoStatus =
-  | "Pendente"
-  | "Recebido"
-  | "Em análise"
-  | "Aprovado"
-  | "Reprovado"
-  | "Vencido";
+  "Pendente" | "Recebido" | "Em análise" | "Aprovado" | "Reprovado" | "Vencido";
 export type ImovelTipo =
-  | "Apartamento"
-  | "Casa"
-  | "Cobertura"
-  | "Loft"
-  | "Terreno"
-  | "Sala comercial"
-  | "Sítio";
+  "Apartamento" | "Casa" | "Cobertura" | "Loft" | "Terreno" | "Sala comercial" | "Sítio";
 export type ImovelFinalidade = "Venda" | "Aluguel" | "Ambos";
 export type ImovelStatus =
   | "Captação"
@@ -815,58 +810,344 @@ export const receitaMensal = [
   { mes: "Mai", vendas: 62, alugueis: 24 },
   { mes: "Jun", vendas: 84, alugueis: 28 },
 ];
-export type CampanhaMarketing = {
-  id: string;
-  nome: string;
-  canal: "Instagram" | "Portais" | "E-mail" | "WhatsApp";
-  objetivo: "Leads" | "Visitas" | "Captação";
-  investimento: number;
-  leads: number;
-  status: "Ativa" | "Pausada" | "Planejada";
-  imobiliaria: AgencyId;
-};
+export type CampanhaMarketing = MarketingCampaign;
+
+type MarketingCampaignSeedInput = Omit<
+  MarketingCampaign,
+  | "leads"
+  | "clicks"
+  | "accesses"
+  | "views"
+  | "impressions"
+  | "conversionRate"
+  | "costPerLead"
+  | "bestLocation"
+>;
+
+function buildMarketingCampaign(input: MarketingCampaignSeedInput): MarketingCampaign {
+  const leads = sumMarketingDaily(input.dailyMetrics, "leads");
+  const clicks = sumMarketingDaily(input.dailyMetrics, "clicks");
+  const accesses = sumMarketingDaily(input.dailyMetrics, "accesses");
+  const views = sumMarketingDaily(input.dailyMetrics, "views");
+  const impressions = input.locationBreakdown.reduce(
+    (total, location) => total + location.impressions,
+    0,
+  );
+  const bestLocation =
+    [...input.locationBreakdown].sort((a, b) => b.impressions - a.impressions)[0]?.location ??
+    "Não informado";
+
+  return {
+    ...input,
+    leads,
+    clicks,
+    accesses,
+    views,
+    impressions,
+    bestLocation,
+    costPerLead: leads > 0 ? roundMarketingMetric(input.investment / leads) : 0,
+    conversionRate: accesses > 0 ? roundMarketingMetric((leads / accesses) * 100) : 0,
+  };
+}
+
+function sumMarketingDaily(
+  metrics: MarketingDailyMetric[],
+  key: keyof Omit<MarketingDailyMetric, "date">,
+) {
+  return metrics.reduce((total, item) => total + item[key], 0);
+}
+
+function roundMarketingMetric(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+const marketingLocations = {
+  jardins: [
+    { location: "Jardins", impressions: 8200, clicks: 610, leads: 26 },
+    { location: "Centro", impressions: 5200, clicks: 360, leads: 14 },
+    { location: "São Paulo", impressions: 3900, clicks: 260, leads: 10 },
+    { location: "Sulina", impressions: 3700, clicks: 290, leads: 12 },
+  ],
+  centro: [
+    { location: "Centro", impressions: 9100, clicks: 770, leads: 33 },
+    { location: "Santa Rosa/RS", impressions: 6200, clicks: 510, leads: 25 },
+    { location: "Cruzeiro", impressions: 3900, clicks: 340, leads: 17 },
+    { location: "Timbaúva", impressions: 2900, clicks: 280, leads: 13 },
+  ],
+  whatsapp: [
+    { location: "Sulina", impressions: 880, clicks: 160, leads: 11 },
+    { location: "Centro", impressions: 620, clicks: 120, leads: 9 },
+    { location: "Timbaúva", impressions: 450, clicks: 90, leads: 5 },
+    { location: "Jardins", impressions: 340, clicks: 60, leads: 4 },
+  ],
+  openHouse: [
+    { location: "Jardins", impressions: 2800, clicks: 310, leads: 19 },
+    { location: "Centro", impressions: 1800, clicks: 190, leads: 11 },
+    { location: "São Paulo", impressions: 1200, clicks: 140, leads: 7 },
+    { location: "Sulina", impressions: 900, clicks: 120, leads: 5 },
+  ],
+  facebook: [
+    { location: "Cruzeiro", impressions: 6000, clicks: 370, leads: 7 },
+    { location: "Centro", impressions: 4300, clicks: 270, leads: 5 },
+    { location: "Sulina", impressions: 3100, clicks: 210, leads: 4 },
+    { location: "Timbaúva", impressions: 2500, clicks: 130, leads: 3 },
+  ],
+  locacao: [
+    { location: "Timbaúva", impressions: 1600, clicks: 130, leads: 7 },
+    { location: "Centro", impressions: 1100, clicks: 100, leads: 5 },
+    { location: "Cruzeiro", impressions: 800, clicks: 80, leads: 3 },
+    { location: "Sulina", impressions: 650, clicks: 50, leads: 2 },
+  ],
+  portal: [
+    { location: "Santa Rosa/RS", impressions: 4800, clicks: 440, leads: 23 },
+    { location: "Centro", impressions: 3400, clicks: 310, leads: 15 },
+    { location: "Cruzeiro", impressions: 2600, clicks: 220, leads: 10 },
+    { location: "Jardins", impressions: 1800, clicks: 150, leads: 8 },
+  ],
+  local: [
+    { location: "Sulina", impressions: 320, clicks: 70, leads: 9 },
+    { location: "Timbaúva", impressions: 250, clicks: 50, leads: 6 },
+    { location: "Centro", impressions: 210, clicks: 35, leads: 4 },
+    { location: "Cruzeiro", impressions: 150, clicks: 25, leads: 2 },
+  ],
+  planejada: [
+    { location: "São Paulo", impressions: 0, clicks: 0, leads: 0 },
+    { location: "Jardins", impressions: 0, clicks: 0, leads: 0 },
+  ],
+} satisfies Record<string, MarketingLocationBreakdown[]>;
 
 export const campanhasMarketingSeed: CampanhaMarketing[] = [
-  {
+  buildMarketingCampaign({
     id: "mk1",
-    nome: "Open house Jardins",
-    canal: "Instagram",
-    objetivo: "Visitas",
-    investimento: 1800,
-    leads: 42,
+    name: "Instagram - imóveis alto padrão",
+    channel: "Instagram",
+    objective: "Leads qualificados",
     status: "Ativa",
+    startDate: "2026-06-03",
+    endDate: "2026-07-15",
+    investment: 3600,
+    responsiblePerson: "Camila Reis",
+    notes: "Criativos com tour em vídeo e chamada para atendimento consultivo.",
+    diagnosis: "Boa geração de leads com entrega forte nos Jardins.",
+    dailyMetrics: [
+      { date: "2026-06-24", leads: 8, clicks: 154, accesses: 96, views: 2360 },
+      { date: "2026-06-25", leads: 11, clicks: 210, accesses: 128, views: 2820 },
+      { date: "2026-06-26", leads: 9, clicks: 184, accesses: 116, views: 2510 },
+      { date: "2026-06-27", leads: 13, clicks: 232, accesses: 146, views: 3180 },
+      { date: "2026-06-28", leads: 10, clicks: 195, accesses: 123, views: 2710 },
+      { date: "2026-06-29", leads: 12, clicks: 242, accesses: 151, views: 3350 },
+      { date: "2026-06-30", leads: 9, clicks: 203, accesses: 126, views: 2890 },
+    ],
+    locationBreakdown: marketingLocations.jardins,
+    createdAt: "2026-06-03T09:00:00.000Z",
+    updatedAt: "2026-06-30T18:20:00.000Z",
     imobiliaria: "cordial",
-  },
-  {
+  }),
+  buildMarketingCampaign({
     id: "mk2",
-    nome: "Captação proprietários premium",
-    canal: "E-mail",
-    objetivo: "Captação",
-    investimento: 950,
-    leads: 18,
-    status: "Planejada",
-    imobiliaria: "cordial",
-  },
-  {
-    id: "mk3",
-    nome: "Casas em condomínio",
-    canal: "Portais",
-    objetivo: "Leads",
-    investimento: 2400,
-    leads: 56,
+    name: "Campanha Google - imóveis à venda",
+    channel: "Google",
+    objective: "Venda",
     status: "Ativa",
+    startDate: "2026-06-08",
+    endDate: "2026-07-20",
+    investment: 4200,
+    responsiblePerson: "Marcos Lima",
+    notes: "Busca com foco em intenção de compra e bairros com estoque ativo.",
+    diagnosis: "Desempenho consistente com boa captação no Centro.",
+    dailyMetrics: [
+      { date: "2026-06-24", leads: 12, clicks: 250, accesses: 164, views: 1250 },
+      { date: "2026-06-25", leads: 13, clicks: 270, accesses: 172, views: 1370 },
+      { date: "2026-06-26", leads: 11, clicks: 230, accesses: 151, views: 1190 },
+      { date: "2026-06-27", leads: 15, clicks: 310, accesses: 201, views: 1560 },
+      { date: "2026-06-28", leads: 12, clicks: 265, accesses: 169, views: 1280 },
+      { date: "2026-06-29", leads: 14, clicks: 300, accesses: 195, views: 1480 },
+      { date: "2026-06-30", leads: 11, clicks: 275, accesses: 168, views: 1310 },
+    ],
+    locationBreakdown: marketingLocations.centro,
+    createdAt: "2026-06-08T11:30:00.000Z",
+    updatedAt: "2026-06-30T18:25:00.000Z",
+    imobiliaria: "cordial",
+  }),
+  buildMarketingCampaign({
+    id: "mk3",
+    name: "WhatsApp - atendimento ativo",
+    channel: "WhatsApp",
+    objective: "Relacionamento",
+    status: "Em análise",
+    startDate: "2026-06-17",
+    endDate: "2026-07-05",
+    investment: 650,
+    responsiblePerson: "Paula Souza",
+    notes: "Disparo segmentado para contatos que pediram retorno sobre imóveis similares.",
+    diagnosis: "Alta conversão, mas volume ainda concentrado em poucos bairros.",
+    dailyMetrics: [
+      { date: "2026-06-24", leads: 4, clicks: 46, accesses: 31, views: 290 },
+      { date: "2026-06-25", leads: 5, clicks: 58, accesses: 40, views: 330 },
+      { date: "2026-06-26", leads: 3, clicks: 42, accesses: 29, views: 260 },
+      { date: "2026-06-27", leads: 6, clicks: 72, accesses: 51, views: 420 },
+      { date: "2026-06-28", leads: 4, clicks: 55, accesses: 39, views: 310 },
+      { date: "2026-06-29", leads: 4, clicks: 61, accesses: 44, views: 360 },
+      { date: "2026-06-30", leads: 3, clicks: 46, accesses: 32, views: 280 },
+    ],
+    locationBreakdown: marketingLocations.whatsapp,
+    createdAt: "2026-06-17T10:10:00.000Z",
+    updatedAt: "2026-06-30T17:45:00.000Z",
     imobiliaria: "morar",
-  },
-  {
+  }),
+  buildMarketingCampaign({
     id: "mk4",
-    nome: "Remarketing locação",
-    canal: "WhatsApp",
-    objetivo: "Leads",
-    investimento: 620,
-    leads: 31,
-    status: "Pausada",
+    name: "Open house Jardins",
+    channel: "Open house",
+    objective: "Visitas",
+    status: "Ativa",
+    startDate: "2026-06-20",
+    endDate: "2026-07-06",
+    investment: 1800,
+    responsiblePerson: "Felipe Andrade",
+    notes: "Convites por Instagram, base própria e parceiros locais.",
+    diagnosis: "Boa geração de visitas com custo por lead controlado.",
+    dailyMetrics: [
+      { date: "2026-06-24", leads: 5, clicks: 86, accesses: 57, views: 830 },
+      { date: "2026-06-25", leads: 6, clicks: 104, accesses: 70, views: 920 },
+      { date: "2026-06-26", leads: 7, clicks: 120, accesses: 78, views: 1030 },
+      { date: "2026-06-27", leads: 9, clicks: 148, accesses: 98, views: 1210 },
+      { date: "2026-06-28", leads: 6, clicks: 110, accesses: 73, views: 960 },
+      { date: "2026-06-29", leads: 5, clicks: 97, accesses: 64, views: 880 },
+      { date: "2026-06-30", leads: 4, clicks: 95, accesses: 62, views: 790 },
+    ],
+    locationBreakdown: marketingLocations.openHouse,
+    createdAt: "2026-06-20T08:40:00.000Z",
+    updatedAt: "2026-06-30T19:00:00.000Z",
+    imobiliaria: "cordial",
+  }),
+  buildMarketingCampaign({
+    id: "mk5",
+    name: "Facebook - captação de leads",
+    channel: "Facebook",
+    objective: "Captação",
+    status: "Com baixo desempenho",
+    startDate: "2026-06-10",
+    endDate: "2026-07-02",
+    investment: 2100,
+    responsiblePerson: "Camila Reis",
+    notes: "Público amplo para captação de proprietários sem criativo regional.",
+    diagnosis: "Alta visualização com baixa conversão; precisa revisar criativo.",
+    dailyMetrics: [
+      { date: "2026-06-24", leads: 2, clicks: 120, accesses: 80, views: 1920 },
+      { date: "2026-06-25", leads: 3, clicks: 136, accesses: 88, views: 2110 },
+      { date: "2026-06-26", leads: 2, clicks: 112, accesses: 75, views: 1860 },
+      { date: "2026-06-27", leads: 4, clicks: 150, accesses: 101, views: 2380 },
+      { date: "2026-06-28", leads: 3, clicks: 128, accesses: 84, views: 2040 },
+      { date: "2026-06-29", leads: 3, clicks: 142, accesses: 93, views: 2230 },
+      { date: "2026-06-30", leads: 2, clicks: 102, accesses: 69, views: 1760 },
+    ],
+    locationBreakdown: marketingLocations.facebook,
+    createdAt: "2026-06-10T13:20:00.000Z",
+    updatedAt: "2026-06-30T16:15:00.000Z",
     imobiliaria: "morar",
-  },
+  }),
+  buildMarketingCampaign({
+    id: "mk6",
+    name: "Remarketing locação",
+    channel: "WhatsApp",
+    objective: "Locação",
+    status: "Pausada",
+    startDate: "2026-06-01",
+    endDate: "2026-06-24",
+    investment: 900,
+    responsiblePerson: "Marcos Lima",
+    notes: "Pausada após saturação da lista e queda no volume de respostas.",
+    diagnosis: "CPL dentro da média, porém entrega perdeu ritmo na última semana.",
+    dailyMetrics: [
+      { date: "2026-06-18", leads: 3, clicks: 52, accesses: 36, views: 560 },
+      { date: "2026-06-19", leads: 2, clicks: 44, accesses: 30, views: 510 },
+      { date: "2026-06-20", leads: 3, clicks: 55, accesses: 37, views: 590 },
+      { date: "2026-06-21", leads: 2, clicks: 40, accesses: 27, views: 480 },
+      { date: "2026-06-22", leads: 3, clicks: 54, accesses: 35, views: 620 },
+      { date: "2026-06-23", leads: 2, clicks: 42, accesses: 28, views: 500 },
+      { date: "2026-06-24", leads: 2, clicks: 43, accesses: 30, views: 540 },
+    ],
+    locationBreakdown: marketingLocations.locacao,
+    createdAt: "2026-06-01T09:45:00.000Z",
+    updatedAt: "2026-06-24T14:30:00.000Z",
+    imobiliaria: "morar",
+  }),
+  buildMarketingCampaign({
+    id: "mk7",
+    name: "E-mail - proprietários premium",
+    channel: "E-mail",
+    objective: "Captação",
+    status: "Planejada",
+    startDate: "2026-07-08",
+    endDate: "2026-07-26",
+    investment: 0,
+    expectedLeads: 25,
+    responsiblePerson: "Paula Souza",
+    notes: "Base segmentada de proprietários com imóveis acima de R$ 1,2 mi.",
+    diagnosis: "Campanha planejada; aguarda validação da lista e dos criativos.",
+    dailyMetrics: [
+      { date: "2026-07-08", leads: 0, clicks: 0, accesses: 0, views: 0 },
+      { date: "2026-07-09", leads: 0, clicks: 0, accesses: 0, views: 0 },
+      { date: "2026-07-10", leads: 0, clicks: 0, accesses: 0, views: 0 },
+    ],
+    locationBreakdown: marketingLocations.planejada,
+    createdAt: "2026-06-28T10:00:00.000Z",
+    updatedAt: "2026-06-28T10:00:00.000Z",
+    imobiliaria: "cordial",
+  }),
+  buildMarketingCampaign({
+    id: "mk8",
+    name: "Portal - casas em condomínio",
+    channel: "Portal imobiliário",
+    objective: "Leads qualificados",
+    status: "Encerrada",
+    startDate: "2026-05-18",
+    endDate: "2026-06-18",
+    investment: 2400,
+    responsiblePerson: "Felipe Andrade",
+    notes: "Destaque em portais para imóveis com ticket entre R$ 850 mil e R$ 1,4 mi.",
+    diagnosis: "Resultado forte e entrega bem distribuída entre regiões prioritárias.",
+    dailyMetrics: [
+      { date: "2026-06-12", leads: 8, clicks: 150, accesses: 105, views: 1500 },
+      { date: "2026-06-13", leads: 7, clicks: 138, accesses: 96, views: 1420 },
+      { date: "2026-06-14", leads: 9, clicks: 175, accesses: 122, views: 1790 },
+      { date: "2026-06-15", leads: 8, clicks: 160, accesses: 111, views: 1610 },
+      { date: "2026-06-16", leads: 9, clicks: 184, accesses: 128, views: 1880 },
+      { date: "2026-06-17", leads: 7, clicks: 148, accesses: 102, views: 1510 },
+      { date: "2026-06-18", leads: 8, clicks: 165, accesses: 116, views: 1690 },
+    ],
+    locationBreakdown: marketingLocations.portal,
+    createdAt: "2026-05-18T12:00:00.000Z",
+    updatedAt: "2026-06-18T18:00:00.000Z",
+    imobiliaria: "morar",
+  }),
+  buildMarketingCampaign({
+    id: "mk9",
+    name: "Ação local - indicação bairros",
+    channel: "Externa",
+    objective: "Reconhecimento",
+    status: "Ativa",
+    startDate: "2026-06-21",
+    endDate: "2026-07-10",
+    investment: 480,
+    responsiblePerson: "Camila Reis",
+    notes: "Parcerias locais e indicações para imóveis de entrada.",
+    diagnosis: "Campanha enxuta com conversão alta e baixo custo por lead.",
+    dailyMetrics: [
+      { date: "2026-06-24", leads: 2, clicks: 18, accesses: 17, views: 110 },
+      { date: "2026-06-25", leads: 3, clicks: 24, accesses: 22, views: 130 },
+      { date: "2026-06-26", leads: 2, clicks: 20, accesses: 18, views: 120 },
+      { date: "2026-06-27", leads: 4, clicks: 32, accesses: 30, views: 160 },
+      { date: "2026-06-28", leads: 3, clicks: 26, accesses: 25, views: 140 },
+      { date: "2026-06-29", leads: 4, clicks: 35, accesses: 33, views: 170 },
+      { date: "2026-06-30", leads: 3, clicks: 25, accesses: 25, views: 120 },
+    ],
+    locationBreakdown: marketingLocations.local,
+    createdAt: "2026-06-21T09:15:00.000Z",
+    updatedAt: "2026-06-30T17:05:00.000Z",
+    imobiliaria: "cordial",
+  }),
 ];
 
 export type DocumentoOperacional = {
@@ -1101,11 +1382,7 @@ export type Venda = {
   contractFileName?: string;
   supportingDocumentFileName?: string;
   documentStatus?:
-    | "contrato_anexado"
-    | "contrato_pendente"
-    | "aguardando_assinatura"
-    | "em_analise"
-    | "cancelado";
+    "contrato_anexado" | "contrato_pendente" | "aguardando_assinatura" | "em_analise" | "cancelado";
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
