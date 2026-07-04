@@ -346,20 +346,24 @@ export function SaleForm({
     const meta = { name: file.name, size: file.size, type: file.type };
     if (kind === "contract") {
       setContractFile(meta);
+      setContractFileObj(file);
       if (documentStatus === "contrato_pendente") setDocumentStatus("contrato_anexado");
     } else {
       setSupportingFile(meta);
+      setSupportingFileObj(file);
     }
   }
 
   function removeContractFile() {
     setContractFile(null);
+    setContractFileObj(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (documentStatus === "contrato_anexado") setDocumentStatus("contrato_pendente");
   }
 
   function removeSupportingFile() {
     setSupportingFile(null);
+    setSupportingFileObj(null);
     if (supportInputRef.current) supportInputRef.current.value = "";
   }
 
