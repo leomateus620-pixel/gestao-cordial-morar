@@ -438,7 +438,11 @@ export function SaleForm({
     };
 
     try {
-      await onSubmit(input, initialRecord?.id);
+      await onSubmit(
+        input,
+        { contract: contractFileObj ?? undefined, support: supportingFileObj ?? undefined },
+        initialRecord?.id,
+      );
       reset(null);
       onOpenChange(false);
     } catch (err) {
