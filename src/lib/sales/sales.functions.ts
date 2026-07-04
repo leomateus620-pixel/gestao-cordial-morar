@@ -82,6 +82,7 @@ function mapSale(r: SaleRow): SaleRecord {
     commissionValue: r.commission_value ?? undefined,
     commissionPercentage: r.commission_percentage ?? undefined,
     responsibleAgent: r.responsible_agent ?? undefined,
+    contractFilePath: r.contract_file_path ?? undefined,
     contractFileUrl: undefined,
     contractFileName: r.contract_file_name ?? undefined,
     supportingDocumentFileName: r.supporting_document_file_name ?? undefined,
