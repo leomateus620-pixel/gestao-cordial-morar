@@ -299,9 +299,11 @@ export function SaleForm({
     setNotes(record?.notes ?? "");
     setDocumentStatus(record?.documentStatus ?? "contrato_pendente");
     setContractFile(record?.contractFileName ? { name: record.contractFileName } : null);
+    setContractFileObj(null);
     setSupportingFile(
       record?.supportingDocumentFileName ? { name: record.supportingDocumentFileName } : null,
     );
+    setSupportingFileObj(null);
     setError(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (supportInputRef.current) supportInputRef.current.value = "";
