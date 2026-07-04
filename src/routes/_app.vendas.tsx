@@ -1,16 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FilePlus2, History, ReceiptText } from "lucide-react";
+import { FilePlus2, History, Loader2, ReceiptText } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { EmptySalesState } from "@/components/vendas/EmptySalesState";
 import { SaleDetailsDrawer } from "@/components/vendas/SaleDetailsDrawer";
 import { SaleForm } from "@/components/vendas/SaleForm";
 import { SaleRecordCard } from "@/components/vendas/SaleRecordCard";
 import { SalesFilters } from "@/components/vendas/SalesFilters";
 import { SalesKpiCards } from "@/components/vendas/SalesKpiCards";
-import { buildSaleRecords, getSalesKpis } from "@/services/sales";
+import { useSales, uploadSaleDocument } from "@/hooks/useSales";
 import { useApp, useFiltered } from "@/store/app-store";
 import type { AgencyId } from "@/lib/mock/data";
-import type { SaleRecord, SaleRecordInput, SalesFilter } from "@/types/sale";
+import type { SaleRecord, SaleRecordInput, SalesFilter, SalesKpis } from "@/types/sale";
+
+const EMPTY_KPIS: SalesKpis = {
+  totalSold: 0,
+  registeredSales: 0,
+  attachedContracts: 0,
+  averageTicket: 0,
+  monthSales: 0,
+  documentPendencies: 0,
+};
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Gestão Cordial" }] }),
@@ -19,14 +29,22 @@ export const Route = createFileRoute("/_app/vendas")({
 
 function Page() {
   const agency = useApp((state) => state.agency);
-  const vendas = useFiltered(useApp((state) => state.vendas));
   const imoveis = useFiltered(useApp((state) => state.imoveis));
-  const contratos = useFiltered(useApp((state) => state.contratos));
-  const clientes = useFiltered(useApp((state) => state.clientes));
   const corretores = useFiltered(useApp((state) => state.corretores));
-  const addVenda = useApp((state) => state.addVenda);
-  const updateVenda = useApp((state) => state.updateVenda);
-  const cancelVenda = useApp((state) => state.cancelVenda);
+
+  const {
+    sales,
+    kpis,
+    isLoading,
+    isError,
+    error,
+    createSale,
+    updateSale,
+    cancelSale,
+    openContract,
+    isCreating,
+    isUpdating,
+  } = useSales();
 
   const [filter, setFilter] = useState<SalesFilter>("todos");
   const [search, setSearch] = useState("");
@@ -35,22 +53,14 @@ function Page() {
   const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const [editingSale, setEditingSale] = useState<SaleRecord | null>(null);
 
-  const records = useMemo(
-    () =>
-      buildSaleRecords({
-        vendas,
-        imoveis,
-        contratos,
-        clientes,
-        corretores,
-      }),
-    [vendas, imoveis, contratos, clientes, corretores],
+  const scopedSales = useMemo(
+    () => (agency === "todas" ? sales : sales.filter((s) => s.imobiliaria === agency)),
+    [sales, agency],
   );
 
-  const kpis = useMemo(() => getSalesKpis(records), [records]);
   const filteredRecords = useMemo(
-    () => filterSales(records, filter, search),
-    [records, filter, search],
+    () => filterSales(scopedSales, filter, search),
+    [scopedSales, filter, search],
   );
 
   const defaultAgency: AgencyId = agency === "todas" ? "cordial" : agency;
@@ -71,16 +81,75 @@ function Page() {
     setFormOpen(true);
   }
 
-  function handleCancelSale(sale: SaleRecord) {
-    cancelVenda(sale.id);
-    setDetailsOpen(false);
-    setSelectedSale(null);
+  async function handleCancelSale(sale: SaleRecord) {
+    try {
+      await cancelSale(sale.id);
+      toast.success("Venda cancelada.");
+      setDetailsOpen(false);
+      setSelectedSale(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível cancelar a venda.");
+    }
   }
 
-  async function handleSubmit(input: SaleRecordInput, id?: string) {
-    if (id) updateVenda(id, input);
-    else addVenda(input);
+  async function handleReplaceContract(sale: SaleRecord) {
+    // Reuses the edit flow — user can attach a new contract in the form
+    openEditForm(sale);
   }
+
+  async function handleOpenContract() {
+    if (!selectedSale?.contractFilePath) {
+      toast.error("Contrato não disponível.");
+      return;
+    }
+    try {
+      await openContract(selectedSale.contractFilePath);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível abrir o contrato.");
+    }
+  }
+
+  async function handleSubmit(
+    input: SaleRecordInput,
+    files: { contract?: File; support?: File },
+    id?: string,
+  ) {
+    try {
+      let finalInput: SaleRecordInput = { ...input };
+
+      if (files.contract) {
+        const folder = id ?? "new";
+        const path = await uploadSaleDocument(files.contract, folder);
+        finalInput = {
+          ...finalInput,
+          contractFilePath: path,
+          contractFileName: files.contract.name,
+        };
+      }
+
+      if (files.support) {
+        finalInput = {
+          ...finalInput,
+          supportingDocumentFileName: files.support.name,
+        };
+      }
+
+      if (id) {
+        await updateSale({ id, input: finalInput });
+        toast.success("Venda atualizada.");
+      } else {
+        await createSale(finalInput);
+        toast.success("Venda registrada.");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Não foi possível salvar a venda.";
+      toast.error(message);
+      throw err;
+    }
+  }
+
+  const activeKpis = kpis ?? EMPTY_KPIS;
+  const isSaving = isCreating || isUpdating;
 
   return (
     <>
@@ -117,7 +186,7 @@ function Page() {
       </section>
 
       <div className="space-y-5">
-        <SalesKpiCards kpis={kpis} />
+        <SalesKpiCards kpis={activeKpis} />
         <SalesFilters
           filter={filter}
           onFilterChange={setFilter}
@@ -141,7 +210,21 @@ function Page() {
             </p>
           </div>
 
-          {records.length === 0 ? (
+          {isLoading ? (
+            <section className="glass-panel flex items-center justify-center rounded-3xl p-10 text-foreground/60">
+              <Loader2 className="mr-2 size-5 animate-spin" />
+              Carregando vendas…
+            </section>
+          ) : isError ? (
+            <section className="glass-panel rounded-3xl p-6 text-center">
+              <h3 className="text-lg font-black tracking-tight text-rose-700">
+                Erro ao carregar vendas
+              </h3>
+              <p className="mx-auto mt-2 max-w-lg text-sm font-medium leading-6 text-foreground/58">
+                {error instanceof Error ? error.message : "Tente novamente em instantes."}
+              </p>
+            </section>
+          ) : scopedSales.length === 0 ? (
             <EmptySalesState onCreate={openCreateForm} />
           ) : filteredRecords.length === 0 ? (
             <section className="glass-panel rounded-3xl p-6 text-center">
@@ -183,14 +266,16 @@ function Page() {
         defaultAgency={defaultAgency}
         initialRecord={editingSale}
         onSubmit={handleSubmit}
+        isSaving={isSaving}
       />
       <SaleDetailsDrawer
         sale={selectedSale}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         onEdit={openEditForm}
-        onReplaceContract={openEditForm}
+        onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
+        onOpenContract={handleOpenContract}
       />
     </>
   );
@@ -234,8 +319,8 @@ function filterSales(records: SaleRecord[], filter: SalesFilter, search: string)
 
   const filtered = searched.filter((sale) => {
     if (filter === "mes") return isCurrentMonth(sale.saleDate);
-    if (filter === "com_contrato") return sale.documentStatus === "contrato_anexado";
-    if (filter === "sem_contrato") return sale.documentStatus === "contrato_pendente";
+    if (filter === "com_contrato") return Boolean(sale.contractFilePath);
+    if (filter === "sem_contrato") return !sale.contractFilePath;
     if (filter === "concluidas") return sale.saleStatus === "concluida";
     if (filter === "em_analise") {
       return sale.saleStatus === "em_analise" || sale.documentStatus === "em_analise";
