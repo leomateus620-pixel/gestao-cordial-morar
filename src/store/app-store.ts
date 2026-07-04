@@ -48,7 +48,8 @@ import type { Atendimento, AtendimentoCreateInput } from "@/types/atendimento";
 import type { ClientCreateInput } from "@/types/client";
 import { normalizeAgendaEvent, toLegacyAgendaEvent } from "@/services/agenda";
 import type { AgendaEvent } from "@/types/agenda";
-
+import { cancelSaleRecord, createVendaRecord } from "@/services/sales";
+import type { SaleRecordInput } from "@/types/sale";
 
 type AgencyFilter = AgencyId | "todas";
 
@@ -79,6 +80,9 @@ type State = {
   addAtendimento: (a: AtendimentoCreateInput) => void;
   convertAtendimentoToCliente: (id: string) => string | undefined;
   addCompromisso: (c: Omit<Compromisso, "id">) => void;
+  addVenda: (v: SaleRecordInput) => void;
+  updateVenda: (id: string, v: SaleRecordInput) => void;
+  cancelVenda: (id: string) => void;
   upsertAgendaEvent: (event: AgendaEvent) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -221,6 +225,25 @@ export const useApp = create<State>()(
             agendaEvents: [event, ...s.agendaEvents],
           };
         }),
+      addVenda: (v) =>
+        set((s) => ({
+          vendas: [createVendaRecord(v), ...s.vendas],
+        })),
+      updateVenda: (saleId, v) =>
+        set((s) => ({
+          vendas: s.vendas.map((sale) =>
+            sale.id === saleId
+              ? createVendaRecord(v, {
+                  id: sale.id,
+                  createdAt: sale.createdAt,
+                })
+              : sale,
+          ),
+        })),
+      cancelVenda: (saleId) =>
+        set((s) => ({
+          vendas: s.vendas.map((sale) => (sale.id === saleId ? cancelSaleRecord(sale) : sale)),
+        })),
       upsertAgendaEvent: (event) =>
         set((s) => {
           const exists = s.agendaEvents.some((item) => item.id === event.id);
