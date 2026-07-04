@@ -258,7 +258,9 @@ export function SaleForm({
 
   const [documentStatus, setDocumentStatus] = useState<SaleDocumentStatus>("contrato_pendente");
   const [contractFile, setContractFile] = useState<FileMeta | null>(null);
+  const [contractFileObj, setContractFileObj] = useState<File | null>(null);
   const [supportingFile, setSupportingFile] = useState<FileMeta | null>(null);
+  const [supportingFileObj, setSupportingFileObj] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = Boolean(initialRecord);
