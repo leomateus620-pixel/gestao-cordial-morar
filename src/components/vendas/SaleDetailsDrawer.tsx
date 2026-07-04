@@ -39,6 +39,7 @@ export function SaleDetailsDrawer({
   onEdit,
   onReplaceContract,
   onCancel,
+  onOpenContract,
 }: {
   sale: SaleRecord | null;
   open: boolean;
@@ -46,6 +47,7 @@ export function SaleDetailsDrawer({
   onEdit: (sale: SaleRecord) => void;
   onReplaceContract: (sale: SaleRecord) => void;
   onCancel: (sale: SaleRecord) => void;
+  onOpenContract?: () => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
