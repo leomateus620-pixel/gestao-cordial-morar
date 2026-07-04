@@ -86,7 +86,7 @@ function clientePhone(cliente?: Cliente) {
 
 function clienteAddress(cliente?: Cliente) {
   if (!cliente) return undefined;
-  return cliente.endereco || cliente.address;
+  return cliente.endereco;
 }
 
 export function createVendaRecord(input: SaleRecordInput, options?: UpsertOptions): Venda {
