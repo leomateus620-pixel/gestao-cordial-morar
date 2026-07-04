@@ -216,7 +216,11 @@ export function SaleForm({
   agents: Corretor[];
   defaultAgency: AgencyId;
   initialRecord?: SaleRecord | null;
-  onSubmit: (input: SaleRecordInput, id?: string) => Promise<unknown> | unknown;
+  onSubmit: (
+    input: SaleRecordInput,
+    files: { contract?: File; support?: File },
+    id?: string,
+  ) => Promise<unknown> | unknown;
   isSaving?: boolean;
 }) {
   const contractInputRef = useRef<HTMLInputElement | null>(null);
