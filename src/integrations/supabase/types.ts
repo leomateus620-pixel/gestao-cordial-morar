@@ -705,6 +705,63 @@ export type Database = {
         }
         Relationships: []
       }
+      financeiro_lancamentos: {
+        Row: {
+          categoria: string
+          corretor_id: string | null
+          created_at: string
+          data_competencia: string
+          data_pagamento: string | null
+          descricao: string
+          id: string
+          imobiliaria: string
+          observacoes: string | null
+          origem: string | null
+          origem_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria: string
+          corretor_id?: string | null
+          created_at?: string
+          data_competencia: string
+          data_pagamento?: string | null
+          descricao: string
+          id?: string
+          imobiliaria: string
+          observacoes?: string | null
+          origem?: string | null
+          origem_id?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          categoria?: string
+          corretor_id?: string | null
+          created_at?: string
+          data_competencia?: string
+          data_pagamento?: string | null
+          descricao?: string
+          id?: string
+          imobiliaria?: string
+          observacoes?: string | null
+          origem?: string | null
+          origem_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       google_calendar_connections: {
         Row: {
           access_token: string
@@ -743,6 +800,116 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      marketing_campaigns: {
+        Row: {
+          canal: string
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          diagnostico: string | null
+          id: string
+          imobiliaria: string
+          investimento: number
+          leads_esperados: number | null
+          nome: string
+          objetivo: string
+          observacoes: string | null
+          referencia_url: string | null
+          responsavel: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canal: string
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          diagnostico?: string | null
+          id?: string
+          imobiliaria: string
+          investimento?: number
+          leads_esperados?: number | null
+          nome: string
+          objetivo: string
+          observacoes?: string | null
+          referencia_url?: string | null
+          responsavel?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          diagnostico?: string | null
+          id?: string
+          imobiliaria?: string
+          investimento?: number
+          leads_esperados?: number | null
+          nome?: string
+          objetivo?: string
+          observacoes?: string | null
+          referencia_url?: string | null
+          responsavel?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      marketing_daily_metrics: {
+        Row: {
+          accesses: number
+          campaign_id: string
+          clicks: number
+          created_at: string
+          data: string
+          id: string
+          investimento: number
+          leads: number
+          updated_at: string
+          user_id: string
+          views: number
+        }
+        Insert: {
+          accesses?: number
+          campaign_id: string
+          clicks?: number
+          created_at?: string
+          data: string
+          id?: string
+          investimento?: number
+          leads?: number
+          updated_at?: string
+          user_id: string
+          views?: number
+        }
+        Update: {
+          accesses?: number
+          campaign_id?: string
+          clicks?: number
+          created_at?: string
+          data?: string
+          id?: string
+          investimento?: number
+          leads?: number
+          updated_at?: string
+          user_id?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_daily_metrics_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {

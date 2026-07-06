@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { Link as LinkIcon } from "lucide-react";
 import { FinancialDashboard } from "@/components/financeiro/FinancialDashboard";
 import { PermissionGuard } from "@/components/permission-guard";
-import { useApp, useFiltered } from "@/store/app-store";
+import { useFinanceiro } from "@/hooks/useFinanceiro";
+import { useApp } from "@/store/app-store";
 
 export const Route = createFileRoute("/_app/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro | Gestão Cordial" }] }),
@@ -10,12 +12,27 @@ export const Route = createFileRoute("/_app/financeiro")({
 });
 
 function Page() {
-  const lancamentos = useFiltered(useApp((state) => state.lancamentos));
   const agency = useApp((state) => state.agency);
+  const { lancamentos, isLoading, isError } = useFinanceiro();
+
+  const filtered = useMemo(() => {
+    if (agency === "todas") return lancamentos;
+    return lancamentos.filter((l) => l.imobiliaria === agency);
+  }, [lancamentos, agency]);
 
   return (
     <>
-      <FinancialDashboard lancamentos={lancamentos} agency={agency} />
+      {isLoading ? (
+        <div className="glass-panel rounded-3xl p-8 text-sm text-foreground/60">
+          Carregando lançamentos financeiros...
+        </div>
+      ) : isError ? (
+        <div className="glass-panel rounded-3xl p-8 text-sm text-red-600">
+          Não foi possível carregar os lançamentos financeiros.
+        </div>
+      ) : (
+        <FinancialDashboard lancamentos={filtered} agency={agency} />
+      )}
 
       <PermissionGuard modules={["integracoes", "financeiro"]}>
         <section className="glass-panel mt-6 rounded-3xl p-5">
