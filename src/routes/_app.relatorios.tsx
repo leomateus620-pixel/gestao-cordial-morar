@@ -70,8 +70,18 @@ function Page() {
         "Não foi possível carregar vendas.",
         sales.error,
       ),
-      financeiro: { status: "ready" },
-      marketing: { status: "ready" },
+      financeiro: getQuerySourceState(
+        financeiro.isLoading,
+        financeiro.isError,
+        "Não foi possível carregar lançamentos financeiros.",
+        financeiro.error,
+      ),
+      marketing: getQuerySourceState(
+        marketing.isLoading,
+        marketing.isError,
+        "Não foi possível carregar campanhas de marketing.",
+        marketing.error,
+      ),
     }),
     [
       agenciamentos.canRead,
@@ -90,6 +100,12 @@ function Page() {
       sales.error,
       sales.isError,
       sales.isLoading,
+      financeiro.error,
+      financeiro.isError,
+      financeiro.isLoading,
+      marketing.error,
+      marketing.isError,
+      marketing.isLoading,
     ],
   );
 
