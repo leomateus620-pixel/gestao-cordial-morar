@@ -1,100 +1,130 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { ReportsPage } from "@/components/reports/ReportsPage";
+import { defaultAtendimentoFilters, useAttendances } from "@/hooks/useAttendances";
+import { useAgenciamentos } from "@/hooks/useAgenciamentos";
+import { defaultClientFilters, useClients } from "@/hooks/useClients";
+import { useRentals } from "@/hooks/useRentals";
+import { useSales } from "@/hooks/useSales";
 import { useApp, useFiltered } from "@/store/app-store";
-import { SectionHeader } from "@/components/section-header";
-import { brl } from "@/lib/format";
+import type { ReportsAreaId, ReportsSourceState } from "@/types/reports";
 
 export const Route = createFileRoute("/_app/relatorios")({
-  head: () => ({ meta: [{ title: "Relatórios — Gestão Cordial" }] }),
+  head: () => ({ meta: [{ title: "Relatórios | Gestão Cordial" }] }),
   component: Page,
 });
 
 function Page() {
-  const atendimentos = useFiltered(useApp((s) => s.atendimentos));
-  const corretores = useFiltered(useApp((s) => s.corretores));
-  const imoveis = useFiltered(useApp((s) => s.imoveis));
-  const contratos = useFiltered(useApp((s) => s.contratos));
+  const agency = useApp((state) => state.agency);
+  const corretores = useFiltered(useApp((state) => state.corretores));
+  const lancamentos = useFiltered(useApp((state) => state.lancamentos));
+  const campaigns = useFiltered(useApp((state) => state.campanhasMarketing));
 
-  const fechados = atendimentos.filter((a) => a.status === "fechado").length;
-  const total = atendimentos.length;
-  const conversao = total ? Math.round((fechados / total) * 100) : 0;
+  const agenciamentos = useAgenciamentos({ skipDashboard: true });
+  const atendimentos = useAttendances("", defaultAtendimentoFilters);
+  const clients = useClients("", defaultClientFilters);
+  const rentals = useRentals();
+  const sales = useSales();
 
-  const venda = contratos.filter((c) => c.tipo === "Venda").length;
-  const aluguel = contratos.filter((c) => c.tipo === "Aluguel").length;
-
-  const bairros = imoveis.reduce<Record<string, number>>((acc, i) => {
-    acc[i.bairro] = (acc[i.bairro] ?? 0) + 1;
-    return acc;
-  }, {});
-  const topBairros = Object.entries(bairros)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  const ranking = [...corretores].sort((a, b) => b.comissaoMes - a.comissaoMes);
+  const sourceStates = useMemo<Partial<Record<ReportsAreaId, ReportsSourceState>>>(
+    () => ({
+      agenciamentos: agenciamentos.canRead
+        ? getQuerySourceState(
+            agenciamentos.isLoading,
+            agenciamentos.isError,
+            "Não foi possível carregar agenciamentos.",
+            agenciamentos.error,
+          )
+        : {
+            status: "unavailable",
+            title: "Dados de agenciamentos indisponíveis para este perfil.",
+            description:
+              "A origem existe, mas o usuário atual não possui permissão para consolidar esta área.",
+          },
+      atendimentos: getQuerySourceState(
+        atendimentos.isLoading,
+        atendimentos.isError,
+        "Não foi possível carregar atendimentos.",
+        atendimentos.error,
+      ),
+      clientes: getQuerySourceState(
+        clients.isLoading,
+        clients.isError,
+        "Não foi possível carregar clientes.",
+        clients.error,
+      ),
+      alugueis: getQuerySourceState(
+        rentals.isLoading,
+        rentals.isError,
+        "Não foi possível carregar aluguéis.",
+        rentals.error,
+      ),
+      vendas: getQuerySourceState(
+        sales.isLoading,
+        sales.isError,
+        "Não foi possível carregar vendas.",
+        sales.error,
+      ),
+      financeiro: { status: "ready" },
+      marketing: { status: "ready" },
+    }),
+    [
+      agenciamentos.canRead,
+      agenciamentos.error,
+      agenciamentos.isError,
+      agenciamentos.isLoading,
+      atendimentos.error,
+      atendimentos.isError,
+      atendimentos.isLoading,
+      clients.error,
+      clients.isError,
+      clients.isLoading,
+      rentals.error,
+      rentals.isError,
+      rentals.isLoading,
+      sales.error,
+      sales.isError,
+      sales.isLoading,
+    ],
+  );
 
   return (
-    <>
-      <section className="glass-panel mb-4 rounded-3xl p-5">
-        <SectionHeader title="Conversão de atendimentos" />
-        <div className="flex items-end gap-3">
-          <span className="font-mono text-4xl font-bold text-primary">{conversao}%</span>
-          <span className="pb-1 text-[11px] text-foreground/55">
-            {fechados} de {total} fechados
-          </span>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/50">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${conversao}%` }} />
-        </div>
-      </section>
-
-      <section className="glass-panel mb-4 rounded-3xl p-5">
-        <SectionHeader title="Mix venda × aluguel" />
-        <div className="flex h-3 overflow-hidden rounded-full">
-          <div className="bg-primary" style={{ flex: venda || 1 }} />
-          <div className="bg-amber-300" style={{ flex: aluguel || 1 }} />
-        </div>
-        <div className="mt-3 flex justify-between text-[11px] text-foreground/60">
-          <span>
-            <span className="mr-1 inline-block size-2 rounded-full bg-primary" />
-            Vendas: {venda}
-          </span>
-          <span>
-            <span className="mr-1 inline-block size-2 rounded-full bg-amber-300" />
-            Aluguéis: {aluguel}
-          </span>
-        </div>
-      </section>
-
-      <section className="mb-4">
-        <SectionHeader title="Ranking de corretores" />
-        <div className="space-y-2">
-          {ranking.map((c, idx) => (
-            <div key={c.id} className="glass-panel flex items-center gap-3 rounded-2xl p-3">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/12 font-mono text-xs font-bold text-primary">
-                {idx + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{c.nome}</p>
-                <p className="text-[10px] text-foreground/55">{c.contratosFechados} contratos</p>
-              </div>
-              <p className="font-mono text-xs font-bold text-primary">
-                {brl(c.comissaoMes, { compact: true })}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionHeader title="Top bairros" />
-        <div className="glass-panel divide-y divide-white/50 rounded-2xl">
-          {topBairros.map(([bairro, qtd]) => (
-            <div key={bairro} className="flex items-center justify-between px-4 py-3 text-sm">
-              <span className="font-medium">{bairro}</span>
-              <span className="font-mono text-xs text-foreground/60">{qtd} imóveis</span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </>
+    <ReportsPage
+      agency={agency}
+      agenciamentos={agenciamentos.visibleAgenciamentos}
+      atendimentos={atendimentos.atendimentos}
+      clients={clients.clients}
+      rentals={rentals.allContracts}
+      sales={sales.sales}
+      lancamentos={lancamentos}
+      campaigns={campaigns}
+      corretores={corretores}
+      sourceStates={sourceStates}
+    />
   );
+}
+
+function getQuerySourceState(
+  isLoading: boolean,
+  isError: boolean,
+  fallbackTitle: string,
+  error: unknown,
+): ReportsSourceState {
+  if (isLoading) {
+    return {
+      status: "loading",
+      title: "Carregando dados da área.",
+      description: "Aguarde enquanto a origem é consultada.",
+    };
+  }
+
+  if (isError) {
+    return {
+      status: "error",
+      title: fallbackTitle,
+      description: error instanceof Error ? error.message : "Tente novamente em instantes.",
+    };
+  }
+
+  return { status: "ready" };
 }
