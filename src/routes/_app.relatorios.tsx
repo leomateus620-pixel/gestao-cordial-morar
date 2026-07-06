@@ -4,6 +4,8 @@ import { ReportsPage } from "@/components/reports/ReportsPage";
 import { defaultAtendimentoFilters, useAttendances } from "@/hooks/useAttendances";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { defaultClientFilters, useClients } from "@/hooks/useClients";
+import { useFinanceiro } from "@/hooks/useFinanceiro";
+import { useMarketing } from "@/hooks/useMarketing";
 import { useRentals } from "@/hooks/useRentals";
 import { useSales } from "@/hooks/useSales";
 import { useApp, useFiltered } from "@/store/app-store";
@@ -17,14 +19,17 @@ export const Route = createFileRoute("/_app/relatorios")({
 function Page() {
   const agency = useApp((state) => state.agency);
   const corretores = useFiltered(useApp((state) => state.corretores));
-  const lancamentos = useFiltered(useApp((state) => state.lancamentos));
-  const campaigns = useFiltered(useApp((state) => state.campanhasMarketing));
 
   const agenciamentos = useAgenciamentos({ skipDashboard: true });
   const atendimentos = useAttendances("", defaultAtendimentoFilters);
   const clients = useClients("", defaultClientFilters);
   const rentals = useRentals();
   const sales = useSales();
+  const financeiro = useFinanceiro();
+  const marketing = useMarketing();
+
+  const lancamentos = financeiro.lancamentos;
+  const campaigns = marketing.campaigns;
 
   const sourceStates = useMemo<Partial<Record<ReportsAreaId, ReportsSourceState>>>(
     () => ({
