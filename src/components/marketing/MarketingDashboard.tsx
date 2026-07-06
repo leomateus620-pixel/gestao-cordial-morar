@@ -103,7 +103,7 @@ export function MarketingDashboard({
 
   return (
     <>
-      <div className="space-y-5 pb-3 sm:space-y-6">
+      <div className="mx-auto w-full max-w-[88rem] space-y-5 pb-3 sm:space-y-6">
         <MarketingHeader agency={agency} summary={summary} onCreate={() => setCreateOpen(true)} />
 
         {!allCampaigns.length ? (
@@ -167,7 +167,7 @@ export function MarketingDashboard({
                     </span>
                   </div>
 
-                  <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+                  <div className="grid min-w-0 gap-3 xl:grid-cols-2">
                     {visibleCampaigns.map((campaign) => (
                       <MarketingCampaignCard
                         key={campaign.id}
@@ -212,7 +212,7 @@ function MarketingHeader({
 }) {
   return (
     <section className="premium-card overflow-hidden p-4 sm:p-5 lg:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/12 bg-white/45 px-3 py-1 text-[10px] font-bold text-primary shadow-sm">
             <RadioTower className="size-3.5" />
@@ -226,8 +226,8 @@ function MarketingHeader({
           </p>
         </div>
 
-        <div className="grid gap-3 lg:min-w-[28rem]">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="grid min-w-0 gap-3 lg:w-[min(31rem,42vw)]">
+          <div className="grid gap-2 sm:grid-cols-3">
             <HeaderPill
               icon={Megaphone}
               label="Imobiliária"
@@ -250,7 +250,7 @@ function MarketingHeader({
           <Button
             type="button"
             onClick={onCreate}
-            className="min-h-11 rounded-2xl bg-primary text-white"
+            className="min-h-11 rounded-2xl bg-primary text-white shadow-[0_14px_30px_-22px_rgba(30,100,125,0.9)] transition hover:bg-primary/90 active:scale-[0.99] motion-reduce:transition-none"
           >
             <Plus className="size-4" />
             Cadastrar campanha
@@ -279,14 +279,14 @@ function HeaderPill({
   }[tone];
 
   return (
-    <div className="min-w-0 rounded-2xl bg-white/52 px-3 py-2 ring-1 ring-white/66">
+    <div className="min-w-0 rounded-2xl bg-white/52 px-3 py-2.5 ring-1 ring-white/66">
       <p className="flex items-center gap-1 truncate text-[10px] font-bold text-foreground/45">
         <span className={`grid size-5 shrink-0 place-items-center rounded-lg ${toneClass}`}>
           <Icon className="size-3" />
         </span>
         {label}
       </p>
-      <p className="mt-1 truncate text-sm font-black text-foreground">{value}</p>
+      <p className="mt-1 truncate text-[13px] font-black leading-tight text-foreground">{value}</p>
     </div>
   );
 }

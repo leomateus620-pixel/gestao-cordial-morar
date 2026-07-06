@@ -11,13 +11,30 @@ export type MarketingChannel =
   | "Externa";
 
 export type MarketingChannelFilter =
-  "Todos" | "Instagram" | "Facebook" | "Google" | "WhatsApp" | "E-mail" | "Externa";
+  | "Todos"
+  | "Instagram"
+  | "Facebook"
+  | "Google"
+  | "WhatsApp"
+  | "E-mail"
+  | "Externa";
 
 export type MarketingCampaignStatus =
-  "Ativa" | "Planejada" | "Pausada" | "Encerrada" | "Em análise" | "Com baixo desempenho";
+  | "Ativa"
+  | "Planejada"
+  | "Pausada"
+  | "Encerrada"
+  | "Em análise"
+  | "Com baixo desempenho";
 
 export type MarketingStatusFilter =
-  "Todas" | "Ativa" | "Planejada" | "Pausada" | "Encerrada" | "Com baixo desempenho";
+  | "Todas"
+  | "Ativa"
+  | "Planejada"
+  | "Pausada"
+  | "Encerrada"
+  | "Em análise"
+  | "Com baixo desempenho";
 
 export type MarketingObjective =
   | "Leads qualificados"

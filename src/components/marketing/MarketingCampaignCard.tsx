@@ -37,7 +37,7 @@ export function MarketingCampaignCard({ campaign, onOpenDetails }: MarketingCamp
   const cpl = campaign.costPerLead > 0 ? brl(campaign.costPerLead) : "Sem leads";
 
   return (
-    <article className="group relative min-w-0 overflow-hidden rounded-[1.65rem] border border-white/68 bg-white/58 p-4 shadow-[0_18px_48px_-28px_rgba(23,27,33,0.32)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:bg-white/68 hover:shadow-xl hover:shadow-slate-950/8 motion-reduce:transition-none sm:p-5">
+    <article className="group relative min-w-0 overflow-hidden rounded-[1.45rem] border border-white/68 bg-white/58 p-4 shadow-[0_16px_42px_-30px_rgba(23,27,33,0.3)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:bg-white/68 hover:shadow-xl hover:shadow-slate-950/8 motion-reduce:transition-none sm:p-5">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent"
@@ -85,7 +85,7 @@ export function MarketingCampaignCard({ campaign, onOpenDetails }: MarketingCamp
         <MiniLeadChart campaign={campaign} />
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
         <InfoPill icon={Eye} label="Visualizações" value={formatMarketingNumber(campaign.views)} />
         <InfoPill
           icon={TrendingUp}
@@ -116,7 +116,8 @@ export function MarketingCampaignCard({ campaign, onOpenDetails }: MarketingCamp
         <button
           type="button"
           onClick={() => onOpenDetails(campaign)}
-          className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-bold text-white shadow-[0_14px_28px_-18px_rgba(30,100,125,0.9)] transition hover:bg-primary/90 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none"
+          aria-label={`Abrir análise da campanha ${campaign.name}`}
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-bold text-white shadow-[0_14px_28px_-18px_rgba(30,100,125,0.9)] transition hover:bg-primary/90 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none sm:w-auto"
         >
           Análise
         </button>
@@ -160,7 +161,7 @@ function InfoPill({
         <Icon className="size-3" />
         {label}
       </p>
-      <p className="mt-1 truncate font-bold text-foreground">{value}</p>
+      <p className="mt-1 line-clamp-2 font-bold leading-tight text-foreground">{value}</p>
     </div>
   );
 }
@@ -176,7 +177,10 @@ function MiniLeadChart({ campaign }: { campaign: MarketingCampaign }) {
           {formatMarketingNumber(campaign.leads)}
         </span>
       </div>
-      <div className="mt-3 flex h-20 items-end gap-1.5" aria-label="Mini gráfico de leads diários">
+      <div
+        className="mt-3 flex h-16 items-end gap-1.5 sm:h-20"
+        aria-label="Mini gráfico de leads diários"
+      >
         {campaign.dailyMetrics.slice(-7).map((metric) => (
           <span
             key={metric.date}
