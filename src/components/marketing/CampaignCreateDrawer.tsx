@@ -92,9 +92,12 @@ export function CampaignCreateDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex h-full w-full flex-col overflow-y-auto border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[42rem]"
+        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[42rem]"
       >
-        <form onSubmit={handleSubmit} className="flex min-h-full flex-col p-4 sm:p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-full flex-col p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6"
+        >
           <SheetHeader className="text-left">
             <SheetTitle className="text-2xl font-black tracking-tight">
               Cadastrar campanha

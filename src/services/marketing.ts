@@ -26,6 +26,7 @@ export const marketingStatusFilters: Array<{ value: MarketingStatusFilter; label
   { value: "Planejada", label: "Planejadas" },
   { value: "Pausada", label: "Pausadas" },
   { value: "Encerrada", label: "Encerradas" },
+  { value: "Em análise", label: "Em análise" },
   { value: "Com baixo desempenho", label: "Baixo desempenho" },
 ];
 
@@ -101,6 +102,7 @@ export type ChannelDistributionDatum = {
   label: string;
   leads: number;
   clicks: number;
+  accesses: number;
   views: number;
   investment: number;
   conversionRate: number;
@@ -332,6 +334,7 @@ export function buildChannelDistributionData(
       label: channel,
       leads: 0,
       clicks: 0,
+      accesses: 0,
       views: 0,
       investment: 0,
       conversionRate: 0,
@@ -339,6 +342,7 @@ export function buildChannelDistributionData(
     };
     current.leads += campaign.leads;
     current.clicks += campaign.clicks;
+    current.accesses += campaign.accesses;
     current.views += campaign.views;
     current.investment += campaign.investment;
     grouped.set(channel, current);
@@ -347,7 +351,7 @@ export function buildChannelDistributionData(
   return Array.from(grouped.values())
     .map((item) => ({
       ...item,
-      conversionRate: item.clicks > 0 ? roundMetric((item.leads / item.clicks) * 100) : 0,
+      conversionRate: item.accesses > 0 ? roundMetric((item.leads / item.accesses) * 100) : 0,
     }))
     .sort((a, b) => b.leads - a.leads);
 }

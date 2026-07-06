@@ -52,7 +52,7 @@ export function CampaignDetailsDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex h-full w-full flex-col overflow-y-auto border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[46rem]"
+        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[46rem]"
       >
         {campaign && <CampaignDetailsContent campaign={campaign} />}
       </SheetContent>
@@ -64,7 +64,7 @@ function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
   const cpl = campaign.costPerLead > 0 ? brl(campaign.costPerLead) : "Sem leads";
 
   return (
-    <div className="min-h-full p-4 sm:p-6">
+    <div className="min-h-full p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
       <SheetHeader className="text-left">
         <div className="flex flex-wrap items-center gap-2">
           <CampaignStatusBadge status={campaign.status} />
@@ -157,7 +157,7 @@ function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
         <p className="mt-1 text-xs leading-relaxed text-foreground/52">
           Leads e acessos por dia de campanha.
         </p>
-        <div className="mt-4 h-72">
+        <div className="mt-4 h-56 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={campaign.dailyMetrics}
@@ -169,7 +169,7 @@ function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
                   <stop offset="100%" stopColor={chartSuccess} stopOpacity={0.04} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
+              <CartesianGrid stroke={gridStroke} strokeDasharray="3 8" vertical={false} />
               <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -191,16 +191,16 @@ function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
                 dataKey="leads"
                 name="Leads"
                 stroke={chartSuccess}
-                strokeWidth={3}
+                strokeWidth={2.4}
                 fill={`url(#campaign-${campaign.id}-leads)`}
-                activeDot={{ r: 6, strokeWidth: 3, stroke: "rgba(255,255,255,0.95)" }}
+                activeDot={{ r: 5, strokeWidth: 2.5, stroke: "rgba(255,255,255,0.95)" }}
               />
               <Area
                 type="monotone"
                 dataKey="accesses"
                 name="Acessos"
                 stroke={chartSystem}
-                strokeWidth={2}
+                strokeWidth={1.8}
                 fill="transparent"
                 activeDot={{ r: 5 }}
               />

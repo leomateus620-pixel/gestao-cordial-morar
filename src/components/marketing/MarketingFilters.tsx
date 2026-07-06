@@ -51,7 +51,7 @@ export function MarketingFilters({
           )}
         </label>
 
-        <div className="flex items-center justify-between gap-3 xl:w-auto">
+        <div className="flex flex-wrap items-center justify-between gap-2 xl:w-auto">
           <span className="shrink-0 rounded-full bg-white/55 px-3 py-1 text-[11px] font-bold text-foreground/58">
             {resultCount} campanha{resultCount === 1 ? "" : "s"}
           </span>
@@ -97,7 +97,9 @@ function FilterRow({ label, children }: { label: string; children: ReactNode }) 
   return (
     <div className="grid gap-2 md:grid-cols-[5rem_minmax(0,1fr)] md:items-center">
       <p className="px-1 text-[10px] font-bold text-foreground/42">{label}</p>
-      <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">{children}</div>
+      <div className="no-scrollbar -mx-1 flex min-w-0 gap-2 overflow-x-auto px-1 pb-1">
+        {children}
+      </div>
     </div>
   );
 }
@@ -117,7 +119,7 @@ function FilterChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "min-h-9 shrink-0 rounded-full px-3 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
+        "min-h-10 shrink-0 rounded-full px-3.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
         active
           ? "bg-primary text-white shadow-[0_12px_24px_-16px_rgba(30,100,125,0.95)]"
           : "bg-white/56 text-foreground/58 ring-1 ring-white/65 hover:bg-white/80 hover:text-foreground",

@@ -94,7 +94,7 @@ export function MarketingKpiCards({ summary }: MarketingKpiCardsProps) {
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {cards.map((card) => (
         <MarketingKpiCard key={card.label} {...card} />
       ))}
@@ -147,14 +147,16 @@ function MarketingKpiCard({
     <GlassCard
       variant="interactive"
       padding="none"
-      className="group relative overflow-hidden rounded-3xl p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-950/8 motion-reduce:transition-none"
+      className="group relative min-h-[8.25rem] overflow-hidden rounded-3xl p-3.5 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-950/8 motion-reduce:transition-none sm:p-4"
     >
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold leading-tight text-foreground/48">{label}</p>
+          <p className="text-[10px] font-bold leading-tight text-foreground/48 sm:text-[11px]">
+            {label}
+          </p>
           <p
             className={cn(
-              "mt-2 break-words text-xl font-black leading-none tracking-tight sm:text-2xl",
+              "mt-2 break-words text-[1.35rem] font-black leading-none tracking-tight sm:text-2xl",
               toneClass.value,
             )}
           >
@@ -168,7 +170,7 @@ function MarketingKpiCard({
           <Icon className="size-4" />
         </span>
       </div>
-      <p className="mt-3 line-clamp-2 min-h-8 text-[11px] leading-relaxed text-foreground/55">
+      <p className="mt-3 line-clamp-2 min-h-8 text-[11px] leading-relaxed text-foreground/55 sm:text-xs">
         {helper}
       </p>
       <span

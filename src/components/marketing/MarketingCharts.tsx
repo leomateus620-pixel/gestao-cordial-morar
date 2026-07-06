@@ -49,74 +49,69 @@ export function MarketingCharts({ campaigns }: MarketingChartsProps) {
   const channelData = useMemo(() => buildChannelDistributionData(campaigns), [campaigns]);
   const trendData = useMemo(() => buildLeadTrendData(campaigns), [campaigns]);
   const locationData = useMemo(() => buildLocationDeliveryData(campaigns), [campaigns]);
+  const hasPerformanceData = performanceData.some(
+    (item) => item.leads || item.clicks || item.views,
+  );
+  const hasChannelData = channelData.some((item) => item.leads > 0);
+  const hasTrendData = trendData.some((item) => item.leads || item.accesses || item.clicks);
+  const hasLocationData = locationData.some((item) => item.impressions || item.leads);
 
   return (
-    <section className="grid gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.85fr)]">
+    <section className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
       <ChartCard
         title="Desempenho por campanha"
         subtitle="Leads, cliques e visualizações nas campanhas mais relevantes."
         icon={<TrendingUp className="size-5" />}
       >
-        <div className="h-80 min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={performanceData}
-              margin={{ top: 12, right: 8, left: -10, bottom: 0 }}
-            >
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis
-                dataKey="name"
-                tickLine={false}
-                axisLine={false}
-                tick={{ ...axisTick, fontWeight: 700 }}
-                minTickGap={12}
-              />
-              <YAxis
-                yAxisId="volume"
-                tickLine={false}
-                axisLine={false}
-                tick={axisTick}
-                width={40}
-                tickFormatter={(value) => formatMarketingCompact(Number(value))}
-              />
-              <YAxis
-                yAxisId="views"
-                orientation="right"
-                tickLine={false}
-                axisLine={false}
-                tick={axisTick}
-                width={44}
-                tickFormatter={(value) => formatMarketingCompact(Number(value))}
-              />
-              <Tooltip
-                content={<PerformanceTooltip />}
-                cursor={{ fill: "rgba(30,100,125,0.04)" }}
-              />
-              <Bar
-                yAxisId="volume"
-                dataKey="leads"
-                name="Leads"
-                fill={chartSuccess}
-                radius={[8, 8, 3, 3]}
-              />
-              <Bar
-                yAxisId="volume"
-                dataKey="clicks"
-                name="Cliques"
-                fill={chartSystem}
-                radius={[8, 8, 3, 3]}
-              />
-              <Line
-                yAxisId="views"
-                dataKey="views"
-                name="Visualizações"
-                stroke={chartAccent}
-                strokeWidth={3}
-                dot={false}
-                strokeLinecap="round"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+        <div className="h-64 min-w-0 sm:h-72">
+          {hasPerformanceData ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={performanceData}
+                margin={{ top: 10, right: 2, left: -16, bottom: 0 }}
+                barCategoryGap="28%"
+              >
+                <CartesianGrid stroke={gridStroke} strokeDasharray="3 8" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ ...axisTick, fontWeight: 700 }}
+                  minTickGap={14}
+                />
+                <YAxis
+                  yAxisId="volume"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={axisTick}
+                  width={38}
+                  tickFormatter={(value) => formatMarketingCompact(Number(value))}
+                />
+                <Tooltip
+                  content={<PerformanceTooltip />}
+                  cursor={{ fill: "rgba(30,100,125,0.035)" }}
+                />
+                <Bar
+                  yAxisId="volume"
+                  dataKey="leads"
+                  name="Leads"
+                  fill={chartSuccess}
+                  fillOpacity={0.82}
+                  radius={[8, 8, 3, 3]}
+                />
+                <Bar
+                  yAxisId="volume"
+                  dataKey="clicks"
+                  name="Cliques"
+                  fill={chartSystem}
+                  fillOpacity={0.18}
+                  radius={[8, 8, 3, 3]}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <ChartEmptyState label="Sem entrega registrada para as campanhas filtradas." />
+          )}
         </div>
       </ChartCard>
 
@@ -126,26 +121,30 @@ export function MarketingCharts({ campaigns }: MarketingChartsProps) {
         icon={<PieChartIcon className="size-5" />}
       >
         <div className="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] xl:grid-cols-1">
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={channelData}
-                  dataKey="leads"
-                  nameKey="label"
-                  innerRadius="58%"
-                  outerRadius="82%"
-                  paddingAngle={3}
-                  stroke="rgba(255,255,255,0.78)"
-                  strokeWidth={2}
-                >
-                  {channelData.map((item) => (
-                    <Cell key={item.channel} fill={item.color} />
-                  ))}
-                </Pie>
-                <Tooltip content={<ChannelTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="h-36 sm:h-40">
+            {hasChannelData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={channelData}
+                    dataKey="leads"
+                    nameKey="label"
+                    innerRadius="62%"
+                    outerRadius="78%"
+                    paddingAngle={3}
+                    stroke="rgba(255,255,255,0.82)"
+                    strokeWidth={1.5}
+                  >
+                    {channelData.map((item) => (
+                      <Cell key={item.channel} fill={item.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<ChannelTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmptyState label="Sem leads por canal neste filtro." compact />
+            )}
           </div>
           <div className="space-y-2">
             {channelData.map((item) => (
@@ -160,51 +159,55 @@ export function MarketingCharts({ campaigns }: MarketingChartsProps) {
         subtitle="Evolução diária de leads e acessos das campanhas filtradas."
         icon={<TrendingUp className="size-5" />}
       >
-        <div className="h-72 min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData} margin={{ top: 12, right: 8, left: -12, bottom: 0 }}>
-              <defs>
-                <linearGradient id="marketingLeadArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartSuccess} stopOpacity={0.34} />
-                  <stop offset="100%" stopColor={chartSuccess} stopOpacity={0.04} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                tick={{ ...axisTick, fontWeight: 700 }}
-                minTickGap={16}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tick={axisTick}
-                width={34}
-                allowDecimals={false}
-              />
-              <Tooltip content={<LeadTrendTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="leads"
-                name="Leads"
-                stroke={chartSuccess}
-                strokeWidth={3}
-                fill="url(#marketingLeadArea)"
-                activeDot={{ r: 6, strokeWidth: 3, stroke: "rgba(255,255,255,0.95)" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="accesses"
-                name="Acessos"
-                stroke={chartSystem}
-                strokeWidth={2}
-                dot={false}
-                strokeDasharray="6 5"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="h-56 min-w-0 sm:h-64">
+          {hasTrendData ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trendData} margin={{ top: 10, right: 2, left: -16, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="marketingLeadArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartSuccess} stopOpacity={0.26} />
+                    <stop offset="100%" stopColor={chartSuccess} stopOpacity={0.035} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={gridStroke} strokeDasharray="3 8" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ ...axisTick, fontWeight: 700 }}
+                  minTickGap={18}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={axisTick}
+                  width={34}
+                  allowDecimals={false}
+                />
+                <Tooltip content={<LeadTrendTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="leads"
+                  name="Leads"
+                  stroke={chartSuccess}
+                  strokeWidth={2.4}
+                  fill="url(#marketingLeadArea)"
+                  activeDot={{ r: 5, strokeWidth: 2.5, stroke: "rgba(255,255,255,0.95)" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="accesses"
+                  name="Acessos"
+                  stroke={chartSystem}
+                  strokeWidth={1.8}
+                  dot={false}
+                  strokeDasharray="5 6"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <ChartEmptyState label="Sem tendência disponível para este filtro." />
+          )}
         </div>
       </ChartCard>
 
@@ -214,9 +217,11 @@ export function MarketingCharts({ campaigns }: MarketingChartsProps) {
         icon={<MapPinned className="size-5" />}
       >
         <div className="space-y-2">
-          {locationData.slice(0, 7).map((item) => (
-            <LocationRow key={item.location} item={item} />
-          ))}
+          {hasLocationData ? (
+            locationData.slice(0, 5).map((item) => <LocationRow key={item.location} item={item} />)
+          ) : (
+            <ChartEmptyState label="Sem entrega regional para as campanhas filtradas." compact />
+          )}
         </div>
       </ChartCard>
     </section>
@@ -247,6 +252,21 @@ function ChartCard({
       </div>
       {children}
     </GlassCard>
+  );
+}
+
+function ChartEmptyState({ label, compact = false }: { label: string; compact?: boolean }) {
+  return (
+    <div
+      className={[
+        "grid h-full place-items-center rounded-2xl border border-dashed border-foreground/10 bg-white/38 px-4 text-center",
+        compact ? "min-h-32" : "min-h-44",
+      ].join(" ")}
+    >
+      <p className="max-w-[18rem] text-xs font-semibold leading-relaxed text-foreground/48">
+        {label}
+      </p>
+    </div>
   );
 }
 
@@ -357,6 +377,11 @@ function ChannelTooltip({
     <TooltipShell title={item.label}>
       <TooltipLine label="Leads" value={formatMarketingNumber(item.leads)} color={item.color} />
       <TooltipLine label="Cliques" value={formatMarketingNumber(item.clicks)} color={chartSystem} />
+      <TooltipLine
+        label="Acessos"
+        value={formatMarketingNumber(item.accesses)}
+        color={chartMorar}
+      />
       <TooltipLine label="Investimento" value={brl(item.investment)} color={chartAccent} />
     </TooltipShell>
   );
