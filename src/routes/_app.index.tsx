@@ -291,31 +291,35 @@ function Dashboard() {
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
             <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
             <HeroStat label="Contratos ativos" value={String(contratosAtivos).padStart(2, "0")} />
-            <HeroStat
-              label="Previsão entrada"
-              value={brl(valoresPrevistos, { compact: true })}
-              accent
-            />
+            {isAdminOwner && (
+              <HeroStat
+                label="Previsão entrada"
+                value={brl(valoresPrevistos, { compact: true })}
+                accent
+              />
+            )}
           </div>
         </div>
       </section>
 
       {/* ── Métricas — carrossel horizontal com scroll-snap ─────────────── */}
-      <MetricsCarousel groups={metricGroups} />
+      {isAdminOwner && <MetricsCarousel groups={metricGroups} />}
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
-      <AgenciamentosQuickStrip summary={agenciamentosSummary} />
+      {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
 
       {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
-      <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
-        <FinancialSummaryCard
-          receita={valoresPrevistos}
-          cobrancas={cobrancasAbertas}
-          inadimplencia={inadimplencia}
-          contratos={contratosAtivos}
-        />
-        <ComparativoCard />
-      </section>
+      {isAdminOwner && (
+        <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
+          <FinancialSummaryCard
+            receita={valoresPrevistos}
+            cobrancas={cobrancasAbertas}
+            inadimplencia={inadimplencia}
+            contratos={contratosAtivos}
+          />
+          <ComparativoCard />
+        </section>
+      )}
 
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.86fr)_minmax(0,1.05fr)]">
@@ -333,131 +337,180 @@ function Dashboard() {
         </section>
       )}
 
-      {/* ── Gráficos ────────────────────────────────────────────────────── */}
-      <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <AttendanceEvolutionCard />
+      {!isAdminOwner && <OperationalShortcuts profile={session?.perfil} />}
 
-        <LeadOriginCard />
+      {/* ── Gráficos (admin) ────────────────────────────────────────────── */}
+      {isAdminOwner && (
+        <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <AttendanceEvolutionCard />
 
-        <ChartCard title="Aluguel x venda" subtitle="Negócios por mês">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={dashboardAluguelVenda}
-              barCategoryGap={10}
-              margin={{ left: -20, right: 8, top: 8 }}
-            >
-              <defs>
-                <linearGradient id="gradVenda" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartCordial} stopOpacity={1} />
-                  <stop offset="100%" stopColor={chartCordial} stopOpacity={0.7} />
-                </linearGradient>
-                <linearGradient id="gradAluguel" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartMorar} stopOpacity={1} />
-                  <stop offset="100%" stopColor={chartMorar} stopOpacity={0.7} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
-              <YAxis hide />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-              <Bar
-                dataKey="venda"
-                fill="url(#gradVenda)"
-                radius={[6, 6, 0, 0]}
-                name="Venda"
-                animationDuration={900}
-              />
-              <Bar
-                dataKey="aluguel"
-                fill="url(#gradAluguel)"
-                radius={[6, 6, 0, 0]}
-                name="Aluguel"
-                animationDuration={1100}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          <LeadOriginCard />
 
-        <ChartCard
-          title="Previsão financeira mensal"
-          subtitle="Receita, comissão e em aberto"
-          className="xl:col-span-2"
-          heightClassName="h-60 lg:h-72"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
-              <defs>
-                <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
-                  <stop offset="100%" stopColor={chartCordial} stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="gradAberto" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartDanger} stopOpacity={0.22} />
-                  <stop offset="100%" stopColor={chartDanger} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tick={axisTick}
-                width={44}
-                tickFormatter={(v) => brl(Number(v), { compact: true })}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v) => brl(Number(v), { compact: true })}
-                cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
-              />
-              <Legend
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="receita"
-                stroke={chartCordial}
-                strokeWidth={2.4}
-                fill="url(#gradReceita)"
-                name="Receita"
-                animationDuration={900}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="aberto"
-                stroke={chartDanger}
-                strokeWidth={2}
-                fill="url(#gradAberto)"
-                name="Em aberto"
-                animationDuration={1200}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="comissao"
-                stroke={chartSystem}
-                strokeWidth={2}
-                dot={false}
-                strokeDasharray="5 3"
-                name="Comissão"
-                animationDuration={1100}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </section>
+          <ChartCard title="Aluguel x venda" subtitle="Negócios por mês">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={dashboardAluguelVenda}
+                barCategoryGap={10}
+                margin={{ left: -20, right: 8, top: 8 }}
+              >
+                <defs>
+                  <linearGradient id="gradVenda" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartCordial} stopOpacity={1} />
+                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.7} />
+                  </linearGradient>
+                  <linearGradient id="gradAluguel" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartMorar} stopOpacity={1} />
+                    <stop offset="100%" stopColor={chartMorar} stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
+                <YAxis hide />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Bar
+                  dataKey="venda"
+                  fill="url(#gradVenda)"
+                  radius={[6, 6, 0, 0]}
+                  name="Venda"
+                  animationDuration={900}
+                />
+                <Bar
+                  dataKey="aluguel"
+                  fill="url(#gradAluguel)"
+                  radius={[6, 6, 0, 0]}
+                  name="Aluguel"
+                  animationDuration={1100}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-      <RealEstateSitePreviewSection />
+          <ChartCard
+            title="Previsão financeira mensal"
+            subtitle="Receita, comissão e em aberto"
+            className="xl:col-span-2"
+            heightClassName="h-60 lg:h-72"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
+                <defs>
+                  <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
+                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="gradAberto" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartDanger} stopOpacity={0.22} />
+                    <stop offset="100%" stopColor={chartDanger} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={axisTick}
+                  width={44}
+                  tickFormatter={(v) => brl(Number(v), { compact: true })}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v) => brl(Number(v), { compact: true })}
+                  cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="receita"
+                  stroke={chartCordial}
+                  strokeWidth={2.4}
+                  fill="url(#gradReceita)"
+                  name="Receita"
+                  animationDuration={900}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="aberto"
+                  stroke={chartDanger}
+                  strokeWidth={2}
+                  fill="url(#gradAberto)"
+                  name="Em aberto"
+                  animationDuration={1200}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="comissao"
+                  stroke={chartSystem}
+                  strokeWidth={2}
+                  dot={false}
+                  strokeDasharray="5 3"
+                  name="Comissão"
+                  animationDuration={1100}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+      )}
+
+      {isAdminOwner && <RealEstateSitePreviewSection />}
 
       
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
     </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  OperationalShortcuts — dashboard limitado (corretor / secretaria)         */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+function OperationalShortcuts({ profile }: { profile: string | undefined }) {
+  const shortcuts =
+    profile === "secretaria"
+      ? [
+          { to: "/atendimentos", label: "Atendimentos", desc: "Fila e novos leads", icon: Handshake },
+          { to: "/clientes", label: "Clientes", desc: "Cadastro e histórico", icon: Users },
+          { to: "/marketing", label: "Marketing", desc: "Campanhas em andamento", icon: TrendingUp },
+        ]
+      : [
+          { to: "/atendimentos", label: "Atendimentos", desc: "Sua carteira comercial", icon: Handshake },
+          { to: "/clientes", label: "Clientes", desc: "Cadastros e contatos", icon: Users },
+          { to: "/agenciamentos", label: "Agenciamentos", desc: "Captações e checklist", icon: ClipboardCheck },
+        ];
+
+  return (
+    <section className="mb-5 grid gap-3 sm:grid-cols-3">
+      {shortcuts.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.to}
+            to={item.to as never}
+            className="glass-panel group flex items-center gap-3 rounded-3xl p-4 transition hover:-translate-y-0.5 hover:bg-white/70"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary">
+              <Icon className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-foreground">
+                {item.label}
+              </span>
+              <span className="block truncate text-[11px] text-foreground/55">{item.desc}</span>
+            </span>
+            <ArrowRight className="size-4 text-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+          </Link>
+        );
+      })}
+    </section>
   );
 }
 

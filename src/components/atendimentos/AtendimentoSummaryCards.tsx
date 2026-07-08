@@ -40,19 +40,25 @@ export function AtendimentoSummaryCards({
   stats,
   activeStatus,
   onStatusChange,
+  canViewFinancialInsights = true,
 }: {
   stats: AtendimentoStats;
   activeStatus: "todos" | AtendimentoStatus;
   onStatusChange: (status: "todos" | AtendimentoStatus) => void;
+  canViewFinancialInsights?: boolean;
 }) {
   const insights = [
     { label: "Compra", value: stats.compra.toString(), icon: ShoppingBag },
     { label: "Aluguel", value: stats.aluguel.toString(), icon: Home },
-    {
-      label: "Ticket médio",
-      value: stats.ticketMedio ? formatCompactCurrency(stats.ticketMedio) : "A definir",
-      icon: BadgeDollarSign,
-    },
+    ...(canViewFinancialInsights
+      ? [
+          {
+            label: "Ticket médio",
+            value: stats.ticketMedio ? formatCompactCurrency(stats.ticketMedio) : "A definir",
+            icon: BadgeDollarSign,
+          },
+        ]
+      : []),
     { label: "Leads do mês", value: stats.leadsMes.toString(), icon: TrendingUp },
   ];
 

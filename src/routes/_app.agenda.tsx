@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { AgendaCreateCard } from "@/components/agenda/AgendaCreateCard";
@@ -19,8 +20,17 @@ import type { AgendaEvent, AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/agenda")({
   head: () => ({ meta: [{ title: "Agenda — Gestão Cordial" }] }),
-  component: AgendaPage,
+  component: GuardedAgendaPage,
 });
+
+function GuardedAgendaPage() {
+  return (
+    <RequireModuleAccess module="agenda">
+      <AgendaPage />
+    </RequireModuleAccess>
+  );
+}
+
 
 function AgendaPage() {
   const session = useSession();

@@ -139,10 +139,20 @@ function validate(input: ClientCreateInput) {
 export const listClients = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    let query = context.supabase
       .from("clients")
       .select("*")
       .order("created_at", { ascending: false });
+    if (!isAdmin) {
+      query = query.or(
+        `created_by.eq.${context.userId},assigned_broker_id.eq.${context.userId}`,
+      );
+    }
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []).map((row) => rowToClient(row as unknown as DbRow));
   });

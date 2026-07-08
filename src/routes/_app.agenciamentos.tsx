@@ -7,14 +7,24 @@ import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilt
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
 import { AgenciamentoSummaryCards } from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { EmptyState } from "@/components/shared/empty-state";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento } from "@/services/agenciamentos";
 import type { Agenciamento, AgenciamentoInput } from "@/types/agenciamento";
 
 export const Route = createFileRoute("/_app/agenciamentos")({
   head: () => ({ meta: [{ title: "Agenciamentos - Gestao Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="agenciamentos">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const {
@@ -173,14 +183,16 @@ function Page() {
               </p>
             </div>
             <div className="flex flex-col gap-3 lg:items-end">
-              <div className="grid grid-cols-3 gap-2 sm:w-fit">
-                <HeroPill label="No mês" value={String(summary.mes).padStart(2, "0")} />
-                <HeroPill
-                  label="Pendentes"
-                  value={String(summary.pendentesValidacao).padStart(2, "0")}
-                />
-                <HeroPill label="Checklist" value={`${summary.percentualChecklistMedio}%`} accent />
-              </div>
+              {isAdmin && (
+                <div className="grid grid-cols-3 gap-2 sm:w-fit">
+                  <HeroPill label="No mês" value={String(summary.mes).padStart(2, "0")} />
+                  <HeroPill
+                    label="Pendentes"
+                    value={String(summary.pendentesValidacao).padStart(2, "0")}
+                  />
+                  <HeroPill label="Checklist" value={`${summary.percentualChecklistMedio}%`} accent />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={openCreate}
@@ -201,7 +213,7 @@ function Page() {
           </div>
         )}
 
-        <AgenciamentoSummaryCards summary={summary} variant={isAdmin ? "admin" : "corretor"} />
+        {isAdmin && <AgenciamentoSummaryCards summary={summary} variant="admin" />}
 
         <AgenciamentoFilters
           filters={filters}

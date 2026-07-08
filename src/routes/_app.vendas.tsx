@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { FilePlus2, History, Loader2, ReceiptText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -24,8 +25,17 @@ const EMPTY_KPIS: SalesKpis = {
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="vendas">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const agency = useApp((state) => state.agency);

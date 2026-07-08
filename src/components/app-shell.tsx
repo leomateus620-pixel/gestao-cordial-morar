@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuthReady, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
-import { getVisibleModules, primaryModuleItems } from "./shared/module-menu";
+import { getPrimaryItemsForProfile } from "./shared/module-menu";
 import { roleDefinitions } from "@/lib/mock/permissions";
 
 export function AppShell() {
@@ -53,7 +53,7 @@ export function AppShell() {
   }, []);
 
   const bottomNav = useMemo(
-    () => (session ? getVisibleModules(sessionModules, primaryModuleItems) : []),
+    () => (session ? getPrimaryItemsForProfile(session.perfil, sessionModules) : []),
     [session, sessionModules],
   );
 

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useState } from "react";
 import { FileCheck2, FileText, UserRound } from "lucide-react";
 import { KpiCard } from "@/components/kpi-card";
@@ -10,8 +11,17 @@ const filters = ["Todos", "Contrato", "Vistoria", "Proposta", "Cadastro"] as con
 
 export const Route = createFileRoute("/_app/documentos")({
   head: () => ({ meta: [{ title: "Documentos — Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="documentos">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todos");

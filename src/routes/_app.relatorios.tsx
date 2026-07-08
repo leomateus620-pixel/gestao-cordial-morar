@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useMemo } from "react";
 import { ReportsPage } from "@/components/reports/ReportsPage";
 import { defaultAtendimentoFilters, useAttendances } from "@/hooks/useAttendances";
@@ -13,8 +14,17 @@ import type { ReportsAreaId, ReportsSourceState } from "@/types/reports";
 
 export const Route = createFileRoute("/_app/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios | Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="relatorios">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const agency = useApp((state) => state.agency);

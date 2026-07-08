@@ -39,7 +39,13 @@ function Kpi({
   );
 }
 
-export function RentalKpiCards({ kpis }: { kpis?: RentalKpis }) {
+export function RentalKpiCards({
+  kpis,
+  canViewFinancialInsights = true,
+}: {
+  kpis?: RentalKpis;
+  canViewFinancialInsights?: boolean;
+}) {
   const k = kpis ?? {
     receitaMensalAtiva: 0,
     contratosAtivos: 0,
@@ -50,12 +56,14 @@ export function RentalKpiCards({ kpis }: { kpis?: RentalKpis }) {
   };
   return (
     <section className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-6">
-      <Kpi
-        icon={Wallet}
-        label="Receita mensal"
-        value={brl(k.receitaMensalAtiva, { compact: true })}
-        tone="primary"
-      />
+      {canViewFinancialInsights && (
+        <Kpi
+          icon={Wallet}
+          label="Receita mensal"
+          value={brl(k.receitaMensalAtiva, { compact: true })}
+          tone="primary"
+        />
+      )}
       <Kpi icon={CheckCircle2} label="Ativos" value={String(k.contratosAtivos)} tone="success" />
       <Kpi icon={Clock} label="Pendentes" value={String(k.contratosPendentes)} tone="warning" />
       <Kpi

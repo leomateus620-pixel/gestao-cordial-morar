@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { MarketingDashboard } from "@/components/marketing/MarketingDashboard";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useMarketing } from "@/hooks/useMarketing";
 import { useApp } from "@/store/app-store";
+import { useSession } from "@/lib/auth-mock";
+import { canSeeFinancialInsights } from "@/lib/access-control";
 
 export const Route = createFileRoute("/_app/marketing")({
   head: () => ({ meta: [{ title: "Marketing | Gestão Cordial" }] }),
@@ -10,6 +13,16 @@ export const Route = createFileRoute("/_app/marketing")({
 });
 
 function Page() {
+  return (
+    <RequireModuleAccess module="marketing">
+      <MarketingPageInner />
+    </RequireModuleAccess>
+  );
+}
+
+function MarketingPageInner() {
+  const session = useSession();
+  const canViewFinancialInsights = canSeeFinancialInsights(session);
   const agency = useApp((state) => state.agency);
   const { campaigns, isLoading, isError } = useMarketing();
 
@@ -33,5 +46,11 @@ function Page() {
     );
   }
 
-  return <MarketingDashboard campaigns={filtered} agency={agency} />;
+  return (
+    <MarketingDashboard
+      campaigns={filtered}
+      agency={agency}
+      canViewFinancialInsights={canViewFinancialInsights}
+    />
+  );
 }

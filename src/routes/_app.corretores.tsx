@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { LockKeyhole, UserCog } from "lucide-react";
 import { useCallback, useState } from "react";
 import { CorretorCard } from "@/components/corretores/CorretorCard";
@@ -15,8 +16,17 @@ import type { Corretor } from "@/types/corretor";
 
 export const Route = createFileRoute("/_app/corretores")({
   head: () => ({ meta: [{ title: "Corretores — Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="corretores">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const session = useSession();

@@ -41,12 +41,14 @@ type CampaignDetailsDrawerProps = {
   campaign: MarketingCampaign | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  canViewFinancialInsights?: boolean;
 };
 
 export function CampaignDetailsDrawer({
   campaign,
   open,
   onOpenChange,
+  canViewFinancialInsights = true,
 }: CampaignDetailsDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -54,13 +56,24 @@ export function CampaignDetailsDrawer({
         side="right"
         className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[46rem]"
       >
-        {campaign && <CampaignDetailsContent campaign={campaign} />}
+        {campaign && (
+          <CampaignDetailsContent
+            campaign={campaign}
+            canViewFinancialInsights={canViewFinancialInsights}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
 }
 
-function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
+function CampaignDetailsContent({
+  campaign,
+  canViewFinancialInsights,
+}: {
+  campaign: MarketingCampaign;
+  canViewFinancialInsights: boolean;
+}) {
   const cpl = campaign.costPerLead > 0 ? brl(campaign.costPerLead) : "Sem leads";
 
   return (
@@ -86,7 +99,9 @@ function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
           label="Leads"
           value={formatMarketingNumber(campaign.leads)}
         />
-        <DetailMetric icon={Wallet} label="Investimento" value={brl(campaign.investment)} />
+        {canViewFinancialInsights && (
+          <DetailMetric icon={Wallet} label="Investimento" value={brl(campaign.investment)} />
+        )}
         <DetailMetric
           icon={MousePointerClick}
           label="Cliques"
@@ -107,9 +122,10 @@ function CampaignDetailsContent({ campaign }: { campaign: MarketingCampaign }) {
           label="Conversão"
           value={formatMarketingPercent(campaign.conversionRate)}
         />
-        <DetailMetric icon={Wallet} label="CPL" value={cpl} />
+        {canViewFinancialInsights && <DetailMetric icon={Wallet} label="CPL" value={cpl} />}
         <DetailMetric icon={MapPin} label="Melhor região" value={campaign.bestLocation} />
       </section>
+
 
       <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">

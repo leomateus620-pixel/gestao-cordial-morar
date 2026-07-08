@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useRentals } from "@/hooks/useRentals";
@@ -13,8 +14,17 @@ import type { RentalContractFull } from "@/types/rental";
 
 export const Route = createFileRoute("/_app/alugueis")({
   head: () => ({ meta: [{ title: "Aluguéis — Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="alugueis">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const r = useRentals();

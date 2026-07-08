@@ -38,6 +38,7 @@ type MarketingDashboardProps = {
   isLoading?: boolean;
   isError?: boolean;
   errorMessage?: string;
+  canViewFinancialInsights?: boolean;
 };
 
 export function MarketingDashboard({
@@ -46,6 +47,7 @@ export function MarketingDashboard({
   isLoading = false,
   isError = false,
   errorMessage,
+  canViewFinancialInsights = true,
 }: MarketingDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<MarketingStatusFilter>("Todas");
   const [channelFilter, setChannelFilter] = useState<MarketingChannelFilter>("Todos");
@@ -120,7 +122,7 @@ export function MarketingDashboard({
           />
         ) : (
           <>
-            <MarketingKpiCards summary={summary} />
+            <MarketingKpiCards summary={summary} canViewFinancialInsights={canViewFinancialInsights} />
 
             <MarketingFilters
               status={statusFilter}
@@ -173,6 +175,7 @@ export function MarketingDashboard({
                         key={campaign.id}
                         campaign={campaign}
                         onOpenDetails={setSelectedCampaign}
+                        canViewFinancialInsights={canViewFinancialInsights}
                       />
                     ))}
                   </div>
@@ -189,6 +192,7 @@ export function MarketingDashboard({
         onOpenChange={(open) => {
           if (!open) setSelectedCampaign(null);
         }}
+        canViewFinancialInsights={canViewFinancialInsights}
       />
 
       <CampaignCreateDrawer
