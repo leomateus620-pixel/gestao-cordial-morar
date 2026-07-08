@@ -291,11 +291,13 @@ function Dashboard() {
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
             <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
             <HeroStat label="Contratos ativos" value={String(contratosAtivos).padStart(2, "0")} />
-            <HeroStat
-              label="Previsão entrada"
-              value={brl(valoresPrevistos, { compact: true })}
-              accent
-            />
+            {isAdminOwner && (
+              <HeroStat
+                label="Previsão entrada"
+                value={brl(valoresPrevistos, { compact: true })}
+                accent
+              />
+            )}
           </div>
         </div>
       </section>
