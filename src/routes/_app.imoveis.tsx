@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useMemo, useState } from "react";
 import { Bed, Maximize2 } from "lucide-react";
 import { useApp, useFiltered } from "@/store/app-store";
@@ -13,8 +14,17 @@ const filters = ["Todos", "Venda", "Aluguel"] as const;
 
 export const Route = createFileRoute("/_app/imoveis")({
   head: () => ({ meta: [{ title: "Imóveis — Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="imoveis">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const [open, setOpen] = useState(false);

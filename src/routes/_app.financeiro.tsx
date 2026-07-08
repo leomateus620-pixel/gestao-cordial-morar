@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useMemo } from "react";
 import { Link as LinkIcon } from "lucide-react";
 import { FinancialDashboard } from "@/components/financeiro/FinancialDashboard";
@@ -8,8 +9,17 @@ import { useApp } from "@/store/app-store";
 
 export const Route = createFileRoute("/_app/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro | Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="financeiro">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const agency = useApp((state) => state.agency);

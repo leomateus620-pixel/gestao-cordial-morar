@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useState } from "react";
 import { useApp, useFiltered } from "@/store/app-store";
 import { ContractCard } from "@/components/shared/contract-card";
@@ -10,8 +11,17 @@ const tabs = ["Todos", "Venda", "Aluguel"] as const;
 
 export const Route = createFileRoute("/_app/contratos")({
   head: () => ({ meta: [{ title: "Contratos — Gestão Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="contratos">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Todos");
