@@ -7,14 +7,24 @@ import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilt
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
 import { AgenciamentoSummaryCards } from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { EmptyState } from "@/components/shared/empty-state";
+import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento } from "@/services/agenciamentos";
 import type { Agenciamento, AgenciamentoInput } from "@/types/agenciamento";
 
 export const Route = createFileRoute("/_app/agenciamentos")({
   head: () => ({ meta: [{ title: "Agenciamentos - Gestao Cordial" }] }),
-  component: Page,
+  component: GuardedPage,
 });
+
+function GuardedPage() {
+  return (
+    <RequireModuleAccess module="agenciamentos">
+      <Page />
+    </RequireModuleAccess>
+  );
+}
+
 
 function Page() {
   const {
