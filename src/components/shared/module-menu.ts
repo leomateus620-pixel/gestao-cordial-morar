@@ -45,6 +45,7 @@ export const moduleItems: ModuleItem[] = [
     module: "dashboard",
     exact: true,
     primary: true,
+    primaryFor: ["admin_owner", "financeiro_admin", "corretor", "secretaria"],
   },
   {
     to: "/atendimentos",
@@ -54,6 +55,7 @@ export const moduleItems: ModuleItem[] = [
     icon: Inbox,
     module: "atendimentos",
     primary: true,
+    primaryFor: ["admin_owner", "corretor", "secretaria"],
   },
   {
     to: "/imoveis",
@@ -63,13 +65,16 @@ export const moduleItems: ModuleItem[] = [
     icon: Building2,
     module: "imoveis",
     primary: true,
+    primaryFor: ["admin_owner"],
   },
   {
     to: "/agenciamentos",
     label: "Agenciamentos",
-    desc: "Captacoes, placas e fotos",
+    shortLabel: "Agenc.",
+    desc: "Captações, placas e fotos",
     icon: ClipboardCheck,
     module: "agenciamentos",
+    primaryFor: ["corretor"],
   },
   {
     to: "/agenda",
@@ -79,6 +84,7 @@ export const moduleItems: ModuleItem[] = [
     icon: CalendarCheck2,
     module: "agenda",
     primary: true,
+    primaryFor: ["admin_owner"],
   },
   {
     to: "/mais",
@@ -88,13 +94,16 @@ export const moduleItems: ModuleItem[] = [
     icon: LayoutGrid,
     module: "dashboard",
     primary: true,
+    primaryFor: ["admin_owner", "financeiro_admin", "corretor", "secretaria"],
   },
   {
     to: "/clientes",
     label: "Clientes",
+    shortLabel: "Clientes",
     desc: "Cadastro e relacionamento",
     icon: Users,
     module: "clientes",
+    primaryFor: ["corretor", "secretaria"],
   },
   {
     to: "/alugueis",
@@ -141,9 +150,11 @@ export const moduleItems: ModuleItem[] = [
   {
     to: "/marketing",
     label: "Marketing",
+    shortLabel: "Marketing",
     desc: "Campanhas e portais",
     icon: Megaphone,
     module: "marketing",
+    primaryFor: ["secretaria"],
   },
   {
     to: "/documentos",
@@ -179,3 +190,18 @@ export function getVisibleModules(
   if (!modules || modules.length === 0) return items;
   return items.filter((item) => modules.includes(item.module));
 }
+
+/**
+ * Itens da bottom-nav mobile específicos por perfil.
+ * Sempre respeita também os módulos autorizados da sessão.
+ */
+export function getPrimaryItemsForProfile(
+  profile: UserProfile | undefined,
+  allowedModules: AppModule[] | undefined,
+): ModuleItem[] {
+  const items = profile
+    ? moduleItems.filter((item) => item.primaryFor?.includes(profile))
+    : primaryModuleItems;
+  return getVisibleModules(allowedModules, items);
+}
+
