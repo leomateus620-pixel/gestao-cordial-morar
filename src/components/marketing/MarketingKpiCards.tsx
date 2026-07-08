@@ -21,11 +21,15 @@ import {
 
 type MarketingKpiCardsProps = {
   summary: MarketingSummary;
+  canViewFinancialInsights?: boolean;
 };
 
 type KpiTone = "primary" | "success" | "warning" | "danger" | "neutral";
 
-export function MarketingKpiCards({ summary }: MarketingKpiCardsProps) {
+export function MarketingKpiCards({
+  summary,
+  canViewFinancialInsights = true,
+}: MarketingKpiCardsProps) {
   const cards: Array<{
     label: string;
     value: string;
@@ -40,20 +44,24 @@ export function MarketingKpiCards({ summary }: MarketingKpiCardsProps) {
       icon: TrendingUp,
       tone: "success",
     },
-    {
-      label: "Investimento total",
-      value: brl(summary.totalInvestment, { compact: true }),
-      helper: "mídia e ações registradas",
-      icon: Wallet,
-      tone: "primary",
-    },
-    {
-      label: "Custo por lead",
-      value: summary.costPerLead > 0 ? brl(summary.costPerLead) : "Sem leads",
-      helper: "média das campanhas com leads",
-      icon: Activity,
-      tone: summary.attentionCampaigns > 0 ? "warning" : "neutral",
-    },
+    ...(canViewFinancialInsights
+      ? ([
+          {
+            label: "Investimento total",
+            value: brl(summary.totalInvestment, { compact: true }),
+            helper: "mídia e ações registradas",
+            icon: Wallet,
+            tone: "primary",
+          },
+          {
+            label: "Custo por lead",
+            value: summary.costPerLead > 0 ? brl(summary.costPerLead) : "Sem leads",
+            helper: "média das campanhas com leads",
+            icon: Activity,
+            tone: summary.attentionCampaigns > 0 ? "warning" : "neutral",
+          },
+        ] as const)
+      : []),
     {
       label: "Cliques",
       value: formatMarketingCompact(summary.clicks),
