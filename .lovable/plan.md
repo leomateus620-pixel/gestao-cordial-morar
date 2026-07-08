@@ -1,26 +1,15 @@
-## Criar acessos para corretores e secretária
+## Trocar senha de todos os administradores para `leonardo5656`
 
-Vou criar 3 usuários diretamente no backend (Lovable Cloud), já confirmados (sem precisar de e-mail de confirmação), e ajustar o papel da secretária.
+Vou identificar todos os usuários com papel `admin` na tabela `user_roles` e redefinir a senha de cada um para `leonardo5656` usando a Auth Admin API (`supabaseAdmin.auth.admin.updateUserById`).
 
-### Usuários
+### Passos
 
-| Nome | E-mail | Senha | Papel |
-|---|---|---|---|
-| Felipe | felipe.cordialimoveis@gmail.com | cordial2026 | corretor |
-| Pablo | pablo.backes@hotmail.com | 2026cordial | corretor |
-| Bianca (Secretaria) | biancareginah@gmail.com | biancacordial26 | secretaria |
+1. Consultar `user_roles` (JOIN com `auth.users` via `profiles`) para listar todos os admins e seus e-mails — para você confirmar quem será afetado no log.
+2. Para cada admin encontrado, chamar `updateUserById(id, { password: 'leonardo5656' })` via script no sandbox usando a service role.
+3. Reportar quantos administradores tiveram a senha alterada e listar os e-mails afetados.
 
-### Como será feito
+### Observações
 
-1. Executar um script único no sandbox usando `supabaseAdmin.auth.admin.createUser()` para cada usuário, com `email_confirm: true` e `user_metadata.nome` preenchido.
-2. O trigger `handle_new_user` já cria automaticamente:
-   - Registro em `profiles` (nome, iniciais, e-mail).
-   - Registro em `user_roles` — como já existem 3+ admins, os novos entram como `corretor` por padrão.
-3. Para a Bianca, após a criação, atualizar `user_roles` de `corretor` para `secretaria` via SQL.
-4. Verificar via `SELECT` que os 3 usuários existem com os papéis corretos.
-
-### Observações de segurança
-
-- Senhas estão sendo definidas conforme solicitado explicitamente pelo usuário. Recomendo pedir que cada pessoa troque a senha no primeiro acesso (já existe fluxo de "Esqueceu a senha?" na tela de login).
-- Nenhuma alteração de código será feita — é apenas provisionamento de dados no backend.
-- Se algum e-mail já existir no sistema, o script vai reportar e pular esse usuário.
+- Nenhuma alteração de código no projeto — apenas provisionamento via backend.
+- Recomendo fortemente que cada administrador troque a senha no primeiro acesso (o fluxo "Esqueceu a senha?" já existe na tela de login).
+- Se você quiser excluir algum admin específico da troca (por exemplo, sua própria conta), me diga antes de aprovar.
