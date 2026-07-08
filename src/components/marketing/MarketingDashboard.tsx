@@ -38,6 +38,7 @@ type MarketingDashboardProps = {
   isLoading?: boolean;
   isError?: boolean;
   errorMessage?: string;
+  canViewFinancialInsights?: boolean;
 };
 
 export function MarketingDashboard({
@@ -46,6 +47,7 @@ export function MarketingDashboard({
   isLoading = false,
   isError = false,
   errorMessage,
+  canViewFinancialInsights = true,
 }: MarketingDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<MarketingStatusFilter>("Todas");
   const [channelFilter, setChannelFilter] = useState<MarketingChannelFilter>("Todos");
