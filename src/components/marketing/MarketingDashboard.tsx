@@ -192,6 +192,7 @@ export function MarketingDashboard({
         onOpenChange={(open) => {
           if (!open) setSelectedCampaign(null);
         }}
+        canViewFinancialInsights={canViewFinancialInsights}
       />
 
       <CampaignCreateDrawer
