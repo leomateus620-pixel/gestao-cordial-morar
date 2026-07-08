@@ -254,6 +254,7 @@ function Page() {
         stats={stats}
         activeStatus={filters.status}
         onStatusChange={setStatus}
+        canViewFinancialInsights={canViewFinancialInsights}
       />
 
       <section className="space-y-3">
