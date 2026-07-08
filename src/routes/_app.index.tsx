@@ -337,127 +337,129 @@ function Dashboard() {
 
       {!isAdminOwner && <OperationalShortcuts profile={session?.perfil} />}
 
-      {/* ── Gráficos ────────────────────────────────────────────────────── */}
-      <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <AttendanceEvolutionCard />
+      {/* ── Gráficos (admin) ────────────────────────────────────────────── */}
+      {isAdminOwner && (
+        <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <AttendanceEvolutionCard />
 
-        <LeadOriginCard />
+          <LeadOriginCard />
 
-        <ChartCard title="Aluguel x venda" subtitle="Negócios por mês">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={dashboardAluguelVenda}
-              barCategoryGap={10}
-              margin={{ left: -20, right: 8, top: 8 }}
-            >
-              <defs>
-                <linearGradient id="gradVenda" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartCordial} stopOpacity={1} />
-                  <stop offset="100%" stopColor={chartCordial} stopOpacity={0.7} />
-                </linearGradient>
-                <linearGradient id="gradAluguel" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartMorar} stopOpacity={1} />
-                  <stop offset="100%" stopColor={chartMorar} stopOpacity={0.7} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
-              <YAxis hide />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-              <Bar
-                dataKey="venda"
-                fill="url(#gradVenda)"
-                radius={[6, 6, 0, 0]}
-                name="Venda"
-                animationDuration={900}
-              />
-              <Bar
-                dataKey="aluguel"
-                fill="url(#gradAluguel)"
-                radius={[6, 6, 0, 0]}
-                name="Aluguel"
-                animationDuration={1100}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          <ChartCard title="Aluguel x venda" subtitle="Negócios por mês">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={dashboardAluguelVenda}
+                barCategoryGap={10}
+                margin={{ left: -20, right: 8, top: 8 }}
+              >
+                <defs>
+                  <linearGradient id="gradVenda" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartCordial} stopOpacity={1} />
+                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.7} />
+                  </linearGradient>
+                  <linearGradient id="gradAluguel" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartMorar} stopOpacity={1} />
+                    <stop offset="100%" stopColor={chartMorar} stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
+                <YAxis hide />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Bar
+                  dataKey="venda"
+                  fill="url(#gradVenda)"
+                  radius={[6, 6, 0, 0]}
+                  name="Venda"
+                  animationDuration={900}
+                />
+                <Bar
+                  dataKey="aluguel"
+                  fill="url(#gradAluguel)"
+                  radius={[6, 6, 0, 0]}
+                  name="Aluguel"
+                  animationDuration={1100}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-        <ChartCard
-          title="Previsão financeira mensal"
-          subtitle="Receita, comissão e em aberto"
-          className="xl:col-span-2"
-          heightClassName="h-60 lg:h-72"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
-              <defs>
-                <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
-                  <stop offset="100%" stopColor={chartCordial} stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="gradAberto" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartDanger} stopOpacity={0.22} />
-                  <stop offset="100%" stopColor={chartDanger} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tick={axisTick}
-                width={44}
-                tickFormatter={(v) => brl(Number(v), { compact: true })}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v) => brl(Number(v), { compact: true })}
-                cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
-              />
-              <Legend
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="receita"
-                stroke={chartCordial}
-                strokeWidth={2.4}
-                fill="url(#gradReceita)"
-                name="Receita"
-                animationDuration={900}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="aberto"
-                stroke={chartDanger}
-                strokeWidth={2}
-                fill="url(#gradAberto)"
-                name="Em aberto"
-                animationDuration={1200}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="comissao"
-                stroke={chartSystem}
-                strokeWidth={2}
-                dot={false}
-                strokeDasharray="5 3"
-                name="Comissão"
-                animationDuration={1100}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </section>
+          <ChartCard
+            title="Previsão financeira mensal"
+            subtitle="Receita, comissão e em aberto"
+            className="xl:col-span-2"
+            heightClassName="h-60 lg:h-72"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
+                <defs>
+                  <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
+                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="gradAberto" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartDanger} stopOpacity={0.22} />
+                    <stop offset="100%" stopColor={chartDanger} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={axisTick}
+                  width={44}
+                  tickFormatter={(v) => brl(Number(v), { compact: true })}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v) => brl(Number(v), { compact: true })}
+                  cursor={{ stroke: "rgba(30,100,125,0.12)", strokeWidth: 1 }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="receita"
+                  stroke={chartCordial}
+                  strokeWidth={2.4}
+                  fill="url(#gradReceita)"
+                  name="Receita"
+                  animationDuration={900}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="aberto"
+                  stroke={chartDanger}
+                  strokeWidth={2}
+                  fill="url(#gradAberto)"
+                  name="Em aberto"
+                  animationDuration={1200}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="comissao"
+                  stroke={chartSystem}
+                  strokeWidth={2}
+                  dot={false}
+                  strokeDasharray="5 3"
+                  name="Comissão"
+                  animationDuration={1100}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+      )}
 
-      <RealEstateSitePreviewSection />
+      {isAdminOwner && <RealEstateSitePreviewSection />}
 
       
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
