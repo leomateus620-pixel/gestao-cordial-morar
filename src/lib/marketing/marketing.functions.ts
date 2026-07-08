@@ -148,10 +148,18 @@ function buildCampaign(row: CampaignRow, daily: DailyRow[]): MarketingCampaign {
 export const listCampaigns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<MarketingCampaign[]> => {
-    const { data: campaigns, error } = await context.supabase
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    let campaignsQuery = context.supabase
       .from("marketing_campaigns")
       .select("*")
       .order("data_inicio", { ascending: false });
+    if (!isAdmin) {
+      campaignsQuery = campaignsQuery.eq("user_id", context.userId);
+    }
+    const { data: campaigns, error } = await campaignsQuery;
     if (error) throw new Error(error.message);
     const rows = (campaigns ?? []) as unknown as CampaignRow[];
     if (rows.length === 0) return [];
