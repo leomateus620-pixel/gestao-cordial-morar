@@ -168,10 +168,18 @@ function validate(input: AtendimentoCreateInput) {
 export const listAttendances = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    let query = context.supabase
       .from("attendances")
       .select("*")
       .order("created_at", { ascending: false });
+    if (!isAdmin) {
+      query = query.or(`created_by.eq.${context.userId},corretor_id.eq.${context.userId}`);
+    }
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []).map((row) => rowToAtendimento(row as unknown as DbRow));
   });
