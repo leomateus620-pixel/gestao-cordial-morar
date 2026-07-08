@@ -122,7 +122,7 @@ export function MarketingDashboard({
           />
         ) : (
           <>
-            <MarketingKpiCards summary={summary} />
+            <MarketingKpiCards summary={summary} canViewFinancialInsights={canViewFinancialInsights} />
 
             <MarketingFilters
               status={statusFilter}
