@@ -18,7 +18,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import type { AppModule } from "@/lib/mock/permissions";
+import type { AppModule, UserProfile } from "@/lib/mock/permissions";
 
 export type ModuleItem = {
   to: string;
@@ -28,7 +28,10 @@ export type ModuleItem = {
   icon: LucideIcon;
   module: AppModule;
   exact?: boolean;
+  /** @deprecated substituído por primaryFor; mantido para retrocompatibilidade. */
   primary?: boolean;
+  /** Perfis que devem exibir este item na bottom-nav mobile. */
+  primaryFor?: UserProfile[];
 };
 
 /** Fonte única de módulos do app. Bottom nav, sidebar, drawer e "Mais" derivam daqui. */
