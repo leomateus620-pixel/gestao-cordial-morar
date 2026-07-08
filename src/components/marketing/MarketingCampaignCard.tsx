@@ -29,9 +29,14 @@ import {
 type MarketingCampaignCardProps = {
   campaign: MarketingCampaign;
   onOpenDetails: (campaign: MarketingCampaign) => void;
+  canViewFinancialInsights?: boolean;
 };
 
-export function MarketingCampaignCard({ campaign, onOpenDetails }: MarketingCampaignCardProps) {
+export function MarketingCampaignCard({
+  campaign,
+  onOpenDetails,
+  canViewFinancialInsights = true,
+}: MarketingCampaignCardProps) {
   const ChannelIcon = getChannelIcon(campaign.channel);
   const strength = getCampaignStrength(campaign);
   const cpl = campaign.costPerLead > 0 ? brl(campaign.costPerLead) : "Sem leads";
@@ -69,7 +74,9 @@ export function MarketingCampaignCard({ campaign, onOpenDetails }: MarketingCamp
             label="Leads"
             value={formatMarketingNumber(campaign.leads)}
           />
-          <CardMetric icon={Wallet} label="Investimento" value={brl(campaign.investment)} />
+          {canViewFinancialInsights && (
+            <CardMetric icon={Wallet} label="Investimento" value={brl(campaign.investment)} />
+          )}
           <CardMetric
             icon={MousePointerClick}
             label="Cliques"
@@ -92,9 +99,10 @@ export function MarketingCampaignCard({ campaign, onOpenDetails }: MarketingCamp
           label="Conversão"
           value={formatMarketingPercent(campaign.conversionRate)}
         />
-        <InfoPill icon={Wallet} label="CPL" value={cpl} />
+        {canViewFinancialInsights && <InfoPill icon={Wallet} label="CPL" value={cpl} />}
         <InfoPill icon={MapPin} label="Melhor região" value={campaign.bestLocation} />
       </div>
+
 
       <div className="mt-4 flex flex-col gap-3 border-t border-white/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
