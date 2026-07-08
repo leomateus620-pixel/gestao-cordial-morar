@@ -468,6 +468,51 @@ function Dashboard() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
+/*  OperationalShortcuts — dashboard limitado (corretor / secretaria)         */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+function OperationalShortcuts({ profile }: { profile: string | undefined }) {
+  const shortcuts =
+    profile === "secretaria"
+      ? [
+          { to: "/atendimentos", label: "Atendimentos", desc: "Fila e novos leads", icon: Handshake },
+          { to: "/clientes", label: "Clientes", desc: "Cadastro e histórico", icon: Users },
+          { to: "/marketing", label: "Marketing", desc: "Campanhas em andamento", icon: TrendingUp },
+        ]
+      : [
+          { to: "/atendimentos", label: "Atendimentos", desc: "Sua carteira comercial", icon: Handshake },
+          { to: "/clientes", label: "Clientes", desc: "Cadastros e contatos", icon: Users },
+          { to: "/agenciamentos", label: "Agenciamentos", desc: "Captações e checklist", icon: ClipboardCheck },
+        ];
+
+  return (
+    <section className="mb-5 grid gap-3 sm:grid-cols-3">
+      {shortcuts.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.to}
+            to={item.to as never}
+            className="glass-panel group flex items-center gap-3 rounded-3xl p-4 transition hover:-translate-y-0.5 hover:bg-white/70"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary">
+              <Icon className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-foreground">
+                {item.label}
+              </span>
+              <span className="block truncate text-[11px] text-foreground/55">{item.desc}</span>
+            </span>
+            <ArrowRight className="size-4 text-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+          </Link>
+        );
+      })}
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 /*  Carrossel de métricas                                                       */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
