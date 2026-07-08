@@ -201,7 +201,7 @@ function Page() {
           </div>
         )}
 
-        <AgenciamentoSummaryCards summary={summary} variant={isAdmin ? "admin" : "corretor"} />
+        {isAdmin && <AgenciamentoSummaryCards summary={summary} variant="admin" />}
 
         <AgenciamentoFilters
           filters={filters}
