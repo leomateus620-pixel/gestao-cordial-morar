@@ -301,21 +301,23 @@ function Dashboard() {
       </section>
 
       {/* ── Métricas — carrossel horizontal com scroll-snap ─────────────── */}
-      <MetricsCarousel groups={metricGroups} />
+      {isAdminOwner && <MetricsCarousel groups={metricGroups} />}
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
-      <AgenciamentosQuickStrip summary={agenciamentosSummary} />
+      {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
 
       {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
-      <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
-        <FinancialSummaryCard
-          receita={valoresPrevistos}
-          cobrancas={cobrancasAbertas}
-          inadimplencia={inadimplencia}
-          contratos={contratosAtivos}
-        />
-        <ComparativoCard />
-      </section>
+      {isAdminOwner && (
+        <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
+          <FinancialSummaryCard
+            receita={valoresPrevistos}
+            cobrancas={cobrancasAbertas}
+            inadimplencia={inadimplencia}
+            contratos={contratosAtivos}
+          />
+          <ComparativoCard />
+        </section>
+      )}
 
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.86fr)_minmax(0,1.05fr)]">
@@ -332,6 +334,8 @@ function Dashboard() {
           />
         </section>
       )}
+
+      {!isAdminOwner && <OperationalShortcuts profile={session?.perfil} />}
 
       {/* ── Gráficos ────────────────────────────────────────────────────── */}
       <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-3">
