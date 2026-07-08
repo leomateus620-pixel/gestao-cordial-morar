@@ -53,7 +53,7 @@ export function AppShell() {
   }, []);
 
   const bottomNav = useMemo(
-    () => (session ? getVisibleModules(sessionModules, primaryModuleItems) : []),
+    () => (session ? getPrimaryItemsForProfile(session.perfil, sessionModules) : []),
     [session, sessionModules],
   );
 
