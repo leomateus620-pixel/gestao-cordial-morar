@@ -20,6 +20,8 @@ import {
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
+import { useSession } from "@/lib/auth-mock";
+import { canSeeFinancialInsights } from "@/lib/access-control";
 import type {
   Atendimento,
   AtendimentoCreateInput,
@@ -33,6 +35,8 @@ export const Route = createFileRoute("/_app/atendimentos")({
 });
 
 function Page() {
+  const session = useSession();
+  const canViewFinancialInsights = canSeeFinancialInsights(session);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
