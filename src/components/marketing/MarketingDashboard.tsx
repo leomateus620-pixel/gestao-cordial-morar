@@ -175,6 +175,7 @@ export function MarketingDashboard({
                         key={campaign.id}
                         campaign={campaign}
                         onOpenDetails={setSelectedCampaign}
+                        canViewFinancialInsights={canViewFinancialInsights}
                       />
                     ))}
                   </div>
