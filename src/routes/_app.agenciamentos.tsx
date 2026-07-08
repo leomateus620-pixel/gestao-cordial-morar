@@ -173,14 +173,16 @@ function Page() {
               </p>
             </div>
             <div className="flex flex-col gap-3 lg:items-end">
-              <div className="grid grid-cols-3 gap-2 sm:w-fit">
-                <HeroPill label="No mês" value={String(summary.mes).padStart(2, "0")} />
-                <HeroPill
-                  label="Pendentes"
-                  value={String(summary.pendentesValidacao).padStart(2, "0")}
-                />
-                <HeroPill label="Checklist" value={`${summary.percentualChecklistMedio}%`} accent />
-              </div>
+              {isAdmin && (
+                <div className="grid grid-cols-3 gap-2 sm:w-fit">
+                  <HeroPill label="No mês" value={String(summary.mes).padStart(2, "0")} />
+                  <HeroPill
+                    label="Pendentes"
+                    value={String(summary.pendentesValidacao).padStart(2, "0")}
+                  />
+                  <HeroPill label="Checklist" value={`${summary.percentualChecklistMedio}%`} accent />
+                </div>
+              )}
               <button
                 type="button"
                 onClick={openCreate}
