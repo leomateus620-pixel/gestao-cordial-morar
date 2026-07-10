@@ -53,8 +53,8 @@ const checklistRows: Array<{
   { key: "fotosRealizadas", label: "Fotos realizadas", icon: Camera },
   { key: "fotosDrive", label: "Fotos enviadas ao Drive", icon: HardDrive },
   { key: "placaInstalada", label: "Placa instalada", icon: MapPinned },
-  { key: "cadastradoSite", label: "Imovel cadastrado no site", icon: ClipboardCheck },
-  { key: "videoRealizado", label: "Video realizado", icon: Video },
+  { key: "cadastradoSite", label: "Imóvel cadastrado no site", icon: ClipboardCheck },
+  { key: "videoRealizado", label: "Vídeo realizado", icon: Video },
   { key: "validado", label: "Agenciamento validado", icon: BadgeCheck },
 ];
 
@@ -77,7 +77,8 @@ export function AgenciamentoDetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex h-dvh w-full max-w-full flex-col overflow-hidden border-white/20 bg-[#f7f3ed]/95 p-0 text-foreground backdrop-blur-2xl sm:max-w-xl lg:max-w-2xl [&>button]:right-5 [&>button]:top-5 [&>button]:z-20"
+        closeLabel="Fechar detalhes do agenciamento"
+        className="flex h-dvh w-full max-w-full flex-col overflow-hidden border-white/20 bg-[#f7f3ed]/95 p-0 text-foreground backdrop-blur-2xl data-[state=closed]:duration-200 data-[state=open]:duration-300 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none motion-reduce:transition-none sm:max-w-xl lg:max-w-2xl [&>button]:right-5 [&>button]:top-5 [&>button]:z-20"
       >
         {agenciamento && (
           <>
@@ -123,9 +124,9 @@ export function AgenciamentoDetailDrawer({
               </div>
 
               <Tabs defaultValue="desempenho" className="mt-5">
-                <TabsList className="grid h-auto w-full grid-cols-4 rounded-2xl bg-white/[0.62] p-1 text-[11px]">
+                <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl bg-white/[0.62] p-1 text-[11px] sm:grid-cols-4">
                   <TabsTrigger value="desempenho" className="rounded-xl px-2 text-[11px]">
-                    Imovel
+                    Imóvel
                   </TabsTrigger>
                   <TabsTrigger value="checklist" className="rounded-xl px-2 text-[11px]">
                     Checklist
@@ -134,35 +135,35 @@ export function AgenciamentoDetailDrawer({
                     Links
                   </TabsTrigger>
                   <TabsTrigger value="historico" className="rounded-xl px-2 text-[11px]">
-                    Historico
+                    Histórico
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="desempenho" className="mt-4 space-y-3">
-                  <Panel title="Dados do imovel" icon={Home}>
+                  <Panel title="Dados do imóvel" icon={Home}>
                     <MetricRow
                       label="Tipo"
                       value={getAgenciamentoTipoLabel(agenciamento.tipoImovel)}
                     />
-                    <MetricRow label="Endereco" value={agenciamento.endereco} />
+                    <MetricRow label="Endereço" value={agenciamento.endereco} />
                     <MetricRow label="Bairro/regiao" value={agenciamento.bairro || "-"} />
                     <MetricRow label="Cidade" value={agenciamento.cidade || "-"} />
                     <MetricRow
-                      label="Imobiliaria"
+                      label="Imobiliária"
                       value={getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)}
                     />
-                    <MetricRow label="Descricao" value={agenciamento.descricaoImovel || "-"} />
+                    <MetricRow label="Descrição" value={agenciamento.descricaoImovel || "-"} />
                   </Panel>
 
-                  <Panel title="Proprietario e responsavel" icon={UserRound}>
-                    <MetricRow label="Proprietario" value={agenciamento.proprietarioNome} strong />
+                  <Panel title="Proprietário e responsável" icon={UserRound}>
+                    <MetricRow label="Proprietário" value={agenciamento.proprietarioNome} strong />
                     <MetricRow label="Telefone" value={agenciamento.proprietarioTelefone} />
                     <MetricRow
                       label="Contato preferencial"
                       value={agenciamento.proprietarioContatoPreferencial ?? "-"}
                     />
                     <MetricRow
-                      label="Observacoes"
+                      label="Observações"
                       value={agenciamento.proprietarioObservacoes || "-"}
                     />
                     <MetricRow label="Corretor" value={agenciamento.corretorNome} strong />
@@ -181,11 +182,11 @@ export function AgenciamentoDetailDrawer({
                           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/65">
                             Progresso
                           </p>
-                          <p className="mt-1 font-mono text-3xl font-black text-primary">
+                          <p className="mt-1 text-3xl font-black text-primary tabular-nums">
                             {progress}%
                           </p>
                         </div>
-                        <p className="font-mono text-xl font-black text-foreground/75">
+                        <p className="text-xl font-black text-foreground/75 tabular-nums">
                           {completed}/6
                         </p>
                       </div>
@@ -228,16 +229,16 @@ export function AgenciamentoDetailDrawer({
                 <TabsContent value="links" className="mt-4 space-y-3">
                   <Panel title="Drive e site" icon={ExternalLink}>
                     <LinkRow label="Pasta do Drive" href={agenciamento.driveFolderUrl} />
-                    <LinkRow label="Imovel no site" href={agenciamento.siteUrl} />
+                    <LinkRow label="Imóvel no site" href={agenciamento.siteUrl} />
                     <MetricRow
-                      label="Observacoes internas"
+                      label="Observações internas"
                       value={agenciamento.observacoesInternas || "-"}
                     />
                   </Panel>
                 </TabsContent>
 
                 <TabsContent value="historico" className="mt-4 space-y-3">
-                  <Panel title="Historico basico" icon={CalendarClock}>
+                  <Panel title="Histórico básico" icon={CalendarClock}>
                     <MetricRow label="Criado por" value={agenciamento.criadoPorNome || "-"} />
                     <MetricRow label="Criado em" value={shortDate(agenciamento.criadoEm)} />
                     <MetricRow label="Atualizado em" value={shortDate(agenciamento.atualizadoEm)} />
@@ -251,7 +252,10 @@ export function AgenciamentoDetailDrawer({
               </Tabs>
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-white/60 bg-white/45 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <div
+              className="flex flex-col gap-2 border-t border-white/60 bg-white/70 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end sm:px-6"
+              style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
+            >
               {canEdit && (
                 <Button
                   type="button"
@@ -294,7 +298,7 @@ function MiniStat({ label, value, accent }: { label: string; value: string; acce
       </p>
       <p
         className={cn(
-          "mt-1 truncate font-mono text-lg font-black leading-none tabular-nums",
+          "mt-1 truncate text-lg font-black leading-none tabular-nums",
           accent ? "text-primary" : "text-foreground",
         )}
       >
@@ -365,7 +369,7 @@ function LinkRow({ label, href }: { label: string; href?: string }) {
           <ExternalLink className="size-3.5" />
         </a>
       ) : (
-        <span className="text-xs font-semibold text-foreground/42">Nao informado</span>
+        <span className="text-xs font-semibold text-foreground/42">Não informado</span>
       )}
     </div>
   );

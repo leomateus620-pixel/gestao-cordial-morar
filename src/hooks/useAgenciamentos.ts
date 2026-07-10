@@ -108,18 +108,18 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
 
   const canRead = Boolean(
     session &&
-      (session.permissions.includes("agenciamentos:read") ||
-        hasPermission(session.perfil, "agenciamentos:read")),
+    (session.permissions.includes("agenciamentos:read") ||
+      hasPermission(session.perfil, "agenciamentos:read")),
   );
   const canCreate = Boolean(
     session &&
-      (session.permissions.includes("agenciamentos:write") ||
-        hasPermission(session.perfil, "agenciamentos:write")),
+    (session.permissions.includes("agenciamentos:write") ||
+      hasPermission(session.perfil, "agenciamentos:write")),
   );
   const canManage = Boolean(
     session &&
-      (session.permissions.includes("agenciamentos:manage") ||
-        hasPermission(session.perfil, "agenciamentos:manage")),
+    (session.permissions.includes("agenciamentos:manage") ||
+      hasPermission(session.perfil, "agenciamentos:manage")),
   );
   const isAdmin = session?.perfil === "admin_owner" && canManage;
 
@@ -302,8 +302,10 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     validateAgenciamento: validate,
     deleteAgenciamento: remove,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
+    refetchAgenciamentos: query.refetch,
     isSaving:
       createMutation.isPending ||
       updateMutation.isPending ||

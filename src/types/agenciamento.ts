@@ -157,8 +157,8 @@ export const agenciamentoTipoOptions: Array<{
   { value: "apartamento", label: "Apartamento" },
   { value: "terreno", label: "Terreno" },
   { value: "sala_comercial", label: "Sala comercial" },
-  { value: "area_rural", label: "Area rural" },
-  { value: "predio", label: "Predio" },
+  { value: "area_rural", label: "Área rural" },
+  { value: "predio", label: "Prédio" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -166,8 +166,8 @@ export const agenciamentoOrigemOptions: Array<{
   value: AgenciamentoOrigem;
   label: string;
 }> = [
-  { value: "indicacao", label: "Indicacao" },
-  { value: "prospeccao_ativa", label: "Prospeccao ativa" },
+  { value: "indicacao", label: "Indicação" },
+  { value: "prospeccao_ativa", label: "Prospecção ativa" },
   { value: "cliente_antigo", label: "Cliente antigo" },
   { value: "site", label: "Site" },
   { value: "whatsapp", label: "WhatsApp" },
@@ -184,7 +184,7 @@ export const agenciamentoStatusOptions: Array<{
   { value: "pendente_fotos", label: "Pendente fotos" },
   { value: "pendente_placa", label: "Pendente placa" },
   { value: "pendente_site", label: "Pendente site" },
-  { value: "aguardando_validacao", label: "Aguardando validacao" },
+  { value: "aguardando_validacao", label: "Aguardando validação" },
   { value: "validado", label: "Validado" },
   { value: "cancelado", label: "Cancelado" },
 ];
