@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { axisTick, chartCordial, chartMorar, chartSystem, gridStroke } from "@/lib/chart-palette";
 import type { EquipePeriodo, EquipePerformanceResult } from "@/lib/equipe/equipe.functions";
 
@@ -116,6 +117,7 @@ export function TeamPerformanceChart({
   isError,
   className,
 }: Props) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [visibleMetrics, setVisibleMetrics] = useState<VisibleMetrics>(DEFAULT_VISIBLE_METRICS);
 
   const chartData = useMemo<ChartRow[]>(
@@ -161,10 +163,7 @@ export function TeamPerformanceChart({
     return Math.min(390, Math.max(250, rowCount * rowHeight + 74));
   }, [chartData.length, visibleKeys.length]);
   const barSize = visibleKeys.length === 1 ? 18 : 10;
-  const shouldAnimate =
-    typeof window === "undefined"
-      ? false
-      : !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const shouldAnimate = !prefersReducedMotion;
   const showSkeleton = isLoading && !isError;
   const showFetchingBadge = isFetching && !showSkeleton && !isError;
   const allMetricsVisible = visibleKeys.length === METRIC_KEYS.length;
@@ -368,7 +367,7 @@ export function TeamPerformanceChart({
                       <RichTooltip periodoLabel={selectedPeriod.label} visibleKeys={visibleKeys} />
                     }
                   />
-                  {visibleKeys.map((key, index) => {
+                  {visibleKeys.map((key) => {
                     const serie = SERIES[key];
                     return (
                       <Bar
@@ -380,7 +379,7 @@ export function TeamPerformanceChart({
                         minPointSize={4}
                         barSize={barSize}
                         isAnimationActive={shouldAnimate}
-                        animationDuration={720 + index * 90}
+                        animationDuration={420}
                       >
                         {chartData.map((entry) => (
                           <Cell

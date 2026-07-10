@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Sector, type PieSectorDataItem } from "recharts";
 import { CLIENTS_QUERY_KEY } from "@/hooks/useClients";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useSession } from "@/lib/auth-mock";
 import {
   chartCordial,
@@ -111,6 +112,7 @@ const BR_DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
 });
 
 export function LeadOriginCard({ className }: { className?: string }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const session = useSession();
   const agency = useApp((state) => state.agency);
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
@@ -152,10 +154,7 @@ export function LeadOriginCard({ className }: { className?: string }) {
   const second = rows.find((row) => row.value > 0 && row.origin !== leader?.origin) ?? null;
   const hasAnyLead = scopedClients.length > 0;
   const hasFilteredData = total > 0;
-  const shouldAnimate =
-    typeof window !== "undefined"
-      ? !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      : false;
+  const shouldAnimate = !prefersReducedMotion;
   const errorMessage =
     clientsQuery.error instanceof Error
       ? clientsQuery.error.message
@@ -330,52 +329,59 @@ export function LeadOriginCard({ className }: { className?: string }) {
                         </linearGradient>
                       ))}
                     </defs>
-                    {(() => { const PieAny = Pie as unknown as React.FC<Record<string, unknown>>; return (
-                    <PieAny
-                      data={chartRows}
-                      dataKey="value"
-                      nameKey="label"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={68}
-                      outerRadius={106}
-                      paddingAngle={chartRows.length > 1 ? 3 : 0}
-                      cornerRadius={8}
-                      activeIndex={activeIndex}
-                      activeShape={renderActiveSector}
-                      isAnimationActive={shouldAnimate}
-                      animationBegin={120}
-                      animationDuration={820}
-                      onMouseEnter={(row: { payload: { origin: LeadOrigin } }) => setHoveredOrigin(row.payload.origin)}
-                      onMouseLeave={() => setHoveredOrigin(null)}
-                      onClick={(row: { payload: { origin: LeadOrigin } }) => toggleOrigin(row.payload.origin)}
-                      onTouchStart={(row: { payload: { origin: LeadOrigin } }) => {
-                        setHoveredOrigin(row.payload.origin);
-                        setSelectedOrigin(row.payload.origin);
-                      }}
-                    >
-                      {chartRows.map((row) => {
-                        const muted = focusedOrigin && focusedOrigin !== row.origin;
-                        return (
-                          <Cell
-                            key={row.origin}
-                            fill={`url(#lead-origin-gradient-${row.origin})`}
-                            fillOpacity={muted ? 0.42 : 1}
-                            stroke="rgba(255,255,255,0.78)"
-                            strokeWidth={2.2}
-                            style={{
-                              filter: muted
-                                ? "saturate(0.82)"
-                                : `drop-shadow(0 10px 14px ${row.glowColor})`,
-                              cursor: "pointer",
-                              transition:
-                                "fill-opacity 180ms ease, filter 180ms ease, transform 180ms ease",
-                            }}
-                          />
-                        );
-                      })}
-                    </PieAny>
-                    ); })()}
+                    {(() => {
+                      const PieAny = Pie as unknown as React.FC<Record<string, unknown>>;
+                      return (
+                        <PieAny
+                          data={chartRows}
+                          dataKey="value"
+                          nameKey="label"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={68}
+                          outerRadius={106}
+                          paddingAngle={chartRows.length > 1 ? 3 : 0}
+                          cornerRadius={8}
+                          activeIndex={activeIndex}
+                          activeShape={renderActiveSector}
+                          isAnimationActive={shouldAnimate}
+                          animationBegin={0}
+                          animationDuration={420}
+                          onMouseEnter={(row: { payload: { origin: LeadOrigin } }) =>
+                            setHoveredOrigin(row.payload.origin)
+                          }
+                          onMouseLeave={() => setHoveredOrigin(null)}
+                          onClick={(row: { payload: { origin: LeadOrigin } }) =>
+                            toggleOrigin(row.payload.origin)
+                          }
+                          onTouchStart={(row: { payload: { origin: LeadOrigin } }) => {
+                            setHoveredOrigin(row.payload.origin);
+                            setSelectedOrigin(row.payload.origin);
+                          }}
+                        >
+                          {chartRows.map((row) => {
+                            const muted = focusedOrigin && focusedOrigin !== row.origin;
+                            return (
+                              <Cell
+                                key={row.origin}
+                                fill={`url(#lead-origin-gradient-${row.origin})`}
+                                fillOpacity={muted ? 0.42 : 1}
+                                stroke="rgba(255,255,255,0.78)"
+                                strokeWidth={2.2}
+                                style={{
+                                  filter: muted
+                                    ? "saturate(0.82)"
+                                    : `drop-shadow(0 10px 14px ${row.glowColor})`,
+                                  cursor: "pointer",
+                                  transition:
+                                    "fill-opacity 180ms ease, filter 180ms ease, transform 180ms ease",
+                                }}
+                              />
+                            );
+                          })}
+                        </PieAny>
+                      );
+                    })()}
                   </PieChart>
                 </ResponsiveContainer>
                 <LeadOriginTooltip row={activeRow} periodLabel={periodLabel} total={total} />
