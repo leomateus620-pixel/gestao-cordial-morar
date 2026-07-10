@@ -119,7 +119,7 @@ export function AppShell() {
         {/* Header mobile — sticky com blur ao rolar */}
         <header
           className={cn(
-            "sticky top-0 z-30 flex flex-col gap-2 px-4 pt-3 pb-2 transition-all duration-300 lg:hidden",
+            "sticky top-0 z-30 flex flex-col gap-2 px-4 pt-3 pb-2 transition-[background-color,box-shadow,backdrop-filter] duration-200 ease-out motion-reduce:transition-none lg:hidden",
             scrolled
               ? "bg-background/80 shadow-sm shadow-foreground/5 backdrop-blur-xl backdrop-saturate-150"
               : "bg-transparent",
@@ -139,7 +139,7 @@ export function AppShell() {
                 <SheetTrigger asChild>
                   <button
                     className={cn(
-                      "grid size-9 place-items-center rounded-full text-primary transition-all",
+                      "premium-pressable grid size-10 place-items-center rounded-full text-primary",
                       scrolled ? "bg-white/70 shadow-sm" : "glass-panel",
                     )}
                     aria-label="Abrir módulos"
@@ -175,7 +175,7 @@ export function AppShell() {
               <Link
                 to="/mais"
                 className={cn(
-                  "grid size-9 place-items-center rounded-full text-xs font-bold text-primary transition-all",
+                  "premium-pressable grid size-10 place-items-center rounded-full text-xs font-bold text-primary",
                   scrolled ? "bg-white/70 shadow-sm" : "glass-panel",
                 )}
                 aria-label="Perfil"
@@ -190,13 +190,13 @@ export function AppShell() {
         {/* Header desktop — sticky com blur ao rolar */}
         <header
           className={cn(
-            "sticky top-0 z-30 hidden px-6 py-3 transition-all duration-300 lg:block",
+            "sticky top-0 z-30 hidden px-6 py-3 transition-[backdrop-filter] duration-200 ease-out motion-reduce:transition-none lg:block",
             scrolled && "backdrop-blur-xl backdrop-saturate-150",
           )}
         >
           <div
             className={cn(
-              "mx-auto flex max-w-screen-2xl items-center justify-between gap-4 rounded-[1.75rem] border px-4 py-2.5 transition-all duration-300",
+              "mx-auto flex max-w-screen-2xl items-center justify-between gap-4 rounded-[1.75rem] border px-4 py-2.5 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-200 ease-out motion-reduce:transition-none",
               scrolled
                 ? "border-white/60 bg-white/75 shadow-lg shadow-foreground/8 backdrop-blur-xl"
                 : "glass-panel-strong border-white/50 shadow-xl shadow-primary/5",
@@ -218,7 +218,7 @@ export function AppShell() {
               <NotificationBell />
               <Link
                 to="/mais"
-                className="glass-panel flex shrink-0 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-semibold text-primary transition-all hover:scale-[1.02] hover:bg-white/70"
+                className="glass-panel premium-pressable flex shrink-0 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-semibold text-primary hover:bg-white/70"
                 aria-label="Perfil do usuário"
               >
                 <span className="grid size-8 place-items-center rounded-full bg-primary/15 text-xs font-bold">
@@ -254,8 +254,9 @@ export function AppShell() {
             <Link
               key={item.to}
               to={item.to as never}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
+                "premium-pressable relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1 transition-colors motion-reduce:transition-none",
                 active ? "text-primary" : "text-foreground/45",
               )}
             >
