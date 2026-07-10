@@ -1,24 +1,23 @@
-import { memo, useCallback, type CSSProperties, type PointerEvent } from "react";
+import { memo } from "react";
 import {
   BadgeCheck,
   CalendarDays,
   Camera,
   CheckCircle2,
-  Circle,
+  CircleAlert,
   ClipboardCheck,
   ExternalLink,
-  Eye,
   HardDrive,
-  MapPinned,
+  MapPin,
   Pencil,
-  type LucideIcon,
+  Signpost,
   UserRound,
   Video,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   getAgenciamentoImobiliariaLabel,
-  getAgenciamentoOrigemLabel,
   getAgenciamentoStatusLabel,
   getAgenciamentoStatusTone,
   getAgenciamentoTipoLabel,
@@ -38,17 +37,17 @@ type AgenciamentoCardProps = {
   onValidate: (agenciamento: Agenciamento) => void;
 };
 
-const checklistItems: Array<{
+const operationalItems: Array<{
   key: keyof AgenciamentoChecklist;
-  label: string;
+  pendingLabel: string;
   icon: LucideIcon;
 }> = [
-  { key: "fotosRealizadas", label: "Fotos", icon: Camera },
-  { key: "fotosDrive", label: "Drive", icon: HardDrive },
-  { key: "placaInstalada", label: "Placa", icon: MapPinned },
-  { key: "cadastradoSite", label: "Site", icon: ClipboardCheck },
-  { key: "videoRealizado", label: "Vídeo", icon: Video },
-  { key: "validado", label: "Validação", icon: BadgeCheck },
+  { key: "fotosRealizadas", pendingLabel: "Realizar fotos", icon: Camera },
+  { key: "fotosDrive", pendingLabel: "Enviar ao Drive", icon: HardDrive },
+  { key: "placaInstalada", pendingLabel: "Instalar placa", icon: Signpost },
+  { key: "cadastradoSite", pendingLabel: "Publicar no site", icon: ClipboardCheck },
+  { key: "videoRealizado", pendingLabel: "Gravar vídeo", icon: Video },
+  { key: "validado", pendingLabel: "Validar cadastro", icon: BadgeCheck },
 ];
 
 function AgenciamentoCardComponent({
@@ -62,234 +61,188 @@ function AgenciamentoCardComponent({
   const progress = getChecklistCompletionPercent(agenciamento.checklist);
   const completed = getChecklistCompletedCount(agenciamento.checklist);
   const statusTone = getAgenciamentoStatusTone(agenciamento.status);
-  const agencyColor =
-    agenciamento.imobiliaria === "morar"
-      ? "var(--morar-primary)"
-      : agenciamento.imobiliaria === "ambas"
-        ? "var(--system-primary)"
-        : "var(--cordial-primary)";
   const isValidated = agenciamento.status === "validado" || agenciamento.checklist.validado;
-
-  const handlePointerMove = useCallback((event: PointerEvent<HTMLElement>) => {
-    if (event.pointerType === "touch") return;
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    event.currentTarget.style.setProperty("--ag-card-tilt-x", `${(-y * 4).toFixed(2)}deg`);
-    event.currentTarget.style.setProperty("--ag-card-tilt-y", `${(x * 5).toFixed(2)}deg`);
-    event.currentTarget.style.setProperty("--ag-card-lift", "-4px");
-  }, []);
-
-  const reset = useCallback((event: PointerEvent<HTMLElement>) => {
-    event.currentTarget.style.setProperty("--ag-card-tilt-x", "0deg");
-    event.currentTarget.style.setProperty("--ag-card-tilt-y", "0deg");
-    event.currentTarget.style.setProperty("--ag-card-lift", "0px");
-    event.currentTarget.style.setProperty("--ag-card-scale", "1");
-  }, []);
-
-  const press = useCallback((event: PointerEvent<HTMLElement>) => {
-    event.currentTarget.style.setProperty("--ag-card-scale", "0.988");
-    event.currentTarget.style.setProperty("--ag-card-lift", "-1px");
-  }, []);
-
-  const release = useCallback((event: PointerEvent<HTMLElement>) => {
-    event.currentTarget.style.setProperty("--ag-card-scale", "1");
-    event.currentTarget.style.setProperty(
-      "--ag-card-lift",
-      event.pointerType === "touch" ? "0px" : "-4px",
-    );
-  }, []);
+  const pendingItems = operationalItems.filter((item) => !agenciamento.checklist[item.key]);
+  const location = [agenciamento.bairro, agenciamento.cidade].filter(Boolean).join(" • ");
 
   return (
-    <article
-      onClick={() => onView(agenciamento)}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={reset}
-      onPointerDown={press}
-      onPointerUp={release}
-      className="group relative min-w-0 cursor-pointer overflow-hidden rounded-[1.65rem] p-4 text-left shadow-[0_20px_48px_-28px_rgba(23,27,33,0.42)] outline-none ring-1 ring-white/65 transition-[box-shadow,filter] duration-300 focus-visible:ring-2 focus-visible:ring-primary/35 sm:p-5"
-      style={
-        {
-          "--ag-card-tilt-x": "0deg",
-          "--ag-card-tilt-y": "0deg",
-          "--ag-card-lift": "0px",
-          "--ag-card-scale": "1",
-          background:
-            "linear-gradient(156deg, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0.58) 58%, rgba(240,248,250,0.52) 100%)",
-          border: "1px solid rgba(255,255,255,0.68)",
-          transform:
-            "perspective(900px) rotateX(var(--ag-card-tilt-x)) rotateY(var(--ag-card-tilt-y)) translateY(var(--ag-card-lift)) scale(var(--ag-card-scale))",
-          transformStyle: "preserve-3d",
-          transition:
-            "transform 230ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 230ms ease, filter 230ms ease",
-        } as CSSProperties
-      }
-    >
+    <article className="group relative grid min-w-0 gap-4 px-4 py-4 transition-[background-color,box-shadow] duration-180 ease-out hover:bg-white/72 focus-within:bg-white/78 sm:px-5 md:grid-cols-2 xl:grid-cols-[minmax(0,1.45fr)_minmax(10rem,0.66fr)_minmax(12rem,0.78fr)_auto] xl:items-center">
       <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-5 top-0 h-px opacity-80"
-        style={{ background: `linear-gradient(90deg, transparent, ${agencyColor}, transparent)` }}
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-12 -top-14 size-40 rounded-full opacity-10 blur-2xl"
-        style={{ background: agencyColor }}
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-y-4 left-0 w-0.5 rounded-full",
+          agenciamento.imobiliaria === "morar"
+            ? "bg-[var(--morar-primary)]"
+            : agenciamento.imobiliaria === "ambas"
+              ? "bg-[var(--system-primary)]"
+              : "bg-[var(--cordial-primary)]",
+        )}
       />
 
-      <div
-        className="relative z-10 flex items-start gap-3"
-        style={{ transform: "translateZ(22px)" }}
-      >
-        <span
-          className="grid size-12 shrink-0 place-items-center rounded-2xl text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_16px_30px_-22px_rgba(23,27,33,0.9)]"
-          style={{ background: agencyColor }}
+      <div className="min-w-0 pl-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge label={getAgenciamentoStatusLabel(agenciamento.status)} tone={statusTone} />
+          <span className="rounded-full border border-foreground/9 bg-white/64 px-2 py-0.5 text-[10px] font-semibold text-foreground/60">
+            {getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onView(agenciamento)}
+          className="mt-2 block max-w-full text-left text-[15px] font-extrabold leading-snug tracking-tight text-foreground underline-offset-4 transition-colors duration-150 ease-out hover:text-primary hover:underline focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
         >
-          <ClipboardCheck className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="min-w-0 truncate text-base font-bold tracking-tight text-foreground">
-              {getAgenciamentoTipoLabel(agenciamento.tipoImovel)} -{" "}
-              {agenciamento.bairro || agenciamento.endereco}
-            </h3>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] ring-1",
-                statusTone === "success" &&
-                  "bg-emerald-500/10 text-emerald-700 ring-emerald-500/15",
-                statusTone === "warning" &&
-                  "bg-[rgba(217,120,45,0.12)] text-[var(--system-accent-dark)] ring-[rgba(217,120,45,0.18)]",
-                statusTone === "danger" && "bg-red-500/10 text-red-700 ring-red-500/15",
-                statusTone === "neutral" && "bg-primary/10 text-primary ring-primary/10",
-              )}
-            >
-              {getAgenciamentoStatusLabel(agenciamento.status)}
-            </span>
-          </div>
-          <p className="mt-1 truncate text-[11px] font-medium text-foreground/50">
-            {agenciamento.endereco} - {getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <InfoPill icon={UserRound} label={agenciamento.corretorNome} />
-            <InfoPill icon={CalendarDays} label={shortDate(agenciamento.dataAgenciamento)} />
-            <InfoPill icon={Circle} label={getAgenciamentoOrigemLabel(agenciamento.origem)} />
-          </div>
-        </div>
-      </div>
+          {getAgenciamentoTipoLabel(agenciamento.tipoImovel)} — {agenciamento.endereco}
+        </button>
 
-      <div
-        className="relative z-10 mt-4 grid gap-2 sm:grid-cols-2"
-        style={{ transform: "translateZ(16px)" }}
-      >
-        <div className="min-w-0 rounded-2xl bg-white/[0.58] p-3 ring-1 ring-white/60">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/55">
-            Proprietário
-          </p>
-          <p className="mt-1 truncate text-sm font-semibold text-foreground">
+        <div className="mt-1.5 flex min-w-0 items-start gap-1.5 text-xs text-foreground/56">
+          <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-primary/70" />
+          <span className="min-w-0 truncate" title={location || agenciamento.endereco}>
+            {location || "Bairro e cidade não informados"}
+          </span>
+        </div>
+
+        <div className="mt-2 flex min-w-0 items-center gap-2 border-t border-foreground/7 pt-2 text-xs">
+          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-foreground/42" />
+          <span
+            className="truncate font-semibold text-foreground/78"
+            title={agenciamento.proprietarioNome}
+          >
             {agenciamento.proprietarioNome}
-          </p>
-          <p className="mt-0.5 truncate font-mono text-xs text-foreground/52">
-            {agenciamento.proprietarioTelefone}
-          </p>
-        </div>
-
-        <div className="min-w-0 rounded-2xl bg-white/[0.58] p-3 ring-1 ring-white/60">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/55">
-              Checklist
-            </p>
-            <span className="font-mono text-xs font-black text-primary">
-              {completed}/6 - {progress}%
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/[0.07]">
-            <span
-              className="block h-full rounded-full"
-              style={{
-                width: `${progress}%`,
-                background: `linear-gradient(90deg, ${agencyColor}, var(--system-primary-light))`,
-              }}
-            />
-          </div>
+          </span>
+          <span aria-hidden="true" className="text-foreground/20">
+            •
+          </span>
+          <span className="shrink-0 text-foreground/52">{agenciamento.proprietarioTelefone}</span>
         </div>
       </div>
 
-      <div
-        className="relative z-10 mt-4 flex flex-wrap gap-1.5"
-        style={{ transform: "translateZ(12px)" }}
-      >
-        {checklistItems.map((item) => {
-          const Icon = item.icon;
-          const done = agenciamento.checklist[item.key];
-          return (
-            <span
-              key={item.key}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ring-1",
-                done
-                  ? "bg-emerald-500/10 text-emerald-700 ring-emerald-500/15"
-                  : "bg-white/[0.62] text-foreground/45 ring-foreground/[0.06]",
-              )}
-            >
-              <Icon className="size-3" />
-              {item.label}
-            </span>
-          );
-        })}
+      <div className="min-w-0 space-y-2 md:rounded-xl md:border md:border-foreground/7 md:bg-white/38 md:px-3 md:py-2.5 xl:border-0 xl:bg-transparent xl:p-0">
+        <p className="text-[11px] font-semibold text-foreground/48">Responsabilidade</p>
+        <div className="flex min-w-0 items-center gap-2 text-xs">
+          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-primary/70" />
+          <span
+            className="truncate font-semibold text-foreground/76"
+            title={agenciamento.corretorNome}
+          >
+            {agenciamento.corretorNome}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-foreground/54">
+          <CalendarDays aria-hidden="true" className="size-3.5 text-foreground/42" />
+          <span>{shortDate(agenciamento.dataAgenciamento)}</span>
+        </div>
       </div>
 
-      <div
-        className="relative z-10 mt-4 flex flex-wrap items-center gap-2"
-        style={{ transform: "translateZ(10px)" }}
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-semibold text-foreground/48">Checklist operacional</p>
+          <span className="text-xs font-extrabold text-primary tabular-nums">
+            {completed}/6 · {progress}%
+          </span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/8" aria-hidden="true">
+          <span
+            className="block h-full origin-left rounded-full bg-[#1e647d] transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+            style={{ transform: `scaleX(${progress / 100})` }}
+          />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {pendingItems.length > 0 ? (
+            pendingItems.slice(0, 3).map((item) => {
+              const Icon = item.icon;
+              return (
+                <span
+                  key={item.key}
+                  className="inline-flex items-center gap-1 rounded-md bg-[rgba(217,120,45,0.1)] px-1.5 py-1 text-[10px] font-semibold text-[var(--system-accent-dark)]"
+                >
+                  <Icon aria-hidden="true" className="size-3" />
+                  {item.pendingLabel}
+                </span>
+              );
+            })
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-1 text-[10px] font-semibold text-emerald-700">
+              <CheckCircle2 aria-hidden="true" className="size-3" />
+              Checklist concluído
+            </span>
+          )}
+          {pendingItems.length > 3 && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-foreground/6 px-1.5 py-1 text-[10px] font-semibold text-foreground/55">
+              <CircleAlert aria-hidden="true" className="size-3" />+{pendingItems.length - 3}{" "}
+              pendências
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 md:col-span-2 xl:col-span-1 xl:justify-end">
         <Button
           type="button"
           size="sm"
           variant="outline"
-          className="rounded-2xl border-white/[0.65] bg-white/[0.58]"
+          className="h-9 rounded-lg border-foreground/10 bg-white/70 px-2.5 text-xs shadow-none transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.98]"
           onClick={() => onView(agenciamento)}
         >
-          <Eye className="size-4" />
           Detalhes
         </Button>
         {canEdit && (
           <Button
             type="button"
-            size="sm"
+            size="icon"
             variant="outline"
-            className="rounded-2xl border-white/[0.65] bg-white/[0.58]"
+            className="size-9 rounded-lg border-foreground/10 bg-white/70 shadow-none transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97]"
             onClick={() => onEdit(agenciamento)}
+            aria-label={`Editar ${agenciamento.endereco}`}
+            title="Editar"
           >
-            <Pencil className="size-4" />
-            Editar
+            <Pencil className="size-3.5" />
           </Button>
         )}
         {canManage && !isValidated && (
           <Button
             type="button"
             size="sm"
-            className="rounded-2xl bg-primary text-white"
+            className="h-9 rounded-lg bg-[#174d61] px-2.5 text-xs text-white transition-[background-color,transform] duration-150 ease-out hover:bg-[#1e647d] active:scale-[0.98]"
             onClick={() => onValidate(agenciamento)}
           >
-            <CheckCircle2 className="size-4" />
+            <CheckCircle2 className="size-3.5" />
             Validar
           </Button>
         )}
         {agenciamento.driveFolderUrl && (
-          <Button asChild size="sm" variant="ghost" className="rounded-2xl text-primary">
-            <a href={agenciamento.driveFolderUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-4" />
-              Drive
+          <Button
+            asChild
+            size="icon"
+            variant="ghost"
+            className="size-9 rounded-lg text-primary transition-[background-color,transform] duration-150 ease-out active:scale-[0.97]"
+          >
+            <a
+              href={agenciamento.driveFolderUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Abrir Drive de ${agenciamento.endereco}`}
+              title="Abrir Drive"
+            >
+              <HardDrive className="size-3.5" />
             </a>
           </Button>
         )}
         {agenciamento.siteUrl && (
-          <Button asChild size="sm" variant="ghost" className="rounded-2xl text-primary">
-            <a href={agenciamento.siteUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-4" />
-              Site
+          <Button
+            asChild
+            size="icon"
+            variant="ghost"
+            className="size-9 rounded-lg text-primary transition-[background-color,transform] duration-150 ease-out active:scale-[0.97]"
+          >
+            <a
+              href={agenciamento.siteUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Abrir imóvel no site: ${agenciamento.endereco}`}
+              title="Abrir imóvel no site"
+            >
+              <ExternalLink className="size-3.5" />
             </a>
           </Button>
         )}
@@ -298,11 +251,35 @@ function AgenciamentoCardComponent({
   );
 }
 
-function InfoPill({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+function StatusBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "neutral" | "warning" | "success" | "danger";
+}) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-white/65 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/50 ring-1 ring-foreground/5">
-      <Icon className="size-3" />
-      <span className="truncate">{label}</span>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold",
+        tone === "success" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
+        tone === "warning" &&
+          "border-[rgba(217,120,45,0.18)] bg-[rgba(217,120,45,0.1)] text-[var(--system-accent-dark)]",
+        tone === "danger" && "border-red-500/18 bg-red-500/9 text-red-700",
+        tone === "neutral" && "border-primary/12 bg-primary/8 text-primary",
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-1.5 rounded-full",
+          tone === "success" && "bg-emerald-600",
+          tone === "warning" && "bg-[var(--system-accent)]",
+          tone === "danger" && "bg-red-600",
+          tone === "neutral" && "bg-primary",
+        )}
+      />
+      {label}
     </span>
   );
 }

@@ -47,7 +47,7 @@ const statusLabels: Record<AgenciamentoStatus, string> = {
   pendente_fotos: "Pendente fotos",
   pendente_placa: "Pendente placa",
   pendente_site: "Pendente site",
-  aguardando_validacao: "Aguardando validacao",
+  aguardando_validacao: "Aguardando validação",
   validado: "Validado",
   cancelado: "Cancelado",
 };
@@ -68,14 +68,14 @@ const tipoLabels: Record<AgenciamentoTipoImovel, string> = {
   apartamento: "Apartamento",
   terreno: "Terreno",
   sala_comercial: "Sala comercial",
-  area_rural: "Area rural",
-  predio: "Predio",
+  area_rural: "Área rural",
+  predio: "Prédio",
   outro: "Outro",
 };
 
 const origemLabels: Record<AgenciamentoOrigem, string> = {
-  indicacao: "Indicacao",
-  prospeccao_ativa: "Prospeccao ativa",
+  indicacao: "Indicação",
+  prospeccao_ativa: "Prospecção ativa",
   cliente_antigo: "Cliente antigo",
   site: "Site",
   whatsapp: "WhatsApp",
@@ -176,8 +176,8 @@ export function getAgenciamentoImobiliariaLabel(imobiliaria: AgenciamentoImobili
 
 export function getAgenciamentoPeriodLabel(periodo: AgenciamentoPeriodFilter) {
   const labels: Record<AgenciamentoPeriodFilter, string> = {
-    mes: "Este mes",
-    ultimos_30: "Ultimos 30 dias",
+    mes: "Este mês",
+    ultimos_30: "Últimos 30 dias",
     trimestre: "Trimestre",
     ano: "Ano",
   };
@@ -195,17 +195,17 @@ export function normalizeAgenciamento(input: LegacyAgenciamento): Agenciamento {
   return {
     id: input.id,
     tipoImovel: safeTipo(input.tipoImovel),
-    endereco: safeString(input.endereco, "Endereco nao informado"),
+    endereco: safeString(input.endereco, "Endereço não informado"),
     bairro: safeString(input.bairro),
     cidade: safeString(input.cidade),
     imobiliaria: safeImobiliaria(input.imobiliaria),
     descricaoImovel: safeString(input.descricaoImovel),
-    proprietarioNome: safeString(input.proprietarioNome, "Proprietario nao informado"),
+    proprietarioNome: safeString(input.proprietarioNome, "Proprietário não informado"),
     proprietarioTelefone: formatPhoneBR(safeString(input.proprietarioTelefone)),
     proprietarioContatoPreferencial: input.proprietarioContatoPreferencial ?? "whatsapp",
     proprietarioObservacoes: safeString(input.proprietarioObservacoes),
     corretorId: safeString(input.corretorId),
-    corretorNome: safeString(input.corretorNome, "Corretor nao informado"),
+    corretorNome: safeString(input.corretorNome, "Corretor não informado"),
     dataAgenciamento: safeDate(input.dataAgenciamento, timestamp),
     origem: safeOrigem(input.origem),
     status,
@@ -441,14 +441,14 @@ export function applyAgenciamentoStatsToCorretores(
 export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: boolean) {
   const errors: AgenciamentoValidationErrors = {};
 
-  if (!input.tipoImovel) errors.tipoImovel = "Informe o tipo do imovel.";
-  if (!input.endereco.trim()) errors.endereco = "Informe o endereco.";
-  if (!input.imobiliaria) errors.imobiliaria = "Informe a imobiliaria.";
-  if (!input.proprietarioNome.trim()) errors.proprietarioNome = "Informe o proprietario.";
+  if (!input.tipoImovel) errors.tipoImovel = "Informe o tipo do imóvel.";
+  if (!input.endereco.trim()) errors.endereco = "Informe o endereço.";
+  if (!input.imobiliaria) errors.imobiliaria = "Informe a imobiliária.";
+  if (!input.proprietarioNome.trim()) errors.proprietarioNome = "Informe o proprietário.";
   if (digits(input.proprietarioTelefone).length < 10) {
-    errors.proprietarioTelefone = "Informe um telefone valido.";
+    errors.proprietarioTelefone = "Informe um telefone válido.";
   }
-  if (!input.corretorId.trim()) errors.corretorId = "Informe o corretor responsavel.";
+  if (!input.corretorId.trim()) errors.corretorId = "Informe o corretor responsável.";
   if (!input.dataAgenciamento.trim()) errors.dataAgenciamento = "Informe a data.";
   if (!input.origem) errors.origem = "Informe a origem.";
   if (!input.status) errors.status = "Informe o status.";
