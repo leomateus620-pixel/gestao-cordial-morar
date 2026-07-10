@@ -24,16 +24,8 @@ function Page() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<ClientFiltersState>(defaultClientFilters);
   const setAgency = useApp((state) => state.setAgency);
-  const {
-    agency,
-    clients,
-    filteredClients,
-    stats,
-    addClient,
-    isLoading,
-    isError,
-    error,
-  } = useClients(query, filters);
+  const { agency, clients, filteredClients, stats, addClient, isLoading, isError, error, refetch } =
+    useClients(query, filters);
 
   async function createClient(client: ClientCreateInput) {
     try {
@@ -48,11 +40,12 @@ function Page() {
 
   const hasAnyClient = clients.length > 0;
   const hasFiltersOrSearch =
-    query.trim().length > 0 ||
-    Object.entries(filters).some(([, value]) => value !== "todos");
+    query.trim().length > 0 || Object.entries(filters).some(([, value]) => value !== "todos");
 
   return (
     <div className="space-y-4">
+      <ClientCreateCard onClick={() => setOpen(true)} isOpen={open} />
+
       <ClientFilters
         query={query}
         onQueryChange={setQuery}
@@ -60,23 +53,24 @@ function Page() {
         onAgencyChange={setAgency}
         filters={filters}
         onFiltersChange={setFilters}
+        resultCount={filteredClients.length}
       />
-
-      <ClientCreateCard onClick={() => setOpen(true)} isOpen={open} />
 
       <ClientSummaryCards stats={stats} />
 
-      <section className="space-y-3">
+      <section className="space-y-3" aria-labelledby="client-list-title">
         <div className="flex items-center justify-between px-1">
           <div>
-            <h2 className="text-sm font-semibold tracking-tight">Clientes</h2>
+            <h2 id="client-list-title" className="text-sm font-semibold tracking-tight">
+              Carteira de clientes
+            </h2>
             <p className="text-[11px] text-foreground/50">
               {filteredClients.length} cadastro{filteredClients.length === 1 ? "" : "s"} no recorte
               atual
             </p>
           </div>
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800">
-            Comercial
+          <span className="rounded-full border border-white/60 bg-white/48 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-teal-800">
+            CRM comercial
           </span>
         </div>
 
@@ -89,6 +83,7 @@ function Page() {
             clients={filteredClients}
             isLoading={isLoading}
             error={isError ? (error?.message ?? "Erro ao carregar clientes.") : null}
+            onRetry={() => void refetch()}
           />
         )}
       </section>
@@ -100,10 +95,8 @@ function Page() {
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="glass-panel rounded-3xl p-8 text-center">
-      <p className="text-base font-semibold text-foreground">
-        Nenhum cliente cadastrado ainda.
-      </p>
+    <div className="glass-panel rounded-3xl p-8 text-center" aria-live="polite">
+      <p className="text-base font-semibold text-foreground">Nenhum cliente cadastrado ainda.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-foreground/55">
         Clique em <span className="font-semibold text-foreground/80">Criar cadastro</span> para
         registrar o primeiro cliente e alimentar seus relatórios comerciais.
@@ -111,7 +104,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <button
         type="button"
         onClick={onCreate}
-        className="mt-4 inline-flex items-center justify-center rounded-full bg-teal-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800"
+        className="premium-pressable mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-teal-900 px-5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 hover:bg-teal-800"
       >
         Criar cadastro
       </button>
@@ -123,7 +116,9 @@ function NoMatchState({ filtered }: { filtered: boolean }) {
   return (
     <div className="glass-panel rounded-3xl p-6 text-center">
       <p className="text-sm font-semibold">
-        {filtered ? "Nenhum cliente encontrado com os filtros atuais." : "Nenhum cliente nesta visão."}
+        {filtered
+          ? "Nenhum cliente encontrado com os filtros atuais."
+          : "Nenhum cliente nesta visão."}
       </p>
       <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-foreground/55">
         Ajuste os filtros ou limpe a busca para ver mais resultados.

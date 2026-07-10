@@ -32,6 +32,7 @@ import {
   type TipoImovelInteresse,
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
+import { useDialogFocusTrap } from "@/hooks/useDialogFocusTrap";
 
 type FormState = {
   clienteId: string;
@@ -118,6 +119,7 @@ export function AtendimentoFormModal({
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
+  const dialogRef = useDialogFocusTrap<HTMLFormElement>(mounted);
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<number | null>(null);
 
@@ -266,7 +268,12 @@ export function AtendimentoFormModal({
       />
 
       <form
+        ref={dialogRef}
         onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="attendance-form-title"
+        aria-describedby="attendance-form-description"
         className={cn(
           "atendimento-form-modal relative flex h-dvh max-h-dvh w-full flex-col overflow-hidden border border-white/65 bg-background shadow-2xl shadow-stone-950/25",
           "sm:h-auto sm:max-h-[90vh] sm:max-w-[920px] sm:rounded-[2rem]",
@@ -280,10 +287,16 @@ export function AtendimentoFormModal({
                 <span className="size-2 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.65)]" />
                 Pré-atendimento comercial
               </div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">
+              <h2
+                id="attendance-form-title"
+                className="mt-1 text-lg font-semibold tracking-tight sm:text-xl"
+              >
                 Novo atendimento
               </h2>
-              <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
+              <p
+                id="attendance-form-description"
+                className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block"
+              >
                 Registre o essencial na entrada. Cliente, imóvel e corretor podem ser vinculados
                 agora ou complementados depois.
               </p>
@@ -292,7 +305,7 @@ export function AtendimentoFormModal({
               type="button"
               aria-label="Fechar"
               onClick={requestClose}
-              className="grid size-10 shrink-0 place-items-center rounded-full bg-white/70 text-foreground/65 shadow-sm transition hover:text-foreground active:scale-95"
+              className="premium-pressable grid size-10 shrink-0 place-items-center rounded-full bg-white/70 text-foreground/65 shadow-sm hover:text-foreground"
             >
               <X className="size-4" />
             </button>

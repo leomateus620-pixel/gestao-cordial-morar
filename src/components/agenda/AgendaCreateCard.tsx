@@ -1,19 +1,5 @@
-import {
-  ArrowUpRight,
-  CalendarPlus2,
-  Camera,
-  FileSignature,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
+import { ArrowUpRight, CalendarDays, CalendarPlus2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const highlights = [
-  { label: "Visita", icon: CalendarPlus2 },
-  { label: "Fotos", icon: Camera },
-  { label: "Retorno", icon: RotateCcw },
-  { label: "Assinatura", icon: FileSignature },
-] as const;
 
 export function AgendaCreateCard({
   onClick,
@@ -25,69 +11,56 @@ export function AgendaCreateCard({
   canCreate?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={canCreate ? onClick : undefined}
-      aria-label={canCreate ? "Agendar novo compromisso" : "Agenda da equipe"}
-      disabled={!canCreate}
-      className={cn(
-        "agenda-create-card group relative w-full overflow-hidden rounded-[1.75rem] p-5 text-left sm:p-6",
-        "bg-[linear-gradient(135deg,rgba(8,72,78,0.98),rgba(19,111,108,0.94)_60%,rgba(24,80,91,0.96))] text-white",
-        "shadow-xl shadow-teal-950/20 ring-1 ring-white/40",
-        "transition-[opacity,transform,box-shadow] duration-300 ease-out",
-        isOpen && "pointer-events-none opacity-65",
-        !canCreate && "cursor-default",
-      )}
+    <section
+      aria-labelledby="agenda-page-title"
+      className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(8,72,78,0.98),rgba(19,111,108,0.94)_60%,rgba(24,80,91,0.96))] px-4 py-4 text-white shadow-xl shadow-teal-950/18 ring-1 ring-white/40 sm:px-5 sm:py-5"
     >
-      <span className="absolute -right-12 -top-20 size-52 rounded-full bg-cyan-200/14 blur-3xl" />
-      <span className="absolute -bottom-12 left-1/3 size-40 rounded-full bg-orange-300/10 blur-3xl" />
-      <span className="absolute bottom-0 left-10 h-1 w-24 rounded-full bg-orange-300/90 shadow-[0_0_24px_rgba(253,186,116,0.58)] transition-all duration-300 group-hover:w-40" />
+      <span className="pointer-events-none absolute -right-14 -top-24 size-52 rounded-full bg-cyan-200/12 blur-3xl" />
+      <span className="pointer-events-none absolute -bottom-14 left-1/3 size-40 rounded-full bg-orange-300/9 blur-3xl" />
 
-      <span className="relative flex items-start gap-3 sm:items-center sm:gap-4">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/15 shadow-inner ring-1 ring-white/20 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-3 sm:size-14">
-          <CalendarPlus2 className="size-5 sm:size-6" />
-        </span>
+      <div className="relative flex items-center gap-3 sm:gap-4">
+        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/14 shadow-inner ring-1 ring-white/20 sm:size-12">
+          <CalendarDays className="size-5" aria-hidden="true" />
+        </div>
 
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-teal-50/70 sm:text-[10px]">
-            <Sparkles className="size-3 text-orange-200" />
-            Central operacional da equipe
-          </span>
-          <span className="mt-1 block text-xl font-semibold tracking-tight sm:text-2xl">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-teal-50/76">
+            <Sparkles className="size-3 text-orange-200" aria-hidden="true" />
+            Operação diária
+          </div>
+          <h1
+            id="agenda-page-title"
+            className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl"
+          >
             Agenda
-          </span>
-          <span className="mt-1 block max-w-[48rem] text-xs leading-5 text-teal-50/78 sm:text-[13px]">
-            Organize e agende visitas, fotos, vídeos, retornos, assinaturas e tarefas da equipe.
-          </span>
+          </h1>
+          <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-teal-50/78 sm:line-clamp-1 sm:text-[13px]">
+            Visitas, retornos e compromissos da equipe em um só fluxo.
+          </p>
+        </div>
 
-          <span className="mt-3 flex flex-wrap gap-1.5">
-            {highlights.map(({ label, icon: Icon }) => (
-              <span
-                key={label}
-                className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1.5 text-[9px] font-semibold text-white/78 ring-1 ring-white/12 sm:text-[10px]"
-              >
-                <Icon className="size-3 text-orange-200" />
-                {label}
-              </span>
-            ))}
+        {canCreate ? (
+          <button
+            type="button"
+            onClick={onClick}
+            disabled={isOpen}
+            aria-label="Agendar novo compromisso"
+            className={cn(
+              "premium-pressable flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-3.5 text-xs font-semibold text-teal-950 shadow-lg shadow-teal-950/18 hover:bg-orange-50 sm:px-4 sm:text-sm",
+              isOpen && "cursor-wait opacity-60",
+            )}
+          >
+            <CalendarPlus2 className="size-4" aria-hidden="true" />
+            <span className="hidden xs:inline sm:inline">Novo compromisso</span>
+            <span className="sm:hidden">Novo</span>
+            <ArrowUpRight className="hidden size-4 sm:block" aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="shrink-0 rounded-full bg-white/10 px-3 py-2 text-[10px] font-semibold text-white/72 ring-1 ring-white/15">
+            Somente leitura
           </span>
-        </span>
-
-        {canCreate && (
-          <>
-            <span className="hidden shrink-0 items-center gap-2 rounded-full bg-white/14 px-4 py-2.5 text-xs font-semibold ring-1 ring-white/20 transition duration-300 group-hover:-translate-y-0.5 group-hover:bg-orange-200 group-hover:text-teal-950 sm:flex">
-              Agendar
-              <ArrowUpRight className="size-4" />
-            </span>
-            <span
-              aria-hidden="true"
-              className="grid size-10 shrink-0 place-items-center rounded-full bg-white/14 text-white ring-1 ring-white/20 transition duration-300 group-hover:bg-orange-200 group-hover:text-teal-950 sm:hidden"
-            >
-              <ArrowUpRight className="size-4" />
-            </span>
-          </>
         )}
-      </span>
-    </button>
+      </div>
+    </section>
   );
 }
