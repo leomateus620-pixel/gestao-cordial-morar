@@ -731,12 +731,12 @@ export const agendaSeed: Compromisso[] = [
 export type Lancamento = {
   id: string;
   descricao: string;
-  categoria: "Comissão" | "Aluguel recebido" | "Repasse" | "Despesa" | "Venda";
+  categoria: string;
   valor: number;
   data: string;
   tipo: "entrada" | "saida";
-  imobiliaria: AgencyId;
-  status: "Pago" | "Pendente" | "Atrasado";
+  imobiliaria: AgencyId | "ambas";
+  status: "Pago" | "Pendente" | "Atrasado" | "Cancelado";
 };
 
 export const lancamentosSeed: Lancamento[] = [

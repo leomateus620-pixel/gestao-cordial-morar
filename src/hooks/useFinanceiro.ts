@@ -45,13 +45,13 @@ export function useFinanceiro() {
   return {
     lancamentos: query.data ?? [],
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     refetch: invalidate,
     createLancamento: createMutation.mutateAsync,
     updateLancamento: updateMutation.mutateAsync,
     deleteLancamento: deleteMutation.mutateAsync,
-    isSaving:
-      createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,
+    isSaving: createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,
   };
 }
