@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -49,6 +49,8 @@ import {
 } from "@/lib/chart-palette";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { FinanceSectionSelector } from "@/components/financeiro/FinanceSectionSelector";
+import type { FinanceSection } from "@/components/financeiro/finance-sections";
 
 type AgencyId = "cordial" | "morar";
 type AgencyFilter = AgencyId | "todas";
@@ -56,11 +58,12 @@ type PeriodMode = "month" | "quarter" | "year" | "custom" | "all";
 
 type Lancamento = {
   id: string;
+  descricao: string;
   categoria: string;
   valor: number;
   data: string;
   tipo: "entrada" | "saida";
-  imobiliaria: AgencyId;
+  imobiliaria: AgencyId | "ambas";
   status: string;
 };
 
@@ -88,6 +91,10 @@ type CashFlowDatum = {
 type Metrics = {
   entradas: Lancamento[];
   saidas: Lancamento[];
+  despesas: Lancamento[];
+  comissoes: Lancamento[];
+  repassesLancamentos: Lancamento[];
+  inadimplentes: Lancamento[];
   totalEntradas: number;
   totalSaidas: number;
   saldo: number;
@@ -100,11 +107,17 @@ type Metrics = {
   receitaPaga: number;
   receitaPendente: number;
   despesaPaga: number;
+  despesaPendente: number;
+  repassePago: number;
+  repassePendente: number;
+  comissaoPaga: number;
+  comissaoPendente: number;
   ticketReceita: number;
   ticketDespesa: number;
   receitaCategorias: CategoryDatum[];
   despesaCategorias: CategoryDatum[];
   fluxo: CashFlowDatum[];
+  fluxoDespesas: CashFlowDatum[];
 };
 
 const periodOptions: Array<{ value: PeriodMode; label: string }> = [
@@ -120,15 +133,27 @@ const chartColors = [chartSuccess, chartSystem, chartMorar, chartAccent, chartGr
 export function FinancialDashboard({
   lancamentos,
   agency,
+  activeSection,
+  onSectionChange,
+  isLoading = false,
+  isFetching = false,
+  isError = false,
+  onRetry,
+  overviewFooter,
 }: {
   lancamentos: Lancamento[];
   agency: AgencyFilter;
+  activeSection: FinanceSection;
+  onSectionChange: (section: FinanceSection) => void;
+  isLoading?: boolean;
+  isFetching?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
+  overviewFooter?: ReactNode;
 }) {
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const didMount = useRef(false);
 
   const bounds = useMemo(() => getDateBounds(lancamentos), [lancamentos]);
   const boundsMin = bounds.min;
@@ -140,17 +165,6 @@ export function FinancialDashboard({
     setCustomStart((current) => current || toInputDate(boundsMin));
     setCustomEnd((current) => current || toInputDate(boundsMax));
   }, [boundsMin, boundsMax]);
-
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      return;
-    }
-
-    setIsRefreshing(true);
-    const timeout = window.setTimeout(() => setIsRefreshing(false), 180);
-    return () => window.clearTimeout(timeout);
-  }, [agency, periodMode, customStart, customEnd]);
 
   const periodRange = useMemo(
     () => getPeriodRange(periodMode, referenceDate, customStart, customEnd),
@@ -172,13 +186,11 @@ export function FinancialDashboard({
     [periodLancamentos, periodMode],
   );
 
-  const hasAnyData = validLancamentos.length > 0;
-  const hasPeriodData = periodLancamentos.length > 0;
   const periodLabel = formatRangeLabel(periodMode, periodRange, referenceDate);
   const agencyLabel = getAgencyLabel(agency);
 
   return (
-    <div className="space-y-5 pb-3 sm:space-y-6">
+    <div className="mx-auto w-full max-w-[88rem] min-w-0 space-y-5 pb-3 sm:space-y-6">
       <FinancialHeader
         agencyLabel={agencyLabel}
         periodLabel={periodLabel}
@@ -188,48 +200,137 @@ export function FinancialDashboard({
         onPeriodChange={setPeriodMode}
         onCustomStartChange={setCustomStart}
         onCustomEndChange={setCustomEnd}
-        isRefreshing={isRefreshing}
+        isRefreshing={isFetching}
       />
+
+      <FinanceSectionSelector value={activeSection} onChange={onSectionChange} />
 
       {invalidCount > 0 && <PartialDataBanner count={invalidCount} />}
 
-      {!hasAnyData ? (
-        <EmptyState
-          title="Sem dados financeiros neste período."
-          description="Quando receitas, despesas, comissões ou repasses forem registrados, os indicadores aparecerão aqui."
-          icon={<Wallet className="size-5" />}
-        />
-      ) : !hasPeriodData ? (
-        <EmptyState
-          title="Sem dados financeiros neste período."
-          description="Ajuste o período ou a imobiliária para visualizar os lançamentos já registrados."
-          icon={<CalendarRange className="size-5" />}
-        />
+      {isLoading ? (
+        <FinanceSectionSkeleton />
+      ) : isError && validLancamentos.length === 0 ? (
+        <FinanceErrorState onRetry={onRetry} />
       ) : (
         <div
+          id="finance-section-panel"
+          role="tabpanel"
+          aria-labelledby={`finance-tab-${activeSection}`}
+          tabIndex={0}
           className={cn(
-            "space-y-5 transition-opacity duration-200 sm:space-y-6",
-            isRefreshing && "opacity-70",
+            "min-w-0 space-y-5 outline-none transition-opacity duration-200 focus-visible:ring-2 focus-visible:ring-primary/30 sm:space-y-6 motion-reduce:transition-none",
+            isFetching && "opacity-75",
           )}
-          aria-busy={isRefreshing}
+          aria-busy={isFetching}
         >
-          {isRefreshing && (
-            <LoadingSkeleton
-              rows={3}
-              className="rounded-3xl border border-white/40 bg-white/35 p-3"
-            />
+          {isError && (
+            <div className="glass-panel rounded-2xl border border-amber-300/30 bg-amber-50/50 p-3 text-xs font-semibold text-amber-950/70">
+              Não foi possível atualizar agora. Os últimos dados carregados continuam visíveis.
+            </div>
           )}
-
-          <FinancialMetricCards metrics={metrics} periodLabel={periodLabel} />
-          <RevenueSection metrics={metrics} />
-          <ExpenseSection metrics={metrics} />
-          <CashFlowChart data={metrics.fluxo} />
-          <FinancialSummary metrics={metrics} periodLabel={periodLabel} />
-          <SimplifiedDRE metrics={metrics} />
+          <FinanceSectionContent
+            section={activeSection}
+            metrics={metrics}
+            periodLabel={periodLabel}
+            overviewFooter={overviewFooter}
+          />
         </div>
       )}
     </div>
   );
+}
+
+function FinanceSectionContent({
+  section,
+  metrics,
+  periodLabel,
+  overviewFooter,
+}: {
+  section: FinanceSection;
+  metrics: Metrics;
+  periodLabel: string;
+  overviewFooter?: ReactNode;
+}) {
+  if (section === "receitas") return <RevenueSection metrics={metrics} />;
+  if (section === "despesas") return <ExpenseSection metrics={metrics} />;
+  if (section === "fluxo-caixa") {
+    return metrics.entradas.length || metrics.saidas.length ? (
+      <CashFlowChart data={metrics.fluxo} />
+    ) : (
+      <FinanceEmptyState
+        title="Sem movimentação de caixa neste período"
+        description="Entradas e saídas registradas para os filtros selecionados formarão a evolução do caixa."
+        icon={<BarChart3 className="size-5" />}
+      />
+    );
+  }
+  if (section === "dre") return <SimplifiedDRE metrics={metrics} />;
+  if (section === "comissoes") return <CommissionSection metrics={metrics} />;
+  if (section === "repasses") return <TransferSection metrics={metrics} />;
+  if (section === "inadimplencia") return <DelinquencySection metrics={metrics} />;
+
+  if (!metrics.entradas.length && !metrics.saidas.length) {
+    return (
+      <FinanceEmptyState
+        title="Sem dados financeiros neste período"
+        description="Quando lançamentos forem registrados para os filtros selecionados, a visão executiva aparecerá aqui."
+        icon={<Wallet className="size-5" />}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-5 sm:space-y-6">
+      <FinancialMetricCards metrics={metrics} periodLabel={periodLabel} />
+      <CashFlowChart data={metrics.fluxo} compact />
+      <FinancialSummary metrics={metrics} periodLabel={periodLabel} />
+      {overviewFooter}
+    </div>
+  );
+}
+
+function FinanceSectionSkeleton() {
+  return (
+    <div aria-label="Carregando dados financeiros" aria-busy="true" className="space-y-4">
+      <LoadingSkeleton rows={4} className="rounded-3xl border border-white/45 bg-white/35 p-3" />
+      <div className="glass-panel h-72 animate-pulse rounded-3xl motion-reduce:animate-none" />
+    </div>
+  );
+}
+
+function FinanceErrorState({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <FinanceEmptyState
+      title="Não foi possível carregar o Financeiro"
+      description="Confira sua conexão e tente novamente. Nenhum indicador foi estimado enquanto os dados reais estão indisponíveis."
+      icon={<AlertTriangle className="size-5" />}
+      action={
+        onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-4 text-sm font-bold text-white transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 motion-reduce:transition-none"
+          >
+            Tentar novamente
+          </button>
+        ) : undefined
+      }
+    />
+  );
+}
+
+function FinanceEmptyState({
+  title,
+  description,
+  icon,
+  action,
+}: {
+  title: string;
+  description: string;
+  icon: ReactNode;
+  action?: ReactNode;
+}) {
+  return <EmptyState title={title} description={description} icon={icon} action={action} />;
 }
 
 function FinancialHeader({
@@ -278,8 +379,8 @@ function FinancialHeader({
           </div>
         </div>
 
-        <div className="grid gap-3 xl:min-w-[34rem]">
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <div className="grid min-w-0 gap-3 xl:min-w-[36rem]">
+          <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <AgencySwitcher />
             <PeriodFilter
               value={periodMode}
@@ -309,7 +410,7 @@ function PeriodFilter({
   isRefreshing: boolean;
 }) {
   return (
-    <div className="glass-panel flex min-w-0 flex-wrap gap-1 rounded-[1.35rem] p-1">
+    <div className="glass-panel no-scrollbar flex min-w-0 gap-1 overflow-x-auto rounded-[1.35rem] p-1">
       {periodOptions.map((option) => (
         <button
           key={option.value}
@@ -317,7 +418,7 @@ function PeriodFilter({
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "min-h-8 min-w-0 flex-1 rounded-full px-2.5 text-[11px] font-bold transition sm:text-xs",
+            "min-h-11 shrink-0 rounded-full px-3 text-xs font-bold transition motion-reduce:transition-none md:min-w-0 md:flex-1",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
             value === option.value
               ? "bg-primary text-white shadow-[0_8px_20px_-10px_rgba(30,100,125,0.65)]"
@@ -489,72 +590,137 @@ function ExecutiveMetricCard({
 }
 
 function RevenueSection({ metrics }: { metrics: Metrics }) {
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const topCategory = metrics.receitaCategorias[0];
+  const revenueFlow = useMemo(
+    () => metrics.fluxo.filter((item) => item.entradas > 0),
+    [metrics.fluxo],
+  );
+
+  useEffect(() => {
+    if (!revenueFlow.length) {
+      setSelectedKey(null);
+      return;
+    }
+    if (!selectedKey || !revenueFlow.some((item) => item.key === selectedKey)) {
+      setSelectedKey(revenueFlow[revenueFlow.length - 1].key);
+    }
+  }, [revenueFlow, selectedKey]);
+
+  if (!metrics.entradas.length) {
+    return (
+      <FinanceEmptyState
+        title="Sem receitas neste período"
+        description="Quando receitas forem registradas ou recebidas para os filtros selecionados, os indicadores e gráficos aparecerão aqui."
+        icon={<TrendingUp className="size-5" />}
+      />
+    );
+  }
+
+  const selectedPoint = revenueFlow.find((item) => item.key === selectedKey) ?? revenueFlow.at(-1);
 
   return (
-    <section className="space-y-3">
+    <section className="min-w-0 space-y-4">
       <SectionTitle
         icon={<TrendingUp className="size-5" />}
         title="Receitas"
-        subtitle="Entradas do período por volume, ticket e fonte registrada."
+        subtitle="Entradas recebidas e previstas, com evolução, composição e registros do período."
       />
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
         <MiniInsightCard
           label="Receita total"
-          value={brl(metrics.totalEntradas, { compact: true })}
-          detail={`${metrics.receitaPaga > 0 ? brl(metrics.receitaPaga, { compact: true }) : "R$ 0"} pagos`}
+          value={formatMoneyExact(metrics.totalEntradas)}
+          detail={`${metrics.entradas.length} entrada${metrics.entradas.length === 1 ? "" : "s"}`}
           icon={<Landmark className="size-4" />}
           tone="success"
         />
         <MiniInsightCard
+          label="Receita recebida"
+          value={formatMoneyExact(metrics.receitaPaga)}
+          detail="lançamentos com status pago"
+          icon={<BadgeDollarSign className="size-4" />}
+          tone="success"
+        />
+        <MiniInsightCard
+          label="Receita em aberto"
+          value={formatMoneyExact(metrics.receitaPendente)}
+          detail="pendente, atrasada ou cancelada"
+          icon={<CalendarRange className="size-4" />}
+          tone="warning"
+        />
+        <MiniInsightCard
           label="Ticket médio"
-          value={
-            metrics.entradas.length
-              ? brl(metrics.ticketReceita, { compact: true })
-              : "Não informado"
-          }
-          detail={`${metrics.entradas.length} lançamento${metrics.entradas.length === 1 ? "" : "s"}`}
+          value={formatMoneyExact(metrics.ticketReceita)}
+          detail={topCategory ? `maior fonte: ${topCategory.name}` : "por entrada registrada"}
           icon={<Calculator className="size-4" />}
           tone="primary"
         />
-        <MiniInsightCard
-          label="Maior fonte"
-          value={topCategory?.name ?? "Não informado"}
-          detail={topCategory ? `${topCategory.percent}% das entradas` : "sem categoria real"}
-          icon={<PieChartIcon className="size-4" />}
-          tone="neutral"
-        />
       </div>
 
+      <RevenueInsightCard metrics={metrics} selectedPoint={selectedPoint} />
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.8fr)]">
-        <GlassCard className="rounded-3xl p-4 sm:p-5" padding="none">
+        <GlassCard className="min-w-0 rounded-3xl p-3 sm:p-5" padding="none">
           <ChartHeader
-            title="Receita por período"
-            subtitle="Evolução das entradas registradas"
-            value={brl(metrics.totalEntradas, { compact: true })}
+            title="Evolução da receita"
+            subtitle="Selecione um ponto para destacar o período"
+            value={selectedPoint ? formatMoneyExact(selectedPoint.entradas) : undefined}
           />
-          <div className="h-64 sm:h-72">
+          <div
+            className="h-64 min-w-0 sm:h-72"
+            role="img"
+            aria-label="Gráfico de colunas com a evolução das receitas registradas no período selecionado"
+          >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.fluxo} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="revenueBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={chartSuccess} stopOpacity={0.94} />
-                    <stop offset="100%" stopColor={chartSuccess} stopOpacity={0.5} />
-                  </linearGradient>
-                </defs>
+              <BarChart
+                accessibilityLayer
+                data={revenueFlow}
+                margin={{ top: 10, right: 2, left: -8, bottom: 0 }}
+              >
                 <CartesianGrid stroke={gridStroke} vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} tick={axisTick} />
                 <YAxis
-                  width={44}
+                  width={52}
                   tickLine={false}
                   axisLine={false}
                   tick={axisTick}
                   tickFormatter={(value) => brl(Number(value), { compact: true })}
                 />
                 <Tooltip content={<SimpleMoneyTooltip label="Receita" dataKey="entradas" />} />
-                <Bar dataKey="entradas" fill="url(#revenueBar)" radius={[8, 8, 3, 3]} />
+                <Bar dataKey="entradas" radius={[8, 8, 3, 3]} maxBarSize={64}>
+                  {revenueFlow.map((item) => (
+                    <Cell
+                      key={item.key}
+                      fill={item.key === selectedKey ? chartSystem : chartSuccess}
+                      fillOpacity={item.key === selectedKey ? 1 : 0.45}
+                      className="cursor-pointer outline-none transition-opacity duration-200 motion-reduce:transition-none"
+                      onClick={() => setSelectedKey(item.key)}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div
+            className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto pb-1"
+            aria-label="Períodos do gráfico de receitas"
+          >
+            {revenueFlow.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={item.key === selectedKey}
+                onClick={() => setSelectedKey(item.key)}
+                className={cn(
+                  "min-h-9 shrink-0 rounded-full px-3 text-[11px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none",
+                  item.key === selectedKey
+                    ? "bg-primary text-white"
+                    : "bg-white/50 text-foreground/58 hover:bg-white/75",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </GlassCard>
 
@@ -565,39 +731,51 @@ function RevenueSection({ metrics }: { metrics: Metrics }) {
           empty="Sem categoria de receita no período."
         />
       </div>
+      <FinanceRecords title="Registros de receita" items={metrics.entradas} />
     </section>
   );
 }
 
 function ExpenseSection({ metrics }: { metrics: Metrics }) {
   const topCategory = metrics.despesaCategorias[0];
+  const totalDespesas = sum(metrics.despesas);
+
+  if (!metrics.despesas.length) {
+    return (
+      <FinanceEmptyState
+        title="Sem despesas neste período"
+        description="Despesas operacionais registradas para os filtros selecionados aparecerão aqui. Repasses e comissões permanecem em suas seções próprias."
+        icon={<TrendingDown className="size-5" />}
+      />
+    );
+  }
 
   return (
     <section className="space-y-3">
       <SectionTitle
         icon={<TrendingDown className="size-5" />}
         title="Despesas e saídas"
-        subtitle="Repasses, despesas e demais saídas registradas no período."
+        subtitle="Despesas operacionais registradas, sem misturar repasses e comissões."
       />
       <div className="grid gap-3 md:grid-cols-4">
         <MiniInsightCard
           label="Total de saídas"
-          value={brl(metrics.totalSaidas, { compact: true })}
-          detail={`${metrics.despesaPaga > 0 ? brl(metrics.despesaPaga, { compact: true }) : "R$ 0"} pagos`}
+          value={formatMoneyExact(totalDespesas)}
+          detail={`${formatMoneyExact(metrics.despesaPaga)} pagos`}
           icon={<ArrowDownLeft className="size-4" />}
           tone="danger"
         />
         <MiniInsightCard
           label="Lançamentos"
-          value={String(metrics.saidas.length)}
-          detail="saídas no período"
+          value={String(metrics.despesas.length)}
+          detail="despesas no período"
           icon={<ReceiptText className="size-4" />}
           tone="neutral"
         />
         <MiniInsightCard
           label="Ticket médio"
           value={
-            metrics.saidas.length ? brl(metrics.ticketDespesa, { compact: true }) : "Não informado"
+            metrics.despesas.length ? formatMoneyExact(metrics.ticketDespesa) : "Não informado"
           }
           detail="por saída registrada"
           icon={<Calculator className="size-4" />}
@@ -617,11 +795,15 @@ function ExpenseSection({ metrics }: { metrics: Metrics }) {
           <ChartHeader
             title="Saídas por período"
             subtitle="Volume de repasses e despesas"
-            value={brl(metrics.totalSaidas, { compact: true })}
+            value={formatMoneyExact(totalDespesas)}
           />
           <div className="h-60 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.fluxo} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+              <BarChart
+                accessibilityLayer
+                data={metrics.fluxoDespesas}
+                margin={{ top: 10, right: 2, left: -8, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="expenseBar" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={chartMorar} stopOpacity={0.9} />
@@ -651,11 +833,303 @@ function ExpenseSection({ metrics }: { metrics: Metrics }) {
           empty="Sem despesas ou repasses no período."
         />
       </div>
+      <FinanceRecords title="Registros de despesa" items={metrics.despesas} />
     </section>
   );
 }
 
-function CashFlowChart({ data }: { data: CashFlowDatum[] }) {
+function CommissionSection({ metrics }: { metrics: Metrics }) {
+  if (!metrics.comissoes.length) {
+    return (
+      <FinanceEmptyState
+        title="Sem comissões neste período"
+        description="Lançamentos categorizados como comissão aparecerão aqui, respeitando os filtros e permissões atuais."
+        icon={<BadgeDollarSign className="size-5" />}
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-4">
+      <SectionTitle
+        icon={<BadgeDollarSign className="size-5" />}
+        title="Comissões"
+        subtitle="Valores recebidos e pagos identificados pela categoria real dos lançamentos."
+      />
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <MiniInsightCard
+          label="Total registrado"
+          value={formatMoneyExact(metrics.comissoesRegistradas)}
+          detail={`${metrics.comissoes.length} lançamento${metrics.comissoes.length === 1 ? "" : "s"}`}
+          icon={<BadgeDollarSign className="size-4" />}
+          tone="primary"
+        />
+        <MiniInsightCard
+          label="Entradas"
+          value={formatMoneyExact(metrics.comissoesEntrada)}
+          detail="comissões recebidas"
+          icon={<ArrowUpRight className="size-4" />}
+          tone="success"
+        />
+        <MiniInsightCard
+          label="Saídas"
+          value={formatMoneyExact(metrics.comissoesSaida)}
+          detail="comissões pagas"
+          icon={<ArrowDownLeft className="size-4" />}
+          tone="danger"
+        />
+        <MiniInsightCard
+          label="Em aberto"
+          value={formatMoneyExact(metrics.comissaoPendente)}
+          detail="status diferente de pago"
+          icon={<CalendarRange className="size-4" />}
+          tone="warning"
+        />
+      </div>
+      <FinanceRecords title="Registros de comissão" items={metrics.comissoes} />
+    </section>
+  );
+}
+
+function TransferSection({ metrics }: { metrics: Metrics }) {
+  if (!metrics.repassesLancamentos.length) {
+    return (
+      <FinanceEmptyState
+        title="Sem repasses neste período"
+        description="Repasses registrados para proprietários ou partes vinculadas aparecerão aqui."
+        icon={<HandCoins className="size-5" />}
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-4">
+      <SectionTitle
+        icon={<HandCoins className="size-5" />}
+        title="Repasses"
+        subtitle="Acompanhamento dos valores concluídos e ainda pendentes no período."
+      />
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <MiniInsightCard
+          label="Total previsto"
+          value={formatMoneyExact(metrics.repasses)}
+          detail={`${metrics.repassesLancamentos.length} repasse${metrics.repassesLancamentos.length === 1 ? "" : "s"}`}
+          icon={<HandCoins className="size-4" />}
+          tone="primary"
+        />
+        <MiniInsightCard
+          label="Concluído"
+          value={formatMoneyExact(metrics.repassePago)}
+          detail="repasses com status pago"
+          icon={<ArrowUpRight className="size-4" />}
+          tone="success"
+        />
+        <MiniInsightCard
+          label="Pendente"
+          value={formatMoneyExact(metrics.repassePendente)}
+          detail="a concluir no período"
+          icon={<CalendarRange className="size-4" />}
+          tone="warning"
+        />
+        <MiniInsightCard
+          label="Ticket médio"
+          value={formatMoneyExact(metrics.repasses / metrics.repassesLancamentos.length)}
+          detail="por repasse registrado"
+          icon={<Calculator className="size-4" />}
+          tone="neutral"
+        />
+      </div>
+      <FinanceRecords title="Registros de repasse" items={metrics.repassesLancamentos} />
+    </section>
+  );
+}
+
+function DelinquencySection({ metrics }: { metrics: Metrics }) {
+  if (!metrics.inadimplentes.length) {
+    return (
+      <FinanceEmptyState
+        title="Sem inadimplência neste período"
+        description="Nenhum lançamento com status atrasado foi encontrado para os filtros selecionados."
+        icon={<AlertTriangle className="size-5" />}
+      />
+    );
+  }
+
+  const overdueRevenue = sum(metrics.inadimplentes.filter((item) => item.tipo === "entrada"));
+  const overdueExpenses = sum(metrics.inadimplentes.filter((item) => item.tipo === "saida"));
+  const oldest = [...metrics.inadimplentes].sort((a, b) => a.data.localeCompare(b.data))[0];
+
+  return (
+    <section className="space-y-4">
+      <SectionTitle
+        icon={<AlertTriangle className="size-5" />}
+        title="Inadimplência"
+        subtitle="Lançamentos atrasados, apresentados sem estimativas ou alertas artificiais."
+      />
+      <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <MiniInsightCard
+          label="Total em atraso"
+          value={formatMoneyExact(metrics.inadimplencia)}
+          detail={`${metrics.inadimplentes.length} registro${metrics.inadimplentes.length === 1 ? "" : "s"}`}
+          icon={<AlertTriangle className="size-4" />}
+          tone="danger"
+        />
+        <MiniInsightCard
+          label="Receitas atrasadas"
+          value={formatMoneyExact(overdueRevenue)}
+          detail="entradas ainda em atraso"
+          icon={<TrendingDown className="size-4" />}
+          tone="warning"
+        />
+        <MiniInsightCard
+          label="Saídas atrasadas"
+          value={formatMoneyExact(overdueExpenses)}
+          detail="saídas com status atrasado"
+          icon={<ReceiptText className="size-4" />}
+          tone="neutral"
+        />
+        <MiniInsightCard
+          label="Registro mais antigo"
+          value={oldest ? formatFinanceDate(oldest.data) : "Não informado"}
+          detail={oldest?.categoria ?? "sem categoria"}
+          icon={<CalendarRange className="size-4" />}
+          tone="primary"
+        />
+      </div>
+      <FinanceRecords title="Registros em atraso" items={metrics.inadimplentes} />
+    </section>
+  );
+}
+
+function RevenueInsightCard({
+  metrics,
+  selectedPoint,
+}: {
+  metrics: Metrics;
+  selectedPoint?: CashFlowDatum;
+}) {
+  const topCategory = metrics.receitaCategorias[0];
+  let message = "A amostra ainda é pequena para apontar uma tendência de receita com segurança.";
+
+  if (metrics.entradas.length > 1 && metrics.receitaPendente > 0) {
+    message = `${formatMoneyExact(metrics.receitaPendente)} permanecem em aberto no período selecionado.`;
+  } else if (topCategory && topCategory.percent >= 50) {
+    message = `${topCategory.name} concentra ${topCategory.percent}% da receita registrada no período.`;
+  } else if (selectedPoint) {
+    message = `${selectedPoint.label} registra ${formatMoneyExact(selectedPoint.entradas)} em entradas.`;
+  }
+
+  return (
+    <aside className="glass-panel flex items-start gap-3 rounded-3xl border border-primary/12 bg-primary/5 p-4 sm:items-center sm:p-5">
+      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-white">
+        <ArrowUpRight className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">
+          Leitura do período
+        </p>
+        <p className="mt-1 text-sm font-semibold leading-relaxed text-foreground/75">{message}</p>
+      </div>
+    </aside>
+  );
+}
+
+function FinanceRecords({ title, items }: { title: string; items: Lancamento[] }) {
+  const records = [...items].sort((a, b) => b.data.localeCompare(a.data));
+
+  return (
+    <GlassCard className="min-w-0 rounded-3xl p-3 sm:p-5" padding="none">
+      <ChartHeader
+        title={title}
+        subtitle={`${records.length} lançamento${records.length === 1 ? "" : "s"} no filtro atual`}
+      />
+      <div className="space-y-2 md:hidden">
+        {records.map((item) => (
+          <article key={item.id} className="rounded-2xl border border-white/55 bg-white/42 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-bold leading-snug text-foreground">
+                  {item.descricao || item.categoria}
+                </p>
+                <p className="mt-1 text-[11px] font-semibold text-foreground/50">
+                  {item.categoria} · {formatFinanceDate(item.data)}
+                </p>
+              </div>
+              <p className="shrink-0 text-right font-mono text-sm font-black text-foreground">
+                {item.tipo === "saida" ? "− " : "+ "}
+                {formatMoneyExact(item.valor)}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <FinanceStatusBadge status={item.status} />
+              <span className="text-[10px] font-bold text-foreground/45">
+                {getLaunchAgencyLabel(item.imobiliaria)}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="hidden overflow-hidden rounded-2xl border border-white/55 bg-white/34 md:block">
+        <table className="w-full table-fixed text-left text-xs">
+          <caption className="sr-only">{title}</caption>
+          <thead className="border-b border-white/60 bg-white/45 text-[10px] font-black uppercase tracking-[0.14em] text-foreground/45">
+            <tr>
+              <th className="w-[38%] px-4 py-3">Descrição</th>
+              <th className="w-[18%] px-3 py-3">Data</th>
+              <th className="w-[18%] px-3 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Valor</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/55">
+            {records.map((item) => (
+              <tr
+                key={item.id}
+                className="transition-colors hover:bg-white/45 motion-reduce:transition-none"
+              >
+                <td className="px-4 py-3">
+                  <p className="truncate font-bold text-foreground">
+                    {item.descricao || item.categoria}
+                  </p>
+                  <p className="mt-0.5 truncate text-[10px] font-semibold text-foreground/45">
+                    {item.categoria} · {getLaunchAgencyLabel(item.imobiliaria)}
+                  </p>
+                </td>
+                <td className="px-3 py-3 font-semibold text-foreground/62">
+                  {formatFinanceDate(item.data)}
+                </td>
+                <td className="px-3 py-3">
+                  <FinanceStatusBadge status={item.status} />
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-black text-foreground">
+                  {item.tipo === "saida" ? "− " : "+ "}
+                  {formatMoneyExact(item.valor)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </GlassCard>
+  );
+}
+
+function FinanceStatusBadge({ status }: { status: string }) {
+  const normalized = normalizeText(status);
+  const className = normalized.includes("pago")
+    ? "bg-emerald-500/10 text-[color:var(--success)]"
+    : normalized.includes("atras")
+      ? "bg-red-500/10 text-[color:var(--danger)]"
+      : normalized.includes("cancel")
+        ? "bg-slate-500/10 text-slate-700"
+        : "bg-amber-500/12 text-amber-800";
+  return (
+    <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black", className)}>
+      {status || "Não informado"}
+    </span>
+  );
+}
+
+function CashFlowChart({ data, compact = false }: { data: CashFlowDatum[]; compact?: boolean }) {
   const totalSaldo = data.reduce((total, item) => total + item.saldo, 0);
 
   return (
@@ -678,9 +1152,13 @@ function CashFlowChart({ data }: { data: CashFlowDatum[] }) {
         }
       />
       <GlassCard className="rounded-3xl p-4 sm:p-5" padding="none">
-        <div className="h-72 sm:h-80">
+        <div className={compact ? "h-64 sm:h-72" : "h-72 sm:h-80"}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart
+              accessibilityLayer
+              data={data}
+              margin={{ top: 16, right: 2, left: -8, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="cashIn" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={chartSuccess} stopOpacity={0.42} />
@@ -835,6 +1313,16 @@ function FinancialSummary({ metrics, periodLabel }: { metrics: Metrics; periodLa
 }
 
 function SimplifiedDRE({ metrics }: { metrics: Metrics }) {
+  if (!metrics.entradas.length && !metrics.saidas.length) {
+    return (
+      <FinanceEmptyState
+        title="DRE sem linhas disponíveis"
+        description="Não há receitas, despesas, repasses ou comissões para compor o demonstrativo neste filtro."
+        icon={<ReceiptText className="size-5" />}
+      />
+    );
+  }
+
   const estimatedResult = metrics.totalEntradas - metrics.totalSaidas - metrics.inadimplencia;
   const rows = [
     {
@@ -927,7 +1415,7 @@ function SimplifiedDRE({ metrics }: { metrics: Metrics }) {
                 estimatedResult >= 0 ? "text-[color:var(--success)]" : "text-[color:var(--danger)]",
               )}
             >
-              {brl(estimatedResult, { compact: true })}
+              {formatMoneyExact(estimatedResult)}
             </p>
             <p className="mt-3 text-xs leading-relaxed text-foreground/58">
               Calculado com os lançamentos reais do filtro: receita bruta menos saídas registradas e
@@ -976,7 +1464,7 @@ function DreRow({
             isPositive ? "text-[color:var(--success)]" : "text-orange-700",
           )}
         >
-          {isPositive ? "+" : "-"} {brl(Math.abs(row.value), { compact: true })}
+          {isPositive ? "+" : "-"} {formatMoneyExact(Math.abs(row.value))}
         </p>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/60">
@@ -1008,29 +1496,31 @@ function CategoryBreakdown({
       <ChartHeader title={title} subtitle={subtitle} />
       {data.length ? (
         <>
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius="58%"
-                  outerRadius="82%"
-                  paddingAngle={3}
-                  stroke="rgba(255,255,255,0.72)"
-                  strokeWidth={2}
-                >
-                  {data.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CategoryTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {data.length <= 5 && (
+            <div className="h-44" role="img" aria-label={`${title} por categoria`}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart accessibilityLayer>
+                  <Pie
+                    data={data}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="58%"
+                    outerRadius="82%"
+                    paddingAngle={3}
+                    stroke="rgba(255,255,255,0.72)"
+                    strokeWidth={2}
+                  >
+                    {data.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CategoryTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           <div className="mt-2 space-y-2">
-            {data.slice(0, 5).map((item) => (
+            {data.slice(0, data.length <= 5 ? 5 : 8).map((item) => (
               <CategoryRow key={item.name} item={item} />
             ))}
           </div>
@@ -1100,7 +1590,7 @@ function MiniInsightCard({
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/45">
             {label}
           </p>
-          <p className="mt-1 break-words text-xl font-black leading-tight text-foreground">
+          <p className="mt-1 [overflow-wrap:anywhere] text-[clamp(1rem,4.7vw,1.35rem)] font-black leading-tight text-foreground">
             {value}
           </p>
           <p className="mt-1 text-[11px] font-medium text-foreground/52">{detail}</p>
@@ -1300,21 +1790,27 @@ function TooltipValue({ label, value, color }: { label: string; value: number; c
 function buildMetrics(lancamentos: Lancamento[], periodMode: PeriodMode): Metrics {
   const entradas = lancamentos.filter((item) => item.tipo === "entrada");
   const saidas = lancamentos.filter((item) => item.tipo === "saida");
+  const comissoes = lancamentos.filter((item) => hasCategory(item, "comiss"));
+  const repassesLancamentos = saidas.filter((item) => hasCategory(item, "repasse"));
+  const despesas = saidas.filter(
+    (item) => !hasCategory(item, "repasse") && !hasCategory(item, "comiss"),
+  );
+  const inadimplentes = lancamentos.filter((item) => normalizeText(item.status).includes("atras"));
   const totalEntradas = sum(entradas);
   const totalSaidas = sum(saidas);
   const comissoesEntrada = sum(entradas.filter((item) => hasCategory(item, "comiss")));
   const comissoesSaida = sum(saidas.filter((item) => hasCategory(item, "comiss")));
-  const repasses = sum(saidas.filter((item) => hasCategory(item, "repasse")));
-  const despesasOperacionais = sum(
-    saidas.filter((item) => !hasCategory(item, "repasse") && !hasCategory(item, "comiss")),
-  );
-  const inadimplencia = sum(
-    lancamentos.filter((item) => normalizeText(item.status).includes("atras")),
-  );
+  const repasses = sum(repassesLancamentos);
+  const despesasOperacionais = sum(despesas);
+  const inadimplencia = sum(inadimplentes);
 
   return {
     entradas,
     saidas,
+    despesas,
+    comissoes,
+    repassesLancamentos,
+    inadimplentes,
     totalEntradas,
     totalSaidas,
     saldo: totalEntradas - totalSaidas,
@@ -1326,12 +1822,22 @@ function buildMetrics(lancamentos: Lancamento[], periodMode: PeriodMode): Metric
     comissoesSaida,
     receitaPaga: sum(entradas.filter((item) => normalizeText(item.status).includes("pago"))),
     receitaPendente: sum(entradas.filter((item) => !normalizeText(item.status).includes("pago"))),
-    despesaPaga: sum(saidas.filter((item) => normalizeText(item.status).includes("pago"))),
+    despesaPaga: sum(despesas.filter((item) => normalizeText(item.status).includes("pago"))),
+    despesaPendente: sum(despesas.filter((item) => !normalizeText(item.status).includes("pago"))),
+    repassePago: sum(
+      repassesLancamentos.filter((item) => normalizeText(item.status).includes("pago")),
+    ),
+    repassePendente: sum(
+      repassesLancamentos.filter((item) => !normalizeText(item.status).includes("pago")),
+    ),
+    comissaoPaga: sum(comissoes.filter((item) => normalizeText(item.status).includes("pago"))),
+    comissaoPendente: sum(comissoes.filter((item) => !normalizeText(item.status).includes("pago"))),
     ticketReceita: entradas.length ? totalEntradas / entradas.length : 0,
-    ticketDespesa: saidas.length ? totalSaidas / saidas.length : 0,
+    ticketDespesa: despesas.length ? despesasOperacionais / despesas.length : 0,
     receitaCategorias: aggregateCategories(entradas),
-    despesaCategorias: aggregateCategories(saidas),
+    despesaCategorias: aggregateCategories(despesas),
     fluxo: aggregateCashFlow(lancamentos, periodMode),
+    fluxoDespesas: aggregateCashFlow(despesas, periodMode),
   };
 }
 
@@ -1445,7 +1951,9 @@ function getDateBounds(items: Lancamento[]) {
 }
 
 function formatRangeLabel(mode: PeriodMode, range: DateRange, referenceDate: Date) {
-  if (mode === "all" || !range) return "Período completo";
+  if (mode === "all") return "Período completo";
+  if (mode === "custom" && !range) return "Selecione as datas";
+  if (!range) return "Período não definido";
   if (mode === "month") {
     return referenceDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
   }
@@ -1461,6 +1969,11 @@ function getAgencyLabel(agency: AgencyFilter) {
   if (agency === "cordial") return "Cordial";
   if (agency === "morar") return "Morar";
   return "Todas";
+}
+
+function getLaunchAgencyLabel(agency: Lancamento["imobiliaria"]) {
+  if (agency === "ambas") return "Cordial + Morar";
+  return getAgencyLabel(agency);
 }
 
 function hasCategory(item: Lancamento, keyword: string) {
@@ -1525,4 +2038,20 @@ function monthLabel(date: Date) {
 
 function shortDateLabel(date: Date) {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatMoneyExact(value: number) {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatFinanceDate(value: string) {
+  const date = parseLaunchDate(value);
+  return date
+    ? date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+    : "Data não informada";
 }

@@ -65,13 +65,9 @@ export function AgencySwitcher() {
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") changeAgency(o.id);
           }}
-          style={
-            activeAgency === o.id
-              ? { background: o.color, color: "#fff" }
-              : undefined
-          }
+          style={activeAgency === o.id ? { background: o.color, color: "#fff" } : undefined}
           className={cn(
-            "min-w-0 flex-1 cursor-pointer truncate rounded-full px-3 py-1.5 text-[11px] font-semibold select-none touch-manipulation [-webkit-tap-highlight-color:transparent] transition-[background-color,color,box-shadow] duration-75 ease-out sm:text-xs",
+            "min-h-11 min-w-0 flex-1 cursor-pointer truncate rounded-full px-3 py-2 text-xs font-semibold select-none touch-manipulation [-webkit-tap-highlight-color:transparent] transition-[background-color,color,box-shadow] duration-75 ease-out motion-reduce:transition-none",
             activeAgency === o.id
               ? "shadow-[0_6px_18px_-6px_rgba(23,27,33,0.35)]"
               : "text-foreground/60 [@media(hover:hover)]:hover:text-foreground/85",
