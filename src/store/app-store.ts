@@ -112,7 +112,7 @@ export const useApp = create<State>()(
       agency: "todas",
       clientes: clientesSeed,
       imoveis: imoveisSeed,
-      corretores: normalizedCorretoresSeed,
+      corretores: [],
       atendimentos: normalizedAtendimentosSeed,
       contratos: contratosSeed,
       agenda: agendaSeed,
@@ -271,7 +271,7 @@ export const useApp = create<State>()(
           normalizeStoreClient(cliente),
         );
         const corretores = normalizeCorretores(
-          ((persistedState?.corretores ?? current.corretores) as Corretor[]) ?? [],
+          (persistedState?.corretores as Corretor[] | undefined) ?? [],
         );
         const imoveis = persistedState?.imoveis ?? current.imoveis;
         const rawAtendimentos =
