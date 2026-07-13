@@ -1403,6 +1403,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_corretores: {
+        Args: never
+        Returns: {
+          cargo: string
+          email: string
+          id: string
+          iniciais: string
+          nome: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
