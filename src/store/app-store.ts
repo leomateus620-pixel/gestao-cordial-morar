@@ -271,7 +271,7 @@ export const useApp = create<State>()(
           normalizeStoreClient(cliente),
         );
         const corretores = normalizeCorretores(
-          ((persistedState?.corretores ?? []) as Corretor[]) ?? [],
+          (persistedState?.corretores as Corretor[] | undefined) ?? [],
         );
         const imoveis = persistedState?.imoveis ?? current.imoveis;
         const rawAtendimentos =
