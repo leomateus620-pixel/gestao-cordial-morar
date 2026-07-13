@@ -41,7 +41,12 @@ function Page() {
       agency={agency}
       activeSection={financeView}
       onSectionChange={(nextSection) => {
-        void navigate({ search: (previous) => ({ ...previous, financeView: nextSection }) });
+        void navigate({
+          search: (previous: { financeView: FinanceSection }) => ({
+            ...previous,
+            financeView: nextSection,
+          }),
+        });
       }}
       isLoading={isLoading}
       isFetching={isFetching}
