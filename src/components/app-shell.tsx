@@ -11,8 +11,10 @@ import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { getPrimaryItemsForProfile } from "./shared/module-menu";
 import { roleDefinitions } from "@/lib/mock/permissions";
+import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
 
 export function AppShell() {
+  useHydrateCorretores();
   const session = useSession();
   const authReady = useAuthReady();
   const navigate = useNavigate();
