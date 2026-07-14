@@ -27,11 +27,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSheetsIntegration } from "@/hooks/useSheetsIntegration";
 import { useSession } from "@/lib/auth-mock";
-import { isOwner } from "@/lib/access-control";
+import { isAdminUser } from "@/lib/access-control";
 
 export function GoogleSheetsIntegration() {
   const session = useSession();
-  const admin = isOwner(session);
+  const admin = isAdminUser(session);
   const { config, isLoadingConfig, save, preview, import: importMut, disconnect } =
     useSheetsIntegration();
 
