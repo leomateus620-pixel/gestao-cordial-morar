@@ -33,6 +33,7 @@ import {
   YAxis,
 } from "recharts";
 import { AgencySwitcher } from "@/components/agency-switcher";
+import { GoogleSheetsIntegration } from "@/components/financeiro/GoogleSheetsIntegration";
 import { EmptyState } from "@/components/shared/empty-state";
 import { GlassCard } from "@/components/shared/glass-card";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
