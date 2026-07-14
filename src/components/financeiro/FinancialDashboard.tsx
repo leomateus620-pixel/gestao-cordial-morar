@@ -268,6 +268,7 @@ function FinanceSectionContent({
   if (section === "comissoes") return <CommissionSection metrics={metrics} />;
   if (section === "repasses") return <TransferSection metrics={metrics} />;
   if (section === "inadimplencia") return <DelinquencySection metrics={metrics} />;
+  if (section === "integracoes") return <GoogleSheetsIntegration />;
 
   if (!metrics.entradas.length && !metrics.saidas.length) {
     return (
