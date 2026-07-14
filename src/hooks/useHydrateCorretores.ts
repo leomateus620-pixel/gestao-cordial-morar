@@ -59,7 +59,8 @@ export function useHydrateCorretores() {
 
   useEffect(() => {
     if (!query.data) return;
-    const corretores = normalizeCorretores(query.data.map(toCorretor));
+    const onlyCorretores = query.data.filter((p) => p.role === "corretor");
+    const corretores = normalizeCorretores(onlyCorretores.map(toCorretor));
     useApp.setState({ corretores });
   }, [query.data]);
 }
