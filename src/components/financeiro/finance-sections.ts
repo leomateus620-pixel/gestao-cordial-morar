@@ -4,6 +4,7 @@ import {
   BarChart3,
   HandCoins,
   LayoutDashboard,
+  Plug,
   ReceiptText,
   TrendingDown,
   TrendingUp,
@@ -18,6 +19,7 @@ export const financeSections = [
   { id: "comissoes", label: "Comissões", icon: BadgeDollarSign },
   { id: "repasses", label: "Repasses", icon: HandCoins },
   { id: "inadimplencia", label: "Inadimplência", icon: AlertTriangle },
+  { id: "integracoes", label: "Integrações", icon: Plug },
 ] as const;
 
 export type FinanceSection = (typeof financeSections)[number]["id"];
