@@ -762,6 +762,45 @@ export type Database = {
         }
         Relationships: []
       }
+      financeiro_sheet_config: {
+        Row: {
+          created_at: string
+          header_row: number
+          id: string
+          last_import_at: string | null
+          last_import_count: number | null
+          range: string
+          sheet_name: string
+          spreadsheet_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          header_row?: number
+          id?: string
+          last_import_at?: string | null
+          last_import_count?: number | null
+          range?: string
+          sheet_name?: string
+          spreadsheet_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          header_row?: number
+          id?: string
+          last_import_at?: string | null
+          last_import_count?: number | null
+          range?: string
+          sheet_name?: string
+          spreadsheet_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       google_calendar_connections: {
         Row: {
           access_token: string
