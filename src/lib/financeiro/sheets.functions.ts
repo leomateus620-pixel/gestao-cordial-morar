@@ -334,7 +334,6 @@ export const importSheetRows = createServerFn({ method: "POST" })
     }
 
     if (toUpsert.length) {
-      // Detect existing to compute inserted vs updated
       const { data: existing } = await context.supabase
         .from("financeiro_lancamentos")
         .select("origem_id")
@@ -342,14 +341,34 @@ export const importSheetRows = createServerFn({ method: "POST" })
         .in("origem_id", originIds);
       const existingSet = new Set((existing ?? []).map((r: any) => r.origem_id));
 
-      const { error: upErr } = await context.supabase
-        .from("financeiro_lancamentos")
-        .upsert(toUpsert, { onConflict: "origem,origem_id" });
-      if (upErr) throw new Error(upErr.message);
+      const toInsert = toUpsert.filter((r) => !existingSet.has(r.origem_id));
+      const toUpdate = toUpsert.filter((r) => existingSet.has(r.origem_id));
 
-      for (const oid of originIds) {
-        if (existingSet.has(oid)) result.updated++;
-        else result.inserted++;
+      if (toInsert.length) {
+        const { error: insErr } = await context.supabase
+          .from("financeiro_lancamentos")
+          .insert(toInsert);
+        if (insErr) throw new Error(insErr.message);
+        result.inserted = toInsert.length;
+      }
+
+      for (const row of toUpdate) {
+        const { error: updErr } = await context.supabase
+          .from("financeiro_lancamentos")
+          .update({
+            imobiliaria: row.imobiliaria,
+            tipo: row.tipo,
+            categoria: row.categoria,
+            descricao: row.descricao,
+            valor: row.valor,
+            data_competencia: row.data_competencia,
+            status: row.status,
+            corretor_id: row.corretor_id,
+          })
+          .eq("origem", "google_sheets")
+          .eq("origem_id", row.origem_id);
+        if (updErr) throw new Error(updErr.message);
+        result.updated++;
       }
     }
 
