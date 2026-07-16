@@ -60,7 +60,7 @@ export const submitPublicSurveyResponse = createServerFn({ method: "POST" })
     const { error } = await supa.rpc("submit_satisfaction_response", {
       _token: data.token,
       _rating: data.rating,
-      _comentario: data.comentario ?? null,
+      _comentario: data.comentario ?? "",
     });
     if (error) {
       const msg = error.message || "erro";
