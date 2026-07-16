@@ -18,6 +18,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Star,
   TrendingUp,
   UserCog,
   Users,
