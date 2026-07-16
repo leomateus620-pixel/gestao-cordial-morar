@@ -25,11 +25,19 @@ export function useSatisfactionStats() {
   });
 }
 
+type CreateInput = {
+  corretor_id: string;
+  client_id?: string | null;
+  client_nome: string;
+  client_contato?: string | null;
+  contexto?: string | null;
+};
+
 export function useCreateSatisfactionSurvey() {
   const qc = useQueryClient();
   const create = useServerFn(createSatisfactionSurvey);
   return useMutation({
-    mutationFn: (data: Parameters<typeof create>[0]["data"]) => create({ data }),
+    mutationFn: (data: CreateInput) => create({ data }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["satisfaction"] });
     },
