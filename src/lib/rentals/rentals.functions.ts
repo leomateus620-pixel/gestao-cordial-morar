@@ -80,6 +80,10 @@ type ContractRow = {
   guarantor_id: string | null;
   valor_mensal: number;
   valor_caucao: number | null;
+  garantia_tipo: string | null;
+  seguro_seguradora: string | null;
+  seguro_apolice: string | null;
+  seguro_valor_mensal: number | null;
   data_inicio: string;
   data_fim: string;
   dia_vencimento: number;
@@ -156,6 +160,10 @@ function mapContract(r: ContractRow): RentalContract {
     guarantorId: r.guarantor_id,
     valorMensal: Number(r.valor_mensal),
     valorCaucao: r.valor_caucao !== null ? Number(r.valor_caucao) : null,
+    garantiaTipo: (r.garantia_tipo as RentalContract["garantiaTipo"]) ?? "sem_garantia",
+    seguroSeguradora: r.seguro_seguradora,
+    seguroApolice: r.seguro_apolice,
+    seguroValorMensal: r.seguro_valor_mensal !== null ? Number(r.seguro_valor_mensal) : null,
     dataInicio: r.data_inicio,
     dataFim: r.data_fim,
     diaVencimento: r.dia_vencimento,
@@ -457,6 +465,10 @@ export const createRentalContract = createServerFn({ method: "POST" })
       guarantor_id: guarantorId,
       valor_mensal: Number(data.valorMensal),
       valor_caucao: numOrNull(data.valorCaucao),
+      garantia_tipo: data.garantiaTipo ?? "sem_garantia",
+      seguro_seguradora: orNull(data.seguroSeguradora),
+      seguro_apolice: orNull(data.seguroApolice),
+      seguro_valor_mensal: numOrNull(data.seguroValorMensal),
       data_inicio: data.dataInicio.slice(0, 10),
       data_fim: data.dataFim.slice(0, 10),
       dia_vencimento: data.diaVencimento,

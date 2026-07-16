@@ -29,6 +29,12 @@ export type RentalPaymentStatus =
 
 export type RentalBrand = "cordial" | "morar" | "ambas";
 
+export type RentalGuaranteeType =
+  | "sem_garantia"
+  | "fiador"
+  | "caucao"
+  | "seguro_fianca";
+
 export type RentalProperty = {
   id: string;
   apelido: string;
@@ -88,6 +94,10 @@ export type RentalContract = {
   guarantorId?: string | null;
   valorMensal: number;
   valorCaucao?: number | null;
+  garantiaTipo: RentalGuaranteeType;
+  seguroSeguradora?: string | null;
+  seguroApolice?: string | null;
+  seguroValorMensal?: number | null;
   dataInicio: string;
   dataFim: string;
   diaVencimento: number;
@@ -118,6 +128,10 @@ export type RentalContractInput = {
   guarantor?: { existingId?: string | null; data?: RentalGuarantorInput } | null;
   valorMensal: number;
   valorCaucao?: number | null;
+  garantiaTipo?: RentalGuaranteeType;
+  seguroSeguradora?: string | null;
+  seguroApolice?: string | null;
+  seguroValorMensal?: number | null;
   dataInicio: string;
   dataFim: string;
   diaVencimento: number;

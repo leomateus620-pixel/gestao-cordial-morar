@@ -84,10 +84,6 @@ export function RentalExpandedDetails({
         <div className="mt-4 space-y-3">
           <Section title="Contrato">
             <Row label="Valor mensal" value={brl(contract.valorMensal)} />
-            <Row
-              label="Caução"
-              value={contract.valorCaucao ? brl(contract.valorCaucao) : "—"}
-            />
             <Row label="Início" value={fmtDate(contract.dataInicio)} />
             <Row label="Fim" value={fmtDate(contract.dataFim)} />
             <Row label="Dia de vencimento" value={`Dia ${contract.diaVencimento}`} />
@@ -96,6 +92,48 @@ export function RentalExpandedDetails({
               <Row label="Encerrado em" value={fmtDate(contract.dataEncerramento)} />
             )}
             {contract.observacoes && <Row label="Observações" value={contract.observacoes} />}
+          </Section>
+
+          <Section title="Garantia">
+            <Row
+              label="Modalidade"
+              value={
+                contract.garantiaTipo === "fiador"
+                  ? "Fiador"
+                  : contract.garantiaTipo === "caucao"
+                    ? "Caução"
+                    : contract.garantiaTipo === "seguro_fianca"
+                      ? "Seguro fiança"
+                      : "Sem garantia"
+              }
+            />
+            {contract.garantiaTipo === "caucao" && (
+              <Row
+                label="Valor da caução"
+                value={contract.valorCaucao ? brl(contract.valorCaucao) : "—"}
+              />
+            )}
+            {contract.garantiaTipo === "fiador" && contract.guarantor && (
+              <>
+                <Row label="Nome" value={contract.guarantor.nome} />
+                <Row label="CPF/CNPJ" value={contract.guarantor.cpfCnpj ?? ""} />
+                <Row label="Telefone" value={contract.guarantor.telefone ?? ""} />
+                <Row label="E-mail" value={contract.guarantor.email ?? ""} />
+                <Row label="Vínculo" value={contract.guarantor.vinculo ?? ""} />
+              </>
+            )}
+            {contract.garantiaTipo === "seguro_fianca" && (
+              <>
+                <Row label="Seguradora" value={contract.seguroSeguradora ?? ""} />
+                <Row label="Nº da apólice" value={contract.seguroApolice ?? ""} />
+                <Row
+                  label="Valor mensal"
+                  value={
+                    contract.seguroValorMensal ? brl(contract.seguroValorMensal) : "—"
+                  }
+                />
+              </>
+            )}
           </Section>
 
           <Section title="Locatário">
@@ -111,15 +149,6 @@ export function RentalExpandedDetails({
             <Row label="Endereço" value={contract.tenant.endereco ?? ""} />
           </Section>
 
-          {contract.guarantor && (
-            <Section title="Fiador">
-              <Row label="Nome" value={contract.guarantor.nome} />
-              <Row label="CPF/CNPJ" value={contract.guarantor.cpfCnpj ?? ""} />
-              <Row label="Telefone" value={contract.guarantor.telefone ?? ""} />
-              <Row label="E-mail" value={contract.guarantor.email ?? ""} />
-              <Row label="Vínculo" value={contract.guarantor.vinculo ?? ""} />
-            </Section>
-          )}
 
           <Section title="Imóvel">
             <Row label="Apelido" value={contract.property.apelido} />
