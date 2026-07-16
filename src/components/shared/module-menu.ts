@@ -172,6 +172,14 @@ export const moduleItems: ModuleItem[] = [
     module: "integracoes",
   },
   {
+    to: "/pesquisa-satisfacao",
+    label: "Pesquisa de satisfação",
+    shortLabel: "Pesquisa",
+    desc: "Avaliações dos clientes",
+    icon: Star,
+    module: "pesquisa_satisfacao",
+  },
+  {
     to: "/configuracoes",
     label: "Configurações",
     desc: "Preferências operacionais",
