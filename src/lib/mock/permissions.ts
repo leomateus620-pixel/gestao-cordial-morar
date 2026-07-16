@@ -75,6 +75,7 @@ const allModules: AppModule[] = [
   "documentos",
   "integracoes",
   "configuracoes",
+  "pesquisa_satisfacao",
 ];
 
 const allPermissions: Permission[] = [
