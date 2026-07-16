@@ -415,7 +415,7 @@ export const importSheetRows = createServerFn({ method: "POST" })
           cols[4] ?? "",
         ];
 
-        const parsedData = parseDate(dataRaw);
+        const parsedData = parseDate(dataRaw, tab);
         const parsedValor = parseValor(valorRaw);
 
         const problems: string[] = [];
