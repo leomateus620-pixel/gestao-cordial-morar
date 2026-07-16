@@ -313,9 +313,8 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
                         stroke: "rgba(255,255,255,0.95)",
                         fill: series.color,
                       }}
-                      animationDuration={
-                        prefersReducedMotion ? 0 : series.key === "total" ? 900 : 780
-                      }
+                      isAnimationActive={!prefersReducedMotion}
+                      animationDuration={420}
                       animationEasing="ease-out"
                       onMouseEnter={() => setHoveredSeries(series.key)}
                     />
@@ -388,7 +387,7 @@ function PeriodFilterCard({
               key={option.key}
               type="button"
               className={cn(
-                "min-h-9 shrink-0 rounded-full px-3 text-xs font-black transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none",
+                "min-h-9 shrink-0 rounded-full px-3 text-xs font-black transition-[background-color,color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none",
                 active
                   ? "bg-primary text-white shadow-[0_12px_24px_-16px_rgba(30,100,125,0.95)]"
                   : "bg-white/62 text-foreground/58 ring-1 ring-foreground/8 hover:-translate-y-0.5 hover:text-primary",
@@ -554,7 +553,7 @@ function LegendChips({
             key={series.key}
             type="button"
             className={cn(
-              "group inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-black transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none",
+              "group inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-black transition-[background-color,border-color,color,box-shadow,opacity] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none",
               active
                 ? "border-white/72 bg-white/70 text-foreground shadow-[0_12px_26px_-22px_rgba(23,27,33,0.38)]"
                 : "border-foreground/8 bg-white/28 text-foreground/38",

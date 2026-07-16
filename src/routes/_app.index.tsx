@@ -21,7 +21,9 @@ import { AgenciamentosQuickStrip } from "@/components/agenciamentos/Agenciamento
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
@@ -53,6 +55,7 @@ import {
   BadgeCheck,
   BadgeDollarSign,
   Building2,
+  CalendarDays,
   ClipboardCheck,
   FileText,
   Handshake,
@@ -63,6 +66,7 @@ import {
   Percent,
   Sparkles,
   TrendingUp,
+  UserPlus,
   type LucideIcon,
   Users,
   Wallet,
@@ -101,6 +105,7 @@ type MetricCardData = {
 function Dashboard() {
   const [open, setOpen] = useState(false);
   const session = useSession();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const isAdminOwner = session?.perfil === "admin_owner";
   const {
     agency,
@@ -137,8 +142,13 @@ function Dashboard() {
   const agenda = filterByAgency(rawAgenda);
   const lancamentos = filterByAgency(rawLancamentos);
   const clientes = filterByAgency(rawClientes);
+  const dashboardScopeLabel =
+    agency === "todas" ? "Cordial + Morar" : agency === "cordial" ? "Cordial" : "Morar";
 
-  const mesAtual = "2026-06";
+  const now = new Date();
+  const mesAtual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const mesAtualLabel = now.toLocaleDateString("pt-BR", { month: "long" });
+  const inicioHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const atendimentosMes = atendimentos.filter((a) => a.criadoEm.startsWith(mesAtual)).length;
   const novosClientes = clientes.filter((c) => c.criadoEm.startsWith(mesAtual)).length;
   const clientesAluguel = clientes.filter((c) => c.tipo === "Locatário").length;
@@ -148,7 +158,7 @@ function Dashboard() {
     imoveis.filter((i) => i.status === "Reservado").length +
     atendimentos.filter((a) => a.status === "proposta_enviada").length;
   const visitasAgendadas = agenda.filter(
-    (a) => a.tipo === "Visita" && new Date(a.data) >= new Date("2026-06-12T00:00:00"),
+    (a) => a.tipo === "Visita" && new Date(a.data) >= inicioHoje,
   ).length;
   const valoresPrevistos = contratos
     .filter((c) => c.status !== "Encerrado")
@@ -175,7 +185,7 @@ function Dashboard() {
       {
         label: "Atendimentos do mês",
         value: String(atendimentosMes).padStart(2, "0"),
-        detail: "+18% vs. maio",
+        detail: `volume em ${mesAtualLabel}`,
         tone: "primary",
         accent: "up",
         icon: <TrendingUp className="size-4" />,
@@ -183,7 +193,7 @@ function Dashboard() {
       {
         label: "Novos clientes",
         value: String(novosClientes).padStart(2, "0"),
-        detail: "cadastros em junho",
+        detail: `cadastros em ${mesAtualLabel}`,
         accent: "up",
         icon: <ArrowUpRight className="size-4" />,
       },
@@ -263,50 +273,104 @@ function Dashboard() {
 
   return (
     <>
-      {/* ── Hero banner ─────────────────────────────────────────────────── */}
-      <section
-        className="mb-5 w-full min-w-0 overflow-hidden rounded-3xl p-4 text-white sm:p-5 lg:p-7"
-        style={{
-          background: "linear-gradient(135deg, #174d61 0%, #1e647d 45%, #2a3038 100%)",
-          boxShadow: "0 24px 60px -20px rgba(23,27,33,0.45), inset 0 1px 0 rgba(255,255,255,0.08)",
-        }}
-      >
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.24em]"
-              style={{ color: "#f0a86d" }}
-            >
-              Painel Gestão Cordial
-            </p>
-            <h1 className="mt-1 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">
-              Olá, {session?.nome ?? "bem-vindo"} 👋
-            </h1>
-            <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-white/65 sm:text-[13px]">
-              Acompanhe atendimentos, imóveis, contratos e performance das duas imobiliárias em um
-              só lugar.
-            </p>
-          </div>
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
-            <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
-            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
-            <HeroStat label="Contratos ativos" value={String(contratosAtivos).padStart(2, "0")} />
-            {isAdminOwner && (
-              <HeroStat
-                label="Previsão entrada"
-                value={brl(valoresPrevistos, { compact: true })}
-                accent
-              />
-            )}
-          </div>
-        </div>
-      </section>
+      <ScrollReveal>
+        <section
+          className="relative mb-5 w-full min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 p-4 text-white shadow-[0_24px_54px_-26px_rgba(23,27,33,0.5)] sm:p-6 lg:p-7"
+          style={{
+            background: "linear-gradient(135deg, #153f50 0%, #1e647d 52%, #273139 100%)",
+          }}
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-white/[0.06]"
+          />
+          <div className="relative grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.78fr)] lg:items-stretch">
+            <div className="flex min-w-0 flex-col justify-center">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/12 bg-white/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/74">
+                <span className="size-1.5 rounded-full bg-[#f0a86d]" aria-hidden="true" />
+                Central operacional · {dashboardScopeLabel}
+              </div>
+              <h1 className="mt-3 max-w-2xl text-[1.65rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-3xl lg:text-[2.15rem]">
+                A operação do dia, clara e acionável.
+              </h1>
+              <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-white/66 sm:text-sm">
+                Priorize contatos, organize visitas e mantenha os próximos passos comerciais ao
+                alcance da equipe.
+              </p>
 
-      {/* ── Métricas — carrossel horizontal com scroll-snap ─────────────── */}
-      {isAdminOwner && <MetricsCarousel groups={metricGroups} />}
+              <div className="mt-5 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="premium-pressable inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-primary shadow-[0_14px_30px_-18px_rgba(0,0,0,0.62)]"
+                >
+                  <UserPlus className="size-4" aria-hidden="true" />
+                  Novo atendimento
+                </button>
+                <Link
+                  to="/agenda"
+                  className="premium-pressable inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/16 bg-white/[0.07] px-4 text-sm font-bold text-white"
+                >
+                  <CalendarDays className="size-4 text-[#f0a86d]" aria-hidden="true" />
+                  Abrir agenda
+                  <ArrowRight className="size-3.5 text-white/54" aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
 
-      {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
-      {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
+            <aside className="rounded-[1.35rem] border border-white/12 bg-black/[0.09] p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-3 px-1 pb-2.5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f0a86d]">
+                    Atenção agora
+                  </p>
+                  <p className="mt-0.5 text-xs text-white/52">Frentes operacionais do período</p>
+                </div>
+                <Sparkles className="size-4 text-white/35" aria-hidden="true" />
+              </div>
+              <div className="premium-stagger grid gap-2">
+                <HeroAttentionLink
+                  to="/atendimentos"
+                  icon={Handshake}
+                  label="Atendimentos pendentes"
+                  detail="Retomar contatos e próximos passos"
+                  value={String(atendPendentes).padStart(2, "0")}
+                />
+                <HeroAttentionLink
+                  to="/agenda"
+                  icon={CalendarDays}
+                  label="Visitas em agenda"
+                  detail="Conferir compromissos programados"
+                  value={String(visitasAgendadas).padStart(2, "0")}
+                />
+                <HeroAttentionLink
+                  to="/clientes"
+                  icon={Users}
+                  label="Novos clientes"
+                  detail="Cadastros para acompanhar"
+                  value={String(novosClientes).padStart(2, "0")}
+                />
+              </div>
+            </aside>
+          </div>
+        </section>
+      </ScrollReveal>
+
+      <ScrollReveal delay={40}>
+        <OperationalShortcuts profile={session?.perfil} />
+
+        {isAdminOwner && (
+          <>
+            <DashboardSectionHeading
+              eyebrow="Resumo operacional"
+              title="Indicadores da operação"
+              subtitle="Leitura rápida dos números que orientam o trabalho da equipe."
+            />
+            <MetricsCarousel groups={metricGroups} />
+            <AgenciamentosQuickStrip summary={agenciamentosSummary} />
+          </>
+        )}
+      </ScrollReveal>
 
       {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
       {isAdminOwner && (
@@ -336,8 +400,6 @@ function Dashboard() {
           />
         </section>
       )}
-
-      {!isAdminOwner && <OperationalShortcuts profile={session?.perfil} />}
 
       {/* ── Gráficos (admin) ────────────────────────────────────────────── */}
       {isAdminOwner && (
@@ -373,14 +435,16 @@ function Dashboard() {
                   fill="url(#gradVenda)"
                   radius={[6, 6, 0, 0]}
                   name="Venda"
-                  animationDuration={900}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={450}
                 />
                 <Bar
                   dataKey="aluguel"
                   fill="url(#gradAluguel)"
                   radius={[6, 6, 0, 0]}
                   name="Aluguel"
-                  animationDuration={1100}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={450}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -393,7 +457,10 @@ function Dashboard() {
             heightClassName="h-60 lg:h-72"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
+              <AreaChart
+                data={dashboardPrevisaoFinanceira}
+                margin={{ left: -14, right: 12, top: 8 }}
+              >
                 <defs>
                   <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
@@ -430,7 +497,8 @@ function Dashboard() {
                   strokeWidth={2.4}
                   fill="url(#gradReceita)"
                   name="Receita"
-                  animationDuration={900}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={450}
                   dot={false}
                   activeDot={{ r: 5, strokeWidth: 0 }}
                 />
@@ -441,7 +509,8 @@ function Dashboard() {
                   strokeWidth={2}
                   fill="url(#gradAberto)"
                   name="Em aberto"
-                  animationDuration={1200}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={450}
                   dot={false}
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
@@ -453,7 +522,8 @@ function Dashboard() {
                   dot={false}
                   strokeDasharray="5 3"
                   name="Comissão"
-                  animationDuration={1100}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={450}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -463,9 +533,60 @@ function Dashboard() {
 
       {isAdminOwner && <RealEstateSitePreviewSection />}
 
-      
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
     </>
+  );
+}
+
+function HeroAttentionLink({
+  to,
+  icon: Icon,
+  label,
+  detail,
+  value,
+}: {
+  to: string;
+  icon: LucideIcon;
+  label: string;
+  detail: string;
+  value: string;
+}) {
+  return (
+    <Link
+      to={to as never}
+      className="premium-pressable grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-3 py-2.5 hover:bg-white/[0.12]"
+    >
+      <span className="grid size-9 place-items-center rounded-xl bg-white/[0.09] text-[#f0a86d]">
+        <Icon className="size-4" aria-hidden="true" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-xs font-semibold text-white/90">{label}</span>
+        <span className="mt-0.5 block truncate text-[10px] text-white/48">{detail}</span>
+      </span>
+      <span className="text-lg font-semibold tabular-nums text-white">{value}</span>
+    </Link>
+  );
+}
+
+function DashboardSectionHeading({
+  eyebrow,
+  title,
+  subtitle,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="mb-3 flex items-end justify-between gap-4 px-1">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary/72">
+          {eyebrow}
+        </p>
+        <h2 className="mt-0.5 text-base font-semibold tracking-tight">{title}</h2>
+        <p className="mt-0.5 line-clamp-2 text-[11px] leading-5 text-foreground/52">{subtitle}</p>
+      </div>
+    </div>
   );
 }
 
@@ -477,25 +598,47 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
   const shortcuts =
     profile === "secretaria"
       ? [
-          { to: "/atendimentos", label: "Atendimentos", desc: "Fila e novos leads", icon: Handshake },
+          {
+            to: "/atendimentos",
+            label: "Atendimentos",
+            desc: "Fila e novos leads",
+            icon: Handshake,
+          },
+          { to: "/agenda", label: "Agenda", desc: "Visitas e retornos", icon: CalendarDays },
           { to: "/clientes", label: "Clientes", desc: "Cadastro e histórico", icon: Users },
-          { to: "/marketing", label: "Marketing", desc: "Campanhas em andamento", icon: TrendingUp },
+          {
+            to: "/marketing",
+            label: "Marketing",
+            desc: "Campanhas em andamento",
+            icon: TrendingUp,
+          },
         ]
       : [
-          { to: "/atendimentos", label: "Atendimentos", desc: "Sua carteira comercial", icon: Handshake },
+          {
+            to: "/atendimentos",
+            label: "Atendimentos",
+            desc: "Sua carteira comercial",
+            icon: Handshake,
+          },
+          { to: "/agenda", label: "Agenda", desc: "Compromissos da equipe", icon: CalendarDays },
           { to: "/clientes", label: "Clientes", desc: "Cadastros e contatos", icon: Users },
-          { to: "/agenciamentos", label: "Agenciamentos", desc: "Captações e checklist", icon: ClipboardCheck },
+          {
+            to: "/agenciamentos",
+            label: "Agenciamentos",
+            desc: "Captações e checklist",
+            icon: ClipboardCheck,
+          },
         ];
 
   return (
-    <section className="mb-5 grid gap-3 sm:grid-cols-3">
+    <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Acessos rápidos">
       {shortcuts.map((item) => {
         const Icon = item.icon;
         return (
           <Link
             key={item.to}
             to={item.to as never}
-            className="glass-panel group flex items-center gap-3 rounded-3xl p-4 transition hover:-translate-y-0.5 hover:bg-white/70"
+            className="glass-panel premium-pressable group flex items-center gap-3 rounded-3xl p-4 hover:bg-white/70"
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary">
               <Icon className="size-5" />
@@ -506,7 +649,7 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
               </span>
               <span className="block truncate text-[11px] text-foreground/55">{item.desc}</span>
             </span>
-            <ArrowRight className="size-4 text-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+            <ArrowRight className="size-4 text-foreground/40 transition-[color,transform] duration-150 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none" />
           </Link>
         );
       })}
@@ -533,7 +676,19 @@ function MetricsCarousel({ groups }: { groups: MetricCardData[][] }) {
 
       {/* Mobile: carrossel com scroll-snap por grupo */}
       <div className="sm:hidden">
-        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-2">
+        <div
+          className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-2"
+          onScroll={(event) => {
+            const viewportWidth = event.currentTarget.clientWidth;
+            if (!viewportWidth) return;
+            setActiveGroup(
+              Math.min(
+                groups.length - 1,
+                Math.round(event.currentTarget.scrollLeft / viewportWidth),
+              ),
+            );
+          }}
+        >
           {groups.map((group, gi) => (
             <div
               key={gi}
@@ -546,12 +701,12 @@ function MetricsCarousel({ groups }: { groups: MetricCardData[][] }) {
           ))}
         </div>
         {/* Indicadores de página */}
-        <div className="mt-2 flex justify-center gap-1.5">
+        <div className="mt-2 flex justify-center gap-1.5" aria-hidden="true">
           {groups.map((_, i) => (
             <span
               key={i}
               className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
+                "h-1.5 rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none",
                 i === activeGroup ? "w-5 bg-primary" : "w-1.5 bg-foreground/20",
               )}
             />
@@ -584,17 +739,7 @@ function MetricCard({
   const TrendIcon = accent === "up" ? ArrowUpRight : accent === "down" ? ArrowDownRight : null;
 
   return (
-    <article
-      className="group relative min-w-0 overflow-hidden rounded-2xl p-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg sm:p-4"
-      style={{
-        background:
-          "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
-        backdropFilter: "blur(18px) saturate(145%)",
-        border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow:
-          "0 8px 24px -8px rgba(23,27,33,0.1), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(23,27,33,0.04)",
-      }}
-    >
+    <article className="glass-panel group relative min-w-0 overflow-hidden rounded-2xl p-3 sm:p-4">
       {/* Brilho sutil no topo */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
@@ -720,7 +865,7 @@ function TeamPerformanceCard({
           <Link
             key={corretor.id}
             to="/corretores"
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/[0.56] px-3 py-2.5 ring-1 ring-white/60 transition-all hover:bg-white/[0.76]"
+            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/[0.56] px-3 py-2.5 ring-1 ring-white/60 transition-[background-color,box-shadow,transform] duration-200 hover:bg-white/[0.76] motion-reduce:transition-none"
           >
             <span
               className={cn(
@@ -821,7 +966,7 @@ function AgenciamentosTeamCard({
           <Link
             key={item.corretorId}
             to="/agenciamentos"
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/[0.56] px-3 py-2.5 ring-1 ring-white/60 transition-all hover:bg-white/[0.76]"
+            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/[0.56] px-3 py-2.5 ring-1 ring-white/60 transition-[background-color,box-shadow,transform] duration-200 hover:bg-white/[0.76] motion-reduce:transition-none"
           >
             <span
               className={cn(
@@ -1066,7 +1211,7 @@ function ComparativoCard() {
           return (
             <div
               key={item.imobiliaria}
-              className="group relative w-[85%] min-w-[260px] max-w-[320px] flex-none snap-start overflow-hidden rounded-2xl p-4 pl-5 transition-all duration-300 hover:-translate-y-0.5 md:w-auto md:min-w-0 md:max-w-none"
+              className="group relative w-[85%] min-w-[260px] max-w-[320px] flex-none snap-start overflow-hidden rounded-2xl p-4 pl-5 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 motion-reduce:transition-none md:w-auto md:min-w-0 md:max-w-none"
               style={{
                 background: isCordial
                   ? "linear-gradient(135deg, rgba(43,127,163,0.08), rgba(43,127,163,0.04))"
@@ -1296,7 +1441,7 @@ function ChartCard({
 function HeroStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div
-      className="rounded-2xl px-3 py-2.5 transition-all hover:scale-[1.02]"
+      className="premium-pressable rounded-2xl px-3 py-2.5"
       style={{
         background: accent ? "rgba(240,168,109,0.2)" : "rgba(255,255,255,0.09)",
         border: "1px solid rgba(255,255,255,0.14)",

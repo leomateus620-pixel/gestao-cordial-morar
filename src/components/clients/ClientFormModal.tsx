@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Check, ChevronRight, X } from "lucide-react";
 import {
   bedroomOptions,
@@ -97,7 +105,10 @@ export function ClientFormModal({
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
   const closeTimer = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLFormElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const brokerName = useMemo(() => {
     if (form.assignedBrokerId === "outro") return form.customBrokerName.trim() || "Outro";
@@ -105,18 +116,20 @@ export function ClientFormModal({
   }, [form.assignedBrokerId, form.customBrokerName]);
 
   const requestClose = useCallback(() => {
-    if (closing) return;
+    if (closingRef.current) return;
+    closingRef.current = true;
     setClosing(true);
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     closeTimer.current = window.setTimeout(() => {
       onOpenChange(false);
     }, 160);
-  }, [closing, onOpenChange]);
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (open) {
       setMounted(true);
       setClosing(false);
+      closingRef.current = false;
       return;
     }
     if (!mounted) return;
@@ -125,6 +138,7 @@ export function ClientFormModal({
     const t = window.setTimeout(() => {
       setMounted(false);
       setClosing(false);
+      closingRef.current = false;
     }, 160);
     return () => window.clearTimeout(t);
   }, [open, mounted]);
@@ -138,8 +152,35 @@ export function ClientFormModal({
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
 
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const focusableSelector =
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+
+    window.requestAnimationFrame(() => {
+      const firstFocusable = dialog?.querySelector<HTMLElement>(focusableSelector);
+      firstFocusable?.focus();
+    });
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") requestClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        requestClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
     };
 
     document.addEventListener("keydown", onKeyDown);
@@ -148,6 +189,7 @@ export function ClientFormModal({
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = "";
+      returnFocusRef.current?.focus();
     };
   }, [mounted, requestClose]);
 
@@ -223,7 +265,12 @@ export function ClientFormModal({
       />
 
       <form
+        ref={dialogRef}
         onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="client-form-title"
+        aria-describedby="client-form-description"
         className={cn(
           "client-form-modal relative flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-white/65 bg-background shadow-2xl shadow-stone-950/25 sm:max-h-[88vh] sm:max-w-[920px] sm:rounded-[2rem]",
           closing && "client-form-modal--closing",
@@ -236,8 +283,16 @@ export function ClientFormModal({
                 <span className="size-2 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.65)]" />
                 Cadastro inteligente
               </div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">Novo cliente</h2>
-              <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
+              <h2
+                id="client-form-title"
+                className="mt-1 text-lg font-semibold tracking-tight sm:text-xl"
+              >
+                Novo cliente
+              </h2>
+              <p
+                id="client-form-description"
+                className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block"
+              >
                 Preencha o essencial agora e deixe dados opcionais prontos para enriquecer
                 relatórios futuros.
               </p>
@@ -246,7 +301,7 @@ export function ClientFormModal({
               type="button"
               aria-label="Fechar"
               onClick={requestClose}
-              className="grid size-10 shrink-0 place-items-center rounded-full bg-white/65 text-foreground/65 shadow-sm transition hover:text-foreground active:scale-95"
+              className="premium-pressable grid size-10 shrink-0 place-items-center rounded-full bg-white/65 text-foreground/65 shadow-sm hover:text-foreground"
             >
               <X className="size-4" />
             </button>
@@ -280,7 +335,7 @@ export function ClientFormModal({
               title="Identificação"
               description="Dados de contato e perfil inicial do cliente."
             >
-              <Field label="Nome completo" error={validation.fullName}>
+              <Field label="Nome completo" error={validation.fullName} required>
                 <input
                   value={form.fullName}
                   onChange={(event) => update("fullName", event.target.value)}
@@ -291,7 +346,7 @@ export function ClientFormModal({
               </Field>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Telefone" error={validation.phone}>
+                <Field label="Telefone" error={validation.phone} required>
                   <input
                     value={form.phone}
                     onChange={(event) => update("phone", formatPhoneBR(event.target.value))}
@@ -539,14 +594,14 @@ export function ClientFormModal({
           <button
             type="button"
             onClick={requestClose}
-            className="rounded-2xl bg-white/70 px-4 py-3 text-sm font-semibold text-foreground/70 shadow-sm transition hover:text-foreground active:scale-[0.98]"
+            className="premium-pressable min-h-11 rounded-2xl bg-white/70 px-4 text-sm font-semibold text-foreground/70 shadow-sm hover:text-foreground"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800 active:scale-[0.98] disabled:opacity-70"
+            className="premium-pressable flex min-h-11 items-center gap-2 rounded-2xl bg-teal-700 px-4 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 hover:bg-teal-800 disabled:opacity-70"
           >
             {saving ? "Salvando..." : "Salvar cadastro"}
             {saving ? null : <ChevronRight className="size-4" />}
@@ -584,11 +639,28 @@ function FormSection({
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({
+  label,
+  error,
+  children,
+  required,
+}: {
+  label: string;
+  error?: string;
+  children: ReactNode;
+  required?: boolean;
+}) {
   return (
     <label className="block">
       <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/52">
-        {label}
+        <span>
+          {label}
+          {required && (
+            <span className="ml-1 text-destructive" aria-hidden="true">
+              *
+            </span>
+          )}
+        </span>
         {error && <span className="normal-case tracking-normal text-destructive">{error}</span>}
       </span>
       <div className="mt-1.5">{children}</div>
@@ -622,7 +694,7 @@ function Select<T extends string>({
 
 function inputClass(error?: string) {
   return cn(
-    "w-full rounded-2xl border bg-white/70 px-3 py-3 text-sm text-foreground outline-none transition",
+    "w-full rounded-2xl border bg-white/70 px-3 py-3 text-sm text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150",
     "placeholder:text-foreground/35 focus:border-teal-700/45 focus:ring-4 focus:ring-teal-700/10",
     error ? "border-destructive/35" : "border-white/65",
   );

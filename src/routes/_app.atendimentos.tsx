@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Inbox, Plus, Workflow } from "lucide-react";
+import { AlertCircle, Inbox, Plus, RefreshCw, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import {
@@ -22,11 +22,7 @@ import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
-import type {
-  Atendimento,
-  AtendimentoCreateInput,
-  AtendimentoStatus,
-} from "@/types/atendimento";
+import type { Atendimento, AtendimentoCreateInput, AtendimentoStatus } from "@/types/atendimento";
 import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
@@ -47,6 +43,7 @@ function Page() {
     isLoading,
     isError,
     error,
+    refetch,
     addAtendimento,
     convertAtendimento,
     updateAtendimento,
@@ -73,9 +70,13 @@ function Page() {
           if (res.status === "sent") {
             toast.success(`Atendimento de ${input.clienteNome} salvo e e-mail enviado ao cliente.`);
           } else if (res.status === "skipped" && res.reason === "no_email") {
-            toast.success(`Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (cliente sem e-mail).`);
+            toast.success(
+              `Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (cliente sem e-mail).`,
+            );
           } else if (res.status === "skipped" && res.reason === "invalid_email") {
-            toast.success(`Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (endereço inválido).`);
+            toast.success(
+              `Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (endereço inválido).`,
+            );
           } else if (res.status === "failed") {
             toast.success(`Atendimento de ${input.clienteNome} salvo.`);
             toast.error("Não foi possível enviar o e-mail automático agora.");
@@ -94,7 +95,6 @@ function Page() {
     }
   }
 
-
   async function handleConvert(id: string) {
     try {
       await convertAtendimento(id);
@@ -103,7 +103,6 @@ function Page() {
       toast.error(err instanceof Error ? err.message : "Não foi possível converter.");
     }
   }
-
 
   async function handleAction(payload: AtendimentoActionPayload, atendimento: Atendimento) {
     try {
@@ -119,9 +118,7 @@ function Page() {
         const startIso = buildLocalIso(payload.data, payload.hora);
         if (!startIso) throw new Error("Data/horário inválidos.");
         const startDate = new Date(startIso);
-        const endIso = new Date(
-          startDate.getTime() + payload.duracaoMin * 60_000,
-        ).toISOString();
+        const endIso = new Date(startDate.getTime() + payload.duracaoMin * 60_000).toISOString();
         const input: AgendaEventInput = {
           titulo: `Visita — ${atendimento.clienteNome}`,
           descricao: payload.observacoes || undefined,
@@ -202,7 +199,6 @@ function Page() {
     return String(n).padStart(2, "0");
   }
 
-
   function setStatus(status: "todos" | AtendimentoStatus) {
     setFilters((current) => ({ ...current, status }));
   }
@@ -211,25 +207,22 @@ function Page() {
 
   return (
     <div className="space-y-4">
-      <section className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#174d61_0%,#1e647d_48%,#28333b_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(23,27,33,0.55)] sm:p-6">
-        <span className="absolute -right-10 -top-16 size-44 rounded-full bg-cyan-200/10 blur-3xl" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+      <section className="premium-reveal relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#174d61_0%,#1e647d_52%,#28333b_100%)] p-4 text-white shadow-[0_22px_52px_-26px_rgba(23,27,33,0.55)] sm:p-5">
+        <span className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-cyan-200/10 blur-3xl" />
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
-              <Inbox className="size-6 text-orange-300" />
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
+              <Inbox className="size-5 text-orange-300" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
                 Central de entrada comercial
               </p>
-              <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">
-                Atendimentos
-              </h1>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-white/64">
-                Do primeiro contato ao encaminhamento, com dados prontos para revelar o nicho real
-                da imobiliária.
+              <h1 className="mt-0.5 text-xl font-semibold tracking-tight">Atendimentos</h1>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-white/68">
+                Organize entradas, próximos passos e conversões em uma única fila comercial.
               </p>
-              <p className="mt-2 hidden items-center gap-1.5 text-[10px] font-semibold text-white/55 md:flex">
+              <p className="mt-1.5 hidden items-center gap-1.5 text-[10px] font-semibold text-white/55 md:flex">
                 <Workflow className="size-3 text-orange-300" />
                 Pré-atendimento · Corretor · Conversão
               </p>
@@ -239,9 +232,9 @@ function Page() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="group relative inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-400 px-4 py-3 text-sm font-semibold text-stone-900 shadow-[0_10px_30px_-12px_rgba(251,146,60,0.65)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 hover:shadow-[0_18px_40px_-12px_rgba(251,146,60,0.7)] active:scale-[0.98] sm:w-auto"
+            className="premium-pressable relative inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-300 px-4 text-sm font-semibold text-stone-900 shadow-[0_10px_28px_-14px_rgba(251,146,60,0.65)] ring-1 ring-orange-200/45 transition-[background-color,box-shadow] duration-200 hover:bg-orange-200 hover:shadow-[0_14px_32px_-14px_rgba(251,146,60,0.68)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-900 sm:w-auto"
           >
-            <Plus className="size-4 transition-transform group-hover:rotate-90" />
+            <Plus className="size-4" />
             Novo atendimento
           </button>
         </div>
@@ -252,6 +245,7 @@ function Page() {
         onQueryChange={setQuery}
         filters={filters}
         onFiltersChange={setFilters}
+        resultCount={filteredAtendimentos.length}
       />
 
       <AtendimentoSummaryCards
@@ -261,28 +255,48 @@ function Page() {
         canViewFinancialInsights={canViewFinancialInsights}
       />
 
-      <section className="space-y-3">
+      <section className="space-y-3" aria-labelledby="attendance-queue-title">
         <div className="flex items-center justify-between gap-3 px-1">
           <div>
-            <h2 className="text-sm font-semibold tracking-tight">Fila de atendimentos</h2>
+            <h2 id="attendance-queue-title" className="text-sm font-semibold tracking-tight">
+              Fila de atendimentos
+            </h2>
             <p className="text-[11px] text-foreground/50">
               {filteredAtendimentos.length} atendimento
               {filteredAtendimentos.length === 1 ? "" : "s"} no recorte atual
             </p>
           </div>
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800">
-            Operação comercial
+          <span className="rounded-full border border-white/60 bg-white/48 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-teal-800">
+            Atualização em nuvem
           </span>
         </div>
 
-        {isLoading ? (
-          <EmptyState
-            title="Carregando atendimentos..."
-            description="Buscando registros na nuvem."
-            icon={<Inbox className="size-5" />}
-          />
+        {isError ? (
+          <div
+            className="glass-panel rounded-3xl p-6 text-center"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-destructive/10 text-destructive">
+              <AlertCircle className="size-5" />
+            </div>
+            <p className="mt-3 text-sm font-semibold">Não foi possível carregar os atendimentos.</p>
+            <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-foreground/55">
+              {error?.message ?? "Verifique sua conexão e tente novamente."}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="premium-pressable mt-4 inline-flex min-h-10 items-center gap-2 rounded-2xl bg-teal-700 px-4 text-xs font-semibold text-white transition-colors duration-150 hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 focus-visible:ring-offset-2"
+            >
+              <RefreshCw className="size-3.5" />
+              Tentar novamente
+            </button>
+          </div>
+        ) : isLoading ? (
+          <AtendimentoListSkeleton />
         ) : filteredAtendimentos.length > 0 ? (
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="premium-stagger grid gap-3 xl:grid-cols-2" aria-live="polite">
             {filteredAtendimentos.map((atendimento) => (
               <AtendimentoCard
                 key={atendimento.id}
@@ -307,7 +321,7 @@ function Page() {
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-700/25 transition hover:bg-teal-800 active:scale-[0.98]"
+                className="premium-pressable inline-flex min-h-10 items-center gap-2 rounded-2xl bg-teal-700 px-4 text-xs font-semibold text-white shadow-lg shadow-teal-700/20 transition-colors duration-150 hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 focus-visible:ring-offset-2"
               >
                 <Plus className="size-3.5" />
                 Novo atendimento
@@ -320,6 +334,38 @@ function Page() {
       {open && (
         <AtendimentoFormModal open={open} onOpenChange={setOpen} onSubmit={createAtendimento} />
       )}
+    </div>
+  );
+}
+
+function AtendimentoListSkeleton() {
+  return (
+    <div
+      className="grid gap-3 xl:grid-cols-2"
+      aria-label="Carregando atendimentos"
+      aria-busy="true"
+    >
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="glass-panel-strong rounded-3xl p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="size-11 shrink-0 animate-pulse rounded-2xl bg-white/65 motion-reduce:animate-none" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-3 w-2/5 animate-pulse rounded-full bg-white/70 motion-reduce:animate-none" />
+              <div className="h-2.5 w-3/5 animate-pulse rounded-full bg-white/52 motion-reduce:animate-none" />
+            </div>
+            <div className="h-6 w-20 animate-pulse rounded-full bg-white/58 motion-reduce:animate-none" />
+          </div>
+          <div className="mt-4 h-16 animate-pulse rounded-2xl bg-white/48 motion-reduce:animate-none" />
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((__, itemIndex) => (
+              <div
+                key={itemIndex}
+                className="h-8 animate-pulse rounded-xl bg-white/45 motion-reduce:animate-none"
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -29,19 +29,25 @@ export function AgendaTimeline({
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {Array.from(groups.entries()).map(([day, dayEvents]) => (
-        <section key={day} className="space-y-2">
+        <section key={day} className="space-y-2.5" aria-labelledby={`agenda-day-${day}`}>
           <div className="flex items-center gap-2 px-1">
-            <CalendarDays className="size-3.5 text-teal-700" />
-            <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/65">
+            <CalendarDays className="size-4 text-teal-700" aria-hidden="true" />
+            <h3
+              id={`agenda-day-${day}`}
+              className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/72"
+            >
               {dayLabel(day)}
-            </h2>
-            <span className="rounded-full bg-white/50 px-2 py-0.5 text-[9px] font-semibold text-foreground/42">
+            </h3>
+            <span
+              className="rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-semibold text-foreground/58 ring-1 ring-white/65"
+              aria-label={`${dayEvents.length} compromisso${dayEvents.length === 1 ? "" : "s"}`}
+            >
               {dayEvents.length}
             </span>
           </div>
-          <div className="grid gap-2.5 xl:grid-cols-2">
+          <div className="premium-stagger grid gap-2.5 xl:grid-cols-2">
             {dayEvents.map((event) => (
               <AgendaEventCard
                 key={event.id}

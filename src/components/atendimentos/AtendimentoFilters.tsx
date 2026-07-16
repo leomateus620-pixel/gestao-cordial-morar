@@ -5,7 +5,6 @@ import {
   atendimentoFinalidadeOptions,
   atendimentoOrigemOptions,
   atendimentoPrioridadeOptions,
-  atendimentoStatusOptions,
   atendimentoTipoImovelOptions,
 } from "@/types/atendimento";
 import {
@@ -26,11 +25,13 @@ export function AtendimentoFilters({
   onQueryChange,
   filters,
   onFiltersChange,
+  resultCount,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
   filters: AtendimentoFiltersState;
   onFiltersChange: (filters: AtendimentoFiltersState) => void;
+  resultCount: number;
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const isDefault = JSON.stringify(filters) === JSON.stringify(defaultAtendimentoFilters);
@@ -43,35 +44,72 @@ export function AtendimentoFilters({
     filters.periodo,
   ].filter((value) => value !== "todos").length;
 
+  function clearFilters() {
+    onQueryChange("");
+    onFiltersChange({ ...defaultAtendimentoFilters, status: filters.status });
+  }
+
   return (
-    <section className="space-y-3">
+    <section
+      className="glass-panel rounded-3xl p-3 sm:p-4"
+      aria-label="Busca e filtros de atendimentos"
+    >
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-xs font-semibold tracking-tight text-foreground/80">
+            Encontre o próximo atendimento
+          </h2>
+          <p className="text-[10px] text-foreground/48" aria-live="polite">
+            {resultCount} resultado{resultCount === 1 ? "" : "s"} no recorte atual
+          </p>
+        </div>
+        {(query || activeSecondary > 0) && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 text-[11px] font-semibold text-foreground/58 transition-colors duration-150 hover:bg-white/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/35"
+          >
+            <RotateCcw className="size-3.5" />
+            Limpar
+          </button>
+        )}
+      </div>
+
       <div className="flex gap-2">
-        <label className="glass-panel flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5">
+        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-white/65 bg-white/58 px-3 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-teal-700/35 focus-within:bg-white/75 focus-within:ring-4 focus-within:ring-teal-700/8">
           <Search className="size-4 shrink-0 text-teal-700/65" />
+          <span className="sr-only">Buscar atendimentos</span>
           <input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Buscar nome, telefone, bairro, origem, corretor..."
+            placeholder="Nome, telefone, bairro ou corretor"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-foreground/40"
           />
           {query && (
-            <button type="button" onClick={() => onQueryChange("")} aria-label="Limpar busca">
-              <X className="size-4 text-foreground/40" />
+            <button
+              type="button"
+              onClick={() => onQueryChange("")}
+              aria-label="Limpar busca"
+              className="grid size-8 shrink-0 place-items-center rounded-xl text-foreground/40 transition-colors duration-150 hover:bg-white/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/35"
+            >
+              <X className="size-4" />
             </button>
           )}
         </label>
+
         <button
           type="button"
           onClick={() => setShowFilters((current) => !current)}
           className={cn(
-            "glass-panel relative flex shrink-0 items-center gap-2 rounded-2xl px-3 text-xs font-semibold text-foreground/65",
+            "premium-pressable relative flex min-h-11 shrink-0 items-center gap-2 rounded-2xl border border-white/65 bg-white/58 px-3 text-xs font-semibold text-foreground/65 transition-[border-color,background-color,color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/35",
             (showFilters || activeSecondary > 0) &&
-              "bg-teal-700/10 text-teal-800 ring-1 ring-teal-700/15",
+              "border-teal-700/20 bg-teal-700/10 text-teal-800 shadow-sm",
           )}
           aria-expanded={showFilters}
+          aria-controls="atendimento-secondary-filters"
         >
           <SlidersHorizontal className="size-4" />
-          Filtros
+          <span className="hidden sm:inline">Filtros</span>
           {activeSecondary > 0 && (
             <span className="grid size-5 place-items-center rounded-full bg-teal-700 text-[9px] text-white">
               {activeSecondary}
@@ -79,187 +117,146 @@ export function AtendimentoFilters({
           )}
           <ChevronDown
             className={cn(
-              "size-3.5 transition-transform",
+              "hidden size-3.5 transition-transform duration-200 motion-reduce:transition-none sm:block",
               showFilters && "rotate-180",
             )}
           />
         </button>
-        {activeSecondary > 0 && (
+      </div>
+
+      {showFilters && (
+        <div
+          id="atendimento-secondary-filters"
+          className="premium-reveal mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6"
+        >
+          <FilterShell>
+            <Select
+              label="Finalidade"
+              value={filters.finalidade}
+              onChange={(value) => onFiltersChange({ ...filters, finalidade: value as never })}
+            >
+              <option value="todos">Finalidade</option>
+              {atendimentoFinalidadeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </FilterShell>
+          <FilterShell>
+            <Select
+              label="Tipo de imóvel"
+              value={filters.tipoImovel}
+              onChange={(value) => onFiltersChange({ ...filters, tipoImovel: value as never })}
+            >
+              <option value="todos">Tipo de imóvel</option>
+              {atendimentoTipoImovelOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </FilterShell>
+          <FilterShell>
+            <Select
+              label="Origem"
+              value={filters.origem}
+              onChange={(value) => onFiltersChange({ ...filters, origem: value as never })}
+            >
+              <option value="todos">Origem</option>
+              {atendimentoOrigemOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </FilterShell>
+          <FilterShell>
+            <Select
+              label="Corretor"
+              value={filters.corretor}
+              onChange={(value) => onFiltersChange({ ...filters, corretor: value })}
+            >
+              <option value="todos">Corretor</option>
+              {atendimentoBrokerOptions
+                .filter((option) => option.id !== "a_definir")
+                .map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+            </Select>
+          </FilterShell>
+          <FilterShell>
+            <Select
+              label="Prioridade"
+              value={filters.prioridade}
+              onChange={(value) => onFiltersChange({ ...filters, prioridade: value as never })}
+            >
+              <option value="todos">Prioridade</option>
+              {atendimentoPrioridadeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </FilterShell>
+          <FilterShell>
+            <Select
+              label="Período"
+              value={filters.periodo}
+              onChange={(value) => onFiltersChange({ ...filters, periodo: value as never })}
+            >
+              {periodOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </FilterShell>
+
           <button
             type="button"
-            onClick={() => onFiltersChange(defaultAtendimentoFilters)}
-            className="glass-panel flex shrink-0 items-center gap-1.5 rounded-2xl px-3 text-xs font-semibold text-foreground/65"
-            aria-label="Limpar filtros"
+            onClick={() =>
+              onFiltersChange({ ...defaultAtendimentoFilters, status: filters.status })
+            }
+            disabled={isDefault || activeSecondary === 0}
+            className="col-span-2 flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-white/65 bg-white/55 px-3 text-xs font-semibold text-foreground/58 transition-colors duration-150 hover:bg-white/75 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/35 disabled:cursor-default disabled:opacity-35 md:col-span-3 xl:col-span-6"
           >
             <RotateCcw className="size-3.5" />
+            Limpar filtros avançados
           </button>
-        )}
-      </div>
-
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5">
-        <StatusChip
-          active={filters.status === "todos"}
-          onClick={() => onFiltersChange({ ...filters, status: "todos" })}
-        >
-          Todos
-        </StatusChip>
-        {atendimentoStatusOptions.map((option) => (
-          <StatusChip
-            key={option.value}
-            active={filters.status === option.value}
-            onClick={() => onFiltersChange({ ...filters, status: option.value })}
-          >
-            {option.label}
-          </StatusChip>
-        ))}
-      </div>
-
-      <div
-        className={cn(
-          "gap-2 animate-accordion-down",
-          showFilters ? "grid grid-cols-2 lg:flex lg:flex-wrap" : "hidden",
-        )}
-      >
-        <FilterShell>
-          <Select
-            value={filters.finalidade}
-            onChange={(value) => onFiltersChange({ ...filters, finalidade: value as never })}
-          >
-            <option value="todos">Finalidade</option>
-            {atendimentoFinalidadeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FilterShell>
-        <FilterShell>
-          <Select
-            value={filters.tipoImovel}
-            onChange={(value) => onFiltersChange({ ...filters, tipoImovel: value as never })}
-          >
-            <option value="todos">Tipo de imóvel</option>
-            {atendimentoTipoImovelOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FilterShell>
-        <FilterShell>
-          <Select
-            value={filters.origem}
-            onChange={(value) => onFiltersChange({ ...filters, origem: value as never })}
-          >
-            <option value="todos">Origem</option>
-            {atendimentoOrigemOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FilterShell>
-        <FilterShell>
-          <Select
-            value={filters.corretor}
-            onChange={(value) => onFiltersChange({ ...filters, corretor: value })}
-          >
-            <option value="todos">Corretor</option>
-            {atendimentoBrokerOptions
-              .filter((option) => option.id !== "a_definir")
-              .map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FilterShell>
-        <FilterShell>
-          <Select
-            value={filters.prioridade}
-            onChange={(value) => onFiltersChange({ ...filters, prioridade: value as never })}
-          >
-            <option value="todos">Prioridade</option>
-            {atendimentoPrioridadeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FilterShell>
-        <FilterShell>
-          <Select
-            value={filters.periodo}
-            onChange={(value) => onFiltersChange({ ...filters, periodo: value as never })}
-          >
-            {periodOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </FilterShell>
-        <button
-          type="button"
-          onClick={() => onFiltersChange(defaultAtendimentoFilters)}
-          disabled={isDefault}
-          className="glass-panel col-span-2 flex min-h-10 items-center justify-center gap-1.5 rounded-2xl px-3 text-xs font-semibold text-foreground/58 transition hover:text-foreground disabled:opacity-35 lg:rounded-full"
-        >
-          <RotateCcw className="size-3.5" />
-          Limpar filtros
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function StatusChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
-        active
-          ? "bg-teal-700 text-white shadow-md shadow-teal-900/18"
-          : "glass-panel text-foreground/58 hover:bg-white/75 hover:text-foreground",
+        </div>
       )}
-    >
-      {children}
-    </button>
+    </section>
   );
 }
 
 function FilterShell({ children }: { children: ReactNode }) {
   return (
-    <label className="glass-panel flex min-h-10 items-center rounded-2xl px-3 text-xs text-foreground/65 lg:rounded-full">
+    <label className="flex min-h-11 min-w-0 items-center rounded-2xl border border-white/65 bg-white/58 px-3 text-xs text-foreground/65 transition-[border-color,background-color,box-shadow] duration-150 focus-within:border-teal-700/30 focus-within:bg-white/75 focus-within:ring-2 focus-within:ring-teal-700/10">
       {children}
     </label>
   );
 }
 
 function Select({
+  label,
   value,
   onChange,
   children,
 }: {
+  label: string;
   value: string;
   onChange: (value: string) => void;
   children: ReactNode;
 }) {
   return (
     <select
+      aria-label={label}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="min-w-0 max-w-full flex-1 bg-transparent text-xs font-semibold outline-none lg:max-w-[11rem]"
+      className="min-w-0 w-full bg-transparent text-xs font-semibold outline-none"
     >
       {children}
     </select>

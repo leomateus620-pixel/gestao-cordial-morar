@@ -5,6 +5,9 @@ import {
   Clock3,
   History,
   Link2,
+  Mail,
+  MoreHorizontal,
+  Phone,
   UserPlus,
   UserRoundCog,
   XCircle,
@@ -22,6 +25,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AtendimentoActionsDialog,
   type AtendimentoActionKind,
   type AtendimentoActionPayload,
@@ -36,18 +47,29 @@ import {
   atendimentoImobiliariaLabel,
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
+  atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
   type Atendimento,
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
 
-const secondaryActions: { kind: AtendimentoActionKind; label: string; icon: typeof UserRoundCog }[] = [
+const secondaryActions: {
+  kind: AtendimentoActionKind;
+  label: string;
+  icon: typeof UserRoundCog;
+}[] = [
   { kind: "vincular-corretor", label: "Vincular corretor", icon: UserRoundCog },
   { kind: "criar-visita", label: "Criar visita", icon: CalendarPlus },
   { kind: "criar-retorno", label: "Criar tarefa de retorno", icon: Clock3 },
   { kind: "registrar-historico", label: "Registrar histórico", icon: History },
   { kind: "motivo-perda", label: "Marcar motivo de perda", icon: XCircle },
 ];
+
+const contactPreferenceLabel = {
+  whatsapp: "WhatsApp",
+  ligacao: "Ligação",
+  email: "E-mail",
+} as const;
 
 export function AtendimentoCard({
   atendimento,
@@ -63,68 +85,82 @@ export function AtendimentoCard({
   const initials = getInitials(atendimento.clienteNome);
 
   return (
-    <article className="glass-panel-strong rounded-3xl p-4 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-stone-950/8 sm:p-5">
+    <article
+      aria-label={`Atendimento de ${atendimento.clienteNome}`}
+      className="premium-reveal glass-panel-strong rounded-3xl p-4 sm:p-5"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-teal-700/12 text-[11px] font-bold text-teal-800 ring-1 ring-teal-700/10 sm:size-12">
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <h3 className="truncate text-sm font-semibold sm:text-base">
                 {atendimento.clienteNome}
               </h3>
-              {converted && (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-emerald-700">
-                  <CheckCircle2 className="size-3" /> Cliente
+              {converted && <CheckCircle2 className="size-3.5 shrink-0 text-emerald-700" />}
+            </div>
+            <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[10px] text-foreground/58 sm:text-[11px]">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Phone className="size-3.5 shrink-0 text-teal-700/65" />
+                <span className="truncate">{atendimento.telefone}</span>
+              </span>
+              {atendimento.email && (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Mail className="size-3.5 shrink-0 text-teal-700/65" />
+                  <span className="max-w-48 truncate">{atendimento.email}</span>
                 </span>
               )}
             </div>
-            <p className="mt-1 text-[11px] leading-5 text-foreground/64 sm:text-xs">
-              <span className="font-semibold text-foreground/76">Busca:</span>{" "}
-              {atendimentoInterestLine(atendimento)}
-            </p>
-            <p className="text-[11px] leading-5 text-foreground/58 sm:text-xs">
-              <span className="font-semibold text-foreground/72">Faixa:</span>{" "}
-              {formatAtendimentoBudget(atendimento)}
-            </p>
           </div>
         </div>
 
         <div className="shrink-0 text-right">
           <StatusBadge status={atendimentoStatusLabel(atendimento.status)} />
-          <p className="mt-1 font-mono text-[9px] text-foreground/40">
+          <p className="mt-1 text-[9px] tabular-nums text-foreground/40">
             {timeAgo(atendimento.criadoEm)}
           </p>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 rounded-2xl bg-white/42 p-3 text-[10px] text-foreground/58 sm:grid-cols-2 sm:text-[11px]">
-        <p>
-          <span className="font-semibold text-foreground/72">Origem:</span>{" "}
-          {atendimentoOrigemLabel(atendimento.origem)} ·{" "}
-          <span className="font-semibold text-foreground/72">Corretor:</span>{" "}
-          {atendimento.corretorNome ?? "A definir"}
+      <div className="mt-3 rounded-2xl border border-white/55 bg-white/42 p-3">
+        <p className="text-[11px] leading-5 text-foreground/64 sm:text-xs">
+          <span className="font-semibold text-foreground/78">Interesse:</span>{" "}
+          {atendimentoInterestLine(atendimento)}
         </p>
-        <p className="sm:text-right">
-          <span className="font-semibold text-foreground/72">Imobiliária:</span>{" "}
-          {atendimentoImobiliariaLabel(atendimento.imobiliaria)} ·{" "}
-          <span
-            className={cn(
-              "font-semibold",
-              atendimento.prioridade === "urgente" || atendimento.prioridade === "alta"
-                ? "text-amber-700"
-                : "text-foreground/72",
-            )}
-          >
-            {atendimentoPrioridadeLabel(atendimento.prioridade)}
-          </span>
-        </p>
-        <p className="sm:col-span-2">
-          <span className="font-semibold text-foreground/72">Próximo retorno:</span>{" "}
-          {formatDateTime(atendimento.proximoRetorno)}
+        <p className="mt-0.5 text-[11px] leading-5 text-foreground/58 sm:text-xs">
+          <span className="font-semibold text-foreground/72">Faixa:</span>{" "}
+          <span className="tabular-nums">{formatAtendimentoBudget(atendimento)}</span>
         </p>
       </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 text-[10px] sm:grid-cols-3 sm:text-[11px]">
+        <Info
+          label="Próximo passo"
+          value={atendimentoProximoPassoLabel(atendimento.proximoPasso)}
+        />
+        <Info label="Próximo retorno" value={formatDateTime(atendimento.proximoRetorno)} />
+        <Info
+          label="Responsável"
+          value={atendimento.corretorNome ?? "A definir"}
+          className="col-span-2 sm:col-span-1"
+        />
+        <Info
+          label="Origem e contato"
+          value={`${atendimentoOrigemLabel(atendimento.origem)} · ${contactPreferenceLabel[atendimento.contatoPreferencial]}`}
+        />
+        <Info label="Imobiliária" value={atendimentoImobiliariaLabel(atendimento.imobiliaria)} />
+        <Info
+          label="Prioridade"
+          value={atendimentoPrioridadeLabel(atendimento.prioridade)}
+          valueClassName={cn(
+            atendimento.prioridade === "urgente" || atendimento.prioridade === "alta"
+              ? "text-amber-800"
+              : undefined,
+          )}
+        />
+      </dl>
 
       {atendimento.observacoes && (
         <p className="mt-3 line-clamp-2 rounded-2xl bg-white/48 px-3 py-2.5 text-[11px] leading-5 text-foreground/62">
@@ -132,62 +168,90 @@ export function AtendimentoCard({
         </p>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              type="button"
-              disabled={converted}
-              className="flex items-center gap-1.5 rounded-xl bg-teal-700/9 px-2.5 py-2 text-left text-[10px] font-semibold text-teal-800 transition hover:bg-teal-700/15 active:scale-[0.98] disabled:cursor-default disabled:opacity-45"
-            >
-              <UserPlus className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {converted ? "Cliente vinculado" : "Transformar em cliente"}
-              </span>
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="w-[calc(100%-2rem)] rounded-3xl border-white/70 bg-background/95 shadow-2xl backdrop-blur-xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Transformar em cliente?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Os dados comerciais de {atendimento.clienteNome} serão usados para criar ou
-                completar um cadastro de cliente. Se telefone ou nome já existirem, o atendimento
-                será vinculado ao cadastro atual.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-2xl">Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onConvert(atendimento.id)}
-                className="rounded-2xl bg-teal-700 text-white hover:bg-teal-800"
-              >
-                Confirmar conversão
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {secondaryActions
-          .filter(({ kind }) => (kind === "motivo-perda" ? atendimento.status !== "perdido" : true))
-          .map(({ kind, label, icon: Icon }) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => setActiveKind(kind)}
-              className="flex items-center gap-1.5 rounded-xl bg-white/52 px-2.5 py-2 text-left text-[10px] font-semibold text-foreground/60 transition hover:bg-teal-700/9 hover:text-teal-800 active:scale-[0.98]"
-            >
-              <Icon className="size-3.5 shrink-0" />
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-      </div>
-
       {atendimento.status === "perdido" && (
-        <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-destructive/8 px-3 py-2 text-[10px] font-medium text-destructive">
-          <Link2 className="size-3 shrink-0" />
-          Motivo: {atendimento.motivoPerda ?? "Não informado"}
+        <div className="mt-3 flex items-start gap-1.5 rounded-xl bg-destructive/8 px-3 py-2 text-[10px] font-medium text-destructive">
+          <Link2 className="mt-0.5 size-3 shrink-0" />
+          <span>Motivo: {atendimento.motivoPerda ?? "Não informado"}</span>
         </div>
       )}
+
+      <div className="mt-4 flex items-center gap-2 border-t border-white/55 pt-3">
+        {converted ? (
+          <span className="inline-flex min-h-10 flex-1 items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 text-[11px] font-semibold text-emerald-800">
+            <CheckCircle2 className="size-3.5" />
+            Cliente vinculado
+          </span>
+        ) : (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="premium-pressable inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 text-[11px] font-semibold text-white shadow-md shadow-teal-900/14 transition-colors duration-150 hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40 focus-visible:ring-offset-2"
+              >
+                <UserPlus className="size-3.5 shrink-0" />
+                Transformar em cliente
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="w-[calc(100%-2rem)] rounded-3xl border-white/70 bg-background/95 shadow-2xl backdrop-blur-xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Transformar em cliente?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Os dados comerciais de {atendimento.clienteNome} serão usados para criar um
+                  cadastro em Clientes e vinculá-lo a este atendimento.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-2xl">Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onConvert(atendimento.id)}
+                  className="rounded-2xl bg-teal-700 text-white hover:bg-teal-800"
+                >
+                  Confirmar conversão
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Mais ações para ${atendimento.clienteNome}`}
+              className="premium-pressable inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-white/65 bg-white/62 px-3 text-[11px] font-semibold text-foreground/65 transition-[border-color,background-color,color] duration-150 hover:bg-white/82 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/35"
+            >
+              <MoreHorizontal className="size-4" />
+              <span className="hidden min-[360px]:inline">Mais ações</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-64 rounded-2xl border-white/70 bg-background/98 p-1.5 shadow-xl"
+          >
+            <DropdownMenuLabel className="px-2.5 py-2 text-[10px] uppercase tracking-[0.12em] text-foreground/45">
+              Continuar atendimento
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {secondaryActions
+              .filter(({ kind }) =>
+                kind === "motivo-perda" ? atendimento.status !== "perdido" : true,
+              )
+              .map(({ kind, label, icon: Icon }) => (
+                <DropdownMenuItem
+                  key={kind}
+                  onSelect={() => setActiveKind(kind)}
+                  className={cn(
+                    "min-h-10 rounded-xl px-2.5 text-xs focus:bg-teal-700/8 focus:text-teal-900",
+                    kind === "motivo-perda" && "text-destructive focus:text-destructive",
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                  {label}
+                </DropdownMenuItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <AtendimentoActionsDialog
         kind={activeKind}
@@ -199,6 +263,32 @@ export function AtendimentoCard({
         onSubmit={(payload) => onAction(payload, atendimento)}
       />
     </article>
+  );
+}
+
+function Info({
+  label,
+  value,
+  className,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <dt className="text-[9px] font-bold uppercase tracking-[0.11em] text-foreground/42">
+        {label}
+      </dt>
+      <dd
+        className={cn("mt-1 truncate font-medium text-foreground/72", valueClassName)}
+        title={value}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }
 

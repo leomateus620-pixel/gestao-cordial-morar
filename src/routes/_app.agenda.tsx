@@ -31,11 +31,11 @@ function GuardedAgendaPage() {
   );
 }
 
-
 function AgendaPage() {
   const session = useSession();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AgendaEvent | undefined>();
+  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AgendaFiltersState>(defaultAgendaFilters);
   const [feedback, setFeedback] = useState<string | null>(null);
   const clientes = useApp((state) => state.clientes);
@@ -52,7 +52,7 @@ function AgendaPage() {
     isError,
     error,
     refetch,
-  } = useAgenda("", filters);
+  } = useAgenda(query, filters);
 
   const people = useMemo(() => {
     const values = [
@@ -113,12 +113,7 @@ function AgendaPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <section className="space-y-2">
-        <SectionHeader title="Conexões da sua conta" />
-        <GoogleCalendarCard />
-      </section>
-
+    <div className="space-y-5">
       <AgendaCreateCard
         onClick={openCreate}
         isOpen={open && !selected}
@@ -130,34 +125,47 @@ function AgendaPage() {
         onFiltersChange={setFilters}
         people={people}
         clients={clientOptions}
+        query={query}
+        onQueryChange={setQuery}
       />
 
       <AgendaSummaryCards stats={stats} />
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3 px-1">
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight">Compromissos</h2>
-            <p className="text-[11px] text-foreground/50">
+      <section className="space-y-3" aria-labelledby="agenda-list-title" aria-busy={isLoading}>
+        <div className="flex items-end justify-between gap-3 px-1">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-800/68">
+              Rotina da equipe
+            </p>
+            <h2 id="agenda-list-title" className="mt-0.5 text-base font-semibold tracking-tight">
+              Compromissos
+            </h2>
+            <p className="mt-0.5 text-xs text-foreground/58">
               {filteredEvents.length} compromisso{filteredEvents.length === 1 ? "" : "s"} no recorte
               atual
             </p>
           </div>
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800">
-            Agenda da equipe
+          <span className="shrink-0 rounded-full bg-teal-700/9 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-teal-800 ring-1 ring-teal-700/10">
+            {query.trim() ? "Busca ativa" : "Agenda da equipe"}
           </span>
         </div>
         {isLoading ? (
-          <div className="glass-panel rounded-2xl p-6 text-sm text-foreground/60">
+          <div
+            role="status"
+            className="glass-panel rounded-2xl p-6 text-sm font-medium text-foreground/64"
+          >
             Carregando compromissos…
           </div>
         ) : isError ? (
-          <div className="glass-panel flex items-center justify-between gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          <div
+            role="alert"
+            className="glass-panel flex flex-col items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
+          >
             <span>Não foi possível carregar a agenda. {error?.message}</span>
             <button
               type="button"
               onClick={() => refetch()}
-              className="rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground"
+              className="premium-pressable min-h-10 shrink-0 rounded-xl bg-destructive px-3 py-2 text-xs font-semibold text-destructive-foreground"
             >
               Tentar novamente
             </button>
@@ -171,9 +179,23 @@ function AgendaPage() {
         )}
       </section>
 
+      <section className="border-t border-white/55 pt-4">
+        <SectionHeader
+          title="Sincronização do calendário"
+          description="Conexão secundária para espelhar compromissos no Google Agenda."
+          className="mb-2 px-1"
+        />
+        <GoogleCalendarCard />
+      </section>
+
       {feedback && (
-        <div className="fixed left-1/2 top-5 z-[70] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-2 rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-sm font-semibold text-teal-900 shadow-xl shadow-stone-950/12 backdrop-blur-xl">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="fixed left-1/2 top-[max(1.25rem,env(safe-area-inset-top))] z-[70] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-2 rounded-2xl border border-white/70 bg-white/94 px-4 py-3 text-sm font-semibold text-teal-900 shadow-xl shadow-stone-950/12 backdrop-blur-xl"
+        >
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
           {feedback}
         </div>
       )}

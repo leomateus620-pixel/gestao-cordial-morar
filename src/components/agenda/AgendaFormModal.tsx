@@ -18,6 +18,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { agendaTitleSuggestion, validateAgendaEvent } from "@/services/agenda";
+import { useDialogFocusTrap } from "@/hooks/useDialogFocusTrap";
 import {
   agendaImobiliariaOptions,
   agendaPrioridadeOptions,
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils";
 type NamedOption = { id: string; nome: string };
 type PropertyOption = { id: string; titulo: string; endereco?: string };
 type AtendimentoOption = { id: string; clienteNome?: string; imovelDescricao?: string };
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FormState = {
   tipo: AgendaTipo;
@@ -111,7 +113,9 @@ export function AgendaFormModal({
   const [errors, setErrors] = useState<ReturnType<typeof validateAgendaEvent>>({});
   const [closing, setClosing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
   const [mounted, setMounted] = useState(open);
+  const dialogRef = useDialogFocusTrap<HTMLFormElement>(mounted);
 
   useEffect(() => {
     if (open) {
@@ -260,8 +264,6 @@ export function AgendaFormModal({
     }));
   }
 
-  const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   function addGuest() {
     const email = form.convidadoEmailInput.trim().toLowerCase();
     const nome = form.convidadoNomeInput.trim();
@@ -280,7 +282,10 @@ export function AgendaFormModal({
     setGuestEmailError(undefined);
     setForm((current) => ({
       ...current,
-      convidados: [...current.convidados, { email, nome: nome || undefined, responseStatus: "needsAction" }],
+      convidados: [
+        ...current.convidados,
+        { email, nome: nome || undefined, responseStatus: "needsAction" },
+      ],
       convidadoEmailInput: "",
       convidadoNomeInput: "",
     }));
@@ -292,8 +297,6 @@ export function AgendaFormModal({
       convidados: current.convidados.filter((g) => g.email !== email),
     }));
   }
-
-
 
   async function submit(submitEvent: FormEvent) {
     submitEvent.preventDefault();
@@ -335,7 +338,12 @@ export function AgendaFormModal({
       />
 
       <form
+        ref={dialogRef}
         onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="agenda-form-title"
+        aria-describedby="agenda-form-description"
         className={cn(
           "agenda-form-modal relative flex h-dvh max-h-dvh w-full flex-col overflow-hidden border border-white/65 bg-background shadow-2xl shadow-stone-950/25",
           "sm:h-auto sm:max-h-[92vh] sm:max-w-[920px] sm:rounded-[2rem] sm:bg-background/96 sm:backdrop-blur-xl",
@@ -349,10 +357,16 @@ export function AgendaFormModal({
                 <span className="size-2 rounded-full bg-orange-400 shadow-[0_0_18px_rgba(251,146,60,0.6)]" />
                 {isEditing ? "Detalhe operacional" : "Central de compromissos"}
               </div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">
+              <h2
+                id="agenda-form-title"
+                className="mt-1 text-lg font-semibold tracking-tight sm:text-xl"
+              >
                 {isEditing ? "Editar compromisso" : "Novo compromisso"}
               </h2>
-              <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
+              <p
+                id="agenda-form-description"
+                className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block"
+              >
                 Organize o compromisso, os vínculos, os responsáveis e os lembretes em um só lugar.
               </p>
             </div>
@@ -360,26 +374,31 @@ export function AgendaFormModal({
               type="button"
               aria-label="Fechar"
               onClick={requestClose}
-              className="grid size-10 shrink-0 place-items-center rounded-full bg-white/72 text-foreground/65 shadow-sm transition hover:text-foreground active:scale-95"
+              className="premium-pressable grid size-10 shrink-0 place-items-center rounded-full bg-white/72 text-foreground/65 shadow-sm hover:text-foreground"
             >
               <X className="size-4" />
             </button>
           </div>
 
           <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto sm:mt-4">
-            {["Tipo e título", "Data e horário", "Vínculos", "Responsáveis", "Convidados", "Lembretes"].map(
-              (section, index) => (
-                <span
-                  key={section}
-                  className="flex shrink-0 items-center gap-2 rounded-full bg-white/65 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-foreground/58"
-                >
-                  <span className="grid size-5 place-items-center rounded-full bg-teal-700 text-[9px] text-white">
-                    {index + 1}
-                  </span>
-                  {section}
+            {[
+              "Tipo e título",
+              "Data e horário",
+              "Vínculos",
+              "Responsáveis",
+              "Convidados",
+              "Lembretes",
+            ].map((section, index) => (
+              <span
+                key={section}
+                className="flex shrink-0 items-center gap-2 rounded-full bg-white/65 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-foreground/58"
+              >
+                <span className="grid size-5 place-items-center rounded-full bg-teal-700 text-[9px] text-white">
+                  {index + 1}
                 </span>
-              ),
-            )}
+                {section}
+              </span>
+            ))}
           </div>
         </header>
 
@@ -764,8 +783,6 @@ export function AgendaFormModal({
                 </span>
               </div>
             </FormSection>
-
-
 
             <FormSection
               step="6"
