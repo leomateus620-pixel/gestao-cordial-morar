@@ -16,7 +16,8 @@ export type AppModule =
   | "marketing"
   | "documentos"
   | "integracoes"
-  | "configuracoes";
+  | "configuracoes"
+  | "pesquisa_satisfacao";
 
 export type Permission =
   | "clientes:read"
