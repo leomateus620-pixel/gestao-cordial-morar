@@ -300,14 +300,13 @@ export function GoogleSheetsIntegration() {
               </tr>
             </thead>
             <tbody className="divide-y divide-foreground/8">
-              <Row col="A · data" v="YYYY-MM-DD ou DD/MM/AAAA" />
-              <Row col="B · descricao" v="Texto livre" />
-              <Row col="C · categoria" v="Texto livre" />
-              <Row col="D · tipo" v="entrada · saida" />
-              <Row col="E · valor" v="Ex.: 1.234,56 ou 1234.56 (positivo)" />
-              <Row col="F · imobiliaria" v="cordial · morar · ambas" />
-              <Row col="G · status" v="Pago · Pendente · Atrasado · Cancelado" />
-              <Row col="H · corretor_email" v="Opcional. Email cadastrado no sistema." />
+              <Row col="Abas mensais" v="Jan26, Fev26, Mar26 … Dez26 (varridas automaticamente)" />
+              <Row col="A · Data" v="DD/MM/AAAA, DD/MM/AA ou YYYY-MM-DD" />
+              <Row col="B · Conta" v='Ex.: "Sicredi Cordial", "Sicredi Morar" — define a imobiliária' />
+              <Row col="C · Categoria" v="Texto livre (Plano de Contas)" />
+              <Row col="D · Descrição" v="Texto livre" />
+              <Row col="E · Valor" v="Positivo = entrada · Negativo (ou entre parênteses) = saída" />
+              <Row col="Status" v='Sempre "Pago" (livro-caixa realizado)' />
             </tbody>
           </table>
         </div>
