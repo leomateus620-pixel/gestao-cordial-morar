@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
+import { RentalDocuments } from "./RentalDocuments";
 
 function fmtDate(s?: string | null) {
   return s ? new Date(s).toLocaleDateString("pt-BR") : "—";
