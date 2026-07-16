@@ -568,24 +568,43 @@ export function RentalFormModal({
               )}
             </SectionCard>
 
-            {/* Fiador */}
+            {/* Garantia */}
             <SectionCard
               icon={ShieldCheck}
-              title="Fiador"
-              subtitle="Opcional — adicione um garantidor ao contrato"
-              action={
-                <label className="flex cursor-pointer items-center gap-2 rounded-full bg-muted/70 px-3 py-1.5 text-xs font-semibold text-foreground/75">
-                  <input
-                    type="checkbox"
-                    checked={hasGuarantor}
-                    onChange={(e) => setHasGuarantor(e.target.checked)}
-                    className="size-4 accent-primary"
-                  />
-                  Incluir fiador
-                </label>
-              }
+              title="Garantia"
+              subtitle="Modalidade de garantia do contrato"
             >
-              {hasGuarantor ? (
+              <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-muted/60 p-1 sm:grid-cols-4">
+                {(
+                  [
+                    { id: "sem_garantia", label: "Sem garantia" },
+                    { id: "fiador", label: "Fiador" },
+                    { id: "caucao", label: "Caução" },
+                    { id: "seguro_fianca", label: "Seguro fiança" },
+                  ] as { id: RentalGuaranteeType; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setGarantiaTipo(opt.id)}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                      garantiaTipo === opt.id
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-foreground/70 hover:text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {garantiaTipo === "sem_garantia" && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma garantia será vinculada a este contrato.
+                </p>
+              )}
+
+              {garantiaTipo === "fiador" && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Nome" className="sm:col-span-2">
                     <input
@@ -619,12 +638,56 @@ export function RentalFormModal({
                     />
                   </Field>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Nenhum fiador será vinculado a este contrato.
-                </p>
+              )}
+
+              {garantiaTipo === "caucao" && (
+                <Field label="Valor da caução (R$)">
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={caucao}
+                    onChange={(e) => setCaucao(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+              )}
+
+              {garantiaTipo === "seguro_fianca" && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Seguradora" className="sm:col-span-2">
+                    <input
+                      required
+                      placeholder="Ex.: Porto Seguro"
+                      value={seguroSeguradora}
+                      onChange={(e) => setSeguroSeguradora(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Nº da apólice">
+                    <input
+                      value={seguroApolice}
+                      onChange={(e) => setSeguroApolice(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Valor mensal do seguro (R$)">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="0,00"
+                      value={seguroValor}
+                      onChange={(e) => setSeguroValor(e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
               )}
             </SectionCard>
+
 
             {/* Contrato */}
             <SectionCard
