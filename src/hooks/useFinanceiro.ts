@@ -30,6 +30,22 @@ export function useFinanceiro() {
     qc.invalidateQueries({ queryKey: KEY });
   }, [qc]);
 
+  // Realtime: qualquer alteração na tabela (inclusive vinda do cron de sync
+  // automático) invalida a query e atualiza dashboard/gráficos sozinho.
+  useEffect(() => {
+    const channel = supabase
+      .channel("financeiro_lancamentos_rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "financeiro_lancamentos" },
+        () => invalidate(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [invalidate]);
+
   const createMutation = useMutation({
     mutationFn: (input: LancamentoInput) => create({ data: input }),
     onSuccess: invalidate,
