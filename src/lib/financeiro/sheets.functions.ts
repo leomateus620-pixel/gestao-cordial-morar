@@ -197,25 +197,113 @@ async function loadConfig(context: {
 
 // --- Parsers -------------------------------------------------------------
 
-function parseDate(raw: string): string | null {
+const MONTHS_PT: Record<string, number> = {
+  jan: 1,
+  janeiro: 1,
+  fev: 2,
+  fevereiro: 2,
+  mar: 3,
+  marco: 3,
+  março: 3,
+  abr: 4,
+  abril: 4,
+  mai: 5,
+  maio: 5,
+  jun: 6,
+  junho: 6,
+  jul: 7,
+  julho: 7,
+  ago: 8,
+  agosto: 8,
+  set: 9,
+  setembro: 9,
+  out: 10,
+  outubro: 10,
+  nov: 11,
+  novembro: 11,
+  dez: 12,
+  dezembro: 12,
+};
+
+function normalizeMonthToken(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function inferYearFromTab(tabName?: string): number | null {
+  const match = (tabName ?? "").match(/(\d{2})$/);
+  if (!match) return null;
+  const yy = Number(match[1]);
+  if (!Number.isFinite(yy)) return null;
+  return yy >= 70 ? 1900 + yy : 2000 + yy;
+}
+
+function formatDateParts(year: number, month: number, day: number): string | null {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) {
+    return null;
+  }
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function hashSeed(input: string) {
+  let h = 1779033703 ^ input.length;
+  for (let i = 0; i < input.length; i++) {
+    h = Math.imul(h ^ input.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^= h >>> 16) >>> 0;
+  };
+}
+
+function stableUuidFromText(input: string): string {
+  const seed = hashSeed(input);
+  const bytes = Array.from({ length: 16 }, () => seed() & 0xff);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
+    16,
+    20,
+  )}-${hex.slice(20)}`;
+}
+
+function parseDate(raw: string, tabName?: string): string | null {
   const t = (raw ?? "").toString().trim();
   if (!t) return null;
+  const inferredYear = inferYearFromTab(tabName);
   // ISO yyyy-mm-dd
   const iso = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (iso) {
-    const y = iso[1];
-    const m = iso[2].padStart(2, "0");
-    const d = iso[3].padStart(2, "0");
-    return `${y}-${m}-${d}`;
+    return formatDateParts(Number(iso[1]), Number(iso[2]), Number(iso[3]));
   }
   // dd/mm/yyyy ou dd/mm/yy
-  const br = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  const br = t.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/);
   if (br) {
-    const d = br[1].padStart(2, "0");
-    const m = br[2].padStart(2, "0");
     const yRaw = br[3];
-    const y = yRaw.length === 2 ? `20${yRaw}` : yRaw;
-    return `${y}-${m}-${d}`;
+    const year = yRaw ? Number(yRaw.length === 2 ? `20${yRaw}` : yRaw) : inferredYear;
+    if (!year) return null;
+    return formatDateParts(year, Number(br[2]), Number(br[1]));
+  }
+  // Formatos renderizados pelo Sheets em pt-BR: 1-jul., 01-jul, 1/jul, 1 de julho
+  const namedMonth = normalizeMonthToken(t).match(
+    /^(\d{1,2})(?:\s*(?:-|\/|\.\s*|\s+de\s+)\s*)([a-z]+)(?:\s*(?:de\s*)?(\d{2}|\d{4}))?$/,
+  );
+  if (namedMonth) {
+    const month = MONTHS_PT[normalizeMonthToken(namedMonth[2])];
+    const yRaw = namedMonth[3];
+    const year = yRaw ? Number(yRaw.length === 2 ? `20${yRaw}` : yRaw) : inferredYear;
+    if (!month || !year) return null;
+    return formatDateParts(year, month, Number(namedMonth[1]));
   }
   // Serial number do Sheets (dias desde 1899-12-30)
   if (/^-?\d+(\.\d+)?$/.test(t)) {
@@ -352,7 +440,7 @@ export const importSheetRows = createServerFn({ method: "POST" })
           cols[4] ?? "",
         ];
 
-        const parsedData = parseDate(dataRaw);
+        const parsedData = parseDate(dataRaw, tab);
         const parsedValor = parseValor(valorRaw);
 
         const problems: string[] = [];
@@ -371,7 +459,8 @@ export const importSheetRows = createServerFn({ method: "POST" })
 
         const tipo: "entrada" | "saida" = parsedValor! > 0 ? "entrada" : "saida";
         const imob = imobiliariaDaConta(conta);
-        const origemId = `${config.spreadsheetId}::${tab}::${linhaAbs}`;
+        const origemKey = `${config.spreadsheetId}::${tab}::${linhaAbs}`;
+        const origemId = stableUuidFromText(origemKey);
         originIds.push(origemId);
 
         toUpsert.push({
@@ -385,7 +474,7 @@ export const importSheetRows = createServerFn({ method: "POST" })
           status: "Pago",
           origem: "google_sheets",
           origem_id: origemId,
-          observacoes: conta ? `Conta: ${conta}` : null,
+          observacoes: conta ? `Conta: ${conta} · Origem: ${tab} L${linhaAbs}` : `Origem: ${tab} L${linhaAbs}`,
         });
       }
     });
