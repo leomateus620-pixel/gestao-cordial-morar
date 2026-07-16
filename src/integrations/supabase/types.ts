@@ -712,12 +712,14 @@ export type Database = {
           created_at: string
           data_competencia: string
           data_pagamento: string | null
+          deleted_at: string | null
           descricao: string
           id: string
           imobiliaria: string
           observacoes: string | null
           origem: string | null
           origem_id: string | null
+          origem_ref: string | null
           status: string
           tipo: string
           updated_at: string
@@ -730,12 +732,14 @@ export type Database = {
           created_at?: string
           data_competencia: string
           data_pagamento?: string | null
+          deleted_at?: string | null
           descricao: string
           id?: string
           imobiliaria: string
           observacoes?: string | null
           origem?: string | null
           origem_id?: string | null
+          origem_ref?: string | null
           status?: string
           tipo: string
           updated_at?: string
@@ -748,12 +752,14 @@ export type Database = {
           created_at?: string
           data_competencia?: string
           data_pagamento?: string | null
+          deleted_at?: string | null
           descricao?: string
           id?: string
           imobiliaria?: string
           observacoes?: string | null
           origem?: string | null
           origem_id?: string | null
+          origem_ref?: string | null
           status?: string
           tipo?: string
           updated_at?: string
@@ -800,6 +806,62 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      financeiro_sync_log: {
+        Row: {
+          config_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          errors: Json
+          id: string
+          inserted: number
+          ok: boolean
+          ran_at: string
+          skipped: number
+          soft_deleted: number
+          triggered_by: string
+          updated: number
+        }
+        Insert: {
+          config_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          errors?: Json
+          id?: string
+          inserted?: number
+          ok?: boolean
+          ran_at?: string
+          skipped?: number
+          soft_deleted?: number
+          triggered_by?: string
+          updated?: number
+        }
+        Update: {
+          config_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          errors?: Json
+          id?: string
+          inserted?: number
+          ok?: boolean
+          ran_at?: string
+          skipped?: number
+          soft_deleted?: number
+          triggered_by?: string
+          updated?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_sync_log_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_sheet_config"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       google_calendar_connections: {
         Row: {
