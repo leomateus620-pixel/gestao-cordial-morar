@@ -243,8 +243,16 @@ const sections: Section[] = [
           { to: "/corretores", label: "Corretores", icon: UserCog, module: "corretores" },
           { to: "/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
           { to: "/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
-          { to: "/pesquisa-satisfacao", label: "Pesquisa de satisfação", icon: Star, module: "pesquisa_satisfacao" },
         ],
+      },
+      {
+        type: "item",
+        to: "/pesquisa-satisfacao",
+        label: "Pesquisa de satisfação",
+        desc: "Avaliações dos clientes",
+        icon: Star,
+        module: "pesquisa_satisfacao",
+        accent: "amber",
       },
       {
         type: "group",
