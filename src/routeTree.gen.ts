@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
 import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
@@ -70,6 +71,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
+  id: '/avaliar/$token',
+  path: '/avaliar/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppVendasRoute = AppVendasRouteImport.update({
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
   '/vendas': typeof AppVendasRoute
+  '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
   '/vendas': typeof AppVendasRoute
+  '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AppIndexRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/_app/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
   '/_app/vendas': typeof AppVendasRoute
+  '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_app/': typeof AppIndexRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/pesquisa-satisfacao'
     | '/relatorios'
     | '/vendas'
+    | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/clientes/$clienteId'
     | '/contratos/$contratoId'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/pesquisa-satisfacao'
     | '/relatorios'
     | '/vendas'
+    | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/'
     | '/clientes/$clienteId'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/_app/pesquisa-satisfacao'
     | '/_app/relatorios'
     | '/_app/vendas'
+    | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/_app/'
     | '/_app/clientes/$clienteId'
@@ -428,6 +440,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  AvaliarTokenRoute: typeof AvaliarTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
@@ -479,6 +492,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/avaliar/$token': {
+      id: '/avaliar/$token'
+      path: '/avaliar/$token'
+      fullPath: '/avaliar/$token'
+      preLoaderRoute: typeof AvaliarTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/vendas': {
@@ -760,6 +780,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  AvaliarTokenRoute: AvaliarTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
