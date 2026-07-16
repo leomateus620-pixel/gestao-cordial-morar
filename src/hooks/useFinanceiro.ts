@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -9,6 +9,7 @@ import {
   type LancamentoInput,
 } from "@/lib/financeiro/financeiro.functions";
 import type { Lancamento } from "@/lib/mock/data";
+import { supabase } from "@/integrations/supabase/client";
 
 const KEY = ["financeiro", "lancamentos"] as const;
 
