@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
+import { RentalDocuments } from "./RentalDocuments";
 
 function fmtDate(s?: string | null) {
   return s ? new Date(s).toLocaleDateString("pt-BR") : "—";
@@ -179,6 +180,8 @@ export function RentalExpandedDetails({
               value={contract.property.areaM2 ? `${contract.property.areaM2} m²` : ""}
             />
           </Section>
+
+          <RentalDocuments contractId={contract.id} />
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2">
