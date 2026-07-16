@@ -252,6 +252,31 @@ function formatDateParts(year: number, month: number, day: number): string | nul
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function hashSeed(input: string) {
+  let h = 1779033703 ^ input.length;
+  for (let i = 0; i < input.length; i++) {
+    h = Math.imul(h ^ input.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^= h >>> 16) >>> 0;
+  };
+}
+
+function stableUuidFromText(input: string): string {
+  const seed = hashSeed(input);
+  const bytes = Array.from({ length: 16 }, () => seed() & 0xff);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
+    16,
+    20,
+  )}-${hex.slice(20)}`;
+}
+
 function parseDate(raw: string, tabName?: string): string | null {
   const t = (raw ?? "").toString().trim();
   if (!t) return null;
@@ -434,7 +459,8 @@ export const importSheetRows = createServerFn({ method: "POST" })
 
         const tipo: "entrada" | "saida" = parsedValor! > 0 ? "entrada" : "saida";
         const imob = imobiliariaDaConta(conta);
-        const origemId = `${config.spreadsheetId}::${tab}::${linhaAbs}`;
+        const origemKey = `${config.spreadsheetId}::${tab}::${linhaAbs}`;
+        const origemId = stableUuidFromText(origemKey);
         originIds.push(origemId);
 
         toUpsert.push({
@@ -448,7 +474,7 @@ export const importSheetRows = createServerFn({ method: "POST" })
           status: "Pago",
           origem: "google_sheets",
           origem_id: origemId,
-          observacoes: conta ? `Conta: ${conta}` : null,
+          observacoes: conta ? `Conta: ${conta} · Origem: ${tab} L${linhaAbs}` : `Origem: ${tab} L${linhaAbs}`,
         });
       }
     });
