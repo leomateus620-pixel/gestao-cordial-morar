@@ -123,7 +123,7 @@ export function SurveyDashboard() {
                       border: "1px solid hsl(var(--border))",
                       borderRadius: 12,
                     }}
-                    formatter={(v: number) => v.toFixed(2)}
+                    formatter={(v) => (typeof v === "number" ? v.toFixed(2) : String(v))}
                   />
                   <Line
                     type="monotone"
