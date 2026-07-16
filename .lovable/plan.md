@@ -1,78 +1,82 @@
-## Objetivo
 
-Adicionar as categorias de garantia **Seguro fiança** e **Caução** no fluxo de cadastro/edição de aluguéis, junto do já existente **Fiador**, para deixar explícita a modalidade de garantia usada no contrato.
+# Pesquisa de Satisfação — Plano
 
-## Situação atual (menu Aluguéis → Novo aluguel)
+## Visão geral
+Novo menu **Pesquisa de satisfação** onde admins geram um link público único por atendimento/corretor, enviam ao cliente (WhatsApp/e-mail), e o cliente responde uma avaliação simples (1–5 estrelas + comentário) sem precisar logar. As respostas alimentam um dashboard restrito a admins com média por corretor, ranking, evolução no tempo e lista de comentários.
 
-Hoje o formulário tem:
-- Toggle "Incluir fiador" (opcional) → dados do fiador
-- Campo "Caução (R$)" solto na seção Contrato
+## Banco de dados (nova migração)
 
-Não há um seletor explícito da modalidade de garantia — o usuário só consegue registrar fiador e/ou um valor em caução, sem indicar que existe "Seguro fiança".
+Duas tabelas em `public`:
 
-## Mudanças propostas
+**`satisfaction_surveys`** (link gerado pelo admin)
+- `token` (text, único, ~24 chars, usado na URL pública)
+- `corretor_id` (uuid → profiles.id)
+- `client_id` (uuid → clients.id, opcional)
+- `client_nome` (text) / `client_contato` (text, opcional) — snapshot para quando não há cliente cadastrado
+- `contexto` (text, opcional — ex.: "Visita imóvel X")
+- `status` ('pendente' | 'respondida' | 'expirada')
+- `expires_at` (timestamptz, default now()+30 dias)
+- `created_by` (uuid), `created_at`, `updated_at`, `responded_at`
 
-### 1. Modelo de dados
-Adicionar em `rental_contracts` uma coluna `garantia_tipo` (enum: `sem_garantia`, `fiador`, `caucao`, `seguro_fianca`) e, para "Seguro fiança", os campos opcionais:
-- `seguro_seguradora` (texto)
-- `seguro_apolice` (texto)
-- `seguro_valor_mensal` (numérico)
+**`satisfaction_responses`**
+- `survey_id` (uuid → satisfaction_surveys, único — 1 resposta por link)
+- `rating` (int, 1–5, NOT NULL)
+- `comentario` (text, max 1000)
+- `created_at`
 
-Manter `valor_caucao` e `guarantor_id` como estão (usados quando o tipo escolhido for Caução ou Fiador).
+### RLS + GRANTs
+- `satisfaction_surveys`: admin faz tudo (has_role admin); `anon` pode SELECT apenas por token via função SECURITY DEFINER (não policy aberta); autenticados que não são admin: sem acesso.
+- `satisfaction_responses`: admin SELECT; INSERT público via função SECURITY DEFINER `submit_satisfaction_response(token, rating, comentario)` que valida token, status='pendente', não expirado, e atualiza survey para 'respondida'.
+- Função `get_satisfaction_survey_by_token(token)` (SECURITY DEFINER) devolve apenas dados seguros: nome do corretor, contexto, status — nada de PII do cliente para o próprio cliente.
+- GRANTs: `authenticated` full CRUD nas duas (gate por policy admin); `anon` só EXECUTE nas duas funções.
 
-### 2. Formulário "Novo aluguel"
-Substituir a seção atual "Fiador" por uma seção **"Garantia"** com um seletor de 4 opções (segmented control):
+## Backend — server functions
 
-```text
-[ Sem garantia ] [ Fiador ] [ Caução ] [ Seguro fiança ]
-```
+`src/lib/satisfaction/satisfaction.functions.ts`:
+- `createSurvey({ corretor_id, client_id?, client_nome, contexto? })` → admin-only, gera token e retorna URL pública.
+- `listSurveys({ status?, corretor_id?, periodo? })` → admin-only, lista com join em profiles + resposta.
+- `deleteSurvey(id)` / `resendSurvey(id)` (regenera token/expira).
+- `getSurveyStats({ periodo? })` → agregações: média geral, média por corretor, ranking, série mensal, últimas respostas com comentário.
 
-Comportamento por opção:
-- **Sem garantia** — nenhum campo extra.
-- **Fiador** — mostra os campos de fiador que já existem (nome, telefone, e-mail, vínculo).
-- **Caução** — mostra o campo "Caução (R$)" (movido da seção Contrato para cá).
-- **Seguro fiança** — mostra Seguradora, Nº da apólice, Valor mensal do seguro (R$).
+Todas usam `requireSupabaseAuth` + verificação `has_role('admin')`.
 
-Remover o campo "Caução (R$)" da seção Contrato (fica só dentro da opção Caução).
+Rota pública (form do cliente) — server function pública (sem auth):
+- `getPublicSurvey({ token })` chama RPC `get_satisfaction_survey_by_token`.
+- `submitPublicResponse({ token, rating, comentario })` chama RPC `submit_satisfaction_response` com validação Zod (rating 1–5, comentário ≤1000).
 
-### 3. Detalhes do contrato (drawer)
-Na tela de detalhes do aluguel, exibir um bloco "Garantia" com o tipo escolhido e os campos correspondentes (fiador, valor de caução, ou dados do seguro fiança).
+## Rotas e UI
 
-### 4. Tipos e serviços
-- Atualizar `src/types/rental.ts`: novo tipo `RentalGuaranteeType` e novos campos em `RentalContract` / `RentalContractInput`.
-- Atualizar `src/lib/rentals/rentals.functions.ts` para ler/gravar as novas colunas.
-- Atualizar `src/integrations/supabase/types.ts` (gerado após a migração).
+### Menu interno (admin)
+- `src/routes/_authenticated/pesquisa-satisfacao.tsx` → layout com abas.
+- Adicionar item no sidebar (menu lateral existente) visível **apenas para admin**.
+- 3 seções em Tabs:
+  1. **Dashboard** — KPIs (média geral, total de respostas, taxa de resposta), gráfico de linha (evolução mensal, recharts), ranking de corretores (tabela com média + nº respostas + estrelas), lista de comentários recentes com filtro por corretor/nota/período.
+  2. **Links enviados** — tabela de surveys (corretor, cliente, contexto, status, criado em, ação: copiar link/WhatsApp/reenviar/excluir). Filtros por status/corretor.
+  3. **Novo link** — modal/drawer com select de corretor, select opcional de cliente ou nome livre, contexto; ao criar, mostra URL + botões Copiar / WhatsApp / QR.
+
+### Rota pública (cliente responde)
+- `src/routes/avaliar.$token.tsx` — top-level, SSR on, sem auth.
+- Layout centralizado, mobile-first: logo/nome da imobiliária, "Como foi seu atendimento com **{corretor}**?", 5 estrelas grandes (tocáveis), textarea opcional, botão enviar.
+- Estados: form → enviando → sucesso ("Obrigado!"), link inválido/expirado, já respondida.
+- `head()` com título/description próprios e `robots: noindex`.
+
+## Responsividade
+- Padrão do projeto (grid + min-w-0 + shrink-0). Cards KPI: 1 col mobile → 2 col sm → 4 col lg.
+- Tabela vira lista de cards em <sm.
+- Estrelas 44px mínimo (touch target); textarea full-width.
 
 ## Fora de escopo
+- Envio automático de e-mail/WhatsApp (só gera link + botões de copiar/compartilhar).
+- Múltiplos critérios, NPS, respostas anônimas sem token.
+- Exportar CSV (pode vir depois).
 
-- Cálculos financeiros a partir do seguro fiança (não vai virar lançamento automático no Financeiro nesta etapa).
-- Upload de apólice em PDF.
-- Alterações no card resumido de aluguel (`RentalCard`) — só o drawer de detalhes vai exibir a garantia.
-
-## Detalhes técnicos
-
-**Migração SQL** (resumo):
-```sql
-CREATE TYPE public.rental_guarantee_type AS ENUM
-  ('sem_garantia','fiador','caucao','seguro_fianca');
-
-ALTER TABLE public.rental_contracts
-  ADD COLUMN garantia_tipo public.rental_guarantee_type NOT NULL DEFAULT 'sem_garantia',
-  ADD COLUMN seguro_seguradora text,
-  ADD COLUMN seguro_apolice text,
-  ADD COLUMN seguro_valor_mensal numeric(12,2);
-
--- Backfill: contratos com guarantor_id → 'fiador'; com valor_caucao > 0 → 'caucao'
-UPDATE public.rental_contracts SET garantia_tipo = 'fiador'
-  WHERE guarantor_id IS NOT NULL AND garantia_tipo = 'sem_garantia';
-UPDATE public.rental_contracts SET garantia_tipo = 'caucao'
-  WHERE valor_caucao IS NOT NULL AND valor_caucao > 0 AND garantia_tipo = 'sem_garantia';
-```
-RLS existente do `rental_contracts` cobre as novas colunas — sem alterações.
-
-**Arquivos afetados**:
-- `supabase/migrations/<novo>.sql` (nova migração)
-- `src/types/rental.ts`
-- `src/lib/rentals/rentals.functions.ts`
-- `src/components/alugueis/RentalFormModal.tsx`
-- `src/components/alugueis/RentalExpandedDetails.tsx`
+## Arquivos a criar/editar
+- Migração: `supabase/migrations/<ts>_satisfaction.sql` (enums, tabelas, GRANTs, RLS, funções SECURITY DEFINER).
+- `src/types/satisfaction.ts`
+- `src/lib/satisfaction/satisfaction.functions.ts`
+- `src/lib/satisfaction/satisfaction-public.functions.ts` (endpoints públicos)
+- `src/hooks/useSatisfaction.ts`
+- `src/routes/_authenticated/pesquisa-satisfacao.tsx`
+- `src/routes/avaliar.$token.tsx`
+- `src/components/satisfaction/*` (SurveyDashboard, SurveyList, NewSurveyDialog, StarRating, PublicSurveyForm)
+- Editar sidebar existente para incluir o item (visível apenas para admin).
