@@ -696,7 +696,7 @@ export function RentalFormModal({
               subtitle="Valores, vigência e condições do aluguel"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-                <Field label="Valor mensal (R$)" className="sm:col-span-3">
+                <Field label="Valor mensal (R$)" className="sm:col-span-6">
                   <input
                     type="number"
                     required
@@ -705,17 +705,6 @@ export function RentalFormModal({
                     placeholder="0,00"
                     value={valor}
                     onChange={(e) => setValor(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Caução (R$)" className="sm:col-span-3">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="0,00"
-                    value={caucao}
-                    onChange={(e) => setCaucao(e.target.value)}
                     className={inputCls}
                   />
                 </Field>
