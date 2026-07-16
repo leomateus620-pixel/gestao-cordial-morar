@@ -408,124 +408,70 @@ export const importSheetRows = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ImportResult> => {
     await assertAdmin(context);
-    const { config, monthTabs } = await loadConfig(context);
-    const result: ImportResult = { inserted: 0, updated: 0, skipped: 0, errors: [] };
-    if (!monthTabs.length) return result;
+    const { runSheetSync } = await import("./sheets-import.server");
+    const { data: cfgRow, error: cfgErr } = await context.supabase
+      .from("financeiro_sheet_config")
+      .select("id, spreadsheet_id, sheet_name, range, header_row")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (cfgErr) throw new Error(cfgErr.message);
+    if (!cfgRow) throw new Error("Nenhuma planilha configurada.");
 
-    // Lê todas as abas mensais em um único batchGet
-    const params = new URLSearchParams();
-    params.set("valueRenderOption", "FORMATTED_VALUE");
-    for (const tab of monthTabs) params.append("ranges", `${tab}!A2:E1000`);
-    const batch = await gwFetch(
-      `/spreadsheets/${config.spreadsheetId}/values:batchGet?${params.toString()}`,
-    );
-    const valueRanges: { range: string; values?: any[][] }[] = batch.valueRanges ?? [];
-
-    const toUpsert: any[] = [];
-    const originIds: string[] = [];
-
-    valueRanges.forEach((vr, idx) => {
-      const tab = monthTabs[idx];
-      const rows = vr.values ?? [];
-      for (let i = 0; i < rows.length; i++) {
-        const linhaAbs = 2 + i; // range começa em A2
-        const cols = (rows[i] ?? []).map((v) => String(v ?? "").trim());
-        if (!cols.length || cols.every((c) => !c)) continue;
-
-        const [dataRaw, conta, categoria, descricao, valorRaw] = [
-          cols[0] ?? "",
-          cols[1] ?? "",
-          cols[2] ?? "",
-          cols[3] ?? "",
-          cols[4] ?? "",
-        ];
-
-        const parsedData = parseDate(dataRaw, tab);
-        const parsedValor = parseValor(valorRaw);
-
-        const problems: string[] = [];
-        if (!parsedData) problems.push("data inválida");
-        if (!descricao && !categoria) problems.push("descrição e categoria vazias");
-        if (parsedValor === null || parsedValor === 0) problems.push("valor inválido ou zero");
-
-        if (problems.length) {
-          result.errors.push({
-            linha: linhaAbs,
-            motivo: `${tab} L${linhaAbs}: ${problems.join("; ")}`,
-          });
-          result.skipped++;
-          continue;
-        }
-
-        const tipo: "entrada" | "saida" = parsedValor! > 0 ? "entrada" : "saida";
-        const imob = imobiliariaDaConta(conta);
-        const origemKey = `${config.spreadsheetId}::${tab}::${linhaAbs}`;
-        const origemId = stableUuidFromText(origemKey);
-        originIds.push(origemId);
-
-        toUpsert.push({
-          user_id: context.userId,
-          imobiliaria: imob,
-          tipo,
-          categoria: categoria || "Sem categoria",
-          descricao: descricao || categoria || "Lançamento sem descrição",
-          valor: Math.abs(parsedValor!),
-          data_competencia: parsedData,
-          status: "Pago",
-          origem: "google_sheets",
-          origem_id: origemId,
-          observacoes: conta ? `Conta: ${conta} · Origem: ${tab} L${linhaAbs}` : `Origem: ${tab} L${linhaAbs}`,
-        });
-      }
-    });
-
-    if (toUpsert.length) {
-      const { data: existing } = await context.supabase
-        .from("financeiro_lancamentos")
-        .select("origem_id")
-        .eq("origem", "google_sheets")
-        .in("origem_id", originIds);
-      const existingSet = new Set((existing ?? []).map((r: any) => r.origem_id));
-
-      const toInsert = toUpsert.filter((r) => !existingSet.has(r.origem_id));
-      const toUpdate = toUpsert.filter((r) => existingSet.has(r.origem_id));
-
-      if (toInsert.length) {
-        const { error: insErr } = await context.supabase
-          .from("financeiro_lancamentos")
-          .insert(toInsert);
-        if (insErr) throw new Error(insErr.message);
-        result.inserted = toInsert.length;
-      }
-
-      for (const row of toUpdate) {
-        const { error: updErr } = await context.supabase
-          .from("financeiro_lancamentos")
-          .update({
-            imobiliaria: row.imobiliaria,
-            tipo: row.tipo,
-            categoria: row.categoria,
-            descricao: row.descricao,
-            valor: row.valor,
-            data_competencia: row.data_competencia,
-            status: row.status,
-            observacoes: row.observacoes,
-          })
-          .eq("origem", "google_sheets")
-          .eq("origem_id", row.origem_id);
-        if (updErr) throw new Error(updErr.message);
-        result.updated++;
-      }
+    const startedAt = Date.now();
+    const t0 = new Date().toISOString();
+    let outcome;
+    try {
+      outcome = await runSheetSync(context.supabase, cfgRow, context.userId);
+    } catch (e: any) {
+      await context.supabase.from("financeiro_sync_log").insert({
+        config_id: cfgRow.id,
+        ran_at: t0,
+        duration_ms: Date.now() - startedAt,
+        ok: false,
+        error_message: String(e?.message ?? e).slice(0, 500),
+        triggered_by: "manual",
+      });
+      throw e;
     }
 
     await context.supabase
       .from("financeiro_sheet_config")
       .update({
         last_import_at: new Date().toISOString(),
-        last_import_count: result.inserted + result.updated,
+        last_import_count: outcome.inserted + outcome.updated,
         updated_by: context.userId,
       })
-      .eq("id", config.id);
+      .eq("id", cfgRow.id);
 
-    return result;
+    await context.supabase.from("financeiro_sync_log").insert({
+      config_id: cfgRow.id,
+      ran_at: t0,
+      duration_ms: Date.now() - startedAt,
+      inserted: outcome.inserted,
+      updated: outcome.updated,
+      soft_deleted: outcome.softDeleted,
+      skipped: outcome.skipped,
+      errors: outcome.errors,
+      triggered_by: "manual",
+    });
+
+    return {
+      inserted: outcome.inserted,
+      updated: outcome.updated,
+      skipped: outcome.skipped,
+      errors: outcome.errors,
+    };
+  });
+
+export const getLastSync = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("financeiro_sync_log")
+      .select("ran_at, inserted, updated, soft_deleted, skipped, ok, error_message, triggered_by")
+      .order("ran_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ?? null;
   });

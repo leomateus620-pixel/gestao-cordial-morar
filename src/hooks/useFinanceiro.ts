@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -9,6 +9,7 @@ import {
   type LancamentoInput,
 } from "@/lib/financeiro/financeiro.functions";
 import type { Lancamento } from "@/lib/mock/data";
+import { supabase } from "@/integrations/supabase/client";
 
 const KEY = ["financeiro", "lancamentos"] as const;
 
@@ -28,6 +29,22 @@ export function useFinanceiro() {
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: KEY });
   }, [qc]);
+
+  // Realtime: qualquer alteração na tabela (inclusive vinda do cron de sync
+  // automático) invalida a query e atualiza dashboard/gráficos sozinho.
+  useEffect(() => {
+    const channel = supabase
+      .channel("financeiro_lancamentos_rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "financeiro_lancamentos" },
+        () => invalidate(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [invalidate]);
 
   const createMutation = useMutation({
     mutationFn: (input: LancamentoInput) => create({ data: input }),
