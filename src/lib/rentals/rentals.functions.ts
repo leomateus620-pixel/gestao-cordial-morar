@@ -80,6 +80,10 @@ type ContractRow = {
   guarantor_id: string | null;
   valor_mensal: number;
   valor_caucao: number | null;
+  garantia_tipo: string | null;
+  seguro_seguradora: string | null;
+  seguro_apolice: string | null;
+  seguro_valor_mensal: number | null;
   data_inicio: string;
   data_fim: string;
   dia_vencimento: number;
