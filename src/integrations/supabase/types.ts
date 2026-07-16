@@ -1448,6 +1448,101 @@ export type Database = {
         }
         Relationships: []
       }
+      satisfaction_responses: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          rating: number
+          survey_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          survey_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satisfaction_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: true
+            referencedRelation: "satisfaction_surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      satisfaction_surveys: {
+        Row: {
+          client_contato: string | null
+          client_id: string | null
+          client_nome: string
+          contexto: string | null
+          corretor_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["satisfaction_survey_status"]
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          client_contato?: string | null
+          client_id?: string | null
+          client_nome: string
+          contexto?: string | null
+          corretor_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["satisfaction_survey_status"]
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          client_contato?: string | null
+          client_id?: string | null
+          client_nome?: string
+          contexto?: string | null
+          corretor_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["satisfaction_survey_status"]
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satisfaction_surveys_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "satisfaction_surveys_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -1509,6 +1604,17 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_satisfaction_survey_by_token: {
+        Args: { _token: string }
+        Returns: {
+          contexto: string
+          corretor_iniciais: string
+          corretor_nome: string
+          expired: boolean
+          status: Database["public"]["Enums"]["satisfaction_survey_status"]
+          survey_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1543,6 +1649,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      submit_satisfaction_response: {
+        Args: { _comentario: string; _rating: number; _token: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -1600,6 +1710,7 @@ export type Database = {
         | "terreno"
         | "kitnet"
         | "outro"
+      satisfaction_survey_status: "pendente" | "respondida" | "expirada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1788,6 +1899,7 @@ export const Constants = {
         "kitnet",
         "outro",
       ],
+      satisfaction_survey_status: ["pendente", "respondida", "expirada"],
     },
   },
 } as const

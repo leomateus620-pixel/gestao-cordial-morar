@@ -16,7 +16,8 @@ export type AppModule =
   | "marketing"
   | "documentos"
   | "integracoes"
-  | "configuracoes";
+  | "configuracoes"
+  | "pesquisa_satisfacao";
 
 export type Permission =
   | "clientes:read"
@@ -74,6 +75,7 @@ const allModules: AppModule[] = [
   "documentos",
   "integracoes",
   "configuracoes",
+  "pesquisa_satisfacao",
 ];
 
 const allPermissions: Permission[] = [

@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Megaphone,
   Settings,
+  Star,
   UserCog,
   Users,
   Wallet,
@@ -169,6 +170,14 @@ export const moduleItems: ModuleItem[] = [
     desc: "Conectores e sincronizações",
     icon: Cable,
     module: "integracoes",
+  },
+  {
+    to: "/pesquisa-satisfacao",
+    label: "Pesquisa de satisfação",
+    shortLabel: "Pesquisa",
+    desc: "Avaliações dos clientes",
+    icon: Star,
+    module: "pesquisa_satisfacao",
   },
   {
     to: "/configuracoes",

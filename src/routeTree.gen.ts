@@ -15,8 +15,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
 import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
 import { Route as AppMaisRouteImport } from './routes/_app.mais'
 import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
@@ -71,6 +73,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
+  id: '/avaliar/$token',
+  path: '/avaliar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppVendasRoute = AppVendasRouteImport.update({
   id: '/vendas',
   path: '/vendas',
@@ -79,6 +86,11 @@ const AppVendasRoute = AppVendasRouteImport.update({
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPesquisaSatisfacaoRoute = AppPesquisaSatisfacaoRouteImport.update({
+  id: '/pesquisa-satisfacao',
+  path: '/pesquisa-satisfacao',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMarketingRoute = AppMarketingRouteImport.update({
@@ -227,8 +239,10 @@ export interface FileRoutesByFullPath {
   '/integracoes': typeof AppIntegracoesRoute
   '/mais': typeof AppMaisRoute
   '/marketing': typeof AppMarketingRoute
+  '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
   '/vendas': typeof AppVendasRoute
+  '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
@@ -259,8 +273,10 @@ export interface FileRoutesByTo {
   '/integracoes': typeof AppIntegracoesRoute
   '/mais': typeof AppMaisRoute
   '/marketing': typeof AppMarketingRoute
+  '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
   '/vendas': typeof AppVendasRoute
+  '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AppIndexRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
@@ -294,8 +310,10 @@ export interface FileRoutesById {
   '/_app/integracoes': typeof AppIntegracoesRoute
   '/_app/mais': typeof AppMaisRoute
   '/_app/marketing': typeof AppMarketingRoute
+  '/_app/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
   '/_app/vendas': typeof AppVendasRoute
+  '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_app/': typeof AppIndexRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
@@ -330,8 +348,10 @@ export interface FileRouteTypes {
     | '/integracoes'
     | '/mais'
     | '/marketing'
+    | '/pesquisa-satisfacao'
     | '/relatorios'
     | '/vendas'
+    | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/clientes/$clienteId'
     | '/contratos/$contratoId'
@@ -362,8 +382,10 @@ export interface FileRouteTypes {
     | '/integracoes'
     | '/mais'
     | '/marketing'
+    | '/pesquisa-satisfacao'
     | '/relatorios'
     | '/vendas'
+    | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/'
     | '/clientes/$clienteId'
@@ -396,8 +418,10 @@ export interface FileRouteTypes {
     | '/_app/integracoes'
     | '/_app/mais'
     | '/_app/marketing'
+    | '/_app/pesquisa-satisfacao'
     | '/_app/relatorios'
     | '/_app/vendas'
+    | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/_app/'
     | '/_app/clientes/$clienteId'
@@ -416,6 +440,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  AvaliarTokenRoute: typeof AvaliarTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
@@ -469,6 +494,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/avaliar/$token': {
+      id: '/avaliar/$token'
+      path: '/avaliar/$token'
+      fullPath: '/avaliar/$token'
+      preLoaderRoute: typeof AvaliarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/vendas': {
       id: '/_app/vendas'
       path: '/vendas'
@@ -481,6 +513,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pesquisa-satisfacao': {
+      id: '/_app/pesquisa-satisfacao'
+      path: '/pesquisa-satisfacao'
+      fullPath: '/pesquisa-satisfacao'
+      preLoaderRoute: typeof AppPesquisaSatisfacaoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/marketing': {
@@ -706,6 +745,7 @@ interface AppRouteChildren {
   AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppMaisRoute: typeof AppMaisRoute
   AppMarketingRoute: typeof AppMarketingRoute
+  AppPesquisaSatisfacaoRoute: typeof AppPesquisaSatisfacaoRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppVendasRoute: typeof AppVendasRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -727,6 +767,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIntegracoesRoute: AppIntegracoesRoute,
   AppMaisRoute: AppMaisRoute,
   AppMarketingRoute: AppMarketingRoute,
+  AppPesquisaSatisfacaoRoute: AppPesquisaSatisfacaoRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
   AppVendasRoute: AppVendasRoute,
   AppIndexRoute: AppIndexRoute,
@@ -739,6 +780,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  AvaliarTokenRoute: AvaliarTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
