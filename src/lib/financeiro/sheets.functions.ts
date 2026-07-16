@@ -290,9 +290,8 @@ export const previewSheetRows = createServerFn({ method: "POST" })
     // Procura a primeira aba mensal com dados
     const headers = ["Data", "Conta", "Categoria", "Descrição", "Valor"];
     for (const tab of monthTabs) {
-      const enc = encodeURIComponent(`${tab}!A2:E1000`);
       const res = await gwFetch(
-        `/spreadsheets/${config.spreadsheetId}/values/${enc}?valueRenderOption=FORMATTED_VALUE`,
+        `/spreadsheets/${config.spreadsheetId}/values/${tab}!A2:E1000?valueRenderOption=FORMATTED_VALUE`,
       );
       const rows: string[][] = (res.values ?? [])
         .map((r: any[]) => r.map((v) => String(v ?? "")))
