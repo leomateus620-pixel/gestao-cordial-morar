@@ -273,22 +273,29 @@ export function RentalFormModal({
                   observacoes: null,
                 },
               },
-        guarantor: hasGuarantor
-          ? {
-              data: {
-                nome: guarNome,
-                cpfCnpj: null,
-                telefone: guarTel || null,
-                email: guarEmail || null,
-                endereco: null,
-                profissao: null,
-                vinculo: guarVinculo || null,
-                observacoes: null,
-              },
-            }
-          : null,
+        guarantor:
+          garantiaTipo === "fiador"
+            ? {
+                data: {
+                  nome: guarNome,
+                  cpfCnpj: null,
+                  telefone: guarTel || null,
+                  email: guarEmail || null,
+                  endereco: null,
+                  profissao: null,
+                  vinculo: guarVinculo || null,
+                  observacoes: null,
+                },
+              }
+            : null,
         valorMensal: Number(valor),
-        valorCaucao: caucao ? Number(caucao) : null,
+        valorCaucao: garantiaTipo === "caucao" && caucao ? Number(caucao) : null,
+        garantiaTipo,
+        seguroSeguradora:
+          garantiaTipo === "seguro_fianca" ? seguroSeguradora || null : null,
+        seguroApolice: garantiaTipo === "seguro_fianca" ? seguroApolice || null : null,
+        seguroValorMensal:
+          garantiaTipo === "seguro_fianca" && seguroValor ? Number(seguroValor) : null,
         dataInicio,
         dataFim,
         diaVencimento: Number(dia),
