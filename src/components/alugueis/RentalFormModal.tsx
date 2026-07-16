@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import type {
   RentalContractInput,
+  RentalGuaranteeType,
   RentalProperty,
   RentalPropertyType,
   RentalTenant,
@@ -168,11 +169,14 @@ export function RentalFormModal({
   const [tenantRenda, setTenantRenda] = useState("");
   const [tenantEnd, setTenantEnd] = useState("");
 
-  const [hasGuarantor, setHasGuarantor] = useState(false);
+  const [garantiaTipo, setGarantiaTipo] = useState<RentalGuaranteeType>("sem_garantia");
   const [guarNome, setGuarNome] = useState("");
   const [guarTel, setGuarTel] = useState("");
   const [guarEmail, setGuarEmail] = useState("");
   const [guarVinculo, setGuarVinculo] = useState("");
+  const [seguroSeguradora, setSeguroSeguradora] = useState("");
+  const [seguroApolice, setSeguroApolice] = useState("");
+  const [seguroValor, setSeguroValor] = useState("");
 
   const [valor, setValor] = useState("");
   const [caucao, setCaucao] = useState("");
@@ -206,11 +210,14 @@ export function RentalFormModal({
     setTenantProf("");
     setTenantRenda("");
     setTenantEnd("");
-    setHasGuarantor(false);
+    setGarantiaTipo("sem_garantia");
     setGuarNome("");
     setGuarTel("");
     setGuarEmail("");
     setGuarVinculo("");
+    setSeguroSeguradora("");
+    setSeguroApolice("");
+    setSeguroValor("");
     setValor("");
     setCaucao("");
     setDataInicio("");
