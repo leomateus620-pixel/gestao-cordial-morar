@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Megaphone,
   Settings,
+  Star,
   UserCog,
   Users,
   Wallet,
