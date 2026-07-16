@@ -74,6 +74,7 @@ export const listLancamentos = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("financeiro_lancamentos")
       .select("*")
+      .is("deleted_at", null)
       .order("data_competencia", { ascending: false });
     if (error) throw new Error(error.message);
     return ((data ?? []) as unknown as Row[]).map(mapRow);

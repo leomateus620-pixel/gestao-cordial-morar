@@ -39,6 +39,7 @@ import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -193,6 +194,12 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksFinanceiroSheetsSyncRoute =
+  ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
+    id: '/api/public/hooks/financeiro-sheets-sync',
+    path: '/api/public/hooks/financeiro-sheets-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCalendarCallbackRoute =
   ApiPublicGoogleCalendarCallbackRouteImport.update({
     id: '/api/public/google-calendar/callback',
@@ -228,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -260,6 +268,7 @@ export interface FileRoutesByTo {
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -294,6 +303,7 @@ export interface FileRoutesById {
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/financeiro-sheets-sync'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/financeiro-sheets-sync'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -393,6 +405,7 @@ export interface FileRouteTypes {
     | '/_app/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/financeiro-sheets-sync'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -406,6 +419,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
+  ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -623,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/financeiro-sheets-sync': {
+      id: '/api/public/hooks/financeiro-sheets-sync'
+      path: '/api/public/hooks/financeiro-sheets-sync'
+      fullPath: '/api/public/hooks/financeiro-sheets-sync'
+      preLoaderRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google-calendar/callback': {
       id: '/api/public/google-calendar/callback'
       path: '/api/public/google-calendar/callback'
@@ -721,6 +742,8 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
+  ApiPublicHooksFinanceiroSheetsSyncRoute:
+    ApiPublicHooksFinanceiroSheetsSyncRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
