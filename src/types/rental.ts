@@ -151,6 +151,17 @@ export type RentalKpis = {
   imoveisDisponiveis: number;
 };
 
+export type RentalContractDocument = {
+  id: string;
+  contractId: string;
+  fileName: string;
+  filePath: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  url: string | null;
+  createdAt: string;
+};
+
 export type RentalFilter =
   | "todos"
   | "ativos"
