@@ -1195,12 +1195,16 @@ export type Database = {
           data_fim: string
           data_inicio: string
           dia_vencimento: number
+          garantia_tipo: Database["public"]["Enums"]["rental_guarantee_type"]
           guarantor_id: string | null
           id: string
           observacoes: string | null
           payment_status: Database["public"]["Enums"]["rental_payment_status"]
           property_id: string
           proximo_vencimento: string | null
+          seguro_apolice: string | null
+          seguro_seguradora: string | null
+          seguro_valor_mensal: number | null
           status: Database["public"]["Enums"]["rental_contract_status"]
           tenant_id: string
           updated_at: string
@@ -1215,12 +1219,16 @@ export type Database = {
           data_fim: string
           data_inicio: string
           dia_vencimento?: number
+          garantia_tipo?: Database["public"]["Enums"]["rental_guarantee_type"]
           guarantor_id?: string | null
           id?: string
           observacoes?: string | null
           payment_status?: Database["public"]["Enums"]["rental_payment_status"]
           property_id: string
           proximo_vencimento?: string | null
+          seguro_apolice?: string | null
+          seguro_seguradora?: string | null
+          seguro_valor_mensal?: number | null
           status?: Database["public"]["Enums"]["rental_contract_status"]
           tenant_id: string
           updated_at?: string
@@ -1235,12 +1243,16 @@ export type Database = {
           data_fim?: string
           data_inicio?: string
           dia_vencimento?: number
+          garantia_tipo?: Database["public"]["Enums"]["rental_guarantee_type"]
           guarantor_id?: string | null
           id?: string
           observacoes?: string | null
           payment_status?: Database["public"]["Enums"]["rental_payment_status"]
           property_id?: string
           proximo_vencimento?: string | null
+          seguro_apolice?: string | null
+          seguro_seguradora?: string | null
+          seguro_valor_mensal?: number | null
           status?: Database["public"]["Enums"]["rental_contract_status"]
           tenant_id?: string
           updated_at?: string
@@ -1564,6 +1576,11 @@ export type Database = {
         | "vencido"
         | "encerrado"
         | "cancelado"
+      rental_guarantee_type:
+        | "sem_garantia"
+        | "fiador"
+        | "caucao"
+        | "seguro_fianca"
       rental_payment_status:
         | "em_dia"
         | "vence_hoje"
@@ -1742,6 +1759,12 @@ export const Constants = {
         "vencido",
         "encerrado",
         "cancelado",
+      ],
+      rental_guarantee_type: [
+        "sem_garantia",
+        "fiador",
+        "caucao",
+        "seguro_fianca",
       ],
       rental_payment_status: [
         "em_dia",
