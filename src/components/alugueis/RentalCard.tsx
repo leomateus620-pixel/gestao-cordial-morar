@@ -50,6 +50,11 @@ export function RentalCard({
             <p className="flex items-center gap-1 text-[11px] text-foreground/60">
               <User className="size-3 shrink-0" />
               <span className="truncate">{contract.tenant.nome}</span>
+              {contract.tenants && contract.tenants.length > 1 && (
+                <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                  +{contract.tenants.length - 1}
+                </span>
+              )}
             </p>
             <p className="mt-1 flex items-center gap-1 text-[10px] text-foreground/55">
               <CalendarClock className="size-3 shrink-0" />
