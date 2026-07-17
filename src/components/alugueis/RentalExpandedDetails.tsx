@@ -23,6 +23,21 @@ function fmtDate(s?: string | null) {
   return s ? new Date(s).toLocaleDateString("pt-BR") : "—";
 }
 
+function BrandBadge({ brand }: { brand?: string | null }) {
+  const b = brand === "morar" ? "morar" : "cordial";
+  const label = b === "morar" ? "Morar" : "Cordial";
+  const cls =
+    b === "morar"
+      ? "bg-[color:var(--morar-primary,#8b5cf6)]/12 text-[color:var(--morar-primary,#8b5cf6)] ring-[color:var(--morar-primary,#8b5cf6)]/25"
+      : "bg-[color:var(--cordial-primary,#0ea5e9)]/12 text-[color:var(--cordial-primary,#0ea5e9)] ring-[color:var(--cordial-primary,#0ea5e9)]/25";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5 text-xs">
@@ -74,10 +89,14 @@ export function RentalExpandedDetails({
         className="mx-auto max-h-[92vh] max-w-[560px] overflow-y-auto rounded-t-3xl border-white/60 bg-background/95 backdrop-blur-xl"
       >
         <SheetHeader className="text-left">
-          <SheetTitle className="text-base">{contract.property.apelido}</SheetTitle>
+          <div className="flex items-center gap-2">
+            <SheetTitle className="text-base">{contract.property.apelido}</SheetTitle>
+            <BrandBadge brand={contract.brand} />
+          </div>
           <SheetDescription className="text-[11px]">
             Contrato de aluguel · {contract.tenant.nome}
           </SheetDescription>
+
         </SheetHeader>
 
         <div className="mt-4 flex items-center gap-2">

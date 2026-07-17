@@ -8,6 +8,21 @@ function fmtDate(s?: string | null) {
   return new Date(s).toLocaleDateString("pt-BR");
 }
 
+function BrandBadge({ brand }: { brand?: string | null }) {
+  const b = brand === "morar" ? "morar" : "cordial";
+  const label = b === "morar" ? "Morar" : "Cordial";
+  const cls =
+    b === "morar"
+      ? "bg-[color:var(--morar-primary,#8b5cf6)]/12 text-[color:var(--morar-primary,#8b5cf6)] ring-[color:var(--morar-primary,#8b5cf6)]/25"
+      : "bg-[color:var(--cordial-primary,#0ea5e9)]/12 text-[color:var(--cordial-primary,#0ea5e9)] ring-[color:var(--cordial-primary,#0ea5e9)]/25";
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+
 export function RentalCard({
   contract,
   onClick,
@@ -29,9 +44,12 @@ export function RentalCard({
       <article className="liquid-panel relative overflow-hidden rounded-3xl p-4 transition will-change-transform hover:-translate-y-0.5 hover:shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">
-              {contract.property.apelido}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-sm font-semibold leading-tight">
+                {contract.property.apelido}
+              </p>
+              <BrandBadge brand={contract.brand} />
+            </div>
             <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-foreground/55">
               <MapPin className="size-3 shrink-0" />
               {[contract.property.bairro, contract.property.cidade]
@@ -44,6 +62,7 @@ export function RentalCard({
             <RentalPaymentBadge status={contract.paymentStatus} />
           </div>
         </div>
+
 
         <div className="mt-3 flex items-end justify-between border-t border-white/40 pt-3">
           <div className="min-w-0">
