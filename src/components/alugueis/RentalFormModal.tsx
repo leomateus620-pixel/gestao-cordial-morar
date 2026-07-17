@@ -174,6 +174,7 @@ function newTenantEntry(): TenantEntry {
 
 function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
   if (t.mode === "existing") return { existingId: t.existingId };
+  const renda = t.renda ? parseBRLNumber(t.renda) : NaN;
   return {
     data: {
       nome: t.nome,
@@ -183,7 +184,7 @@ function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
       dataNascimento: null,
       endereco: t.endereco || null,
       profissao: t.profissao || null,
-      rendaAproximada: t.renda ? Number(t.renda) : null,
+      rendaAproximada: Number.isFinite(renda) ? renda : null,
       observacoes: null,
     },
   };
