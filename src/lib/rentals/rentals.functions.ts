@@ -693,7 +693,7 @@ export const deleteRentalContract = createServerFn({ method: "POST" })
 
 // ============================ DOCUMENTS ============================
 const DOCS_BUCKET = "rental-documents";
-const MAX_DOC_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_DOC_BYTES = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME = new Set([
   "application/pdf",
   "image/png",
