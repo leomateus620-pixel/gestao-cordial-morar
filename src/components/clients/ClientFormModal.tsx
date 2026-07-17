@@ -90,6 +90,15 @@ export function ClientFormModal({
   onOpenChange: (open: boolean) => void;
   onSubmit: (client: ClientCreateInput) => void | Promise<void>;
 }) {
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = useMemo(
+    () =>
+      [...corretores]
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+        .map((c) => ({ id: c.id, label: c.nome }))
+        .concat({ id: "a_definir", label: "A definir" }),
+    [corretores],
+  );
   const [form, setForm] = useState<FormState>(initialForm);
   const [validation, setValidation] = useState<ClientValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
@@ -98,9 +107,8 @@ export function ClientFormModal({
   const closeTimer = useRef<number | null>(null);
 
   const brokerName = useMemo(() => {
-    if (form.assignedBrokerId === "outro") return form.customBrokerName.trim() || "Outro";
     return brokerOptions.find((broker) => broker.id === form.assignedBrokerId)?.label;
-  }, [form.assignedBrokerId, form.customBrokerName]);
+  }, [brokerOptions, form.assignedBrokerId]);
 
   const requestClose = useCallback(() => {
     if (closing) return;
