@@ -204,7 +204,8 @@ type GuaranteeTipo = Exclude<RentalGuaranteeType, "sem_garantia">;
 type GuaranteeEntry = {
   key: string;
   tipo: GuaranteeTipo;
-  // fiador
+  // fiador — id existente (para atualizar em vez de duplicar)
+  guarantorId: string | null;
   guarNome: string;
   guarTel: string;
   guarEmail: string;
@@ -221,6 +222,7 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
   return {
     key: crypto.randomUUID(),
     tipo,
+    guarantorId: null,
     guarNome: "",
     guarTel: "",
     guarEmail: "",
@@ -234,20 +236,21 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
 
 function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput {
   if (g.tipo === "fiador") {
+    const data = {
+      nome: g.guarNome,
+      cpfCnpj: null,
+      telefone: g.guarTel || null,
+      email: g.guarEmail || null,
+      endereco: null,
+      profissao: null,
+      vinculo: g.guarVinculo || null,
+      observacoes: null,
+    };
     return {
       tipo: "fiador",
-      guarantor: {
-        data: {
-          nome: g.guarNome,
-          cpfCnpj: null,
-          telefone: g.guarTel || null,
-          email: g.guarEmail || null,
-          endereco: null,
-          profissao: null,
-          vinculo: g.guarVinculo || null,
-          observacoes: null,
-        },
-      },
+      guarantor: g.guarantorId
+        ? { existingId: g.guarantorId, data }
+        : { data },
     };
   }
   if (g.tipo === "caucao") {
