@@ -129,7 +129,7 @@ export function useRentals() {
       void today;
       return true;
     });
-  }, [contracts, filter, search]);
+  }, [contracts, filter, search, agency]);
 
   return {
     contracts: filtered,
