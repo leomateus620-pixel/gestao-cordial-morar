@@ -772,7 +772,7 @@ export const uploadRentalContractDocument = createServerFn({ method: "POST" })
     const raw = data.base64.includes(",") ? data.base64.split(",")[1] : data.base64;
     const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
     if (bytes.byteLength === 0) throw new Error("Arquivo vazio.");
-    if (bytes.byteLength > MAX_DOC_BYTES) throw new Error("Arquivo excede 10 MB.");
+    if (bytes.byteLength > MAX_DOC_BYTES) throw new Error("Arquivo excede 50 MB.");
 
     const safeName = data.fileName.replace(/[^\w.\-]+/g, "_").slice(0, 120);
     const filePath = `${data.contractId}/${crypto.randomUUID()}-${safeName}`;
