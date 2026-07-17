@@ -953,11 +953,10 @@ export function RentalFormModal({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
                 <Field label="Valor mensal (R$)" className="sm:col-span-6">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     required
-                    min={0}
-                    step="0.01"
-                    placeholder="0,00"
+                    placeholder="1.500,00"
                     value={valor}
                     onChange={(e) => setValor(e.target.value)}
                     className={inputCls}
