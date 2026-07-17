@@ -372,27 +372,6 @@ export function ClientFormModal({
                     ))}
                   </select>
                 </Field>
-                {form.assignedBrokerId === "outro" ? (
-                  <Field label="Nome do corretor">
-                    <input
-                      value={form.customBrokerName}
-                      onChange={(event) => update("customBrokerName", event.target.value)}
-                      className={inputClass()}
-                      placeholder="Nome"
-                    />
-                  </Field>
-                ) : (
-                  <Field label="Status atual" error={validation.status}>
-                    <Select
-                      value={form.status}
-                      onChange={(value) => update("status", value as ClientStatus)}
-                      options={clientStatusOptions}
-                    />
-                  </Field>
-                )}
-              </div>
-
-              {form.assignedBrokerId === "outro" && (
                 <Field label="Status atual" error={validation.status}>
                   <Select
                     value={form.status}
@@ -400,7 +379,7 @@ export function ClientFormModal({
                     options={clientStatusOptions}
                   />
                 </Field>
-              )}
+              </div>
             </FormSection>
 
             <FormSection
