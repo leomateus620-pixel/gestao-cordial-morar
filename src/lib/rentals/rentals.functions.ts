@@ -693,7 +693,7 @@ export const deleteRentalContract = createServerFn({ method: "POST" })
 
 // ============================ DOCUMENTS ============================
 const DOCS_BUCKET = "rental-documents";
-const MAX_DOC_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_DOC_BYTES = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME = new Set([
   "application/pdf",
   "image/png",
@@ -772,7 +772,7 @@ export const uploadRentalContractDocument = createServerFn({ method: "POST" })
     const raw = data.base64.includes(",") ? data.base64.split(",")[1] : data.base64;
     const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
     if (bytes.byteLength === 0) throw new Error("Arquivo vazio.");
-    if (bytes.byteLength > MAX_DOC_BYTES) throw new Error("Arquivo excede 10 MB.");
+    if (bytes.byteLength > MAX_DOC_BYTES) throw new Error("Arquivo excede 50 MB.");
 
     const safeName = data.fileName.replace(/[^\w.\-]+/g, "_").slice(0, 120);
     const filePath = `${data.contractId}/${crypto.randomUUID()}-${safeName}`;
@@ -796,6 +796,77 @@ export const uploadRentalContractDocument = createServerFn({ method: "POST" })
       .single();
     if (insErr) {
       await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
+      throw new Error(insErr.message);
+    }
+    const r = inserted as unknown as DocRow;
+    return {
+      id: r.id,
+      contractId: r.contract_id,
+      fileName: r.file_name,
+      filePath: r.file_path,
+      mimeType: r.mime_type,
+      sizeBytes: r.size_bytes,
+      url: await signDoc(supabase, r.file_path),
+      createdAt: r.created_at,
+    };
+  });
+
+export const registerRentalContractDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: {
+      contractId: string;
+      fileName: string;
+      filePath: string;
+      mimeType: string;
+      sizeBytes: number;
+    }) => d,
+  )
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    if (!data.contractId) throw new Error("Contrato inválido.");
+    if (!data.fileName?.trim()) throw new Error("Nome do arquivo inválido.");
+    if (!data.filePath?.trim()) throw new Error("Caminho do arquivo inválido.");
+    const mime = (data.mimeType || "application/octet-stream").toLowerCase();
+    if (!ALLOWED_MIME.has(mime))
+      throw new Error("Tipo de arquivo não permitido. Envie PDF, imagem ou documento.");
+    if (!Number.isFinite(data.sizeBytes) || data.sizeBytes <= 0)
+      throw new Error("Arquivo vazio.");
+    if (data.sizeBytes > MAX_DOC_BYTES) throw new Error("Arquivo excede 50 MB.");
+
+    // Ensure filePath belongs to this contract (matches storage RLS convention).
+    const prefix = `${data.contractId}/`;
+    if (!data.filePath.startsWith(prefix))
+      throw new Error("Caminho do arquivo não pertence ao contrato.");
+
+    // Verify caller can access this contract (RLS on select enforces the same rule).
+    const { data: contractRow, error: cErr } = await supabase
+      .from("rental_contracts")
+      .select("id")
+      .eq("id", data.contractId)
+      .maybeSingle();
+    if (cErr) throw new Error(cErr.message);
+    if (!contractRow) {
+      await supabase.storage.from(DOCS_BUCKET).remove([data.filePath]);
+      throw new Error("Contrato não encontrado.");
+    }
+
+    const safeName = data.fileName.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+
+    const { data: inserted, error: insErr } = await supabase
+      .from("rental_contract_documents")
+      .insert({
+        contract_id: data.contractId,
+        file_path: data.filePath,
+        file_name: safeName,
+        mime_type: mime,
+        size_bytes: data.sizeBytes,
+        uploaded_by: context.userId,
+      } as never)
+      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,created_at")
+      .single();
+    if (insErr) {
+      await supabase.storage.from(DOCS_BUCKET).remove([data.filePath]);
       throw new Error(insErr.message);
     }
     const r = inserted as unknown as DocRow;

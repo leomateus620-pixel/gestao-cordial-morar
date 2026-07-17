@@ -1,25 +1,39 @@
 ## Objetivo
-No formulário do menu **Clientes**, o seletor "Corretor responsável" deve mostrar a mesma lista real usada em **Atendimentos** (corretores + admins hidratados do banco: Bruna, Ricardo, Felipe, Pablo, Geandre Carpenedo + "A definir"), em vez da lista fixa "Ricardo / Bruna / Bianca / Felipe / Outro".
+Permitir anexar documentos maiores que 10 MB no menu **Aluguéis** (bucket `rental-documents`).
+
+## Problema atual
+O upload passa por uma server function (`uploadRentalContractDocument`) recebendo o arquivo em **base64**. Isso tem dois limites:
+- `MAX_BYTES = 10 * 1024 * 1024` no cliente (`src/hooks/useRentalDocuments.ts`).
+- `MAX_DOC_BYTES = 10 * 1024 * 1024` no servidor (`src/lib/rentals/rentals.functions.ts`).
+
+Além disso, base64 inflaciona o payload em ~33% e trafega por uma serverless function — inadequado para arquivos grandes (PDFs escaneados, contratos com fotos, etc.).
+
+## Abordagem
+Trocar o caminho de upload por **upload direto ao Storage** usando o cliente Supabase autenticado do navegador, e usar a server function apenas para registrar a linha em `rental_contract_documents`. Assim o arquivo não passa pela server function e o limite prático fica sendo o do bucket/Storage, não do payload RPC.
 
 ## Alterações
-Arquivo: `src/components/clients/ClientFormModal.tsx`
 
-1. Remover a importação/uso de `brokerOptions` de `@/types/client`.
-2. Importar `useApp` de `@/store/app-store` e derivar a lista igual ao AtendimentoFormModal:
-   ```ts
-   const corretores = useApp((s) => s.corretores);
-   const brokerOptions = [...corretores]
-     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-     .map((c) => ({ id: c.id, label: c.nome }))
-     .concat({ id: "a_definir", label: "A definir" });
-   ```
-3. Ajustar `initialForm.assignedBrokerId` de `"ricardo"` para `"a_definir"` (valor sempre presente na lista).
-4. Remover o ramo "outro" (input livre "Nome do corretor"), pois o padrão em Atendimentos não usa esse campo — o layout passa a mostrar sempre "Status atual" ao lado do seletor. Também remove-se `customBrokerName` do estado e o bloco condicional extra abaixo.
-5. Ajustar `brokerName` para simplesmente ler o `label` do broker escolhido; se não achar, `undefined`.
+### 1. `src/lib/rentals/rentals.functions.ts`
+- Adicionar nova server function `registerRentalContractDocument` que recebe `{ contractId, fileName, filePath, mimeType, sizeBytes }` já com o arquivo enviado, valida ownership do contrato (igual às demais) e faz apenas o `insert` em `rental_contract_documents`.
+- Manter `uploadRentalContractDocument` para compatibilidade, mas subir `MAX_DOC_BYTES` para **50 MB** (fallback caso alguém use o caminho antigo).
 
-Nenhuma outra alteração de negócio, tipos ou banco — apenas o form. O campo `assignedBrokerId` continua sendo enviado ao `ClientCreateInput` como hoje.
+### 2. `src/hooks/useRentalDocuments.ts`
+- Remover conversão base64 e chamada a `uploadRentalContractDocument`.
+- Novo fluxo em `uploadFile(file)`:
+  1. Obter `user.id` via `supabase.auth.getUser()`.
+  2. Gerar `filePath = ${user.id}/${contractId}/${crypto.randomUUID()}-${sanitize(file.name)}`.
+  3. `supabase.storage.from('rental-documents').upload(filePath, file, { contentType, upsert: false })`.
+  4. Chamar `registerRentalContractDocument` com os metadados.
+  5. Em caso de falha do insert, remover o objeto do Storage para não deixar órfão.
+- Elevar limite para **50 MB** (`MAX_BYTES = 50 * 1024 * 1024`) — margem coerente com o que faz sentido para contratos; mensagem passa a ser "Arquivo excede 50 MB.".
 
-## Efeito
-- O dropdown mostra os mesmos nomes reais do menu Atendimentos.
-- Novos usuários corretores cadastrados aparecem automaticamente sem editar código.
-- Leonardo continua fora (já filtrado no hook global `useHydrateCorretores`).
+### 3. `src/components/alugueis/RentalDocuments.tsx`
+- Atualizar o texto de erro/hint se houver menção a 10 MB (atualmente não há texto fixo; nada a mudar além de garantir que a mensagem do hook seja exibida).
+
+## Não muda
+- Schema do banco, RLS, bucket e policies de Storage continuam iguais (o bucket já é privado com policies por usuário — o upload direto usa a mesma sessão autenticada, então RLS de Storage se aplica normalmente).
+- UI/UX do painel de documentos permanece.
+- Nenhum outro módulo é tocado.
+
+## Observação técnica
+Uploads diretos ao Supabase Storage sobem em `multipart/resumable`, sem passar pela server function nem pelo limite de payload do Worker. O teto prático fica ditado pelo bucket (padrão do projeto), muito acima dos 10 MB atuais.
