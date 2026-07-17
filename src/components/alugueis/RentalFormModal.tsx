@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Home, User, ShieldCheck, FileText, KeyRound, X } from "lucide-react";
+import {
+  Home,
+  User,
+  ShieldCheck,
+  FileText,
+  KeyRound,
+  X,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -8,7 +17,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type {
+  RentalContractGuaranteeInput,
   RentalContractInput,
+  RentalContractTenantInput,
   RentalGuaranteeType,
   RentalProperty,
   RentalPropertyType,
@@ -79,6 +90,8 @@ function SectionCard({
   );
 }
 
+type Mode = "existing" | "new";
+
 function ModeToggle({
   value,
   onChange,
@@ -91,7 +104,7 @@ function ModeToggle({
   const baseBtn =
     "relative flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition";
   return (
-    <div className="inline-flex w-full max-w-[280px] rounded-full bg-muted/70 p-1">
+    <div className="inline-flex w-full max-w-[220px] rounded-full bg-muted/70 p-1">
       <button
         type="button"
         onClick={() => onChange("existing")}
@@ -128,7 +141,122 @@ const PROPERTY_TYPES: { id: RentalPropertyType; label: string }[] = [
   { id: "outro", label: "Outro" },
 ];
 
-type Mode = "existing" | "new";
+// -------- Tenant entry --------
+type TenantEntry = {
+  key: string;
+  mode: Mode;
+  existingId: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  cpfCnpj: string;
+  profissao: string;
+  renda: string;
+  endereco: string;
+};
+
+function newTenantEntry(): TenantEntry {
+  return {
+    key: crypto.randomUUID(),
+    mode: "new",
+    existingId: "",
+    nome: "",
+    telefone: "",
+    email: "",
+    cpfCnpj: "",
+    profissao: "",
+    renda: "",
+    endereco: "",
+  };
+}
+
+function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
+  if (t.mode === "existing") return { existingId: t.existingId };
+  return {
+    data: {
+      nome: t.nome,
+      cpfCnpj: t.cpfCnpj || null,
+      telefone: t.telefone,
+      email: t.email || null,
+      dataNascimento: null,
+      endereco: t.endereco || null,
+      profissao: t.profissao || null,
+      rendaAproximada: t.renda ? Number(t.renda) : null,
+      observacoes: null,
+    },
+  };
+}
+
+// -------- Guarantee entry --------
+type GuaranteeTipo = Exclude<RentalGuaranteeType, "sem_garantia">;
+type GuaranteeEntry = {
+  key: string;
+  tipo: GuaranteeTipo;
+  // fiador
+  guarNome: string;
+  guarTel: string;
+  guarEmail: string;
+  guarVinculo: string;
+  // caução
+  valorCaucao: string;
+  // seguro
+  seguroSeguradora: string;
+  seguroApolice: string;
+  seguroValor: string;
+};
+
+function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
+  return {
+    key: crypto.randomUUID(),
+    tipo,
+    guarNome: "",
+    guarTel: "",
+    guarEmail: "",
+    guarVinculo: "",
+    valorCaucao: "",
+    seguroSeguradora: "",
+    seguroApolice: "",
+    seguroValor: "",
+  };
+}
+
+function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput {
+  if (g.tipo === "fiador") {
+    return {
+      tipo: "fiador",
+      guarantor: {
+        data: {
+          nome: g.guarNome,
+          cpfCnpj: null,
+          telefone: g.guarTel || null,
+          email: g.guarEmail || null,
+          endereco: null,
+          profissao: null,
+          vinculo: g.guarVinculo || null,
+          observacoes: null,
+        },
+      },
+    };
+  }
+  if (g.tipo === "caucao") {
+    return {
+      tipo: "caucao",
+      valorCaucao: g.valorCaucao ? Number(g.valorCaucao) : null,
+    };
+  }
+  return {
+    tipo: "seguro_fianca",
+    seguroSeguradora: g.seguroSeguradora || null,
+    seguroApolice: g.seguroApolice || null,
+    seguroValorMensal: g.seguroValor ? Number(g.seguroValor) : null,
+  };
+}
+
+const GUAR_TIPO_OPTS: { id: GuaranteeTipo; label: string }[] = [
+  { id: "fiador", label: "Fiador" },
+  { id: "caucao", label: "Caução" },
+  { id: "seguro_fianca", label: "Seguro fiança" },
+];
 
 export function RentalFormModal({
   open,
@@ -159,33 +287,42 @@ export function RentalFormModal({
   const [vagas, setVagas] = useState("");
   const [areaM2, setAreaM2] = useState("");
 
-  const [tenantMode, setTenantMode] = useState<Mode>("new");
-  const [tenantId, setTenantId] = useState("");
-  const [tenantNome, setTenantNome] = useState("");
-  const [tenantTel, setTenantTel] = useState("");
-  const [tenantEmail, setTenantEmail] = useState("");
-  const [tenantCpf, setTenantCpf] = useState("");
-  const [tenantProf, setTenantProf] = useState("");
-  const [tenantRenda, setTenantRenda] = useState("");
-  const [tenantEnd, setTenantEnd] = useState("");
-
-  const [garantiaTipo, setGarantiaTipo] = useState<RentalGuaranteeType>("sem_garantia");
-  const [guarNome, setGuarNome] = useState("");
-  const [guarTel, setGuarTel] = useState("");
-  const [guarEmail, setGuarEmail] = useState("");
-  const [guarVinculo, setGuarVinculo] = useState("");
-  const [seguroSeguradora, setSeguroSeguradora] = useState("");
-  const [seguroApolice, setSeguroApolice] = useState("");
-  const [seguroValor, setSeguroValor] = useState("");
+  const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([
+    newTenantEntry(),
+  ]);
+  const [guaranteeEntries, setGuaranteeEntries] = useState<GuaranteeEntry[]>([]);
 
   const [valor, setValor] = useState("");
-  const [caucao, setCaucao] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [dia, setDia] = useState("10");
   const [status, setStatus] = useState<"ativo" | "pendente_assinatura">("ativo");
   const [obs, setObs] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  function updateTenant(key: string, patch: Partial<TenantEntry>) {
+    setTenantEntries((prev) =>
+      prev.map((t) => (t.key === key ? { ...t, ...patch } : t)),
+    );
+  }
+  function removeTenant(key: string) {
+    setTenantEntries((prev) => (prev.length <= 1 ? prev : prev.filter((t) => t.key !== key)));
+  }
+  function addTenant() {
+    setTenantEntries((prev) => [...prev, newTenantEntry()]);
+  }
+
+  function updateGuarantee(key: string, patch: Partial<GuaranteeEntry>) {
+    setGuaranteeEntries((prev) =>
+      prev.map((g) => (g.key === key ? { ...g, ...patch } : g)),
+    );
+  }
+  function removeGuarantee(key: string) {
+    setGuaranteeEntries((prev) => prev.filter((g) => g.key !== key));
+  }
+  function addGuarantee(t: GuaranteeTipo) {
+    setGuaranteeEntries((prev) => [...prev, newGuaranteeEntry(t)]);
+  }
 
   function reset() {
     setPropMode("new");
@@ -201,25 +338,9 @@ export function RentalFormModal({
     setBanheiros("");
     setVagas("");
     setAreaM2("");
-    setTenantMode("new");
-    setTenantId("");
-    setTenantNome("");
-    setTenantTel("");
-    setTenantEmail("");
-    setTenantCpf("");
-    setTenantProf("");
-    setTenantRenda("");
-    setTenantEnd("");
-    setGarantiaTipo("sem_garantia");
-    setGuarNome("");
-    setGuarTel("");
-    setGuarEmail("");
-    setGuarVinculo("");
-    setSeguroSeguradora("");
-    setSeguroApolice("");
-    setSeguroValor("");
+    setTenantEntries([newTenantEntry()]);
+    setGuaranteeEntries([]);
     setValor("");
-    setCaucao("");
     setDataInicio("");
     setDataFim("");
     setDia("10");
@@ -257,45 +378,10 @@ export function RentalFormModal({
                   brand: "cordial",
                 },
               },
-        tenant:
-          tenantMode === "existing"
-            ? { existingId: tenantId }
-            : {
-                data: {
-                  nome: tenantNome,
-                  cpfCnpj: tenantCpf || null,
-                  telefone: tenantTel,
-                  email: tenantEmail || null,
-                  dataNascimento: null,
-                  endereco: tenantEnd || null,
-                  profissao: tenantProf || null,
-                  rendaAproximada: tenantRenda ? Number(tenantRenda) : null,
-                  observacoes: null,
-                },
-              },
-        guarantor:
-          garantiaTipo === "fiador"
-            ? {
-                data: {
-                  nome: guarNome,
-                  cpfCnpj: null,
-                  telefone: guarTel || null,
-                  email: guarEmail || null,
-                  endereco: null,
-                  profissao: null,
-                  vinculo: guarVinculo || null,
-                  observacoes: null,
-                },
-              }
-            : null,
+        tenants: tenantEntries.map(tenantEntryToInput),
+        guarantees: guaranteeEntries.map(guaranteeEntryToInput),
+        garantiaTipo: guaranteeEntries[0]?.tipo ?? "sem_garantia",
         valorMensal: Number(valor),
-        valorCaucao: garantiaTipo === "caucao" && caucao ? Number(caucao) : null,
-        garantiaTipo,
-        seguroSeguradora:
-          garantiaTipo === "seguro_fianca" ? seguroSeguradora || null : null,
-        seguroApolice: garantiaTipo === "seguro_fianca" ? seguroApolice || null : null,
-        seguroValorMensal:
-          garantiaTipo === "seguro_fianca" && seguroValor ? Number(seguroValor) : null,
         dataInicio,
         dataFim,
         diaVencimento: Number(dia),
@@ -331,7 +417,7 @@ export function RentalFormModal({
                   Novo aluguel
                 </SheetTitle>
                 <SheetDescription className="text-sm text-muted-foreground">
-                  Cadastre imóvel, locatário e contrato em um único fluxo.
+                  Cadastre imóvel, locatários e contrato em um único fluxo.
                 </SheetDescription>
               </div>
             </div>
@@ -347,10 +433,7 @@ export function RentalFormModal({
         </SheetHeader>
 
         {/* Scrollable form */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-1 flex-col overflow-hidden"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-7">
             {/* Imóvel */}
             <SectionCard
@@ -479,215 +562,303 @@ export function RentalFormModal({
               )}
             </SectionCard>
 
-            {/* Locatário */}
+            {/* Locatários */}
             <SectionCard
               icon={User}
-              title="Locatário"
-              subtitle="Dados do inquilino responsável pelo contrato"
-              action={
-                <ModeToggle
-                  value={tenantMode}
-                  onChange={setTenantMode}
-                  disableExisting={tenants.length === 0}
-                />
-              }
+              title="Locatários"
+              subtitle="Um ou mais responsáveis pelo contrato"
             >
-              {tenantMode === "existing" ? (
-                <Field label="Selecione o locatário">
-                  <select
-                    required
-                    value={tenantId}
-                    onChange={(e) => setTenantId(e.target.value)}
-                    className={inputCls}
+              <div className="space-y-4">
+                {tenantEntries.map((t, idx) => (
+                  <div
+                    key={t.key}
+                    className="rounded-2xl border border-border/60 bg-background/60 p-4"
                   >
-                    <option value="">—</option>
-                    {tenants.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Nome completo" className="sm:col-span-2">
-                    <input
-                      required
-                      value={tenantNome}
-                      onChange={(e) => setTenantNome(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Telefone / WhatsApp">
-                    <input
-                      required
-                      placeholder="(00) 00000-0000"
-                      value={tenantTel}
-                      onChange={(e) => setTenantTel(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="E-mail">
-                    <input
-                      type="email"
-                      value={tenantEmail}
-                      onChange={(e) => setTenantEmail(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="CPF / CNPJ">
-                    <input
-                      value={tenantCpf}
-                      onChange={(e) => setTenantCpf(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Profissão">
-                    <input
-                      value={tenantProf}
-                      onChange={(e) => setTenantProf(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Renda aproximada (R$)" className="sm:col-span-2">
-                    <input
-                      type="number"
-                      value={tenantRenda}
-                      onChange={(e) => setTenantRenda(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Endereço atual" className="sm:col-span-2">
-                    <input
-                      value={tenantEnd}
-                      onChange={(e) => setTenantEnd(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                </div>
-              )}
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                          {idx + 1}
+                        </span>
+                        <span className="text-[12px] font-semibold text-foreground">
+                          {idx === 0 ? "Locatário principal" : "Locatário adicional"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ModeToggle
+                          value={t.mode}
+                          onChange={(m) => updateTenant(t.key, { mode: m })}
+                          disableExisting={tenants.length === 0}
+                        />
+                        {tenantEntries.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeTenant(t.key)}
+                            className="grid size-8 place-items-center rounded-full text-rose-600 transition hover:bg-rose-500/10"
+                            aria-label="Remover locatário"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {t.mode === "existing" ? (
+                      <Field label="Selecione o locatário">
+                        <select
+                          required
+                          value={t.existingId}
+                          onChange={(e) =>
+                            updateTenant(t.key, { existingId: e.target.value })
+                          }
+                          className={inputCls}
+                        >
+                          <option value="">—</option>
+                          {tenants.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Field label="Nome completo" className="sm:col-span-2">
+                          <input
+                            required
+                            value={t.nome}
+                            onChange={(e) => updateTenant(t.key, { nome: e.target.value })}
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Telefone / WhatsApp">
+                          <input
+                            required
+                            placeholder="(00) 00000-0000"
+                            value={t.telefone}
+                            onChange={(e) =>
+                              updateTenant(t.key, { telefone: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="E-mail">
+                          <input
+                            type="email"
+                            value={t.email}
+                            onChange={(e) => updateTenant(t.key, { email: e.target.value })}
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="CPF / CNPJ">
+                          <input
+                            value={t.cpfCnpj}
+                            onChange={(e) =>
+                              updateTenant(t.key, { cpfCnpj: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Profissão">
+                          <input
+                            value={t.profissao}
+                            onChange={(e) =>
+                              updateTenant(t.key, { profissao: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Renda aproximada (R$)" className="sm:col-span-2">
+                          <input
+                            type="number"
+                            value={t.renda}
+                            onChange={(e) => updateTenant(t.key, { renda: e.target.value })}
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Endereço atual" className="sm:col-span-2">
+                          <input
+                            value={t.endereco}
+                            onChange={(e) =>
+                              updateTenant(t.key, { endereco: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addTenant}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-muted/30 py-2.5 text-xs font-semibold text-foreground/70 transition hover:bg-muted/60 hover:text-foreground"
+                >
+                  <Plus className="size-3.5" /> Adicionar locatário
+                </button>
+              </div>
             </SectionCard>
 
-            {/* Garantia */}
+            {/* Garantias */}
             <SectionCard
               icon={ShieldCheck}
-              title="Garantia"
-              subtitle="Modalidade de garantia do contrato"
+              title="Garantias"
+              subtitle="Uma ou mais garantias podem ser vinculadas"
             >
-              <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-muted/60 p-1 sm:grid-cols-4">
-                {(
-                  [
-                    { id: "sem_garantia", label: "Sem garantia" },
-                    { id: "fiador", label: "Fiador" },
-                    { id: "caucao", label: "Caução" },
-                    { id: "seguro_fianca", label: "Seguro fiança" },
-                  ] as { id: RentalGuaranteeType; label: string }[]
-                ).map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setGarantiaTipo(opt.id)}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-                      garantiaTipo === opt.id
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-foreground/70 hover:text-foreground"
-                    }`}
+              <div className="space-y-4">
+                {guaranteeEntries.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma garantia adicionada. O contrato ficará sem garantia.
+                  </p>
+                )}
+                {guaranteeEntries.map((g, idx) => (
+                  <div
+                    key={g.key}
+                    className="rounded-2xl border border-border/60 bg-background/60 p-4"
                   >
-                    {opt.label}
-                  </button>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                          {idx + 1}
+                        </span>
+                        <select
+                          value={g.tipo}
+                          onChange={(e) =>
+                            updateGuarantee(g.key, {
+                              tipo: e.target.value as GuaranteeTipo,
+                            })
+                          }
+                          className="rounded-lg border border-border/60 bg-background px-2.5 py-1 text-xs font-semibold"
+                        >
+                          {GUAR_TIPO_OPTS.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeGuarantee(g.key)}
+                        className="grid size-8 place-items-center rounded-full text-rose-600 transition hover:bg-rose-500/10"
+                        aria-label="Remover garantia"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+
+                    {g.tipo === "fiador" && (
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Field label="Nome" className="sm:col-span-2">
+                          <input
+                            required
+                            value={g.guarNome}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { guarNome: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Telefone">
+                          <input
+                            value={g.guarTel}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { guarTel: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="E-mail">
+                          <input
+                            type="email"
+                            value={g.guarEmail}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { guarEmail: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Vínculo com locatário" className="sm:col-span-2">
+                          <input
+                            placeholder="Ex.: pai, irmão, sócio"
+                            value={g.guarVinculo}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { guarVinculo: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                    {g.tipo === "caucao" && (
+                      <Field label="Valor da caução (R$)">
+                        <input
+                          type="number"
+                          required
+                          min={0}
+                          step="0.01"
+                          placeholder="0,00"
+                          value={g.valorCaucao}
+                          onChange={(e) =>
+                            updateGuarantee(g.key, { valorCaucao: e.target.value })
+                          }
+                          className={inputCls}
+                        />
+                      </Field>
+                    )}
+                    {g.tipo === "seguro_fianca" && (
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <Field label="Seguradora" className="sm:col-span-2">
+                          <input
+                            required
+                            placeholder="Ex.: Porto Seguro"
+                            value={g.seguroSeguradora}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { seguroSeguradora: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Nº da apólice">
+                          <input
+                            value={g.seguroApolice}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { seguroApolice: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="Valor mensal do seguro (R$)">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="0,00"
+                            value={g.seguroValor}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { seguroValor: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
                 ))}
+
+                <div className="flex flex-wrap gap-2">
+                  {GUAR_TIPO_OPTS.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => addGuarantee(o.id)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-muted/30 px-3 py-1.5 text-xs font-semibold text-foreground/70 transition hover:bg-muted/60 hover:text-foreground"
+                    >
+                      <Plus className="size-3.5" /> {o.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-
-              {garantiaTipo === "sem_garantia" && (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma garantia será vinculada a este contrato.
-                </p>
-              )}
-
-              {garantiaTipo === "fiador" && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Nome" className="sm:col-span-2">
-                    <input
-                      required
-                      value={guarNome}
-                      onChange={(e) => setGuarNome(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Telefone">
-                    <input
-                      value={guarTel}
-                      onChange={(e) => setGuarTel(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="E-mail">
-                    <input
-                      type="email"
-                      value={guarEmail}
-                      onChange={(e) => setGuarEmail(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Vínculo com locatário" className="sm:col-span-2">
-                    <input
-                      placeholder="Ex.: pai, irmão, sócio"
-                      value={guarVinculo}
-                      onChange={(e) => setGuarVinculo(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                </div>
-              )}
-
-              {garantiaTipo === "caucao" && (
-                <Field label="Valor da caução (R$)">
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    step="0.01"
-                    placeholder="0,00"
-                    value={caucao}
-                    onChange={(e) => setCaucao(e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-              )}
-
-              {garantiaTipo === "seguro_fianca" && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Seguradora" className="sm:col-span-2">
-                    <input
-                      required
-                      placeholder="Ex.: Porto Seguro"
-                      value={seguroSeguradora}
-                      onChange={(e) => setSeguroSeguradora(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Nº da apólice">
-                    <input
-                      value={seguroApolice}
-                      onChange={(e) => setSeguroApolice(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                  <Field label="Valor mensal do seguro (R$)">
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      placeholder="0,00"
-                      value={seguroValor}
-                      onChange={(e) => setSeguroValor(e.target.value)}
-                      className={inputCls}
-                    />
-                  </Field>
-                </div>
-              )}
             </SectionCard>
-
 
             {/* Contrato */}
             <SectionCard
