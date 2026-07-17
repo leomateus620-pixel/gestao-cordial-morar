@@ -246,9 +246,6 @@ function nextDueDate(start: string, dia: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ============================ LIST ============================
-export const listRentalContracts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
 type RctRow = {
   id: string;
   contract_id: string;
