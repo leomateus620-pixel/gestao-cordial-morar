@@ -23,6 +23,21 @@ function fmtDate(s?: string | null) {
   return s ? new Date(s).toLocaleDateString("pt-BR") : "—";
 }
 
+function BrandBadge({ brand }: { brand?: string | null }) {
+  const b = brand === "morar" ? "morar" : "cordial";
+  const label = b === "morar" ? "Morar" : "Cordial";
+  const cls =
+    b === "morar"
+      ? "bg-[color:var(--morar-primary,#8b5cf6)]/12 text-[color:var(--morar-primary,#8b5cf6)] ring-[color:var(--morar-primary,#8b5cf6)]/25"
+      : "bg-[color:var(--cordial-primary,#0ea5e9)]/12 text-[color:var(--cordial-primary,#0ea5e9)] ring-[color:var(--cordial-primary,#0ea5e9)]/25";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5 text-xs">
