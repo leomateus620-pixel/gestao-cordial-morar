@@ -878,10 +878,9 @@ export function RentalFormModal({
                     {g.tipo === "caucao" && (
                       <Field label="Valor da caução (R$)">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           required
-                          min={0}
-                          step="0.01"
                           placeholder="0,00"
                           value={g.valorCaucao}
                           onChange={(e) =>
