@@ -207,6 +207,7 @@ type GuaranteeEntry = {
   // fiador — id existente (para atualizar em vez de duplicar)
   guarantorId: string | null;
   guarNome: string;
+  guarCpfCnpj: string;
   guarTel: string;
   guarEmail: string;
   guarVinculo: string;
@@ -224,6 +225,7 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
     tipo,
     guarantorId: null,
     guarNome: "",
+    guarCpfCnpj: "",
     guarTel: "",
     guarEmail: "",
     guarVinculo: "",
@@ -238,7 +240,7 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
   if (g.tipo === "fiador") {
     const data = {
       nome: g.guarNome,
-      cpfCnpj: null,
+      cpfCnpj: g.guarCpfCnpj || null,
       telefone: g.guarTel || null,
       email: g.guarEmail || null,
       endereco: null,
@@ -246,6 +248,7 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
       vinculo: g.guarVinculo || null,
       observacoes: null,
     };
+
     return {
       tipo: "fiador",
       guarantor: g.guarantorId
@@ -416,9 +419,11 @@ export function RentalFormModal({
         tipo: g.tipo,
         guarantorId: g.guarantor?.id ?? null,
         guarNome: g.guarantor?.nome ?? "",
+        guarCpfCnpj: g.guarantor?.cpfCnpj ?? "",
         guarTel: g.guarantor?.telefone ?? "",
         guarEmail: g.guarantor?.email ?? "",
         guarVinculo: g.guarantor?.vinculo ?? "",
+
         valorCaucao: g.valorCaucao != null ? String(g.valorCaucao).replace(".", ",") : "",
         seguroSeguradora: g.seguroSeguradora ?? "",
         seguroApolice: g.seguroApolice ?? "",
@@ -886,6 +891,15 @@ export function RentalFormModal({
                             className={inputCls}
                           />
                         </Field>
+                        <Field label="CPF / CNPJ">
+                          <input
+                            value={g.guarCpfCnpj}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { guarCpfCnpj: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
                         <Field label="Telefone">
                           <input
                             value={g.guarTel}
@@ -896,6 +910,7 @@ export function RentalFormModal({
                           />
                         </Field>
                         <Field label="E-mail">
+
                           <input
                             type="email"
                             value={g.guarEmail}
