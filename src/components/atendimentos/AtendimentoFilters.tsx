@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import {
-  atendimentoBrokerOptions,
   atendimentoFinalidadeOptions,
   atendimentoOrigemOptions,
   atendimentoPrioridadeOptions,
   atendimentoStatusOptions,
   atendimentoTipoImovelOptions,
 } from "@/types/atendimento";
+import { useApp } from "@/store/app-store";
 import {
   defaultAtendimentoFilters,
   type AtendimentoFilters as AtendimentoFiltersState,
