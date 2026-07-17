@@ -10,7 +10,6 @@ import {
   type AtendimentoValidationResult,
 } from "@/services/atendimentos";
 import {
-  atendimentoBrokerOptions,
   atendimentoContatoOptions,
   atendimentoDormitoriosOptions,
   atendimentoFinalidadeOptions,
