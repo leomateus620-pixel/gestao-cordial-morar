@@ -891,6 +891,15 @@ export function RentalFormModal({
                             className={inputCls}
                           />
                         </Field>
+                        <Field label="CPF / CNPJ">
+                          <input
+                            value={g.guarCpfCnpj}
+                            onChange={(e) =>
+                              updateGuarantee(g.key, { guarCpfCnpj: e.target.value })
+                            }
+                            className={inputCls}
+                          />
+                        </Field>
                         <Field label="Telefone">
                           <input
                             value={g.guarTel}
@@ -901,6 +910,7 @@ export function RentalFormModal({
                           />
                         </Field>
                         <Field label="E-mail">
+
                           <input
                             type="email"
                             value={g.guarEmail}
