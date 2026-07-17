@@ -496,10 +496,12 @@ export function RentalFormModal({
               </div>
               <div>
                 <SheetTitle className="text-xl font-bold tracking-tight sm:text-2xl">
-                  Novo aluguel
+                  {isEdit ? "Editar aluguel" : "Novo aluguel"}
                 </SheetTitle>
                 <SheetDescription className="text-sm text-muted-foreground">
-                  Cadastre imóvel, locatários e contrato em um único fluxo.
+                  {isEdit
+                    ? "Atualize imóvel, locatários, garantias e condições do contrato."
+                    : "Cadastre imóvel, locatários e contrato em um único fluxo."}
                 </SheetDescription>
               </div>
             </div>
