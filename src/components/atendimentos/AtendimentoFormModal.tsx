@@ -508,7 +508,7 @@ export function AtendimentoFormModal({
                     onChange={(event) => update("corretorId", event.target.value)}
                     className={inputClass()}
                   >
-                    {atendimentoBrokerOptions.map((broker) => (
+                    {brokerOptions.map((broker) => (
                       <option key={broker.id} value={broker.id}>
                         {broker.label}
                       </option>
