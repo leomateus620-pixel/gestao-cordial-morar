@@ -86,6 +86,11 @@ export function useRentals() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: invalidate,
   });
+  const replaceMutation = useMutation({
+    mutationFn: (input: RentalContractInput & { contractId: string }) =>
+      replace({ data: input }),
+    onSuccess: invalidate,
+  });
 
   const [filter, setFilter] = useState<RentalFilter>("todos");
   const [search, setSearch] = useState("");
