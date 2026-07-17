@@ -207,7 +207,7 @@ export function AtendimentoFormModal({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    const broker = atendimentoBrokerOptions.find((item) => item.id === form.corretorId);
+    const broker = brokerOptions.find((item) => item.id === form.corretorId);
     const selectedProperty = imoveis.find((item) => item.id === form.imovelId);
     const input: AtendimentoCreateInput = {
       clienteId: optional(form.clienteId),
