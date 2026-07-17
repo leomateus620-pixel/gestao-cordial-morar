@@ -27,6 +27,7 @@ export function useRentals() {
   const kpis = useServerFn(kpisFn);
   const create = useServerFn(createFn);
   const update = useServerFn(updateFn);
+  const replace = useServerFn(replaceFn);
   const close = useServerFn(closeFn);
   const renew = useServerFn(renewFn);
   const markPaid = useServerFn(markPaidFn);
