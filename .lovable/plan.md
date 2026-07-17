@@ -1,16 +1,21 @@
 ## Objetivo
-Liberar o menu **Aluguéis** para o perfil `secretaria` (Bianca), com todas as funcionalidades do módulo (leitura e escrita), mantendo a mesma capacidade dos demais perfis operacionais.
+Remover o usuário **Leonardo** da lista de corretores selecionáveis no cadastro de Atendimentos (e demais menus que usam a mesma lista global), mantendo Bruna e Ricardo (admins que também atuam como corretores).
 
-## Alteração
-Arquivo único: `src/lib/mock/permissions.ts` — bloco `secretaria`:
-- Adicionar `"alugueis"` ao array `modules`.
-- Adicionar `"alugueis:read"` e `"alugueis:write"` ao array `permissions`.
+## Como fazer
+Ajustar `src/hooks/useHydrateCorretores.ts`, que hoje inclui todos os perfis com role `corretor` ou `admin`. Adicionar um filtro para excluir o Leonardo pelo nome (case-insensitive, prefixo "leonardo"), preservando os demais admins.
 
-Isso é suficiente porque:
-- `RequireModuleAccess` (usado em `/alugueis`) e o sidebar/mobile nav consultam `canAccessModule` → derivado de `roleDefinitions[perfil].modules`.
-- Não há checagem server-side por perfil nas server functions de aluguéis; as RLS já autorizam usuários autenticados a criar/editar seus próprios registros, então a secretaria terá CRUD completo assim que o módulo for exposto.
+```ts
+const onlyCorretores = query.data.filter(
+  (p) =>
+    (p.role === "corretor" || p.role === "admin") &&
+    !/^leonardo\b/i.test(p.nome ?? "")
+);
+```
 
-## Fora de escopo
-- Não altero navegação mobile primária (Aluguéis fica acessível via "Mais").
-- Não altero permissões dos outros perfis.
-- Nenhuma migração de banco.
+## Efeito
+- Dropdown "Corretor responsável" em Atendimentos (e qualquer outro menu que consome `corretores` do `app-store`) deixa de listar Leonardo.
+- Bruna, Ricardo, Felipe, Pablo, Geandre e "A definir" continuam disponíveis.
+- Registros já existentes atribuídos ao Leonardo permanecem no banco; apenas o seletor deixa de oferecê-lo para novos cadastros.
+
+## Arquivos alterados
+- `src/hooks/useHydrateCorretores.ts`
