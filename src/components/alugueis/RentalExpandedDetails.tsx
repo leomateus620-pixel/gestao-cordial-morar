@@ -95,60 +95,86 @@ export function RentalExpandedDetails({
             {contract.observacoes && <Row label="Observações" value={contract.observacoes} />}
           </Section>
 
-          <Section title="Garantia">
-            <Row
-              label="Modalidade"
-              value={
-                contract.garantiaTipo === "fiador"
-                  ? "Fiador"
-                  : contract.garantiaTipo === "caucao"
-                    ? "Caução"
-                    : contract.garantiaTipo === "seguro_fianca"
-                      ? "Seguro fiança"
-                      : "Sem garantia"
-              }
-            />
-            {contract.garantiaTipo === "caucao" && (
-              <Row
-                label="Valor da caução"
-                value={contract.valorCaucao ? brl(contract.valorCaucao) : "—"}
-              />
-            )}
-            {contract.garantiaTipo === "fiador" && contract.guarantor && (
-              <>
-                <Row label="Nome" value={contract.guarantor.nome} />
-                <Row label="CPF/CNPJ" value={contract.guarantor.cpfCnpj ?? ""} />
-                <Row label="Telefone" value={contract.guarantor.telefone ?? ""} />
-                <Row label="E-mail" value={contract.guarantor.email ?? ""} />
-                <Row label="Vínculo" value={contract.guarantor.vinculo ?? ""} />
-              </>
-            )}
-            {contract.garantiaTipo === "seguro_fianca" && (
-              <>
-                <Row label="Seguradora" value={contract.seguroSeguradora ?? ""} />
-                <Row label="Nº da apólice" value={contract.seguroApolice ?? ""} />
-                <Row
-                  label="Valor mensal"
-                  value={
-                    contract.seguroValorMensal ? brl(contract.seguroValorMensal) : "—"
-                  }
-                />
-              </>
-            )}
-          </Section>
+          {(() => {
+            const guarantees =
+              contract.guarantees && contract.guarantees.length > 0
+                ? contract.guarantees
+                : [];
+            return (
+              <Section title={`Garantias${guarantees.length > 1 ? ` (${guarantees.length})` : ""}`}>
+                {guarantees.length === 0 ? (
+                  <Row label="Modalidade" value="Sem garantia" />
+                ) : (
+                  guarantees.map((g, idx) => (
+                    <div key={g.id ?? idx} className={idx > 0 ? "pt-2" : ""}>
+                      <Row
+                        label={`Garantia ${idx + 1}`}
+                        value={
+                          g.tipo === "fiador"
+                            ? "Fiador"
+                            : g.tipo === "caucao"
+                              ? "Caução"
+                              : "Seguro fiança"
+                        }
+                      />
+                      {g.tipo === "caucao" && (
+                        <Row
+                          label="Valor da caução"
+                          value={g.valorCaucao ? brl(g.valorCaucao) : "—"}
+                        />
+                      )}
+                      {g.tipo === "fiador" && g.guarantor && (
+                        <>
+                          <Row label="Nome" value={g.guarantor.nome} />
+                          <Row label="CPF/CNPJ" value={g.guarantor.cpfCnpj ?? ""} />
+                          <Row label="Telefone" value={g.guarantor.telefone ?? ""} />
+                          <Row label="E-mail" value={g.guarantor.email ?? ""} />
+                          <Row label="Vínculo" value={g.guarantor.vinculo ?? ""} />
+                        </>
+                      )}
+                      {g.tipo === "seguro_fianca" && (
+                        <>
+                          <Row label="Seguradora" value={g.seguroSeguradora ?? ""} />
+                          <Row label="Nº da apólice" value={g.seguroApolice ?? ""} />
+                          <Row
+                            label="Valor mensal"
+                            value={g.seguroValorMensal ? brl(g.seguroValorMensal) : "—"}
+                          />
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </Section>
+            );
+          })()}
 
-          <Section title="Locatário">
-            <Row label="Nome" value={contract.tenant.nome} />
-            <Row label="CPF/CNPJ" value={contract.tenant.cpfCnpj ?? ""} />
-            <Row label="Telefone" value={contract.tenant.telefone} />
-            <Row label="E-mail" value={contract.tenant.email ?? ""} />
-            <Row label="Profissão" value={contract.tenant.profissao ?? ""} />
-            <Row
-              label="Renda"
-              value={contract.tenant.rendaAproximada ? brl(contract.tenant.rendaAproximada) : ""}
-            />
-            <Row label="Endereço" value={contract.tenant.endereco ?? ""} />
-          </Section>
+          {(() => {
+            const list = contract.tenants && contract.tenants.length > 0
+              ? contract.tenants
+              : [contract.tenant];
+            return (
+              <Section title={`Locatários${list.length > 1 ? ` (${list.length})` : ""}`}>
+                {list.map((t, idx) => (
+                  <div key={t.id} className={idx > 0 ? "pt-2" : ""}>
+                    <Row
+                      label={idx === 0 ? "Locatário principal" : `Locatário ${idx + 1}`}
+                      value={t.nome}
+                    />
+                    <Row label="CPF/CNPJ" value={t.cpfCnpj ?? ""} />
+                    <Row label="Telefone" value={t.telefone} />
+                    <Row label="E-mail" value={t.email ?? ""} />
+                    <Row label="Profissão" value={t.profissao ?? ""} />
+                    <Row
+                      label="Renda"
+                      value={t.rendaAproximada ? brl(t.rendaAproximada) : ""}
+                    />
+                    <Row label="Endereço" value={t.endereco ?? ""} />
+                  </div>
+                ))}
+              </Section>
+            );
+          })()}
 
 
           <Section title="Imóvel">

@@ -1227,6 +1227,111 @@ export type Database = {
           },
         ]
       }
+      rental_contract_guarantors: {
+        Row: {
+          contract_id: string
+          created_at: string
+          guarantor_id: string | null
+          id: string
+          is_primary: boolean
+          position: number
+          seguro_apolice: string | null
+          seguro_seguradora: string | null
+          seguro_valor_mensal: number | null
+          tipo: Database["public"]["Enums"]["rental_guarantee_type"]
+          updated_at: string
+          valor_caucao: number | null
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          guarantor_id?: string | null
+          id?: string
+          is_primary?: boolean
+          position?: number
+          seguro_apolice?: string | null
+          seguro_seguradora?: string | null
+          seguro_valor_mensal?: number | null
+          tipo: Database["public"]["Enums"]["rental_guarantee_type"]
+          updated_at?: string
+          valor_caucao?: number | null
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          guarantor_id?: string | null
+          id?: string
+          is_primary?: boolean
+          position?: number
+          seguro_apolice?: string | null
+          seguro_seguradora?: string | null
+          seguro_valor_mensal?: number | null
+          tipo?: Database["public"]["Enums"]["rental_guarantee_type"]
+          updated_at?: string
+          valor_caucao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_contract_guarantors_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_contract_guarantors_guarantor_id_fkey"
+            columns: ["guarantor_id"]
+            isOneToOne: false
+            referencedRelation: "rental_guarantors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_contract_tenants: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          position: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          position?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          position?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_contract_tenants_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_contract_tenants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "rental_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_contracts: {
         Row: {
           brand: Database["public"]["Enums"]["rental_brand"]

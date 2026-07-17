@@ -4,8 +4,11 @@ import type {
   RentalBrand,
   RentalContract,
   RentalContractFull,
+  RentalContractGuaranteeInput,
+  RentalContractGuaranteeItem,
   RentalContractInput,
   RentalContractStatus,
+  RentalContractTenantInput,
   RentalGuarantor,
   RentalGuarantorInput,
   RentalKpis,
@@ -243,6 +246,170 @@ function nextDueDate(start: string, dia: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+type RctRow = {
+  id: string;
+  contract_id: string;
+  tenant_id: string;
+  is_primary: boolean;
+  position: number;
+};
+type RcgRow = {
+  id: string;
+  contract_id: string;
+  guarantor_id: string | null;
+  tipo: RentalContractGuaranteeItem["tipo"];
+  valor_caucao: number | null;
+  seguro_seguradora: string | null;
+  seguro_apolice: string | null;
+  seguro_valor_mensal: number | null;
+  is_primary: boolean;
+  position: number;
+};
+
+type SupabaseCtx = { from: (t: string) => unknown } & Record<string, unknown>;
+
+async function enrichContracts(
+  supabase: SupabaseCtx,
+  rows: ContractRow[],
+): Promise<RentalContractFull[]> {
+  if (rows.length === 0) return [];
+  const contractIds = rows.map((r) => r.id);
+  const propIds = Array.from(new Set(rows.map((r) => r.property_id)));
+
+  const [props, rctRes, rcgRes] = await Promise.all([
+    (supabase as any).from("rental_properties").select("*").in("id", propIds),
+    (supabase as any).from("rental_contract_tenants").select("*").in("contract_id", contractIds),
+    (supabase as any).from("rental_contract_guarantors").select("*").in("contract_id", contractIds),
+  ]);
+  if (props.error) throw new Error(props.error.message);
+  if (rctRes.error) throw new Error(rctRes.error.message);
+  if (rcgRes.error) throw new Error(rcgRes.error.message);
+
+  const rcts = (rctRes.data ?? []) as RctRow[];
+  const rcgs = (rcgRes.data ?? []) as RcgRow[];
+
+  // Fallback: contracts without join rows still show legacy tenant/guarantor.
+  const legacyTenantByContract = new Map<string, string>();
+  const legacyGuarantorByContract = new Map<string, string>();
+  for (const r of rows) {
+    if (!rcts.some((x) => x.contract_id === r.id)) legacyTenantByContract.set(r.id, r.tenant_id);
+    if (r.guarantor_id && !rcgs.some((x) => x.contract_id === r.id))
+      legacyGuarantorByContract.set(r.id, r.guarantor_id);
+  }
+
+  const tenantIds = Array.from(
+    new Set([
+      ...rcts.map((x) => x.tenant_id),
+      ...Array.from(legacyTenantByContract.values()),
+      ...rows.map((r) => r.tenant_id),
+    ]),
+  );
+  const guarIds = Array.from(
+    new Set(
+      [
+        ...rcgs.map((x) => x.guarantor_id).filter((v): v is string => Boolean(v)),
+        ...Array.from(legacyGuarantorByContract.values()),
+      ].filter(Boolean),
+    ),
+  );
+
+  const [tenants, guarantors] = await Promise.all([
+    tenantIds.length
+      ? (supabase as any).from("rental_tenants").select("*").in("id", tenantIds)
+      : Promise.resolve({ data: [], error: null }),
+    guarIds.length
+      ? (supabase as any).from("rental_guarantors").select("*").in("id", guarIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (tenants.error) throw new Error(tenants.error.message);
+  if (guarantors.error) throw new Error(guarantors.error.message);
+
+  const pMap = new Map(((props.data as PropRow[]) ?? []).map((p) => [p.id, mapProperty(p)]));
+  const tMap = new Map(((tenants.data as TenantRow[]) ?? []).map((t) => [t.id, mapTenant(t)]));
+  const gMap = new Map(
+    ((guarantors.data as GuarantorRow[]) ?? []).map((g) => [g.id, mapGuarantor(g)]),
+  );
+
+  const rctByContract = new Map<string, RctRow[]>();
+  for (const x of rcts) {
+    const arr = rctByContract.get(x.contract_id) ?? [];
+    arr.push(x);
+    rctByContract.set(x.contract_id, arr);
+  }
+  const rcgByContract = new Map<string, RcgRow[]>();
+  for (const x of rcgs) {
+    const arr = rcgByContract.get(x.contract_id) ?? [];
+    arr.push(x);
+    rcgByContract.set(x.contract_id, arr);
+  }
+
+  const result: RentalContractFull[] = [];
+  for (const r of rows) {
+    const property = pMap.get(r.property_id);
+    if (!property) continue;
+
+    // Tenants list from join (or legacy fallback).
+    let tenantList: RentalTenant[] = [];
+    const joinTenants = (rctByContract.get(r.id) ?? []).slice().sort(
+      (a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) || a.position - b.position,
+    );
+    if (joinTenants.length > 0) {
+      tenantList = joinTenants
+        .map((x) => tMap.get(x.tenant_id))
+        .filter((v): v is RentalTenant => Boolean(v));
+    } else {
+      const t = tMap.get(r.tenant_id);
+      if (t) tenantList = [t];
+    }
+    if (tenantList.length === 0) continue;
+    const primaryTenant = tenantList[0];
+
+    // Guarantees list from join (or legacy fallback).
+    let guaranteeList: RentalContractGuaranteeItem[] = [];
+    const joinGuars = (rcgByContract.get(r.id) ?? []).slice().sort(
+      (a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) || a.position - b.position,
+    );
+    if (joinGuars.length > 0) {
+      guaranteeList = joinGuars.map((x) => ({
+        id: x.id,
+        tipo: x.tipo,
+        guarantor: x.guarantor_id ? (gMap.get(x.guarantor_id) ?? null) : null,
+        valorCaucao: x.valor_caucao !== null ? Number(x.valor_caucao) : null,
+        seguroSeguradora: x.seguro_seguradora,
+        seguroApolice: x.seguro_apolice,
+        seguroValorMensal:
+          x.seguro_valor_mensal !== null ? Number(x.seguro_valor_mensal) : null,
+        isPrimary: x.is_primary,
+      }));
+    } else if (r.garantia_tipo && r.garantia_tipo !== "sem_garantia") {
+      guaranteeList = [
+        {
+          tipo: r.garantia_tipo as RentalContractGuaranteeItem["tipo"],
+          guarantor: r.guarantor_id ? (gMap.get(r.guarantor_id) ?? null) : null,
+          valorCaucao: r.valor_caucao !== null ? Number(r.valor_caucao) : null,
+          seguroSeguradora: r.seguro_seguradora,
+          seguroApolice: r.seguro_apolice,
+          seguroValorMensal:
+            r.seguro_valor_mensal !== null ? Number(r.seguro_valor_mensal) : null,
+          isPrimary: true,
+        },
+      ];
+    }
+
+    result.push({
+      ...mapContract(r),
+      property,
+      tenant: primaryTenant,
+      guarantor: guaranteeList[0]?.guarantor ?? null,
+      tenants: tenantList,
+      guarantees: guaranteeList,
+    });
+  }
+  return result;
+}
+
 // ============================ LIST ============================
 export const listRentalContracts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -252,50 +419,10 @@ export const listRentalContracts = createServerFn({ method: "GET" })
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    const rows = (contracts ?? []) as unknown as ContractRow[];
-    if (rows.length === 0) return [];
-
-    const propIds = Array.from(new Set(rows.map((r) => r.property_id)));
-    const tenantIds = Array.from(new Set(rows.map((r) => r.tenant_id)));
-    const guarIds = Array.from(
-      new Set(rows.map((r) => r.guarantor_id).filter((v): v is string => Boolean(v))),
+    return enrichContracts(
+      context.supabase as unknown as SupabaseCtx,
+      (contracts ?? []) as unknown as ContractRow[],
     );
-
-    const [props, tenants, guarantors] = await Promise.all([
-      context.supabase.from("rental_properties").select("*").in("id", propIds),
-      context.supabase.from("rental_tenants").select("*").in("id", tenantIds),
-      guarIds.length > 0
-        ? context.supabase.from("rental_guarantors").select("*").in("id", guarIds)
-        : Promise.resolve({ data: [] as GuarantorRow[], error: null }),
-    ]);
-
-    if (props.error) throw new Error(props.error.message);
-    if (tenants.error) throw new Error(tenants.error.message);
-    if ("error" in guarantors && guarantors.error) throw new Error(guarantors.error.message);
-
-    const pMap = new Map(
-      ((props.data as unknown as PropRow[]) ?? []).map((p) => [p.id, mapProperty(p)]),
-    );
-    const tMap = new Map(
-      ((tenants.data as unknown as TenantRow[]) ?? []).map((t) => [t.id, mapTenant(t)]),
-    );
-    const gMap = new Map(
-      ((guarantors.data ?? []) as unknown as GuarantorRow[]).map((g) => [g.id, mapGuarantor(g)]),
-    );
-
-    const result: RentalContractFull[] = [];
-    for (const r of rows) {
-      const property = pMap.get(r.property_id);
-      const tenant = tMap.get(r.tenant_id);
-      if (!property || !tenant) continue;
-      result.push({
-        ...mapContract(r),
-        property,
-        tenant,
-        guarantor: r.guarantor_id ? (gMap.get(r.guarantor_id) ?? null) : null,
-      });
-    }
-    return result;
   });
 
 // ============================ KPIs ============================
@@ -377,17 +504,58 @@ export const listRentalTenants = createServerFn({ method: "GET" })
   });
 
 // ============================ CREATE ============================
+function normalizeTenants(input: RentalContractInput): RentalContractTenantInput[] {
+  const arr = (input.tenants ?? []).filter(
+    (t): t is RentalContractTenantInput => !!t && !!(t.existingId || t.data),
+  );
+  if (arr.length > 0) return arr;
+  if (input.tenant) return [input.tenant];
+  return [];
+}
+
+function normalizeGuarantees(input: RentalContractInput): RentalContractGuaranteeInput[] {
+  const arr = (input.guarantees ?? []).filter((g) => !!g && !!g.tipo);
+  if (arr.length > 0) return arr;
+  const t = input.garantiaTipo;
+  if (!t || t === "sem_garantia") return [];
+  return [
+    {
+      tipo: t,
+      guarantor: input.guarantor ?? null,
+      valorCaucao: input.valorCaucao ?? null,
+      seguroSeguradora: input.seguroSeguradora ?? null,
+      seguroApolice: input.seguroApolice ?? null,
+      seguroValorMensal: input.seguroValorMensal ?? null,
+    },
+  ];
+}
+
 function validateInput(input: RentalContractInput) {
   if (!input.property?.existingId && !input.property?.data?.apelido?.trim())
     throw new Error("Selecione ou cadastre um imóvel.");
-  if (!input.tenant?.existingId && !input.tenant?.data?.nome?.trim())
-    throw new Error("Selecione ou cadastre um locatário.");
-  if (!input.tenant?.existingId) {
-    const tel = (input.tenant?.data?.telefone ?? "").replace(/\D/g, "");
-    if (tel.length < 10) throw new Error("Informe um telefone válido para o locatário.");
-    const email = input.tenant?.data?.email;
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      throw new Error("E-mail do locatário inválido.");
+  const tenants = normalizeTenants(input);
+  if (tenants.length === 0) throw new Error("Adicione pelo menos um locatário.");
+  for (const t of tenants) {
+    if (!t.existingId) {
+      if (!t.data?.nome?.trim()) throw new Error("Nome do locatário é obrigatório.");
+      const tel = (t.data?.telefone ?? "").replace(/\D/g, "");
+      if (tel.length < 10) throw new Error("Informe um telefone válido para todos os locatários.");
+      const email = t.data?.email;
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        throw new Error("E-mail de locatário inválido.");
+    }
+  }
+  const guarantees = normalizeGuarantees(input);
+  for (const g of guarantees) {
+    if (g.tipo === "fiador") {
+      if (!g.guarantor?.existingId && !g.guarantor?.data?.nome?.trim())
+        throw new Error("Informe o nome de todos os fiadores.");
+    } else if (g.tipo === "caucao") {
+      if (!g.valorCaucao || Number(g.valorCaucao) <= 0)
+        throw new Error("Informe o valor da caução.");
+    } else if (g.tipo === "seguro_fianca") {
+      if (!g.seguroSeguradora?.trim()) throw new Error("Informe a seguradora do seguro fiança.");
+    }
   }
   if (!input.valorMensal || input.valorMensal <= 0)
     throw new Error("Informe um valor mensal maior que zero.");
@@ -405,6 +573,8 @@ export const createRentalContract = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<RentalContractFull> => {
     validateInput(data);
     const supabase = context.supabase;
+    const tenantsIn = normalizeTenants(data);
+    const guaranteesIn = normalizeGuarantees(data);
 
     // 1. Property
     let propertyId = data.property.existingId ?? null;
@@ -431,44 +601,74 @@ export const createRentalContract = createServerFn({ method: "POST" })
         throw new Error("Este imóvel já possui um contrato ativo ou pendente.");
     }
 
-    // 2. Tenant
-    let tenantId = data.tenant.existingId ?? null;
-    if (!tenantId) {
-      const payload = { ...tenantPayload(data.tenant.data!), created_by: context.userId };
-      const { data: inserted, error } = await supabase
-        .from("rental_tenants")
-        .insert(payload as never)
-        .select("*")
-        .single();
-      if (error) throw new Error(error.message);
-      tenantId = (inserted as unknown as TenantRow).id;
+    // 2. Tenants (resolve or insert each)
+    const tenantIds: string[] = [];
+    for (const t of tenantsIn) {
+      if (t.existingId) {
+        tenantIds.push(t.existingId);
+      } else {
+        const payload = { ...tenantPayload(t.data!), created_by: context.userId };
+        const { data: inserted, error } = await supabase
+          .from("rental_tenants")
+          .insert(payload as never)
+          .select("*")
+          .single();
+        if (error) throw new Error(error.message);
+        tenantIds.push((inserted as unknown as TenantRow).id);
+      }
     }
+    const primaryTenantId = tenantIds[0];
 
-    // 3. Guarantor (optional)
-    let guarantorId: string | null = data.guarantor?.existingId ?? null;
-    if (!guarantorId && data.guarantor?.data?.nome?.trim()) {
-      const payload = { ...guarantorPayload(data.guarantor.data), created_by: context.userId };
-      const { data: inserted, error } = await supabase
-        .from("rental_guarantors")
-        .insert(payload as never)
-        .select("*")
-        .single();
-      if (error) throw new Error(error.message);
-      guarantorId = (inserted as unknown as GuarantorRow).id;
+    // 3. Guarantees: resolve fiador guarantors first
+    type ResolvedGuarantee = RentalContractGuaranteeInput & { guarantorId: string | null };
+    const resolved: ResolvedGuarantee[] = [];
+    for (const g of guaranteesIn) {
+      let guarantorId: string | null = null;
+      if (g.tipo === "fiador") {
+        if (g.guarantor?.existingId) {
+          guarantorId = g.guarantor.existingId;
+        } else if (g.guarantor?.data?.nome?.trim()) {
+          const payload = {
+            ...guarantorPayload(g.guarantor.data),
+            created_by: context.userId,
+          };
+          const { data: inserted, error } = await supabase
+            .from("rental_guarantors")
+            .insert(payload as never)
+            .select("*")
+            .single();
+          if (error) throw new Error(error.message);
+          guarantorId = (inserted as unknown as GuarantorRow).id;
+        }
+      }
+      resolved.push({ ...g, guarantorId });
     }
+    const primaryGuarantee = resolved[0] ?? null;
 
-    // 4. Contract
+    // 4. Contract (legacy columns = primary values for back-compat)
     const contractPayload = {
       created_by: context.userId,
       property_id: propertyId,
-      tenant_id: tenantId,
-      guarantor_id: guarantorId,
+      tenant_id: primaryTenantId,
+      guarantor_id: primaryGuarantee?.guarantorId ?? null,
       valor_mensal: Number(data.valorMensal),
-      valor_caucao: numOrNull(data.valorCaucao),
-      garantia_tipo: data.garantiaTipo ?? "sem_garantia",
-      seguro_seguradora: orNull(data.seguroSeguradora),
-      seguro_apolice: orNull(data.seguroApolice),
-      seguro_valor_mensal: numOrNull(data.seguroValorMensal),
+      valor_caucao:
+        primaryGuarantee?.tipo === "caucao"
+          ? numOrNull(primaryGuarantee.valorCaucao)
+          : null,
+      garantia_tipo: primaryGuarantee?.tipo ?? "sem_garantia",
+      seguro_seguradora:
+        primaryGuarantee?.tipo === "seguro_fianca"
+          ? orNull(primaryGuarantee.seguroSeguradora)
+          : null,
+      seguro_apolice:
+        primaryGuarantee?.tipo === "seguro_fianca"
+          ? orNull(primaryGuarantee.seguroApolice)
+          : null,
+      seguro_valor_mensal:
+        primaryGuarantee?.tipo === "seguro_fianca"
+          ? numOrNull(primaryGuarantee.seguroValorMensal)
+          : null,
       data_inicio: data.dataInicio.slice(0, 10),
       data_fim: data.dataFim.slice(0, 10),
       dia_vencimento: data.diaVencimento,
@@ -485,24 +685,44 @@ export const createRentalContract = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (cErr) throw new Error(cErr.message);
-
     const contractRow = inserted as unknown as ContractRow;
-    const [propR, tenR, guarR] = await Promise.all([
-      supabase.from("rental_properties").select("*").eq("id", propertyId).single(),
-      supabase.from("rental_tenants").select("*").eq("id", tenantId).single(),
-      guarantorId
-        ? supabase.from("rental_guarantors").select("*").eq("id", guarantorId).single()
-        : Promise.resolve({ data: null, error: null }),
-    ]);
-    if (propR.error) throw new Error(propR.error.message);
-    if (tenR.error) throw new Error(tenR.error.message);
 
-    return {
-      ...mapContract(contractRow),
-      property: mapProperty(propR.data as unknown as PropRow),
-      tenant: mapTenant(tenR.data as unknown as TenantRow),
-      guarantor: guarR.data ? mapGuarantor(guarR.data as unknown as GuarantorRow) : null,
-    };
+    // 5. Join rows — tenants
+    const rctPayload = tenantIds.map((tid, i) => ({
+      contract_id: contractRow.id,
+      tenant_id: tid,
+      is_primary: i === 0,
+      position: i,
+    }));
+    if (rctPayload.length > 0) {
+      const { error: rctErr } = await supabase
+        .from("rental_contract_tenants")
+        .insert(rctPayload as never);
+      if (rctErr) throw new Error(rctErr.message);
+    }
+
+    // 6. Join rows — guarantees
+    const rcgPayload = resolved.map((g, i) => ({
+      contract_id: contractRow.id,
+      guarantor_id: g.guarantorId,
+      tipo: g.tipo,
+      valor_caucao: g.tipo === "caucao" ? numOrNull(g.valorCaucao) : null,
+      seguro_seguradora: g.tipo === "seguro_fianca" ? orNull(g.seguroSeguradora) : null,
+      seguro_apolice: g.tipo === "seguro_fianca" ? orNull(g.seguroApolice) : null,
+      seguro_valor_mensal:
+        g.tipo === "seguro_fianca" ? numOrNull(g.seguroValorMensal) : null,
+      is_primary: i === 0,
+      position: i,
+    }));
+    if (rcgPayload.length > 0) {
+      const { error: rcgErr } = await supabase
+        .from("rental_contract_guarantors")
+        .insert(rcgPayload as never);
+      if (rcgErr) throw new Error(rcgErr.message);
+    }
+
+    const full = await enrichContracts(supabase as unknown as SupabaseCtx, [contractRow]);
+    return full[0];
   });
 
 // ============================ UPDATE ============================

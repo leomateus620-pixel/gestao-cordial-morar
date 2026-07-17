@@ -111,21 +111,52 @@ export type RentalContract = {
   updatedAt: string;
 };
 
+export type RentalContractGuaranteeItem = {
+  id?: string;
+  tipo: Exclude<RentalGuaranteeType, "sem_garantia">;
+  guarantor: RentalGuarantor | null;
+  valorCaucao: number | null;
+  seguroSeguradora: string | null;
+  seguroApolice: string | null;
+  seguroValorMensal: number | null;
+  isPrimary: boolean;
+};
+
 export type RentalContractFull = RentalContract & {
   property: RentalProperty;
-  tenant: RentalTenant;
-  guarantor?: RentalGuarantor | null;
+  tenant: RentalTenant; // principal (item 0)
+  guarantor?: RentalGuarantor | null; // principal (item 0)
+  tenants: RentalTenant[];
+  guarantees: RentalContractGuaranteeItem[];
 };
 
 export type RentalPropertyInput = Omit<RentalProperty, "id" | "createdAt" | "updatedAt">;
 export type RentalTenantInput = Omit<RentalTenant, "id" | "createdAt" | "updatedAt">;
 export type RentalGuarantorInput = Omit<RentalGuarantor, "id" | "createdAt" | "updatedAt">;
 
+export type RentalContractTenantInput = {
+  existingId?: string | null;
+  data?: RentalTenantInput;
+};
+
+export type RentalContractGuaranteeInput = {
+  tipo: Exclude<RentalGuaranteeType, "sem_garantia">;
+  guarantor?: { existingId?: string | null; data?: RentalGuarantorInput } | null;
+  valorCaucao?: number | null;
+  seguroSeguradora?: string | null;
+  seguroApolice?: string | null;
+  seguroValorMensal?: number | null;
+};
+
 export type RentalContractInput = {
   contractId?: string;
   property: { existingId?: string | null; data?: RentalPropertyInput };
-  tenant: { existingId?: string | null; data?: RentalTenantInput };
+  // Compatibilidade: manter `tenant` para consumidores antigos.
+  tenant?: { existingId?: string | null; data?: RentalTenantInput };
   guarantor?: { existingId?: string | null; data?: RentalGuarantorInput } | null;
+  // Novas listas (usadas quando presentes; substituem tenant/guarantor).
+  tenants?: RentalContractTenantInput[];
+  guarantees?: RentalContractGuaranteeInput[];
   valorMensal: number;
   valorCaucao?: number | null;
   garantiaTipo?: RentalGuaranteeType;
