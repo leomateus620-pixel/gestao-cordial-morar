@@ -51,6 +51,7 @@ export function RentalExpandedDetails({
   onRenew,
   onMarkPaid,
   onDelete,
+  onEdit,
 }: {
   contract: RentalContractFull | null;
   open: boolean;
@@ -59,6 +60,7 @@ export function RentalExpandedDetails({
   onRenew: (id: string) => void;
   onMarkPaid: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit?: (contract: RentalContractFull) => void;
 }) {
   if (!contract) return null;
   const phone = (contract.tenant.telefone ?? "").replace(/\D/g, "");
