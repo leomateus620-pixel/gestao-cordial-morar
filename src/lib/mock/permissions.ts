@@ -122,7 +122,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
     profile: "secretaria",
     label: "Secretária",
     description: "Atendimento, clientes e campanhas de marketing operacionais.",
-    modules: ["dashboard", "atendimentos", "clientes", "marketing"],
+    modules: ["dashboard", "atendimentos", "clientes", "marketing", "alugueis"],
     permissions: [
       "atendimentos:read",
       "atendimentos:write",
@@ -130,6 +130,8 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "clientes:write",
       "marketing:read",
       "marketing:write",
+      "alugueis:read",
+      "alugueis:write",
       // permissão interna: fluxos operacionais podem criar eventos na agenda,
       // mas o menu "agenda" não aparece na navegação da secretaria.
       "agenda:write",
