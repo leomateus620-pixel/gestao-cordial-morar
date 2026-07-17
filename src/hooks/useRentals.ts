@@ -11,6 +11,7 @@ import {
   listRentalTenants,
   markRentalPaymentPaid as markPaidFn,
   renewRentalContract as renewFn,
+  replaceRentalContract as replaceFn,
   updateRentalContract as updateFn,
 } from "@/lib/rentals/rentals.functions";
 import type {
