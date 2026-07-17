@@ -1,12 +1,15 @@
-## Correção
-Incluir usuários admin (Bruna, Ricardo) na lista de corretores hidratada, já que também atuam como corretores.
+## Objetivo
+Limpar todos os atendimentos de teste atualmente cadastrados no banco, para iniciar o uso real do módulo com a lista zerada.
 
-### Passo
-- `src/hooks/useHydrateCorretores.ts`: trocar o filtro `p.role === "corretor"` por `p.role === "corretor" || p.role === "admin"` (exclui apenas a secretaria).
+## Ação
+- Executar um `DELETE` em `public.attendances` removendo 100% dos registros existentes.
+- Nenhuma alteração de schema, RLS, código ou UI. Estrutura, políticas e fluxos permanecem intactos.
 
-### Efeito
-Admins passam a aparecer nos seletores de corretor de Atendimentos (formulário, filtros, ações) e em qualquer outro lugar que consuma `state.corretores`.
+## Impacto
+- O menu "Atendimentos" passa a exibir lista vazia imediatamente após execução.
+- Novos atendimentos criados pelos corretores/admins serão os primeiros registros reais.
+- Ação irreversível — os atendimentos atuais serão perdidos (confirmado como dados de teste).
 
-### Fora do escopo
-- Não alterar RPC `list_corretores` nem regras de acesso.
-- Não mexer em outros menus.
+## Fora de escopo
+- Não zerar clientes, agenciamentos, vendas, aluguéis ou financeiro.
+- Não alterar seeds nem mocks (já removidos anteriormente).
