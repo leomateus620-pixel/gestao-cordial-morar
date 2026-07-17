@@ -322,6 +322,7 @@ export function RentalFormModal({
   const [dia, setDia] = useState("10");
   const [status, setStatus] = useState<"ativo" | "pendente_assinatura">("ativo");
   const [obs, setObs] = useState("");
+  const [brand, setBrand] = useState<RentalBrand>("cordial");
   const [error, setError] = useState<string | null>(null);
 
   function updateTenant(key: string, patch: Partial<TenantEntry>) {
