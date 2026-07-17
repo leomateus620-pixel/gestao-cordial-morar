@@ -10,7 +10,6 @@ import {
   type AtendimentoValidationResult,
 } from "@/services/atendimentos";
 import {
-  atendimentoBrokerOptions,
   atendimentoContatoOptions,
   atendimentoDormitoriosOptions,
   atendimentoFinalidadeOptions,
@@ -114,6 +113,11 @@ export function AtendimentoFormModal({
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = [...corretores]
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((c) => ({ id: c.id, label: c.nome }))
+    .concat({ id: "a_definir", label: "A definir" });
   const [form, setForm] = useState<FormState>(initialForm);
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
@@ -203,7 +207,7 @@ export function AtendimentoFormModal({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    const broker = atendimentoBrokerOptions.find((item) => item.id === form.corretorId);
+    const broker = brokerOptions.find((item) => item.id === form.corretorId);
     const selectedProperty = imoveis.find((item) => item.id === form.imovelId);
     const input: AtendimentoCreateInput = {
       clienteId: optional(form.clienteId),
@@ -504,7 +508,7 @@ export function AtendimentoFormModal({
                     onChange={(event) => update("corretorId", event.target.value)}
                     className={inputClass()}
                   >
-                    {atendimentoBrokerOptions.map((broker) => (
+                    {brokerOptions.map((broker) => (
                       <option key={broker.id} value={broker.id}>
                         {broker.label}
                       </option>

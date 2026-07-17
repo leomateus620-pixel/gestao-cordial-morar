@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
-  atendimentoBrokerOptions,
   atendimentoProximoPassoOptions,
   type Atendimento,
   type ProximoPassoAtendimento,
 } from "@/types/atendimento";
+import { useApp } from "@/store/app-store";
 
 export type AtendimentoActionKind =
   | "vincular-corretor"
@@ -152,6 +152,10 @@ function FormBody({
   const [motivoLivre, setMotivoLivre] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = [...corretores]
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((c) => ({ id: c.id, label: c.nome }));
 
   useEffect(() => {
     setError(null);
@@ -164,7 +168,7 @@ function FormBody({
       setSaving(true);
       if (kind === "vincular-corretor") {
         if (!corretorId) throw new Error("Selecione um corretor.");
-        const option = atendimentoBrokerOptions.find((o) => o.id === corretorId);
+        const option = brokerOptions.find((o) => o.id === corretorId);
         await onSubmit({
           kind,
           corretorId,
@@ -205,9 +209,7 @@ function FormBody({
             className={inputClass}
           >
             <option value="">Selecione...</option>
-            {atendimentoBrokerOptions
-              .filter((o) => o.id !== "a_definir")
-              .map((o) => (
+            {brokerOptions.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.label}
                 </option>

@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import {
-  atendimentoBrokerOptions,
   atendimentoFinalidadeOptions,
   atendimentoOrigemOptions,
   atendimentoPrioridadeOptions,
   atendimentoStatusOptions,
   atendimentoTipoImovelOptions,
 } from "@/types/atendimento";
+import { useApp } from "@/store/app-store";
 import {
   defaultAtendimentoFilters,
   type AtendimentoFilters as AtendimentoFiltersState,
@@ -33,6 +33,10 @@ export function AtendimentoFilters({
   onFiltersChange: (filters: AtendimentoFiltersState) => void;
 }) {
   const [showFilters, setShowFilters] = useState(false);
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = [...corretores]
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((c) => ({ id: c.id, label: c.nome }));
   const isDefault = JSON.stringify(filters) === JSON.stringify(defaultAtendimentoFilters);
   const activeSecondary = [
     filters.finalidade,
@@ -165,9 +169,7 @@ export function AtendimentoFilters({
             onChange={(value) => onFiltersChange({ ...filters, corretor: value })}
           >
             <option value="todos">Corretor</option>
-            {atendimentoBrokerOptions
-              .filter((option) => option.id !== "a_definir")
-              .map((option) => (
+            {brokerOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
