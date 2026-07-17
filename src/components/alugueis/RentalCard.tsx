@@ -8,6 +8,21 @@ function fmtDate(s?: string | null) {
   return new Date(s).toLocaleDateString("pt-BR");
 }
 
+function BrandBadge({ brand }: { brand?: string | null }) {
+  const b = brand === "morar" ? "morar" : "cordial";
+  const label = b === "morar" ? "Morar" : "Cordial";
+  const cls =
+    b === "morar"
+      ? "bg-[color:var(--morar-primary,#8b5cf6)]/12 text-[color:var(--morar-primary,#8b5cf6)] ring-[color:var(--morar-primary,#8b5cf6)]/25"
+      : "bg-[color:var(--cordial-primary,#0ea5e9)]/12 text-[color:var(--cordial-primary,#0ea5e9)] ring-[color:var(--cordial-primary,#0ea5e9)]/25";
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+
 export function RentalCard({
   contract,
   onClick,
