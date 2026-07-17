@@ -371,6 +371,7 @@ export function RentalFormModal({
     setDia("10");
     setStatus("ativo");
     setObs("");
+    setBrand("cordial");
     setError(null);
   }
 
