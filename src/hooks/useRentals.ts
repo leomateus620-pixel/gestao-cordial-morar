@@ -14,6 +14,7 @@ import {
   replaceRentalContract as replaceFn,
   updateRentalContract as updateFn,
 } from "@/lib/rentals/rentals.functions";
+import { useApp } from "@/store/app-store";
 import type {
   RentalContractFull,
   RentalContractInput,
