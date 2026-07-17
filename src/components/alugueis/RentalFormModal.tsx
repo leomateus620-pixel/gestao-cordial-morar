@@ -914,9 +914,8 @@ export function RentalFormModal({
                         </Field>
                         <Field label="Valor mensal do seguro (R$)">
                           <input
-                            type="number"
-                            min={0}
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0,00"
                             value={g.seguroValor}
                             onChange={(e) =>
