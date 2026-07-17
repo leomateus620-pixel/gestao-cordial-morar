@@ -753,7 +753,9 @@ export function RentalFormModal({
                         </Field>
                         <Field label="Renda aproximada (R$)" className="sm:col-span-2">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0,00"
                             value={t.renda}
                             onChange={(e) => updateTenant(t.key, { renda: e.target.value })}
                             className={inputCls}
