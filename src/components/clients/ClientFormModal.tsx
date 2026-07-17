@@ -38,7 +38,6 @@ type FormState = {
   leadOrigin: LeadOrigin;
   brand: RealEstateBrand;
   assignedBrokerId: string;
-  customBrokerName: string;
   status: ClientStatus;
   purpose: ClientPurpose;
   propertyType: PropertyType;
