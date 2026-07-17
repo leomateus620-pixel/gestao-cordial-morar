@@ -290,6 +290,11 @@ export function AgenciamentoFormModal({
 
   useEffect(() => {
     if (!open) return;
+    // Reset only when the modal opens or the target record changes.
+    // Do NOT depend on currentBroker/currentUserBroker: their references
+    // change when background queries (e.g. corretores) refetch on window
+    // focus, which would wipe the form mid-edit and drop the user back to
+    // step 0. We read them here just to seed defaults.
     const next = initialForm(agenciamento, currentBroker, currentUserBroker);
     setForm(next);
     setInitialValue(next);
@@ -300,7 +305,8 @@ export function AgenciamentoFormModal({
     setSubmitError(null);
     setConfirmCloseOpen(false);
     setReferencesOpen(Boolean(next.driveFolderUrl || next.siteUrl || next.observacoesInternas));
-  }, [agenciamento, currentBroker, currentUserBroker, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, agenciamento?.id]);
 
   const selectedBroker = useMemo(
     () => corretores.find((corretor) => corretor.id === form.corretorId),
