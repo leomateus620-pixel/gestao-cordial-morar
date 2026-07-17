@@ -429,6 +429,8 @@ export function AgenciamentoFormModal({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    if (submitter?.dataset.agenciamentoSubmit !== "true") return;
     if (saving || step !== 3) return;
 
     const input = toInput();
@@ -669,6 +671,7 @@ export function AgenciamentoFormModal({
                   ) : (
                     <Button
                       type="submit"
+                      data-agenciamento-submit="true"
                       disabled={saving}
                       className="h-11 rounded-xl bg-[#174d61] text-white transition-[background-color,transform] duration-150 ease-out hover:bg-[#1e647d] active:scale-[0.985]"
                     >
@@ -1159,6 +1162,7 @@ function ReviewStep({
                   </span>
                 </label>
                 <Switch
+                  type="button"
                   id={switchId}
                   checked={done}
                   onCheckedChange={(checked) => updateChecklist(item.key, checked)}
@@ -1203,6 +1207,7 @@ function ReviewStep({
               </span>
             </label>
             <Switch
+              type="button"
               id="ag-check-validado"
               checked={form.checklist.validado}
               disabled={!canManage}
