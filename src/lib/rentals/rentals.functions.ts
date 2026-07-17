@@ -1167,10 +1167,17 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
       propertyId = (inserted as unknown as PropRow).id;
     }
 
-    // 2. Tenants (resolve or insert)
+    // 2. Tenants (resolve, insert, or update-in-place)
     const tenantIds: string[] = [];
     for (const t of tenantsIn) {
       if (t.existingId) {
+        if (t.data && t.data.nome?.trim()) {
+          const { error: upErr } = await supabase
+            .from("rental_tenants")
+            .update(tenantPayload(t.data) as never)
+            .eq("id", t.existingId);
+          if (upErr) throw new Error(upErr.message);
+        }
         tenantIds.push(t.existingId);
       } else {
         const payload = { ...tenantPayload(t.data!), created_by: context.userId };
@@ -1192,6 +1199,13 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
       let guarantorId: string | null = null;
       if (g.tipo === "fiador") {
         if (g.guarantor?.existingId) {
+          if (g.guarantor.data && g.guarantor.data.nome?.trim()) {
+            const { error: upErr } = await supabase
+              .from("rental_guarantors")
+              .update(guarantorPayload(g.guarantor.data) as never)
+              .eq("id", g.guarantor.existingId);
+            if (upErr) throw new Error(upErr.message);
+          }
           guarantorId = g.guarantor.existingId;
         } else if (g.guarantor?.data?.nome?.trim()) {
           const payload = { ...guarantorPayload(g.guarantor.data), created_by: context.userId };
