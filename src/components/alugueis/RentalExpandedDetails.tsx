@@ -74,10 +74,14 @@ export function RentalExpandedDetails({
         className="mx-auto max-h-[92vh] max-w-[560px] overflow-y-auto rounded-t-3xl border-white/60 bg-background/95 backdrop-blur-xl"
       >
         <SheetHeader className="text-left">
-          <SheetTitle className="text-base">{contract.property.apelido}</SheetTitle>
+          <div className="flex items-center gap-2">
+            <SheetTitle className="text-base">{contract.property.apelido}</SheetTitle>
+            <BrandBadge brand={contract.brand} />
+          </div>
           <SheetDescription className="text-[11px]">
             Contrato de aluguel · {contract.tenant.nome}
           </SheetDescription>
+
         </SheetHeader>
 
         <div className="mt-4 flex items-center gap-2">
