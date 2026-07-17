@@ -414,6 +414,7 @@ export function RentalFormModal({
       (c.guarantees ?? []).map((g) => ({
         key: crypto.randomUUID(),
         tipo: g.tipo,
+        guarantorId: g.guarantor?.id ?? null,
         guarNome: g.guarantor?.nome ?? "",
         guarTel: g.guarantor?.telefone ?? "",
         guarEmail: g.guarantor?.email ?? "",
