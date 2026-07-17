@@ -29,9 +29,12 @@ export function RentalCard({
       <article className="liquid-panel relative overflow-hidden rounded-3xl p-4 transition will-change-transform hover:-translate-y-0.5 hover:shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">
-              {contract.property.apelido}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-sm font-semibold leading-tight">
+                {contract.property.apelido}
+              </p>
+              <BrandBadge brand={contract.brand} />
+            </div>
             <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-foreground/55">
               <MapPin className="size-3 shrink-0" />
               {[contract.property.bairro, contract.property.cidade]
@@ -44,6 +47,7 @@ export function RentalCard({
             <RentalPaymentBadge status={contract.paymentStatus} />
           </div>
         </div>
+
 
         <div className="mt-3 flex items-end justify-between border-t border-white/40 pt-3">
           <div className="min-w-0">
