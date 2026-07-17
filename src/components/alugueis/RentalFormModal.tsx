@@ -242,16 +242,18 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
     };
   }
   if (g.tipo === "caucao") {
+    const v = parseBRLNumber(g.valorCaucao);
     return {
       tipo: "caucao",
-      valorCaucao: g.valorCaucao ? Number(g.valorCaucao) : null,
+      valorCaucao: Number.isFinite(v) ? v : null,
     };
   }
+  const sv = parseBRLNumber(g.seguroValor);
   return {
     tipo: "seguro_fianca",
     seguroSeguradora: g.seguroSeguradora || null,
     seguroApolice: g.seguroApolice || null,
-    seguroValorMensal: g.seguroValor ? Number(g.seguroValor) : null,
+    seguroValorMensal: Number.isFinite(sv) ? sv : null,
   };
 }
 
