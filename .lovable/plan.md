@@ -1,33 +1,19 @@
-## Objetivo
+## Situação atual
 
-Permitir escolher a imobiliária responsável (Cordial / Morar) no cadastro/edição de aluguéis e refletir isso no filtro global (switcher "Todas / Cordial / Morar") já existente no topo.
+O seletor **Cordial / Morar** já está no `RentalFormModal.tsx` (seção Contrato, ao lado do Status) e o modal é o mesmo usado em criação e edição. No modo edição ele já pré-carrega `c.brand ?? "cordial"` e o backend (`rentals.functions.ts`) persiste em `replaceRentalContract`. Ou seja, funcionalmente já dá para definir a imobiliária ao editar os 3 aluguéis existentes.
 
-## Diagnóstico
+O que falta é **visibilidade**: nem `RentalCard` nem `RentalExpandedDetails` mostram a marca atual, então o usuário não percebe que já existe a opção e não consegue conferir o valor gravado.
 
-- O tipo `RentalContract` já tem `brand: "cordial" | "morar" | "ambas"` e o banco persiste esse campo.
-- No `RentalFormModal.tsx` o valor está hardcoded como `"cordial"` (linhas 479 e 493) — não há UI para escolher, e a edição não pré-carrega o brand atual.
-- O switcher global (`AgencySwitcher` → `useApp().agency`) já existe, mas `useRentals.ts` não filtra os contratos por `brand`. Hoje o switcher não afeta a lista de aluguéis.
+## Mudanças (apenas UI)
 
-## Mudanças
+1. **`RentalExpandedDetails.tsx`** — no cabeçalho do drawer, exibir um badge "Cordial" ou "Morar" (com a cor da respectiva marca: `var(--cordial-primary)` / `var(--morar-primary)`) ao lado do apelido do imóvel, lendo de `contract.brand`.
 
-### 1. `src/components/alugueis/RentalFormModal.tsx`
-- Novo estado `brand: RentalBrand` (default `"cordial"`, ou `initial.brand` na edição).
-- Adicionar seletor no bloco "Contrato" (segmented control com 2 opções: **Cordial** e **Morar**) — mesmo padrão visual dos outros toggles do formulário.
-- Passar `brand` para o payload:
-  - `property.data.brand` (linha 479) — apenas quando criando novo imóvel; se `existingId`, não altera o imóvel.
-  - Contrato: `brand` (linha 493).
-- Incluir `brand` no `applyInitial` para pré-preencher na edição.
-- Incluir `brand` no `reset()`.
+2. **`RentalCard.tsx`** — adicionar um pequeno badge de marca no topo do card (mesmo padrão de cor), para permitir identificação rápida na listagem.
 
-### 2. `src/hooks/useRentals.ts`
-- Ler `agency` do `useApp` e filtrar `contracts` no `useMemo` já existente:
-  - `agency === "todas"` → sem filtro
-  - caso contrário → manter itens onde `c.brand === agency || c.brand === "ambas"`
-- Assim o switcher global passa a operar sobre a lista de aluguéis, sem quebrar filtros de status/busca.
+3. **`RentalFormModal.tsx`** — nenhum ajuste funcional (o seletor já está lá em edição). Apenas confirmar que, no modo edição, o campo aparece com o valor atual e permite alternar Cordial ↔ Morar antes de salvar.
 
 ## Fora de escopo
 
-- Não mexer em RLS/schema (coluna `brand` já existe em `rental_contracts` e `rental_properties`).
-- Não renomear/redesenhar o switcher global.
-- Não alterar brand de imóveis já existentes (evita efeito colateral em outros contratos que reutilizem o mesmo imóvel).
-- Não mexer em fluxo de fiador/locatário.
+- Backend, migrações, RLS: nada muda; a coluna `brand` já existe e é persistida.
+- Filtros globais: já foram conectados ao switcher na tarefa anterior.
+- Redesign do modal ou do drawer.
