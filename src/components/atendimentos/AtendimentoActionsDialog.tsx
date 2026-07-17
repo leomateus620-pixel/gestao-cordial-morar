@@ -168,7 +168,7 @@ function FormBody({
       setSaving(true);
       if (kind === "vincular-corretor") {
         if (!corretorId) throw new Error("Selecione um corretor.");
-        const option = atendimentoBrokerOptions.find((o) => o.id === corretorId);
+        const option = brokerOptions.find((o) => o.id === corretorId);
         await onSubmit({
           kind,
           corretorId,
