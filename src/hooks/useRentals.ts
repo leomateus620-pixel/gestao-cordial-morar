@@ -143,6 +143,12 @@ export function useRentals() {
     setSearch,
     createRental: (input: RentalContractInput) => createMutation.mutateAsync(input),
     updateRental: updateMutation.mutateAsync,
+    replaceRental: (input: RentalContractInput & { contractId: string }) =>
+      replaceMutation.mutateAsync(input),
+    saveRental: (input: RentalContractInput) =>
+      input.contractId
+        ? replaceMutation.mutateAsync(input as RentalContractInput & { contractId: string })
+        : createMutation.mutateAsync(input),
     closeRental: (id: string) => closeMutation.mutateAsync(id),
     renewRental: (id: string, novaDataFim: string) =>
       renewMutation.mutateAsync({ id, novaDataFim }),
@@ -151,6 +157,7 @@ export function useRentals() {
     isSaving:
       createMutation.isPending ||
       updateMutation.isPending ||
+      replaceMutation.isPending ||
       closeMutation.isPending ||
       renewMutation.isPending ||
       payMutation.isPending ||
