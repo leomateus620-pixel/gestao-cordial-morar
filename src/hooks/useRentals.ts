@@ -11,6 +11,7 @@ import {
   listRentalTenants,
   markRentalPaymentPaid as markPaidFn,
   renewRentalContract as renewFn,
+  replaceRentalContract as replaceFn,
   updateRentalContract as updateFn,
 } from "@/lib/rentals/rentals.functions";
 import type {
@@ -26,6 +27,7 @@ export function useRentals() {
   const kpis = useServerFn(kpisFn);
   const create = useServerFn(createFn);
   const update = useServerFn(updateFn);
+  const replace = useServerFn(replaceFn);
   const close = useServerFn(closeFn);
   const renew = useServerFn(renewFn);
   const markPaid = useServerFn(markPaidFn);
@@ -84,6 +86,11 @@ export function useRentals() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: invalidate,
   });
+  const replaceMutation = useMutation({
+    mutationFn: (input: RentalContractInput & { contractId: string }) =>
+      replace({ data: input }),
+    onSuccess: invalidate,
+  });
 
   const [filter, setFilter] = useState<RentalFilter>("todos");
   const [search, setSearch] = useState("");
@@ -136,6 +143,12 @@ export function useRentals() {
     setSearch,
     createRental: (input: RentalContractInput) => createMutation.mutateAsync(input),
     updateRental: updateMutation.mutateAsync,
+    replaceRental: (input: RentalContractInput & { contractId: string }) =>
+      replaceMutation.mutateAsync(input),
+    saveRental: (input: RentalContractInput) =>
+      input.contractId
+        ? replaceMutation.mutateAsync(input as RentalContractInput & { contractId: string })
+        : createMutation.mutateAsync(input),
     closeRental: (id: string) => closeMutation.mutateAsync(id),
     renewRental: (id: string, novaDataFim: string) =>
       renewMutation.mutateAsync({ id, novaDataFim }),
@@ -144,6 +157,7 @@ export function useRentals() {
     isSaving:
       createMutation.isPending ||
       updateMutation.isPending ||
+      replaceMutation.isPending ||
       closeMutation.isPending ||
       renewMutation.isPending ||
       payMutation.isPending ||

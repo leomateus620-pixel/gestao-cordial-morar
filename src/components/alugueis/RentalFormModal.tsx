@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Home,
   User,
@@ -16,7 +16,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { parseBRLNumber } from "@/lib/format";
 import type {
+  RentalContractFull,
   RentalContractGuaranteeInput,
   RentalContractInput,
   RentalContractTenantInput,
@@ -172,6 +174,7 @@ function newTenantEntry(): TenantEntry {
 
 function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
   if (t.mode === "existing") return { existingId: t.existingId };
+  const renda = t.renda ? parseBRLNumber(t.renda) : NaN;
   return {
     data: {
       nome: t.nome,
@@ -181,7 +184,7 @@ function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
       dataNascimento: null,
       endereco: t.endereco || null,
       profissao: t.profissao || null,
-      rendaAproximada: t.renda ? Number(t.renda) : null,
+      rendaAproximada: Number.isFinite(renda) ? renda : null,
       observacoes: null,
     },
   };
@@ -239,16 +242,18 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
     };
   }
   if (g.tipo === "caucao") {
+    const v = parseBRLNumber(g.valorCaucao);
     return {
       tipo: "caucao",
-      valorCaucao: g.valorCaucao ? Number(g.valorCaucao) : null,
+      valorCaucao: Number.isFinite(v) ? v : null,
     };
   }
+  const sv = parseBRLNumber(g.seguroValor);
   return {
     tipo: "seguro_fianca",
     seguroSeguradora: g.seguroSeguradora || null,
     seguroApolice: g.seguroApolice || null,
-    seguroValorMensal: g.seguroValor ? Number(g.seguroValor) : null,
+    seguroValorMensal: Number.isFinite(sv) ? sv : null,
   };
 }
 
@@ -265,6 +270,7 @@ export function RentalFormModal({
   tenants,
   onSubmit,
   isSaving,
+  initial,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -272,7 +278,9 @@ export function RentalFormModal({
   tenants: RentalTenant[];
   onSubmit: (input: RentalContractInput) => Promise<unknown>;
   isSaving: boolean;
+  initial?: RentalContractFull | null;
 }) {
+  const isEdit = !!initial;
   const [propMode, setPropMode] = useState<Mode>("new");
   const [propId, setPropId] = useState("");
   const [apelido, setApelido] = useState("");
@@ -349,11 +357,85 @@ export function RentalFormModal({
     setError(null);
   }
 
+  // Prefill state whenever the modal opens with an `initial` contract, or reset for new.
+  useEffect(() => {
+    if (!open) return;
+    if (!initial) {
+      reset();
+      return;
+    }
+    const c = initial;
+    setError(null);
+    // Property: pick "existing" to avoid altering the property row unless user chooses.
+    setPropMode("existing");
+    setPropId(c.property.id);
+    setApelido(c.property.apelido);
+    setTipo(c.property.tipo);
+    setLogradouro(c.property.logradouro);
+    setNumero(c.property.numero ?? "");
+    setBairro(c.property.bairro ?? "");
+    setCidade(c.property.cidade ?? "");
+    setUf(c.property.uf ?? "");
+    setQuartos(c.property.quartos != null ? String(c.property.quartos) : "");
+    setBanheiros(c.property.banheiros != null ? String(c.property.banheiros) : "");
+    setVagas(c.property.vagas != null ? String(c.property.vagas) : "");
+    setAreaM2(c.property.areaM2 != null ? String(c.property.areaM2) : "");
+
+    const tList = c.tenants && c.tenants.length > 0 ? c.tenants : [c.tenant];
+    setTenantEntries(
+      tList.map((t) => ({
+        key: crypto.randomUUID(),
+        mode: "existing" as Mode,
+        existingId: t.id,
+        nome: t.nome,
+        telefone: t.telefone,
+        email: t.email ?? "",
+        cpfCnpj: t.cpfCnpj ?? "",
+        profissao: t.profissao ?? "",
+        renda: t.rendaAproximada != null ? String(t.rendaAproximada) : "",
+        endereco: t.endereco ?? "",
+      })),
+    );
+
+    setGuaranteeEntries(
+      (c.guarantees ?? []).map((g) => ({
+        key: crypto.randomUUID(),
+        tipo: g.tipo,
+        guarNome: g.guarantor?.nome ?? "",
+        guarTel: g.guarantor?.telefone ?? "",
+        guarEmail: g.guarantor?.email ?? "",
+        guarVinculo: g.guarantor?.vinculo ?? "",
+        valorCaucao: g.valorCaucao != null ? String(g.valorCaucao).replace(".", ",") : "",
+        seguroSeguradora: g.seguroSeguradora ?? "",
+        seguroApolice: g.seguroApolice ?? "",
+        seguroValor:
+          g.seguroValorMensal != null ? String(g.seguroValorMensal).replace(".", ",") : "",
+      })),
+    );
+
+    setValor(String(c.valorMensal).replace(".", ","));
+    setDataInicio(c.dataInicio.slice(0, 10));
+    setDataFim(c.dataFim.slice(0, 10));
+    setDia(String(c.diaVencimento));
+    setStatus(
+      c.status === "ativo" || c.status === "pendente_assinatura" ? c.status : "ativo",
+    );
+    setObs(c.observacoes ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
+      const parsedValor = parseBRLNumber(valor);
+      if (!Number.isFinite(parsedValor) || parsedValor <= 0) {
+        setError("Informe um valor mensal válido (ex.: 1.500,00).");
+        return;
+      }
+      const parsedArea = areaM2 ? parseBRLNumber(areaM2) : NaN;
       const input: RentalContractInput = {
+        ...(isEdit && initial ? { contractId: initial.id } : {}),
         property:
           propMode === "existing"
             ? { existingId: propId }
@@ -371,8 +453,8 @@ export function RentalFormModal({
                   quartos: quartos ? Number(quartos) : null,
                   banheiros: banheiros ? Number(banheiros) : null,
                   vagas: vagas ? Number(vagas) : null,
-                  areaM2: areaM2 ? Number(areaM2) : null,
-                  valorSugerido: valor ? Number(valor) : null,
+                  areaM2: Number.isFinite(parsedArea) ? parsedArea : null,
+                  valorSugerido: parsedValor,
                   status: "alugado",
                   observacoes: null,
                   brand: "cordial",
@@ -381,12 +463,12 @@ export function RentalFormModal({
         tenants: tenantEntries.map(tenantEntryToInput),
         guarantees: guaranteeEntries.map(guaranteeEntryToInput),
         garantiaTipo: guaranteeEntries[0]?.tipo ?? "sem_garantia",
-        valorMensal: Number(valor),
+        valorMensal: parsedValor,
         dataInicio,
         dataFim,
         diaVencimento: Number(dia),
         status,
-        paymentStatus: "pendente",
+        paymentStatus: initial?.paymentStatus ?? "pendente",
         proximoVencimento: null,
         observacoes: obs || null,
         brand: "cordial",
@@ -414,10 +496,12 @@ export function RentalFormModal({
               </div>
               <div>
                 <SheetTitle className="text-xl font-bold tracking-tight sm:text-2xl">
-                  Novo aluguel
+                  {isEdit ? "Editar aluguel" : "Novo aluguel"}
                 </SheetTitle>
                 <SheetDescription className="text-sm text-muted-foreground">
-                  Cadastre imóvel, locatários e contrato em um único fluxo.
+                  {isEdit
+                    ? "Atualize imóvel, locatários, garantias e condições do contrato."
+                    : "Cadastre imóvel, locatários e contrato em um único fluxo."}
                 </SheetDescription>
               </div>
             </div>
@@ -669,7 +753,9 @@ export function RentalFormModal({
                         </Field>
                         <Field label="Renda aproximada (R$)" className="sm:col-span-2">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0,00"
                             value={t.renda}
                             onChange={(e) => updateTenant(t.key, { renda: e.target.value })}
                             className={inputCls}
@@ -792,10 +878,9 @@ export function RentalFormModal({
                     {g.tipo === "caucao" && (
                       <Field label="Valor da caução (R$)">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           required
-                          min={0}
-                          step="0.01"
                           placeholder="0,00"
                           value={g.valorCaucao}
                           onChange={(e) =>
@@ -829,9 +914,8 @@ export function RentalFormModal({
                         </Field>
                         <Field label="Valor mensal do seguro (R$)">
                           <input
-                            type="number"
-                            min={0}
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0,00"
                             value={g.seguroValor}
                             onChange={(e) =>
@@ -869,11 +953,10 @@ export function RentalFormModal({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
                 <Field label="Valor mensal (R$)" className="sm:col-span-6">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     required
-                    min={0}
-                    step="0.01"
-                    placeholder="0,00"
+                    placeholder="1.500,00"
                     value={valor}
                     onChange={(e) => setValor(e.target.value)}
                     className={inputCls}
@@ -955,7 +1038,7 @@ export function RentalFormModal({
               disabled={isSaving}
               className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
             >
-              {isSaving ? "Salvando…" : "Cadastrar aluguel"}
+              {isSaving ? "Salvando…" : isEdit ? "Salvar alterações" : "Cadastrar aluguel"}
             </button>
           </div>
         </form>

@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Mail,
   MessageCircle,
+  Pencil,
   RotateCcw,
   Trash2,
   XCircle,
@@ -50,6 +51,7 @@ export function RentalExpandedDetails({
   onRenew,
   onMarkPaid,
   onDelete,
+  onEdit,
 }: {
   contract: RentalContractFull | null;
   open: boolean;
@@ -58,6 +60,7 @@ export function RentalExpandedDetails({
   onRenew: (id: string) => void;
   onMarkPaid: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit?: (contract: RentalContractFull) => void;
 }) {
   if (!contract) return null;
   const phone = (contract.tenant.telefone ?? "").replace(/\D/g, "");
@@ -211,6 +214,14 @@ export function RentalExpandedDetails({
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2">
+          {onEdit && (
+            <button
+              onClick={() => onEdit(contract)}
+              className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.99]"
+            >
+              <Pencil className="size-3.5" /> Editar aluguel
+            </button>
+          )}
           <button
             onClick={() => onMarkPaid(contract.id)}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 px-3 py-2.5 text-xs font-semibold text-emerald-700 active:scale-[0.99]"

@@ -29,6 +29,7 @@ function GuardedPage() {
 function Page() {
   const r = useRentals();
   const [openForm, setOpenForm] = useState(false);
+  const [editing, setEditing] = useState<RentalContractFull | null>(null);
   const [selected, setSelected] = useState<RentalContractFull | null>(null);
 
   return (
@@ -85,17 +86,26 @@ function Page() {
 
       <RentalFormModal
         open={openForm}
-        onOpenChange={setOpenForm}
+        onOpenChange={(o) => {
+          setOpenForm(o);
+          if (!o) setEditing(null);
+        }}
         properties={r.properties}
         tenants={r.tenants}
-        onSubmit={r.createRental}
+        onSubmit={r.saveRental}
         isSaving={r.isSaving}
+        initial={editing}
       />
 
       <RentalExpandedDetails
         contract={selected}
         open={selected !== null}
         onOpenChange={(o) => !o && setSelected(null)}
+        onEdit={(c) => {
+          setSelected(null);
+          setEditing(c);
+          setOpenForm(true);
+        }}
         onClose={async (id) => {
           await r.closeRental(id);
           setSelected(null);
