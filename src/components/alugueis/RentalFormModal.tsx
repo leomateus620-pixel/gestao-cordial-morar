@@ -696,25 +696,53 @@ export function RentalFormModal({
                       </div>
                     </div>
 
-                    {t.mode === "existing" ? (
-                      <Field label="Selecione o locatário">
-                        <select
-                          required
-                          value={t.existingId}
-                          onChange={(e) =>
-                            updateTenant(t.key, { existingId: e.target.value })
+                    {t.mode === "existing" && (
+                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <Field label="Selecione o locatário" className="flex-1">
+                          <select
+                            required
+                            value={t.existingId}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              const picked = tenants.find((x) => x.id === id);
+                              updateTenant(t.key, {
+                                existingId: id,
+                                nome: picked?.nome ?? "",
+                                telefone: picked?.telefone ?? "",
+                                email: picked?.email ?? "",
+                                cpfCnpj: picked?.cpfCnpj ?? "",
+                                profissao: picked?.profissao ?? "",
+                                renda:
+                                  picked?.rendaAproximada != null
+                                    ? String(picked.rendaAproximada).replace(".", ",")
+                                    : "",
+                                endereco: picked?.endereco ?? "",
+                              });
+                            }}
+                            className={inputCls}
+                          >
+                            <option value="">—</option>
+                            {tenants.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.nome}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateTenant(t.key, { editExisting: !t.editExisting })
                           }
-                          className={inputCls}
+                          disabled={!t.existingId}
+                          className="rounded-xl border border-border/70 bg-background px-3 py-2 text-xs font-semibold text-foreground/80 transition hover:bg-muted/60 disabled:opacity-40"
                         >
-                          <option value="">—</option>
-                          {tenants.map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {opt.nome}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    ) : (
+                          {t.editExisting ? "Ocultar edição" : "Editar dados"}
+                        </button>
+                      </div>
+                    )}
+
+                    {(t.mode === "new" || (t.mode === "existing" && t.editExisting)) && (
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Field label="Nome completo" className="sm:col-span-2">
                           <input
