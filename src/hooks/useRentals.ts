@@ -14,6 +14,7 @@ import {
   replaceRentalContract as replaceFn,
   updateRentalContract as updateFn,
 } from "@/lib/rentals/rentals.functions";
+import { useApp } from "@/store/app-store";
 import type {
   RentalContractFull,
   RentalContractInput,
@@ -94,11 +95,13 @@ export function useRentals() {
 
   const [filter, setFilter] = useState<RentalFilter>("todos");
   const [search, setSearch] = useState("");
+  const agency = useApp((s) => s.agency);
 
   const contracts = contractsQuery.data ?? [];
   const filtered = useMemo(() => {
     const today = new Date();
     return contracts.filter((c) => {
+      if (agency !== "todas" && c.brand !== agency && c.brand !== "ambas") return false;
       // status filter
       if (filter !== "todos") {
         if (filter === "ativos" && c.status !== "ativo") return false;
@@ -126,7 +129,7 @@ export function useRentals() {
       void today;
       return true;
     });
-  }, [contracts, filter, search]);
+  }, [contracts, filter, search, agency]);
 
   return {
     contracts: filtered,

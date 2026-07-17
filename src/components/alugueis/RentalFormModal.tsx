@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { parseBRLNumber } from "@/lib/format";
 import type {
+  RentalBrand,
   RentalContractFull,
   RentalContractGuaranteeInput,
   RentalContractInput,
@@ -321,6 +322,7 @@ export function RentalFormModal({
   const [dia, setDia] = useState("10");
   const [status, setStatus] = useState<"ativo" | "pendente_assinatura">("ativo");
   const [obs, setObs] = useState("");
+  const [brand, setBrand] = useState<RentalBrand>("cordial");
   const [error, setError] = useState<string | null>(null);
 
   function updateTenant(key: string, patch: Partial<TenantEntry>) {
@@ -369,6 +371,7 @@ export function RentalFormModal({
     setDia("10");
     setStatus("ativo");
     setObs("");
+    setBrand("cordial");
     setError(null);
   }
 
@@ -440,6 +443,7 @@ export function RentalFormModal({
       c.status === "ativo" || c.status === "pendente_assinatura" ? c.status : "ativo",
     );
     setObs(c.observacoes ?? "");
+    setBrand(c.brand ?? "cordial");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
@@ -476,7 +480,7 @@ export function RentalFormModal({
                   valorSugerido: parsedValor,
                   status: "alugado",
                   observacoes: null,
-                  brand: "cordial",
+                  brand,
                 },
               },
         tenants: tenantEntries.map(tenantEntryToInput),
@@ -490,7 +494,7 @@ export function RentalFormModal({
         paymentStatus: initial?.paymentStatus ?? "pendente",
         proximoVencimento: null,
         observacoes: obs || null,
-        brand: "cordial",
+        brand,
       };
       await onSubmit(input);
       reset();
@@ -1047,7 +1051,25 @@ export function RentalFormModal({
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Status" className="sm:col-span-6">
+                <Field label="Imobiliária responsável" className="sm:col-span-3">
+                  <div className="inline-flex w-full rounded-full bg-muted/70 p-1">
+                    {(["cordial", "morar"] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setBrand(b)}
+                        className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                          brand === b
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground/65 hover:text-foreground"
+                        }`}
+                      >
+                        {b === "cordial" ? "Cordial" : "Morar"}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Status" className="sm:col-span-3">
                   <select
                     value={status}
                     onChange={(e) =>
