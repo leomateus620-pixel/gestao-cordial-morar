@@ -1123,3 +1123,161 @@ export const deleteRentalContractDocument = createServerFn({ method: "POST" })
     await context.supabase.storage.from(DOCS_BUCKET).remove([path]);
     return { ok: true };
   });
+
+// ============================ REPLACE (edit full contract) ============================
+/**
+ * Rebuild a contract entirely: base fields + tenants + guarantees.
+ * Wipes join rows for the contract and re-inserts from input. Creates
+ * new tenants/guarantors on the fly when `existingId` is not provided.
+ */
+export const replaceRentalContract = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: RentalContractInput & { contractId: string }) => d)
+  .handler(async ({ data, context }): Promise<RentalContractFull> => {
+    if (!data.contractId) throw new Error("Contrato inválido para edição.");
+    validateInput(data);
+    const supabase = context.supabase;
+    const tenantsIn = normalizeTenants(data);
+    const guaranteesIn = normalizeGuarantees(data);
+
+    // 1. Property (allow swap or re-edit)
+    let propertyId = data.property.existingId ?? null;
+    if (!propertyId) {
+      const payload = { ...propertyPayload(data.property.data!), created_by: context.userId };
+      const { data: inserted, error } = await supabase
+        .from("rental_properties")
+        .insert(payload as never)
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      propertyId = (inserted as unknown as PropRow).id;
+    }
+
+    // 2. Tenants (resolve or insert)
+    const tenantIds: string[] = [];
+    for (const t of tenantsIn) {
+      if (t.existingId) {
+        tenantIds.push(t.existingId);
+      } else {
+        const payload = { ...tenantPayload(t.data!), created_by: context.userId };
+        const { data: inserted, error } = await supabase
+          .from("rental_tenants")
+          .insert(payload as never)
+          .select("*")
+          .single();
+        if (error) throw new Error(error.message);
+        tenantIds.push((inserted as unknown as TenantRow).id);
+      }
+    }
+    const primaryTenantId = tenantIds[0];
+
+    // 3. Guarantees: resolve fiador guarantors
+    type ResolvedGuarantee = RentalContractGuaranteeInput & { guarantorId: string | null };
+    const resolved: ResolvedGuarantee[] = [];
+    for (const g of guaranteesIn) {
+      let guarantorId: string | null = null;
+      if (g.tipo === "fiador") {
+        if (g.guarantor?.existingId) {
+          guarantorId = g.guarantor.existingId;
+        } else if (g.guarantor?.data?.nome?.trim()) {
+          const payload = { ...guarantorPayload(g.guarantor.data), created_by: context.userId };
+          const { data: inserted, error } = await supabase
+            .from("rental_guarantors")
+            .insert(payload as never)
+            .select("*")
+            .single();
+          if (error) throw new Error(error.message);
+          guarantorId = (inserted as unknown as GuarantorRow).id;
+        }
+      }
+      resolved.push({ ...g, guarantorId });
+    }
+    const primaryGuarantee = resolved[0] ?? null;
+
+    // 4. Update contract base row
+    const patch = {
+      property_id: propertyId,
+      tenant_id: primaryTenantId,
+      guarantor_id: primaryGuarantee?.guarantorId ?? null,
+      valor_mensal: Number(data.valorMensal),
+      valor_caucao:
+        primaryGuarantee?.tipo === "caucao" ? numOrNull(primaryGuarantee.valorCaucao) : null,
+      garantia_tipo: primaryGuarantee?.tipo ?? "sem_garantia",
+      seguro_seguradora:
+        primaryGuarantee?.tipo === "seguro_fianca"
+          ? orNull(primaryGuarantee.seguroSeguradora)
+          : null,
+      seguro_apolice:
+        primaryGuarantee?.tipo === "seguro_fianca"
+          ? orNull(primaryGuarantee.seguroApolice)
+          : null,
+      seguro_valor_mensal:
+        primaryGuarantee?.tipo === "seguro_fianca"
+          ? numOrNull(primaryGuarantee.seguroValorMensal)
+          : null,
+      data_inicio: data.dataInicio.slice(0, 10),
+      data_fim: data.dataFim.slice(0, 10),
+      dia_vencimento: data.diaVencimento,
+      status: data.status,
+      payment_status: data.paymentStatus ?? "pendente",
+      proximo_vencimento:
+        data.proximoVencimento ?? nextDueDate(data.dataInicio, data.diaVencimento),
+      observacoes: orNull(data.observacoes),
+      brand: data.brand ?? "cordial",
+    };
+    const { data: updated, error: uErr } = await supabase
+      .from("rental_contracts")
+      .update(patch as never)
+      .eq("id", data.contractId)
+      .select("*")
+      .single();
+    if (uErr) throw new Error(uErr.message);
+    const contractRow = updated as unknown as ContractRow;
+
+    // 5. Rebuild join rows — tenants
+    const { error: delTErr } = await supabase
+      .from("rental_contract_tenants")
+      .delete()
+      .eq("contract_id", contractRow.id);
+    if (delTErr) throw new Error(delTErr.message);
+    const rctPayload = tenantIds.map((tid, i) => ({
+      contract_id: contractRow.id,
+      tenant_id: tid,
+      is_primary: i === 0,
+      position: i,
+    }));
+    if (rctPayload.length > 0) {
+      const { error: rctErr } = await supabase
+        .from("rental_contract_tenants")
+        .insert(rctPayload as never);
+      if (rctErr) throw new Error(rctErr.message);
+    }
+
+    // 6. Rebuild join rows — guarantees
+    const { error: delGErr } = await supabase
+      .from("rental_contract_guarantors")
+      .delete()
+      .eq("contract_id", contractRow.id);
+    if (delGErr) throw new Error(delGErr.message);
+    const rcgPayload = resolved.map((g, i) => ({
+      contract_id: contractRow.id,
+      guarantor_id: g.guarantorId,
+      tipo: g.tipo,
+      valor_caucao: g.tipo === "caucao" ? numOrNull(g.valorCaucao) : null,
+      seguro_seguradora: g.tipo === "seguro_fianca" ? orNull(g.seguroSeguradora) : null,
+      seguro_apolice: g.tipo === "seguro_fianca" ? orNull(g.seguroApolice) : null,
+      seguro_valor_mensal:
+        g.tipo === "seguro_fianca" ? numOrNull(g.seguroValorMensal) : null,
+      is_primary: i === 0,
+      position: i,
+    }));
+    if (rcgPayload.length > 0) {
+      const { error: rcgErr } = await supabase
+        .from("rental_contract_guarantors")
+        .insert(rcgPayload as never);
+      if (rcgErr) throw new Error(rcgErr.message);
+    }
+
+    const full = await enrichContracts(supabase as unknown as SupabaseCtx, [contractRow]);
+    return full[0];
+  });
