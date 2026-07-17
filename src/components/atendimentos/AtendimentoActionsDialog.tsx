@@ -152,6 +152,10 @@ function FormBody({
   const [motivoLivre, setMotivoLivre] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = [...corretores]
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((c) => ({ id: c.id, label: c.nome }));
 
   useEffect(() => {
     setError(null);
