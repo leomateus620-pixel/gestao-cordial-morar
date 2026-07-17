@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Home,
   User,
@@ -16,7 +16,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { parseBRLNumber } from "@/lib/format";
 import type {
+  RentalContractFull,
   RentalContractGuaranteeInput,
   RentalContractInput,
   RentalContractTenantInput,
