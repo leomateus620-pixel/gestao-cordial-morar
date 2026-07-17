@@ -1051,7 +1051,25 @@ export function RentalFormModal({
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Status" className="sm:col-span-6">
+                <Field label="Imobiliária responsável" className="sm:col-span-3">
+                  <div className="inline-flex w-full rounded-full bg-muted/70 p-1">
+                    {(["cordial", "morar"] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setBrand(b)}
+                        className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                          brand === b
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground/65 hover:text-foreground"
+                        }`}
+                      >
+                        {b === "cordial" ? "Cordial" : "Morar"}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Status" className="sm:col-span-3">
                   <select
                     value={status}
                     onChange={(e) =>
