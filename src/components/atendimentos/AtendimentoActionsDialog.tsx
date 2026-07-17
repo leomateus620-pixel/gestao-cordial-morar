@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
-  atendimentoBrokerOptions,
   atendimentoProximoPassoOptions,
   type Atendimento,
   type ProximoPassoAtendimento,
 } from "@/types/atendimento";
+import { useApp } from "@/store/app-store";
 
 export type AtendimentoActionKind =
   | "vincular-corretor"
