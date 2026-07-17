@@ -443,6 +443,7 @@ export function RentalFormModal({
       c.status === "ativo" || c.status === "pendente_assinatura" ? c.status : "ativo",
     );
     setObs(c.observacoes ?? "");
+    setBrand(c.brand ?? "cordial");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
