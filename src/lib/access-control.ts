@@ -51,7 +51,7 @@ export function getPrimaryMobileModulesForProfile(profile: UserProfile | undefin
     case "corretor":
       return ["dashboard", "atendimentos", "clientes", "agenciamentos"];
     case "secretaria":
-      return ["dashboard", "atendimentos", "clientes", "marketing"];
+      return ["dashboard", "atendimentos", "clientes", "agenciamentos"];
     default:
       return ["dashboard", "atendimentos", "imoveis", "agenda"];
   }
