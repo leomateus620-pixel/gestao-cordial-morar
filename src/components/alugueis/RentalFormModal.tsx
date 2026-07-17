@@ -419,9 +419,11 @@ export function RentalFormModal({
         tipo: g.tipo,
         guarantorId: g.guarantor?.id ?? null,
         guarNome: g.guarantor?.nome ?? "",
+        guarCpfCnpj: g.guarantor?.cpfCnpj ?? "",
         guarTel: g.guarantor?.telefone ?? "",
         guarEmail: g.guarantor?.email ?? "",
         guarVinculo: g.guarantor?.vinculo ?? "",
+
         valorCaucao: g.valorCaucao != null ? String(g.valorCaucao).replace(".", ",") : "",
         seguroSeguradora: g.seguroSeguradora ?? "",
         seguroApolice: g.seguroApolice ?? "",
