@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { Check, ChevronRight, X } from "lucide-react";
 import {
   bedroomOptions,
-  brokerOptions,
   clientPurposeOptions,
   clientStatusOptions,
   clientTypeOptions,
@@ -20,6 +19,7 @@ import {
   type PropertyType,
   type RealEstateBrand,
 } from "@/types/client";
+import { useApp } from "@/store/app-store";
 import {
   formatCurrencyBR,
   formatPhoneBR,
