@@ -148,6 +148,7 @@ type TenantEntry = {
   key: string;
   mode: Mode;
   existingId: string;
+  editExisting: boolean;
   nome: string;
   telefone: string;
   email: string;
@@ -162,6 +163,7 @@ function newTenantEntry(): TenantEntry {
     key: crypto.randomUUID(),
     mode: "new",
     existingId: "",
+    editExisting: false,
     nome: "",
     telefone: "",
     email: "",
@@ -172,22 +174,29 @@ function newTenantEntry(): TenantEntry {
   };
 }
 
-function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
-  if (t.mode === "existing") return { existingId: t.existingId };
+function tenantDataFromEntry(t: TenantEntry) {
   const renda = t.renda ? parseBRLNumber(t.renda) : NaN;
   return {
-    data: {
-      nome: t.nome,
-      cpfCnpj: t.cpfCnpj || null,
-      telefone: t.telefone,
-      email: t.email || null,
-      dataNascimento: null,
-      endereco: t.endereco || null,
-      profissao: t.profissao || null,
-      rendaAproximada: Number.isFinite(renda) ? renda : null,
-      observacoes: null,
-    },
+    nome: t.nome,
+    cpfCnpj: t.cpfCnpj || null,
+    telefone: t.telefone,
+    email: t.email || null,
+    dataNascimento: null,
+    endereco: t.endereco || null,
+    profissao: t.profissao || null,
+    rendaAproximada: Number.isFinite(renda) ? renda : null,
+    observacoes: null,
   };
+}
+
+function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
+  if (t.mode === "existing") {
+    if (t.editExisting && t.nome.trim()) {
+      return { existingId: t.existingId, data: tenantDataFromEntry(t) };
+    }
+    return { existingId: t.existingId };
+  }
+  return { data: tenantDataFromEntry(t) };
 }
 
 // -------- Guarantee entry --------
@@ -195,7 +204,8 @@ type GuaranteeTipo = Exclude<RentalGuaranteeType, "sem_garantia">;
 type GuaranteeEntry = {
   key: string;
   tipo: GuaranteeTipo;
-  // fiador
+  // fiador — id existente (para atualizar em vez de duplicar)
+  guarantorId: string | null;
   guarNome: string;
   guarTel: string;
   guarEmail: string;
@@ -212,6 +222,7 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
   return {
     key: crypto.randomUUID(),
     tipo,
+    guarantorId: null,
     guarNome: "",
     guarTel: "",
     guarEmail: "",
@@ -225,20 +236,21 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
 
 function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput {
   if (g.tipo === "fiador") {
+    const data = {
+      nome: g.guarNome,
+      cpfCnpj: null,
+      telefone: g.guarTel || null,
+      email: g.guarEmail || null,
+      endereco: null,
+      profissao: null,
+      vinculo: g.guarVinculo || null,
+      observacoes: null,
+    };
     return {
       tipo: "fiador",
-      guarantor: {
-        data: {
-          nome: g.guarNome,
-          cpfCnpj: null,
-          telefone: g.guarTel || null,
-          email: g.guarEmail || null,
-          endereco: null,
-          profissao: null,
-          vinculo: g.guarVinculo || null,
-          observacoes: null,
-        },
-      },
+      guarantor: g.guarantorId
+        ? { existingId: g.guarantorId, data }
+        : { data },
     };
   }
   if (g.tipo === "caucao") {
@@ -387,12 +399,13 @@ export function RentalFormModal({
         key: crypto.randomUUID(),
         mode: "existing" as Mode,
         existingId: t.id,
+        editExisting: true,
         nome: t.nome,
         telefone: t.telefone,
         email: t.email ?? "",
         cpfCnpj: t.cpfCnpj ?? "",
         profissao: t.profissao ?? "",
-        renda: t.rendaAproximada != null ? String(t.rendaAproximada) : "",
+        renda: t.rendaAproximada != null ? String(t.rendaAproximada).replace(".", ",") : "",
         endereco: t.endereco ?? "",
       })),
     );
@@ -401,6 +414,7 @@ export function RentalFormModal({
       (c.guarantees ?? []).map((g) => ({
         key: crypto.randomUUID(),
         tipo: g.tipo,
+        guarantorId: g.guarantor?.id ?? null,
         guarNome: g.guarantor?.nome ?? "",
         guarTel: g.guarantor?.telefone ?? "",
         guarEmail: g.guarantor?.email ?? "",
@@ -686,25 +700,53 @@ export function RentalFormModal({
                       </div>
                     </div>
 
-                    {t.mode === "existing" ? (
-                      <Field label="Selecione o locatário">
-                        <select
-                          required
-                          value={t.existingId}
-                          onChange={(e) =>
-                            updateTenant(t.key, { existingId: e.target.value })
+                    {t.mode === "existing" && (
+                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <Field label="Selecione o locatário" className="flex-1">
+                          <select
+                            required
+                            value={t.existingId}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              const picked = tenants.find((x) => x.id === id);
+                              updateTenant(t.key, {
+                                existingId: id,
+                                nome: picked?.nome ?? "",
+                                telefone: picked?.telefone ?? "",
+                                email: picked?.email ?? "",
+                                cpfCnpj: picked?.cpfCnpj ?? "",
+                                profissao: picked?.profissao ?? "",
+                                renda:
+                                  picked?.rendaAproximada != null
+                                    ? String(picked.rendaAproximada).replace(".", ",")
+                                    : "",
+                                endereco: picked?.endereco ?? "",
+                              });
+                            }}
+                            className={inputCls}
+                          >
+                            <option value="">—</option>
+                            {tenants.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.nome}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateTenant(t.key, { editExisting: !t.editExisting })
                           }
-                          className={inputCls}
+                          disabled={!t.existingId}
+                          className="rounded-xl border border-border/70 bg-background px-3 py-2 text-xs font-semibold text-foreground/80 transition hover:bg-muted/60 disabled:opacity-40"
                         >
-                          <option value="">—</option>
-                          {tenants.map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {opt.nome}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    ) : (
+                          {t.editExisting ? "Ocultar edição" : "Editar dados"}
+                        </button>
+                      </div>
+                    )}
+
+                    {(t.mode === "new" || (t.mode === "existing" && t.editExisting)) && (
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Field label="Nome completo" className="sm:col-span-2">
                           <input

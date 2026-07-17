@@ -1,40 +1,32 @@
-## Objetivo
-1. Corrigir o bug onde valores digitados (ex.: `1500,00`) são salvos como `2` no cadastro/edição de aluguéis.
-2. Permitir editar contratos já cadastrados a partir do drawer de detalhes.
+## Diagnóstico
 
-## Diagnóstico do bug de valor
-O campo "Valor mensal" em `RentalFormModal.tsx` (linha 870) usa `<input type="number">`. Quando a usuária digita no formato pt-BR (`1.500,00` ou `1500,00`), o navegador em locale não pt-BR interpreta o `.` como separador decimal (`1.500` → `1.5`) ou descarta o valor. Combinado com `step="0.01"` e a formatação `brl(...)` sem casas decimais, o resultado é exibido como `R$ 2` (arredondamento de `1.5` para `2`, ou outro artefato de parsing).
+Ao **editar um aluguel**, o formulário exibe apenas um dropdown para o "Locatário principal" (modo `existing`), sem campos editáveis. Consequência:
 
-O mesmo problema existe nos campos "Valor caução" e "Seguro (mensal)".
+1. A **renda** (e demais dados: telefone, e-mail, CPF, profissão, endereço) do locatário **não pode ser corrigida** pela tela de edição do aluguel — o único jeito é criar um locatário novo.
+2. Mesmo se os campos aparecessem, o backend (`createRentalContract` / `replaceRentalContract` em `src/lib/rentals/rentals.functions.ts`) hoje ignora `data` quando `existingId` é enviado — só faz o INSERT do locatário quando não há `existingId`. O mesmo vale para fiadores.
 
-## Correção do valor
-- Trocar os inputs monetários por `<input type="text" inputMode="decimal">` com máscara/parse pt-BR:
-  - Aceitar `1.500,00`, `1500,00`, `1500.00`, `1500`.
-  - Função `parseBRLNumber(str)`: remove `R$`, espaços; se contém `,`, trata `.` como milhar e `,` como decimal; senão usa `.` como decimal.
-  - Aplicar no submit para `valorMensal`, `valorCaucao`, `seguroValorMensal`, `renda`.
-- Utilitário compartilhado em `src/lib/format.ts` (`parseBRLNumber`).
-- Validar `Number.isFinite(valor) && valor > 0` antes de enviar, com mensagem clara em caso de erro.
+Ou seja, o bug da renda que ainda persiste não é de parsing (o `parseBRLNumber` já está correto) — é que a edição do locatário simplesmente não é persistida.
 
-## Edição de aluguéis existentes
-- Refatorar `RentalFormModal` para aceitar prop opcional `initial?: RentalContractFull`:
-  - Quando presente, pré-preencher todos os campos (imóvel, locatários, garantias, contrato) e trocar o título para "Editar aluguel".
-  - No submit, se `initial` existir, chamar `updateRental` em vez de `createRental`.
-- Estender `updateRentalContract` (server function) para também atualizar:
-  - todos os locatários existentes (`rental_contract_tenants` + tabela `rental_tenants`),
-  - todas as garantias existentes (`rental_contract_guarantors` + `rental_guarantors`),
-  - permitir adicionar/remover itens nas listas (diff simples: reescrever join tables).
-  - Manter compatibilidade com colunas legadas (tenant/guarantor "principal" = índice 0).
-- Adicionar botão "Editar" no `RentalExpandedDetails.tsx` que fecha o drawer e abre o `RentalFormModal` em modo edição, passando o contrato selecionado.
-- Ajustar `_app.alugueis.tsx` para orquestrar estado `editing: RentalContractFull | null` e passar ao modal.
+## Mudanças
 
-## Arquivos afetados
-- `src/lib/format.ts` — adicionar `parseBRLNumber`.
-- `src/components/alugueis/RentalFormModal.tsx` — inputs monetários, prop `initial`, hidratação de estado, submit dual (create/update), título dinâmico.
-- `src/components/alugueis/RentalExpandedDetails.tsx` — botão "Editar" + callback `onEdit`.
-- `src/routes/_app.alugueis.tsx` — estado de edição e wiring.
-- `src/lib/rentals/rentals.functions.ts` — expandir `updateRentalContract` para múltiplos locatários/garantias.
-- `src/hooks/useRentals.ts` — expor `updateRental` já existente (verificar assinatura); ajustar se necessário.
+### 1. `src/types/rental.ts`
+- Em `RentalContractTenantInput`: permitir `existingId` **e** `data` juntos (edição de locatário existente).
+- Em `RentalContractGuaranteeInput.guarantor`: idem.
 
-## Fora do escopo
-- Não altero design geral do modal nem do drawer.
-- Não altero fluxo de documentos, pagamentos, encerramento ou renovação.
+### 2. `src/lib/rentals/rentals.functions.ts` (create e replace)
+- Ao processar cada tenant: se vier `existingId` + `data`, executar `UPDATE rental_tenants SET ... WHERE id = existingId` (respeitando RLS) antes de vincular ao contrato.
+- Mesma lógica para `rental_guarantors` quando `tipo === "fiador"` e vier `existingId` + `data`.
+- Não alterar comportamento quando só vem `existingId` (sem `data`) ou só `data`.
+
+### 3. `src/components/alugueis/RentalFormModal.tsx`
+- No bloco de cada locatário em modo `existing`, adicionar um botão/toggle **"Editar dados do locatário"** que revela os mesmos campos de "Novo" (nome, telefone, e-mail, CPF, profissão, **renda com `parseBRLNumber`**, endereço) já pré-preenchidos.
+- No submit, quando o toggle estiver ativo, enviar `{ existingId, data: { ... } }` para que o backend atualize.
+- Ao abrir em modo edição do aluguel: manter `mode: "existing"` (não muda seleção), mas deixar os campos já disponíveis para revisão.
+- Repetir o mesmo padrão para fiadores existentes.
+
+### 4. Sem mudanças em UI de listagem/drawer
+O `RentalExpandedDetails` já reflete os dados do locatário direto do banco, então as correções aparecem automaticamente após salvar.
+
+## Fora de escopo
+- Não redesenhar o formulário nem mexer em outros módulos.
+- Não alterar policies/schema — apenas UPDATE em tabelas já existentes com RLS já configurada.
