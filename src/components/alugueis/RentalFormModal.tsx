@@ -148,6 +148,7 @@ type TenantEntry = {
   key: string;
   mode: Mode;
   existingId: string;
+  editExisting: boolean;
   nome: string;
   telefone: string;
   email: string;
@@ -162,6 +163,7 @@ function newTenantEntry(): TenantEntry {
     key: crypto.randomUUID(),
     mode: "new",
     existingId: "",
+    editExisting: false,
     nome: "",
     telefone: "",
     email: "",
@@ -172,22 +174,29 @@ function newTenantEntry(): TenantEntry {
   };
 }
 
-function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
-  if (t.mode === "existing") return { existingId: t.existingId };
+function tenantDataFromEntry(t: TenantEntry) {
   const renda = t.renda ? parseBRLNumber(t.renda) : NaN;
   return {
-    data: {
-      nome: t.nome,
-      cpfCnpj: t.cpfCnpj || null,
-      telefone: t.telefone,
-      email: t.email || null,
-      dataNascimento: null,
-      endereco: t.endereco || null,
-      profissao: t.profissao || null,
-      rendaAproximada: Number.isFinite(renda) ? renda : null,
-      observacoes: null,
-    },
+    nome: t.nome,
+    cpfCnpj: t.cpfCnpj || null,
+    telefone: t.telefone,
+    email: t.email || null,
+    dataNascimento: null,
+    endereco: t.endereco || null,
+    profissao: t.profissao || null,
+    rendaAproximada: Number.isFinite(renda) ? renda : null,
+    observacoes: null,
   };
+}
+
+function tenantEntryToInput(t: TenantEntry): RentalContractTenantInput {
+  if (t.mode === "existing") {
+    if (t.editExisting && t.nome.trim()) {
+      return { existingId: t.existingId, data: tenantDataFromEntry(t) };
+    }
+    return { existingId: t.existingId };
+  }
+  return { data: tenantDataFromEntry(t) };
 }
 
 // -------- Guarantee entry --------
