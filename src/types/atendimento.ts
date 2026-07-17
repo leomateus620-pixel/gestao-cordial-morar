@@ -170,15 +170,6 @@ export const atendimentoProximoPassoOptions = [
   { value: "outro", label: "Outro" },
 ] as const;
 
-export const atendimentoBrokerOptions = [
-  { id: "ricardo", label: "Ricardo" },
-  { id: "bruna", label: "Bruna" },
-  { id: "bianca", label: "Bianca" },
-  { id: "felipe", label: "Felipe" },
-  { id: "marcos", label: "Marcos" },
-  { id: "paula", label: "Paula" },
-  { id: "a_definir", label: "A definir" },
-] as const;
 
 function optionLabel<T extends string>(options: readonly { value: T; label: string }[], value: T) {
   return options.find((option) => option.value === value)?.label ?? value;
