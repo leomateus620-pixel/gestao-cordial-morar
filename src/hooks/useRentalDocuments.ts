@@ -1,30 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
 import {
   deleteRentalContractDocument,
   listRentalContractDocuments,
-  uploadRentalContractDocument,
+  registerRentalContractDocument,
 } from "@/lib/rentals/rentals.functions";
 import type { RentalContractDocument } from "@/types/rental";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
+const DOCS_BUCKET = "rental-documents";
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const r = String(reader.result ?? "");
-      resolve(r.includes(",") ? r.split(",")[1] : r);
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+function sanitize(name: string) {
+  return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
 }
 
 export function useRentalDocuments(contractId: string | null) {
   const qc = useQueryClient();
   const list = useServerFn(listRentalContractDocuments);
-  const upload = useServerFn(uploadRentalContractDocument);
+  const register = useServerFn(registerRentalContractDocument);
   const remove = useServerFn(deleteRentalContractDocument);
 
   const query = useQuery<RentalContractDocument[]>({
@@ -37,16 +31,34 @@ export function useRentalDocuments(contractId: string | null) {
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       if (!contractId) throw new Error("Contrato inválido.");
-      if (file.size > MAX_BYTES) throw new Error("Arquivo excede 10 MB.");
-      const base64 = await fileToBase64(file);
-      return upload({
-        data: {
-          contractId,
-          fileName: file.name,
-          mimeType: file.type || "application/octet-stream",
-          base64,
-        },
-      });
+      if (file.size <= 0) throw new Error("Arquivo vazio.");
+      if (file.size > MAX_BYTES) throw new Error("Arquivo excede 50 MB.");
+
+      const safeName = sanitize(file.name);
+      const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
+      const contentType = file.type || "application/octet-stream";
+
+      // Direct upload to Storage (bypasses server-function payload limits).
+      const { error: upErr } = await supabase.storage
+        .from(DOCS_BUCKET)
+        .upload(filePath, file, { contentType, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+
+      try {
+        return await register({
+          data: {
+            contractId,
+            fileName: file.name,
+            filePath,
+            mimeType: contentType,
+            sizeBytes: file.size,
+          },
+        });
+      } catch (e) {
+        // Rollback the storage object if metadata insert fails.
+        await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
+        throw e;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rentals", "documents", contractId] });
