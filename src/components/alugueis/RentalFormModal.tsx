@@ -494,7 +494,7 @@ export function RentalFormModal({
         paymentStatus: initial?.paymentStatus ?? "pendente",
         proximoVencimento: null,
         observacoes: obs || null,
-        brand: "cordial",
+        brand,
       };
       await onSubmit(input);
       reset();
