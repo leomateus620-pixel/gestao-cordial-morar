@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { parseBRLNumber } from "@/lib/format";
 import type {
+  RentalBrand,
   RentalContractFull,
   RentalContractGuaranteeInput,
   RentalContractInput,
