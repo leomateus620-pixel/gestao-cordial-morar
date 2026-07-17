@@ -29,6 +29,7 @@ function GuardedPage() {
 function Page() {
   const r = useRentals();
   const [openForm, setOpenForm] = useState(false);
+  const [editing, setEditing] = useState<RentalContractFull | null>(null);
   const [selected, setSelected] = useState<RentalContractFull | null>(null);
 
   return (
