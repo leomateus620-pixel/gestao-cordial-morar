@@ -1,10 +1,16 @@
 ## Objetivo
-Remover os 3 clientes de teste (Leonardo Almeida, Leonardo Mateus, Ricardinho Zimermann) da tabela `public.clients` para deixar a lista pronta para uso real.
+Liberar o menu **Aluguéis** para o perfil `secretaria` (Bianca), com todas as funcionalidades do módulo (leitura e escrita), mantendo a mesma capacidade dos demais perfis operacionais.
 
-## Ação
-- Executar `DELETE FROM public.clients` filtrando pelos nomes acima.
-- Sem alterações de schema, RLS, código ou UI.
+## Alteração
+Arquivo único: `src/lib/mock/permissions.ts` — bloco `secretaria`:
+- Adicionar `"alugueis"` ao array `modules`.
+- Adicionar `"alugueis:read"` e `"alugueis:write"` ao array `permissions`.
 
-## Impacto
-- O menu "Clientes" passa a exibir apenas registros reais.
-- Ação irreversível.
+Isso é suficiente porque:
+- `RequireModuleAccess` (usado em `/alugueis`) e o sidebar/mobile nav consultam `canAccessModule` → derivado de `roleDefinitions[perfil].modules`.
+- Não há checagem server-side por perfil nas server functions de aluguéis; as RLS já autorizam usuários autenticados a criar/editar seus próprios registros, então a secretaria terá CRUD completo assim que o módulo for exposto.
+
+## Fora de escopo
+- Não altero navegação mobile primária (Aluguéis fica acessível via "Mais").
+- Não altero permissões dos outros perfis.
+- Nenhuma migração de banco.
