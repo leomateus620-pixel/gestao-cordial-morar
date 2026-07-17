@@ -480,7 +480,7 @@ export function RentalFormModal({
                   valorSugerido: parsedValor,
                   status: "alugado",
                   observacoes: null,
-                  brand: "cordial",
+                  brand,
                 },
               },
         tenants: tenantEntries.map(tenantEntryToInput),
