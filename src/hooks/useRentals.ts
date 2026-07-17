@@ -95,11 +95,13 @@ export function useRentals() {
 
   const [filter, setFilter] = useState<RentalFilter>("todos");
   const [search, setSearch] = useState("");
+  const agency = useApp((s) => s.agency);
 
   const contracts = contractsQuery.data ?? [];
   const filtered = useMemo(() => {
     const today = new Date();
     return contracts.filter((c) => {
+      if (agency !== "todas" && c.brand !== agency && c.brand !== "ambas") return false;
       // status filter
       if (filter !== "todos") {
         if (filter === "ativos" && c.status !== "ativo") return false;
