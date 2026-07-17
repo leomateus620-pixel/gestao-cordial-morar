@@ -209,9 +209,7 @@ function FormBody({
             className={inputClass}
           >
             <option value="">Selecione...</option>
-            {atendimentoBrokerOptions
-              .filter((o) => o.id !== "a_definir")
-              .map((o) => (
+            {brokerOptions.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.label}
                 </option>
