@@ -33,6 +33,10 @@ export function AtendimentoFilters({
   onFiltersChange: (filters: AtendimentoFiltersState) => void;
 }) {
   const [showFilters, setShowFilters] = useState(false);
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = [...corretores]
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((c) => ({ id: c.id, label: c.nome }));
   const isDefault = JSON.stringify(filters) === JSON.stringify(defaultAtendimentoFilters);
   const activeSecondary = [
     filters.finalidade,
