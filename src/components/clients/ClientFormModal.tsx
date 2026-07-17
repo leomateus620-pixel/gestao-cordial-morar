@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { Check, ChevronRight, X } from "lucide-react";
 import {
   bedroomOptions,
-  brokerOptions,
   clientPurposeOptions,
   clientStatusOptions,
   clientTypeOptions,
@@ -20,6 +19,7 @@ import {
   type PropertyType,
   type RealEstateBrand,
 } from "@/types/client";
+import { useApp } from "@/store/app-store";
 import {
   formatCurrencyBR,
   formatPhoneBR,
@@ -38,7 +38,6 @@ type FormState = {
   leadOrigin: LeadOrigin;
   brand: RealEstateBrand;
   assignedBrokerId: string;
-  customBrokerName: string;
   status: ClientStatus;
   purpose: ClientPurpose;
   propertyType: PropertyType;
@@ -63,8 +62,7 @@ const initialForm: FormState = {
   contactPreference: "whatsapp",
   leadOrigin: "whatsapp",
   brand: "cordial",
-  assignedBrokerId: "ricardo",
-  customBrokerName: "",
+  assignedBrokerId: "a_definir",
   status: "novo",
   purpose: "compra",
   propertyType: "apartamento",
@@ -92,6 +90,15 @@ export function ClientFormModal({
   onOpenChange: (open: boolean) => void;
   onSubmit: (client: ClientCreateInput) => void | Promise<void>;
 }) {
+  const corretores = useApp((state) => state.corretores);
+  const brokerOptions = useMemo(
+    () =>
+      [...corretores]
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+        .map((c) => ({ id: c.id, label: c.nome }))
+        .concat({ id: "a_definir", label: "A definir" }),
+    [corretores],
+  );
   const [form, setForm] = useState<FormState>(initialForm);
   const [validation, setValidation] = useState<ClientValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
@@ -100,9 +107,8 @@ export function ClientFormModal({
   const closeTimer = useRef<number | null>(null);
 
   const brokerName = useMemo(() => {
-    if (form.assignedBrokerId === "outro") return form.customBrokerName.trim() || "Outro";
     return brokerOptions.find((broker) => broker.id === form.assignedBrokerId)?.label;
-  }, [form.assignedBrokerId, form.customBrokerName]);
+  }, [brokerOptions, form.assignedBrokerId]);
 
   const requestClose = useCallback(() => {
     if (closing) return;
@@ -366,27 +372,6 @@ export function ClientFormModal({
                     ))}
                   </select>
                 </Field>
-                {form.assignedBrokerId === "outro" ? (
-                  <Field label="Nome do corretor">
-                    <input
-                      value={form.customBrokerName}
-                      onChange={(event) => update("customBrokerName", event.target.value)}
-                      className={inputClass()}
-                      placeholder="Nome"
-                    />
-                  </Field>
-                ) : (
-                  <Field label="Status atual" error={validation.status}>
-                    <Select
-                      value={form.status}
-                      onChange={(value) => update("status", value as ClientStatus)}
-                      options={clientStatusOptions}
-                    />
-                  </Field>
-                )}
-              </div>
-
-              {form.assignedBrokerId === "outro" && (
                 <Field label="Status atual" error={validation.status}>
                   <Select
                     value={form.status}
@@ -394,7 +379,7 @@ export function ClientFormModal({
                     options={clientStatusOptions}
                   />
                 </Field>
-              )}
+              </div>
             </FormSection>
 
             <FormSection
