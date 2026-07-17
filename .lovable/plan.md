@@ -1,15 +1,10 @@
 ## Objetivo
-Limpar todos os atendimentos de teste atualmente cadastrados no banco, para iniciar o uso real do módulo com a lista zerada.
+Remover os 3 clientes de teste (Leonardo Almeida, Leonardo Mateus, Ricardinho Zimermann) da tabela `public.clients` para deixar a lista pronta para uso real.
 
 ## Ação
-- Executar um `DELETE` em `public.attendances` removendo 100% dos registros existentes.
-- Nenhuma alteração de schema, RLS, código ou UI. Estrutura, políticas e fluxos permanecem intactos.
+- Executar `DELETE FROM public.clients` filtrando pelos nomes acima.
+- Sem alterações de schema, RLS, código ou UI.
 
 ## Impacto
-- O menu "Atendimentos" passa a exibir lista vazia imediatamente após execução.
-- Novos atendimentos criados pelos corretores/admins serão os primeiros registros reais.
-- Ação irreversível — os atendimentos atuais serão perdidos (confirmado como dados de teste).
-
-## Fora de escopo
-- Não zerar clientes, agenciamentos, vendas, aluguéis ou financeiro.
-- Não alterar seeds nem mocks (já removidos anteriormente).
+- O menu "Clientes" passa a exibir apenas registros reais.
+- Ação irreversível.
