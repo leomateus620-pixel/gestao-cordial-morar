@@ -207,6 +207,7 @@ type GuaranteeEntry = {
   // fiador — id existente (para atualizar em vez de duplicar)
   guarantorId: string | null;
   guarNome: string;
+  guarCpfCnpj: string;
   guarTel: string;
   guarEmail: string;
   guarVinculo: string;
@@ -224,6 +225,7 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
     tipo,
     guarantorId: null,
     guarNome: "",
+    guarCpfCnpj: "",
     guarTel: "",
     guarEmail: "",
     guarVinculo: "",
@@ -238,7 +240,7 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
   if (g.tipo === "fiador") {
     const data = {
       nome: g.guarNome,
-      cpfCnpj: null,
+      cpfCnpj: g.guarCpfCnpj || null,
       telefone: g.guarTel || null,
       email: g.guarEmail || null,
       endereco: null,
@@ -246,6 +248,7 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
       vinculo: g.guarVinculo || null,
       observacoes: null,
     };
+
     return {
       tipo: "fiador",
       guarantor: g.guarantorId
