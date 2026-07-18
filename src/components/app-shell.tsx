@@ -17,6 +17,7 @@ export function AppShell() {
   useHydrateCorretores();
   const session = useSession();
   const authReady = useAuthReady();
+  const hasAuthSession = useHasAuthSession();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,8 +33,10 @@ export function AppShell() {
   );
 
   useEffect(() => {
-    if (authReady && session === null) navigate({ to: "/login" });
-  }, [authReady, session, navigate]);
+    // Only redirect when Supabase itself confirms there is no session.
+    // A missing profile row (transient DB error) must not log the user out.
+    if (authReady && !hasAuthSession) navigate({ to: "/login" });
+  }, [authReady, hasAuthSession, navigate]);
 
   useEffect(() => {
     let ticking = false;
