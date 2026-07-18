@@ -80,6 +80,37 @@ const initialForm: FormState = {
   nextFollowUpAt: "",
 };
 
+function fromClient(client: Client): FormState {
+  const toCurrency = (n: number | undefined) =>
+    typeof n === "number" && !Number.isNaN(n) ? formatCurrencyBR(n) : "";
+  return {
+    fullName: client.fullName ?? "",
+    phone: client.phone ? formatPhoneBR(client.phone) : "",
+    email: client.email ?? "",
+    clientType: client.clientType,
+    contactPreference: client.contactPreference,
+    leadOrigin: client.leadOrigin,
+    brand: client.brand,
+    assignedBrokerId: client.assignedBrokerId ?? "a_definir",
+    status: client.status,
+    purpose: client.purpose,
+    propertyType: client.propertyType,
+    bedrooms: client.bedrooms ?? "nao_aplica",
+    neighborhood: client.neighborhood ?? "",
+    minBudget: toCurrency(client.minBudget),
+    maxBudget: toCurrency(client.maxBudget),
+    document: client.document ?? "",
+    approximateIncome: toCurrency(client.approximateIncome),
+    profession: client.profession ?? "",
+    notes: client.notes ?? "",
+    restrictions: client.restrictions ?? "",
+    nextStep: client.nextStep ?? "",
+    nextFollowUpAt: client.nextFollowUpAt
+      ? new Date(client.nextFollowUpAt).toISOString().slice(0, 16)
+      : "",
+  };
+}
+
 const sections = ["Identificação", "Origem e vínculo", "Interesse", "Complementares"] as const;
 
 export function ClientFormModal({
