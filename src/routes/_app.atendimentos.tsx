@@ -20,6 +20,7 @@ import {
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
+import { markAttendanceOpened } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import type {
