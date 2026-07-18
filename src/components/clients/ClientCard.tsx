@@ -1,4 +1,4 @@
-import { Building2, CalendarClock, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { Building2, CalendarClock, Mail, MapPin, Pencil, Phone, UserRound } from "lucide-react";
 import { memo, type ReactNode } from "react";
 import {
   clientCommercialText,
@@ -56,7 +56,13 @@ const originTone: Record<LeadOrigin, string> = {
   outro: "bg-zinc-600/10 text-zinc-700",
 };
 
-function ClientCardImpl({ client }: { client: Client }) {
+function ClientCardImpl({
+  client,
+  onEdit,
+}: {
+  client: Client;
+  onEdit?: (client: Client) => void;
+}) {
   const broker = client.assignedBrokerName || "Não definido";
 
   return (
@@ -74,7 +80,23 @@ function ClientCardImpl({ client }: { client: Client }) {
           </div>
         </div>
 
-        <Badge className={statusTone[client.status]}>{clientStatusLabel(client.status)}</Badge>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onEdit(client);
+              }}
+              aria-label={`Editar ${client.fullName}`}
+              className="grid size-8 place-items-center rounded-full bg-white/65 text-foreground/60 shadow-sm transition hover:bg-white hover:text-teal-800 active:scale-95"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          )}
+          <Badge className={statusTone[client.status]}>{clientStatusLabel(client.status)}</Badge>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">

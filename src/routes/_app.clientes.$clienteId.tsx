@@ -1,6 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, FileText, Home, Mail, Phone, UserRound } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, CalendarDays, FileText, Home, Mail, Pencil, Phone, UserRound } from "lucide-react";
+import { ClientFormModal } from "@/components/clients/ClientFormModal";
+import { updateClient as updateClientFn } from "@/lib/clients/clients.functions";
+import type { ClientCreateInput } from "@/types/client";
 import { StatusBadge } from "@/components/status-badge";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
@@ -26,6 +32,10 @@ const tabs = ["Resumo", "Atendimentos", "Imóveis", "Contratos", "Documentos"] a
 function Page() {
   const { clienteId } = Route.useParams();
   const user = useSession();
+  const queryClient = useQueryClient();
+  const updateFn = useServerFn(updateClientFn);
+  const [editing, setEditing] = useState(false);
+
   const clientsQuery = useQuery({
     queryKey: CLIENTS_QUERY_KEY,
     queryFn: () => listClients(),
@@ -37,17 +47,53 @@ function Page() {
   const imoveis = useApp((s) => s.imoveis);
   const contratos = useApp((s) => s.contratos.filter((c) => c.clienteId === clienteId));
 
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: string; patch: Partial<ClientCreateInput> }) =>
+      updateFn({ data: vars }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
+    },
+  });
+
   if (clientsQuery.isLoading) return <Empty message="Carregando cliente..." />;
   if (!cliente) return <Empty message="Cliente não encontrado." />;
 
+  const canEdit =
+    Boolean(user) &&
+    (user!.perfil === "admin_owner" ||
+      user!.perfil === "financeiro_admin" ||
+      cliente.createdBy === user!.id);
+
+  async function handleSave(input: ClientCreateInput) {
+    try {
+      await updateMutation.mutateAsync({ id: cliente!.id, patch: input });
+      toast.success(`Cadastro de ${input.fullName} atualizado.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Não foi possível atualizar o cliente.";
+      toast.error(message);
+      throw err;
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <Link
-        to="/clientes"
-        className="inline-flex items-center gap-2 text-xs font-semibold text-foreground/55"
-      >
-        <ArrowLeft className="size-4" /> Clientes
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          to="/clientes"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-foreground/55"
+        >
+          <ArrowLeft className="size-4" /> Clientes
+        </Link>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-teal-700/10 px-3 py-1.5 text-[11px] font-semibold text-teal-800 shadow-sm transition hover:bg-teal-700/15 active:scale-[0.98]"
+          >
+            <Pencil className="size-3.5" /> Editar cliente
+          </button>
+        )}
+      </div>
       <section className="grid gap-4 md:grid-cols-[280px_1fr]">
         <aside className="glass-panel rounded-3xl p-4 md:sticky md:top-32 md:self-start">
           <div className="grid size-16 place-items-center rounded-2xl bg-primary/12 text-lg font-bold text-primary">
@@ -162,6 +208,17 @@ function Page() {
           </Card>
         </div>
       </section>
+
+      {editing && (
+        <ClientFormModal
+          open={editing}
+          onOpenChange={(next) => {
+            if (!next) setEditing(false);
+          }}
+          onSubmit={handleSave}
+          initialClient={cliente}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { ClientCreateCard } from "@/components/clients/ClientCreateCard";
 import { ClientFilters } from "@/components/clients/ClientFilters";
@@ -11,8 +11,9 @@ import {
   useClients,
   type ClientFilters as ClientFiltersState,
 } from "@/hooks/useClients";
+import { useSession } from "@/lib/auth-mock";
 import { useApp } from "@/store/app-store";
-import type { ClientCreateInput } from "@/types/client";
+import type { Client, ClientCreateInput } from "@/types/client";
 
 export const Route = createFileRoute("/_app/clientes")({
   head: () => ({ meta: [{ title: "Clientes — Gestão Cordial" }] }),
@@ -20,7 +21,9 @@ export const Route = createFileRoute("/_app/clientes")({
 });
 
 function Page() {
+  const session = useSession();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Client | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<ClientFiltersState>(defaultClientFilters);
   const setAgency = useApp((state) => state.setAgency);
@@ -30,10 +33,20 @@ function Page() {
     filteredClients,
     stats,
     addClient,
+    updateClient,
     isLoading,
     isError,
     error,
   } = useClients(query, filters);
+
+  const canEditClient = useCallback(
+    (client: Client) => {
+      if (!session) return false;
+      if (session.perfil === "admin_owner" || session.perfil === "financeiro_admin") return true;
+      return client.createdBy === session.id;
+    },
+    [session],
+  );
 
   async function createClient(client: ClientCreateInput) {
     try {
@@ -45,6 +58,29 @@ function Page() {
       throw err;
     }
   }
+
+  async function saveEdit(input: ClientCreateInput) {
+    if (!editing) return;
+    try {
+      await updateClient({ id: editing.id, patch: input });
+      toast.success(`Cadastro de ${input.fullName} atualizado.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Não foi possível atualizar o cliente.";
+      toast.error(message);
+      throw err;
+    }
+  }
+
+  const handleEditRequest = useCallback(
+    (client: Client) => {
+      if (!canEditClient(client)) {
+        toast.error("Você só pode editar cadastros que você criou.");
+        return;
+      }
+      setEditing(client);
+    },
+    [canEditClient],
+  );
 
   const hasAnyClient = clients.length > 0;
   const hasFiltersOrSearch =
@@ -89,11 +125,22 @@ function Page() {
             clients={filteredClients}
             isLoading={isLoading}
             error={isError ? (error?.message ?? "Erro ao carregar clientes.") : null}
+            onEdit={handleEditRequest}
           />
         )}
       </section>
 
       {open && <ClientFormModal open={open} onOpenChange={setOpen} onSubmit={createClient} />}
+      {editing && (
+        <ClientFormModal
+          open={Boolean(editing)}
+          onOpenChange={(next) => {
+            if (!next) setEditing(null);
+          }}
+          onSubmit={saveEdit}
+          initialClient={editing}
+        />
+      )}
     </div>
   );
 }

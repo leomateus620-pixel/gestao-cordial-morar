@@ -55,6 +55,7 @@ const orUndef = <T,>(v: T | null | undefined): T | undefined =>
 function rowToClient(row: DbRow): Client {
   return {
     id: row.id,
+    createdBy: row.created_by,
     fullName: row.full_name,
     phone: row.phone,
     email: orUndef(row.email),

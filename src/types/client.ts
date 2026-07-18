@@ -38,6 +38,7 @@ export type ClientStatus =
 
 export interface Client {
   id: string;
+  createdBy?: string;
   fullName: string;
   phone: string;
   email?: string;
@@ -65,7 +66,7 @@ export interface Client {
   updatedAt: string;
 }
 
-export type ClientCreateInput = Omit<Client, "id" | "createdAt" | "updatedAt">;
+export type ClientCreateInput = Omit<Client, "id" | "createdBy" | "createdAt" | "updatedAt">;
 
 export const clientTypeOptions = [
   { value: "comprador", label: "Comprador" },

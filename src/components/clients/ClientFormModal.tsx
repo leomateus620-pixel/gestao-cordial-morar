@@ -10,6 +10,7 @@ import {
   propertyTypeOptions,
   realEstateBrandOptions,
   type BedroomOption,
+  type Client,
   type ClientCreateInput,
   type ClientPurpose,
   type ClientStatus,
@@ -79,17 +80,51 @@ const initialForm: FormState = {
   nextFollowUpAt: "",
 };
 
+function fromClient(client: Client): FormState {
+  const toCurrency = (n: number | undefined) =>
+    typeof n === "number" && !Number.isNaN(n) ? formatCurrencyBR(n) : "";
+  return {
+    fullName: client.fullName ?? "",
+    phone: client.phone ? formatPhoneBR(client.phone) : "",
+    email: client.email ?? "",
+    clientType: client.clientType,
+    contactPreference: client.contactPreference,
+    leadOrigin: client.leadOrigin,
+    brand: client.brand,
+    assignedBrokerId: client.assignedBrokerId ?? "a_definir",
+    status: client.status,
+    purpose: client.purpose,
+    propertyType: client.propertyType,
+    bedrooms: client.bedrooms ?? "nao_aplica",
+    neighborhood: client.neighborhood ?? "",
+    minBudget: toCurrency(client.minBudget),
+    maxBudget: toCurrency(client.maxBudget),
+    document: client.document ?? "",
+    approximateIncome: toCurrency(client.approximateIncome),
+    profession: client.profession ?? "",
+    notes: client.notes ?? "",
+    restrictions: client.restrictions ?? "",
+    nextStep: client.nextStep ?? "",
+    nextFollowUpAt: client.nextFollowUpAt
+      ? new Date(client.nextFollowUpAt).toISOString().slice(0, 16)
+      : "",
+  };
+}
+
 const sections = ["Identificação", "Origem e vínculo", "Interesse", "Complementares"] as const;
 
 export function ClientFormModal({
   open,
   onOpenChange,
   onSubmit,
+  initialClient,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (client: ClientCreateInput) => void | Promise<void>;
+  initialClient?: Client | null;
 }) {
+  const isEdit = Boolean(initialClient);
   const corretores = useApp((state) => state.corretores);
   const brokerOptions = useMemo(
     () =>
@@ -99,7 +134,9 @@ export function ClientFormModal({
         .concat({ id: "a_definir", label: "A definir" }),
     [corretores],
   );
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>(() =>
+    initialClient ? fromClient(initialClient) : initialForm,
+  );
   const [validation, setValidation] = useState<ClientValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
@@ -121,6 +158,10 @@ export function ClientFormModal({
 
   useEffect(() => {
     if (open) {
+      // Re-hydrate the form each time the modal opens so switching between
+      // "new" and "edit different clients" always shows the correct data.
+      setForm(initialClient ? fromClient(initialClient) : initialForm);
+      setValidation({});
       setMounted(true);
       setClosing(false);
       return;
@@ -133,7 +174,8 @@ export function ClientFormModal({
       setClosing(false);
     }, 160);
     return () => window.clearTimeout(t);
-  }, [open, mounted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialClient?.id]);
 
   useEffect(() => {
     return () => {
@@ -204,7 +246,7 @@ export function ClientFormModal({
     setSaving(true);
     try {
       await onSubmit(input);
-      setForm(initialForm);
+      if (!isEdit) setForm(initialForm);
       setValidation({});
       requestClose();
     } catch {
@@ -240,9 +282,11 @@ export function ClientFormModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-teal-800/70">
                 <span className="size-2 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.65)]" />
-                Cadastro inteligente
+                {isEdit ? "Editar cadastro" : "Cadastro inteligente"}
               </div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">Novo cliente</h2>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">
+                {isEdit ? "Editar cliente" : "Novo cliente"}
+              </h2>
               <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
                 Preencha o essencial agora e deixe dados opcionais prontos para enriquecer
                 relatórios futuros.
@@ -533,7 +577,7 @@ export function ClientFormModal({
             disabled={saving}
             className="flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800 active:scale-[0.98] disabled:opacity-70"
           >
-            {saving ? "Salvando..." : "Salvar cadastro"}
+            {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Salvar cadastro"}
             {saving ? null : <ChevronRight className="size-4" />}
           </button>
         </footer>
