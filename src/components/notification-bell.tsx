@@ -24,9 +24,11 @@ const REMOTE_QK = ["notifications", "mine"] as const;
 export function NotificationBell() {
   const user = useSession();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const notifications = useApp((s) => s.notifications);
   const markNotificationRead = useApp((s) => s.markNotificationRead);
   const markAllNotificationsRead = useApp((s) => s.markAllNotificationsRead);
+
 
   const remote = useQuery({
     queryKey: REMOTE_QK,
