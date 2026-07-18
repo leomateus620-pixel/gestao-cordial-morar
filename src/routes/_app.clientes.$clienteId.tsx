@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, CalendarDays, FileText, Home, Mail, Pencil, Phone, UserRound } from "lucide-react";
 import { ClientFormModal } from "@/components/clients/ClientFormModal";
 import { updateClient as updateClientFn } from "@/lib/clients/clients.functions";
