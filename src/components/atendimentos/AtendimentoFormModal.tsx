@@ -517,8 +517,16 @@ export function AtendimentoFormModal({
                       </option>
                     ))}
                   </select>
+                  {form.corretorId !== "a_definir" &&
+                    currentUser &&
+                    form.corretorId !== currentUser.id && (
+                      <p className="mt-1 text-[11px] text-primary/80">
+                        O corretor será notificado automaticamente ao salvar.
+                      </p>
+                    )}
                 </Field>
               </div>
+
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Prioridade" error={validation.prioridade}>
