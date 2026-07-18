@@ -117,11 +117,14 @@ export function ClientFormModal({
   open,
   onOpenChange,
   onSubmit,
+  initialClient,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (client: ClientCreateInput) => void | Promise<void>;
+  initialClient?: Client | null;
 }) {
+  const isEdit = Boolean(initialClient);
   const corretores = useApp((state) => state.corretores);
   const brokerOptions = useMemo(
     () =>
@@ -131,7 +134,9 @@ export function ClientFormModal({
         .concat({ id: "a_definir", label: "A definir" }),
     [corretores],
   );
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>(() =>
+    initialClient ? fromClient(initialClient) : initialForm,
+  );
   const [validation, setValidation] = useState<ClientValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
