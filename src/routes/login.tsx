@@ -324,6 +324,13 @@ function LoginPage() {
                   <IconeBotao className="size-[18px]" aria-hidden="true" />
                   {carregando ? "Aguarde…" : botao}
                 </button>
+
+                {mode === "signin" && (
+                  <p className="pt-1 text-center text-[12px] leading-relaxed text-[#6B7280]">
+                    Você permanecerá conectado neste dispositivo por até 30 dias.
+                    <span className="ios-hint hidden"> No iPhone/iPad, adicione o sistema à Tela de Início para manter o login por mais tempo.</span>
+                  </p>
+                )}
               </form>
             </div>
           </div>
