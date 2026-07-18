@@ -84,33 +84,75 @@ async function loadSession(userId: string): Promise<MockUser | null> {
 const listeners = new Set<() => void>();
 let current: MockUser | null = null;
 let ready = false;
+let hasAuthSession = false;
 let initialized = false;
+let profileLoadInFlight = false;
 
 function notify() {
   listeners.forEach((l) => l());
 }
 
-async function refresh() {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    current = null;
-  } else {
-    current = await loadSession(data.session.user.id);
+async function loadProfileWithRetry(userId: string): Promise<MockUser | null> {
+  const delays = [0, 400, 1200];
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
+    try {
+      const session = await loadSession(userId);
+      if (session) return session;
+    } catch (err) {
+      console.warn("[auth] loadSession attempt failed", i + 1, err);
+    }
   }
-  ready = true;
-  notify();
+  return null;
 }
 
-function ensureInitialized() {
-  if (initialized || typeof window === "undefined") return;
-  initialized = true;
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (!session) {
+async function refresh() {
+  if (profileLoadInFlight) return;
+  profileLoadInFlight = true;
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      hasAuthSession = false;
       current = null;
       ready = true;
       notify();
       return;
     }
+    hasAuthSession = true;
+    // Mark ready immediately so the shell doesn't kick the user to /login
+    // while we're still fetching the profile row.
+    ready = true;
+    notify();
+    const profile = await loadProfileWithRetry(data.session.user.id);
+    // Only overwrite `current` when we successfully loaded a profile.
+    // A transient DB failure must NOT clear the session and log the user out.
+    if (profile) {
+      current = profile;
+      notify();
+    }
+  } finally {
+    profileLoadInFlight = false;
+  }
+}
+
+function ensureInitialized() {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+  supabase.auth.onAuthStateChange((event, session) => {
+    // Ignore noisy events that fire on every tab focus / hourly token refresh —
+    // they would otherwise re-trigger a profile fetch and briefly blank the UI.
+    if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
+      hasAuthSession = !!session;
+      return;
+    }
+    if (!session) {
+      hasAuthSession = false;
+      current = null;
+      ready = true;
+      notify();
+      return;
+    }
+    hasAuthSession = true;
     // Defer DB lookup to avoid auth callback deadlocks.
     setTimeout(() => {
       void refresh();
@@ -145,6 +187,25 @@ export function useAuthReady(): boolean {
     };
   }, []);
   return ready;
+}
+
+/**
+ * Returns whether the Supabase auth session is currently valid.
+ * Use this (not `useSession`) for redirect guards — the profile row may
+ * still be loading even after the session is confirmed.
+ */
+export function useHasAuthSession(): boolean {
+  const [, force] = useState(0);
+  useEffect(() => {
+    ensureInitialized();
+    const cb = () => force((n) => n + 1);
+    listeners.add(cb);
+    cb();
+    return () => {
+      listeners.delete(cb);
+    };
+  }, []);
+  return hasAuthSession;
 }
 
 export async function login(

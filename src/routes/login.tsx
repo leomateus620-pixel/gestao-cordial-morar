@@ -43,6 +43,13 @@ function LoginPage() {
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [logoDisponivel, setLogoDisponivel] = useState(true);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document));
+  }, []);
 
   useEffect(() => {
     if (session) navigate({ to: "/" });
@@ -324,6 +331,15 @@ function LoginPage() {
                   <IconeBotao className="size-[18px]" aria-hidden="true" />
                   {carregando ? "Aguarde…" : botao}
                 </button>
+
+                {mode === "signin" && (
+                  <p className="pt-1 text-center text-[12px] leading-relaxed text-[#6B7280]">
+                    Você permanecerá conectado neste dispositivo por até 30 dias.
+                    {isIOS && (
+                      <> No iPhone/iPad, adicione o sistema à Tela de Início (compartilhar → "Adicionar à Tela de Início") para manter o login por mais tempo.</>
+                    )}
+                  </p>
+                )}
               </form>
             </div>
           </div>

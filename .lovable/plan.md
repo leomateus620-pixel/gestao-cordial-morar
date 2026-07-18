@@ -1,43 +1,46 @@
-## Objetivo
-Quando o corretor **abrir** um atendimento vinculado a ele, todos os admins recebem uma notificação inteligente no sino avisando que o atendimento foi iniciado. Disparo único por atendimento (não repete a cada abertura).
+## Diagnóstico
 
-## Definição de "abrir"
-Considero "abrir o atendimento" como o corretor **acessar a página de Atendimentos com o card do atendimento carregado E ele ser o corretor atribuído**. Isto cobre tanto o fluxo "cliquei na notificação → cheguei no card" quanto "entrei no menu Atendimentos e vi o card na fila". A confirmação acontece 1x por atendimento (idempotente via coluna no banco).
+O Supabase já está configurado para persistir sessão (`persistSession: true` + `localStorage`), então em Chrome/Edge desktop os usuários **deveriam** continuar logados por até 30 dias. Investigando o fluxo real de auth (`src/lib/auth-mock.ts` + `src/components/app-shell.tsx`), identifiquei o motivo real dos "logouts fantasmas":
 
-Alternativa mais restritiva (posso trocar): disparar só quando o corretor **clicar em uma ação** (ligar, WhatsApp, agendar, converter). Diga se prefere essa.
+**Bug:** na função `refresh()`, se o `supabase.auth.getSession()` retorna uma sessão válida mas o `loadSession()` (que busca `profiles` + `user_roles`) falha por qualquer motivo transiente — rede lenta ao abrir a aba, timeout em cold start, uma query com erro momentâneo — o código define `current = null` e marca `ready = true`. O `AppShell` então executa `if (authReady && session === null) navigate({ to: "/login" })` e joga o usuário na tela de login, **mesmo com a sessão do Supabase intacta no localStorage**. Ao "logar de novo", o Supabase apenas confirma a sessão que já existia — o problema nunca foi o token, foi o carregamento do perfil.
 
-## Banco
-Migração:
-- `ALTER TABLE public.attendances ADD COLUMN opened_at timestamptz, ADD COLUMN opened_by uuid`.
-- Função `public.mark_attendance_opened(_id uuid)` (SECURITY DEFINER):
-  - Verifica `auth.uid()` = `corretor_id` do atendimento; caso contrário, no-op.
-  - Se `opened_at IS NULL`: seta `opened_at = now()`, `opened_by = auth.uid()`.
-  - Para cada usuário com role `admin` (via `user_roles`), insere em `public.notifications`:
-    - `tipo = 'atendimento_iniciado'`
-    - `titulo = 'Atendimento iniciado por <nome do corretor>'`
-    - `mensagem` com cliente, telefone, interesse e bairro
-    - `link = '/atendimentos?id=<uuid>'`
-  - Não notifica o próprio criador do atendimento se ele já for admin? Sim, notifica todos os admins (inclusive o criador admin) — é o comportamento pedido ("Ricardo, Bruna recebem").
-- `GRANT EXECUTE ON FUNCTION public.mark_attendance_opened(uuid) TO authenticated`.
+Somando a isso, o Safari iOS (ITP) apaga `localStorage` de sites pouco usados após 7 dias; e a duração do refresh token do Supabase precisa estar explicitamente configurada para 30 dias.
 
-## Server function
-Novo `markAttendanceOpened` em `src/lib/attendances/attendances.functions.ts` com `requireSupabaseAuth`, chamando o RPC acima. Idempotência garantida no banco; chamadas repetidas do cliente não geram spam.
+## O que vou fazer
 
-## Frontend
-Em `src/routes/_app.atendimentos.tsx`:
-- `useEffect` que, quando `isLoading === false`, percorre `filteredAtendimentos` e, para cada um onde `corretorId === session.user.id` **e** `opened_at` ainda nulo no DTO, dispara `markAttendanceOpened({ data: { id } })` uma única vez por sessão (guardado em `useRef<Set<string>>`).
-- Tipo `Atendimento` recebe `openedAt: string | null` e o mapper em `attendances.functions.ts` popula o campo.
-- Como a chamada é idempotente no servidor, mesmo se o efeito rodar duas vezes em StrictMode não há duplicidade.
+### 1. Corrigir o "kick" indevido (`src/lib/auth-mock.ts`)
+- Separar dois estados: `hasAuthSession` (Supabase tem token válido) e `profile` (dados carregados do banco).
+- O `AppShell` só redireciona para `/login` quando **não há sessão do Supabase** — nunca por falha no `loadSession`.
+- Se há sessão mas o profile falhou, faz retry com backoff (3 tentativas) em vez de deslogar.
+- Ignora eventos `TOKEN_REFRESHED` e `INITIAL_SESSION` para não recarregar o profile a cada refresh de token (a cada ~1h ou ao focar aba).
 
-## Validação (pós-implementação)
-1. Login como Bianca (secretária) → criar novo atendimento e vincular ao corretor Geandre (ou Felipe/Pablo) → salvar.
-2. Verificar no sino do próprio Geandre: notificação "Novo atendimento atribuído" (já existente).
-3. Login como Geandre → abrir menu Atendimentos → card aparece.
-4. Verificar no sino de Ricardo e Bruna (admins): nova notificação "Atendimento iniciado por Geandre …" com link para o card.
-5. Recarregar Geandre → não gera nova notificação para admins (idempotência).
+### 2. Ajustar o guard do `AppShell` (`src/components/app-shell.tsx`)
+- Passar a checar `hasAuthSession` em vez de `session` (profile). Enquanto o Supabase tiver token, o usuário permanece dentro do app; o profile é carregado em background com um skeleton se ainda não veio.
+
+### 3. Estender e garantir a duração da sessão no Supabase Auth
+- JWT (access token): 3600s (1h) — padrão, com auto-refresh.
+- Refresh token: 30 dias (2.592.000s), com rotação ativada e reuse interval de 10s.
+- Isso mantém o usuário logado por até 30 dias sem digitar senha, desde que abra o sistema pelo menos uma vez nesse período.
+
+### 4. Comunicar a limitação do Safari iOS
+- Adicionar um aviso discreto na tela de login para usuários de iPhone/iPad: "No Safari, adicione o sistema à Tela de Início para manter o login por mais tempo." (Safari trata PWAs instalados diferente do modo browser.)
+
+### 5. Validação
+- Login com Bianca (secretaria), fechar aba, reabrir → deve entrar direto na home.
+- Simular falha transiente do `loadSession` → não deve deslogar.
+- Testar em Chrome desktop e conferir com o log de auth do Supabase que não há re-login desnecessário.
 
 ## Detalhes técnicos
-- RLS de `attendances`: SELECT já permite `corretor_id = auth.uid()::text` (feito na etapa anterior). O RPC roda como SECURITY DEFINER, então lê o registro mesmo se algo mudar em RLS.
-- O RPC lê `profiles.nome` do corretor para compor a mensagem.
-- `search_path = public` fixado na função.
-- Notificações para admins usam a mesma tabela `public.notifications` — o sino já suporta `link` e navegação (implementado antes).
+
+**Arquivos alterados:**
+- `src/lib/auth-mock.ts` — refatorar `refresh()`/`ensureInitialized()`; adicionar `useHasAuthSession()` e retry no `loadSession`.
+- `src/components/app-shell.tsx` — trocar `session === null` por `hasAuthSession === false` no guard; manter render normal enquanto profile carrega.
+- `src/routes/login.tsx` — pequeno hint para Safari iOS.
+
+**Configurações do backend (Supabase Auth):**
+- `jwt_exp = 3600`
+- `refresh_token_reuse_interval = 10`
+- `refresh_token_rotation_enabled = true`
+- (Refresh token TTL de 30 dias é o padrão do Supabase; nenhuma mudança adicional necessária.)
+
+Sem mudanças de schema, RLS ou dados. Nenhum usuário existente precisa refazer nada.
