@@ -10,6 +10,7 @@ import {
   propertyTypeOptions,
   realEstateBrandOptions,
   type BedroomOption,
+  type Client,
   type ClientCreateInput,
   type ClientPurpose,
   type ClientStatus,
