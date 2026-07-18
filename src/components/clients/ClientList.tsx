@@ -71,7 +71,7 @@ export function ClientList({
           params={{ clienteId: client.id }}
           className="block"
         >
-          <ClientCard client={client} />
+          <ClientCard client={client} onEdit={onEdit} />
         </Link>
       ))}
     </div>
