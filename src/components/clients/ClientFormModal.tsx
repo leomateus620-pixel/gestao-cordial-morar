@@ -577,7 +577,7 @@ export function ClientFormModal({
             disabled={saving}
             className="flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800 active:scale-[0.98] disabled:opacity-70"
           >
-            {saving ? "Salvando..." : "Salvar cadastro"}
+            {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Salvar cadastro"}
             {saving ? null : <ChevronRight className="size-4" />}
           </button>
         </footer>
