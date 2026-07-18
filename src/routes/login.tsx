@@ -43,6 +43,13 @@ function LoginPage() {
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [logoDisponivel, setLogoDisponivel] = useState(true);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document));
+  }, []);
 
   useEffect(() => {
     if (session) navigate({ to: "/" });
