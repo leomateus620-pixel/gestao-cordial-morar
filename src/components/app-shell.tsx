@@ -6,7 +6,7 @@ import { MeshBackground } from "./mesh-background";
 import { AgencySwitcher } from "./agency-switcher";
 import { SidebarMenu } from "./sidebar-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useAuthReady, useSession } from "@/lib/auth-mock";
+import { useAuthReady, useHasAuthSession, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { getPrimaryItemsForProfile } from "./shared/module-menu";
