@@ -89,6 +89,7 @@ function rowToAtendimento(row: DbRow): Atendimento {
     motivoPerda: orUndef(row.motivo_perda) ?? undefined,
     convertidoEmCliente: row.convertido_em_cliente,
     clienteConvertidoId: orUndef(row.cliente_convertido_id) ?? undefined,
+    openedAt: row.opened_at ?? null,
     historico: [
       {
         id: `hist-${id}-1`,
