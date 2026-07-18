@@ -7,10 +7,12 @@ export function ClientList({
   clients,
   isLoading,
   error,
+  onEdit,
 }: {
   clients: Client[];
   isLoading?: boolean;
   error?: string | null;
+  onEdit?: (client: Client) => void;
 }) {
   if (isLoading) {
     return (
