@@ -67,8 +67,8 @@ function Page() {
 
   const openedMarkedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (isLoading || !session?.user?.id) return;
-    const uid = session.user.id;
+    if (isLoading || !session?.id) return;
+    const uid = session.id;
     for (const a of atendimentos) {
       if (
         a.corretorId === uid &&
@@ -85,7 +85,7 @@ function Page() {
           });
       }
     }
-  }, [atendimentos, isLoading, session?.user?.id]);
+  }, [atendimentos, isLoading, session?.id]);
 
 
   const qc = useQueryClient();
