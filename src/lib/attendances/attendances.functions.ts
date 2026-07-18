@@ -255,3 +255,15 @@ export const deleteAttendance = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const markAttendanceOpened = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as unknown as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+    }).rpc("mark_attendance_opened", { _id: data.id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
