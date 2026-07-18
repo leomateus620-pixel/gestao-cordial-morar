@@ -1,6 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, FileText, Home, Mail, Phone, UserRound } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ArrowLeft, CalendarDays, FileText, Home, Mail, Pencil, Phone, UserRound } from "lucide-react";
+import { ClientFormModal } from "@/components/clients/ClientFormModal";
+import { updateClient as updateClientFn } from "@/lib/clients/clients.functions";
+import type { ClientCreateInput } from "@/types/client";
 import { StatusBadge } from "@/components/status-badge";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
