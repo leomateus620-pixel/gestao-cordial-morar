@@ -395,6 +395,8 @@ export type Database = {
           imovel_id: string | null
           motivo_perda: string | null
           observacoes: string | null
+          opened_at: string | null
+          opened_by: string | null
           orcamento_max: number | null
           orcamento_min: number | null
           origem: string
@@ -427,6 +429,8 @@ export type Database = {
           imovel_id?: string | null
           motivo_perda?: string | null
           observacoes?: string | null
+          opened_at?: string | null
+          opened_by?: string | null
           orcamento_max?: number | null
           orcamento_min?: number | null
           origem?: string
@@ -459,6 +463,8 @@ export type Database = {
           imovel_id?: string | null
           motivo_perda?: string | null
           observacoes?: string | null
+          opened_at?: string | null
+          opened_by?: string | null
           orcamento_max?: number | null
           orcamento_min?: number | null
           origem?: string
@@ -1779,6 +1785,7 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      mark_attendance_opened: { Args: { _id: string }; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string

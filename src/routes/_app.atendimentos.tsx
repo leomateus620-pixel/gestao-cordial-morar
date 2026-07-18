@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Plus, Workflow } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import {
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
+import { markAttendanceOpened } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import type {
@@ -63,6 +64,29 @@ function Page() {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [highlightId, isLoading, filteredAtendimentos.length]);
+
+  const openedMarkedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (isLoading || !session?.id) return;
+    const uid = session.id;
+    for (const a of atendimentos) {
+      if (
+        a.corretorId === uid &&
+        !a.openedAt &&
+        !openedMarkedRef.current.has(a.id)
+      ) {
+        openedMarkedRef.current.add(a.id);
+        markAttendanceOpened({ data: { id: a.id } })
+          .then(() => {
+            qc.invalidateQueries({ queryKey: ["attendances"] });
+          })
+          .catch(() => {
+            openedMarkedRef.current.delete(a.id);
+          });
+      }
+    }
+  }, [atendimentos, isLoading, session?.id]);
+
 
   const qc = useQueryClient();
   const createVisitMutation = useMutation({

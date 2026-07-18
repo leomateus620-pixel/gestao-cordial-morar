@@ -83,6 +83,7 @@ export interface Atendimento {
   motivoPerda?: string;
   convertidoEmCliente?: boolean;
   clienteConvertidoId?: string;
+  openedAt?: string | null;
   historico: AtendimentoHistorico[];
   criadoEm: string;
   atualizadoEm: string;
