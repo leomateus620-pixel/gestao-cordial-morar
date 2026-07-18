@@ -56,6 +56,14 @@ function Page() {
     updateAtendimento,
   } = useAttendances(query, filters);
 
+  useEffect(() => {
+    if (!highlightId || isLoading) return;
+    const el = document.getElementById(`atendimento-${highlightId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, isLoading, filteredAtendimentos.length]);
+
   const qc = useQueryClient();
   const createVisitMutation = useMutation({
     mutationFn: (input: AgendaEventInput) => upsertAgendaEvent({ data: { input } }),
