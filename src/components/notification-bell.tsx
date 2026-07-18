@@ -107,12 +107,18 @@ export function NotificationBell() {
               {remoteList.map((n) => (
                 <button
                   key={n.id}
-                  onClick={() => !n.lida && markRemote.mutate(n.id)}
+                  onClick={() => {
+                    if (!n.lida) markRemote.mutate(n.id);
+                    if (n.link) {
+                      void navigate({ to: n.link });
+                    }
+                  }}
                   className={cn(
                     "w-full rounded-2xl p-3 text-left transition hover:bg-primary/5",
                     !n.lida && "bg-primary/5",
                   )}
                 >
+
                   <div className="flex items-start gap-3">
                     <div
                       className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl"
