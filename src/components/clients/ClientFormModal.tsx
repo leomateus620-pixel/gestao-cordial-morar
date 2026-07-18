@@ -158,6 +158,10 @@ export function ClientFormModal({
 
   useEffect(() => {
     if (open) {
+      // Re-hydrate the form each time the modal opens so switching between
+      // "new" and "edit different clients" always shows the correct data.
+      setForm(initialClient ? fromClient(initialClient) : initialForm);
+      setValidation({});
       setMounted(true);
       setClosing(false);
       return;
@@ -170,7 +174,8 @@ export function ClientFormModal({
       setClosing(false);
     }, 160);
     return () => window.clearTimeout(t);
-  }, [open, mounted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialClient?.id]);
 
   useEffect(() => {
     return () => {
