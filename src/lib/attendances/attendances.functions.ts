@@ -43,6 +43,8 @@ type DbRow = {
   motivo_perda: string | null;
   convertido_em_cliente: boolean;
   cliente_convertido_id: string | null;
+  opened_at: string | null;
+  opened_by: string | null;
   created_at: string;
   updated_at: string;
 };
