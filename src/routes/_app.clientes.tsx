@@ -42,7 +42,7 @@ function Page() {
   const canEditClient = useCallback(
     (client: Client) => {
       if (!session) return false;
-      if (session.perfil === "admin") return true;
+      if (session.perfil === "admin_owner" || session.perfil === "financeiro_admin") return true;
       return client.createdBy === session.id;
     },
     [session],
