@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.notify_atendimento_corretor() FROM PUBLIC, anon, authenticated;
