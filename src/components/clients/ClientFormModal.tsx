@@ -282,9 +282,11 @@ export function ClientFormModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-teal-800/70">
                 <span className="size-2 rounded-full bg-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.65)]" />
-                Cadastro inteligente
+                {isEdit ? "Editar cadastro" : "Cadastro inteligente"}
               </div>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">Novo cliente</h2>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">
+                {isEdit ? "Editar cliente" : "Novo cliente"}
+              </h2>
               <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
                 Preencha o essencial agora e deixe dados opcionais prontos para enriquecer
                 relatórios futuros.
