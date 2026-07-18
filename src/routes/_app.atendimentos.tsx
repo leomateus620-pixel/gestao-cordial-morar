@@ -40,6 +40,7 @@ export const Route = createFileRoute("/_app/atendimentos")({
 function Page() {
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
+  const { id: highlightId } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
