@@ -208,6 +208,17 @@ function Page() {
           </Card>
         </div>
       </section>
+
+      {editing && (
+        <ClientFormModal
+          open={editing}
+          onOpenChange={(next) => {
+            if (!next) setEditing(false);
+          }}
+          onSubmit={handleSave}
+          initialClient={cliente}
+        />
+      )}
     </div>
   );
 }
