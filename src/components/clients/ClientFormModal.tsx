@@ -246,7 +246,7 @@ export function ClientFormModal({
     setSaving(true);
     try {
       await onSubmit(input);
-      setForm(initialForm);
+      if (!isEdit) setForm(initialForm);
       setValidation({});
       requestClose();
     } catch {
