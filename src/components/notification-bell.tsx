@@ -1,5 +1,6 @@
 import { Bell, CheckCheck, CircleAlert } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useApp } from "@/store/app-store";
@@ -23,9 +24,11 @@ const REMOTE_QK = ["notifications", "mine"] as const;
 export function NotificationBell() {
   const user = useSession();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const notifications = useApp((s) => s.notifications);
   const markNotificationRead = useApp((s) => s.markNotificationRead);
   const markAllNotificationsRead = useApp((s) => s.markAllNotificationsRead);
+
 
   const remote = useQuery({
     queryKey: REMOTE_QK,
@@ -104,12 +107,19 @@ export function NotificationBell() {
               {remoteList.map((n) => (
                 <button
                   key={n.id}
-                  onClick={() => !n.lida && markRemote.mutate(n.id)}
+                  onClick={() => {
+                    if (!n.lida) markRemote.mutate(n.id);
+                    if (n.link) {
+                      void navigate({ to: n.link as string } as never);
+                    }
+                  }}
+
                   className={cn(
                     "w-full rounded-2xl p-3 text-left transition hover:bg-primary/5",
                     !n.lida && "bg-primary/5",
                   )}
                 >
+
                   <div className="flex items-start gap-3">
                     <div
                       className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl"

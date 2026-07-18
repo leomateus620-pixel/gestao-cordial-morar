@@ -1,39 +1,39 @@
-## Plano
+## Objetivo
+Permitir que a Bianca (secretária) cadastre atendimentos vinculando um corretor responsável. Ao finalizar o cadastro, o corretor recebe uma notificação inteligente com os dados essenciais do atendimento e passa a enxergar o registro no seu próprio painel.
 
-1. **Substituir o modal atual por uma nova implementação**
-   - Recriar `AgenciamentoFormModal` mantendo a mesma API pública usada pela rota de Agenciamentos: `open`, `agenciamento`, `corretores`, `currentBroker`, `currentUserBroker`, `canManage`, `onOpenChange` e `onSubmit`.
-   - Preservar todos os campos atuais: imóvel, imobiliária, endereço, bairro, cidade, descrição, proprietário, telefone, contato preferencial, observações, corretor, data, origem, status, checklist, Drive, URL do site e observações internas.
+## Situação atual
+- A tabela `attendances` já tem `corretor_id` e o modal de cadastro já permite selecionar o corretor.
+- **Problema 1 (RLS):** políticas de `SELECT/UPDATE` em `attendances` só liberam para `created_by` ou admin. Se a Bianca cria e atribui ao Pablo, o Pablo não vê o atendimento.
+- **Problema 2 (Notificação):** não existe gatilho que crie um registro em `notifications` para o corretor atribuído. A RLS de `notifications` só permite `INSERT` do próprio usuário, então precisa ser via trigger `SECURITY DEFINER`.
+- Já existem: tabela `notifications`, `notification-bell.tsx`, `listMyNotifications`, `markNotificationRead`.
 
-2. **Remover a causa estrutural do bug do checklist**
-   - Evitar que os controles do checklist fiquem dentro de um formulário HTML que possa disparar submit acidental.
-   - Usar botões explícitos `type="button"` para navegação, checklist, fechar e voltar.
-   - Deixar o salvamento em uma função dedicada chamada apenas pelo botão final “Cadastrar agenciamento” / “Salvar alterações”, sem depender de `onSubmit` do `<form>`.
+## Mudanças
 
-3. **Criar navegação por etapas mais robusta**
-   - Manter as 4 etapas atuais: Imóvel, Proprietário, Responsabilidade e Checklist/Revisão.
-   - Validar somente os campos da etapa antes de avançar.
-   - Permitir voltar sem perder dados.
-   - Permitir navegar para etapas já liberadas, sem resetar o estado.
-   - Manter inicialização estável: o formulário só reinicia quando abrir o modal ou trocar o agenciamento editado.
+### 1. Banco (migração única)
+- **RLS `attendances`:** adicionar `corretor_id = auth.uid()` às cláusulas de `SELECT` e `UPDATE` (mantendo created_by e admin). Corretor atribuído passa a ler e atualizar status/próximo passo do próprio atendimento. `DELETE` continua restrito a criador/admin.
+- **Trigger `notify_atendimento_corretor`** (`AFTER INSERT OR UPDATE OF corretor_id ON attendances`, `SECURITY DEFINER`):
+  - Dispara quando `NEW.corretor_id IS NOT NULL` e (`INSERT` ou `corretor_id` mudou) e `NEW.corretor_id <> NEW.created_by`.
+  - Insere em `notifications` para o corretor:
+    - `tipo`: `atendimento_atribuido`
+    - `titulo`: `Novo atendimento atribuído a você`
+    - `mensagem`: monta string inteligente com cliente, telefone, finalidade, tipo de imóvel, bairro, orçamento e próximo passo (campos disponíveis no NEW).
+    - `link`: `/atendimentos?id={id}` para deep-link.
 
-4. **Redesenhar responsividade do modal**
-   - Desktop: modal central amplo, com trilha lateral de etapas e conteúdo com rolagem interna controlada.
-   - Mobile: modal em tela cheia, barra de progresso superior, footer fixo com ações e campos confortáveis para toque.
-   - Evitar sobreposição entre conteúdo, checklist, scroll e botões finais.
+### 2. Frontend
+- **`AtendimentoFormModal.tsx`:** quando o usuário logado é `secretaria` (ou `admin`) e seleciona um corretor diferente de si, mostrar um aviso discreto abaixo do seletor: "O corretor será notificado ao salvar." Nenhuma alteração no fluxo de submit.
+- **`notification-bell.tsx`:** já lista notificações; garantir que ao clicar em uma notificação do tipo `atendimento_atribuido` o app navegue para `link` (usar `useNavigate` com o caminho salvo). Marcar como lida no clique.
+- **Rota `/_app/atendimentos`:** ao receber `?id=<uuid>` na query, rolar/destacar o card correspondente (usar `Route.useSearch` + `scrollIntoView`), abrindo o `AtendimentoActionsDialog` se possível.
 
-5. **Reconstruir o checklist de forma segura**
-   - Substituir o comportamento atual do checklist por controles isolados, clicáveis e sem submissão implícita.
-   - Cada item altera apenas o estado local do checklist.
-   - O modal não fecha, não salva e não mostra “Salvando...” ao clicar em Fotos, Drive, Placa, Site, Vídeo ou Validação.
-   - Manter “Agenciamento validado” bloqueado para quem não é admin/gestão.
+### 3. Sem mudanças
+- Estrutura visual do modal, permissões de menu, hidratação de corretores — permanecem intactas.
 
-6. **Preservar regras e persistência existentes**
-   - Continuar usando `validateAgenciamentoInput`, `formatPhoneBR`, labels e tipos já existentes.
-   - Continuar enviando o mesmo `AgenciamentoInput` para criação/edição, sem alterar backend, permissões, RLS ou regras da Bianca/admin.
-   - Manter edição e cadastro usando o fluxo atual da página `_app.agenciamentos.tsx`.
+## Detalhes técnicos
+- Trigger precisa `SET search_path = public` e `SECURITY DEFINER` para poder gravar em `notifications` (RLS bloquearia inserts cross-user).
+- Migração fará `DROP POLICY ... IF EXISTS` + `CREATE POLICY` para `SELECT` e `UPDATE` de `attendances`.
+- Mensagem da notificação será construída em SQL com `concat_ws` e `NULLIF/trim` para omitir campos vazios sem gerar linhas soltas.
+- Sem novos GRANTs necessários (tabelas já existem).
 
-7. **Verificação prática**
-   - Testar no preview abrir/criar/editar Agenciamento, avançar até Checklist e clicar em todos os itens.
-   - Confirmar que o modal permanece aberto e que não há salvamento automático.
-   - Confirmar que o salvamento acontece apenas pelo botão final.
-   - Conferir desktop e mobile para garantir que o novo modal esteja navegável e responsivo.
+## Verificação
+- Login como Bianca → criar atendimento atribuindo ao Pablo → conferir que aparece toast normal.
+- Login como Pablo → sino mostra badge, notificação com dados do cliente; clicar navega para o atendimento; atendimento aparece na lista dele.
+- Login como Pablo → criar atendimento para si mesmo → NÃO gera notificação (evitar auto-notify).

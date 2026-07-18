@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { ChevronRight, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/store/app-store";
+import { useSession } from "@/lib/auth-mock";
 import {
   formatCurrencyBR,
   formatPhoneBR,
@@ -114,10 +115,12 @@ export function AtendimentoFormModal({
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
   const corretores = useApp((state) => state.corretores);
+  const currentUser = useSession();
   const brokerOptions = [...corretores]
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((c) => ({ id: c.id, label: c.nome }))
     .concat({ id: "a_definir", label: "A definir" });
+
   const [form, setForm] = useState<FormState>(initialForm);
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
@@ -514,8 +517,16 @@ export function AtendimentoFormModal({
                       </option>
                     ))}
                   </select>
+                  {form.corretorId !== "a_definir" &&
+                    currentUser &&
+                    form.corretorId !== currentUser.id && (
+                      <p className="mt-1 text-[11px] text-primary/80">
+                        O corretor será notificado automaticamente ao salvar.
+                      </p>
+                    )}
                 </Field>
               </div>
+
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Prioridade" error={validation.prioridade}>

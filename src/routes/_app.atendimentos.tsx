@@ -31,12 +31,16 @@ import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
   head: () => ({ meta: [{ title: "Atendimentos — Gestão Cordial" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    id: typeof search.id === "string" ? search.id : undefined,
+  }),
   component: Page,
 });
 
 function Page() {
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
+  const { id: highlightId } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
@@ -51,6 +55,14 @@ function Page() {
     convertAtendimento,
     updateAtendimento,
   } = useAttendances(query, filters);
+
+  useEffect(() => {
+    if (!highlightId || isLoading) return;
+    const el = document.getElementById(`atendimento-${highlightId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, isLoading, filteredAtendimentos.length]);
 
   const qc = useQueryClient();
   const createVisitMutation = useMutation({
@@ -284,14 +296,24 @@ function Page() {
         ) : filteredAtendimentos.length > 0 ? (
           <div className="grid gap-3 xl:grid-cols-2">
             {filteredAtendimentos.map((atendimento) => (
-              <AtendimentoCard
+              <div
                 key={atendimento.id}
-                atendimento={atendimento}
-                onConvert={handleConvert}
-                onAction={handleAction}
-              />
+                id={`atendimento-${atendimento.id}`}
+                className={
+                  highlightId === atendimento.id
+                    ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
+                    : undefined
+                }
+              >
+                <AtendimentoCard
+                  atendimento={atendimento}
+                  onConvert={handleConvert}
+                  onAction={handleAction}
+                />
+              </div>
             ))}
           </div>
+
         ) : hasAtendimentos ? (
           <EmptyState
             title="Nenhum atendimento encontrado com os filtros atuais."
