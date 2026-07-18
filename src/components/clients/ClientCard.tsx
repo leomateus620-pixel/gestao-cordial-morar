@@ -1,4 +1,4 @@
-import { Building2, CalendarClock, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { Building2, CalendarClock, Mail, MapPin, Pencil, Phone, UserRound } from "lucide-react";
 import { memo, type ReactNode } from "react";
 import {
   clientCommercialText,
