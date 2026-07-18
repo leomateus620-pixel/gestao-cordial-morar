@@ -65,6 +65,29 @@ function Page() {
     }
   }, [highlightId, isLoading, filteredAtendimentos.length]);
 
+  const openedMarkedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (isLoading || !session?.user?.id) return;
+    const uid = session.user.id;
+    for (const a of atendimentos) {
+      if (
+        a.corretorId === uid &&
+        !a.openedAt &&
+        !openedMarkedRef.current.has(a.id)
+      ) {
+        openedMarkedRef.current.add(a.id);
+        markAttendanceOpened({ data: { id: a.id } })
+          .then(() => {
+            qc.invalidateQueries({ queryKey: ["attendances"] });
+          })
+          .catch(() => {
+            openedMarkedRef.current.delete(a.id);
+          });
+      }
+    }
+  }, [atendimentos, isLoading, session?.user?.id]);
+
+
   const qc = useQueryClient();
   const createVisitMutation = useMutation({
     mutationFn: (input: AgendaEventInput) => upsertAgendaEvent({ data: { input } }),
