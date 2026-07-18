@@ -110,9 +110,10 @@ export function NotificationBell() {
                   onClick={() => {
                     if (!n.lida) markRemote.mutate(n.id);
                     if (n.link) {
-                      void navigate({ to: n.link });
+                      void navigate({ to: n.link as string } as never);
                     }
                   }}
+
                   className={cn(
                     "w-full rounded-2xl p-3 text-left transition hover:bg-primary/5",
                     !n.lida && "bg-primary/5",
