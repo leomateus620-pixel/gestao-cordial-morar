@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { ChevronRight, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/store/app-store";
+import { useSession } from "@/lib/auth-mock";
 import {
   formatCurrencyBR,
   formatPhoneBR,
