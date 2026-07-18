@@ -288,14 +288,24 @@ function Page() {
         ) : filteredAtendimentos.length > 0 ? (
           <div className="grid gap-3 xl:grid-cols-2">
             {filteredAtendimentos.map((atendimento) => (
-              <AtendimentoCard
+              <div
                 key={atendimento.id}
-                atendimento={atendimento}
-                onConvert={handleConvert}
-                onAction={handleAction}
-              />
+                id={`atendimento-${atendimento.id}`}
+                className={
+                  highlightId === atendimento.id
+                    ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
+                    : undefined
+                }
+              >
+                <AtendimentoCard
+                  atendimento={atendimento}
+                  onConvert={handleConvert}
+                  onAction={handleAction}
+                />
+              </div>
             ))}
           </div>
+
         ) : hasAtendimentos ? (
           <EmptyState
             title="Nenhum atendimento encontrado com os filtros atuais."
