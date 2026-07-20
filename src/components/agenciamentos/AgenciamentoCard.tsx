@@ -11,6 +11,7 @@ import {
   MapPin,
   Pencil,
   Signpost,
+  Trash2,
   UserRound,
   Video,
   type LucideIcon,
@@ -35,6 +36,7 @@ type AgenciamentoCardProps = {
   onView: (agenciamento: Agenciamento) => void;
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
+  onDelete?: (agenciamento: Agenciamento) => void;
 };
 
 const operationalItems: Array<{
@@ -57,6 +59,7 @@ function AgenciamentoCardComponent({
   onView,
   onEdit,
   onValidate,
+  onDelete,
 }: AgenciamentoCardProps) {
   const progress = getChecklistCompletionPercent(agenciamento.checklist);
   const completed = getChecklistCompletedCount(agenciamento.checklist);
@@ -200,6 +203,19 @@ function AgenciamentoCardComponent({
             title="Editar"
           >
             <Pencil className="size-3.5" />
+          </Button>
+        )}
+        {canManage && onDelete && (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="size-9 rounded-lg border-destructive/25 bg-white text-destructive shadow-[0_1px_2px_rgba(23,27,33,0.04)] transition-[background-color,color,transform] duration-150 ease-out hover:bg-destructive/10 active:scale-[0.97]"
+            onClick={() => onDelete(agenciamento)}
+            aria-label={`Excluir ${agenciamento.endereco}`}
+            title="Excluir"
+          >
+            <Trash2 className="size-3.5" />
           </Button>
         )}
         {canManage && !isValidated && (

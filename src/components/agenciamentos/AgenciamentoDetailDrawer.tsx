@@ -9,6 +9,7 @@ import {
   Home,
   MapPinned,
   Pencil,
+  Trash2,
   type LucideIcon,
   UserRound,
   Video,
@@ -43,6 +44,7 @@ type AgenciamentoDetailDrawerProps = {
   onOpenChange: (open: boolean) => void;
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
+  onDelete?: (agenciamento: Agenciamento) => void;
 };
 
 const checklistRows: Array<{
@@ -66,6 +68,7 @@ export function AgenciamentoDetailDrawer({
   onOpenChange,
   onEdit,
   onValidate,
+  onDelete,
 }: AgenciamentoDetailDrawerProps) {
   const progress = agenciamento ? getChecklistCompletionPercent(agenciamento.checklist) : 0;
   const completed = agenciamento ? getChecklistCompletedCount(agenciamento.checklist) : 0;
@@ -256,6 +259,17 @@ export function AgenciamentoDetailDrawer({
               className="flex flex-col gap-2 border-t border-white/60 bg-white/70 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end sm:px-6"
               style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
             >
+              {canManage && onDelete && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-2xl border-destructive/30 bg-white/[0.66] text-destructive hover:bg-destructive/10"
+                  onClick={() => onDelete(agenciamento)}
+                >
+                  <Trash2 className="size-4" />
+                  Excluir
+                </Button>
+              )}
               {canEdit && (
                 <Button
                   type="button"

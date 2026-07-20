@@ -16,6 +16,16 @@ import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilt
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
 import { AgenciamentoSummaryCards } from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
@@ -59,6 +69,7 @@ function Page() {
     createAgenciamento,
     updateAgenciamento,
     validateAgenciamento,
+    deleteAgenciamento,
     isLoading,
     isFetching,
     isError,
@@ -67,6 +78,7 @@ function Page() {
   } = useAgenciamentos();
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
@@ -184,6 +196,33 @@ function Page() {
     },
     [showFeedback, validateAgenciamento],
   );
+
+  const requestDelete = useCallback((agenciamento: Agenciamento) => {
+    setPendingDelete(agenciamento);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    try {
+      const ok = await deleteAgenciamento(pendingDelete.id);
+      showFeedback(
+        ok ? "Agenciamento excluído." : "Não foi possível excluir este agenciamento.",
+        ok ? "success" : "error",
+      );
+      if (ok) {
+        setPendingDelete(null);
+        setSelectedAgenciamento(null);
+      }
+    } catch (caughtError) {
+      showFeedback(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Ocorreu um erro ao excluir o agenciamento.",
+        "error",
+      );
+    }
+  }, [deleteAgenciamento, pendingDelete, showFeedback]);
+
 
   if (!canRead) {
     return (
@@ -345,6 +384,7 @@ function Page() {
                   onView={setSelectedAgenciamento}
                   onEdit={openEdit}
                   onValidate={handleValidate}
+                  onDelete={requestDelete}
                 />
               ))}
             </div>
@@ -385,7 +425,38 @@ function Page() {
         }}
         onEdit={openEdit}
         onValidate={handleValidate}
+        onDelete={requestDelete}
       />
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agenciamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `Esta ação removerá "${pendingDelete.endereco}" (${pendingDelete.proprietarioNome}) permanentemente. Não é possível desfazer.`
+                : "Esta ação é permanente e não pode ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
