@@ -57,6 +57,17 @@ export function AgendaEventCard({
   const start = new Date(event.inicio);
   const end = event.fim ? new Date(event.fim) : undefined;
   const property = event.imovelDescricao || event.local;
+  const session = useSession();
+  const isAdmin = isAdminUser(session);
+  const ownerName = event.responsavelPrincipalNome || event.criadoPorNome;
+  const ownerInitials = ownerName
+    ? ownerName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("")
+    : "";
 
   return (
     <button
