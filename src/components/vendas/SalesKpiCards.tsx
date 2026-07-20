@@ -10,115 +10,155 @@ import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { SalesKpis } from "@/types/sale";
 
-type KpiTone = "primary" | "success" | "warning" | "neutral" | "info";
+type MetricTone = "primary" | "success" | "warning" | "neutral" | "info";
 
-const toneMap: Record<KpiTone, string> = {
-  primary: "from-primary/16 to-primary/5 text-primary",
-  success: "from-emerald-200/35 to-emerald-50/10 text-emerald-700",
-  warning: "from-amber-200/38 to-amber-50/10 text-amber-700",
-  neutral: "from-slate-200/45 to-white/10 text-slate-700",
-  info: "from-cyan-200/32 to-cyan-50/10 text-cyan-700",
+const toneMap: Record<MetricTone, string> = {
+  primary: "border-t-primary/45 text-primary",
+  success: "border-t-emerald-500/45 text-emerald-700",
+  warning: "border-t-amber-500/60 text-amber-700",
+  neutral: "border-t-slate-400/35 text-slate-600",
+  info: "border-t-cyan-600/40 text-cyan-700",
 };
 
-function KpiCard({
-  label,
-  value,
-  detail,
-  icon: Icon,
-  tone,
-}: {
+type Metric = {
+  id: string;
   label: string;
   value: string;
   detail: string;
   icon: typeof TrendingUp;
-  tone: KpiTone;
+  tone: MetricTone;
+};
+
+function KpiCard({
+  metric,
+  isLoading,
+  isUnavailable,
+}: {
+  metric: Metric;
+  isLoading: boolean;
+  isUnavailable: boolean;
 }) {
+  const Icon = metric.icon;
+
   return (
-    <article className="liquid-panel relative min-w-[10.5rem] overflow-hidden rounded-2xl p-3 sm:min-w-0">
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80",
-          toneMap[tone],
+    <div
+      className={cn(
+        "relative flex min-h-[7.35rem] min-w-0 flex-col overflow-hidden rounded-[1.25rem] border border-white/70 border-t-2 bg-white/[0.66] px-3.5 py-3.5 shadow-[0_15px_34px_-30px_rgba(23,27,33,0.46)] backdrop-blur-lg",
+        toneMap[metric.tone],
+      )}
+    >
+      <dt className="flex items-start justify-between gap-2">
+        <span className="max-w-[9rem] text-[10.5px] font-extrabold uppercase leading-[1.35] tracking-[0.11em] text-foreground/58">
+          {metric.label}
+        </span>
+        <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      </dt>
+
+      <dd className="mt-auto min-h-6 min-w-0 pt-3 text-[clamp(1.05rem,2.4vw,1.35rem)] font-black leading-none tracking-[-0.025em] text-foreground tabular-nums">
+        {isLoading ? (
+          <>
+            <span
+              className="block h-5 w-20 animate-pulse rounded-lg bg-foreground/10 motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Carregando indicador</span>
+          </>
+        ) : isUnavailable ? (
+          <span aria-label="Indicador indisponível">—</span>
+        ) : (
+          metric.value
         )}
-        aria-hidden
-      />
-      <div className="relative flex min-h-[5.35rem] flex-col justify-between">
-        <div className="flex items-start justify-between gap-3">
-          <p className="max-w-[7.5rem] text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/55">
-            {label}
-          </p>
-          <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-white/55 text-current ring-1 ring-white/70">
-            <Icon className="size-4" />
-          </span>
-        </div>
-        <div>
-          <p className="truncate font-mono text-lg font-black leading-tight tabular-nums text-foreground sm:text-xl">
-            {value}
-          </p>
-          <p className="mt-1 truncate text-[11px] font-medium text-foreground/55">{detail}</p>
-        </div>
-      </div>
-    </article>
+      </dd>
+      <p className="mt-1.5 text-[11px] font-semibold leading-4 text-foreground/50">
+        {isUnavailable ? "indisponível no momento" : metric.detail}
+      </p>
+    </div>
   );
 }
 
 export function SalesKpiCards({
   kpis,
   showAverageTicket = true,
+  isLoading = false,
+  isUnavailable = false,
 }: {
-  kpis: SalesKpis;
+  kpis?: SalesKpis;
   showAverageTicket?: boolean;
+  isLoading?: boolean;
+  isUnavailable?: boolean;
 }) {
+  const metrics: Metric[] = [
+    {
+      id: "total",
+      icon: WalletCards,
+      label: "Total vendido",
+      value: brl(kpis?.totalSold ?? 0, { compact: true }),
+      detail: "histórico ativo",
+      tone: "primary",
+    },
+    {
+      id: "registered",
+      icon: ReceiptText,
+      label: "Vendas registradas",
+      value: String(kpis?.registeredSales ?? 0),
+      detail: "registros salvos",
+      tone: "neutral",
+    },
+    {
+      id: "contracts",
+      icon: FileCheck2,
+      label: "Contratos anexados",
+      value: String(kpis?.attachedContracts ?? 0),
+      detail: "documentos localizados",
+      tone: "info",
+    },
+    ...(showAverageTicket
+      ? [
+          {
+            id: "average",
+            icon: TrendingUp,
+            label: "Ticket médio",
+            value: brl(kpis?.averageTicket ?? 0, { compact: true }),
+            detail: "sem canceladas",
+            tone: "success" as const,
+          },
+        ]
+      : []),
+    {
+      id: "month",
+      icon: CalendarDays,
+      label: "Vendas do mês",
+      value: String(kpis?.monthSales ?? 0),
+      detail: "mês corrente",
+      tone: "primary",
+    },
+    {
+      id: "pendencies",
+      icon: AlertTriangle,
+      label: "Pendência documental",
+      value: String(kpis?.documentPendencies ?? 0),
+      detail: "contrato ou revisão",
+      tone: "warning",
+    },
+  ];
+
   return (
-    <section
-      className="snap-carousel md:grid md:grid-cols-3 md:gap-2.5 lg:grid-cols-6"
-      aria-label="Indicadores de vendas realizadas"
-    >
-      <KpiCard
-        icon={WalletCards}
-        label="Total vendido"
-        value={brl(kpis.totalSold, { compact: true })}
-        detail="histórico ativo"
-        tone="primary"
-      />
-      <KpiCard
-        icon={ReceiptText}
-        label="Vendas registradas"
-        value={String(kpis.registeredSales).padStart(2, "0")}
-        detail="registros salvos"
-        tone="neutral"
-      />
-      <KpiCard
-        icon={FileCheck2}
-        label="Contratos anexados"
-        value={String(kpis.attachedContracts).padStart(2, "0")}
-        detail="documentos localizados"
-        tone="info"
-      />
-      {showAverageTicket && (
-        <KpiCard
-          icon={TrendingUp}
-          label="Ticket médio"
-          value={brl(kpis.averageTicket, { compact: true })}
-          detail="sem canceladas"
-          tone="success"
-        />
-      )}
-      <KpiCard
-        icon={CalendarDays}
-        label="Vendas do mês"
-        value={String(kpis.monthSales).padStart(2, "0")}
-        detail="mês corrente"
-        tone="primary"
-      />
-      <KpiCard
-        icon={AlertTriangle}
-        label="Pendência documental"
-        value={String(kpis.documentPendencies).padStart(2, "0")}
-        detail="contrato ou revisão"
-        tone="warning"
-      />
+    <section aria-label="Indicadores de vendas realizadas" aria-busy={isLoading}>
+      <dl
+        className={cn(
+          "grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3",
+          metrics.length === 6 ? "xl:grid-cols-6" : "xl:grid-cols-5",
+        )}
+      >
+        {metrics.map((metric) => (
+          <KpiCard
+            key={metric.id}
+            metric={metric}
+            isLoading={isLoading}
+            isUnavailable={isUnavailable}
+          />
+        ))}
+      </dl>
     </section>
   );
 }
-

@@ -75,6 +75,8 @@ export function useSales() {
     isLoading: salesQuery.isLoading,
     isError: salesQuery.isError,
     error: salesQuery.error,
+    isKpisLoading: kpisQuery.isLoading,
+    isKpisError: kpisQuery.isError,
     refetch: invalidate,
     createSale: createMutation.mutateAsync,
     updateSale: updateMutation.mutateAsync,
@@ -95,7 +97,7 @@ export async function uploadSaleDocument(file: File, folderId: string): Promise<
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData.user) throw new Error("Sessão expirada. Faça login novamente.");
   const userId = userData.user.id;
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const safeName = file.name.replace(/[^\w.-]+/g, "_");
   const path = `${userId}/${folderId}/${Date.now()}-${safeName}`;
   const { error } = await supabase.storage.from("sale-documents").upload(path, file, {
     upsert: false,

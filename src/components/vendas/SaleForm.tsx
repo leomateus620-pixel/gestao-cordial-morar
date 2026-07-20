@@ -86,15 +86,12 @@ function Field({
   className?: string;
 }) {
   return (
-    <div className={className}>
-      <label
-        htmlFor={htmlFor}
-        className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/68"
-      >
+    <label htmlFor={htmlFor} className={`block ${className}`}>
+      <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/68">
         {label}
-      </label>
+      </span>
       <div className="mt-1.5">{children}</div>
-    </div>
+    </label>
   );
 }
 
@@ -148,8 +145,9 @@ function ModeToggle({
         type="button"
         onClick={() => onChange("existing")}
         disabled={disableExisting}
+        aria-pressed={value === "existing"}
         className={
-          "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 " +
+          "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none " +
           (value === "existing"
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-foreground/62 hover:text-foreground")
@@ -160,8 +158,9 @@ function ModeToggle({
       <button
         type="button"
         onClick={() => onChange("manual")}
+        aria-pressed={value === "manual"}
         className={
-          "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition " +
+          "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none " +
           (value === "manual"
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-foreground/62 hover:text-foreground")
@@ -228,7 +227,6 @@ export function SaleForm({
   const session = useSession();
   const contractInputRef = useRef<HTMLInputElement | null>(null);
   const supportInputRef = useRef<HTMLInputElement | null>(null);
-
 
   const [mode, setMode] = useState<Mode>("existing");
   const [agency, setAgency] = useState<AgencyId>(defaultAgency);
@@ -299,9 +297,7 @@ export function SaleForm({
     setCommissionPercentage(
       record?.commissionPercentage ? String(record.commissionPercentage) : "",
     );
-    setResponsibleAgent(
-      record?.responsibleAgent ?? (record ? "" : (session?.nome ?? "")),
-    );
+    setResponsibleAgent(record?.responsibleAgent ?? (record ? "" : (session?.nome ?? "")));
 
     setNotes(record?.notes ?? "");
     setDocumentStatus(record?.documentStatus ?? "contrato_pendente");
@@ -438,6 +434,7 @@ export function SaleForm({
       commissionValue: optionalNumber(commissionValue),
       commissionPercentage: optionalNumber(commissionPercentage),
       responsibleAgent: responsibleAgent.trim() || undefined,
+      contractFilePath: contractFile?.name ? initialRecord?.contractFilePath : undefined,
       contractFileName: contractFile?.name,
       supportingDocumentFileName: supportingFile?.name,
       documentStatus: saleStatus === "cancelada" ? "cancelado" : documentStatus,
@@ -832,7 +829,7 @@ export function SaleForm({
             )}
           </div>
 
-          <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-white/60 bg-[#f7f3ed]/92 px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-end sm:px-7">
+          <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-white/60 bg-[#f7f3ed]/92 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-end sm:px-7">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
