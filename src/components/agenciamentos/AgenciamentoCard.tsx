@@ -36,6 +36,7 @@ type AgenciamentoCardProps = {
   onView: (agenciamento: Agenciamento) => void;
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
+  onDelete?: (agenciamento: Agenciamento) => void;
 };
 
 const operationalItems: Array<{
