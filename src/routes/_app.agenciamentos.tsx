@@ -390,28 +390,6 @@ function Page() {
   );
 }
 
-function HeaderStat({
-  label,
-  value,
-  bordered,
-}: {
-  label: string;
-  value: number | string;
-  bordered?: boolean;
-}) {
-  return (
-    <div
-      className={cn("min-w-0 px-2 text-center sm:px-4", bordered && "border-x border-foreground/9")}
-    >
-      <p className="truncate text-[10px] font-semibold text-foreground/50 sm:text-[11px]">
-        {label}
-      </p>
-      <p className="mt-0.5 text-base font-extrabold text-foreground tabular-nums sm:text-lg">
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function OperationalEmptyState({
   hasRecords,
