@@ -1,78 +1,73 @@
+# Notificações visuais + e-mail no fluxo de atendimentos
 
-## Objetivo
+Hoje o fluxo já existe (trigger `notify_atendimento_corretor` + RPC `mark_attendance_opened`), mas o feedback aparece **apenas** no sino da Central de notificações. Vamos torná-lo visível assim que o usuário entra no sistema, e enviar um e-mail inteligente ao corretor quando um lead for atribuído.
 
-Elevar visualmente a primeira dobra do menu **Aluguéis** (`/alugueis`), hoje composta por um título simples + botão "Novo aluguel" solto no canto + faixa de 6 KPIs pequenos e sem hierarquia. Vamos transformá-la em uma seção com cara de produto premium, mantendo 100% da funcionalidade atual (nenhuma mudança em dados, hooks ou lógica de negócio).
+## O que muda para o usuário
 
-Escopo: **apenas UI/apresentação** em dois componentes:
-- `src/routes/_app.alugueis.tsx` (header)
-- `src/components/alugueis/RentalKpiCards.tsx` (faixa de KPIs)
+1. **Corretor** — ao ser vinculado a um atendimento:
+   - Notificação visual em destaque ao abrir o sistema (toast/banner "Novo atendimento recebido").
+   - E-mail automático com dados do cliente e CTA "Abrir atendimento".
+   - O sino continua funcionando como histórico.
+2. **Admin** — ao entrar no sistema recebe destaque visual quando:
+   - Bianca (ou qualquer usuário) vincular um lead a um corretor.
+   - O corretor abrir/iniciar o atendimento (indicador do tempo de resposta).
+3. Nada muda para a Bianca além do que já existe.
 
-Sem tocar em `useRentals`, server functions, RLS, filtros, cards de contrato ou modais.
+## Componentes de UI
 
----
+- **`NotificationsSpotlight`** (novo): banner premium exibido no topo do `_app.tsx` ao entrar no sistema, agrupando notificações não lidas dos últimos 24h por tipo (`atendimento_atribuido`, `atendimento_iniciado`). Mostra até 3 cards com nome do cliente/corretor, tempo decorrido e ações "Abrir" / "Marcar como lida". Fecha suavemente ao dispensar; reaparece apenas quando surgirem novas notificações (persistência em `localStorage` com hash das ids vistas).
+- **Toast em tempo real**: assinatura Supabase Realtime em `notifications` (filtrado por `user_id = auth.uid()`); ao receber uma linha nova, dispara `sonner` com CTA de navegação e som/pulso sutil. Substitui a experiência "só no sino".
+- **Badge do sino**: mantém contagem, mas ganha pulso quando existir notificação de alta prioridade recém-chegada.
+- Segmentação visual por tipo (accent laranja para atribuição, verde para iniciado, teal neutro para os demais).
 
-## Direção de design
+## Backend / banco
 
-Mesma linguagem já aplicada em Agenciamentos (cards flutuantes, sombras 3D suaves, chips vivos, tipografia contrastada), para consistência entre módulos:
+Migração nova:
 
-- Card "hero" horizontal com fundo em vidro + gradiente radial sutil de marca, sombra multi-camada e leve highlight interno.
-- Título "Aluguéis" em destaque tipográfico forte (peso extra-bold, tracking apertado), com subtítulo curto e um par de chips inline mostrando contexto rápido (ex.: contratos ativos + receita mensal) — sem duplicar os KPIs abaixo, apenas ancorando o hero.
-- Botão "Novo aluguel" reposicionado dentro do card hero, à direita, com aparência elevada (gradiente primário, ícone `Plus` animado no hover, micro-scale ao clicar).
-- Faixa de KPIs redesenhada logo abaixo: cards maiores, com hierarquia clara (valor grande + label acima em micro-caps + ícone tonalizado), separação real entre eles, e o card "Receita mensal" com tratamento de destaque (variação `primary`) quando visível.
+1. `notifications.tipo` recebe valores canônicos `atendimento_atribuido` e `atendimento_iniciado` (padroniza o que o trigger já grava; ajustar `notify_atendimento_corretor` e `mark_attendance_opened` para usar esses códigos + campo `link` para `/atendimentos?focus=<id>`).
+2. `notifications.metadata jsonb` (se não existir) para guardar `attendance_id`, `cliente_nome`, `assigned_at`, `opened_at`.
+3. Índice `(user_id, lida, created_at desc)` para o spotlight.
+4. RLS já existente (SELECT/UPDATE `user_id = auth.uid()`) permanece; garantir GRANT.
+5. Habilitar `REPLICA IDENTITY FULL` + publicação `supabase_realtime` para `public.notifications` para o toast em tempo real.
 
-### Header (novo)
+## E-mail ao corretor
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  Aluguéis                                    [ + Novo aluguel ]     │
-│  Controle real de contratos, locatários e pagamentos.               │
-│  • 5 ativos   • R$ 9k/mês   • 1 vencendo em 30d                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+- Novo template React Email `assignment-to-broker.tsx` em `src/lib/email-templates/`, registrado em `registry.ts`.
+- Conteúdo: saudação com nome do corretor, resumo do lead (cliente, telefone, imobiliária, finalidade, região, orçamento), CTA "Abrir atendimento" apontando para a URL pública do app (`/atendimentos?focus=<id>`), rodapé neutro. `Body` `#ffffff`, brand chips Cordial/Morar em accent.
+- Server function `sendAssignmentEmail` em `src/lib/attendances/email.functions.ts`:
+  - Autenticada (`requireSupabaseAuth`).
+  - Idempotente via `email_logs` (`email_type = attendance_assignment`, chave `attendance_id + corretor_id`).
+  - Busca perfil do corretor (`profiles.email`) e dados do atendimento; ignora se corretor sem e-mail.
+  - Enfileira via `/lovable/email/transactional/send` (infra já existente).
+- Disparo:
+  - **Client-side**: `NovoAtendimentoSheet` e `AtendimentoFormModal` (edição) chamam `sendAssignmentEmail` sempre que `corretorId` mudar/for definido, no mesmo padrão fire-and-forget do `sendFirstAttendanceEmail`. Toasts informam sucesso/erro.
+  - Se no futuro quisermos garantia server-side, dá para adicionar um edge trigger; nesta iteração fica no client (mesmo padrão vigente) para manter simplicidade e RLS clara.
 
-- Container: `rounded-[1.75rem]`, borda `white/70`, `backdrop-blur`, sombra em duas camadas (drop + inset highlight).
-- Gradiente radial decorativo posicionado no canto direito (tom teal/cordial), sem interferir na leitura.
-- Chips de contexto derivados de `r.kpis` (reutiliza dado já carregado — zero requests novos). Ocultos para roles sem `canViewFinancialInsights` no chip de receita.
+## Testes / validação
 
-### KPIs (refino)
+- Login Bianca → cria atendimento vinculando Pablo → validar:
+  - Toast + spotlight no navegador do Pablo (Realtime).
+  - E-mail recebido em `pablo.backes@hotmail.com` (checar `email_logs`).
+  - Admins veem spotlight `atendimento_atribuido` ao entrar.
+- Pablo abre o card → RPC dispara `atendimento_iniciado`; admins recebem spotlight + toast.
+- Reabrir o app: notificações já lidas não geram spotlight novamente (hash persistido).
+- Verificar que corretor sem e-mail resulta em `email_logs.status = skipped` sem quebrar UI.
 
-- Grid mantém 2/3/6 colunas responsivas.
-- Cada card: `rounded-2xl`, borda sutil, fundo `white/68` com `backdrop-blur`, sombra 3D suave (igual padrão Agenciamentos).
-- Label em micro-caps `text-[10px] tracking-wider text-foreground/60`.
-- Valor em `text-2xl font-extrabold tabular-nums`.
-- Ícone tonal por categoria (primary, success, warning, danger, neutral) — mantém a semântica atual.
-- "Receita mensal" ganha variante primária (fundo escuro cordial + texto claro) para virar âncora visual da faixa; permanece condicionado a `canViewFinancialInsights`.
-- Remove o gradiente pastel atual (baixa legibilidade) — substitui por tom sólido + ícone colorido.
+## Detalhes técnicos
 
-### Animações
+- **Arquivos novos**:
+  - `src/components/notifications/NotificationsSpotlight.tsx`
+  - `src/hooks/useRealtimeNotifications.ts`
+  - `src/lib/email-templates/assignment-to-broker.tsx`
+  - migração SQL para tipos/índice/realtime.
+- **Arquivos alterados**:
+  - `src/routes/_app.tsx` (montar spotlight + hook realtime).
+  - `src/components/notification-bell.tsx` (pulso alta prioridade, dedupe com spotlight).
+  - `src/lib/attendances/email.functions.ts` (nova função + tipos).
+  - `src/lib/email-templates/registry.ts` (registrar template).
+  - `src/components/sheets/novo-atendimento.tsx` e `src/components/atendimentos/AtendimentoFormModal.tsx` (disparar e-mail de atribuição).
+  - Trigger SQL `notify_atendimento_corretor` e RPC `mark_attendance_opened` para padronizar `tipo`/`link`/`metadata` (sem quebrar chamadas atuais).
+- **Sem** mudanças no design principal do menu Atendimentos além do spotlight global e do toast.
+- Respeita permissões: spotlight só considera notificações do próprio `user_id`; admins recebem via linhas próprias já criadas pelo trigger/RPC.
 
-- Fade+slide-up leve no hero ao montar (Tailwind + `transition` puros, sem libs novas).
-- Hover no botão: brilho + translate-y de -1px.
-- Hover nos KPIs: elevação sutil da sombra.
-
----
-
-## Passos de implementação
-
-1. **`src/routes/_app.alugueis.tsx`**
-   - Substituir o bloco `<header>` atual por um card horizontal premium.
-   - Mover o botão "Novo aluguel" para dentro do card, alinhado à direita, com estilo elevado.
-   - Adicionar linha de chips de contexto derivados de `r.kpis` (respeitando `canViewFinancialInsights` obtido via `useApp`/role, seguindo padrão já usado em outras telas).
-   - Não alterar seções seguintes (`RentalKpiCards`, filtros, lista, modais).
-
-2. **`src/components/alugueis/RentalKpiCards.tsx`**
-   - Refatorar o subcomponente `Kpi` para o novo visual (sem mudar props públicas).
-   - Adicionar variante `featured` para "Receita mensal".
-   - Manter o gate `canViewFinancialInsights` existente.
-
-3. **Validação**
-   - Rodar typecheck/build.
-   - Verificar em viewport mobile (2 colunas), tablet (3) e desktop (6) que a faixa não quebra.
-   - Verificar que roles sem insight financeiro (`corretor`) não veem receita nem o chip correspondente.
-
----
-
-## Fora de escopo
-
-- Cards de contrato, filtros, modal de cadastro/edição, documentos, permissões, RLS, hooks, server functions.
-- Nenhuma nova dependência.
+Ao aprovar, implemento em uma única leva (migração + template + UI + wiring) e valido o fluxo ponta-a-ponta.
