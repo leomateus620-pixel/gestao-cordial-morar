@@ -54,6 +54,9 @@ export type RentalProperty = {
   status: RentalPropertyStatus;
   observacoes?: string | null;
   brand: RentalBrand;
+  proprietarioNome?: string | null;
+  proprietarioCpf?: string | null;
+  proprietarioEmail?: string | null;
   createdAt: string;
   updatedAt: string;
 };

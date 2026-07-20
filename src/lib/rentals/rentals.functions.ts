@@ -46,6 +46,9 @@ type PropRow = {
   status: string;
   observacoes: string | null;
   brand: string;
+  proprietario_nome: string | null;
+  proprietario_cpf: string | null;
+  proprietario_email: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -120,6 +123,9 @@ function mapProperty(r: PropRow): RentalProperty {
     status: r.status as RentalPropertyStatus,
     observacoes: r.observacoes,
     brand: r.brand as RentalBrand,
+    proprietarioNome: r.proprietario_nome,
+    proprietarioCpf: r.proprietario_cpf,
+    proprietarioEmail: r.proprietario_email,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -200,6 +206,9 @@ function propertyPayload(input: RentalPropertyInput) {
     status: input.status,
     observacoes: orNull(input.observacoes),
     brand: input.brand,
+    proprietario_nome: orNull(input.proprietarioNome),
+    proprietario_cpf: orNull(input.proprietarioCpf),
+    proprietario_email: orNull(input.proprietarioEmail),
   };
 }
 function tenantPayload(input: RentalTenantInput) {
