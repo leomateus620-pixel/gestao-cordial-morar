@@ -64,25 +64,24 @@ function AgenciamentoCardComponent({
   const isValidated = agenciamento.status === "validado" || agenciamento.checklist.validado;
   const pendingItems = operationalItems.filter((item) => !agenciamento.checklist[item.key]);
   const location = [agenciamento.bairro, agenciamento.cidade].filter(Boolean).join(" • ");
+  const brandChipClass =
+    agenciamento.imobiliaria === "morar"
+      ? "border-[var(--morar-primary)]/25 bg-[color-mix(in_oklab,var(--morar-primary)_10%,white)] text-[var(--morar-primary)]"
+      : agenciamento.imobiliaria === "ambas"
+        ? "border-[var(--system-primary)]/25 bg-[color-mix(in_oklab,var(--system-primary)_10%,white)] text-[var(--system-primary)]"
+        : "border-[var(--cordial-primary)]/25 bg-[color-mix(in_oklab,var(--cordial-primary)_10%,white)] text-[var(--cordial-primary)]";
 
   return (
-    <article className="group relative grid min-w-0 gap-4 px-4 py-4 transition-[background-color,box-shadow] duration-180 ease-out hover:bg-white/72 focus-within:bg-white/78 sm:px-5 md:grid-cols-2 xl:grid-cols-[minmax(0,1.45fr)_minmax(10rem,0.66fr)_minmax(12rem,0.78fr)_auto] xl:items-center">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-y-4 left-0 w-0.5 rounded-full",
-          agenciamento.imobiliaria === "morar"
-            ? "bg-[var(--morar-primary)]"
-            : agenciamento.imobiliaria === "ambas"
-              ? "bg-[var(--system-primary)]"
-              : "bg-[var(--cordial-primary)]",
-        )}
-      />
-
-      <div className="min-w-0 pl-1">
+    <article className="group relative grid min-w-0 gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-within:border-primary/25 motion-reduce:transition-none sm:px-6 md:grid-cols-2 xl:grid-cols-[minmax(0,1.45fr)_minmax(10rem,0.66fr)_minmax(12rem,0.78fr)_auto] xl:items-center">
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge label={getAgenciamentoStatusLabel(agenciamento.status)} tone={statusTone} />
-          <span className="rounded-full border border-foreground/9 bg-white/64 px-2 py-0.5 text-[10px] font-semibold text-foreground/60">
+          <span
+            className={cn(
+              "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+              brandChipClass,
+            )}
+          >
             {getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)}
           </span>
         </div>
@@ -90,86 +89,90 @@ function AgenciamentoCardComponent({
         <button
           type="button"
           onClick={() => onView(agenciamento)}
-          className="mt-2 block max-w-full text-left text-[15px] font-extrabold leading-snug tracking-tight text-foreground underline-offset-4 transition-colors duration-150 ease-out hover:text-primary hover:underline focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
+          className="mt-2.5 block max-w-full text-left text-base font-extrabold leading-snug tracking-tight text-foreground underline-offset-4 transition-colors duration-150 ease-out hover:text-primary hover:underline focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
         >
           {getAgenciamentoTipoLabel(agenciamento.tipoImovel)} — {agenciamento.endereco}
         </button>
 
-        <div className="mt-1.5 flex min-w-0 items-start gap-1.5 text-xs text-foreground/56">
-          <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-primary/70" />
+        <div className="mt-1.5 flex min-w-0 items-start gap-1.5 text-xs text-foreground/70">
+          <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-primary/75" />
           <span className="min-w-0 truncate" title={location || agenciamento.endereco}>
             {location || "Bairro e cidade não informados"}
           </span>
         </div>
 
-        <div className="mt-2 flex min-w-0 items-center gap-2 border-t border-foreground/7 pt-2 text-xs">
-          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-foreground/42" />
+        <div className="mt-2.5 flex min-w-0 items-center gap-2 border-t border-foreground/8 pt-2.5 text-xs">
+          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-foreground/50" />
           <span
-            className="truncate font-semibold text-foreground/78"
+            className="truncate font-semibold text-foreground/90"
             title={agenciamento.proprietarioNome}
           >
             {agenciamento.proprietarioNome}
           </span>
-          <span aria-hidden="true" className="text-foreground/20">
+          <span aria-hidden="true" className="text-foreground/25">
             •
           </span>
-          <span className="shrink-0 text-foreground/52">{agenciamento.proprietarioTelefone}</span>
+          <span className="shrink-0 text-foreground/60">{agenciamento.proprietarioTelefone}</span>
         </div>
       </div>
 
-      <div className="min-w-0 space-y-2 md:rounded-xl md:border md:border-foreground/7 md:bg-white/38 md:px-3 md:py-2.5 xl:border-0 xl:bg-transparent xl:p-0">
-        <p className="text-[11px] font-semibold text-foreground/48">Responsabilidade</p>
+      <div className="min-w-0 space-y-2 md:rounded-xl md:border md:border-foreground/8 md:bg-[#f7f4f0] md:px-3.5 md:py-3 xl:border-0 xl:bg-transparent xl:p-0">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-foreground/55">
+          Responsabilidade
+        </p>
         <div className="flex min-w-0 items-center gap-2 text-xs">
-          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-primary/70" />
+          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-[#174d61]" />
           <span
-            className="truncate font-semibold text-foreground/76"
+            className="truncate font-semibold text-foreground/90"
             title={agenciamento.corretorNome}
           >
             {agenciamento.corretorNome}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-foreground/54">
-          <CalendarDays aria-hidden="true" className="size-3.5 text-foreground/42" />
+        <div className="flex items-center gap-2 text-xs text-foreground/65">
+          <CalendarDays aria-hidden="true" className="size-3.5 text-foreground/50" />
           <span>{shortDate(agenciamento.dataAgenciamento)}</span>
         </div>
       </div>
 
       <div className="min-w-0">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold text-foreground/48">Checklist operacional</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-foreground/55">
+            Checklist operacional
+          </p>
           <span className="text-xs font-extrabold text-primary tabular-nums">
             {completed}/6 · {progress}%
           </span>
         </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/8" aria-hidden="true">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-foreground/10" aria-hidden="true">
           <span
-            className="block h-full origin-left rounded-full bg-[#1e647d] transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+            className="block h-full origin-left rounded-full bg-gradient-to-r from-[#174d61] to-[#2d8fa8] shadow-[0_1px_2px_rgba(23,77,97,0.35)] transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
             style={{ transform: `scaleX(${progress / 100})` }}
           />
         </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
           {pendingItems.length > 0 ? (
             pendingItems.slice(0, 3).map((item) => {
               const Icon = item.icon;
               return (
                 <span
                   key={item.key}
-                  className="inline-flex items-center gap-1 rounded-md bg-[rgba(217,120,45,0.1)] px-1.5 py-1 text-[10px] font-semibold text-[var(--system-accent-dark)]"
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--system-accent)]/22 bg-[color-mix(in_oklab,var(--system-accent)_14%,white)] px-2 py-1 text-[10px] font-bold text-[var(--system-accent-dark)]"
                 >
-                  <Icon aria-hidden="true" className="size-3" />
+                  <Icon aria-hidden="true" className="size-3.5" />
                   {item.pendingLabel}
                 </span>
               );
             })
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-1 text-[10px] font-semibold text-emerald-700">
-              <CheckCircle2 aria-hidden="true" className="size-3" />
+            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/12 px-2 py-1 text-[10px] font-bold text-emerald-800">
+              <CheckCircle2 aria-hidden="true" className="size-3.5" />
               Checklist concluído
             </span>
           )}
           {pendingItems.length > 3 && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-foreground/6 px-1.5 py-1 text-[10px] font-semibold text-foreground/55">
-              <CircleAlert aria-hidden="true" className="size-3" />+{pendingItems.length - 3}{" "}
+            <span className="inline-flex items-center gap-1 rounded-md bg-foreground/8 px-2 py-1 text-[10px] font-bold text-foreground/70">
+              <CircleAlert aria-hidden="true" className="size-3.5" />+{pendingItems.length - 3}{" "}
               pendências
             </span>
           )}
@@ -181,7 +184,7 @@ function AgenciamentoCardComponent({
           type="button"
           size="sm"
           variant="outline"
-          className="h-9 rounded-lg border-foreground/10 bg-white/70 px-2.5 text-xs shadow-none transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.98]"
+          className="h-9 rounded-lg border-foreground/12 bg-white px-3 text-xs font-semibold text-foreground/85 shadow-[0_1px_2px_rgba(23,27,33,0.04)] transition-[background-color,color,transform] duration-150 ease-out hover:bg-foreground/[0.04] active:scale-[0.98]"
           onClick={() => onView(agenciamento)}
         >
           Detalhes
@@ -191,7 +194,7 @@ function AgenciamentoCardComponent({
             type="button"
             size="icon"
             variant="outline"
-            className="size-9 rounded-lg border-foreground/10 bg-white/70 shadow-none transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97]"
+            className="size-9 rounded-lg border-foreground/12 bg-white text-foreground/70 shadow-[0_1px_2px_rgba(23,27,33,0.04)] transition-[background-color,color,transform] duration-150 ease-out hover:bg-foreground/[0.04] active:scale-[0.97]"
             onClick={() => onEdit(agenciamento)}
             aria-label={`Editar ${agenciamento.endereco}`}
             title="Editar"
@@ -203,7 +206,7 @@ function AgenciamentoCardComponent({
           <Button
             type="button"
             size="sm"
-            className="h-9 rounded-lg bg-[#174d61] px-2.5 text-xs text-white transition-[background-color,transform] duration-150 ease-out hover:bg-[#1e647d] active:scale-[0.98]"
+            className="h-9 rounded-lg bg-[#174d61] px-3 text-xs font-bold text-white shadow-[0_8px_18px_-10px_rgba(23,77,97,0.7)] transition-[background-color,transform,box-shadow] duration-150 ease-out hover:-translate-y-px hover:bg-[#1e647d] active:translate-y-0 active:scale-[0.98]"
             onClick={() => onValidate(agenciamento)}
           >
             <CheckCircle2 className="size-3.5" />
@@ -215,7 +218,7 @@ function AgenciamentoCardComponent({
             asChild
             size="icon"
             variant="ghost"
-            className="size-9 rounded-lg text-primary transition-[background-color,transform] duration-150 ease-out active:scale-[0.97]"
+            className="size-9 rounded-lg text-foreground/55 transition-[background-color,color,transform] duration-150 ease-out hover:bg-foreground/5 hover:text-primary active:scale-[0.97]"
           >
             <a
               href={agenciamento.driveFolderUrl}
@@ -233,7 +236,7 @@ function AgenciamentoCardComponent({
             asChild
             size="icon"
             variant="ghost"
-            className="size-9 rounded-lg text-primary transition-[background-color,transform] duration-150 ease-out active:scale-[0.97]"
+            className="size-9 rounded-lg text-foreground/55 transition-[background-color,color,transform] duration-150 ease-out hover:bg-foreground/5 hover:text-primary active:scale-[0.97]"
           >
             <a
               href={agenciamento.siteUrl}
