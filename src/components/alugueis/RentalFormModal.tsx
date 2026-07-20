@@ -466,32 +466,34 @@ export function RentalFormModal({
         return;
       }
       const parsedArea = areaM2 ? parseBRLNumber(areaM2) : NaN;
+      const propertyData = {
+        apelido,
+        tipo,
+        logradouro,
+        numero: numero || null,
+        complemento: null,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        uf: uf || null,
+        cep: null,
+        quartos: quartos ? Number(quartos) : null,
+        banheiros: banheiros ? Number(banheiros) : null,
+        vagas: vagas ? Number(vagas) : null,
+        areaM2: Number.isFinite(parsedArea) ? parsedArea : null,
+        valorSugerido: parsedValor,
+        status: "alugado" as const,
+        observacoes: null,
+        brand,
+        proprietarioNome: propNome.trim() || null,
+        proprietarioCpf: propCpf.trim() || null,
+        proprietarioEmail: propEmail.trim() || null,
+      };
       const input: RentalContractInput = {
         ...(isEdit && initial ? { contractId: initial.id } : {}),
         property:
           propMode === "existing"
-            ? { existingId: propId }
-            : {
-                data: {
-                  apelido,
-                  tipo,
-                  logradouro,
-                  numero: numero || null,
-                  complemento: null,
-                  bairro: bairro || null,
-                  cidade: cidade || null,
-                  uf: uf || null,
-                  cep: null,
-                  quartos: quartos ? Number(quartos) : null,
-                  banheiros: banheiros ? Number(banheiros) : null,
-                  vagas: vagas ? Number(vagas) : null,
-                  areaM2: Number.isFinite(parsedArea) ? parsedArea : null,
-                  valorSugerido: parsedValor,
-                  status: "alugado",
-                  observacoes: null,
-                  brand,
-                },
-              },
+            ? { existingId: propId, data: propertyData }
+            : { data: propertyData },
         tenants: tenantEntries.map(tenantEntryToInput),
         guarantees: guaranteeEntries.map(guaranteeEntryToInput),
         garantiaTipo: guaranteeEntries[0]?.tipo ?? "sem_garantia",
