@@ -73,6 +73,7 @@ export interface Atendimento {
   orcamentoMin?: number;
   orcamentoMax?: number;
   imovelId?: string;
+  imovelCodigo?: string;
   imovelDescricao?: string;
   prioridade: PrioridadeAtendimento;
   status: AtendimentoStatus;

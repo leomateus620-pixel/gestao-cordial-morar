@@ -46,6 +46,9 @@ type PropRow = {
   status: string;
   observacoes: string | null;
   brand: string;
+  proprietario_nome: string | null;
+  proprietario_cpf: string | null;
+  proprietario_email: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -120,6 +123,9 @@ function mapProperty(r: PropRow): RentalProperty {
     status: r.status as RentalPropertyStatus,
     observacoes: r.observacoes,
     brand: r.brand as RentalBrand,
+    proprietarioNome: r.proprietario_nome,
+    proprietarioCpf: r.proprietario_cpf,
+    proprietarioEmail: r.proprietario_email,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -200,6 +206,9 @@ function propertyPayload(input: RentalPropertyInput) {
     status: input.status,
     observacoes: orNull(input.observacoes),
     brand: input.brand,
+    proprietario_nome: orNull(input.proprietarioNome),
+    proprietario_cpf: orNull(input.proprietarioCpf),
+    proprietario_email: orNull(input.proprietarioEmail),
   };
 }
 function tenantPayload(input: RentalTenantInput) {
@@ -810,6 +819,9 @@ export const updateRentalContract = createServerFn({ method: "POST" })
         status: (rest.status as RentalPropertyStatus) ?? "disponivel",
         observacoes: rest.observacoes ?? null,
         brand: (rest.brand as RentalBrand) ?? "cordial",
+        proprietarioNome: rest.proprietarioNome ?? null,
+        proprietarioCpf: rest.proprietarioCpf ?? null,
+        proprietarioEmail: rest.proprietarioEmail ?? null,
       });
       const { error } = await supabase
         .from("rental_properties")
@@ -1154,7 +1166,7 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
     const tenantsIn = normalizeTenants(data);
     const guaranteesIn = normalizeGuarantees(data);
 
-    // 1. Property (allow swap or re-edit)
+    // 1. Property (allow swap, re-edit, or owner update on existing)
     let propertyId = data.property.existingId ?? null;
     if (!propertyId) {
       const payload = { ...propertyPayload(data.property.data!), created_by: context.userId };
@@ -1165,6 +1177,14 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(error.message);
       propertyId = (inserted as unknown as PropRow).id;
+    } else if (data.property.data) {
+      // Update owner (and other editable) fields on the existing property row.
+      const patch = propertyPayload(data.property.data);
+      const { error } = await supabase
+        .from("rental_properties")
+        .update(patch as never)
+        .eq("id", propertyId);
+      if (error) throw new Error(error.message);
     }
 
     // 2. Tenants (resolve, insert, or update-in-place)

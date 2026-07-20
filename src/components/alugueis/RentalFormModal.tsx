@@ -310,6 +310,9 @@ export function RentalFormModal({
   const [banheiros, setBanheiros] = useState("");
   const [vagas, setVagas] = useState("");
   const [areaM2, setAreaM2] = useState("");
+  const [propNome, setPropNome] = useState("");
+  const [propCpf, setPropCpf] = useState("");
+  const [propEmail, setPropEmail] = useState("");
 
   const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([
     newTenantEntry(),
@@ -363,6 +366,9 @@ export function RentalFormModal({
     setBanheiros("");
     setVagas("");
     setAreaM2("");
+    setPropNome("");
+    setPropCpf("");
+    setPropEmail("");
     setTenantEntries([newTenantEntry()]);
     setGuaranteeEntries([]);
     setValor("");
@@ -398,6 +404,9 @@ export function RentalFormModal({
     setBanheiros(c.property.banheiros != null ? String(c.property.banheiros) : "");
     setVagas(c.property.vagas != null ? String(c.property.vagas) : "");
     setAreaM2(c.property.areaM2 != null ? String(c.property.areaM2) : "");
+    setPropNome(c.property.proprietarioNome ?? "");
+    setPropCpf(c.property.proprietarioCpf ?? "");
+    setPropEmail(c.property.proprietarioEmail ?? "");
 
     const tList = c.tenants && c.tenants.length > 0 ? c.tenants : [c.tenant];
     setTenantEntries(
@@ -457,32 +466,34 @@ export function RentalFormModal({
         return;
       }
       const parsedArea = areaM2 ? parseBRLNumber(areaM2) : NaN;
+      const propertyData = {
+        apelido,
+        tipo,
+        logradouro,
+        numero: numero || null,
+        complemento: null,
+        bairro: bairro || null,
+        cidade: cidade || null,
+        uf: uf || null,
+        cep: null,
+        quartos: quartos ? Number(quartos) : null,
+        banheiros: banheiros ? Number(banheiros) : null,
+        vagas: vagas ? Number(vagas) : null,
+        areaM2: Number.isFinite(parsedArea) ? parsedArea : null,
+        valorSugerido: parsedValor,
+        status: "alugado" as const,
+        observacoes: null,
+        brand,
+        proprietarioNome: propNome.trim() || null,
+        proprietarioCpf: propCpf.trim() || null,
+        proprietarioEmail: propEmail.trim() || null,
+      };
       const input: RentalContractInput = {
         ...(isEdit && initial ? { contractId: initial.id } : {}),
         property:
           propMode === "existing"
-            ? { existingId: propId }
-            : {
-                data: {
-                  apelido,
-                  tipo,
-                  logradouro,
-                  numero: numero || null,
-                  complemento: null,
-                  bairro: bairro || null,
-                  cidade: cidade || null,
-                  uf: uf || null,
-                  cep: null,
-                  quartos: quartos ? Number(quartos) : null,
-                  banheiros: banheiros ? Number(banheiros) : null,
-                  vagas: vagas ? Number(vagas) : null,
-                  areaM2: Number.isFinite(parsedArea) ? parsedArea : null,
-                  valorSugerido: parsedValor,
-                  status: "alugado",
-                  observacoes: null,
-                  brand,
-                },
-              },
+            ? { existingId: propId, data: propertyData }
+            : { data: propertyData },
         tenants: tenantEntries.map(tenantEntryToInput),
         guarantees: guaranteeEntries.map(guaranteeEntryToInput),
         garantiaTipo: guaranteeEntries[0]?.tipo ?? "sem_garantia",
@@ -667,6 +678,45 @@ export function RentalFormModal({
                   </Field>
                 </div>
               )}
+
+              <div className="mt-4 rounded-2xl border border-border/60 bg-background/60 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                    P
+                  </span>
+                  <span className="text-[12px] font-semibold text-foreground">
+                    Proprietário do imóvel
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">(opcional)</span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Nome completo" className="sm:col-span-2">
+                    <input
+                      value={propNome}
+                      onChange={(e) => setPropNome(e.target.value)}
+                      className={inputCls}
+                      placeholder="Nome do proprietário"
+                    />
+                  </Field>
+                  <Field label="CPF / CNPJ">
+                    <input
+                      value={propCpf}
+                      onChange={(e) => setPropCpf(e.target.value)}
+                      className={inputCls}
+                      placeholder="000.000.000-00"
+                    />
+                  </Field>
+                  <Field label="E-mail">
+                    <input
+                      type="email"
+                      value={propEmail}
+                      onChange={(e) => setPropEmail(e.target.value)}
+                      className={inputCls}
+                      placeholder="proprietario@email.com"
+                    />
+                  </Field>
+                </div>
+              </div>
             </SectionCard>
 
             {/* Locatários */}

@@ -31,6 +31,7 @@ type DbRow = {
   orcamento_min: number | string | null;
   orcamento_max: number | string | null;
   imovel_id: string | null;
+  imovel_codigo: string | null;
   imovel_descricao: string | null;
   corretor_id: string | null;
   corretor_nome: string | null;
@@ -79,6 +80,7 @@ function rowToAtendimento(row: DbRow): Atendimento {
     orcamentoMin: row.orcamento_min !== null ? Number(row.orcamento_min) : undefined,
     orcamentoMax: row.orcamento_max !== null ? Number(row.orcamento_max) : undefined,
     imovelId: orUndef(row.imovel_id) ?? undefined,
+    imovelCodigo: orUndef(row.imovel_codigo) ?? undefined,
     imovelDescricao: orUndef(row.imovel_descricao) ?? undefined,
     prioridade: row.prioridade as PrioridadeAtendimento,
     status: row.status as AtendimentoStatus,
@@ -132,6 +134,7 @@ function inputToPayload(input: AtendimentoCreateInput, userId: string) {
     orcamento_min: num(input.orcamentoMin),
     orcamento_max: num(input.orcamentoMax),
     imovel_id: asUuid(input.imovelId),
+    imovel_codigo: orNull(input.imovelCodigo),
     imovel_descricao: orNull(input.imovelDescricao),
     corretor_id:
       input.corretorId && input.corretorId !== "a_definir" ? input.corretorId : null,

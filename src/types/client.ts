@@ -1,4 +1,4 @@
-export type ClientPurpose = "compra" | "aluguel" | "ambos";
+export type ClientPurpose = "compra" | "aluguel" | "ambos" | "venda" | "locacao";
 
 export type ClientType = "comprador" | "locatario" | "proprietario" | "investidor";
 
@@ -98,9 +98,11 @@ export const realEstateBrandOptions = [
 ] as const;
 
 export const clientPurposeOptions = [
-  { value: "compra", label: "Compra" },
-  { value: "aluguel", label: "Aluguel" },
+  { value: "compra", label: "Comprar" },
+  { value: "aluguel", label: "Alugar" },
   { value: "ambos", label: "Ambos" },
+  { value: "venda", label: "Vender (proprietário)" },
+  { value: "locacao", label: "Locar (proprietário)" },
 ] as const;
 
 export const propertyTypeOptions = [
