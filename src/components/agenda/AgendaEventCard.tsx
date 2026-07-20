@@ -150,6 +150,19 @@ export function AgendaEventCard({
               {agendaImobiliariaLabel[event.imobiliaria]}
             </span>
             <GoogleSyncBadge event={event} />
+            {isAdmin && ownerName && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-teal-600/12 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-teal-900 ring-1 ring-teal-700/15"
+                title={`Corretor responsável: ${ownerName}`}
+              >
+                {ownerInitials && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-teal-700 text-[8px] font-bold text-white">
+                    {ownerInitials}
+                  </span>
+                )}
+                Corretor: {ownerName}
+              </span>
+            )}
             {event.observacoes && (
               <span className="min-w-0 flex-1 truncate text-[10px] italic text-foreground/44">
                 "{event.observacoes}"
