@@ -42,11 +42,17 @@ function Page() {
   const canEditClient = useCallback(
     (client: Client) => {
       if (!session) return false;
-      if (session.perfil === "admin_owner" || session.perfil === "financeiro_admin") return true;
-      return client.createdBy === session.id;
+      if (
+        session.perfil === "admin_owner" ||
+        session.perfil === "financeiro_admin" ||
+        session.perfil === "secretaria"
+      )
+        return true;
+      return client.createdBy === session.id || client.assignedBrokerId === session.id;
     },
     [session],
   );
+
 
   async function createClient(client: ClientCreateInput) {
     try {
