@@ -47,6 +47,18 @@ export function NovoAtendimentoSheet({
           toast.error("Não foi possível enviar o e-mail automático agora.");
         }
       })();
+
+      if (input.corretorId && input.corretorId !== "a_definir") {
+        void (async () => {
+          try {
+            await sendBrokerAssignmentEmail({
+              data: { attendanceId: created.id, corretorId: input.corretorId as string },
+            });
+          } catch {
+            /* silencioso — a notificação in-app já foi disparada pelo trigger */
+          }
+        })();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar atendimento.");
       throw err;
