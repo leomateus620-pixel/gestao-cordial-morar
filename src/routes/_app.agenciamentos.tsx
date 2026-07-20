@@ -425,7 +425,38 @@ function Page() {
         }}
         onEdit={openEdit}
         onValidate={handleValidate}
+        onDelete={requestDelete}
       />
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agenciamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `Esta ação removerá "${pendingDelete.endereco}" (${pendingDelete.proprietarioNome}) permanentemente. Não é possível desfazer.`
+                : "Esta ação é permanente e não pode ser desfeita."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
