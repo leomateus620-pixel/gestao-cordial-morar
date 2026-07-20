@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { CalendarClock, CheckCircle2, Plus, Wallet } from "lucide-react";
 import { useRentals } from "@/hooks/useRentals";
 import { RentalKpiCards } from "@/components/alugueis/RentalKpiCards";
 import { RentalFilters } from "@/components/alugueis/RentalFilters";
@@ -11,6 +11,9 @@ import { RentalFormModal } from "@/components/alugueis/RentalFormModal";
 import { RentalSkeleton } from "@/components/alugueis/RentalSkeleton";
 import { EmptyRentalState } from "@/components/alugueis/EmptyRentalState";
 import type { RentalContractFull } from "@/types/rental";
+import { useSession } from "@/lib/auth-mock";
+import { canSeeFinancialInsights } from "@/lib/access-control";
+import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/alugueis")({
   head: () => ({ meta: [{ title: "Aluguéis — Gestão Cordial" }] }),
