@@ -51,6 +51,7 @@ type FormState = {
   orcamentoMin: string;
   orcamentoMax: string;
   imovelId: string;
+  imovelCodigo: string;
   imovelDescricao: string;
   proximoRetornoData: string;
   proximoRetornoHora: string;
@@ -78,6 +79,7 @@ const initialForm: FormState = {
   orcamentoMin: "",
   orcamentoMax: "",
   imovelId: "",
+  imovelCodigo: "",
   imovelDescricao: "",
   proximoRetornoData: "",
   proximoRetornoHora: "",
@@ -229,6 +231,7 @@ export function AtendimentoFormModal({
       orcamentoMin: parseCurrencyBR(form.orcamentoMin),
       orcamentoMax: parseCurrencyBR(form.orcamentoMax),
       imovelId: optional(form.imovelId),
+      imovelCodigo: optional(form.imovelCodigo),
       imovelDescricao: optional(form.imovelDescricao) ?? selectedProperty?.titulo,
       prioridade: form.prioridade,
       status: form.status,
@@ -473,6 +476,15 @@ export function AtendimentoFormModal({
                   onChange={(event) => update("imovelDescricao", event.target.value)}
                   className={cn(inputClass(), "min-h-20 resize-none leading-5")}
                   placeholder="Características desejadas, referência do anúncio ou contexto da busca."
+                />
+              </Field>
+
+              <Field label="Código do imóvel ou nome do residencial (opcional)">
+                <input
+                  value={form.imovelCodigo}
+                  onChange={(event) => update("imovelCodigo", event.target.value)}
+                  className={inputClass()}
+                  placeholder="Ex.: CI-2045, Residencial Aurora, Ap. 302..."
                 />
               </Field>
 
