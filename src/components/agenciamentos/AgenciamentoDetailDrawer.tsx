@@ -68,6 +68,7 @@ export function AgenciamentoDetailDrawer({
   onOpenChange,
   onEdit,
   onValidate,
+  onDelete,
 }: AgenciamentoDetailDrawerProps) {
   const progress = agenciamento ? getChecklistCompletionPercent(agenciamento.checklist) : 0;
   const completed = agenciamento ? getChecklistCompletedCount(agenciamento.checklist) : 0;
