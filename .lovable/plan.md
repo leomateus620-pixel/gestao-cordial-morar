@@ -1,42 +1,31 @@
 ## Objetivo
-Adicionar edição real dos cadastros de clientes, com persistência no banco e sincronização automática da lista/detalhe. O backend (`updateClient` em `src/lib/clients/clients.functions.ts`) e o hook (`updateClient` em `src/hooks/useClients.ts`) já existem e funcionam — falta apenas a interface de edição, que hoje não existe em nenhum lugar.
+Liberar o menu **Agenda** para corretores, mantendo isolamento total (cada corretor vê apenas os próprios eventos) e garantindo que o admin veja a agenda consolidada de toda a equipe, com identificação clara de qual corretor é dono de cada compromisso.
 
-## O que será feito
+## Situação atual (verificada)
+- **RLS de `agenda_events` já cobre a regra**: SELECT permite ver o evento apenas se o usuário for `created_by`, `owner_user_id`, participante, ou admin. Nada muda no banco.
+- **Bloqueio é só no frontend**: `roleDefinitions.corretor.modules` não inclui `"agenda"` e não tem `"agenda:read"`, então o item some da sidebar/rota e `RequireModuleAccess` barra o acesso direto.
+- `AgendaEventCard` já mostra o responsável (`event.responsavelPrincipalNome`) via ícone `CalendarRange`, e `AgendaFilters` já tem filtro por responsável — ou seja, admin já consegue distinguir de quem é cada evento. Só falta destacar visualmente.
 
-### 1. Reaproveitar o modal de cadastro para modo "editar"
-Refatorar `src/components/clients/ClientFormModal.tsx` para aceitar dois modos, sem duplicar o formulário (mesmos 4 passos, validações e responsividade):
+## Mudanças
 
-- Nova prop opcional `initialClient?: Client` (quando presente → modo edição).
-- `initialForm` deixa de ser constante e passa a ser derivado do `initialClient` (ou o padrão atual, para criação).
-- Título do modal muda para "Editar cliente" e o botão final para "Salvar alterações" quando em modo edição.
-- `onSubmit` continua recebendo `ClientCreateInput` — o chamador decide se cria ou atualiza.
+### 1. Permissões (`src/lib/mock/permissions.ts`)
+- Corretor: adicionar `"agenda"` em `modules` e `"agenda:read"` em `permissions` (mantendo `"agenda:write"` que já existe).
+- Secretaria: sem mudança (segue sem o menu na navegação, como está hoje).
 
-### 2. Botão "Editar" nos cards da lista
-Em `src/components/clients/ClientCard.tsx`:
-- Adicionar um botão discreto de editar (ícone lápis, canto superior direito ao lado do badge de status) que dispara `onEdit(client)` — nova prop opcional.
-- Manter o resto do card idêntico (design, layout, badges).
+### 2. Identificação visual do dono (admins) — `src/components/agenda/AgendaEventCard.tsx`
+- Adicionar um chip "Corretor: <nome> · <iniciais>" no rodapé do card, renderizado apenas para admins (via `useSession` + `isAdminUser`) para destacar de quem é o evento sem poluir a visão do próprio corretor.
+- Fonte do nome: `event.responsavelPrincipalNome` (fallback `criadoPorNome`).
 
-### 3. Página de detalhe com ação "Editar cliente"
-Em `src/routes/_app.clientes.$clienteId.tsx`:
-- Botão "Editar cliente" ao lado do "Voltar", que abre o mesmo modal já pré-preenchido.
-- Após salvar, os dados atualizados aparecem automaticamente (invalidação do `CLIENTS_QUERY_KEY` já feita pelo hook).
+### 3. Nada muda em:
+- RLS / migrações (regra já correta).
+- `useAgenda`, `listAgendaEvents`, `AgendaFilters` (filtro por responsável já existe e continua útil para o admin).
+- Navegação/sidebar/mobile — já são geradas a partir de `roleDefinitions`, então o item passa a aparecer automaticamente ao liberar o módulo.
 
-### 4. Orquestração na rota da lista
-Em `src/routes/_app.clientes.tsx`:
-- Adicionar estado `editing: Client | null`.
-- Passar `onEdit={setEditing}` para o `ClientList`/`ClientCard`.
-- Renderizar `<ClientFormModal>` com `initialClient={editing}` quando `editing` estiver definido, chamando `updateClient({ id, patch })` do hook `useClients` no `onSubmit`.
-- Toast de sucesso: "Cadastro de {nome} atualizado."
-
-### 5. Persistência e permissões
-- O `updateClient` do server function já grava no Supabase e o hook faz `invalidateQueries` → a lista e o detalhe se atualizam sozinhos.
-- RLS atual da tabela `clients`: apenas o **criador do cadastro** ou **admin** pode editar. Corretores/secretária que apenas foram atribuídos a um cliente veem, mas não editam. O botão de editar ficará **oculto** para quem não tem permissão (comparando `created_by` do cliente com o `userId` do session e o role admin), evitando erro de RLS em runtime.
+## Validação
+- Login como corretor (Felipe): menu "Agenda" aparece, lista apenas eventos onde ele é dono/participante, não vê nada dos outros.
+- Login como admin: continua vendo todos os eventos, agora com chip "Corretor: <nome>" em cada card.
+- Login como secretária: menu continua oculto (permissão `agenda:write` interna preservada para fluxos operacionais).
 
 ## Detalhes técnicos
-
-- Nenhuma migração de banco necessária — schema, RLS e server function já estão prontos.
-- Sem mudanças no design (mesmo modal, mesmo card).
-- Trabalho concentrado em 4 arquivos: `ClientFormModal.tsx`, `ClientCard.tsx`, `ClientList.tsx` (repassar a prop `onEdit`), `_app.clientes.tsx`, `_app.clientes.$clienteId.tsx`.
-
-## Fora do escopo (posso incluir se você quiser)
-- Permitir que o **corretor atribuído** (não só o criador) também edite o cliente — exigiria uma pequena migração ampliando a policy `clients_update_own_or_admin` para incluir `assigned_broker_id = auth.uid()`. Hoje só criador/admin edita.
+- Sem migração SQL: as policies existentes em `agenda_events`, `agenda_event_participants`, `agenda_event_checklist`, `agenda_event_reminders`, `agenda_event_guests` já isolam por `agenda_can_access`.
+- Sem novo endpoint: `listAgendaEvents` já roda com `requireSupabaseAuth` e retorna somente o que a RLS libera.
