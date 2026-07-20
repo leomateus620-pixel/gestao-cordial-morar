@@ -62,7 +62,10 @@ function Page() {
     Boolean(user) &&
     (user!.perfil === "admin_owner" ||
       user!.perfil === "financeiro_admin" ||
-      cliente.createdBy === user!.id);
+      user!.perfil === "secretaria" ||
+      cliente.createdBy === user!.id ||
+      cliente.assignedBrokerId === user!.id);
+
 
   async function handleSave(input: ClientCreateInput) {
     try {
