@@ -69,6 +69,7 @@ function Page() {
     createAgenciamento,
     updateAgenciamento,
     validateAgenciamento,
+    deleteAgenciamento,
     isLoading,
     isFetching,
     isError,
@@ -77,6 +78,7 @@ function Page() {
   } = useAgenciamentos();
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
