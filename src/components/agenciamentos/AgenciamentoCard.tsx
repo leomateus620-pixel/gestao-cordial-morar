@@ -59,6 +59,7 @@ function AgenciamentoCardComponent({
   onView,
   onEdit,
   onValidate,
+  onDelete,
 }: AgenciamentoCardProps) {
   const progress = getChecklistCompletionPercent(agenciamento.checklist);
   const completed = getChecklistCompletedCount(agenciamento.checklist);
