@@ -205,6 +205,19 @@ function AgenciamentoCardComponent({
             <Pencil className="size-3.5" />
           </Button>
         )}
+        {canManage && onDelete && (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            className="size-9 rounded-lg border-destructive/25 bg-white text-destructive shadow-[0_1px_2px_rgba(23,27,33,0.04)] transition-[background-color,color,transform] duration-150 ease-out hover:bg-destructive/10 active:scale-[0.97]"
+            onClick={() => onDelete(agenciamento)}
+            aria-label={`Excluir ${agenciamento.endereco}`}
+            title="Excluir"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        )}
         {canManage && !isValidated && (
           <Button
             type="button"
