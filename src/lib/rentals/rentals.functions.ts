@@ -819,6 +819,9 @@ export const updateRentalContract = createServerFn({ method: "POST" })
         status: (rest.status as RentalPropertyStatus) ?? "disponivel",
         observacoes: rest.observacoes ?? null,
         brand: (rest.brand as RentalBrand) ?? "cordial",
+        proprietarioNome: rest.proprietarioNome ?? null,
+        proprietarioCpf: rest.proprietarioCpf ?? null,
+        proprietarioEmail: rest.proprietarioEmail ?? null,
       });
       const { error } = await supabase
         .from("rental_properties")
