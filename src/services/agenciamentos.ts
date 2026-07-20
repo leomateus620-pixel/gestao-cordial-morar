@@ -506,7 +506,7 @@ export function canEditAgenciamento(
   corretorId?: string,
 ) {
   if (!user) return false;
-  if (user.perfil === "admin_owner") return true;
+  if (user.perfil === "admin_owner" || user.perfil === "secretaria") return true;
   if (user.perfil !== "corretor") return false;
   return item.corretorId === corretorId && item.status !== "validado" && !item.checklist.validado;
 }
@@ -517,9 +517,10 @@ export function getAgenciamentosVisibleToUser(
   corretorId?: string,
 ) {
   if (!user) return [];
-  if (user.perfil === "admin_owner") return agenciamentos;
+  if (user.perfil === "admin_owner" || user.perfil === "secretaria") return agenciamentos;
   if (user.perfil === "corretor" && corretorId) {
     return agenciamentos.filter((item) => item.corretorId === corretorId);
   }
   return [];
 }
+
