@@ -678,6 +678,45 @@ export function RentalFormModal({
                   </Field>
                 </div>
               )}
+
+              <div className="mt-4 rounded-2xl border border-border/60 bg-background/60 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="grid size-6 place-items-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                    P
+                  </span>
+                  <span className="text-[12px] font-semibold text-foreground">
+                    Proprietário do imóvel
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">(opcional)</span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Nome completo" className="sm:col-span-2">
+                    <input
+                      value={propNome}
+                      onChange={(e) => setPropNome(e.target.value)}
+                      className={inputCls}
+                      placeholder="Nome do proprietário"
+                    />
+                  </Field>
+                  <Field label="CPF / CNPJ">
+                    <input
+                      value={propCpf}
+                      onChange={(e) => setPropCpf(e.target.value)}
+                      className={inputCls}
+                      placeholder="000.000.000-00"
+                    />
+                  </Field>
+                  <Field label="E-mail">
+                    <input
+                      type="email"
+                      value={propEmail}
+                      onChange={(e) => setPropEmail(e.target.value)}
+                      className={inputCls}
+                      placeholder="proprietario@email.com"
+                    />
+                  </Field>
+                </div>
+              </div>
             </SectionCard>
 
             {/* Locatários */}
