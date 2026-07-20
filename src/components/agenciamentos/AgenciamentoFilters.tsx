@@ -227,16 +227,17 @@ export function AgenciamentoFilters({
         </div>
       </div>
 
-      <div className="mt-3 hidden lg:block">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <FilterLabel label="Escopo da imobiliária" className="w-full xl:w-auto">
+      <div className="mt-6 hidden lg:block">
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 xl:col-span-5">
+            <span className={microLabelClassName}>Escopo da imobiliária</span>
             <AgencyScope
               value={filters.imobiliaria}
               onChange={(imobiliaria) => onFiltersChange({ imobiliaria })}
             />
-          </FilterLabel>
-          <div className="w-full xl:w-[19rem]">
-            <span className="mb-1.5 block text-[11px] font-semibold text-foreground/64">Busca</span>
+          </div>
+          <div className="col-span-12 xl:col-span-7">
+            <span className={microLabelClassName}>Busca</span>
             <SearchField
               value={filters.busca}
               onChange={(busca) => onFiltersChange({ busca })}
@@ -245,8 +246,9 @@ export function AgenciamentoFilters({
           </div>
         </div>
 
-        <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2 xl:grid-cols-5">
-          <FilterLabel label="Período">
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-foreground/8 pt-5 md:grid-cols-5">
+          <div>
+            <span className={microLabelClassName}>Período</span>
             <Select
               value={filters.periodo}
               onValueChange={(periodo) =>
@@ -264,35 +266,39 @@ export function AgenciamentoFilters({
                 ))}
               </SelectContent>
             </Select>
-          </FilterLabel>
-          <FilterLabel label="Status">
+          </div>
+          <div>
+            <span className={microLabelClassName}>Status</span>
             <StatusSelect
               value={filters.status}
               onChange={(status) => onFiltersChange({ status })}
             />
-          </FilterLabel>
-          <FilterLabel label="Tipo de imóvel">
+          </div>
+          <div>
+            <span className={microLabelClassName}>Tipo de imóvel</span>
             <TypeSelect
               value={filters.tipoImovel}
               onChange={(tipoImovel) => onFiltersChange({ tipoImovel })}
             />
-          </FilterLabel>
-          <FilterLabel label="Checklist">
+          </div>
+          <div>
+            <span className={microLabelClassName}>Checklist</span>
             <ChecklistSelect
               value={filters.checklist}
               onChange={(checklist) => onFiltersChange({ checklist })}
             />
-          </FilterLabel>
+          </div>
           {isAdmin ? (
-            <FilterLabel label="Responsável">
+            <div>
+              <span className={microLabelClassName}>Responsável</span>
               <BrokerSelect
                 value={filters.corretorId}
                 corretores={corretores}
                 onChange={(corretorId) => onFiltersChange({ corretorId })}
               />
-            </FilterLabel>
+            </div>
           ) : (
-            <div className="hidden xl:block" />
+            <div className="hidden md:block" />
           )}
         </div>
       </div>
