@@ -44,6 +44,7 @@ type AgenciamentoDetailDrawerProps = {
   onOpenChange: (open: boolean) => void;
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
+  onDelete?: (agenciamento: Agenciamento) => void;
 };
 
 const checklistRows: Array<{
