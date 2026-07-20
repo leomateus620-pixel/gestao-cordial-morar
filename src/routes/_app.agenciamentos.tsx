@@ -335,7 +335,7 @@ function Page() {
           )}
 
           {!isLoading && !isError && hasFilteredResults && (
-            <div className="divide-y divide-foreground/8 overflow-hidden rounded-[1.4rem] border border-white/75 bg-white/52 shadow-[0_22px_58px_-46px_rgba(23,27,33,0.42)] backdrop-blur-xl">
+            <div className="space-y-3.5 sm:space-y-4">
               {agenciamentos.map((agenciamento) => (
                 <AgenciamentoCard
                   key={agenciamento.id}
