@@ -227,6 +227,24 @@ export function RentalExpandedDetails({
               label="Área"
               value={contract.property.areaM2 ? `${contract.property.areaM2} m²` : ""}
             />
+            {(contract.property.proprietarioNome ||
+              contract.property.proprietarioCpf ||
+              contract.property.proprietarioEmail) && (
+              <>
+                <Row
+                  label="Proprietário"
+                  value={contract.property.proprietarioNome ?? ""}
+                />
+                <Row
+                  label="CPF/CNPJ do proprietário"
+                  value={contract.property.proprietarioCpf ?? ""}
+                />
+                <Row
+                  label="E-mail do proprietário"
+                  value={contract.property.proprietarioEmail ?? ""}
+                />
+              </>
+            )}
           </Section>
 
           <RentalDocuments contractId={contract.id} />
