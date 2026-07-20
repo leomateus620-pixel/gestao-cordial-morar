@@ -1,36 +1,28 @@
-## Problema
+## Objetivo
+Permitir apagar agenciamentos (para remover testes e cadastros incorretos), com confirmação e permissão adequada.
 
-A Bianca (secretaria) não vê nenhum agenciamento porque a camada cliente filtra tudo antes da renderização, mesmo com o backend/RLS já liberando o acesso completo para o perfil `secretaria`.
+## Escopo
 
-Verificado nos arquivos:
+- Backend/RLS: sem mudanças. A server function `deleteAgenciamento` já existe em `src/lib/agenciamentos/agenciamentos.functions.ts` e o hook `useAgenciamentos` já expõe `deleteAgenciamento(id)` protegido por `canManage`.
+- Frontend: adicionar ação "Excluir" no `AgenciamentoDetailDrawer` (onde já há edição), com `AlertDialog` de confirmação. Também adicionar botão discreto de excluir no `AgenciamentoCard` (ícone de lixeira) visível apenas para quem tem permissão (`admin_owner` e `secretaria`, via `canManage`).
+- Após excluir: fechar drawer/diálogo, toast de sucesso, invalidação da query (já feita pelo hook).
 
-- `src/services/agenciamentos.ts`
-  - `getAgenciamentosVisibleToUser`: só devolve dados para `admin_owner` ou `corretor`; qualquer outro perfil recebe `[]`. Por isso a lista da Bianca fica sempre vazia.
-  - `canEditAgenciamento`: só permite edição para `admin_owner` e `corretor`, ignorando `secretaria`.
-- `src/hooks/useAgenciamentos.ts`
-  - `isAdmin = perfil === "admin_owner"`; como Bianca não passa nesse teste, `effectiveFilters.corretorId` é forçado para o id dela (`"__sem_corretor__"` no fallback), zerando a lista, o ranking, o filtro por corretor e o painel administrativo.
-- Servidor (`listAgenciamentos`) já trata `secretaria` como admin (retorna todos os registros), então a correção é 100% na camada de apresentação/serviço, sem mexer em RLS.
+## Passos
 
-## Correção
+1. `src/components/agenciamentos/AgenciamentoCard.tsx`
+   - Aceitar prop opcional `onDelete?: (id: string) => void` e `canDelete?: boolean`.
+   - Renderizar botão "lixeira" no canto (ghost, `text-destructive`) que dispara `onDelete`, sem propagar o clique para o card.
 
-Tratar `secretaria` como perfil administrativo do módulo de Agenciamentos (mesmo escopo de visão do admin), mantendo a validação final restrita ao `admin_owner`.
+2. `src/components/agenciamentos/AgenciamentoDetailDrawer.tsx`
+   - Adicionar botão "Excluir agenciamento" no rodapé (visível se `canManage`).
+   - `AlertDialog` de confirmação com nome do imóvel/proprietário no texto.
+   - Ao confirmar: chamar `deleteAgenciamento(id)` do hook, `toast.success`, fechar drawer.
 
-1. `src/services/agenciamentos.ts`
-   - `getAgenciamentosVisibleToUser`: retornar todos os registros também quando `user.perfil === "secretaria"`.
-   - `canEditAgenciamento`: permitir edição total para `secretaria` (mesma regra do admin), mantendo corretor restrito ao próprio registro e não-validado.
+3. `src/routes/_app.agenciamentos.tsx`
+   - Passar `onDelete` e `canDelete={canManage}` para os `AgenciamentoCard`.
+   - Confirmação inline (reutilizar `AlertDialog`) antes de disparar a exclusão a partir do card.
 
-2. `src/hooks/useAgenciamentos.ts`
-   - Introduzir um flag `isAdminLike = perfil === "admin_owner" || perfil === "secretaria"` e usá-lo em:
-     - `effectiveFilters.corretorId` (não forçar o filtro pelo próprio id quando for secretaria — ela deve poder filtrar por qualquer corretor ou ver todos).
-     - `ranking` e `dashboardAgenciamentos`/`dashboardSummary`/`dashboardRanking` (secretaria enxerga o mesmo painel operacional do admin).
-   - Manter `isAdmin` (validação) apenas para `admin_owner`, para não liberar o botão "Validar" à secretaria.
-   - Manter `canManage` como está (já vem por permissão `agenciamentos:manage` que a secretaria possui) para operações de escrita/edição.
-
-3. Sanidade
-   - Rodar typecheck.
-   - Validar no preview com a sessão da Bianca: lista carrega, filtros por corretor funcionam, botão de validar continua oculto/ bloqueado.
-
-## Escopo fora
-
-- Sem alterações em RLS, migrations, permissões do banco, layout ou fluxo de cadastro.
-- Sem mudanças no comportamento de admin e corretor.
+## Fora de escopo
+- Alterar RLS, políticas ou schema.
+- Soft delete / lixeira / restauração.
+- Ação em massa.
