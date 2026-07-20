@@ -1,36 +1,36 @@
-## Tarefa 1 — Finalidade "Vender" e "Alugar" no cadastro de Clientes
+## Problema
 
-Hoje `ClientPurpose` só suporta `compra | aluguel | ambos` (ótica do comprador/locatário). Vou estender para cobrir proprietários que estão colocando o imóvel no mercado.
+A Bianca (secretaria) não vê nenhum agenciamento porque a camada cliente filtra tudo antes da renderização, mesmo com o backend/RLS já liberando o acesso completo para o perfil `secretaria`.
 
-- `src/types/client.ts`: estender `ClientPurpose` com `"venda"` e `"locacao"`; adicionar as opções em `clientPurposeOptions` ("Vender (proprietário)", "Alugar (proprietário)"); atualizar `clientPurposeLabel`.
-- `src/components/clients/ClientFormModal.tsx`: rótulo do orçamento vira "Valor pretendido" quando `venda`/`locacao`; validação continua opcional.
-- `src/hooks/useClients.ts`: filtro `purpose` já é `"todos" | ClientPurpose` — passa a aceitar os dois novos valores automaticamente; incluir `locacao` na contagem de "aluguel" e `venda` na de "compra" nos stats para não zerar os cards.
-- `src/services/clients.ts`: se houver derivações por purpose, ajustar da mesma forma.
-- Coluna `purpose` no banco já é `text` livre — nenhuma migração necessária.
+Verificado nos arquivos:
 
-## Tarefa 2 — Código/Nome do imóvel no cadastro de Atendimentos
+- `src/services/agenciamentos.ts`
+  - `getAgenciamentosVisibleToUser`: só devolve dados para `admin_owner` ou `corretor`; qualquer outro perfil recebe `[]`. Por isso a lista da Bianca fica sempre vazia.
+  - `canEditAgenciamento`: só permite edição para `admin_owner` e `corretor`, ignorando `secretaria`.
+- `src/hooks/useAgenciamentos.ts`
+  - `isAdmin = perfil === "admin_owner"`; como Bianca não passa nesse teste, `effectiveFilters.corretorId` é forçado para o id dela (`"__sem_corretor__"` no fallback), zerando a lista, o ranking, o filtro por corretor e o painel administrativo.
+- Servidor (`listAgenciamentos`) já trata `secretaria` como admin (retorna todos os registros), então a correção é 100% na camada de apresentação/serviço, sem mexer em RLS.
 
-No passo "Interesse", ao lado do select "Vincular imóvel existente", adicionar um campo de texto livre para o corretor digitar o código do site ou o nome do residencial quando o imóvel não está cadastrado no sistema.
+## Correção
 
-- Migration: `ALTER TABLE public.attendances ADD COLUMN imovel_codigo text` (sem alterar RLS/policies).
-- `src/types/atendimento.ts`: novo campo opcional `imovelCodigo?: string`.
-- `src/lib/attendances/attendances.functions.ts`: mapear `imovel_codigo` ↔ `imovelCodigo` em list/create/update.
-- `src/components/atendimentos/AtendimentoFormModal.tsx`: novo `Field label="Código do imóvel ou nome do residencial"` acima do select "Vincular imóvel existente"; persistir no estado do form.
-- `src/components/atendimentos/AtendimentoCard.tsx` / detail: exibir o código quando presente (chip discreto) para o corretor identificar rapidamente.
+Tratar `secretaria` como perfil administrativo do módulo de Agenciamentos (mesmo escopo de visão do admin), mantendo a validação final restrita ao `admin_owner`.
 
-## Tarefa 3 — Dados do Proprietário no cadastro de Aluguéis
+1. `src/services/agenciamentos.ts`
+   - `getAgenciamentosVisibleToUser`: retornar todos os registros também quando `user.perfil === "secretaria"`.
+   - `canEditAgenciamento`: permitir edição total para `secretaria` (mesma regra do admin), mantendo corretor restrito ao próprio registro e não-validado.
 
-Adicionar bloco "Proprietário do imóvel" no `RentalFormModal`, dentro da seção do imóvel (aplica ao cadastro E à edição). Como o proprietário é atributo do imóvel, armazenar em `rental_properties`.
+2. `src/hooks/useAgenciamentos.ts`
+   - Introduzir um flag `isAdminLike = perfil === "admin_owner" || perfil === "secretaria"` e usá-lo em:
+     - `effectiveFilters.corretorId` (não forçar o filtro pelo próprio id quando for secretaria — ela deve poder filtrar por qualquer corretor ou ver todos).
+     - `ranking` e `dashboardAgenciamentos`/`dashboardSummary`/`dashboardRanking` (secretaria enxerga o mesmo painel operacional do admin).
+   - Manter `isAdmin` (validação) apenas para `admin_owner`, para não liberar o botão "Validar" à secretaria.
+   - Manter `canManage` como está (já vem por permissão `agenciamentos:manage` que a secretaria possui) para operações de escrita/edição.
 
-- Migration: `ALTER TABLE public.rental_properties ADD COLUMN proprietario_nome text, ADD COLUMN proprietario_cpf text, ADD COLUMN proprietario_email text` (RLS existente cobre; sem novos GRANTs).
-- `src/types/rental.ts`: adicionar `proprietarioNome`, `proprietarioCpf`, `proprietarioEmail` (opcionais) em `RentalProperty` e `RentalPropertyInput`.
-- `src/lib/rentals/rentals.functions.ts`: mapear as três colunas em list/create/update do imóvel; incluir no fetch usado pelo contrato.
-- `src/components/alugueis/RentalFormModal.tsx`: nova sub-seção "Proprietário" com Nome completo (obrigatório se novo imóvel), CPF/CNPJ (máscara já usada nos locatários) e E-mail (validação básica).
-- `src/components/alugueis/RentalExpandedDetails.tsx`: exibir o proprietário no card expandido (nome + contato mascarado).
+3. Sanidade
+   - Rodar typecheck.
+   - Validar no preview com a sessão da Bianca: lista carrega, filtros por corretor funcionam, botão de validar continua oculto/ bloqueado.
 
-## Testes e validação
+## Escopo fora
 
-- Migrations aplicadas → typegen atualizado → build passa.
-- Fluxo Clientes: criar cliente com finalidade "Vender" e "Alugar", conferir listagem, filtros e edição.
-- Fluxo Atendimentos: cadastrar com código do imóvel preenchido, editar, e conferir exibição no card.
-- Fluxo Aluguéis: criar novo contrato com proprietário, editar contrato existente adicionando proprietário, conferir persistência e visualização.
+- Sem alterações em RLS, migrations, permissões do banco, layout ou fluxo de cadastro.
+- Sem mudanças no comportamento de admin e corretor.

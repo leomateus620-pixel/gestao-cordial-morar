@@ -121,7 +121,10 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     (session.permissions.includes("agenciamentos:manage") ||
       hasPermission(session.perfil, "agenciamentos:manage")),
   );
-  const isAdmin = session?.perfil === "admin_owner" && canManage;
+  const isAdminLike =
+    session?.perfil === "admin_owner" || session?.perfil === "secretaria";
+
+
 
   const currentBroker = useMemo(
     () => resolveCurrentBroker(session?.nome, session?.iniciais, corretores),
@@ -140,9 +143,9 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const effectiveFilters = useMemo(
     () => ({
       ...filters,
-      corretorId: isAdmin ? filters.corretorId : (effectiveBrokerId ?? "__sem_corretor__"),
+      corretorId: isAdminLike ? filters.corretorId : (effectiveBrokerId ?? "__sem_corretor__"),
     }),
-    [effectiveBrokerId, filters, isAdmin],
+    [effectiveBrokerId, filters, isAdminLike],
   );
 
   const agenciamentos = useMemo(
@@ -153,14 +156,15 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const summary = useMemo(() => calculateAgenciamentosSummary(agenciamentos), [agenciamentos]);
 
   const ranking = useMemo(
-    () => (isAdmin ? rankAgenciamentosByCorretor(agenciamentos).slice(0, 3) : []),
-    [agenciamentos, isAdmin],
+    () => (isAdminLike ? rankAgenciamentosByCorretor(agenciamentos).slice(0, 3) : []),
+    [agenciamentos, isAdminLike],
   );
 
   const dashboardAgenciamentos = useMemo(
-    () => (options.skipDashboard || !isAdmin ? [] : filterAgenciamentos(visibleAgenciamentos)),
-    [isAdmin, options.skipDashboard, visibleAgenciamentos],
+    () => (options.skipDashboard || !isAdminLike ? [] : filterAgenciamentos(visibleAgenciamentos)),
+    [isAdminLike, options.skipDashboard, visibleAgenciamentos],
   );
+
 
   const dashboardSummary = useMemo(
     () => calculateAgenciamentosSummary(dashboardAgenciamentos),
@@ -282,7 +286,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     canRead,
     canCreate,
     canManage,
-    isAdmin,
+    isAdmin: isAdminLike,
     currentBroker,
     effectiveBrokerId,
     corretores,
