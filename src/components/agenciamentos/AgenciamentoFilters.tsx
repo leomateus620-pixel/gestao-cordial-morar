@@ -61,7 +61,9 @@ const checklistOptions: Array<{ value: AgenciamentoChecklistFilter; label: strin
 ];
 
 const controlClassName =
-  "h-11 rounded-xl border-foreground/10 bg-white/78 text-foreground shadow-none focus:ring-2 focus:ring-primary/20";
+  "h-10 rounded-lg border-foreground/10 bg-[#f7f4f0] text-foreground shadow-none focus:ring-2 focus:ring-primary/20";
+const microLabelClassName =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground/45";
 
 export function AgenciamentoFilters({
   filters,
@@ -75,27 +77,25 @@ export function AgenciamentoFilters({
   return (
     <section
       aria-labelledby="agenciamentos-filters-title"
-      className="rounded-[1.4rem] border border-white/72 bg-white/60 p-3 shadow-[0_18px_44px_-36px_rgba(23,27,33,0.35)] backdrop-blur-xl sm:p-3.5"
+      className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_44px_-36px_rgba(23,27,33,0.35)] backdrop-blur-md sm:p-6"
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal aria-hidden="true" className="size-4 text-primary" />
-            <h2 id="agenciamentos-filters-title" className="text-sm font-bold tracking-tight">
-              Filtros operacionais
-            </h2>
-            {activeCount > 0 && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-                {activeCount} {activeCount === 1 ? "ativo" : "ativos"}
-              </span>
-            )}
-          </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <SlidersHorizontal aria-hidden="true" className="size-4 text-foreground/45" />
+          <h2 id="agenciamentos-filters-title" className="text-sm font-semibold tracking-tight text-foreground/80">
+            Filtros operacionais
+          </h2>
+          {activeCount > 0 && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+              {activeCount} {activeCount === 1 ? "ativo" : "ativos"}
+            </span>
+          )}
         </div>
 
         <Button
           type="button"
           variant="ghost"
-          className="h-10 shrink-0 rounded-xl px-2.5 text-xs font-semibold text-foreground/58 transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.98] disabled:opacity-35"
+          className="h-8 shrink-0 rounded-lg px-2 text-xs font-medium text-foreground/45 transition-colors duration-150 hover:bg-transparent hover:text-primary disabled:opacity-35"
           onClick={onReset}
           disabled={activeCount === 0}
         >
@@ -227,16 +227,17 @@ export function AgenciamentoFilters({
         </div>
       </div>
 
-      <div className="mt-3 hidden lg:block">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <FilterLabel label="Escopo da imobiliária" className="w-full xl:w-auto">
+      <div className="mt-6 hidden lg:block">
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 xl:col-span-5">
+            <span className={microLabelClassName}>Escopo da imobiliária</span>
             <AgencyScope
               value={filters.imobiliaria}
               onChange={(imobiliaria) => onFiltersChange({ imobiliaria })}
             />
-          </FilterLabel>
-          <div className="w-full xl:w-[19rem]">
-            <span className="mb-1.5 block text-[11px] font-semibold text-foreground/64">Busca</span>
+          </div>
+          <div className="col-span-12 xl:col-span-7">
+            <span className={microLabelClassName}>Busca</span>
             <SearchField
               value={filters.busca}
               onChange={(busca) => onFiltersChange({ busca })}
@@ -245,8 +246,9 @@ export function AgenciamentoFilters({
           </div>
         </div>
 
-        <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2 xl:grid-cols-5">
-          <FilterLabel label="Período">
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-foreground/8 pt-5 md:grid-cols-5">
+          <div>
+            <span className={microLabelClassName}>Período</span>
             <Select
               value={filters.periodo}
               onValueChange={(periodo) =>
@@ -264,35 +266,39 @@ export function AgenciamentoFilters({
                 ))}
               </SelectContent>
             </Select>
-          </FilterLabel>
-          <FilterLabel label="Status">
+          </div>
+          <div>
+            <span className={microLabelClassName}>Status</span>
             <StatusSelect
               value={filters.status}
               onChange={(status) => onFiltersChange({ status })}
             />
-          </FilterLabel>
-          <FilterLabel label="Tipo de imóvel">
+          </div>
+          <div>
+            <span className={microLabelClassName}>Tipo de imóvel</span>
             <TypeSelect
               value={filters.tipoImovel}
               onChange={(tipoImovel) => onFiltersChange({ tipoImovel })}
             />
-          </FilterLabel>
-          <FilterLabel label="Checklist">
+          </div>
+          <div>
+            <span className={microLabelClassName}>Checklist</span>
             <ChecklistSelect
               value={filters.checklist}
               onChange={(checklist) => onFiltersChange({ checklist })}
             />
-          </FilterLabel>
+          </div>
           {isAdmin ? (
-            <FilterLabel label="Responsável">
+            <div>
+              <span className={microLabelClassName}>Responsável</span>
               <BrokerSelect
                 value={filters.corretorId}
                 corretores={corretores}
                 onChange={(corretorId) => onFiltersChange({ corretorId })}
               />
-            </FilterLabel>
+            </div>
           ) : (
-            <div className="hidden xl:block" />
+            <div className="hidden md:block" />
           )}
         </div>
       </div>

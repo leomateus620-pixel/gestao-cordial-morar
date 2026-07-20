@@ -204,18 +204,24 @@ function Page() {
   return (
     <>
       <div className="space-y-4 pb-1">
-        <section className="animate-in fade-in slide-in-from-bottom-2 overflow-hidden rounded-[1.55rem] border border-white/76 bg-white/68 shadow-[0_24px_64px_-46px_rgba(23,27,33,0.48)] duration-300 motion-reduce:animate-none">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5">
-                <ClipboardCheck aria-hidden="true" className="size-5 text-primary" />
-                <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-foreground sm:text-[2rem]">
+        <section className="animate-in fade-in slide-in-from-bottom-2 group/header relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/70 shadow-[0_24px_64px_-46px_rgba(23,27,33,0.48)] backdrop-blur-md duration-300 motion-reduce:animate-none">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(23,77,97,0.18),transparent_65%)] transition-transform duration-700 ease-out group-hover/header:scale-110 motion-reduce:transition-none"
+          />
+          <div className="relative flex flex-col gap-4 px-5 py-5 sm:px-7 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#174d61]/10 text-[#174d61] ring-1 ring-inset ring-[#174d61]/15">
+                <ClipboardCheck aria-hidden="true" className="size-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-extrabold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
                   Agenciamentos
                 </h1>
+                <p className="mt-0.5 max-w-2xl text-sm leading-relaxed text-foreground/62">
+                  Acompanhe imóveis captados, responsáveis e etapas de validação.
+                </p>
               </div>
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-foreground/62 sm:text-[15px]">
-                Acompanhe imóveis captados, responsáveis e etapas de validação.
-              </p>
             </div>
 
             <Button
@@ -223,17 +229,11 @@ function Page() {
               onClick={openCreate}
               disabled={!canCreate}
               title={!canCreate ? "Seu perfil não permite cadastrar agenciamentos" : undefined}
-              className="h-11 w-full shrink-0 rounded-xl bg-[#174d61] px-4 text-sm font-bold text-white shadow-[0_14px_28px_-20px_rgba(23,77,97,0.95)] transition-[background-color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:bg-[#1e647d] active:scale-[0.985] motion-reduce:transition-none sm:w-auto"
+              className="group/cta h-12 w-full shrink-0 rounded-2xl bg-[#174d61] px-5 text-sm font-bold text-white shadow-[0_18px_38px_-20px_rgba(23,77,97,0.95)] transition-[background-color,box-shadow,transform] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:bg-[#1e647d] hover:shadow-[0_22px_44px_-18px_rgba(23,77,97,0.95)] active:translate-y-0 active:scale-[0.985] motion-reduce:transition-none sm:w-auto"
             >
-              <Plus className="size-4" />
+              <Plus className="size-4 transition-transform duration-200 ease-out group-hover/cta:rotate-90 motion-reduce:transition-none" />
               Cadastrar agenciamento
             </Button>
-          </div>
-
-          <div className="grid grid-cols-3 border-t border-foreground/8 bg-[#f1ece4]/72 px-4 py-2 sm:px-6">
-            <HeaderStat label="No período" value={summary.total} />
-            <HeaderStat label="Aguardam validação" value={summary.pendentesValidacao} bordered />
-            <HeaderStat label="Checklist médio" value={`${summary.percentualChecklistMedio}%`} />
           </div>
         </section>
 
@@ -390,28 +390,6 @@ function Page() {
   );
 }
 
-function HeaderStat({
-  label,
-  value,
-  bordered,
-}: {
-  label: string;
-  value: number | string;
-  bordered?: boolean;
-}) {
-  return (
-    <div
-      className={cn("min-w-0 px-2 text-center sm:px-4", bordered && "border-x border-foreground/9")}
-    >
-      <p className="truncate text-[10px] font-semibold text-foreground/50 sm:text-[11px]">
-        {label}
-      </p>
-      <p className="mt-0.5 text-base font-extrabold text-foreground tabular-nums sm:text-lg">
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function OperationalEmptyState({
   hasRecords,
