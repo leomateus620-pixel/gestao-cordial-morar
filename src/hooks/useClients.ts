@@ -130,7 +130,7 @@ function matchesBudget(client: Client, budget: ClientBudgetFilter) {
   const value = client.maxBudget ?? client.minBudget ?? 0;
   if (!value) return false;
 
-  const rentalScale = client.purpose === "aluguel";
+  const rentalScale = client.purpose === "aluguel" || client.purpose === "locacao";
   if (budget === "ate_300") return rentalScale ? value <= 3000 : value <= 300000;
   if (budget === "300_700") {
     return rentalScale ? value > 3000 && value <= 7000 : value > 300000 && value <= 700000;
