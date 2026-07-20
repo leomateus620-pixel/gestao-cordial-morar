@@ -197,6 +197,33 @@ function Page() {
     [showFeedback, validateAgenciamento],
   );
 
+  const requestDelete = useCallback((agenciamento: Agenciamento) => {
+    setPendingDelete(agenciamento);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    try {
+      const ok = await deleteAgenciamento(pendingDelete.id);
+      showFeedback(
+        ok ? "Agenciamento excluído." : "Não foi possível excluir este agenciamento.",
+        ok ? "success" : "error",
+      );
+      if (ok) {
+        setPendingDelete(null);
+        setSelectedAgenciamento(null);
+      }
+    } catch (caughtError) {
+      showFeedback(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Ocorreu um erro ao excluir o agenciamento.",
+        "error",
+      );
+    }
+  }, [deleteAgenciamento, pendingDelete, showFeedback]);
+
+
   if (!canRead) {
     return (
       <section className="mx-auto mt-8 max-w-xl rounded-[1.5rem] border border-white/70 bg-white/68 p-6 text-center shadow-[0_20px_60px_-42px_rgba(23,27,33,0.4)]">
