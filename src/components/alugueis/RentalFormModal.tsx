@@ -310,6 +310,9 @@ export function RentalFormModal({
   const [banheiros, setBanheiros] = useState("");
   const [vagas, setVagas] = useState("");
   const [areaM2, setAreaM2] = useState("");
+  const [propNome, setPropNome] = useState("");
+  const [propCpf, setPropCpf] = useState("");
+  const [propEmail, setPropEmail] = useState("");
 
   const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([
     newTenantEntry(),
@@ -363,6 +366,9 @@ export function RentalFormModal({
     setBanheiros("");
     setVagas("");
     setAreaM2("");
+    setPropNome("");
+    setPropCpf("");
+    setPropEmail("");
     setTenantEntries([newTenantEntry()]);
     setGuaranteeEntries([]);
     setValor("");
@@ -398,6 +404,9 @@ export function RentalFormModal({
     setBanheiros(c.property.banheiros != null ? String(c.property.banheiros) : "");
     setVagas(c.property.vagas != null ? String(c.property.vagas) : "");
     setAreaM2(c.property.areaM2 != null ? String(c.property.areaM2) : "");
+    setPropNome(c.property.proprietarioNome ?? "");
+    setPropCpf(c.property.proprietarioCpf ?? "");
+    setPropEmail(c.property.proprietarioEmail ?? "");
 
     const tList = c.tenants && c.tenants.length > 0 ? c.tenants : [c.tenant];
     setTenantEntries(
