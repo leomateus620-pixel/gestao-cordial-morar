@@ -20,6 +20,8 @@ import {
   type AgendaTipo,
 } from "@/types/agenda";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
 
 const typeStyles: Record<AgendaTipo, string> = {
   visita: "bg-teal-600/12 text-teal-800",
@@ -55,6 +57,17 @@ export function AgendaEventCard({
   const start = new Date(event.inicio);
   const end = event.fim ? new Date(event.fim) : undefined;
   const property = event.imovelDescricao || event.local;
+  const session = useSession();
+  const isAdmin = isAdminUser(session);
+  const ownerName = event.responsavelPrincipalNome || event.criadoPorNome;
+  const ownerInitials = ownerName
+    ? ownerName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("")
+    : "";
 
   return (
     <button
@@ -137,6 +150,19 @@ export function AgendaEventCard({
               {agendaImobiliariaLabel[event.imobiliaria]}
             </span>
             <GoogleSyncBadge event={event} />
+            {isAdmin && ownerName && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-teal-600/12 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-teal-900 ring-1 ring-teal-700/15"
+                title={`Corretor responsável: ${ownerName}`}
+              >
+                {ownerInitials && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-teal-700 text-[8px] font-bold text-white">
+                    {ownerInitials}
+                  </span>
+                )}
+                Corretor: {ownerName}
+              </span>
+            )}
             {event.observacoes && (
               <span className="min-w-0 flex-1 truncate text-[10px] italic text-foreground/44">
                 "{event.observacoes}"

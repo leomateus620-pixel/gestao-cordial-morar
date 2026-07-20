@@ -143,7 +143,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
     profile: "corretor",
     label: "Corretor",
     description: "Atendimentos, clientes e agenciamentos da própria carteira.",
-    modules: ["dashboard", "atendimentos", "clientes", "agenciamentos"],
+    modules: ["dashboard", "atendimentos", "clientes", "agenciamentos", "agenda"],
     permissions: [
       "atendimentos:read",
       "atendimentos:write",
@@ -151,8 +151,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "clientes:write",
       "agenciamentos:read",
       "agenciamentos:write",
-      // permissão interna: o fluxo de atendimento cria eventos na agenda,
-      // mas o menu "agenda" não aparece na navegação do corretor.
+      "agenda:read",
       "agenda:write",
     ],
   },
