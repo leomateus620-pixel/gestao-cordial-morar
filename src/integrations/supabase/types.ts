@@ -391,6 +391,7 @@ export type Database = {
           historico_inicial: string | null
           id: string
           imobiliaria: string
+          imovel_codigo: string | null
           imovel_descricao: string | null
           imovel_id: string | null
           motivo_perda: string | null
@@ -425,6 +426,7 @@ export type Database = {
           historico_inicial?: string | null
           id?: string
           imobiliaria: string
+          imovel_codigo?: string | null
           imovel_descricao?: string | null
           imovel_id?: string | null
           motivo_perda?: string | null
@@ -459,6 +461,7 @@ export type Database = {
           historico_inicial?: string | null
           id?: string
           imobiliaria?: string
+          imovel_codigo?: string | null
           imovel_descricao?: string | null
           imovel_id?: string | null
           motivo_perda?: string | null
@@ -1499,6 +1502,9 @@ export type Database = {
           logradouro: string
           numero: string | null
           observacoes: string | null
+          proprietario_cpf: string | null
+          proprietario_email: string | null
+          proprietario_nome: string | null
           quartos: number | null
           status: Database["public"]["Enums"]["rental_property_status"]
           tipo: Database["public"]["Enums"]["rental_property_type"]
@@ -1522,6 +1528,9 @@ export type Database = {
           logradouro?: string
           numero?: string | null
           observacoes?: string | null
+          proprietario_cpf?: string | null
+          proprietario_email?: string | null
+          proprietario_nome?: string | null
           quartos?: number | null
           status?: Database["public"]["Enums"]["rental_property_status"]
           tipo?: Database["public"]["Enums"]["rental_property_type"]
@@ -1545,6 +1554,9 @@ export type Database = {
           logradouro?: string
           numero?: string | null
           observacoes?: string | null
+          proprietario_cpf?: string | null
+          proprietario_email?: string | null
+          proprietario_nome?: string | null
           quartos?: number | null
           status?: Database["public"]["Enums"]["rental_property_status"]
           tipo?: Database["public"]["Enums"]["rental_property_type"]
