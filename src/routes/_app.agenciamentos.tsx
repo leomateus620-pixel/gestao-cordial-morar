@@ -384,6 +384,7 @@ function Page() {
                   onView={setSelectedAgenciamento}
                   onEdit={openEdit}
                   onValidate={handleValidate}
+                  onDelete={requestDelete}
                 />
               ))}
             </div>
