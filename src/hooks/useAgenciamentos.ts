@@ -286,7 +286,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     canRead,
     canCreate,
     canManage,
-    isAdmin,
+    isAdmin: isAdminLike,
     currentBroker,
     effectiveBrokerId,
     corretores,
