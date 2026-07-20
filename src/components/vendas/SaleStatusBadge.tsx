@@ -18,7 +18,7 @@ const saleStatusMap: Record<
   },
   em_analise: {
     label: "Em análise",
-    className: "bg-violet-500/10 text-violet-700 ring-violet-600/15",
+    className: "bg-primary/10 text-primary ring-primary/18",
     icon: PauseCircle,
   },
   cancelada: {
@@ -34,7 +34,7 @@ const documentStatusMap: Record<
 > = {
   contrato_anexado: {
     label: "Contrato anexado",
-    className: "bg-cyan-500/10 text-cyan-700 ring-cyan-600/15",
+    className: "bg-emerald-500/10 text-emerald-700 ring-emerald-600/16",
     icon: FileCheck2,
   },
   contrato_pendente: {
@@ -49,7 +49,7 @@ const documentStatusMap: Record<
   },
   em_analise: {
     label: "Em revisão",
-    className: "bg-violet-500/10 text-violet-700 ring-violet-600/15",
+    className: "bg-primary/10 text-primary ring-primary/18",
     icon: PauseCircle,
   },
   cancelado: {
@@ -77,7 +77,7 @@ export function SaleStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex min-h-6 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold leading-none ring-1",
+        "inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold leading-none ring-1",
         item.className,
         className,
       )}

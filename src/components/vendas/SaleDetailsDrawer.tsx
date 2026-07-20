@@ -200,7 +200,7 @@ export function SaleDetailsDrawer({
               </Panel>
             </div>
 
-            <div className="grid gap-2 border-t border-white/60 bg-white/45 px-5 py-4 sm:grid-cols-[1fr_auto_auto] sm:px-6">
+            <div className="grid gap-2 border-t border-white/60 bg-white/45 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:grid-cols-[1fr_auto_auto] sm:px-6">
               <button
                 type="button"
                 onClick={() => onEdit(sale)}

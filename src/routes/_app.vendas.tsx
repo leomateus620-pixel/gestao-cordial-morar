@@ -1,29 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
-import { FilePlus2, History, Loader2, ReceiptText } from "lucide-react";
+import { ReceiptText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { EmptySalesState } from "@/components/vendas/EmptySalesState";
 import { SaleDetailsDrawer } from "@/components/vendas/SaleDetailsDrawer";
 import { SaleForm } from "@/components/vendas/SaleForm";
-import { SaleRecordCard } from "@/components/vendas/SaleRecordCard";
+import { SaleRecordCard, SaleRecordSkeleton } from "@/components/vendas/SaleRecordCard";
 import { SalesFilters } from "@/components/vendas/SalesFilters";
+import { SalesHeader } from "@/components/vendas/SalesHeader";
 import { SalesKpiCards } from "@/components/vendas/SalesKpiCards";
 import { useSales, uploadSaleDocument } from "@/hooks/useSales";
 import { useSession } from "@/lib/auth-mock";
 import { useApp, useFiltered } from "@/store/app-store";
+import { DEFAULT_SALES_FILTERS } from "@/types/sale";
 import type { AgencyId } from "@/lib/mock/data";
-import type { SaleRecord, SaleRecordInput, SalesFilter, SalesKpis } from "@/types/sale";
-
-
-const EMPTY_KPIS: SalesKpis = {
-  totalSold: 0,
-  registeredSales: 0,
-  attachedContracts: 0,
-  averageTicket: 0,
-  monthSales: 0,
-  documentPendencies: 0,
-};
+import type { SaleRecord, SaleRecordInput, SalesFiltersState } from "@/types/sale";
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Gestão Cordial" }] }),
@@ -38,7 +30,6 @@ function GuardedPage() {
   );
 }
 
-
 function Page() {
   const session = useSession();
   const isAdmin = session?.perfil === "admin_owner";
@@ -46,13 +37,14 @@ function Page() {
   const imoveis = useFiltered(useApp((state) => state.imoveis));
   const corretores = useFiltered(useApp((state) => state.corretores));
 
-
   const {
     sales,
     kpis,
     isLoading,
     isError,
     error,
+    isKpisLoading,
+    isKpisError,
     createSale,
     updateSale,
     cancelSale,
@@ -61,7 +53,7 @@ function Page() {
     isUpdating,
   } = useSales();
 
-  const [filter, setFilter] = useState<SalesFilter>("todos");
+  const [filters, setFilters] = useState<SalesFiltersState>(DEFAULT_SALES_FILTERS);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -74,8 +66,8 @@ function Page() {
   );
 
   const filteredRecords = useMemo(
-    () => filterSales(scopedSales, filter, search),
-    [scopedSales, filter, search],
+    () => filterSales(scopedSales, filters, search),
+    [scopedSales, filters, search],
   );
 
   const defaultAgency: AgencyId = agency === "todas" ? "cordial" : agency;
@@ -163,75 +155,52 @@ function Page() {
     }
   }
 
-  const activeKpis = kpis ?? EMPTY_KPIS;
   const isSaving = isCreating || isUpdating;
 
   return (
     <>
-      <section className="relative mb-5 overflow-hidden rounded-[2rem] border border-white/60 bg-white/[0.62] p-5 shadow-[0_22px_60px_-38px_rgba(23,27,33,0.38)] backdrop-blur-xl sm:p-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-primary ring-1 ring-primary/10">
-              <History className="size-3.5" />
-              Histórico comercial
-            </p>
-            <h1 className="mt-3 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-              Vendas realizadas
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-foreground/60">
-              Cadastre imóveis vendidos, anexe contratos e mantenha o histórico comercial
-              organizado.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <HeaderChip label="Registro de vendas" />
-              <HeaderChip label="Contratos e valores vendidos" />
-              <HeaderChip label="Arquivo operacional" />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={openCreateForm}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-black text-primary-foreground shadow-xl shadow-primary/25 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.98] sm:self-start lg:self-auto"
-          >
-            <FilePlus2 className="size-4" />
-            Cadastrar venda
-          </button>
-        </div>
-      </section>
-
-      <div className="space-y-5">
-        <SalesKpiCards kpis={activeKpis} showAverageTicket={isAdmin} />
+      <div className="mx-auto w-full max-w-[84rem] space-y-4 pb-3 sm:space-y-5">
+        <SalesHeader onCreate={openCreateForm} />
+        <SalesKpiCards
+          kpis={kpis}
+          showAverageTicket={isAdmin}
+          isLoading={isKpisLoading}
+          isUnavailable={isKpisError}
+        />
         <SalesFilters
-          filter={filter}
-          onFilterChange={setFilter}
+          filters={filters}
+          onFiltersChange={setFilters}
           search={search}
           onSearchChange={setSearch}
         />
 
         <section className="space-y-3">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-primary/70">
-                Histórico de vendas
-              </p>
-              <h2 className="text-lg font-black tracking-tight text-foreground">
-                Registros comerciais concluídos
-              </h2>
-            </div>
-            <p className="inline-flex items-center gap-2 text-xs font-bold text-foreground/52">
-              <ReceiptText className="size-4 text-primary/70" />
-              {filteredRecords.length} registro{filteredRecords.length === 1 ? "" : "s"}
+          <div className="flex items-center justify-between gap-4 px-1">
+            <h2 className="text-lg font-black tracking-[-0.02em] text-foreground sm:text-xl">
+              Histórico de vendas
+            </h2>
+            <p
+              className="inline-flex shrink-0 items-center gap-2 text-xs font-bold text-foreground/52"
+              aria-live="polite"
+            >
+              <ReceiptText className="size-4 text-primary/65" aria-hidden="true" />
+              {isLoading
+                ? "Carregando registros"
+                : `${filteredRecords.length} registro${filteredRecords.length === 1 ? "" : "s"}`}
             </p>
           </div>
 
           {isLoading ? (
-            <section className="glass-panel flex items-center justify-center rounded-3xl p-10 text-foreground/60">
-              <Loader2 className="mr-2 size-5 animate-spin" />
-              Carregando vendas…
-            </section>
+            <div className="space-y-3" role="status" aria-label="Carregando vendas">
+              <span className="sr-only">Carregando vendas…</span>
+              <SaleRecordSkeleton />
+              <SaleRecordSkeleton />
+            </div>
           ) : isError ? (
-            <section className="glass-panel rounded-3xl p-6 text-center">
+            <section
+              className="rounded-[1.5rem] border border-rose-500/15 bg-white/[0.66] p-6 text-center shadow-[0_18px_46px_-36px_rgba(23,27,33,0.4)]"
+              role="alert"
+            >
               <h3 className="text-lg font-black tracking-tight text-rose-700">
                 Erro ao carregar vendas
               </h3>
@@ -242,7 +211,7 @@ function Page() {
           ) : scopedSales.length === 0 ? (
             <EmptySalesState onCreate={openCreateForm} />
           ) : filteredRecords.length === 0 ? (
-            <section className="glass-panel rounded-3xl p-6 text-center">
+            <section className="rounded-[1.5rem] border border-white/70 bg-white/[0.64] p-6 text-center shadow-[0_18px_46px_-36px_rgba(23,27,33,0.4)]">
               <h3 className="text-lg font-black tracking-tight text-foreground">
                 Nenhuma venda encontrada
               </h3>
@@ -260,15 +229,6 @@ function Page() {
           )}
         </section>
       </div>
-
-      <button
-        type="button"
-        onClick={openCreateForm}
-        className="fab-safe-bottom fixed right-4 z-30 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-black text-primary-foreground shadow-2xl shadow-primary/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.98] sm:hidden"
-      >
-        <FilePlus2 className="size-4" />
-        Cadastrar
-      </button>
 
       <SaleForm
         open={formOpen}
@@ -296,15 +256,7 @@ function Page() {
   );
 }
 
-function HeaderChip({ label }: { label: string }) {
-  return (
-    <span className="rounded-full bg-white/64 px-3 py-1.5 text-xs font-bold text-foreground/58 ring-1 ring-white/70">
-      {label}
-    </span>
-  );
-}
-
-function filterSales(records: SaleRecord[], filter: SalesFilter, search: string) {
+function filterSales(records: SaleRecord[], filters: SalesFiltersState, search: string) {
   const query = search.trim().toLowerCase();
   const queryDigits = query.replace(/\D/g, "");
 
@@ -317,6 +269,7 @@ function filterSales(records: SaleRecord[], filter: SalesFilter, search: string)
           sale.propertyNeighborhood,
           sale.propertyCityState,
           sale.responsibleAgent,
+          sale.ownerName,
           sale.paymentMethod,
           sale.saleStatus,
           sale.documentStatus,
@@ -333,18 +286,23 @@ function filterSales(records: SaleRecord[], filter: SalesFilter, search: string)
     : records;
 
   const filtered = searched.filter((sale) => {
-    if (filter === "mes") return isCurrentMonth(sale.saleDate);
-    if (filter === "com_contrato") return Boolean(sale.contractFilePath);
-    if (filter === "sem_contrato") return !sale.contractFilePath;
-    if (filter === "concluidas") return sale.saleStatus === "concluida";
-    if (filter === "em_analise") {
-      return sale.saleStatus === "em_analise" || sale.documentStatus === "em_analise";
-    }
-    return true;
+    const matchesPeriod = filters.period === "todos" || isCurrentMonth(sale.saleDate);
+    const matchesContract =
+      filters.contract === "todos" ||
+      (filters.contract === "com_contrato"
+        ? Boolean(sale.contractFilePath)
+        : !sale.contractFilePath);
+    const matchesStatus =
+      filters.status === "todos" ||
+      (filters.status === "concluidas"
+        ? sale.saleStatus === "concluida"
+        : sale.saleStatus === "em_analise" || sale.documentStatus === "em_analise");
+
+    return matchesPeriod && matchesContract && matchesStatus;
   });
 
   return [...filtered].sort((a, b) => {
-    if (filter === "maior_valor") return b.saleValue - a.saleValue;
+    if (filters.sort === "maior_valor") return b.saleValue - a.saleValue;
     return (
       new Date(`${b.saleDate}T12:00:00`).getTime() - new Date(`${a.saleDate}T12:00:00`).getTime()
     );
