@@ -1,60 +1,78 @@
-# Refinamento visual dos cards de Agenciamentos
 
-Foco: cards com identidade própria, respiração entre eles, profundidade 3D suave e tipografia com mais peso — sem alterar dados, ações ou lógica.
+## Objetivo
 
-## 1. Lista com respiração (`src/routes/_app.agenciamentos.tsx`)
+Elevar visualmente a primeira dobra do menu **Aluguéis** (`/alugueis`), hoje composta por um título simples + botão "Novo aluguel" solto no canto + faixa de 6 KPIs pequenos e sem hierarquia. Vamos transformá-la em uma seção com cara de produto premium, mantendo 100% da funcionalidade atual (nenhuma mudança em dados, hooks ou lógica de negócio).
 
-- Substituir o container `divide-y … rounded-[1.4rem] border … backdrop-blur-xl` que agrupa os cards por um wrapper transparente com espaçamento vertical:
-  - `className="space-y-3.5 sm:space-y-4"` (sem borda, sem fundo, sem divide).
-- Assim cada `AgenciamentoCard` vira um cartão independente com sombra própria, resolvendo a queixa de "cards colados".
+Escopo: **apenas UI/apresentação** em dois componentes:
+- `src/routes/_app.alugueis.tsx` (header)
+- `src/components/alugueis/RentalKpiCards.tsx` (faixa de KPIs)
 
-## 2. Card com profundidade e refino (`src/components/agenciamentos/AgenciamentoCard.tsx`)
+Sem tocar em `useRentals`, server functions, RLS, filtros, cards de contrato ou modais.
 
-Estrutural:
-- Wrapper `<article>` vira cartão autônomo:
-  - `rounded-2xl border border-foreground/6 bg-white`
-  - Sombra em camadas para 3D suave: `shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)]`
-  - Hover: `hover:-translate-y-0.5 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] hover:border-foreground/10`
-  - Transições suaves (`transition-[transform,box-shadow,border-color] duration-200`), `motion-reduce:transition-none`.
-  - Padding maior: `px-5 py-5 sm:px-6 sm:py-5`.
-- **Remover a barra azul vertical** (`<span aria-hidden>` com `bg-[var(--…-primary)]`). No lugar, a marca fica só no chip "Cordial/Morar" (já existente), com cor mais viva:
-  - Chip da imobiliária ganha cor por marca: Cordial → `bg-[color-mix(in_oklab,var(--cordial-primary)_10%,white)] text-[var(--cordial-primary)] border-[var(--cordial-primary)]/20`; Morar → equivalente com `--morar-primary`; Ambas → `--system-primary`.
-- Sem alteração no grid interno (mesmas 4 colunas em xl), mantendo a densidade atual.
+---
 
-Tipografia e contraste (fim das opacidades fracas):
-- Título do imóvel: `text-base font-extrabold text-foreground` (era `text-[15px]`, cor herdada).
-- Nome do proprietário / corretor: `text-foreground/90 font-semibold` (era `/78`, `/76`).
-- Endereço/localização: `text-foreground/70` (era `/56`).
-- Telefone, data: `text-foreground/60` (era `/52`, `/54`).
-- Labels "Responsabilidade", "Checklist operacional": `text-[11px] font-bold uppercase tracking-wider text-foreground/55` (mais legíveis, com hierarquia clara).
+## Direção de design
 
-Checklist e chips:
-- Barra de progresso: fundo `bg-foreground/10`, preenchimento gradient `bg-gradient-to-r from-[#174d61] to-[#2d8fa8]`, altura `h-2`, com `shadow-[0_1px_2px_rgba(23,77,97,0.35)]` no preenchimento para 3D leve.
-- Contador `X/6 · Y%`: manter tabular-nums, cor `text-primary`, peso extra-bold.
-- Chips de pendência: aumentar contraste — `bg-[color-mix(in_oklab,var(--system-accent)_14%,white)] text-[var(--system-accent-dark)] border border-[var(--system-accent)]/22`, `px-2 py-1`, ícone `size-3.5`.
-- Chip "Checklist concluído": `bg-emerald-500/12 text-emerald-800 border border-emerald-500/25`.
-- Chip "+N pendências": `bg-foreground/8 text-foreground/70`.
+Mesma linguagem já aplicada em Agenciamentos (cards flutuantes, sombras 3D suaves, chips vivos, tipografia contrastada), para consistência entre módulos:
 
-Bloco central (Responsabilidade):
-- Em md apenas: fundo `bg-[#f7f4f0] border-foreground/8`, `rounded-xl`; em xl volta a ser transparente (como hoje).
-- Ícone `UserRound` do corretor com cor `text-[#174d61]`, avatar suave — mantido simples.
+- Card "hero" horizontal com fundo em vidro + gradiente radial sutil de marca, sombra multi-camada e leve highlight interno.
+- Título "Aluguéis" em destaque tipográfico forte (peso extra-bold, tracking apertado), com subtítulo curto e um par de chips inline mostrando contexto rápido (ex.: contratos ativos + receita mensal) — sem duplicar os KPIs abaixo, apenas ancorando o hero.
+- Botão "Novo aluguel" reposicionado dentro do card hero, à direita, com aparência elevada (gradiente primário, ícone `Plus` animado no hover, micro-scale ao clicar).
+- Faixa de KPIs redesenhada logo abaixo: cards maiores, com hierarquia clara (valor grande + label acima em micro-caps + ícone tonalizado), separação real entre eles, e o card "Receita mensal" com tratamento de destaque (variação `primary`) quando visível.
 
-Ações (botões):
-- "Detalhes": `bg-white border-foreground/12 hover:bg-foreground/4`, `text-foreground/85 font-semibold`, sombra sutil `shadow-[0_1px_2px_rgba(23,27,33,0.04)]`.
-- Botão editar: mesmo tratamento.
-- "Validar": manter `bg-[#174d61]`, adicionar `shadow-[0_8px_18px_-10px_rgba(23,77,97,0.7)]` e `hover:-translate-y-px`.
-- Ícones Drive/Site: `text-foreground/55 hover:text-primary hover:bg-foreground/5`.
+### Header (novo)
 
-Divisor interno (linha antes do proprietário):
-- Trocar `border-t border-foreground/7` por `border-t border-foreground/8` mantendo, mas com `pt-2.5 mt-2.5` para respirar.
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  Aluguéis                                    [ + Novo aluguel ]     │
+│  Controle real de contratos, locatários e pagamentos.               │
+│  • 5 ativos   • R$ 9k/mês   • 1 vencendo em 30d                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-## 3. Verificação
+- Container: `rounded-[1.75rem]`, borda `white/70`, `backdrop-blur`, sombra em duas camadas (drop + inset highlight).
+- Gradiente radial decorativo posicionado no canto direito (tom teal/cordial), sem interferir na leitura.
+- Chips de contexto derivados de `r.kpis` (reutiliza dado já carregado — zero requests novos). Ocultos para roles sem `canViewFinancialInsights` no chip de receita.
 
-- Rodar typecheck automático.
-- Validar visualmente em `/agenciamentos` (desktop + mobile via Playwright headless: screenshot da lista com 2-3 cards, verificar separação entre cards, ausência da barra azul, contraste tipográfico e profundidade).
-- Confirmar que estados (Novo, Cordial/Morar, Validado, com/sem pendências) continuam com identidade visual clara.
+### KPIs (refino)
 
-## Fora do escopo
+- Grid mantém 2/3/6 colunas responsivas.
+- Cada card: `rounded-2xl`, borda sutil, fundo `white/68` com `backdrop-blur`, sombra 3D suave (igual padrão Agenciamentos).
+- Label em micro-caps `text-[10px] tracking-wider text-foreground/60`.
+- Valor em `text-2xl font-extrabold tabular-nums`.
+- Ícone tonal por categoria (primary, success, warning, danger, neutral) — mantém a semântica atual.
+- "Receita mensal" ganha variante primária (fundo escuro cordial + texto claro) para virar âncora visual da faixa; permanece condicionado a `canViewFinancialInsights`.
+- Remove o gradiente pastel atual (baixa legibilidade) — substitui por tom sólido + ícone colorido.
 
-- Sem mudanças em hooks, RLS, drawer de detalhes ou modal de cadastro.
-- Sem novas dependências.
+### Animações
+
+- Fade+slide-up leve no hero ao montar (Tailwind + `transition` puros, sem libs novas).
+- Hover no botão: brilho + translate-y de -1px.
+- Hover nos KPIs: elevação sutil da sombra.
+
+---
+
+## Passos de implementação
+
+1. **`src/routes/_app.alugueis.tsx`**
+   - Substituir o bloco `<header>` atual por um card horizontal premium.
+   - Mover o botão "Novo aluguel" para dentro do card, alinhado à direita, com estilo elevado.
+   - Adicionar linha de chips de contexto derivados de `r.kpis` (respeitando `canViewFinancialInsights` obtido via `useApp`/role, seguindo padrão já usado em outras telas).
+   - Não alterar seções seguintes (`RentalKpiCards`, filtros, lista, modais).
+
+2. **`src/components/alugueis/RentalKpiCards.tsx`**
+   - Refatorar o subcomponente `Kpi` para o novo visual (sem mudar props públicas).
+   - Adicionar variante `featured` para "Receita mensal".
+   - Manter o gate `canViewFinancialInsights` existente.
+
+3. **Validação**
+   - Rodar typecheck/build.
+   - Verificar em viewport mobile (2 colunas), tablet (3) e desktop (6) que a faixa não quebra.
+   - Verificar que roles sem insight financeiro (`corretor`) não veem receita nem o chip correspondente.
+
+---
+
+## Fora de escopo
+
+- Cards de contrato, filtros, modal de cadastro/edição, documentos, permissões, RLS, hooks, server functions.
+- Nenhuma nova dependência.

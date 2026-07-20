@@ -1,41 +1,79 @@
 import { brl } from "@/lib/format";
 import type { RentalKpis } from "@/types/rental";
-import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Home, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  Home,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type Tone = "primary" | "warning" | "danger" | "success" | "neutral";
 
 function Kpi({
   icon: Icon,
   label,
   value,
   tone = "neutral",
+  featured = false,
 }: {
-  icon: typeof Wallet;
+  icon: LucideIcon;
   label: string;
   value: string;
-  tone?: "primary" | "warning" | "danger" | "success" | "neutral";
+  tone?: Tone;
+  featured?: boolean;
 }) {
-  const tones = {
-    primary: "from-primary/15 to-primary/5 text-primary",
-    warning: "from-amber-200/30 to-amber-50/10 text-amber-700",
-    danger: "from-rose-200/30 to-rose-50/10 text-rose-700",
-    success: "from-emerald-200/30 to-emerald-50/10 text-emerald-700",
-    neutral: "from-slate-200/40 to-slate-50/10 text-slate-700",
-  } as const;
+  const iconTone: Record<Tone, string> = {
+    primary: "text-cyan-100",
+    warning: "text-amber-600",
+    danger: "text-rose-600",
+    success: "text-emerald-600",
+    neutral: "text-primary/70",
+  };
+
   return (
-    <div className="liquid-panel relative overflow-hidden rounded-2xl p-3">
-      <div
-        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tones[tone]} opacity-70`}
-        aria-hidden
-      />
+    <article
+      className={cn(
+        "group relative min-w-0 overflow-hidden rounded-2xl border px-3.5 py-3 transition-all duration-200",
+        "shadow-[0_14px_36px_-30px_rgba(23,27,33,0.36)] hover:-translate-y-0.5 hover:shadow-[0_20px_42px_-28px_rgba(23,27,33,0.44)]",
+        featured
+          ? "border-[#245f70] bg-[#174d61] text-white"
+          : "border-white/72 bg-white/68 text-foreground backdrop-blur-lg",
+      )}
+    >
+      {featured && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-8 -top-10 size-28 rounded-full bg-cyan-300/25 blur-2xl"
+        />
+      )}
       <div className="relative flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-foreground/55">
-            {label}
-          </p>
-          <p className="mt-1 truncate font-mono text-base font-bold">{value}</p>
-        </div>
-        <Icon className="size-4 shrink-0 text-foreground/60" />
+        <p
+          className={cn(
+            "text-[10px] font-semibold uppercase tracking-[0.14em]",
+            featured ? "text-white/75" : "text-foreground/60",
+          )}
+        >
+          {label}
+        </p>
+        <Icon
+          aria-hidden
+          className={cn("size-[1.05rem] shrink-0", featured ? iconTone.primary : iconTone[tone])}
+          strokeWidth={2}
+        />
       </div>
-    </div>
+      <p
+        className={cn(
+          "relative mt-2 truncate text-2xl font-extrabold leading-none tracking-[-0.035em] tabular-nums",
+          featured ? "text-white" : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+    </article>
   );
 }
 
@@ -62,6 +100,7 @@ export function RentalKpiCards({
           label="Receita mensal"
           value={brl(k.receitaMensalAtiva, { compact: true })}
           tone="primary"
+          featured
         />
       )}
       <Kpi icon={CheckCircle2} label="Ativos" value={String(k.contratosAtivos)} tone="success" />
