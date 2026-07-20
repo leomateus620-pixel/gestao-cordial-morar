@@ -11,6 +11,7 @@ import {
   MapPin,
   Pencil,
   Signpost,
+  Trash2,
   UserRound,
   Video,
   type LucideIcon,
