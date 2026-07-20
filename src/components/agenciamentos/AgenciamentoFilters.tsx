@@ -77,27 +77,25 @@ export function AgenciamentoFilters({
   return (
     <section
       aria-labelledby="agenciamentos-filters-title"
-      className="rounded-[1.4rem] border border-white/72 bg-white/60 p-3 shadow-[0_18px_44px_-36px_rgba(23,27,33,0.35)] backdrop-blur-xl sm:p-3.5"
+      className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_44px_-36px_rgba(23,27,33,0.35)] backdrop-blur-md sm:p-6"
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal aria-hidden="true" className="size-4 text-primary" />
-            <h2 id="agenciamentos-filters-title" className="text-sm font-bold tracking-tight">
-              Filtros operacionais
-            </h2>
-            {activeCount > 0 && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-                {activeCount} {activeCount === 1 ? "ativo" : "ativos"}
-              </span>
-            )}
-          </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <SlidersHorizontal aria-hidden="true" className="size-4 text-foreground/45" />
+          <h2 id="agenciamentos-filters-title" className="text-sm font-semibold tracking-tight text-foreground/80">
+            Filtros operacionais
+          </h2>
+          {activeCount > 0 && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+              {activeCount} {activeCount === 1 ? "ativo" : "ativos"}
+            </span>
+          )}
         </div>
 
         <Button
           type="button"
           variant="ghost"
-          className="h-10 shrink-0 rounded-xl px-2.5 text-xs font-semibold text-foreground/58 transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.98] disabled:opacity-35"
+          className="h-8 shrink-0 rounded-lg px-2 text-xs font-medium text-foreground/45 transition-colors duration-150 hover:bg-transparent hover:text-primary disabled:opacity-35"
           onClick={onReset}
           disabled={activeCount === 0}
         >
