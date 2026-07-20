@@ -1166,7 +1166,7 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
     const tenantsIn = normalizeTenants(data);
     const guaranteesIn = normalizeGuarantees(data);
 
-    // 1. Property (allow swap or re-edit)
+    // 1. Property (allow swap, re-edit, or owner update on existing)
     let propertyId = data.property.existingId ?? null;
     if (!propertyId) {
       const payload = { ...propertyPayload(data.property.data!), created_by: context.userId };
@@ -1177,6 +1177,14 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
         .single();
       if (error) throw new Error(error.message);
       propertyId = (inserted as unknown as PropRow).id;
+    } else if (data.property.data) {
+      // Update owner (and other editable) fields on the existing property row.
+      const patch = propertyPayload(data.property.data);
+      const { error } = await supabase
+        .from("rental_properties")
+        .update(patch as never)
+        .eq("id", propertyId);
+      if (error) throw new Error(error.message);
     }
 
     // 2. Tenants (resolve, insert, or update-in-place)
