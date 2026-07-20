@@ -61,7 +61,9 @@ const checklistOptions: Array<{ value: AgenciamentoChecklistFilter; label: strin
 ];
 
 const controlClassName =
-  "h-11 rounded-xl border-foreground/10 bg-white/78 text-foreground shadow-none focus:ring-2 focus:ring-primary/20";
+  "h-10 rounded-lg border-foreground/10 bg-[#f7f4f0] text-foreground shadow-none focus:ring-2 focus:ring-primary/20";
+const microLabelClassName =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground/45";
 
 export function AgenciamentoFilters({
   filters,
