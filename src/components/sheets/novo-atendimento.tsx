@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { createAttendance } from "@/lib/attendances/attendances.functions";
-import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
+import { sendBrokerAssignmentEmail, sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
 import type { AtendimentoCreateInput } from "@/types/atendimento";
 
