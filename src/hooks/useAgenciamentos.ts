@@ -121,9 +121,9 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     (session.permissions.includes("agenciamentos:manage") ||
       hasPermission(session.perfil, "agenciamentos:manage")),
   );
-  const isAdmin = session?.perfil === "admin_owner" && canManage;
   const isAdminLike =
     session?.perfil === "admin_owner" || session?.perfil === "secretaria";
+
 
 
   const currentBroker = useMemo(
