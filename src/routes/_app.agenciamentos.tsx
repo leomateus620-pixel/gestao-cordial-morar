@@ -16,6 +16,16 @@ import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilt
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
 import { AgenciamentoSummaryCards } from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
