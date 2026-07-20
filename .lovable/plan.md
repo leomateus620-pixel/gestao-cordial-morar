@@ -1,41 +1,34 @@
 ## Diagnóstico
 
-Confirmei a causa raiz consultando as políticas RLS reais no banco:
+Verifiquei o estado atual:
 
-- `public.clients` — política `SELECT` atual: `created_by = auth.uid() OR has_role(auth.uid(),'admin')`. **Não inclui o corretor atribuído (`assigned_broker_id`) nem a secretária.**
-- `public.attendances` — política `SELECT`: já inclui `corretor_id = auth.uid()` e admin, mas **não inclui a secretária**.
+- **RLS `public.real_estate_sales`**: já é `user_id = auth.uid() OR has_role('admin')` em `SELECT/UPDATE/DELETE` e `INSERT` com `WITH CHECK user_id = auth.uid()`. Isso já garante "corretor vê só as próprias, admin vê tudo" — não precisa alterar.
+- **Permissões do app** (`src/lib/mock/permissions.ts`): o perfil `corretor` **não** inclui o módulo `vendas` nem `vendas:read/write` — por isso o menu está bloqueado no sidebar/mobile e via `RequireModuleAccess`.
+- **`createSale`** (`src/lib/sales/sales.functions.ts`) já grava `user_id = context.userId`, o que faz o RLS funcionar corretamente.
+- **`listSales`** retorna as vendas sem o nome do dono; hoje só existe o campo texto livre "Responsável" preenchido pelo usuário — para admin ver "corretor responsável" de forma confiável, precisa vir o nome do dono via join com `profiles`.
+- **KPIs** (`getSalesKpis`) são calculados server-side sobre o resultado do próprio `SELECT` (portanto já respeitam o RLS por usuário). "Ticket médio" aparece em `SalesKpiCards.tsx` como um dos 6 cards.
 
-Fluxo quebrado hoje: quando Bianca (secretária) cria um atendimento e vincula ao Felipe (corretor), a conversão em cliente chama `createClient` como Bianca — portanto `created_by = Bianca` e `assigned_broker_id = Felipe`. O RLS do `clients` só deixa Bianca e admins lerem essa linha; Felipe cai fora, mesmo sendo o corretor responsável. O filtro do server-fn `listClients` já tenta um `.or(created_by, assigned_broker_id)`, mas o RLS bloqueia antes.
+## O que fazer
 
-Também: a secretária hoje só vê os próprios atendimentos/clientes — o pedido é que ela veja tudo, como admin (sem privilégios administrativos).
+1. **Liberar módulo Vendas para corretor** — em `src/lib/mock/permissions.ts`, adicionar `"vendas"` ao array `modules` e `"vendas:read"`, `"vendas:write"` ao array `permissions` do perfil `corretor`. Nenhuma outra role muda.
 
-## O que corrigir
+2. **Ocultar "Ticket médio" para não-admins** — em `src/components/vendas/SalesKpiCards.tsx` receber uma flag `isAdmin` (ou usar `useSession` + `isAdminUser`) e renderizar o KpiCard "Ticket médio" apenas quando admin. Ajustar grid para continuar equilibrado (5 cards em vez de 6 para corretor). Passar a prop no `_app.vendas.tsx`.
 
-1. **RLS `public.clients`** — nova política `SELECT` (e `UPDATE`) permitindo:
-   - criador (`created_by = auth.uid()`)
-   - corretor atribuído (`assigned_broker_id = auth.uid()`)
-   - admin (`has_role(...,'admin')`)
-   - secretária (`has_role(...,'secretaria')`)
+3. **Garantir que admin sempre veja o corretor responsável** — em `src/lib/sales/sales.functions.ts`:
+   - `listSales`: incluir o dono via `select("*, owner:profiles!user_id(id, nome, iniciais)")` e mapear para novos campos `ownerId` / `ownerName` / `ownerInitials` no `SaleRecord` (tipo em `src/types/sale.ts`).
+   - Exibir esse nome do dono em `SaleRecordCard.tsx` e `SaleDetailsDrawer.tsx` como "Corretor" (linha nova, separada do campo texto livre "Responsável"). Para o corretor, essa linha simplesmente mostra o próprio nome (informação já era conhecida, sem vazamento). Para admin, resolve a lacuna atual em que "Responsável" pode estar vazio.
 
-   `DELETE` continua restrito a criador + admin (secretária não apaga cadastro de outro corretor).
+4. **Pré-preencher "Responsável" com o corretor logado** — em `src/components/vendas/SaleForm.tsx`, quando é uma criação e o usuário é corretor, iniciar `responsibleAgent` com `session.nome` (sem travar; ele pode alterar, mas o RLS + `user_id` continuam garantindo isolamento).
 
-2. **RLS `public.attendances`** — adicionar bypass de leitura/edição para `secretaria` nas políticas `SELECT` e `UPDATE` (mantendo criador, corretor vinculado, admin). `DELETE` segue criador + admin.
-
-3. **Server-fn `listClients`** (`src/lib/clients/clients.functions.ts`) — hoje só pula o filtro quando `isAdmin`. Passar a pular também quando o usuário tiver role `secretaria`, para ela receber toda a lista (paralelo ao que já é feito em `listAttendances`).
-
-4. **Server-fn `listAttendances`** (`src/lib/attendances/attendances.functions.ts`) — mesmo ajuste: pular o filtro `.or(...)` quando o usuário for `secretaria`.
-
-Nada muda no fluxo de conversão em si (`convertAtendimento` em `useAttendances.ts` continua criando o cliente com `assigned_broker_id = corretor do atendimento`); o RLS corrigido é o que faz o cliente aparecer para o corretor.
-
-## Validação após aplicar
-
-- Login Felipe: cliente convertido de um atendimento vinculado a ele aparece no menu Clientes.
-- Login Bianca: vê todos os atendimentos e todos os clientes de todos os corretores; consegue editar.
-- Login admin (Ricardo/Bruna/Leonardo): sem regressão — continua vendo tudo.
-- Login outro corretor não vinculado: não vê o cliente/atendimento alheio.
+5. **Validação (via Playwright, headless)**:
+   - Login corretor (Felipe): abre `/vendas`, cria uma venda, salva, vê apenas ela na lista e nos KPIs; card "Ticket médio" **não aparece**; card mostra corretor = Felipe.
+   - Login admin (Bruna): abre `/vendas`, vê a venda do Felipe e as próprias, card "Ticket médio" aparece, cada card mostra o corretor dono correto.
+   - Login outro corretor (Pablo): não vê a venda do Felipe.
+   - Screenshots de cada etapa para confirmação visual.
 
 ## Detalhes técnicos
 
-- Uma migration Supabase com `DROP POLICY ... IF EXISTS` + `CREATE POLICY` para as 4 políticas afetadas (`clients` SELECT/UPDATE, `attendances` SELECT/UPDATE). RLS já está habilitado e os `GRANT`s já existem — nada a mexer aí.
-- Edits pontuais em dois arquivos `.functions.ts` para consultar `has_role(..., 'secretaria')` em paralelo ao check de admin (uma única chamada RPC `has_role` extra por request; barato).
-- Sem mudanças de UI, tipos ou hooks.
+- Sem mudanças de RLS (já correto para o requisito).
+- Sem mudanças em secretária/financeiro — pedido é apenas para corretor.
+- Mudanças isoladas: 1 arquivo de permissão, 1 componente KPI, 1 rota, 1 server-fn + tipo, 1 form, 2 cards de exibição.
+- Nenhuma migração de dados; join com `profiles` usa a FK implícita `user_id → auth.users` — como não existe FK direta no `profiles`, o alias no `select` usa `profiles!left(id, nome, iniciais)` com filtro por `user_id`, ou uma segunda query em batch (`.in("id", userIds)`) caso o embed não resolva. Confirmarei na implementação e adotarei a via que o PostgREST aceitar.

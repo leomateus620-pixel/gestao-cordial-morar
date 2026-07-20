@@ -10,9 +10,11 @@ import { SaleRecordCard } from "@/components/vendas/SaleRecordCard";
 import { SalesFilters } from "@/components/vendas/SalesFilters";
 import { SalesKpiCards } from "@/components/vendas/SalesKpiCards";
 import { useSales, uploadSaleDocument } from "@/hooks/useSales";
+import { useSession } from "@/lib/auth-mock";
 import { useApp, useFiltered } from "@/store/app-store";
 import type { AgencyId } from "@/lib/mock/data";
 import type { SaleRecord, SaleRecordInput, SalesFilter, SalesKpis } from "@/types/sale";
+
 
 const EMPTY_KPIS: SalesKpis = {
   totalSold: 0,
@@ -38,9 +40,12 @@ function GuardedPage() {
 
 
 function Page() {
+  const session = useSession();
+  const isAdmin = session?.perfil === "admin_owner";
   const agency = useApp((state) => state.agency);
   const imoveis = useFiltered(useApp((state) => state.imoveis));
   const corretores = useFiltered(useApp((state) => state.corretores));
+
 
   const {
     sales,
@@ -196,7 +201,7 @@ function Page() {
       </section>
 
       <div className="space-y-5">
-        <SalesKpiCards kpis={activeKpis} />
+        <SalesKpiCards kpis={activeKpis} showAverageTicket={isAdmin} />
         <SalesFilters
           filter={filter}
           onFilterChange={setFilter}

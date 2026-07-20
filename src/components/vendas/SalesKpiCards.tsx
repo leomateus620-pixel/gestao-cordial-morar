@@ -62,7 +62,13 @@ function KpiCard({
   );
 }
 
-export function SalesKpiCards({ kpis }: { kpis: SalesKpis }) {
+export function SalesKpiCards({
+  kpis,
+  showAverageTicket = true,
+}: {
+  kpis: SalesKpis;
+  showAverageTicket?: boolean;
+}) {
   return (
     <section
       className="snap-carousel md:grid md:grid-cols-3 md:gap-2.5 lg:grid-cols-6"
@@ -89,13 +95,15 @@ export function SalesKpiCards({ kpis }: { kpis: SalesKpis }) {
         detail="documentos localizados"
         tone="info"
       />
-      <KpiCard
-        icon={TrendingUp}
-        label="Ticket médio"
-        value={brl(kpis.averageTicket, { compact: true })}
-        detail="sem canceladas"
-        tone="success"
-      />
+      {showAverageTicket && (
+        <KpiCard
+          icon={TrendingUp}
+          label="Ticket médio"
+          value={brl(kpis.averageTicket, { compact: true })}
+          detail="sem canceladas"
+          tone="success"
+        />
+      )}
       <KpiCard
         icon={CalendarDays}
         label="Vendas do mês"
@@ -113,3 +121,4 @@ export function SalesKpiCards({ kpis }: { kpis: SalesKpis }) {
     </section>
   );
 }
+

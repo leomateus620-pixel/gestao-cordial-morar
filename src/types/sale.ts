@@ -45,6 +45,10 @@ export type SaleRecord = {
   commissionValue?: number;
   commissionPercentage?: number;
   responsibleAgent?: string;
+  ownerId?: string;
+  ownerName?: string;
+  ownerInitials?: string;
+
   contractFilePath?: string;
   contractFileUrl?: string;
   contractFileName?: string;
@@ -56,7 +60,11 @@ export type SaleRecord = {
   imobiliaria: AgencyId;
 };
 
-export type SaleRecordInput = Omit<SaleRecord, "id" | "createdAt" | "updatedAt">;
+export type SaleRecordInput = Omit<
+  SaleRecord,
+  "id" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerInitials"
+>;
+
 
 export type SalesKpis = {
   totalSold: number;

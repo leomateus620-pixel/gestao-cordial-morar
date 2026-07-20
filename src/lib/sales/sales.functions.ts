@@ -46,7 +46,9 @@ type SaleRow = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  owner?: { id: string; nome: string | null; iniciais: string | null } | null;
 };
+
 
 const orNull = (v?: string | null) =>
   v !== undefined && v !== null && String(v).trim() ? String(v).trim() : null;
@@ -82,6 +84,9 @@ function mapSale(r: SaleRow): SaleRecord {
     commissionValue: r.commission_value ?? undefined,
     commissionPercentage: r.commission_percentage ?? undefined,
     responsibleAgent: r.responsible_agent ?? undefined,
+    ownerId: r.owner?.id ?? r.user_id ?? undefined,
+    ownerName: r.owner?.nome ?? undefined,
+    ownerInitials: r.owner?.iniciais ?? undefined,
     contractFilePath: r.contract_file_path ?? undefined,
     contractFileUrl: undefined,
     contractFileName: r.contract_file_name ?? undefined,
@@ -91,6 +96,7 @@ function mapSale(r: SaleRow): SaleRecord {
     updatedAt: r.updated_at,
   };
 }
+
 
 function inputToPayload(input: SaleRecordInput) {
   return {
@@ -137,8 +143,23 @@ export const listSales = createServerFn({ method: "GET" })
       .order("sale_date", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return ((data ?? []) as unknown as SaleRow[]).map(mapSale);
+    const rows = (data ?? []) as unknown as SaleRow[];
+    const ownerIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean)));
+    let owners: Record<string, { id: string; nome: string | null; iniciais: string | null }> = {};
+    if (ownerIds.length) {
+      const { data: profs } = await context.supabase
+        .from("profiles")
+        .select("id, nome, iniciais")
+        .in("id", ownerIds);
+      owners = Object.fromEntries(
+        ((profs ?? []) as Array<{ id: string; nome: string | null; iniciais: string | null }>).map(
+          (p) => [p.id, p],
+        ),
+      );
+    }
+    return rows.map((r) => mapSale({ ...r, owner: owners[r.user_id] ?? null }));
   });
+
 
 // ============================ CREATE ============================
 export const createSale = createServerFn({ method: "POST" })

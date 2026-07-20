@@ -114,7 +114,9 @@ export function SaleDetailsDrawer({
                 <MetricRow label="Data da venda" value={formatDate(sale.saleDate)} />
                 <MetricRow label="Forma de pagamento" value={sale.paymentMethod} />
                 <MetricRow label="Detalhes do pagamento" value={sale.paymentDetails || "—"} />
+                <MetricRow label="Corretor" value={sale.ownerName || "—"} />
                 <MetricRow label="Responsável" value={sale.responsibleAgent || "—"} />
+
                 <MetricRow
                   label="Comissão"
                   value={

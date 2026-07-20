@@ -142,8 +142,8 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
   corretor: {
     profile: "corretor",
     label: "Corretor",
-    description: "Atendimentos, clientes e agenciamentos da própria carteira.",
-    modules: ["dashboard", "atendimentos", "clientes", "agenciamentos", "agenda"],
+    description: "Atendimentos, clientes, agenciamentos e vendas da própria carteira.",
+    modules: ["dashboard", "atendimentos", "clientes", "agenciamentos", "agenda", "vendas"],
     permissions: [
       "atendimentos:read",
       "atendimentos:write",
@@ -153,8 +153,11 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "agenciamentos:write",
       "agenda:read",
       "agenda:write",
+      "vendas:read",
+      "vendas:write",
     ],
   },
+
   financeiro_admin: {
     profile: "financeiro_admin",
     label: "Financeiro/Administrativo",
