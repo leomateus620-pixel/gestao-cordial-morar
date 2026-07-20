@@ -1,25 +1,36 @@
-## Objetivo
-Liberar o menu **Agenda** para a Bianca (secretária) com poder equivalente ao admin: ver, criar, editar e excluir eventos de qualquer corretor.
+## Tarefa 1 — Finalidade "Vender" e "Alugar" no cadastro de Clientes
 
-## Mudanças
+Hoje `ClientPurpose` só suporta `compra | aluguel | ambos` (ótica do comprador/locatário). Vou estender para cobrir proprietários que estão colocando o imóvel no mercado.
 
-### 1. `src/lib/mock/permissions.ts`
-- Adicionar `"agenda"` à lista `modules` do perfil `secretaria`.
-- Adicionar `"agenda:read"` às permissions (já tem `agenda:write`).
+- `src/types/client.ts`: estender `ClientPurpose` com `"venda"` e `"locacao"`; adicionar as opções em `clientPurposeOptions` ("Vender (proprietário)", "Alugar (proprietário)"); atualizar `clientPurposeLabel`.
+- `src/components/clients/ClientFormModal.tsx`: rótulo do orçamento vira "Valor pretendido" quando `venda`/`locacao`; validação continua opcional.
+- `src/hooks/useClients.ts`: filtro `purpose` já é `"todos" | ClientPurpose` — passa a aceitar os dois novos valores automaticamente; incluir `locacao` na contagem de "aluguel" e `venda` na de "compra" nos stats para não zerar os cards.
+- `src/services/clients.ts`: se houver derivações por purpose, ajustar da mesma forma.
+- Coluna `purpose` no banco já é `text` livre — nenhuma migração necessária.
 
-### 2. Migração Supabase — RLS da agenda
-Atualizar policies e funções auxiliares para reconhecer o papel `secretaria` como acesso total (equivalente a admin), sem afetar o isolamento dos corretores:
+## Tarefa 2 — Código/Nome do imóvel no cadastro de Atendimentos
 
-- `public.agenda_can_access(_event_id)` → incluir `OR public.has_role(auth.uid(), 'secretaria'::public.app_role)`.
-- `public.agenda_can_edit(_event_id)` → mesma inclusão.
-- Policy `Agenda: ver compromissos visíveis` (SELECT) → adicionar cláusula `OR has_role(auth.uid(), 'secretaria')`.
-- Policy `Agenda: editar próprio ou admin` (UPDATE) → adicionar cláusula secretaria em USING e WITH CHECK.
-- Policy `Agenda: excluir próprio ou admin` (DELETE) → adicionar cláusula secretaria.
+No passo "Interesse", ao lado do select "Vincular imóvel existente", adicionar um campo de texto livre para o corretor digitar o código do site ou o nome do residencial quando o imóvel não está cadastrado no sistema.
 
-As policies de participantes/checklist/reminders/guests já se apoiam em `agenda_can_access`/`agenda_can_edit`, então herdam a mudança automaticamente.
+- Migration: `ALTER TABLE public.attendances ADD COLUMN imovel_codigo text` (sem alterar RLS/policies).
+- `src/types/atendimento.ts`: novo campo opcional `imovelCodigo?: string`.
+- `src/lib/attendances/attendances.functions.ts`: mapear `imovel_codigo` ↔ `imovelCodigo` em list/create/update.
+- `src/components/atendimentos/AtendimentoFormModal.tsx`: novo `Field label="Código do imóvel ou nome do residencial"` acima do select "Vincular imóvel existente"; persistir no estado do form.
+- `src/components/atendimentos/AtendimentoCard.tsx` / detail: exibir o código quando presente (chip discreto) para o corretor identificar rapidamente.
 
-Corretores continuam vendo apenas eventos próprios (created_by / owner / participante). Admin e secretária veem tudo.
+## Tarefa 3 — Dados do Proprietário no cadastro de Aluguéis
 
-## Fora do escopo
-- UI da agenda (já existe e funciona).
-- Nenhuma alteração em outros módulos.
+Adicionar bloco "Proprietário do imóvel" no `RentalFormModal`, dentro da seção do imóvel (aplica ao cadastro E à edição). Como o proprietário é atributo do imóvel, armazenar em `rental_properties`.
+
+- Migration: `ALTER TABLE public.rental_properties ADD COLUMN proprietario_nome text, ADD COLUMN proprietario_cpf text, ADD COLUMN proprietario_email text` (RLS existente cobre; sem novos GRANTs).
+- `src/types/rental.ts`: adicionar `proprietarioNome`, `proprietarioCpf`, `proprietarioEmail` (opcionais) em `RentalProperty` e `RentalPropertyInput`.
+- `src/lib/rentals/rentals.functions.ts`: mapear as três colunas em list/create/update do imóvel; incluir no fetch usado pelo contrato.
+- `src/components/alugueis/RentalFormModal.tsx`: nova sub-seção "Proprietário" com Nome completo (obrigatório se novo imóvel), CPF/CNPJ (máscara já usada nos locatários) e E-mail (validação básica).
+- `src/components/alugueis/RentalExpandedDetails.tsx`: exibir o proprietário no card expandido (nome + contato mascarado).
+
+## Testes e validação
+
+- Migrations aplicadas → typegen atualizado → build passa.
+- Fluxo Clientes: criar cliente com finalidade "Vender" e "Alugar", conferir listagem, filtros e edição.
+- Fluxo Atendimentos: cadastrar com código do imóvel preenchido, editar, e conferir exibição no card.
+- Fluxo Aluguéis: criar novo contrato com proprietário, editar contrato existente adicionando proprietário, conferir persistência e visualização.
