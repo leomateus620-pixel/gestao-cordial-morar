@@ -20,6 +20,8 @@ import {
   type AgendaTipo,
 } from "@/types/agenda";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
 
 const typeStyles: Record<AgendaTipo, string> = {
   visita: "bg-teal-600/12 text-teal-800",
