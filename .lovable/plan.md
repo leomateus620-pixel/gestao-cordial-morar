@@ -1,26 +1,25 @@
-## Problema
+## Objetivo
+Liberar o menu **Agenda** para a Bianca (secretária) com poder equivalente ao admin: ver, criar, editar e excluir eventos de qualquer corretor.
 
-Corretores não conseguem editar clientes que foram criados por outra pessoa (ex.: Bianca cria o cliente e vincula ao corretor). O RLS do Postgres já permite a edição para o corretor vinculado (`assigned_broker_id = auth.uid()`), mas o gate de UI bloqueia com o toast "Você só pode editar cadastros que você criou".
+## Mudanças
 
-## Causa raiz
+### 1. `src/lib/mock/permissions.ts`
+- Adicionar `"agenda"` à lista `modules` do perfil `secretaria`.
+- Adicionar `"agenda:read"` às permissions (já tem `agenda:write`).
 
-Em duas telas o `canEdit` só considera `createdBy`:
+### 2. Migração Supabase — RLS da agenda
+Atualizar policies e funções auxiliares para reconhecer o papel `secretaria` como acesso total (equivalente a admin), sem afetar o isolamento dos corretores:
 
-- `src/routes/_app.clientes.tsx` (lista) — `canEditClient` retorna `client.createdBy === session.id` para não-admin.
-- `src/routes/_app.clientes.$clienteId.tsx` (detalhe) — mesma regra.
+- `public.agenda_can_access(_event_id)` → incluir `OR public.has_role(auth.uid(), 'secretaria'::public.app_role)`.
+- `public.agenda_can_edit(_event_id)` → mesma inclusão.
+- Policy `Agenda: ver compromissos visíveis` (SELECT) → adicionar cláusula `OR has_role(auth.uid(), 'secretaria')`.
+- Policy `Agenda: editar próprio ou admin` (UPDATE) → adicionar cláusula secretaria em USING e WITH CHECK.
+- Policy `Agenda: excluir próprio ou admin` (DELETE) → adicionar cláusula secretaria.
 
-Isso diverge da policy `clients_update_editable` que permite: criador, corretor vinculado, admin ou secretaria.
+As policies de participantes/checklist/reminders/guests já se apoiam em `agenda_can_access`/`agenda_can_edit`, então herdam a mudança automaticamente.
 
-## Correção
+Corretores continuam vendo apenas eventos próprios (created_by / owner / participante). Admin e secretária veem tudo.
 
-Alinhar o gate de UI à RLS. Não é um problema geral — funciona para admin/secretaria e para clientes criados pelo próprio corretor; só falha no caso "atribuído por outro".
-
-1. **`src/routes/_app.clientes.tsx`** — em `canEditClient`, permitir também quando `client.assignedBrokerId === session.id`, e liberar para `secretaria` (equipara-se ao acesso já concedido no backend).
-2. **`src/routes/_app.clientes.$clienteId.tsx`** — mesma regra no `canEdit` do header do detalhe.
-3. Nenhuma alteração de schema, RLS ou server function é necessária.
-
-## Validação
-
-- Login como corretor (ex.: Geandre) → abrir cliente atribuído a ele criado pela Bianca → botão "Editar" visível, salvar altera o registro e persiste após refresh.
-- Login como corretor → cliente atribuído a outro corretor → botão não aparece (RLS também bloquearia).
-- Login como Bianca/admin → continua editando tudo.
+## Fora do escopo
+- UI da agenda (já existe e funciona).
+- Nenhuma alteração em outros módulos.
