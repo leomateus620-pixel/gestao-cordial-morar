@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "@/lib/auth-mock";
+
 import {
   Building2,
   FileText,
@@ -223,8 +225,10 @@ export function SaleForm({
   ) => Promise<unknown> | unknown;
   isSaving?: boolean;
 }) {
+  const session = useSession();
   const contractInputRef = useRef<HTMLInputElement | null>(null);
   const supportInputRef = useRef<HTMLInputElement | null>(null);
+
 
   const [mode, setMode] = useState<Mode>("existing");
   const [agency, setAgency] = useState<AgencyId>(defaultAgency);
@@ -295,7 +299,10 @@ export function SaleForm({
     setCommissionPercentage(
       record?.commissionPercentage ? String(record.commissionPercentage) : "",
     );
-    setResponsibleAgent(record?.responsibleAgent ?? "");
+    setResponsibleAgent(
+      record?.responsibleAgent ?? (record ? "" : (session?.nome ?? "")),
+    );
+
     setNotes(record?.notes ?? "");
     setDocumentStatus(record?.documentStatus ?? "contrato_pendente");
     setContractFile(record?.contractFileName ? { name: record.contractFileName } : null);

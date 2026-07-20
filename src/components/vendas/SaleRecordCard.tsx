@@ -53,8 +53,13 @@ export function SaleRecordCard({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
           <InfoLine icon={UserRound} label="Comprador" value={sale.buyerName} />
           <InfoLine icon={CalendarDays} label="Data da venda" value={formatDate(sale.saleDate)} />
-          <InfoLine icon={FileText} label="Responsável" value={sale.responsibleAgent || "—"} />
+          <InfoLine
+            icon={FileText}
+            label="Corretor"
+            value={sale.ownerName || sale.responsibleAgent || "—"}
+          />
         </div>
+
 
         <div className="flex items-end justify-between gap-3 rounded-2xl bg-primary/[0.07] px-3 py-2.5 ring-1 ring-primary/10 lg:block lg:text-right">
           <div>
