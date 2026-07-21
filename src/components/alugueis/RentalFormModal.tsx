@@ -719,6 +719,15 @@ export function RentalFormModal({
                       placeholder="proprietario@email.com"
                     />
                   </Field>
+                  <Field label="Telefone / Celular">
+                    <input
+                      type="tel"
+                      value={propTelefone}
+                      onChange={(e) => setPropTelefone(e.target.value)}
+                      className={inputCls}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </Field>
                 </div>
               </div>
             </SectionCard>
