@@ -1,28 +1,26 @@
-## Objetivo
-Permitir apagar agenciamentos (para remover testes e cadastros incorretos), com confirmação e permissão adequada.
+## Adicionar telefone do proprietário no cadastro de Aluguéis
 
-## Escopo
+### Objetivo
+Incluir um campo "Telefone/Celular" na seção "Proprietário do imóvel" no cadastro/edição de aluguéis, com persistência no banco.
 
-- Backend/RLS: sem mudanças. A server function `deleteAgenciamento` já existe em `src/lib/agenciamentos/agenciamentos.functions.ts` e o hook `useAgenciamentos` já expõe `deleteAgenciamento(id)` protegido por `canManage`.
-- Frontend: adicionar ação "Excluir" no `AgenciamentoDetailDrawer` (onde já há edição), com `AlertDialog` de confirmação. Também adicionar botão discreto de excluir no `AgenciamentoCard` (ícone de lixeira) visível apenas para quem tem permissão (`admin_owner` e `secretaria`, via `canManage`).
-- Após excluir: fechar drawer/diálogo, toast de sucesso, invalidação da query (já feita pelo hook).
+### Alterações
 
-## Passos
+1. **Banco de dados** (migration)
+   - Adicionar coluna `proprietario_telefone TEXT` em `public.rental_properties`.
 
-1. `src/components/agenciamentos/AgenciamentoCard.tsx`
-   - Aceitar prop opcional `onDelete?: (id: string) => void` e `canDelete?: boolean`.
-   - Renderizar botão "lixeira" no canto (ghost, `text-destructive`) que dispara `onDelete`, sem propagar o clique para o card.
+2. **Types** (`src/types/rental.ts`)
+   - Adicionar `proprietarioTelefone?: string | null` em `RentalProperty`.
 
-2. `src/components/agenciamentos/AgenciamentoDetailDrawer.tsx`
-   - Adicionar botão "Excluir agenciamento" no rodapé (visível se `canManage`).
-   - `AlertDialog` de confirmação com nome do imóvel/proprietário no texto.
-   - Ao confirmar: chamar `deleteAgenciamento(id)` do hook, `toast.success`, fechar drawer.
+3. **Backend** (`src/lib/rentals/rentals.functions.ts`)
+   - Mapear `proprietario_telefone` ↔ `proprietarioTelefone` no select, insert, update e replace do imóvel.
 
-3. `src/routes/_app.agenciamentos.tsx`
-   - Passar `onDelete` e `canDelete={canManage}` para os `AgenciamentoCard`.
-   - Confirmação inline (reutilizar `AlertDialog`) antes de disparar a exclusão a partir do card.
+4. **Formulário** (`src/components/alugueis/RentalFormModal.tsx`)
+   - Adicionar input "Telefone / Celular" ao lado dos demais campos do proprietário (nome, CPF, e-mail).
+   - Incluir no estado inicial, carregar em modo edição e enviar no payload.
 
-## Fora de escopo
-- Alterar RLS, políticas ou schema.
-- Soft delete / lixeira / restauração.
-- Ação em massa.
+5. **Visualização** (`src/components/alugueis/RentalExpandedDetails.tsx`)
+   - Exibir o telefone junto aos demais dados do proprietário quando presente.
+
+### Validação
+- Cadastrar novo aluguel com telefone → verificar persistência.
+- Editar contrato existente adicionando/alterando telefone → verificar salvamento e exibição.
