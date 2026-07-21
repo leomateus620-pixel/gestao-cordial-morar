@@ -127,6 +127,7 @@ function mapProperty(r: PropRow): RentalProperty {
     proprietarioNome: r.proprietario_nome,
     proprietarioCpf: r.proprietario_cpf,
     proprietarioEmail: r.proprietario_email,
+    proprietarioTelefone: r.proprietario_telefone,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
