@@ -211,6 +211,7 @@ function propertyPayload(input: RentalPropertyInput) {
     proprietario_nome: orNull(input.proprietarioNome),
     proprietario_cpf: orNull(input.proprietarioCpf),
     proprietario_email: orNull(input.proprietarioEmail),
+    proprietario_telefone: orNull(input.proprietarioTelefone),
   };
 }
 function tenantPayload(input: RentalTenantInput) {
