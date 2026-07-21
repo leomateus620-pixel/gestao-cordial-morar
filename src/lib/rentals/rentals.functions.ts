@@ -49,6 +49,7 @@ type PropRow = {
   proprietario_nome: string | null;
   proprietario_cpf: string | null;
   proprietario_email: string | null;
+  proprietario_telefone: string | null;
   created_at: string;
   updated_at: string;
 };
