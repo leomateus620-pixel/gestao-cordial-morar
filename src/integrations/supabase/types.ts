@@ -373,6 +373,38 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_reminder_deliveries: {
+        Row: {
+          channel: string
+          delivered_at: string
+          event_id: string
+          offset_min: number
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          delivered_at?: string
+          event_id: string
+          offset_min: number
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          delivered_at?: string
+          event_id?: string
+          offset_min?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_reminder_deliveries_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendances: {
         Row: {
           bairro_interesse: string | null
