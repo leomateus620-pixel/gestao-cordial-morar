@@ -313,6 +313,7 @@ export function RentalFormModal({
   const [propNome, setPropNome] = useState("");
   const [propCpf, setPropCpf] = useState("");
   const [propEmail, setPropEmail] = useState("");
+  const [propTelefone, setPropTelefone] = useState("");
 
   const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([
     newTenantEntry(),
@@ -369,6 +370,7 @@ export function RentalFormModal({
     setPropNome("");
     setPropCpf("");
     setPropEmail("");
+    setPropTelefone("");
     setTenantEntries([newTenantEntry()]);
     setGuaranteeEntries([]);
     setValor("");
@@ -407,6 +409,7 @@ export function RentalFormModal({
     setPropNome(c.property.proprietarioNome ?? "");
     setPropCpf(c.property.proprietarioCpf ?? "");
     setPropEmail(c.property.proprietarioEmail ?? "");
+    setPropTelefone(c.property.proprietarioTelefone ?? "");
 
     const tList = c.tenants && c.tenants.length > 0 ? c.tenants : [c.tenant];
     setTenantEntries(
@@ -487,6 +490,7 @@ export function RentalFormModal({
         proprietarioNome: propNome.trim() || null,
         proprietarioCpf: propCpf.trim() || null,
         proprietarioEmail: propEmail.trim() || null,
+        proprietarioTelefone: propTelefone.trim() || null,
       };
       const input: RentalContractInput = {
         ...(isEdit && initial ? { contractId: initial.id } : {}),
@@ -713,6 +717,15 @@ export function RentalFormModal({
                       onChange={(e) => setPropEmail(e.target.value)}
                       className={inputCls}
                       placeholder="proprietario@email.com"
+                    />
+                  </Field>
+                  <Field label="Telefone / Celular">
+                    <input
+                      type="tel"
+                      value={propTelefone}
+                      onChange={(e) => setPropTelefone(e.target.value)}
+                      className={inputCls}
+                      placeholder="(00) 00000-0000"
                     />
                   </Field>
                 </div>

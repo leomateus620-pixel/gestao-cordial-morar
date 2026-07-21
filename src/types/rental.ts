@@ -57,6 +57,7 @@ export type RentalProperty = {
   proprietarioNome?: string | null;
   proprietarioCpf?: string | null;
   proprietarioEmail?: string | null;
+  proprietarioTelefone?: string | null;
   createdAt: string;
   updatedAt: string;
 };

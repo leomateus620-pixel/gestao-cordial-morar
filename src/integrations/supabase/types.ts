@@ -1505,6 +1505,7 @@ export type Database = {
           proprietario_cpf: string | null
           proprietario_email: string | null
           proprietario_nome: string | null
+          proprietario_telefone: string | null
           quartos: number | null
           status: Database["public"]["Enums"]["rental_property_status"]
           tipo: Database["public"]["Enums"]["rental_property_type"]
@@ -1531,6 +1532,7 @@ export type Database = {
           proprietario_cpf?: string | null
           proprietario_email?: string | null
           proprietario_nome?: string | null
+          proprietario_telefone?: string | null
           quartos?: number | null
           status?: Database["public"]["Enums"]["rental_property_status"]
           tipo?: Database["public"]["Enums"]["rental_property_type"]
@@ -1557,6 +1559,7 @@ export type Database = {
           proprietario_cpf?: string | null
           proprietario_email?: string | null
           proprietario_nome?: string | null
+          proprietario_telefone?: string | null
           quartos?: number | null
           status?: Database["public"]["Enums"]["rental_property_status"]
           tipo?: Database["public"]["Enums"]["rental_property_type"]

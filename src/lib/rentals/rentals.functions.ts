@@ -49,6 +49,7 @@ type PropRow = {
   proprietario_nome: string | null;
   proprietario_cpf: string | null;
   proprietario_email: string | null;
+  proprietario_telefone: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -126,6 +127,7 @@ function mapProperty(r: PropRow): RentalProperty {
     proprietarioNome: r.proprietario_nome,
     proprietarioCpf: r.proprietario_cpf,
     proprietarioEmail: r.proprietario_email,
+    proprietarioTelefone: r.proprietario_telefone,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -209,6 +211,7 @@ function propertyPayload(input: RentalPropertyInput) {
     proprietario_nome: orNull(input.proprietarioNome),
     proprietario_cpf: orNull(input.proprietarioCpf),
     proprietario_email: orNull(input.proprietarioEmail),
+    proprietario_telefone: orNull(input.proprietarioTelefone),
   };
 }
 function tenantPayload(input: RentalTenantInput) {
@@ -822,6 +825,7 @@ export const updateRentalContract = createServerFn({ method: "POST" })
         proprietarioNome: rest.proprietarioNome ?? null,
         proprietarioCpf: rest.proprietarioCpf ?? null,
         proprietarioEmail: rest.proprietarioEmail ?? null,
+        proprietarioTelefone: rest.proprietarioTelefone ?? null,
       });
       const { error } = await supabase
         .from("rental_properties")
