@@ -313,6 +313,7 @@ export function RentalFormModal({
   const [propNome, setPropNome] = useState("");
   const [propCpf, setPropCpf] = useState("");
   const [propEmail, setPropEmail] = useState("");
+  const [propTelefone, setPropTelefone] = useState("");
 
   const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([
     newTenantEntry(),
