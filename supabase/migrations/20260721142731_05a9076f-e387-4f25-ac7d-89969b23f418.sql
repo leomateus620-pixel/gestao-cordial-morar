@@ -1,0 +1,1 @@
+ALTER TABLE public.rental_properties ADD COLUMN IF NOT EXISTS proprietario_telefone TEXT;
