@@ -1,72 +1,36 @@
 
-## Diagnóstico (verificado)
-
-- Os dois eventos citados existem em `agenda_events`:
-  - `Apto jardim primavera` — 20/07 (passado)
-  - `Casa Cod 1187` — 23/07 (futuro)
-- A tabela `agenda_event_reminders` só possui **1 registro** (30 min, tipo `interno`) para o evento de 23/07. O de 20/07 não tem nenhum lembrete salvo.
-- Não existe nenhum dispatcher/cron que leia `agenda_event_reminders` e entregue notificações. Hoje esses registros só viram `reminders.overrides` no payload enviado ao Google Calendar (pop-up nativo do Google), **nada é entregue dentro do sistema nem por e-mail**. Cron ativos atualmente: apenas `financeiro-sheets-autosync`.
-- Conclusão: nenhuma notificação foi entregue porque nunca houve infraestrutura para isso — não é falha pontual, é ausência do fluxo. Vamos reaproveitar o fluxo que **está** funcionando (tabela `notifications` + realtime + `/lovable/email/transactional/send`, mesmo caminho do `broker-assignment`).
-
 ## Objetivo
 
-Para todo evento da Agenda, entregar automaticamente **3 lembretes** ao responsável (owner + participantes):
-- **1 dia antes** (1440 min)
-- **1 hora antes** (60 min)
-- **30 minutos antes** (30 min)
+Testar o envio do lembrete do evento "Casa Cod 1187" (23/07 às 16:00 BRT) para o e-mail de Ricardo (`ricardo@cordialimoveis.com`) e deixar o canal de e-mail funcionando de forma recorrente junto com a notificação in-app.
 
-Cada lembrete cria uma notificação in-app (aparece na central + toast realtime + spotlight) e dispara um e-mail transacional. Cada disparo é único por `(evento, offset)`.
+## Situação atual
 
-## Mudanças
+- O dispatcher `/api/public/hooks/agenda-reminders` já roda a cada 1 min via `pg_cron` e cria notificações in-app com idempotência por `(evento, offset, usuário, channel='notification')`.
+- O template `agenda-reminder` já está registrado.
+- **Falta**: o dispatcher ainda não envia e-mail. Nenhum lembrete por e-mail foi entregue.
+- Para o evento do dia 23, os 3 lembretes padrão (1 dia / 1 hora / 30 min antes) já estão em `agenda_event_reminders`.
 
-### 1. Banco (migração)
+## O que farei
 
-- `INSERT` de 3 linhas padrão em `agenda_event_reminders` (tipo `interno`, offsets 1440/60/30, ativo) sempre que um evento é criado — via trigger `AFTER INSERT` em `agenda_events`. Backfill idêntico para eventos futuros existentes que ainda não tenham essas 3 linhas.
-- Nova tabela `public.agenda_reminder_deliveries` para idempotência:
-  - `event_id uuid`, `offset_min int`, `user_id uuid`, `delivered_at timestamptz`
-  - PK composta `(event_id, offset_min, user_id)`
-  - RLS: `SELECT` para admins/secretaria; `INSERT/UPDATE/DELETE` apenas `service_role`
-  - GRANTs padrão + `service_role` full.
-- Função RPC `public.agenda_dispatch_reminders()` (SECURITY DEFINER) usada pelo cron para lock leve e ping HTTP no endpoint (mesmo padrão do `email_queue_dispatch`).
+### 1. Adicionar canal de e-mail no dispatcher
+Editar `src/routes/api/public/hooks/agenda-reminders.ts`:
+- Buscar `profiles.email` de cada destinatário (owner + created_by + participantes).
+- Enfileirar e-mail via `supabase.rpc('enqueue_email', { queue_name: 'transactional_emails', payload })` — mesmo caminho que o resto do app usa (respeita retry, DLQ, suppressed_emails).
+- Payload usa `templateName: 'agenda-reminder'` com `templateData` (titulo, inicio, local, cliente, imovel, label de antecedência).
+- `idempotencyKey`: `agenda-${eventId}-${offset}-${userId}`.
+- Registrar entrega em `agenda_reminder_deliveries` com `channel='email'` (linha separada da notificação in-app) para não duplicar em runs futuras.
 
-### 2. Endpoint dispatcher
+### 2. Teste imediato para Ricardo
+Depois do deploy, disparar manualmente o envio do lembrete de "1 dia antes" (offset 1440) do evento `bcba4489-...` para o `user_id` do Ricardo:
+- Inserir a linha na fila `transactional_emails` via RPC com os dados reais do evento.
+- Marcar `agenda_reminder_deliveries` (channel=email) para não reenviar depois.
+- Confirmar em `email_send_log` se saiu como `sent`; se ficar `pending`/`dlq`, reportar o motivo.
 
-`src/routes/api/public/hooks/agenda-reminders.ts` (auth por `apikey` = anon):
-- Janela: eventos com `inicio` entre `now()` e `now() + 25h` cujos lembretes em `agenda_event_reminders` (ativos) satisfaçam `inicio - antecedencia_min BETWEEN now() - 6min AND now() + 1min`.
-- Para cada (evento, offset, destinatário = owner + participantes + created_by):
-  - Se já existir row em `agenda_reminder_deliveries` → pula.
-  - Insere `notifications` (tipo `agenda_lembrete`, título "Lembrete: {título} em {N}", link `/agenda?id=...`, `metadata` com offset/inicio).
-  - Chama `/lovable/email/transactional/send` com template `agenda-reminder` e `idempotencyKey = agenda:{event_id}:{user_id}:{offset}` (só se o usuário tiver e-mail).
-  - Grava `agenda_reminder_deliveries`.
+### 3. Verificação
+- Consultar `email_send_log` filtrando pelo `idempotencyKey` do teste.
+- Confirmar que futuras execuções do cron não duplicam (idempotência por channel).
 
-### 3. E-mail
+## Fora de escopo
 
-- Novo template `src/lib/email-templates/agenda-reminder.tsx` (mesma estética do `broker-assignment`) com título do evento, data/hora formatada em pt-BR, local, cliente/imóvel vinculados, tempo restante e link.
-- Registrado em `src/lib/email-templates/registry.ts`.
-
-### 4. Cron
-
-Job pg_cron `agenda-reminders-dispatch` a cada **1 minuto**, POST no endpoint com header `apikey: <SUPABASE_PUBLISHABLE_KEY>`, corpo `{}`. Inserido via `supabase--insert` (contém URL e apikey do projeto — não vai em migração).
-
-### 5. Front-end (mínimo)
-
-- `AgendaFormModal.tsx`: quando `lembreteAtivo` está ligado, garantir que os 3 offsets padrão sejam persistidos (além do personalizado escolhido pelo usuário, se houver). Mantém o comportamento existente do Google Calendar (não altera overrides).
-- Nenhuma alteração de UI adicional — as notificações usam a central de notificações já existente (`useRealtimeNotifications` + `NotificationsSpotlight`).
-
-## Detalhes técnicos
-
-- Segurança: endpoint é `/api/public/*`, mas exige header `apikey` idêntico ao anon key; sem apikey retorna 401. RLS bloqueia leitura/gravação direta em `agenda_reminder_deliveries` para clientes.
-- Idempotência tripla: PK em `deliveries` + `email_logs.status='sent'` + `idempotencyKey` na fila de e-mail.
-- Timezone: comparação toda em UTC (`agenda_events.inicio` já é `timestamptz`).
-- Performance: index em `agenda_events(inicio) WHERE deleted_at IS NULL` + index em `agenda_event_reminders(event_id, ativo)`.
-- Reaproveita 100% o fluxo existente (`enqueue_email` → `pgmq` → processador → provedor Lovable Emails).
-
-## Validação
-
-1. Backfill cria as 3 linhas de lembrete para o evento futuro `Casa Cod 1187` (23/07).
-2. Invocar o endpoint manualmente com `stack_modern--invoke-server-function` simulando cada offset (via SQL update temporário no `inicio` de um evento de teste, ou usando janela alargada) e confirmar:
-   - linha em `notifications` para o owner,
-   - linha em `agenda_reminder_deliveries`,
-   - linha `sent` em `email_logs`,
-   - segunda execução no mesmo minuto **não** duplica.
-3. Confirmar que o cron `agenda-reminders-dispatch` aparece em `cron.job` e que `cron.job_run_details` mostra sucessos.
+- Mudanças no template visual do e-mail (usar o já existente).
+- Alterar frequência do cron ou os offsets padrão (1 dia / 1 hora / 30 min já configurados).
