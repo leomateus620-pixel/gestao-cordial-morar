@@ -409,6 +409,7 @@ export function RentalFormModal({
     setPropNome(c.property.proprietarioNome ?? "");
     setPropCpf(c.property.proprietarioCpf ?? "");
     setPropEmail(c.property.proprietarioEmail ?? "");
+    setPropTelefone(c.property.proprietarioTelefone ?? "");
 
     const tList = c.tenants && c.tenants.length > 0 ? c.tenants : [c.tenant];
     setTenantEntries(
