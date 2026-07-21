@@ -370,6 +370,7 @@ export function RentalFormModal({
     setPropNome("");
     setPropCpf("");
     setPropEmail("");
+    setPropTelefone("");
     setTenantEntries([newTenantEntry()]);
     setGuaranteeEntries([]);
     setValor("");
