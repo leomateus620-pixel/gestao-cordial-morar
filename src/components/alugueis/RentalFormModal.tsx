@@ -490,6 +490,7 @@ export function RentalFormModal({
         proprietarioNome: propNome.trim() || null,
         proprietarioCpf: propCpf.trim() || null,
         proprietarioEmail: propEmail.trim() || null,
+        proprietarioTelefone: propTelefone.trim() || null,
       };
       const input: RentalContractInput = {
         ...(isEdit && initial ? { contractId: initial.id } : {}),
