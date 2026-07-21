@@ -229,7 +229,8 @@ export function RentalExpandedDetails({
             />
             {(contract.property.proprietarioNome ||
               contract.property.proprietarioCpf ||
-              contract.property.proprietarioEmail) && (
+              contract.property.proprietarioEmail ||
+              contract.property.proprietarioTelefone) && (
               <>
                 <Row
                   label="Proprietário"
@@ -238,6 +239,10 @@ export function RentalExpandedDetails({
                 <Row
                   label="CPF/CNPJ do proprietário"
                   value={contract.property.proprietarioCpf ?? ""}
+                />
+                <Row
+                  label="Telefone do proprietário"
+                  value={contract.property.proprietarioTelefone ?? ""}
                 />
                 <Row
                   label="E-mail do proprietário"
