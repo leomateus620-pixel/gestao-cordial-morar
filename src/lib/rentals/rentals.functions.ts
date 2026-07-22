@@ -962,6 +962,11 @@ type DocRow = {
   size_bytes: number | null;
   category: string | null;
   created_at: string;
+  drive_file_id?: string | null;
+  drive_web_view_url?: string | null;
+  drive_sync_status?: string | null;
+  drive_last_error?: string | null;
+  drive_last_synced_at?: string | null;
 };
 
 type RentalDocCategory =
@@ -995,7 +1000,9 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("rental_contract_documents")
-      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
+      .select(
+        "id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at,drive_file_id,drive_web_view_url,drive_sync_status,drive_last_error,drive_last_synced_at",
+      )
       .eq("contract_id", data.contractId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -1011,6 +1018,11 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
         category: normalizeRentalCategory(r.category),
         url: await signDoc(context.supabase, r.file_path),
         createdAt: r.created_at,
+        driveFileId: r.drive_file_id ?? null,
+        driveUrl: r.drive_web_view_url ?? null,
+        driveSyncStatus: (r.drive_sync_status ?? "not_enabled") as string,
+        driveLastError: r.drive_last_error ?? null,
+        driveLastSyncedAt: r.drive_last_synced_at ?? null,
       })),
     );
     return withUrls;
@@ -1151,6 +1163,104 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       throw new Error(insErr.message);
     }
     const r = inserted as unknown as DocRow;
+
+    // Best-effort Google Drive sync if enabled for this contract.
+    let driveMeta: {
+      driveFileId: string | null;
+      driveUrl: string | null;
+      driveMimeType: string | null;
+      driveSyncStatus: string;
+      driveLastError: string | null;
+      driveLastSyncedAt: string | null;
+    } = {
+      driveFileId: null,
+      driveUrl: null,
+      driveMimeType: null,
+      driveSyncStatus: "not_enabled",
+      driveLastError: null,
+      driveLastSyncedAt: null,
+    };
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: folder } = await supabaseAdmin
+        .from("rental_drive_folders")
+        .select("folder_id,owner_user_id,sync_enabled")
+        .eq("contract_id", data.contractId)
+        .maybeSingle();
+      const f = folder as unknown as {
+        folder_id: string;
+        owner_user_id: string;
+        sync_enabled: boolean;
+      } | null;
+      if (f?.sync_enabled) {
+        const { withAccessToken, uploadFile, logAudit } = await import(
+          "@/lib/google-drive/drive.server"
+        );
+        const { data: fileBlob, error: dlErr } = await supabaseAdmin.storage
+          .from(DOCS_BUCKET)
+          .download(data.filePath);
+        if (dlErr || !fileBlob) throw new Error(dlErr?.message || "Falha ao ler storage.");
+        const bytes = new Uint8Array(await fileBlob.arrayBuffer());
+        const uploaded = await withAccessToken(f.owner_user_id, (t) =>
+          uploadFile(t, {
+            folderId: f.folder_id,
+            name: safeName,
+            mimeType: mime,
+            bytes,
+          }),
+        );
+        driveMeta = {
+          driveFileId: uploaded.id,
+          driveUrl: uploaded.webViewLink,
+          driveMimeType: uploaded.mimeType,
+          driveSyncStatus: "synced",
+          driveLastError: null,
+          driveLastSyncedAt: new Date().toISOString(),
+        };
+        await supabaseAdmin
+          .from("rental_contract_documents")
+          .update({
+            drive_file_id: uploaded.id,
+            drive_web_view_url: uploaded.webViewLink,
+            drive_mime_type: uploaded.mimeType,
+            drive_sync_status: "synced",
+            drive_last_synced_at: driveMeta.driveLastSyncedAt,
+            drive_last_error: null,
+          })
+          .eq("id", r.id);
+        await logAudit({
+          contractId: data.contractId,
+          documentId: r.id,
+          userId: context.userId,
+          action: "document_upload",
+          result: "ok",
+          destination: uploaded.id,
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      driveMeta = {
+        driveFileId: null,
+        driveUrl: null,
+        driveMimeType: null,
+        driveSyncStatus: "failed",
+        driveLastError: msg.slice(0, 500),
+        driveLastSyncedAt: null,
+      };
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("rental_contract_documents")
+          .update({
+            drive_sync_status: "failed",
+            drive_last_error: driveMeta.driveLastError,
+          })
+          .eq("id", r.id);
+      } catch (err) {
+        console.error("[registerRentalContractDocument] update drive status fail", err);
+      }
+    }
+
     return {
       id: r.id,
       contractId: r.contract_id,
@@ -1161,28 +1271,76 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       category: normalizeRentalCategory(r.category),
       url: await signDoc(supabase, r.file_path),
       createdAt: r.created_at,
+      ...driveMeta,
     };
   });
 
 export const deleteRentalContractDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => d)
+  .inputValidator((d: { id: string; scope?: "both" | "cloud" | "drive" }) => d)
   .handler(async ({ data, context }) => {
+    const scope = data.scope ?? "both";
     const { data: row, error } = await context.supabase
       .from("rental_contract_documents")
-      .select("file_path")
+      .select("id,contract_id,file_path,drive_file_id")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Documento não encontrado.");
-    const path = (row as unknown as { file_path: string }).file_path;
+    const r = row as unknown as {
+      id: string;
+      contract_id: string;
+      file_path: string;
+      drive_file_id: string | null;
+    };
+
+    // Trash on Drive first (best-effort) if requested.
+    if ((scope === "both" || scope === "drive") && r.drive_file_id) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: folder } = await supabaseAdmin
+          .from("rental_drive_folders")
+          .select("owner_user_id")
+          .eq("contract_id", r.contract_id)
+          .maybeSingle();
+        const f = folder as unknown as { owner_user_id: string } | null;
+        if (f) {
+          const { withAccessToken, moveToTrash, logAudit } = await import(
+            "@/lib/google-drive/drive.server"
+          );
+          await withAccessToken(f.owner_user_id, (t) => moveToTrash(t, r.drive_file_id!));
+          await logAudit({
+            contractId: r.contract_id,
+            documentId: r.id,
+            userId: context.userId,
+            action: "document_trash",
+            result: "ok",
+          });
+        }
+      } catch (e) {
+        console.error("[deleteRentalContractDocument] drive trash falhou", e);
+      }
+    }
+
+    if (scope === "drive") {
+      // Keep cloud copy; just clear drive metadata.
+      await context.supabase
+        .from("rental_contract_documents")
+        .update({
+          drive_file_id: null,
+          drive_web_view_url: null,
+          drive_sync_status: "cloud_only",
+        } as never)
+        .eq("id", r.id);
+      return { ok: true };
+    }
 
     const { error: delErr } = await context.supabase
       .from("rental_contract_documents")
       .delete()
-      .eq("id", data.id);
+      .eq("id", r.id);
     if (delErr) throw new Error(delErr.message);
-    await context.supabase.storage.from(DOCS_BUCKET).remove([path]);
+    await context.supabase.storage.from(DOCS_BUCKET).remove([r.file_path]);
     return { ok: true };
   });
 

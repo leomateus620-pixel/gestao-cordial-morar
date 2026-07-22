@@ -6,6 +6,14 @@ import {
   listRentalContractDocuments,
   registerRentalContractDocument,
 } from "@/lib/rentals/rentals.functions";
+import {
+  enableRentalDriveSync,
+  disableRentalDriveSync,
+  getRentalDriveFolder,
+  syncRentalContractToDrive,
+  syncRentalDocumentToDrive,
+  trashRentalDocumentOnDrive,
+} from "@/lib/google-drive/google-drive.functions";
 import type { RentalContractDocument, RentalDocumentCategory } from "@/types/rental";
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -20,6 +28,12 @@ export function useRentalDocuments(contractId: string | null) {
   const list = useServerFn(listRentalContractDocuments);
   const register = useServerFn(registerRentalContractDocument);
   const remove = useServerFn(deleteRentalContractDocument);
+  const getFolder = useServerFn(getRentalDriveFolder);
+  const enableSync = useServerFn(enableRentalDriveSync);
+  const disableSync = useServerFn(disableRentalDriveSync);
+  const syncOne = useServerFn(syncRentalDocumentToDrive);
+  const syncAll = useServerFn(syncRentalContractToDrive);
+  const trashOne = useServerFn(trashRentalDocumentOnDrive);
 
   const query = useQuery<RentalContractDocument[]>({
     queryKey: ["rentals", "documents", contractId],
@@ -27,6 +41,18 @@ export function useRentalDocuments(contractId: string | null) {
     enabled: !!contractId,
     staleTime: 30_000,
   });
+
+  const folderQuery = useQuery({
+    queryKey: ["rentals", "drive-folder", contractId],
+    queryFn: () => getFolder({ data: { contractId: contractId! } }),
+    enabled: !!contractId,
+    staleTime: 30_000,
+  });
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["rentals", "documents", contractId] });
+    qc.invalidateQueries({ queryKey: ["rentals", "drive-folder", contractId] });
+  };
 
   const uploadMutation = useMutation({
     mutationFn: async (args: { file: File; category?: RentalDocumentCategory }) => {
@@ -39,7 +65,6 @@ export function useRentalDocuments(contractId: string | null) {
       const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
       const contentType = file.type || "application/octet-stream";
 
-      // Direct upload to Storage (bypasses server-function payload limits).
       const { error: upErr } = await supabase.storage
         .from(DOCS_BUCKET)
         .upload(filePath, file, { contentType, upsert: false });
@@ -57,32 +82,66 @@ export function useRentalDocuments(contractId: string | null) {
           },
         });
       } catch (e) {
-        // Rollback the storage object if metadata insert fails.
         await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
         throw e;
       }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["rentals", "documents", contractId] });
-    },
+    onSuccess: invalidateAll,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["rentals", "documents", contractId] });
-    },
+    mutationFn: (args: { id: string; scope?: "both" | "cloud" | "drive" }) =>
+      remove({ data: { id: args.id, scope: args.scope ?? "both" } }),
+    onSuccess: invalidateAll,
+  });
+
+  const enableSyncMutation = useMutation({
+    mutationFn: () => enableSync({ data: { contractId: contractId! } }),
+    onSuccess: invalidateAll,
+  });
+  const disableSyncMutation = useMutation({
+    mutationFn: (trash: boolean) =>
+      disableSync({ data: { contractId: contractId!, trash } }),
+    onSuccess: invalidateAll,
+  });
+  const syncOneMutation = useMutation({
+    mutationFn: (documentId: string) => syncOne({ data: { documentId } }),
+    onSuccess: invalidateAll,
+  });
+  const syncAllMutation = useMutation({
+    mutationFn: () => syncAll({ data: { contractId: contractId! } }),
+    onSuccess: invalidateAll,
+  });
+  const trashDriveOnlyMutation = useMutation({
+    mutationFn: (documentId: string) => trashOne({ data: { documentId } }),
+    onSuccess: invalidateAll,
   });
 
   return {
     documents: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
+    driveFolder: folderQuery.data ?? null,
+    isFolderLoading: folderQuery.isLoading,
     uploadFile: (file: File, category?: RentalDocumentCategory) =>
       uploadMutation.mutateAsync({ file, category }),
-    deleteFile: (id: string) => deleteMutation.mutateAsync(id),
+    deleteFile: (id: string, scope: "both" | "cloud" | "drive" = "both") =>
+      deleteMutation.mutateAsync({ id, scope }),
+    enableDriveSync: () => enableSyncMutation.mutateAsync(),
+    disableDriveSync: (trash: boolean) => disableSyncMutation.mutateAsync(trash),
+    syncDocumentToDrive: (documentId: string) => syncOneMutation.mutateAsync(documentId),
+    syncAllToDrive: () => syncAllMutation.mutateAsync(),
+    trashDriveCopy: (documentId: string) => trashDriveOnlyMutation.mutateAsync(documentId),
     isUploading: uploadMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isEnablingSync: enableSyncMutation.isPending,
+    isDisablingSync: disableSyncMutation.isPending,
+    isSyncing:
+      syncOneMutation.isPending || syncAllMutation.isPending || trashDriveOnlyMutation.isPending,
     uploadError: uploadMutation.error as Error | null,
+    driveError:
+      (enableSyncMutation.error as Error | null) ||
+      (syncAllMutation.error as Error | null) ||
+      null,
   };
 }
