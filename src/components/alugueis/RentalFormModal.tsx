@@ -346,6 +346,10 @@ export function RentalFormModal({
   const [obs, setObs] = useState("");
   const [brand, setBrand] = useState<RentalBrand>("cordial");
   const [error, setError] = useState<string | null>(null);
+  const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const docInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
+  const registerDoc = useServerFn(registerRentalContractDocument);
 
   function updateTenant(key: string, patch: Partial<TenantEntry>) {
     setTenantEntries((prev) =>
