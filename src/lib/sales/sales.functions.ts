@@ -166,6 +166,7 @@ function mapAttachment(r: AttachmentRow): SaleAttachment {
     filePath: r.file_path,
     mimeType: r.mime_type,
     sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes),
+    category: normalizeSaleCategory(r.category),
     createdAt: r.created_at,
   };
 }
