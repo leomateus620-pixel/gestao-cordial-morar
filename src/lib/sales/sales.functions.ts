@@ -52,6 +52,17 @@ type SaleRow = {
   updated_at: string;
   owner?: { id: string; nome: string | null; iniciais: string | null } | null;
   payments?: SalePayment[];
+  attachments?: SaleAttachment[];
+};
+
+type AttachmentRow = {
+  id: string;
+  sale_id: string;
+  file_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | string | null;
+  created_at: string;
 };
 
 type PaymentRow = {
