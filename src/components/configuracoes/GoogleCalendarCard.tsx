@@ -2,12 +2,13 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, RefreshCw, Unlink2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   startGoogleOAuth,
   getMyGoogleConnection,
   disconnectGoogleCalendar,
+  backfillMyGoogleAgenda,
 } from "@/lib/google-calendar/google-calendar.functions";
 import googleCalendarLogo from "@/assets/google-calendar.svg";
 
@@ -48,6 +49,18 @@ export function GoogleCalendarCard() {
     onSuccess: () => {
       toast.success("Conta Google desconectada");
       qc.invalidateQueries({ queryKey: QK });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const backfillMut = useMutation({
+    mutationFn: () => backfillMyGoogleAgenda(),
+    onSuccess: (res) => {
+      toast.success(
+        res?.processed
+          ? `${res.processed} compromisso(s) sincronizado(s) com o Google`
+          : "Nenhum compromisso futuro para sincronizar",
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -94,6 +107,19 @@ export function GoogleCalendarCard() {
                     <Unlink2 className="size-3" />
                   )}
                   Desconectar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => backfillMut.mutate()}
+                  disabled={backfillMut.isPending}
+                >
+                  {backfillMut.isPending ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3" />
+                  )}
+                  Sincronizar próximos eventos
                 </Button>
                 <Button
                   size="sm"

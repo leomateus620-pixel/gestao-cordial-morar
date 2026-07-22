@@ -55,3 +55,10 @@ export const resyncAgendaEvent = createServerFn({ method: "POST" })
     const { syncAgendaEventToGoogle } = await import("./google.server");
     return syncAgendaEventToGoogle(data.eventId);
   });
+
+export const backfillMyGoogleAgenda = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { backfillGoogleSyncForUser } = await import("./google.server");
+    return backfillGoogleSyncForUser(context.userId);
+  });
