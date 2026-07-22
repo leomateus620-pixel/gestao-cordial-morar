@@ -28,6 +28,8 @@ export function useSales() {
   const remove = useServerFn(deleteFn);
   const signUrl = useServerFn(signedUrlFn);
   const setPaid = useServerFn(setPaidFn);
+  const addAttachment = useServerFn(addAttachmentFn);
+  const removeAttachment = useServerFn(removeAttachmentFn);
 
   const salesQuery = useQuery<SaleRecord[]>({
     queryKey: [...SALES_KEY, "list"],
