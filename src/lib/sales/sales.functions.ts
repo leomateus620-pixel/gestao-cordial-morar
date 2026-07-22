@@ -275,12 +275,18 @@ export const listSales = createServerFn({ method: "GET" })
         ),
       );
     }
-    const payments = await attachPayments(
-      context.supabase,
-      rows.map((r) => r.id),
-    );
+    const ids = rows.map((r) => r.id);
+    const [payments, attachments] = await Promise.all([
+      attachPayments(context.supabase, ids),
+      attachAttachments(context.supabase, ids),
+    ]);
     return rows.map((r) =>
-      mapSale({ ...r, owner: owners[r.user_id] ?? null, payments: payments[r.id] ?? [] }),
+      mapSale({
+        ...r,
+        owner: owners[r.user_id] ?? null,
+        payments: payments[r.id] ?? [],
+        attachments: attachments[r.id] ?? [],
+      }),
     );
   });
 
