@@ -6,7 +6,7 @@ import {
   listRentalContractDocuments,
   registerRentalContractDocument,
 } from "@/lib/rentals/rentals.functions";
-import type { RentalContractDocument } from "@/types/rental";
+import type { RentalContractDocument, RentalDocumentCategory } from "@/types/rental";
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const DOCS_BUCKET = "rental-documents";
