@@ -49,6 +49,15 @@ export const Route = createFileRoute("/api/public/google-calendar/callback")({
             { onConflict: "user_id" },
           );
           if (error) throw new Error(error.message);
+          // Backfill best-effort: sincroniza eventos futuros do usuário recém-conectado
+          try {
+            const { backfillGoogleSyncForUser } = await import(
+              "@/lib/google-calendar/google.server"
+            );
+            await backfillGoogleSyncForUser(userId);
+          } catch (bfErr) {
+            console.error("[google-calendar.callback] backfill falhou:", bfErr);
+          }
           return redirectTo("connected");
         } catch (e) {
           const msg = e instanceof Error ? e.message : "erro desconhecido";
