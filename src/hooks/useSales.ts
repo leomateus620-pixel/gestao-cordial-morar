@@ -80,6 +80,28 @@ export function useSales() {
     [signUrl],
   );
 
+  const addAttachmentAsync = useCallback(
+    (vars: {
+      saleId: string;
+      filePath: string;
+      fileName: string;
+      mimeType?: string | null;
+      sizeBytes?: number | null;
+    }) => addAttachment({ data: vars }).then((r: SaleAttachment) => {
+      invalidate();
+      return r;
+    }),
+    [addAttachment, invalidate],
+  );
+
+  const removeAttachmentAsync = useCallback(
+    (id: string) => removeAttachment({ data: { id } }).then((r) => {
+      invalidate();
+      return r;
+    }),
+    [removeAttachment, invalidate],
+  );
+
   return {
     sales: salesQuery.data ?? [],
     kpis: kpisQuery.data,
@@ -99,6 +121,9 @@ export function useSales() {
     setPaymentPaid: setPaidMutation.mutateAsync,
     isSettingPaid: setPaidMutation.isPending,
     openContract,
+    openAttachment: openContract,
+    addAttachment: addAttachmentAsync,
+    removeAttachment: removeAttachmentAsync,
   };
 }
 
