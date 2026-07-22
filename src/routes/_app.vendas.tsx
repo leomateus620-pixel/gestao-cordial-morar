@@ -276,6 +276,38 @@ function Page() {
         onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
         onOpenContract={handleOpenContract}
+        onOpenAttachment={(path) =>
+          openAttachment(path).catch((err: unknown) =>
+            toast.error(err instanceof Error ? err.message : "Não foi possível abrir o anexo."),
+          )
+        }
+        onAddAttachment={async (sale, file) => {
+          try {
+            const path = await uploadSaleDocument(file, sale.id);
+            await addAttachment({
+              saleId: sale.id,
+              filePath: path,
+              fileName: file.name,
+              mimeType: file.type || null,
+              sizeBytes: file.size ?? null,
+            });
+            toast.success("Anexo adicionado.");
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : "Não foi possível adicionar o anexo.",
+            );
+          }
+        }}
+        onRemoveAttachment={async (id) => {
+          try {
+            await removeAttachment(id);
+            toast.success("Anexo removido.");
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : "Não foi possível remover o anexo.",
+            );
+          }
+        }}
         onMarkPaymentPaid={(paymentId, paid) =>
           setPaymentPaid({ id: paymentId, paid }).catch(() => undefined)
         }
