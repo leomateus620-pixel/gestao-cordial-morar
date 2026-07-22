@@ -282,7 +282,7 @@ function Page() {
             toast.error(err instanceof Error ? err.message : "Não foi possível abrir o anexo."),
           )
         }
-        onAddAttachment={async (sale, file) => {
+        onAddAttachment={async (sale, file, category) => {
           try {
             const path = await uploadSaleDocument(file, sale.id);
             await addAttachment({
@@ -291,6 +291,7 @@ function Page() {
               fileName: file.name,
               mimeType: file.type || null,
               sizeBytes: file.size ?? null,
+              category,
             });
             toast.success("Anexo adicionado.");
           } catch (err) {
