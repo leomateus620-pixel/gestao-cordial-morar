@@ -136,6 +136,19 @@ function mapSale(r: SaleRow): SaleRecord {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     payments: r.payments ?? [],
+    attachments: r.attachments ?? [],
+  };
+}
+
+function mapAttachment(r: AttachmentRow): SaleAttachment {
+  return {
+    id: r.id,
+    saleId: r.sale_id,
+    fileName: r.file_name,
+    filePath: r.file_path,
+    mimeType: r.mime_type,
+    sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes),
+    createdAt: r.created_at,
   };
 }
 
