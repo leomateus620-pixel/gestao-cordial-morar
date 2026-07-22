@@ -165,6 +165,7 @@ function Page() {
             fileName: files.support.name,
             mimeType: files.support.type || null,
             sizeBytes: files.support.size ?? null,
+            category: "outro",
           });
         } catch (err) {
           toast.error(
