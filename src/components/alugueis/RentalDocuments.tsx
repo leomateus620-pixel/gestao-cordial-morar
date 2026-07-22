@@ -1,5 +1,17 @@
 import { useMemo, useRef, useState } from "react";
-import { FileText, Image as ImageIcon, Paperclip, Trash2, Upload } from "lucide-react";
+import {
+  Cloud,
+  CloudOff,
+  ExternalLink,
+  FileText,
+  HardDrive,
+  Image as ImageIcon,
+  Loader2,
+  Paperclip,
+  RefreshCw,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useRentalDocuments } from "@/hooks/useRentalDocuments";
 import {
   RENTAL_DOCUMENT_CATEGORIES,
@@ -25,9 +37,70 @@ const CATEGORY_LABELS: Record<RentalDocumentCategory, string> =
     {} as Record<RentalDocumentCategory, string>,
   );
 
+function StorageBadge({
+  hasCloud,
+  driveStatus,
+}: {
+  hasCloud: boolean;
+  driveStatus: string | null | undefined;
+}) {
+  const isSynced = driveStatus === "synced";
+  const isFailed = driveStatus === "failed";
+  const isSyncing = driveStatus === "syncing" || driveStatus === "pending";
+  if (isSynced && hasCloud) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-800">
+        <Cloud className="size-2.5" /> Ambos
+      </span>
+    );
+  }
+  if (isSynced) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-sky-600/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-800">
+        <HardDrive className="size-2.5" /> Drive
+      </span>
+    );
+  }
+  if (isFailed) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-600/12 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-800">
+        <CloudOff className="size-2.5" /> Falhou
+      </span>
+    );
+  }
+  if (isSyncing) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-600/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-700">
+        <Loader2 className="size-2.5 animate-spin" /> Sync
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-600/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-700">
+      <Cloud className="size-2.5" /> Nuvem
+    </span>
+  );
+}
+
 export function RentalDocuments({ contractId }: { contractId: string }) {
-  const { documents, isLoading, uploadFile, deleteFile, isUploading, isDeleting } =
-    useRentalDocuments(contractId);
+  const {
+    documents,
+    isLoading,
+    uploadFile,
+    deleteFile,
+    isUploading,
+    isDeleting,
+    driveFolder,
+    enableDriveSync,
+    disableDriveSync,
+    syncDocumentToDrive,
+    syncAllToDrive,
+    trashDriveCopy,
+    isEnablingSync,
+    isDisablingSync,
+    isSyncing,
+    driveError,
+  } = useRentalDocuments(contractId);
   const [err, setErr] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<RentalDocumentCategory | null>(null);
   const inputsRef = useRef<Record<string, HTMLInputElement | null>>({});
@@ -60,15 +133,77 @@ export function RentalDocuments({ contractId }: { contractId: string }) {
     }
   }
 
+  const driveEnabled = !!driveFolder?.sync_enabled;
+
   return (
     <div className="liquid-panel rounded-2xl p-4">
-      <h3 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-foreground/55">
-        Documentos do contrato
-      </h3>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground/55">
+          Documentos do contrato
+        </h3>
+        <div className="flex items-center gap-2">
+          {driveEnabled ? (
+            <>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                <HardDrive className="size-3" /> Drive ativo
+              </span>
+              {driveFolder?.folder_url && (
+                <a
+                  href={driveFolder.folder_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-white"
+                >
+                  <ExternalLink className="size-3" /> Abrir pasta
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => syncAllToDrive()}
+                disabled={isSyncing}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/15 disabled:opacity-60"
+              >
+                {isSyncing ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-3" />
+                )}
+                Sincronizar todos
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("Desativar sincronização Drive? Os arquivos no Drive permanecerão.")) {
+                    disableDriveSync(false);
+                  }
+                }}
+                disabled={isDisablingSync}
+                className="inline-flex items-center gap-1 rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-semibold text-foreground/70 hover:bg-white"
+              >
+                <CloudOff className="size-3" /> Desativar
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => enableDriveSync()}
+              disabled={isEnablingSync}
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/15 disabled:opacity-60"
+            >
+              {isEnablingSync ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <HardDrive className="size-3" />
+              )}
+              Ativar Google Drive
+            </button>
+          )}
+        </div>
+      </div>
 
-      {err && (
+      {(err || driveError) && (
         <p className="mb-2 rounded-lg bg-rose-500/10 px-2.5 py-1.5 text-[11px] font-medium text-rose-700">
-          {err}
+          {err || driveError?.message}
         </p>
       )}
 
@@ -122,6 +257,8 @@ export function RentalDocuments({ contractId }: { contractId: string }) {
                 <ul className="divide-y divide-white/40">
                   {items.map((d) => {
                     const isImg = (d.mimeType ?? "").startsWith("image/");
+                    const driveStatus = d.driveSyncStatus ?? "not_enabled";
+                    const canSync = driveEnabled && !d.driveFileId && !isSyncing;
                     return (
                       <li key={d.id} className="flex items-center gap-3 py-2">
                         <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-primary/10 text-primary">
@@ -139,30 +276,74 @@ export function RentalDocuments({ contractId }: { contractId: string }) {
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          {d.url ? (
-                            <a
-                              href={d.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block truncate text-xs font-semibold text-foreground hover:text-primary"
-                            >
-                              {d.fileName}
-                            </a>
-                          ) : (
-                            <span className="block truncate text-xs font-semibold text-foreground">
-                              {d.fileName}
-                            </span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {d.url ? (
+                              <a
+                                href={d.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="truncate text-xs font-semibold text-foreground hover:text-primary"
+                              >
+                                {d.fileName}
+                              </a>
+                            ) : (
+                              <span className="truncate text-xs font-semibold text-foreground">
+                                {d.fileName}
+                              </span>
+                            )}
+                            <StorageBadge
+                              hasCloud={!!d.filePath}
+                              driveStatus={driveStatus as string}
+                            />
+                          </div>
                           <p className="text-[10px] text-foreground/55">
                             {fmtSize(d.sizeBytes)}
                             {d.sizeBytes ? " · " : ""}
                             {new Date(d.createdAt).toLocaleDateString("pt-BR")}
+                            {d.driveLastError ? ` · ${d.driveLastError}` : ""}
                           </p>
                         </div>
+                        {d.driveUrl && (
+                          <a
+                            href={d.driveUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="grid size-8 shrink-0 place-items-center rounded-lg text-primary hover:bg-primary/10"
+                            aria-label="Abrir no Drive"
+                          >
+                            <ExternalLink className="size-3.5" />
+                          </a>
+                        )}
+                        {canSync && (
+                          <button
+                            type="button"
+                            onClick={() => syncDocumentToDrive(d.id)}
+                            disabled={isSyncing}
+                            className="grid size-8 shrink-0 place-items-center rounded-lg text-primary hover:bg-primary/10 disabled:opacity-50"
+                            aria-label="Enviar ao Drive"
+                          >
+                            <HardDrive className="size-3.5" />
+                          </button>
+                        )}
+                        {d.driveFileId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm("Remover apenas a cópia no Drive?"))
+                                trashDriveCopy(d.id);
+                            }}
+                            disabled={isSyncing}
+                            className="grid size-8 shrink-0 place-items-center rounded-lg text-amber-700 hover:bg-amber-500/10 disabled:opacity-50"
+                            aria-label="Remover do Drive"
+                          >
+                            <CloudOff className="size-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
-                            if (window.confirm("Remover este documento?")) deleteFile(d.id);
+                            if (window.confirm("Remover este documento?"))
+                              deleteFile(d.id, "both");
                           }}
                           disabled={isDeleting}
                           className="grid size-8 shrink-0 place-items-center rounded-lg text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
