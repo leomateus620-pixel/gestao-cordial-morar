@@ -219,6 +219,14 @@ export const RENTAL_DOCUMENT_CATEGORIES: {
   },
 ];
 
+export type RentalDriveSyncStatus =
+  | "not_enabled"
+  | "pending"
+  | "syncing"
+  | "synced"
+  | "failed"
+  | "cloud_only";
+
 export type RentalContractDocument = {
   id: string;
   contractId: string;
@@ -229,6 +237,11 @@ export type RentalContractDocument = {
   category: RentalDocumentCategory;
   url: string | null;
   createdAt: string;
+  driveFileId?: string | null;
+  driveUrl?: string | null;
+  driveSyncStatus?: RentalDriveSyncStatus | string | null;
+  driveLastError?: string | null;
+  driveLastSyncedAt?: string | null;
 };
 
 export type RentalFilter =
