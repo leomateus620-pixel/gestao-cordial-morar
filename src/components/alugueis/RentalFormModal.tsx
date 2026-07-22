@@ -403,6 +403,7 @@ export function RentalFormModal({
     setObs("");
     setBrand("cordial");
     setError(null);
+    setPendingDocs([]);
   }
 
   // Prefill state whenever the modal opens with an `initial` contract, or reset for new.
