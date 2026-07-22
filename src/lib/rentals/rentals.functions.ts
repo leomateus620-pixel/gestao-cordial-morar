@@ -1019,7 +1019,13 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
 export const uploadRentalContractDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (d: { contractId: string; fileName: string; mimeType: string; base64: string }) => d,
+    (d: {
+      contractId: string;
+      fileName: string;
+      mimeType: string;
+      base64: string;
+      category?: RentalDocCategory;
+    }) => d,
   )
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
@@ -1045,6 +1051,7 @@ export const uploadRentalContractDocument = createServerFn({ method: "POST" })
 
     const safeName = data.fileName.replace(/[^\w.\-]+/g, "_").slice(0, 120);
     const filePath = `${data.contractId}/${crypto.randomUUID()}-${safeName}`;
+    const category = normalizeRentalCategory(data.category ?? null);
 
     const { error: upErr } = await supabase.storage
       .from(DOCS_BUCKET)
@@ -1059,9 +1066,10 @@ export const uploadRentalContractDocument = createServerFn({ method: "POST" })
         file_name: safeName,
         mime_type: mime,
         size_bytes: bytes.byteLength,
+        category,
         uploaded_by: context.userId,
       } as never)
-      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,created_at")
+      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
       .single();
     if (insErr) {
       await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
@@ -1075,6 +1083,7 @@ export const uploadRentalContractDocument = createServerFn({ method: "POST" })
       filePath: r.file_path,
       mimeType: r.mime_type,
       sizeBytes: r.size_bytes,
+      category: normalizeRentalCategory(r.category),
       url: await signDoc(supabase, r.file_path),
       createdAt: r.created_at,
     };
@@ -1089,6 +1098,7 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       filePath: string;
       mimeType: string;
       sizeBytes: number;
+      category?: RentalDocCategory;
     }) => d,
   )
   .handler(async ({ data, context }) => {
@@ -1121,6 +1131,7 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
     }
 
     const safeName = data.fileName.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+    const category = normalizeRentalCategory(data.category ?? null);
 
     const { data: inserted, error: insErr } = await supabase
       .from("rental_contract_documents")
@@ -1130,9 +1141,10 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
         file_name: safeName,
         mime_type: mime,
         size_bytes: data.sizeBytes,
+        category,
         uploaded_by: context.userId,
       } as never)
-      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,created_at")
+      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
       .single();
     if (insErr) {
       await supabase.storage.from(DOCS_BUCKET).remove([data.filePath]);
@@ -1146,6 +1158,7 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       filePath: r.file_path,
       mimeType: r.mime_type,
       sizeBytes: r.size_bytes,
+      category: normalizeRentalCategory(r.category),
       url: await signDoc(supabase, r.file_path),
       createdAt: r.created_at,
     };
