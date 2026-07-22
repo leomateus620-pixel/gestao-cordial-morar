@@ -1,56 +1,20 @@
-import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearch } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, HardDrive, Loader2, Unlink2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, ExternalLink, HardDrive, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  disconnectGoogleDrive,
-  getMyDriveConnection,
-  startGoogleDriveOAuth,
-} from "@/lib/google-drive/google-drive.functions";
+import { getDriveConnectionStatus } from "@/lib/google-drive/google-drive.functions";
 
-const QK = ["google-drive", "connection"] as const;
+const QK = ["google-drive", "workspace-connection"] as const;
 
 export function GoogleDriveCard() {
   const qc = useQueryClient();
-  const search = useSearch({ strict: false }) as { gdrive?: string; detail?: string };
-
-  const connection = useQuery({
+  const status = useQuery({
     queryKey: QK,
-    queryFn: () => getMyDriveConnection(),
+    queryFn: () => getDriveConnectionStatus(),
     staleTime: 30_000,
   });
 
-  useEffect(() => {
-    if (search.gdrive === "connected") {
-      toast.success("Google Drive conectado com sucesso");
-      qc.invalidateQueries({ queryKey: QK });
-      window.history.replaceState({}, "", "/configuracoes");
-    } else if (search.gdrive === "error") {
-      toast.error(`Falha ao conectar com Google Drive: ${search.detail ?? "tente novamente"}`);
-      window.history.replaceState({}, "", "/configuracoes");
-    }
-  }, [search.gdrive, search.detail, qc]);
-
-  const connectMut = useMutation({
-    mutationFn: async () => {
-      const { url } = await startGoogleDriveOAuth();
-      window.location.href = url;
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const disconnectMut = useMutation({
-    mutationFn: () => disconnectGoogleDrive(),
-    onSuccess: () => {
-      toast.success("Conta Google Drive desconectada");
-      qc.invalidateQueries({ queryKey: QK });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const conn = connection.data;
+  const data = status.data;
+  const connected = !!data?.connected;
 
   return (
     <div className="glass-panel rounded-3xl p-4">
@@ -59,73 +23,87 @@ export function GoogleDriveCard() {
           <HardDrive className="size-5 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold">Google Drive</p>
-            {conn && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold">Google Drive (workspace)</p>
+            {connected && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
                 <CheckCircle2 className="size-3" /> Conectado
               </span>
             )}
+            {!connected && !status.isLoading && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/12 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-800">
+                Desconectado
+              </span>
+            )}
           </div>
-          {connection.isLoading ? (
-            <p className="mt-1 text-[11px] text-foreground/55">Carregando…</p>
-          ) : conn ? (
+
+          {status.isLoading ? (
+            <p className="mt-1 text-[11px] text-foreground/55">Verificando conexão…</p>
+          ) : connected ? (
             <>
-              <p className="mt-0.5 text-[11px] text-foreground/55">
-                {conn.google_email} · escopo <code>drive.file</code>
+              <p className="mt-0.5 text-[11px] text-foreground/60">
+                Conta compartilhada do workspace:{" "}
+                <span className="font-medium text-foreground/80">{data?.account}</span>
               </p>
-              {conn.last_error && (
-                <p className="mt-1 rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-800">
-                  {conn.last_error}
-                </p>
-              )}
-              <p className="mt-2 text-[11px] text-foreground/60">
-                Ative a sincronização em cada contrato de aluguel para criar automaticamente
-                uma pasta dedicada e espelhar os anexos no seu Drive.
+              <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-foreground/70">
+                <ShieldCheck className="size-3 text-emerald-700" />
+                Acesso limitado à pasta raiz{" "}
+                <span className="font-semibold text-foreground/85">
+                  {data?.rootFolderName ?? "Gestão Cordial — Aluguéis"}
+                </span>{" "}
+                e suas subpastas por contrato.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => disconnectMut.mutate()}
-                  disabled={disconnectMut.isPending}
-                >
-                  {disconnectMut.isPending ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <Unlink2 className="size-3" />
-                  )}
-                  Desconectar
-                </Button>
+                {data?.rootFolderUrl && (
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={data.rootFolderUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="size-3" /> Abrir pasta raiz
+                    </a>
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => connectMut.mutate()}
-                  disabled={connectMut.isPending}
+                  onClick={() => {
+                    qc.invalidateQueries({ queryKey: QK });
+                  }}
+                  disabled={status.isFetching}
                 >
-                  Reconectar / trocar conta
+                  {status.isFetching ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3" />
+                  )}
+                  Testar conexão
                 </Button>
               </div>
             </>
           ) : (
             <>
               <p className="mt-0.5 text-[11px] text-foreground/60">
-                Conecte sua conta Google Drive para espelhar automaticamente os anexos
-                dos contratos de aluguel em pastas dedicadas (uma por contrato). Escopo
-                mínimo <code>drive.file</code> — só vemos arquivos que este sistema cria.
+                Todos os anexos do menu Aluguéis são espelhados na conta Google Drive
+                compartilhada do workspace, dentro da pasta{" "}
+                <span className="font-semibold">Gestão Cordial — Aluguéis</span>. Se você
+                está vendo este aviso, o conector <em>Google Drive</em> não está vinculado
+                ao projeto.
+              </p>
+              {data?.lastError && (
+                <p className="mt-2 rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-800">
+                  {data.lastError}
+                </p>
+              )}
+              <p className="mt-2 text-[11px] text-foreground/55">
+                Peça a um administrador do workspace para conectar o Google Drive em
+                <em> Connectors</em>.
               </p>
               <div className="mt-3">
                 <Button
                   size="sm"
-                  onClick={() => connectMut.mutate()}
-                  disabled={connectMut.isPending}
+                  variant="outline"
+                  onClick={() => qc.invalidateQueries({ queryKey: QK })}
+                  disabled={status.isFetching}
                 >
-                  {connectMut.isPending ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <ExternalLink className="size-3" />
-                  )}
-                  Conectar Google Drive
+                  <RefreshCw className="size-3" /> Verificar novamente
                 </Button>
               </div>
             </>
