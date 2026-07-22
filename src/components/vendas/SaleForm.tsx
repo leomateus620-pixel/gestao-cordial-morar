@@ -664,6 +664,113 @@ export function SaleForm({
             </SectionCard>
 
             <SectionCard
+              icon={CalendarClock}
+              title="Plano de pagamento"
+              subtitle="Entrada e parcelas com data de vencimento (lembretes automáticos)"
+            >
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
+                  <Field label="Entrada (R$)" className="sm:col-span-3">
+                    <input
+                      value={entradaAmount}
+                      onChange={(event) => setEntradaAmount(event.target.value)}
+                      inputMode="decimal"
+                      placeholder="Ex.: 240000"
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Vencimento da entrada" className="sm:col-span-3">
+                    <input
+                      type="date"
+                      value={entradaDueDate}
+                      onChange={(event) => setEntradaDueDate(event.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+
+                <div className="space-y-2">
+                  {parcelas.length === 0 && (
+                    <p className="rounded-2xl bg-white/50 px-3 py-3 text-xs font-semibold text-foreground/56 ring-1 ring-white/70">
+                      Nenhuma parcela cadastrada. Adicione parcelas para receber lembrete no dia do vencimento (in-app e por e-mail).
+                    </p>
+                  )}
+                  {parcelas.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/60 bg-white/60 p-3 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-end"
+                    >
+                      <div className="grid size-8 place-items-center rounded-lg bg-primary/10 text-xs font-black text-primary">
+                        {idx + 1}
+                      </div>
+                      <Field label={`Parcela ${idx + 1} (R$)`}>
+                        <input
+                          value={p.amount}
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            setParcelas((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, amount: val } : it)),
+                            );
+                          }}
+                          inputMode="decimal"
+                          placeholder="Ex.: 20000"
+                          className={inputCls}
+                        />
+                      </Field>
+                      <Field label="Vencimento">
+                        <input
+                          type="date"
+                          value={p.dueDate}
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            setParcelas((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, dueDate: val } : it)),
+                            );
+                          }}
+                          className={inputCls}
+                        />
+                      </Field>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setParcelas((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        aria-label={`Remover parcela ${idx + 1}`}
+                        className="grid size-10 place-items-center rounded-xl bg-white/70 text-foreground/55 ring-1 ring-white/70 transition hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setParcelas((prev) => [
+                        ...prev,
+                        {
+                          id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                          amount: "",
+                          dueDate: "",
+                          paid: false,
+                        },
+                      ])
+                    }
+                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-sm font-bold text-primary transition hover:bg-primary/15"
+                  >
+                    <Plus className="size-4" />
+                    Adicionar parcela
+                  </button>
+                </div>
+
+                <PaymentPlanSummary
+                  saleValue={parseMoney(saleValue)}
+                  entrada={parseMoney(entradaAmount)}
+                  parcelas={parcelas.map((p) => parseMoney(p.amount))}
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard
               icon={UserRound}
               title="Comprador"
               subtitle="Dados de contato e identificação"
