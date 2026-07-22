@@ -1216,6 +1216,104 @@ export function RentalFormModal({
               </div>
             </SectionCard>
 
+            <SectionCard
+              icon={Paperclip}
+              title="Anexos do contrato"
+              subtitle={
+                isEdit
+                  ? "Adicione novos arquivos por categoria. Os já enviados aparecem na tela de detalhes."
+                  : "Selecione os arquivos por categoria. Eles serão enviados após salvar o contrato."
+              }
+            >
+              <div className="space-y-3">
+                {RENTAL_DOCUMENT_CATEGORIES.map((cat) => {
+                  const items = pendingDocs.filter((p) => p.category === cat.id);
+                  return (
+                    <div
+                      key={cat.id}
+                      className="rounded-xl border border-border/60 bg-background/60 p-3"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-foreground">
+                            {cat.label}
+                          </p>
+                          <p className="truncate text-[11px] text-foreground/55">
+                            {cat.description}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => docInputsRef.current[cat.id]?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15"
+                        >
+                          <Upload className="size-3" />
+                          Adicionar
+                        </button>
+                        <input
+                          ref={(el) => {
+                            docInputsRef.current[cat.id] = el;
+                          }}
+                          type="file"
+                          multiple
+                          accept={DOC_ACCEPT}
+                          hidden
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            setPendingDocs((prev) => [
+                              ...prev,
+                              ...Array.from(files).map((f) => ({
+                                key: crypto.randomUUID(),
+                                file: f,
+                                category: cat.id,
+                              })),
+                            ]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </div>
+                      {items.length === 0 ? (
+                        <p className="text-[11px] text-foreground/50">
+                          Nenhum arquivo selecionado para {cat.label.toLowerCase()}.
+                        </p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {items.map((p) => (
+                            <li
+                              key={p.key}
+                              className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-1.5 text-[11px]"
+                            >
+                              <FileText className="size-3.5 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                                {p.file.name}
+                              </span>
+                              <span className="shrink-0 text-foreground/55">
+                                {(p.file.size / 1024 / 1024).toFixed(2)} MB
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPendingDocs((prev) =>
+                                    prev.filter((d) => d.key !== p.key),
+                                  )
+                                }
+                                className="grid size-6 shrink-0 place-items-center rounded-md text-rose-600 hover:bg-rose-500/10"
+                                aria-label="Remover"
+                              >
+                                <Trash2 className="size-3" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+
             {error && (
               <div
                 role="alert"
