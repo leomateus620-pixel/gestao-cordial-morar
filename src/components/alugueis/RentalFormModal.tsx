@@ -310,7 +310,7 @@ export function RentalFormModal({
   onOpenChange: (o: boolean) => void;
   properties: RentalProperty[];
   tenants: RentalTenant[];
-  onSubmit: (input: RentalContractInput) => Promise<unknown>;
+  onSubmit: (input: RentalContractInput) => Promise<RentalContractFull | unknown>;
   isSaving: boolean;
   initial?: RentalContractFull | null;
 }) {
