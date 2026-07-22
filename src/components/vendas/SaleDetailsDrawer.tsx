@@ -1,6 +1,7 @@
 import {
   Building2,
   CalendarClock,
+  Check,
   Edit3,
   ExternalLink,
   FileText,
@@ -8,6 +9,7 @@ import {
   ReceiptText,
   RefreshCw,
   UserRound,
+  Wallet,
   X,
   XCircle,
 } from "lucide-react";
@@ -40,6 +42,7 @@ export function SaleDetailsDrawer({
   onReplaceContract,
   onCancel,
   onOpenContract,
+  onMarkPaymentPaid,
 }: {
   sale: SaleRecord | null;
   open: boolean;
@@ -48,6 +51,7 @@ export function SaleDetailsDrawer({
   onReplaceContract: (sale: SaleRecord) => void;
   onCancel: (sale: SaleRecord) => void;
   onOpenContract?: () => void;
+  onMarkPaymentPaid?: (paymentId: string, paid: boolean) => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
