@@ -1000,7 +1000,9 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("rental_contract_documents")
-      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
+      .select(
+        "id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at,drive_file_id,drive_web_view_url,drive_sync_status,drive_last_error,drive_last_synced_at",
+      )
       .eq("contract_id", data.contractId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -1016,6 +1018,11 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
         category: normalizeRentalCategory(r.category),
         url: await signDoc(context.supabase, r.file_path),
         createdAt: r.created_at,
+        driveFileId: r.drive_file_id ?? null,
+        driveUrl: r.drive_web_view_url ?? null,
+        driveSyncStatus: (r.drive_sync_status ?? "not_enabled") as string,
+        driveLastError: r.drive_last_error ?? null,
+        driveLastSyncedAt: r.drive_last_synced_at ?? null,
       })),
     );
     return withUrls;
