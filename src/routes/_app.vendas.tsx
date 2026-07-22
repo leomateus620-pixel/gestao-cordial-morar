@@ -253,7 +253,7 @@ function Page() {
         onCancel={handleCancelSale}
         onOpenContract={handleOpenContract}
         onMarkPaymentPaid={(paymentId, paid) =>
-          setPaymentPaid({ paymentId, paid }).catch(() => undefined)
+          setPaymentPaid({ id: paymentId, paid }).catch(() => undefined)
         }
       />
     </>
