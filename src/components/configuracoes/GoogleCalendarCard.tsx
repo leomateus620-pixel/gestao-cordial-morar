@@ -110,6 +110,19 @@ export function GoogleCalendarCard() {
                 </Button>
                 <Button
                   size="sm"
+                  variant="secondary"
+                  onClick={() => backfillMut.mutate()}
+                  disabled={backfillMut.isPending}
+                >
+                  {backfillMut.isPending ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3" />
+                  )}
+                  Sincronizar próximos eventos
+                </Button>
+                <Button
+                  size="sm"
                   variant="ghost"
                   onClick={() => connectMut.mutate()}
                   disabled={connectMut.isPending}
