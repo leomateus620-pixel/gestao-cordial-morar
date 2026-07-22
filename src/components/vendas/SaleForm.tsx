@@ -3,9 +3,11 @@ import { useSession } from "@/lib/auth-mock";
 
 import {
   Building2,
+  CalendarClock,
   FileText,
   Home,
   Paperclip,
+  Plus,
   ReceiptText,
   Trash2,
   UploadCloud,
@@ -22,6 +24,7 @@ import {
 import type { AgencyId, Corretor, Imovel } from "@/lib/mock/data";
 import type {
   SaleDocumentStatus,
+  SalePaymentInput,
   SalePaymentMethod,
   SalePropertyType,
   SaleRecord,
