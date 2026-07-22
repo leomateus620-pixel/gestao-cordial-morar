@@ -157,6 +157,50 @@ export type Database = {
           },
         ]
       }
+      agenda_event_google_syncs: {
+        Row: {
+          calendar_id: string
+          created_at: string
+          event_id: string
+          google_event_id: string
+          id: string
+          last_error: string | null
+          last_synced_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calendar_id?: string
+          created_at?: string
+          event_id: string
+          google_event_id: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calendar_id?: string
+          created_at?: string
+          event_id?: string
+          google_event_id?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_google_syncs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_event_guests: {
         Row: {
           created_at: string
