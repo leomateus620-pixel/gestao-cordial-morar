@@ -1184,16 +1184,15 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: folder } = await supabaseAdmin
         .from("rental_drive_folders")
-        .select("folder_id,owner_user_id,sync_enabled")
+        .select("folder_id,sync_enabled")
         .eq("contract_id", data.contractId)
         .maybeSingle();
       const f = folder as unknown as {
         folder_id: string;
-        owner_user_id: string;
         sync_enabled: boolean;
       } | null;
       if (f?.sync_enabled) {
-        const { withAccessToken, uploadFile, logAudit } = await import(
+        const { uploadFileToFolder, logAudit } = await import(
           "@/lib/google-drive/drive.server"
         );
         const { data: fileBlob, error: dlErr } = await supabaseAdmin.storage
@@ -1201,14 +1200,12 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
           .download(data.filePath);
         if (dlErr || !fileBlob) throw new Error(dlErr?.message || "Falha ao ler storage.");
         const bytes = new Uint8Array(await fileBlob.arrayBuffer());
-        const uploaded = await withAccessToken(f.owner_user_id, (t) =>
-          uploadFile(t, {
-            folderId: f.folder_id,
-            name: safeName,
-            mimeType: mime,
-            bytes,
-          }),
-        );
+        const uploaded = await uploadFileToFolder({
+          folderId: f.folder_id,
+          name: safeName,
+          mimeType: mime,
+          bytes,
+        });
         driveMeta = {
           driveFileId: uploaded.id,
           driveUrl: uploaded.webViewLink,
