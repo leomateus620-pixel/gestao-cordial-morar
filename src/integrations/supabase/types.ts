@@ -449,6 +449,24 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       attendances: {
         Row: {
           bairro_interesse: string | null
@@ -976,42 +994,6 @@ export type Database = {
         Update: {
           access_token?: string
           calendar_id?: string
-          created_at?: string
-          expires_at?: string
-          google_email?: string
-          last_error?: string | null
-          refresh_token?: string
-          scope?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      google_drive_connections: {
-        Row: {
-          access_token: string
-          created_at: string
-          expires_at: string
-          google_email: string
-          last_error: string | null
-          refresh_token: string
-          scope: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token: string
-          created_at?: string
-          expires_at: string
-          google_email: string
-          last_error?: string | null
-          refresh_token: string
-          scope?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token?: string
           created_at?: string
           expires_at?: string
           google_email?: string
@@ -1635,10 +1617,10 @@ export type Database = {
           folder_id: string
           folder_name: string
           folder_url: string
-          google_email: string
+          google_email: string | null
           last_error: string | null
           last_synced_at: string | null
-          owner_user_id: string
+          owner_user_id: string | null
           sync_enabled: boolean
           sync_status: string
           updated_at: string
@@ -1649,10 +1631,10 @@ export type Database = {
           folder_id: string
           folder_name: string
           folder_url: string
-          google_email: string
+          google_email?: string | null
           last_error?: string | null
           last_synced_at?: string | null
-          owner_user_id: string
+          owner_user_id?: string | null
           sync_enabled?: boolean
           sync_status?: string
           updated_at?: string
@@ -1663,10 +1645,10 @@ export type Database = {
           folder_id?: string
           folder_name?: string
           folder_url?: string
-          google_email?: string
+          google_email?: string | null
           last_error?: string | null
           last_synced_at?: string | null
-          owner_user_id?: string
+          owner_user_id?: string | null
           sync_enabled?: boolean
           sync_status?: string
           updated_at?: string
