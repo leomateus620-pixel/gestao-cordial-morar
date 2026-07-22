@@ -260,6 +260,11 @@ export function SaleForm({
   const [commissionPercentage, setCommissionPercentage] = useState("");
   const [responsibleAgent, setResponsibleAgent] = useState("");
   const [notes, setNotes] = useState("");
+  const [entradaAmount, setEntradaAmount] = useState("");
+  const [entradaDueDate, setEntradaDueDate] = useState("");
+  const [parcelas, setParcelas] = useState<
+    Array<{ id: string; amount: string; dueDate: string; paid: boolean }>
+  >([]);
 
   const [documentStatus, setDocumentStatus] = useState<SaleDocumentStatus>("contrato_pendente");
   const [contractFile, setContractFile] = useState<FileMeta | null>(null);
@@ -310,6 +315,20 @@ export function SaleForm({
       record?.supportingDocumentFileName ? { name: record.supportingDocumentFileName } : null,
     );
     setSupportingFileObj(null);
+    const entrada = record?.payments?.find((p) => p.kind === "entrada");
+    const parcelasRec = (record?.payments ?? [])
+      .filter((p) => p.kind === "parcela")
+      .sort((a, b) => a.sequence - b.sequence);
+    setEntradaAmount(entrada ? String(entrada.amount) : "");
+    setEntradaDueDate(entrada?.dueDate ?? "");
+    setParcelas(
+      parcelasRec.map((p) => ({
+        id: p.id,
+        amount: String(p.amount),
+        dueDate: p.dueDate,
+        paid: p.paid,
+      })),
+    );
     setError(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (supportInputRef.current) supportInputRef.current.value = "";
