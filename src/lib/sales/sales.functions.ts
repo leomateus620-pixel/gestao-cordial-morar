@@ -484,6 +484,7 @@ export const addSaleAttachment = createServerFn({ method: "POST" })
       fileName: string;
       mimeType?: string | null;
       sizeBytes?: number | null;
+      category?: SaleDocCategory;
     }) => data,
   )
   .handler(async ({ data, context }): Promise<SaleAttachment> => {
@@ -495,6 +496,7 @@ export const addSaleAttachment = createServerFn({ method: "POST" })
         file_name: data.fileName,
         mime_type: data.mimeType ?? null,
         size_bytes: data.sizeBytes ?? null,
+        category: normalizeSaleCategory(data.category ?? null),
         uploaded_by: context.userId,
       })
       .select("*")
