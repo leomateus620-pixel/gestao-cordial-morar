@@ -534,7 +534,44 @@ export function RentalFormModal({
         observacoes: obs || null,
         brand,
       };
-      await onSubmit(input);
+      const saved = (await onSubmit(input)) as RentalContractFull | undefined;
+      const contractId = saved?.id ?? initial?.id ?? null;
+
+      if (pendingDocs.length > 0 && contractId) {
+        setUploadingDocs(true);
+        try {
+          for (const doc of pendingDocs) {
+            if (doc.file.size > MAX_DOC_BYTES) {
+              throw new Error(`"${doc.file.name}" excede 50 MB.`);
+            }
+            const safeName = sanitizeDocName(doc.file.name);
+            const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
+            const contentType = doc.file.type || "application/octet-stream";
+            const { error: upErr } = await supabase.storage
+              .from(DOCS_BUCKET)
+              .upload(filePath, doc.file, { contentType, upsert: false });
+            if (upErr) throw new Error(upErr.message);
+            try {
+              await registerDoc({
+                data: {
+                  contractId,
+                  fileName: doc.file.name,
+                  filePath,
+                  mimeType: contentType,
+                  sizeBytes: doc.file.size,
+                  category: doc.category,
+                },
+              });
+            } catch (e) {
+              await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
+              throw e;
+            }
+          }
+        } finally {
+          setUploadingDocs(false);
+        }
+      }
+
       reset();
       onOpenChange(false);
     } catch (err) {
