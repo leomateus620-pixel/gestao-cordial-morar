@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Home,
   User,
@@ -8,7 +8,10 @@ import {
   X,
   Plus,
   Trash2,
+  Paperclip,
+  Upload,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Sheet,
   SheetContent,
@@ -17,17 +20,32 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { parseBRLNumber } from "@/lib/format";
-import type {
-  RentalBrand,
-  RentalContractFull,
-  RentalContractGuaranteeInput,
-  RentalContractInput,
-  RentalContractTenantInput,
-  RentalGuaranteeType,
-  RentalProperty,
-  RentalPropertyType,
-  RentalTenant,
+import { supabase } from "@/integrations/supabase/client";
+import { registerRentalContractDocument } from "@/lib/rentals/rentals.functions";
+import {
+  RENTAL_DOCUMENT_CATEGORIES,
+  type RentalBrand,
+  type RentalContractFull,
+  type RentalContractGuaranteeInput,
+  type RentalContractInput,
+  type RentalContractTenantInput,
+  type RentalDocumentCategory,
+  type RentalGuaranteeType,
+  type RentalProperty,
+  type RentalPropertyType,
+  type RentalTenant,
 } from "@/types/rental";
+
+const DOCS_BUCKET = "rental-documents";
+const MAX_DOC_BYTES = 50 * 1024 * 1024;
+const DOC_ACCEPT =
+  ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+type PendingDoc = { key: string; file: File; category: RentalDocumentCategory };
+
+function sanitizeDocName(name: string) {
+  return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+}
 
 const inputCls =
   "w-full rounded-xl border border-border/70 bg-background px-3.5 py-2.5 text-sm font-medium text-foreground shadow-sm transition outline-none placeholder:text-foreground/40 hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:opacity-50";
