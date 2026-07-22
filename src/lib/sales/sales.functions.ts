@@ -50,13 +50,39 @@ type SaleRow = {
   created_at: string;
   updated_at: string;
   owner?: { id: string; nome: string | null; iniciais: string | null } | null;
+  payments?: SalePayment[];
 };
 
+type PaymentRow = {
+  id: string;
+  sale_id: string;
+  kind: string;
+  sequence: number;
+  amount: number | string;
+  due_date: string;
+  paid: boolean;
+  paid_at: string | null;
+  notified_at: string | null;
+};
 
 const orNull = (v?: string | null) =>
   v !== undefined && v !== null && String(v).trim() ? String(v).trim() : null;
 const numOrNull = (v?: number | null) =>
   v === undefined || v === null || Number.isNaN(Number(v)) ? null : Number(v);
+
+function mapPayment(r: PaymentRow): SalePayment {
+  return {
+    id: r.id,
+    saleId: r.sale_id,
+    kind: r.kind as SalePaymentKind,
+    sequence: Number(r.sequence ?? 0),
+    amount: Number(r.amount),
+    dueDate: r.due_date,
+    paid: Boolean(r.paid),
+    paidAt: r.paid_at,
+    notifiedAt: r.notified_at,
+  };
+}
 
 function mapSale(r: SaleRow): SaleRecord {
   return {
@@ -97,9 +123,9 @@ function mapSale(r: SaleRow): SaleRecord {
     notes: r.notes ?? undefined,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    payments: r.payments ?? [],
   };
 }
-
 
 function inputToPayload(input: SaleRecordInput) {
   return {
@@ -136,6 +162,51 @@ function inputToPayload(input: SaleRecordInput) {
   };
 }
 
+async function syncPayments(
+  supabase: any,
+  saleId: string,
+  payments: SalePaymentInput[] | undefined,
+) {
+  // Full sync: delete existing then reinsert. Keeps the domain simple and
+  // avoids complex diff logic for a small collection of rows.
+  if (!payments) return;
+  await supabase.from("sale_payments").delete().eq("sale_id", saleId);
+  if (payments.length === 0) return;
+  const rows = payments
+    .filter((p) => Number.isFinite(p.amount) && p.amount > 0 && p.dueDate)
+    .map((p, idx) => ({
+      sale_id: saleId,
+      kind: p.kind,
+      sequence: p.sequence ?? idx,
+      amount: p.amount,
+      due_date: p.dueDate,
+      paid: p.paid ?? false,
+    }));
+  if (rows.length === 0) return;
+  const { error } = await supabase.from("sale_payments").insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+async function attachPayments(
+  supabase: any,
+  saleIds: string[],
+): Promise<Record<string, SalePayment[]>> {
+  if (saleIds.length === 0) return {};
+  const { data } = await supabase
+    .from("sale_payments")
+    .select("*")
+    .in("sale_id", saleIds)
+    .order("kind", { ascending: true })
+    .order("due_date", { ascending: true });
+  const grouped: Record<string, SalePayment[]> = {};
+  for (const row of (data ?? []) as PaymentRow[]) {
+    const key = row.sale_id;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(mapPayment(row));
+  }
+  return grouped;
+}
+
 // ============================ LIST ============================
 export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -160,9 +231,14 @@ export const listSales = createServerFn({ method: "GET" })
         ),
       );
     }
-    return rows.map((r) => mapSale({ ...r, owner: owners[r.user_id] ?? null }));
+    const payments = await attachPayments(
+      context.supabase,
+      rows.map((r) => r.id),
+    );
+    return rows.map((r) =>
+      mapSale({ ...r, owner: owners[r.user_id] ?? null, payments: payments[r.id] ?? [] }),
+    );
   });
-
 
 // ============================ CREATE ============================
 export const createSale = createServerFn({ method: "POST" })
@@ -176,7 +252,10 @@ export const createSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return mapSale(row as unknown as SaleRow);
+    const saleRow = row as unknown as SaleRow;
+    await syncPayments(context.supabase, saleRow.id, data.payments);
+    const payments = await attachPayments(context.supabase, [saleRow.id]);
+    return mapSale({ ...saleRow, payments: payments[saleRow.id] ?? [] });
   });
 
 // ============================ UPDATE ============================
@@ -191,7 +270,10 @@ export const updateSale = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return mapSale(row as unknown as SaleRow);
+    const saleRow = row as unknown as SaleRow;
+    await syncPayments(context.supabase, saleRow.id, data.input.payments);
+    const payments = await attachPayments(context.supabase, [saleRow.id]);
+    return mapSale({ ...saleRow, payments: payments[saleRow.id] ?? [] });
   });
 
 // ============================ CANCEL ============================
@@ -214,7 +296,6 @@ export const deleteSale = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
-    // Fetch to know file path
     const { data: existing } = await context.supabase
       .from("real_estate_sales")
       .select("contract_file_path")
@@ -281,4 +362,22 @@ export const getSaleDocumentSignedUrl = createServerFn({ method: "POST" })
       throw new Error(error?.message ?? "Não foi possível gerar o link do documento.");
     }
     return { url: signed.signedUrl };
+  });
+
+// ============================ MARK PAYMENT PAID ============================
+export const setSalePaymentPaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; paid: boolean }) => data)
+  .handler(async ({ data, context }): Promise<SalePayment> => {
+    const { data: row, error } = await context.supabase
+      .from("sale_payments")
+      .update({
+        paid: data.paid,
+        paid_at: data.paid ? new Date().toISOString() : null,
+      })
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapPayment(row as unknown as PaymentRow);
   });
