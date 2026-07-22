@@ -1335,10 +1335,16 @@ export function RentalFormModal({
             </button>
             <button
               type="submit"
-              disabled={isSaving}
+              disabled={isSaving || uploadingDocs}
               className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
             >
-              {isSaving ? "Salvando…" : isEdit ? "Salvar alterações" : "Cadastrar aluguel"}
+              {isSaving
+                ? "Salvando…"
+                : uploadingDocs
+                  ? "Enviando anexos…"
+                  : isEdit
+                    ? "Salvar alterações"
+                    : "Cadastrar aluguel"}
             </button>
           </div>
         </form>
