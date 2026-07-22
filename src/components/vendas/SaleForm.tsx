@@ -3,9 +3,11 @@ import { useSession } from "@/lib/auth-mock";
 
 import {
   Building2,
+  CalendarClock,
   FileText,
   Home,
   Paperclip,
+  Plus,
   ReceiptText,
   Trash2,
   UploadCloud,
@@ -22,6 +24,7 @@ import {
 import type { AgencyId, Corretor, Imovel } from "@/lib/mock/data";
 import type {
   SaleDocumentStatus,
+  SalePaymentInput,
   SalePaymentMethod,
   SalePropertyType,
   SaleRecord,
@@ -201,6 +204,31 @@ function todayValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function buildPaymentsPayload(
+  entradaAmount: string,
+  entradaDueDate: string,
+  parcelas: Array<{ id: string; amount: string; dueDate: string; paid: boolean }>,
+): SalePaymentInput[] {
+  const list: SalePaymentInput[] = [];
+  const entradaVal = parseMoney(entradaAmount);
+  if (entradaVal > 0 && entradaDueDate) {
+    list.push({ kind: "entrada", sequence: 0, amount: entradaVal, dueDate: entradaDueDate });
+  }
+  parcelas.forEach((p, idx) => {
+    const val = parseMoney(p.amount);
+    if (val > 0 && p.dueDate) {
+      list.push({
+        kind: "parcela",
+        sequence: idx,
+        amount: val,
+        dueDate: p.dueDate,
+        paid: p.paid,
+      });
+    }
+  });
+  return list;
+}
+
 export function SaleForm({
   open,
   onOpenChange,
@@ -257,6 +285,11 @@ export function SaleForm({
   const [commissionPercentage, setCommissionPercentage] = useState("");
   const [responsibleAgent, setResponsibleAgent] = useState("");
   const [notes, setNotes] = useState("");
+  const [entradaAmount, setEntradaAmount] = useState("");
+  const [entradaDueDate, setEntradaDueDate] = useState("");
+  const [parcelas, setParcelas] = useState<
+    Array<{ id: string; amount: string; dueDate: string; paid: boolean }>
+  >([]);
 
   const [documentStatus, setDocumentStatus] = useState<SaleDocumentStatus>("contrato_pendente");
   const [contractFile, setContractFile] = useState<FileMeta | null>(null);
@@ -307,6 +340,20 @@ export function SaleForm({
       record?.supportingDocumentFileName ? { name: record.supportingDocumentFileName } : null,
     );
     setSupportingFileObj(null);
+    const entrada = record?.payments?.find((p) => p.kind === "entrada");
+    const parcelasRec = (record?.payments ?? [])
+      .filter((p) => p.kind === "parcela")
+      .sort((a, b) => a.sequence - b.sequence);
+    setEntradaAmount(entrada ? String(entrada.amount) : "");
+    setEntradaDueDate(entrada?.dueDate ?? "");
+    setParcelas(
+      parcelasRec.map((p) => ({
+        id: p.id,
+        amount: String(p.amount),
+        dueDate: p.dueDate,
+        paid: p.paid,
+      })),
+    );
     setError(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (supportInputRef.current) supportInputRef.current.value = "";
@@ -439,6 +486,7 @@ export function SaleForm({
       supportingDocumentFileName: supportingFile?.name,
       documentStatus: saleStatus === "cancelada" ? "cancelado" : documentStatus,
       notes: notes.trim() || undefined,
+      payments: buildPaymentsPayload(entradaAmount, entradaDueDate, parcelas),
     };
 
     try {
@@ -552,16 +600,38 @@ export function SaleForm({
                 <Field label="Comissão (R$)" className="sm:col-span-2">
                   <input
                     value={commissionValue}
-                    onChange={(event) => setCommissionValue(event.target.value)}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      setCommissionValue(raw);
+                      const total = parseMoney(saleValue);
+                      const val = parseMoney(raw);
+                      if (total > 0 && val > 0) {
+                        const pct = (val / total) * 100;
+                        setCommissionPercentage(pct.toFixed(2).replace(/\.?0+$/, ""));
+                      } else if (!raw) {
+                        setCommissionPercentage("");
+                      }
+                    }}
                     inputMode="decimal"
-                    placeholder="Opcional"
+                    placeholder="Ex.: 24000"
                     className={inputCls}
                   />
                 </Field>
                 <Field label="Comissão (%)" className="sm:col-span-2">
                   <input
                     value={commissionPercentage}
-                    onChange={(event) => setCommissionPercentage(event.target.value)}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      setCommissionPercentage(raw);
+                      const total = parseMoney(saleValue);
+                      const pct = parseMoney(raw);
+                      if (total > 0 && pct > 0) {
+                        const val = (total * pct) / 100;
+                        setCommissionValue(val.toFixed(2).replace(/\.?0+$/, ""));
+                      } else if (!raw) {
+                        setCommissionValue("");
+                      }
+                    }}
                     inputMode="decimal"
                     placeholder="Ex.: 5"
                     className={inputCls}
@@ -590,6 +660,113 @@ export function SaleForm({
                     className={`${inputCls} resize-none`}
                   />
                 </Field>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              icon={CalendarClock}
+              title="Plano de pagamento"
+              subtitle="Entrada e parcelas com data de vencimento (lembretes automáticos)"
+            >
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
+                  <Field label="Entrada (R$)" className="sm:col-span-3">
+                    <input
+                      value={entradaAmount}
+                      onChange={(event) => setEntradaAmount(event.target.value)}
+                      inputMode="decimal"
+                      placeholder="Ex.: 240000"
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Vencimento da entrada" className="sm:col-span-3">
+                    <input
+                      type="date"
+                      value={entradaDueDate}
+                      onChange={(event) => setEntradaDueDate(event.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
+
+                <div className="space-y-2">
+                  {parcelas.length === 0 && (
+                    <p className="rounded-2xl bg-white/50 px-3 py-3 text-xs font-semibold text-foreground/56 ring-1 ring-white/70">
+                      Nenhuma parcela cadastrada. Adicione parcelas para receber lembrete no dia do vencimento (in-app e por e-mail).
+                    </p>
+                  )}
+                  {parcelas.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="grid grid-cols-1 gap-2 rounded-2xl border border-white/60 bg-white/60 p-3 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-end"
+                    >
+                      <div className="grid size-8 place-items-center rounded-lg bg-primary/10 text-xs font-black text-primary">
+                        {idx + 1}
+                      </div>
+                      <Field label={`Parcela ${idx + 1} (R$)`}>
+                        <input
+                          value={p.amount}
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            setParcelas((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, amount: val } : it)),
+                            );
+                          }}
+                          inputMode="decimal"
+                          placeholder="Ex.: 20000"
+                          className={inputCls}
+                        />
+                      </Field>
+                      <Field label="Vencimento">
+                        <input
+                          type="date"
+                          value={p.dueDate}
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            setParcelas((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, dueDate: val } : it)),
+                            );
+                          }}
+                          className={inputCls}
+                        />
+                      </Field>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setParcelas((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        aria-label={`Remover parcela ${idx + 1}`}
+                        className="grid size-10 place-items-center rounded-xl bg-white/70 text-foreground/55 ring-1 ring-white/70 transition hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setParcelas((prev) => [
+                        ...prev,
+                        {
+                          id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                          amount: "",
+                          dueDate: "",
+                          paid: false,
+                        },
+                      ])
+                    }
+                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-sm font-bold text-primary transition hover:bg-primary/15"
+                  >
+                    <Plus className="size-4" />
+                    Adicionar parcela
+                  </button>
+                </div>
+
+                <PaymentPlanSummary
+                  saleValue={parseMoney(saleValue)}
+                  entrada={parseMoney(entradaAmount)}
+                  parcelas={parcelas.map((p) => parseMoney(p.amount))}
+                />
               </div>
             </SectionCard>
 
@@ -907,6 +1084,50 @@ function FileDrop({
             />
           </label>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PaymentPlanSummary({
+  saleValue,
+  entrada,
+  parcelas,
+}: {
+  saleValue: number;
+  entrada: number;
+  parcelas: number[];
+}) {
+  const parcelasTotal = parcelas.reduce((t, v) => t + (Number.isFinite(v) ? v : 0), 0);
+  const total = (entrada || 0) + parcelasTotal;
+  const diff = saleValue - total;
+  const brl = (n: number) =>
+    n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  if (saleValue <= 0 && total <= 0) return null;
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-white/70">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/45">
+          Valor da venda
+        </p>
+        <p className="mt-1 font-mono text-sm font-black">{brl(saleValue || 0)}</p>
+      </div>
+      <div className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-white/70">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/45">
+          Soma do plano
+        </p>
+        <p className="mt-1 font-mono text-sm font-black">{brl(total)}</p>
+      </div>
+      <div
+        className={
+          "rounded-2xl px-3 py-2 ring-1 " +
+          (Math.abs(diff) < 0.01
+            ? "bg-emerald-500/10 text-emerald-800 ring-emerald-500/25"
+            : "bg-amber-500/10 text-amber-800 ring-amber-500/25")
+        }
+      >
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]">Diferença</p>
+        <p className="mt-1 font-mono text-sm font-black">{brl(diff)}</p>
       </div>
     </div>
   );

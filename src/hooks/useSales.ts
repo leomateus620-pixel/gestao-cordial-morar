@@ -9,6 +9,7 @@ import {
   getSaleDocumentSignedUrl as signedUrlFn,
   getSalesKpis as kpisFn,
   listSales,
+  setSalePaymentPaid as setPaidFn,
   updateSale as updateFn,
 } from "@/lib/sales/sales.functions";
 import type { SaleRecord, SaleRecordInput, SalesKpis } from "@/types/sale";
@@ -24,6 +25,7 @@ export function useSales() {
   const cancel = useServerFn(cancelFn);
   const remove = useServerFn(deleteFn);
   const signUrl = useServerFn(signedUrlFn);
+  const setPaid = useServerFn(setPaidFn);
 
   const salesQuery = useQuery<SaleRecord[]>({
     queryKey: [...SALES_KEY, "list"],
@@ -61,6 +63,11 @@ export function useSales() {
     onSuccess: invalidate,
   });
 
+  const setPaidMutation = useMutation({
+    mutationFn: (vars: { id: string; paid: boolean }) => setPaid({ data: vars }),
+    onSuccess: invalidate,
+  });
+
   const openContract = useCallback(
     async (path: string) => {
       const { url } = await signUrl({ data: { path } });
@@ -85,6 +92,8 @@ export function useSales() {
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isCanceling: cancelMutation.isPending,
+    setPaymentPaid: setPaidMutation.mutateAsync,
+    isSettingPaid: setPaidMutation.isPending,
     openContract,
   };
 }

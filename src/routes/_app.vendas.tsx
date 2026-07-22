@@ -49,6 +49,7 @@ function Page() {
     updateSale,
     cancelSale,
     openContract,
+    setPaymentPaid,
     isCreating,
     isUpdating,
   } = useSales();
@@ -251,6 +252,9 @@ function Page() {
         onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
         onOpenContract={handleOpenContract}
+        onMarkPaymentPaid={(paymentId, paid) =>
+          setPaymentPaid({ id: paymentId, paid }).catch(() => undefined)
+        }
       />
     </>
   );
