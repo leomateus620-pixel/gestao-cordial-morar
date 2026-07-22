@@ -186,6 +186,39 @@ export type RentalKpis = {
   imoveisDisponiveis: number;
 };
 
+export type RentalDocumentCategory =
+  | "contrato_aluguel"
+  | "termo_vistoria"
+  | "checklist_aluguel"
+  | "outro";
+
+export const RENTAL_DOCUMENT_CATEGORIES: {
+  id: RentalDocumentCategory;
+  label: string;
+  description: string;
+}[] = [
+  {
+    id: "contrato_aluguel",
+    label: "Contrato de aluguel",
+    description: "Instrumento particular assinado pelas partes.",
+  },
+  {
+    id: "termo_vistoria",
+    label: "Termo de vistoria",
+    description: "Vistoria inicial ou final do imóvel.",
+  },
+  {
+    id: "checklist_aluguel",
+    label: "Check-list aluguel",
+    description: "Roteiro de conferência da locação.",
+  },
+  {
+    id: "outro",
+    label: "Outros",
+    description: "Documentos complementares.",
+  },
+];
+
 export type RentalContractDocument = {
   id: string;
   contractId: string;
@@ -193,6 +226,7 @@ export type RentalContractDocument = {
   filePath: string;
   mimeType: string | null;
   sizeBytes: number | null;
+  category: RentalDocumentCategory;
   url: string | null;
   createdAt: string;
 };
