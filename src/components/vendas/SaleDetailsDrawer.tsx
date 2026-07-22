@@ -157,6 +157,73 @@ export function SaleDetailsDrawer({
                 />
               </Panel>
 
+              {sale.payments && sale.payments.length > 0 && (
+                <Panel title="Plano de pagamento" icon={Wallet}>
+                  <div className="space-y-2">
+                    {[...sale.payments]
+                      .sort((a, b) => {
+                        if (a.kind !== b.kind) return a.kind === "entrada" ? -1 : 1;
+                        return a.sequence - b.sequence;
+                      })
+                      .map((p) => {
+                        const overdue =
+                          !p.paid && new Date(`${p.dueDate}T23:59:59`) < new Date();
+                        return (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.62] px-3 py-3 ring-1 ring-white/70"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-foreground">
+                                {p.kind === "entrada"
+                                  ? "Entrada"
+                                  : `Parcela ${p.sequence + 1}`}
+                              </p>
+                              <p className="mt-0.5 text-[11px] font-semibold text-foreground/56">
+                                Vence em {formatDate(p.dueDate)}
+                                {p.paid && p.paidAt
+                                  ? ` · pago em ${formatDate(p.paidAt.slice(0, 10))}`
+                                  : overdue
+                                    ? " · em atraso"
+                                    : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "font-mono text-sm font-black tabular-nums",
+                                  p.paid
+                                    ? "text-emerald-700"
+                                    : overdue
+                                      ? "text-rose-700"
+                                      : "text-foreground",
+                                )}
+                              >
+                                {brl(p.amount)}
+                              </span>
+                              {onMarkPaymentPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => onMarkPaymentPaid(p.id, !p.paid)}
+                                  className={cn(
+                                    "inline-flex h-8 items-center gap-1 rounded-xl px-2.5 text-[11px] font-bold ring-1 transition",
+                                    p.paid
+                                      ? "bg-emerald-500/10 text-emerald-800 ring-emerald-500/25 hover:bg-emerald-500/15"
+                                      : "bg-primary/10 text-primary ring-primary/25 hover:bg-primary/15",
+                                  )}
+                                >
+                                  <Check className="size-3.5" />
+                                  {p.paid ? "Pago" : "Marcar pago"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </Panel>
+              )}
+
               <Panel title="Documentos" icon={FileText}>
                 <MetricRow
                   label="Contrato"
