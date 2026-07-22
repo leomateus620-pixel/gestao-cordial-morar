@@ -62,8 +62,26 @@ type AttachmentRow = {
   file_name: string;
   mime_type: string | null;
   size_bytes: number | string | null;
+  category: string | null;
   created_at: string;
 };
+
+type SaleDocCategory =
+  | "contrato_venda"
+  | "contrato_corretagem"
+  | "checklist_venda"
+  | "outro";
+
+const SALE_DOC_CATS = new Set<SaleDocCategory>([
+  "contrato_venda",
+  "contrato_corretagem",
+  "checklist_venda",
+  "outro",
+]);
+
+function normalizeSaleCategory(v: string | null | undefined): SaleDocCategory {
+  return v && SALE_DOC_CATS.has(v as SaleDocCategory) ? (v as SaleDocCategory) : "outro";
+}
 
 type PaymentRow = {
   id: string;
@@ -148,6 +166,7 @@ function mapAttachment(r: AttachmentRow): SaleAttachment {
     filePath: r.file_path,
     mimeType: r.mime_type,
     sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes),
+    category: normalizeSaleCategory(r.category),
     createdAt: r.created_at,
   };
 }
@@ -465,6 +484,7 @@ export const addSaleAttachment = createServerFn({ method: "POST" })
       fileName: string;
       mimeType?: string | null;
       sizeBytes?: number | null;
+      category?: SaleDocCategory;
     }) => data,
   )
   .handler(async ({ data, context }): Promise<SaleAttachment> => {
@@ -476,6 +496,7 @@ export const addSaleAttachment = createServerFn({ method: "POST" })
         file_name: data.fileName,
         mime_type: data.mimeType ?? null,
         size_bytes: data.sizeBytes ?? null,
+        category: normalizeSaleCategory(data.category ?? null),
         uploaded_by: context.userId,
       })
       .select("*")

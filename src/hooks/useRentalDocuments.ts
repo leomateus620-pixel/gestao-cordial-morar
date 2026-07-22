@@ -6,7 +6,7 @@ import {
   listRentalContractDocuments,
   registerRentalContractDocument,
 } from "@/lib/rentals/rentals.functions";
-import type { RentalContractDocument } from "@/types/rental";
+import type { RentalContractDocument, RentalDocumentCategory } from "@/types/rental";
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const DOCS_BUCKET = "rental-documents";
@@ -29,7 +29,8 @@ export function useRentalDocuments(contractId: string | null) {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (args: { file: File; category?: RentalDocumentCategory }) => {
+      const { file, category } = args;
       if (!contractId) throw new Error("Contrato inválido.");
       if (file.size <= 0) throw new Error("Arquivo vazio.");
       if (file.size > MAX_BYTES) throw new Error("Arquivo excede 50 MB.");
@@ -52,6 +53,7 @@ export function useRentalDocuments(contractId: string | null) {
             filePath,
             mimeType: contentType,
             sizeBytes: file.size,
+            category,
           },
         });
       } catch (e) {
@@ -76,7 +78,8 @@ export function useRentalDocuments(contractId: string | null) {
     documents: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
-    uploadFile: (file: File) => uploadMutation.mutateAsync(file),
+    uploadFile: (file: File, category?: RentalDocumentCategory) =>
+      uploadMutation.mutateAsync({ file, category }),
     deleteFile: (id: string) => deleteMutation.mutateAsync(id),
     isUploading: uploadMutation.isPending,
     isDeleting: deleteMutation.isPending,

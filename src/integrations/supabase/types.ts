@@ -1276,6 +1276,7 @@ export type Database = {
       }
       rental_contract_documents: {
         Row: {
+          category: string
           contract_id: string
           created_at: string
           file_name: string
@@ -1286,6 +1287,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          category?: string
           contract_id: string
           created_at?: string
           file_name: string
@@ -1296,6 +1298,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          category?: string
           contract_id?: string
           created_at?: string
           file_name?: string
@@ -1696,6 +1699,7 @@ export type Database = {
       }
       sale_documents: {
         Row: {
+          category: string
           created_at: string
           file_name: string
           file_path: string
@@ -1706,6 +1710,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          category?: string
           created_at?: string
           file_name: string
           file_path: string
@@ -1716,6 +1721,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          category?: string
           created_at?: string
           file_name?: string
           file_path?: string

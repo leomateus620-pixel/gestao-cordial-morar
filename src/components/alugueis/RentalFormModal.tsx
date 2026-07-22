@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Home,
   User,
@@ -8,7 +8,10 @@ import {
   X,
   Plus,
   Trash2,
+  Paperclip,
+  Upload,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Sheet,
   SheetContent,
@@ -17,17 +20,32 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { parseBRLNumber } from "@/lib/format";
-import type {
-  RentalBrand,
-  RentalContractFull,
-  RentalContractGuaranteeInput,
-  RentalContractInput,
-  RentalContractTenantInput,
-  RentalGuaranteeType,
-  RentalProperty,
-  RentalPropertyType,
-  RentalTenant,
+import { supabase } from "@/integrations/supabase/client";
+import { registerRentalContractDocument } from "@/lib/rentals/rentals.functions";
+import {
+  RENTAL_DOCUMENT_CATEGORIES,
+  type RentalBrand,
+  type RentalContractFull,
+  type RentalContractGuaranteeInput,
+  type RentalContractInput,
+  type RentalContractTenantInput,
+  type RentalDocumentCategory,
+  type RentalGuaranteeType,
+  type RentalProperty,
+  type RentalPropertyType,
+  type RentalTenant,
 } from "@/types/rental";
+
+const DOCS_BUCKET = "rental-documents";
+const MAX_DOC_BYTES = 50 * 1024 * 1024;
+const DOC_ACCEPT =
+  ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+type PendingDoc = { key: string; file: File; category: RentalDocumentCategory };
+
+function sanitizeDocName(name: string) {
+  return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+}
 
 const inputCls =
   "w-full rounded-xl border border-border/70 bg-background px-3.5 py-2.5 text-sm font-medium text-foreground shadow-sm transition outline-none placeholder:text-foreground/40 hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:opacity-50";
@@ -292,7 +310,7 @@ export function RentalFormModal({
   onOpenChange: (o: boolean) => void;
   properties: RentalProperty[];
   tenants: RentalTenant[];
-  onSubmit: (input: RentalContractInput) => Promise<unknown>;
+  onSubmit: (input: RentalContractInput) => Promise<RentalContractFull | unknown>;
   isSaving: boolean;
   initial?: RentalContractFull | null;
 }) {
@@ -328,6 +346,10 @@ export function RentalFormModal({
   const [obs, setObs] = useState("");
   const [brand, setBrand] = useState<RentalBrand>("cordial");
   const [error, setError] = useState<string | null>(null);
+  const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const docInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
+  const registerDoc = useServerFn(registerRentalContractDocument);
 
   function updateTenant(key: string, patch: Partial<TenantEntry>) {
     setTenantEntries((prev) =>
@@ -381,6 +403,7 @@ export function RentalFormModal({
     setObs("");
     setBrand("cordial");
     setError(null);
+    setPendingDocs([]);
   }
 
   // Prefill state whenever the modal opens with an `initial` contract, or reset for new.
@@ -511,7 +534,44 @@ export function RentalFormModal({
         observacoes: obs || null,
         brand,
       };
-      await onSubmit(input);
+      const saved = (await onSubmit(input)) as RentalContractFull | undefined;
+      const contractId = saved?.id ?? initial?.id ?? null;
+
+      if (pendingDocs.length > 0 && contractId) {
+        setUploadingDocs(true);
+        try {
+          for (const doc of pendingDocs) {
+            if (doc.file.size > MAX_DOC_BYTES) {
+              throw new Error(`"${doc.file.name}" excede 50 MB.`);
+            }
+            const safeName = sanitizeDocName(doc.file.name);
+            const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
+            const contentType = doc.file.type || "application/octet-stream";
+            const { error: upErr } = await supabase.storage
+              .from(DOCS_BUCKET)
+              .upload(filePath, doc.file, { contentType, upsert: false });
+            if (upErr) throw new Error(upErr.message);
+            try {
+              await registerDoc({
+                data: {
+                  contractId,
+                  fileName: doc.file.name,
+                  filePath,
+                  mimeType: contentType,
+                  sizeBytes: doc.file.size,
+                  category: doc.category,
+                },
+              });
+            } catch (e) {
+              await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
+              throw e;
+            }
+          }
+        } finally {
+          setUploadingDocs(false);
+        }
+      }
+
       reset();
       onOpenChange(false);
     } catch (err) {
@@ -1156,6 +1216,104 @@ export function RentalFormModal({
               </div>
             </SectionCard>
 
+            <SectionCard
+              icon={Paperclip}
+              title="Anexos do contrato"
+              subtitle={
+                isEdit
+                  ? "Adicione novos arquivos por categoria. Os já enviados aparecem na tela de detalhes."
+                  : "Selecione os arquivos por categoria. Eles serão enviados após salvar o contrato."
+              }
+            >
+              <div className="space-y-3">
+                {RENTAL_DOCUMENT_CATEGORIES.map((cat) => {
+                  const items = pendingDocs.filter((p) => p.category === cat.id);
+                  return (
+                    <div
+                      key={cat.id}
+                      className="rounded-xl border border-border/60 bg-background/60 p-3"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-foreground">
+                            {cat.label}
+                          </p>
+                          <p className="truncate text-[11px] text-foreground/55">
+                            {cat.description}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => docInputsRef.current[cat.id]?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15"
+                        >
+                          <Upload className="size-3" />
+                          Adicionar
+                        </button>
+                        <input
+                          ref={(el) => {
+                            docInputsRef.current[cat.id] = el;
+                          }}
+                          type="file"
+                          multiple
+                          accept={DOC_ACCEPT}
+                          hidden
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            setPendingDocs((prev) => [
+                              ...prev,
+                              ...Array.from(files).map((f) => ({
+                                key: crypto.randomUUID(),
+                                file: f,
+                                category: cat.id,
+                              })),
+                            ]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </div>
+                      {items.length === 0 ? (
+                        <p className="text-[11px] text-foreground/50">
+                          Nenhum arquivo selecionado para {cat.label.toLowerCase()}.
+                        </p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {items.map((p) => (
+                            <li
+                              key={p.key}
+                              className="flex items-center gap-2 rounded-lg bg-muted/60 px-2.5 py-1.5 text-[11px]"
+                            >
+                              <FileText className="size-3.5 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                                {p.file.name}
+                              </span>
+                              <span className="shrink-0 text-foreground/55">
+                                {(p.file.size / 1024 / 1024).toFixed(2)} MB
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPendingDocs((prev) =>
+                                    prev.filter((d) => d.key !== p.key),
+                                  )
+                                }
+                                className="grid size-6 shrink-0 place-items-center rounded-md text-rose-600 hover:bg-rose-500/10"
+                                aria-label="Remover"
+                              >
+                                <Trash2 className="size-3" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+
             {error && (
               <div
                 role="alert"
@@ -1177,10 +1335,16 @@ export function RentalFormModal({
             </button>
             <button
               type="submit"
-              disabled={isSaving}
+              disabled={isSaving || uploadingDocs}
               className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:brightness-110 active:scale-[0.99] disabled:opacity-60"
             >
-              {isSaving ? "Salvando…" : isEdit ? "Salvar alterações" : "Cadastrar aluguel"}
+              {isSaving
+                ? "Salvando…"
+                : uploadingDocs
+                  ? "Enviando anexos…"
+                  : isEdit
+                    ? "Salvar alterações"
+                    : "Cadastrar aluguel"}
             </button>
           </div>
         </form>
