@@ -42,6 +42,9 @@ export function SaleDetailsDrawer({
   onReplaceContract,
   onCancel,
   onOpenContract,
+  onOpenAttachment,
+  onAddAttachment,
+  onRemoveAttachment,
   onMarkPaymentPaid,
 }: {
   sale: SaleRecord | null;
@@ -51,6 +54,9 @@ export function SaleDetailsDrawer({
   onReplaceContract: (sale: SaleRecord) => void;
   onCancel: (sale: SaleRecord) => void;
   onOpenContract?: () => void;
+  onOpenAttachment?: (path: string) => void;
+  onAddAttachment?: (sale: SaleRecord, file: File) => Promise<void> | void;
+  onRemoveAttachment?: (attachmentId: string) => Promise<void> | void;
   onMarkPaymentPaid?: (paymentId: string, paid: boolean) => void;
 }) {
   return (
@@ -231,10 +237,6 @@ export function SaleDetailsDrawer({
                   strong={Boolean(sale.contractFileName)}
                 />
                 <MetricRow
-                  label="Documento auxiliar"
-                  value={sale.supportingDocumentFileName || "—"}
-                />
-                <MetricRow
                   label="Status documental"
                   value={<SaleStatusBadge status={sale.documentStatus} type="document" />}
                 />
@@ -262,7 +264,72 @@ export function SaleDetailsDrawer({
                     Nenhum contrato anexado a este registro.
                   </p>
                 )}
+
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-foreground/58">
+                      Anexos adicionais
+                    </p>
+                    {onAddAttachment && (
+                      <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-xl bg-primary/10 px-3 text-[11px] font-bold text-primary ring-1 ring-primary/25 transition hover:bg-primary/15">
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = "";
+                            if (file && sale) await onAddAttachment(sale, file);
+                          }}
+                        />
+                        + Adicionar
+                      </label>
+                    )}
+                  </div>
+                  {(sale.attachments ?? []).length === 0 ? (
+                    <p className="rounded-2xl bg-white/50 px-3 py-2.5 text-xs font-medium text-foreground/58 ring-1 ring-white/70">
+                      Nenhum anexo adicional.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {(sale.attachments ?? []).map((att) => (
+                        <li
+                          key={att.id}
+                          className="flex items-center gap-2 rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-white/70"
+                        >
+                          <FileText className="size-4 shrink-0 text-foreground/58" />
+                          <span
+                            className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground"
+                            title={att.fileName}
+                          >
+                            {att.fileName}
+                          </span>
+                          {onOpenAttachment && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenAttachment(att.filePath)}
+                              className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary/10 px-2 text-[11px] font-bold text-primary ring-1 ring-primary/25 hover:bg-primary/15"
+                            >
+                              <ExternalLink className="size-3.5" />
+                              Abrir
+                            </button>
+                          )}
+                          {onRemoveAttachment && (
+                            <button
+                              type="button"
+                              onClick={() => onRemoveAttachment(att.id)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10 text-red-700 ring-1 ring-red-500/25 hover:bg-red-500/15"
+                              title="Remover anexo"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </Panel>
+
 
               <Panel title="Histórico" icon={CalendarClock}>
                 <MetricRow label="Criado em" value={formatDateTime(sale.createdAt)} />

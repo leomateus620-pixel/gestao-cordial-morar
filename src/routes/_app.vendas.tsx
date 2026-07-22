@@ -49,6 +49,9 @@ function Page() {
     updateSale,
     cancelSale,
     openContract,
+    openAttachment,
+    addAttachment,
+    removeAttachment,
     setPaymentPaid,
     isCreating,
     isUpdating,
@@ -142,12 +145,32 @@ function Page() {
         };
       }
 
+      let savedId = id;
       if (id) {
         await updateSale({ id, input: finalInput });
         toast.success("Venda atualizada.");
       } else {
-        await createSale(finalInput);
+        const created = await createSale(finalInput);
+        savedId = (created as { id?: string } | undefined)?.id;
         toast.success("Venda registrada.");
+      }
+
+      // Persist supporting document as a real attachment so it's actually accessible.
+      if (files.support && savedId) {
+        try {
+          const path = await uploadSaleDocument(files.support, savedId);
+          await addAttachment({
+            saleId: savedId,
+            filePath: path,
+            fileName: files.support.name,
+            mimeType: files.support.type || null,
+            sizeBytes: files.support.size ?? null,
+          });
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Não foi possível anexar o documento auxiliar.",
+          );
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Não foi possível salvar a venda.";
@@ -155,6 +178,7 @@ function Page() {
       throw err;
     }
   }
+
 
   const isSaving = isCreating || isUpdating;
 
@@ -252,6 +276,38 @@ function Page() {
         onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
         onOpenContract={handleOpenContract}
+        onOpenAttachment={(path) =>
+          openAttachment(path).catch((err: unknown) =>
+            toast.error(err instanceof Error ? err.message : "Não foi possível abrir o anexo."),
+          )
+        }
+        onAddAttachment={async (sale, file) => {
+          try {
+            const path = await uploadSaleDocument(file, sale.id);
+            await addAttachment({
+              saleId: sale.id,
+              filePath: path,
+              fileName: file.name,
+              mimeType: file.type || null,
+              sizeBytes: file.size ?? null,
+            });
+            toast.success("Anexo adicionado.");
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : "Não foi possível adicionar o anexo.",
+            );
+          }
+        }}
+        onRemoveAttachment={async (id) => {
+          try {
+            await removeAttachment(id);
+            toast.success("Anexo removido.");
+          } catch (err) {
+            toast.error(
+              err instanceof Error ? err.message : "Não foi possível remover o anexo.",
+            );
+          }
+        }}
         onMarkPaymentPaid={(paymentId, paid) =>
           setPaymentPaid({ id: paymentId, paid }).catch(() => undefined)
         }

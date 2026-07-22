@@ -3,16 +3,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  addSaleAttachment as addAttachmentFn,
   cancelSale as cancelFn,
   createSale as createFn,
   deleteSale as deleteFn,
   getSaleDocumentSignedUrl as signedUrlFn,
   getSalesKpis as kpisFn,
   listSales,
+  removeSaleAttachment as removeAttachmentFn,
   setSalePaymentPaid as setPaidFn,
   updateSale as updateFn,
 } from "@/lib/sales/sales.functions";
-import type { SaleRecord, SaleRecordInput, SalesKpis } from "@/types/sale";
+import type { SaleAttachment, SaleRecord, SaleRecordInput, SalesKpis } from "@/types/sale";
 
 const SALES_KEY = ["sales"] as const;
 
@@ -26,6 +28,8 @@ export function useSales() {
   const remove = useServerFn(deleteFn);
   const signUrl = useServerFn(signedUrlFn);
   const setPaid = useServerFn(setPaidFn);
+  const addAttachment = useServerFn(addAttachmentFn);
+  const removeAttachment = useServerFn(removeAttachmentFn);
 
   const salesQuery = useQuery<SaleRecord[]>({
     queryKey: [...SALES_KEY, "list"],
@@ -76,6 +80,28 @@ export function useSales() {
     [signUrl],
   );
 
+  const addAttachmentAsync = useCallback(
+    (vars: {
+      saleId: string;
+      filePath: string;
+      fileName: string;
+      mimeType?: string | null;
+      sizeBytes?: number | null;
+    }) => addAttachment({ data: vars }).then((r: SaleAttachment) => {
+      invalidate();
+      return r;
+    }),
+    [addAttachment, invalidate],
+  );
+
+  const removeAttachmentAsync = useCallback(
+    (id: string) => removeAttachment({ data: { id } }).then((r) => {
+      invalidate();
+      return r;
+    }),
+    [removeAttachment, invalidate],
+  );
+
   return {
     sales: salesQuery.data ?? [],
     kpis: kpisQuery.data,
@@ -95,6 +121,9 @@ export function useSales() {
     setPaymentPaid: setPaidMutation.mutateAsync,
     isSettingPaid: setPaidMutation.isPending,
     openContract,
+    openAttachment: openContract,
+    addAttachment: addAttachmentAsync,
+    removeAttachment: removeAttachmentAsync,
   };
 }
 

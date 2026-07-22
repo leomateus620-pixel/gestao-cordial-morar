@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type {
+  SaleAttachment,
   SaleDocumentStatus,
   SalePayment,
   SalePaymentInput,
@@ -51,6 +52,17 @@ type SaleRow = {
   updated_at: string;
   owner?: { id: string; nome: string | null; iniciais: string | null } | null;
   payments?: SalePayment[];
+  attachments?: SaleAttachment[];
+};
+
+type AttachmentRow = {
+  id: string;
+  sale_id: string;
+  file_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | string | null;
+  created_at: string;
 };
 
 type PaymentRow = {
@@ -124,6 +136,19 @@ function mapSale(r: SaleRow): SaleRecord {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     payments: r.payments ?? [],
+    attachments: r.attachments ?? [],
+  };
+}
+
+function mapAttachment(r: AttachmentRow): SaleAttachment {
+  return {
+    id: r.id,
+    saleId: r.sale_id,
+    fileName: r.file_name,
+    filePath: r.file_path,
+    mimeType: r.mime_type,
+    sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes),
+    createdAt: r.created_at,
   };
 }
 
@@ -207,6 +232,25 @@ async function attachPayments(
   return grouped;
 }
 
+async function attachAttachments(
+  supabase: any,
+  saleIds: string[],
+): Promise<Record<string, SaleAttachment[]>> {
+  if (saleIds.length === 0) return {};
+  const { data } = await supabase
+    .from("sale_documents")
+    .select("*")
+    .in("sale_id", saleIds)
+    .order("created_at", { ascending: true });
+  const grouped: Record<string, SaleAttachment[]> = {};
+  for (const row of (data ?? []) as AttachmentRow[]) {
+    const key = row.sale_id;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(mapAttachment(row));
+  }
+  return grouped;
+}
+
 // ============================ LIST ============================
 export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -231,12 +275,18 @@ export const listSales = createServerFn({ method: "GET" })
         ),
       );
     }
-    const payments = await attachPayments(
-      context.supabase,
-      rows.map((r) => r.id),
-    );
+    const ids = rows.map((r) => r.id);
+    const [payments, attachments] = await Promise.all([
+      attachPayments(context.supabase, ids),
+      attachAttachments(context.supabase, ids),
+    ]);
     return rows.map((r) =>
-      mapSale({ ...r, owner: owners[r.user_id] ?? null, payments: payments[r.id] ?? [] }),
+      mapSale({
+        ...r,
+        owner: owners[r.user_id] ?? null,
+        payments: payments[r.id] ?? [],
+        attachments: attachments[r.id] ?? [],
+      }),
     );
   });
 
@@ -254,8 +304,15 @@ export const createSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const saleRow = row as unknown as SaleRow;
     await syncPayments(context.supabase, saleRow.id, data.payments);
-    const payments = await attachPayments(context.supabase, [saleRow.id]);
-    return mapSale({ ...saleRow, payments: payments[saleRow.id] ?? [] });
+    const [payments, attachments] = await Promise.all([
+      attachPayments(context.supabase, [saleRow.id]),
+      attachAttachments(context.supabase, [saleRow.id]),
+    ]);
+    return mapSale({
+      ...saleRow,
+      payments: payments[saleRow.id] ?? [],
+      attachments: attachments[saleRow.id] ?? [],
+    });
   });
 
 // ============================ UPDATE ============================
@@ -272,8 +329,15 @@ export const updateSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const saleRow = row as unknown as SaleRow;
     await syncPayments(context.supabase, saleRow.id, data.input.payments);
-    const payments = await attachPayments(context.supabase, [saleRow.id]);
-    return mapSale({ ...saleRow, payments: payments[saleRow.id] ?? [] });
+    const [payments, attachments] = await Promise.all([
+      attachPayments(context.supabase, [saleRow.id]),
+      attachAttachments(context.supabase, [saleRow.id]),
+    ]);
+    return mapSale({
+      ...saleRow,
+      payments: payments[saleRow.id] ?? [],
+      attachments: attachments[saleRow.id] ?? [],
+    });
   });
 
 // ============================ CANCEL ============================
@@ -303,8 +367,16 @@ export const deleteSale = createServerFn({ method: "POST" })
       .maybeSingle();
     const filePath = (existing as { contract_file_path?: string | null } | null)
       ?.contract_file_path;
-    if (filePath) {
-      await context.supabase.storage.from("sale-documents").remove([filePath]);
+    const { data: docs } = await context.supabase
+      .from("sale_documents")
+      .select("file_path")
+      .eq("sale_id", data.id);
+    const paths = [
+      ...(filePath ? [filePath] : []),
+      ...(((docs ?? []) as Array<{ file_path: string }>).map((d) => d.file_path)),
+    ];
+    if (paths.length > 0) {
+      await context.supabase.storage.from("sale-documents").remove(paths);
     }
     const { error } = await context.supabase
       .from("real_estate_sales")
@@ -313,6 +385,7 @@ export const deleteSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 // ============================ KPIs ============================
 export const getSalesKpis = createServerFn({ method: "GET" })
@@ -381,3 +454,55 @@ export const setSalePaymentPaid = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return mapPayment(row as unknown as PaymentRow);
   });
+
+// ============================ ADD ATTACHMENT ============================
+export const addSaleAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      saleId: string;
+      filePath: string;
+      fileName: string;
+      mimeType?: string | null;
+      sizeBytes?: number | null;
+    }) => data,
+  )
+  .handler(async ({ data, context }): Promise<SaleAttachment> => {
+    const { data: row, error } = await context.supabase
+      .from("sale_documents")
+      .insert({
+        sale_id: data.saleId,
+        file_path: data.filePath,
+        file_name: data.fileName,
+        mime_type: data.mimeType ?? null,
+        size_bytes: data.sizeBytes ?? null,
+        uploaded_by: context.userId,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapAttachment(row as unknown as AttachmentRow);
+  });
+
+// ============================ REMOVE ATTACHMENT ============================
+export const removeSaleAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { data: existing } = await context.supabase
+      .from("sale_documents")
+      .select("file_path")
+      .eq("id", data.id)
+      .maybeSingle();
+    const filePath = (existing as { file_path?: string | null } | null)?.file_path;
+    if (filePath) {
+      await context.supabase.storage.from("sale-documents").remove([filePath]);
+    }
+    const { error } = await context.supabase
+      .from("sale_documents")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+

@@ -1,45 +1,87 @@
-## Diagnóstico
+## Problema
 
-Consultei o banco e o código do sync com Google. Dois problemas explicam por que eventos "não aparecem" na agenda de todos:
+No menu **Vendas**, ao anexar arquivos no cadastro/edição, apenas o **Contrato** fica acessível (botão "Abrir contrato" no drawer). Os demais anexos ("Documentos auxiliares" — certidões, recibos etc.) mostram apenas o **nome do arquivo**, sem opção de abrir. Investigando o código:
 
-1. **Usuários sem conta Google conectada.** O sistema só empurra evento para quem já autorizou. Hoje faltam 3:
-   - **Leonardo** (admin), **Felipe** (corretor), **Geandre** (corretor).
-   - Bruna, Ricardo, Bianca e Pablo estão conectados e os eventos deles estão marcados como `sincronizado` no banco — para essas contas o fluxo funciona.
+- `SaleForm.tsx` coleta o `supportingFile` normalmente.
+- `_app.vendas.tsx` → `handleSubmit`: quando existe `files.support`, apenas grava `supportingDocumentFileName` — **nunca chama `uploadSaleDocument` para o arquivo auxiliar**. O `File` é descartado.
+- No banco, `sales.supporting_document_file_name` guarda só o nome; não há coluna/rota de storage para esse anexo.
+- Além disso, o formulário aceita apenas **um** documento auxiliar, o que é limitante.
 
-2. **O sync só envia para o "responsável principal" (owner) do evento.** Se a Bianca cria um compromisso e coloca a Felipe como responsável, o evento tenta ir só para o Google do Felipe. Ninguém mais (admin, outros participantes) recebe cópia no próprio Google Calendar. Hoje `syncAgendaEventToGoogle` faz um único push para `owner_user_id` e ignora `agenda_event_participants`.
+## Solução
 
-Ou seja, o motor está OK — falta abranger todo mundo que participa do evento e destravar quem ainda não conectou.
+Transformar os anexos de vendas em uma lista aberta (0..N), reutilizando o mesmo bucket `sale-documents` e o mesmo padrão já usado em `rental_contract_documents`. Contrato principal continua com o campo dedicado (`contract_file_path`), mas todos os demais anexos passam a ser persistidos como registros individuais com URL assinada.
 
-## O que farei
+### Backend (migração)
 
-### 1. Sync multi-usuário (arquivo `src/lib/google-calendar/google.server.ts`)
-- Trocar `syncAgendaEventToGoogle` para enumerar todos os destinatários: `owner_user_id` + `created_by` + cada `agenda_event_participants.user_id`, deduplicados.
-- Para cada destinatário conectado, fazer create/patch no próprio calendário. Cada cópia guarda seu próprio `google_event_id` por (evento, usuário).
-- Nova tabela `agenda_event_google_syncs (event_id, user_id, google_event_id, last_synced_at, last_error)` para persistir o id retornado por usuário. Substitui a coluna atual `agenda_events.google_event_id` (que só suportava 1 destino). Manter a coluna antiga por compatibilidade (deprecada, sem uso novo).
-- Cancelamento/soft-delete: DELETE em cada cópia registrada, depois limpa a linha do sync.
-- Attendees do Google: continuar mandando os `agenda_event_guests` (e-mails externos). Adicionar também o e-mail Google de cada participante conectado, para quem quiser aceitar/recusar. Usuários sem conexão Google não viram attendees (o e-mail do profile pode não ser o mesmo do Google e geraria invites em contas erradas).
-- Status agregado em `agenda_events.google_calendar_sync_status`: `sincronizado` se pelo menos um destinatário sincronizou; `preparado` se todos falharam; `nao_sincronizado` se nenhum destinatário tem conexão.
+Criar tabela `public.sale_documents`:
+- `id`, `sale_id` (FK → `sales`, cascade delete), `file_path` (unique), `file_name`, `mime_type`, `size_bytes`, `uploaded_by`, `created_at`.
+- GRANTs para `authenticated` / `service_role`.
+- RLS: SELECT/INSERT/UPDATE/DELETE espelhando as políticas de `sales` (owner, admin, secretaria). Consultas via `EXISTS (SELECT 1 FROM sales s WHERE s.id = sale_id AND <policy da sale>)`.
+- Trigger opcional para remover objeto do storage quando a linha for deletada (usar `net.http`? — mais simples: deletar na server function, sem trigger).
 
-### 2. Backfill ao conectar (novo endpoint no `google-calendar.functions.ts`)
-- Ao completar OAuth com sucesso no callback (`api/public/google-calendar.callback.ts`), disparar um backfill: para todo evento futuro em que o novo usuário é owner/created_by/participante, chamar o sync uma vez.
-- Também expor um botão "Sincronizar meus próximos eventos" no `GoogleCalendarCard`, para quem já está conectado forçar reprocesso após a mudança.
+Manter `supporting_document_file_name` por retrocompatibilidade (leitura), mas parar de escrever nele. Fazer backfill: nenhum (nome sem path é irrecuperável — apenas surgir como "sem arquivo" no legado, pois nunca foi enviado).
 
-### 3. Comunicação para os 3 não conectados
-- No `AgendaEventCard` (ou em cima da timeline da Agenda), mostrar aviso discreto quando o usuário logado ainda não tem `google_calendar_connections`: "Conecte seu Google para receber os compromissos na sua agenda pessoal → Configurações".
-- Notificação in-app one-off para Leonardo, Felipe e Geandre pedindo para conectar (usando `notifications`).
+### Server functions (`src/lib/sales/sales.functions.ts`)
 
-### 4. Migração + grants (`supabase--migration`)
-- `agenda_event_google_syncs` com RLS: leitura só de admins/secretaria/dono da linha. Grants padrão `authenticated`/`service_role`.
-- Índice em `(event_id, user_id)` único.
+- Incluir `documents: SaleDocument[]` no `mapSaleRow` (join `sale_documents`).
+- `getSaleDocumentSignedUrl` já existe — passa a servir qualquer path (contrato ou anexo) contanto que pertença a uma venda visível.
+- Nova função `addSaleDocument({ saleId, path, fileName, mimeType, sizeBytes })` para registrar linha após upload client-side.
+- Nova função `removeSaleDocument({ documentId })` que apaga do storage + linha.
+- `deleteSale`: também remover todos os arquivos de `sale_documents` (loop `storage.remove`).
 
-### 5. Verificação
-- Reenviar 1 evento existente (ex.: "Casa Cod 1187") após deploy e conferir:
-  - Aparece no Google do Ricardo (owner) — já aparecia.
-  - Se eu adicionar Bianca como participante, aparece também no Google dela.
-  - Marca `agenda_event_google_syncs` com 2 linhas, uma para cada destino.
-- Consultar `agenda_events` para confirmar `sincronizado` agregado.
+### Frontend
 
-## Fora de escopo
-- Alterar quem é considerado owner/participante do evento (regras atuais permanecem).
-- Convidar via Google todos os corretores por e-mail do profile (evitado porque muitos e-mails de profile ≠ e-mail Google e geraria convites em contas erradas).
-- Mudar o intervalo do dispatcher de lembretes (segue como está).
+**`src/types/sale.ts`**
+- Novo tipo `SaleAttachment { id, saleId, fileName, filePath, mimeType?, sizeBytes?, createdAt }`.
+- `SaleRecord` ganha `attachments: SaleAttachment[]`.
+
+**`src/hooks/useSales.ts`**
+- Expor `addAttachment`, `removeAttachment`, `openAttachment` (reusa `signUrl`).
+
+**`src/components/vendas/SaleForm.tsx`**
+- Substituir bloco "Documento auxiliar" por lista dinâmica de anexos:
+  - Botão "Adicionar anexo" (aceita múltiplos arquivos).
+  - Cada item mostra nome + tamanho + botão remover.
+  - Uploads pendentes ficam em estado local e são enviados no submit.
+- `onSubmit` agora recebe `{ contract?: File; newAttachments: File[]; removedAttachmentIds: string[] }`.
+
+**`src/routes/_app.vendas.tsx` (`handleSubmit`)**
+- Após criar/atualizar a venda, iterar `newAttachments`: `uploadSaleDocument(file, saleId)` → `addAttachment({ saleId, path, ... })`.
+- Iterar `removedAttachmentIds` → `removeAttachment`.
+- Remover a lógica antiga de `supportingDocumentFileName`.
+
+**`src/components/vendas/SaleDetailsDrawer.tsx`**
+- Painel "Documentos" passa a listar:
+  - Contrato (comportamento atual).
+  - Lista de anexos com botão "Abrir" (chama `openContract`/`openAttachment` com o path — mesma signed URL).
+- Se não houver nenhum anexo, mostrar estado vazio.
+
+### Validação
+
+1. Login como admin: editar uma venda existente, adicionar 2 anexos + trocar contrato → salvar → reabrir drawer → clicar "Abrir" em cada anexo (contrato + auxiliares) → URL assinada abre em nova aba.
+2. Login como corretor dono da venda: mesmos passos, restrito à sua venda.
+3. Remover um anexo → confirmar que sumiu do drawer e do bucket.
+4. Excluir venda → confirmar que arquivos foram removidos do storage.
+5. Rodar `supabase--linter` após migração.
+
+## Detalhes técnicos (schema)
+
+```sql
+CREATE TABLE public.sale_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sale_id uuid NOT NULL REFERENCES public.sales(id) ON DELETE CASCADE,
+  file_path text NOT NULL UNIQUE,
+  file_name text NOT NULL,
+  mime_type text,
+  size_bytes bigint,
+  uploaded_by uuid REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.sale_documents TO authenticated;
+GRANT ALL ON public.sale_documents TO service_role;
+ALTER TABLE public.sale_documents ENABLE ROW LEVEL SECURITY;
+-- policies: EXISTS (SELECT 1 FROM sales s WHERE s.id = sale_id AND (s.owner_id = auth.uid() OR has_role(auth.uid(),'admin') OR has_role(auth.uid(),'secretaria')))
+CREATE INDEX ON public.sale_documents (sale_id);
+```
+
+Sem alteração em buckets — `sale-documents` (privado) já existe e o padrão de path `{userId}/{saleId}/{ts}-{name}` é mantido.
