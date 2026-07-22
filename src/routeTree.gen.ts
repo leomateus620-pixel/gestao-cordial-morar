@@ -44,6 +44,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
+import { Route as ApiPublicGoogleDriveCallbackRouteImport } from './routes/api/public/google-drive.callback'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -226,6 +227,12 @@ const ApiPublicHooksAgendaRemindersRoute =
     path: '/api/public/hooks/agenda-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicGoogleDriveCallbackRoute =
+  ApiPublicGoogleDriveCallbackRouteImport.update({
+    id: '/api/public/google-drive/callback',
+    path: '/api/public/google-drive/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCalendarCallbackRoute =
   ApiPublicGoogleCalendarCallbackRouteImport.update({
     id: '/api/public/google-calendar/callback',
@@ -263,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/google-drive/callback': typeof ApiPublicGoogleDriveCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
@@ -300,6 +308,7 @@ export interface FileRoutesByTo {
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/google-drive/callback': typeof ApiPublicGoogleDriveCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
@@ -339,6 +348,7 @@ export interface FileRoutesById {
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/google-drive/callback': typeof ApiPublicGoogleDriveCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/api/public/google-calendar/callback'
+    | '/api/public/google-drive/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/sale-payment-reminders'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/api/public/google-calendar/callback'
+    | '/api/public/google-drive/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/sale-payment-reminders'
@@ -453,6 +465,7 @@ export interface FileRouteTypes {
     | '/_app/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/api/public/google-calendar/callback'
+    | '/api/public/google-drive/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/sale-payment-reminders'
@@ -470,6 +483,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
+  ApiPublicGoogleDriveCallbackRoute: typeof ApiPublicGoogleDriveCallbackRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
@@ -725,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAgendaRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/google-drive/callback': {
+      id: '/api/public/google-drive/callback'
+      path: '/api/public/google-drive/callback'
+      fullPath: '/api/public/google-drive/callback'
+      preLoaderRoute: typeof ApiPublicGoogleDriveCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google-calendar/callback': {
       id: '/api/public/google-calendar/callback'
       path: '/api/public/google-calendar/callback'
@@ -826,6 +847,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
+  ApiPublicGoogleDriveCallbackRoute: ApiPublicGoogleDriveCallbackRoute,
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
