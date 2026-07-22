@@ -1294,26 +1294,17 @@ export const deleteRentalContractDocument = createServerFn({ method: "POST" })
     // Trash on Drive first (best-effort) if requested.
     if ((scope === "both" || scope === "drive") && r.drive_file_id) {
       try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: folder } = await supabaseAdmin
-          .from("rental_drive_folders")
-          .select("owner_user_id")
-          .eq("contract_id", r.contract_id)
-          .maybeSingle();
-        const f = folder as unknown as { owner_user_id: string } | null;
-        if (f) {
-          const { withAccessToken, moveToTrash, logAudit } = await import(
-            "@/lib/google-drive/drive.server"
-          );
-          await withAccessToken(f.owner_user_id, (t) => moveToTrash(t, r.drive_file_id!));
-          await logAudit({
-            contractId: r.contract_id,
-            documentId: r.id,
-            userId: context.userId,
-            action: "document_trash",
-            result: "ok",
-          });
-        }
+        const { moveToTrash, logAudit } = await import(
+          "@/lib/google-drive/drive.server"
+        );
+        await moveToTrash(r.drive_file_id);
+        await logAudit({
+          contractId: r.contract_id,
+          documentId: r.id,
+          userId: context.userId,
+          action: "document_trash",
+          result: "ok",
+        });
       } catch (e) {
         console.error("[deleteRentalContractDocument] drive trash falhou", e);
       }
