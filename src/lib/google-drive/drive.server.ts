@@ -300,7 +300,7 @@ export async function uploadFile(
     {
       method: "POST",
       headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
-      body,
+      body: body as unknown as BodyInit,
     },
   );
   if (!res.ok) throw new Error(`Drive upload ${res.status}: ${await res.text()}`);
