@@ -23,7 +23,11 @@ import {
 } from "@/components/ui/sheet";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { SaleRecord } from "@/types/sale";
+import {
+  SALE_DOCUMENT_CATEGORIES,
+  type SaleDocumentCategory,
+  type SaleRecord,
+} from "@/types/sale";
 import { SaleStatusBadge } from "./SaleStatusBadge";
 
 function formatDate(date: string) {
