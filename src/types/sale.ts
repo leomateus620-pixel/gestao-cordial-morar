@@ -49,12 +49,35 @@ export type SaleRecord = {
   createdAt: string;
   updatedAt: string;
   imobiliaria: AgencyId;
+  payments?: SalePayment[];
+};
+
+export type SalePaymentKind = "entrada" | "parcela";
+
+export type SalePayment = {
+  id: string;
+  saleId: string;
+  kind: SalePaymentKind;
+  sequence: number;
+  amount: number;
+  dueDate: string;
+  paid: boolean;
+  paidAt?: string | null;
+  notifiedAt?: string | null;
+};
+
+export type SalePaymentInput = {
+  kind: SalePaymentKind;
+  sequence?: number;
+  amount: number;
+  dueDate: string;
+  paid?: boolean;
 };
 
 export type SaleRecordInput = Omit<
   SaleRecord,
-  "id" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerInitials"
->;
+  "id" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerInitials" | "payments"
+> & { payments?: SalePaymentInput[] };
 
 export type SalesKpis = {
   totalSold: number;
