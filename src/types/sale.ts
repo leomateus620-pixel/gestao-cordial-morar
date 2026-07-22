@@ -50,6 +50,17 @@ export type SaleRecord = {
   updatedAt: string;
   imobiliaria: AgencyId;
   payments?: SalePayment[];
+  attachments?: SaleAttachment[];
+};
+
+export type SaleAttachment = {
+  id: string;
+  saleId: string;
+  fileName: string;
+  filePath: string;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  createdAt: string;
 };
 
 export type SalePaymentKind = "entrada" | "parcela";
