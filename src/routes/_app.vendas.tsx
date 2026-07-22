@@ -142,12 +142,32 @@ function Page() {
         };
       }
 
+      let savedId = id;
       if (id) {
         await updateSale({ id, input: finalInput });
         toast.success("Venda atualizada.");
       } else {
-        await createSale(finalInput);
+        const created = await createSale(finalInput);
+        savedId = (created as { id?: string } | undefined)?.id;
         toast.success("Venda registrada.");
+      }
+
+      // Persist supporting document as a real attachment so it's actually accessible.
+      if (files.support && savedId) {
+        try {
+          const path = await uploadSaleDocument(files.support, savedId);
+          await addAttachment({
+            saleId: savedId,
+            filePath: path,
+            fileName: files.support.name,
+            mimeType: files.support.type || null,
+            sizeBytes: files.support.size ?? null,
+          });
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Não foi possível anexar o documento auxiliar.",
+          );
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Não foi possível salvar a venda.";
@@ -155,6 +175,7 @@ function Page() {
       throw err;
     }
   }
+
 
   const isSaving = isCreating || isUpdating;
 
