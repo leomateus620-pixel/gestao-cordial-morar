@@ -87,6 +87,7 @@ export function useSales() {
       fileName: string;
       mimeType?: string | null;
       sizeBytes?: number | null;
+      category?: SaleAttachment["category"];
     }) => addAttachment({ data: vars }).then((r: SaleAttachment) => {
       invalidate();
       return r;
