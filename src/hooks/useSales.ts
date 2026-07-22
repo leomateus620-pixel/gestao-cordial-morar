@@ -3,16 +3,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  addSaleAttachment as addAttachmentFn,
   cancelSale as cancelFn,
   createSale as createFn,
   deleteSale as deleteFn,
   getSaleDocumentSignedUrl as signedUrlFn,
   getSalesKpis as kpisFn,
   listSales,
+  removeSaleAttachment as removeAttachmentFn,
   setSalePaymentPaid as setPaidFn,
   updateSale as updateFn,
 } from "@/lib/sales/sales.functions";
-import type { SaleRecord, SaleRecordInput, SalesKpis } from "@/types/sale";
+import type { SaleAttachment, SaleRecord, SaleRecordInput, SalesKpis } from "@/types/sale";
 
 const SALES_KEY = ["sales"] as const;
 
