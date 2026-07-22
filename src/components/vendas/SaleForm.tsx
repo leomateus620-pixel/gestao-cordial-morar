@@ -574,16 +574,38 @@ export function SaleForm({
                 <Field label="Comissão (R$)" className="sm:col-span-2">
                   <input
                     value={commissionValue}
-                    onChange={(event) => setCommissionValue(event.target.value)}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      setCommissionValue(raw);
+                      const total = parseMoney(saleValue);
+                      const val = parseMoney(raw);
+                      if (total > 0 && val > 0) {
+                        const pct = (val / total) * 100;
+                        setCommissionPercentage(pct.toFixed(2).replace(/\.?0+$/, ""));
+                      } else if (!raw) {
+                        setCommissionPercentage("");
+                      }
+                    }}
                     inputMode="decimal"
-                    placeholder="Opcional"
+                    placeholder="Ex.: 24000"
                     className={inputCls}
                   />
                 </Field>
                 <Field label="Comissão (%)" className="sm:col-span-2">
                   <input
                     value={commissionPercentage}
-                    onChange={(event) => setCommissionPercentage(event.target.value)}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      setCommissionPercentage(raw);
+                      const total = parseMoney(saleValue);
+                      const pct = parseMoney(raw);
+                      if (total > 0 && pct > 0) {
+                        const val = (total * pct) / 100;
+                        setCommissionValue(val.toFixed(2).replace(/\.?0+$/, ""));
+                      } else if (!raw) {
+                        setCommissionValue("");
+                      }
+                    }}
                     inputMode="decimal"
                     placeholder="Ex.: 5"
                     className={inputCls}
