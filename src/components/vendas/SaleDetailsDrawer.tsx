@@ -59,7 +59,11 @@ export function SaleDetailsDrawer({
   onCancel: (sale: SaleRecord) => void;
   onOpenContract?: () => void;
   onOpenAttachment?: (path: string) => void;
-  onAddAttachment?: (sale: SaleRecord, file: File) => Promise<void> | void;
+  onAddAttachment?: (
+    sale: SaleRecord,
+    file: File,
+    category: SaleDocumentCategory,
+  ) => Promise<void> | void;
   onRemoveAttachment?: (attachmentId: string) => Promise<void> | void;
   onMarkPaymentPaid?: (paymentId: string, paid: boolean) => void;
 }) {
