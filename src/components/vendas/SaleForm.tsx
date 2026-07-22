@@ -204,6 +204,31 @@ function todayValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function buildPaymentsPayload(
+  entradaAmount: string,
+  entradaDueDate: string,
+  parcelas: Array<{ id: string; amount: string; dueDate: string; paid: boolean }>,
+): SalePaymentInput[] {
+  const list: SalePaymentInput[] = [];
+  const entradaVal = parseMoney(entradaAmount);
+  if (entradaVal > 0 && entradaDueDate) {
+    list.push({ kind: "entrada", sequence: 0, amount: entradaVal, dueDate: entradaDueDate });
+  }
+  parcelas.forEach((p, idx) => {
+    const val = parseMoney(p.amount);
+    if (val > 0 && p.dueDate) {
+      list.push({
+        kind: "parcela",
+        sequence: idx,
+        amount: val,
+        dueDate: p.dueDate,
+        paid: p.paid,
+      });
+    }
+  });
+  return list;
+}
+
 export function SaleForm({
   open,
   onOpenChange,
