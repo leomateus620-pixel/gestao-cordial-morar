@@ -232,6 +232,25 @@ async function attachPayments(
   return grouped;
 }
 
+async function attachAttachments(
+  supabase: any,
+  saleIds: string[],
+): Promise<Record<string, SaleAttachment[]>> {
+  if (saleIds.length === 0) return {};
+  const { data } = await supabase
+    .from("sale_documents")
+    .select("*")
+    .in("sale_id", saleIds)
+    .order("created_at", { ascending: true });
+  const grouped: Record<string, SaleAttachment[]> = {};
+  for (const row of (data ?? []) as AttachmentRow[]) {
+    const key = row.sale_id;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(mapAttachment(row));
+  }
+  return grouped;
+}
+
 // ============================ LIST ============================
 export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
