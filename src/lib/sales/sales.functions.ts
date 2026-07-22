@@ -454,3 +454,55 @@ export const setSalePaymentPaid = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return mapPayment(row as unknown as PaymentRow);
   });
+
+// ============================ ADD ATTACHMENT ============================
+export const addSaleAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      saleId: string;
+      filePath: string;
+      fileName: string;
+      mimeType?: string | null;
+      sizeBytes?: number | null;
+    }) => data,
+  )
+  .handler(async ({ data, context }): Promise<SaleAttachment> => {
+    const { data: row, error } = await context.supabase
+      .from("sale_documents")
+      .insert({
+        sale_id: data.saleId,
+        file_path: data.filePath,
+        file_name: data.fileName,
+        mime_type: data.mimeType ?? null,
+        size_bytes: data.sizeBytes ?? null,
+        uploaded_by: context.userId,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapAttachment(row as unknown as AttachmentRow);
+  });
+
+// ============================ REMOVE ATTACHMENT ============================
+export const removeSaleAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { data: existing } = await context.supabase
+      .from("sale_documents")
+      .select("file_path")
+      .eq("id", data.id)
+      .maybeSingle();
+    const filePath = (existing as { file_path?: string | null } | null)?.file_path;
+    if (filePath) {
+      await context.supabase.storage.from("sale-documents").remove([filePath]);
+    }
+    const { error } = await context.supabase
+      .from("sale_documents")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
