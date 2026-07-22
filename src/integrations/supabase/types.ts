@@ -1650,6 +1650,56 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          kind: string
+          notified_at: string | null
+          paid: boolean
+          paid_at: string | null
+          sale_id: string
+          sequence: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          kind: string
+          notified_at?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          sale_id: string
+          sequence?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          kind?: string
+          notified_at?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          sale_id?: string
+          sequence?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_payments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "real_estate_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       satisfaction_responses: {
         Row: {
           comentario: string | null
