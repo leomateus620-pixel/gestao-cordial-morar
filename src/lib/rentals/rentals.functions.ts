@@ -962,6 +962,11 @@ type DocRow = {
   size_bytes: number | null;
   category: string | null;
   created_at: string;
+  drive_file_id?: string | null;
+  drive_web_view_url?: string | null;
+  drive_sync_status?: string | null;
+  drive_last_error?: string | null;
+  drive_last_synced_at?: string | null;
 };
 
 type RentalDocCategory =
