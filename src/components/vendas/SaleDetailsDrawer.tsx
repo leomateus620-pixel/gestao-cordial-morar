@@ -42,6 +42,9 @@ export function SaleDetailsDrawer({
   onReplaceContract,
   onCancel,
   onOpenContract,
+  onOpenAttachment,
+  onAddAttachment,
+  onRemoveAttachment,
   onMarkPaymentPaid,
 }: {
   sale: SaleRecord | null;
@@ -51,6 +54,9 @@ export function SaleDetailsDrawer({
   onReplaceContract: (sale: SaleRecord) => void;
   onCancel: (sale: SaleRecord) => void;
   onOpenContract?: () => void;
+  onOpenAttachment?: (path: string) => void;
+  onAddAttachment?: (sale: SaleRecord, file: File) => Promise<void> | void;
+  onRemoveAttachment?: (attachmentId: string) => Promise<void> | void;
   onMarkPaymentPaid?: (paymentId: string, paid: boolean) => void;
 }) {
   return (
