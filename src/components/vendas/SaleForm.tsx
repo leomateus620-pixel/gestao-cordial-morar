@@ -461,6 +461,7 @@ export function SaleForm({
       supportingDocumentFileName: supportingFile?.name,
       documentStatus: saleStatus === "cancelada" ? "cancelado" : documentStatus,
       notes: notes.trim() || undefined,
+      payments: buildPaymentsPayload(entradaAmount, entradaDueDate, parcelas),
     };
 
     try {
