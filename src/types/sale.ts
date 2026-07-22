@@ -53,6 +53,39 @@ export type SaleRecord = {
   attachments?: SaleAttachment[];
 };
 
+export type SaleDocumentCategory =
+  | "contrato_venda"
+  | "contrato_corretagem"
+  | "checklist_venda"
+  | "outro";
+
+export const SALE_DOCUMENT_CATEGORIES: {
+  id: SaleDocumentCategory;
+  label: string;
+  description: string;
+}[] = [
+  {
+    id: "contrato_venda",
+    label: "Contrato de venda",
+    description: "Instrumento particular de compra e venda.",
+  },
+  {
+    id: "contrato_corretagem",
+    label: "Contrato de corretagem",
+    description: "Contrato de intermediação imobiliária.",
+  },
+  {
+    id: "checklist_venda",
+    label: "Check-list venda",
+    description: "Roteiro de conferência do processo.",
+  },
+  {
+    id: "outro",
+    label: "Outros",
+    description: "Documentos complementares.",
+  },
+];
+
 export type SaleAttachment = {
   id: string;
   saleId: string;
@@ -60,6 +93,7 @@ export type SaleAttachment = {
   filePath: string;
   mimeType?: string | null;
   sizeBytes?: number | null;
+  category: SaleDocumentCategory;
   createdAt: string;
 };
 
