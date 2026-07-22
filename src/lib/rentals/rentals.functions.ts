@@ -1163,6 +1163,104 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       throw new Error(insErr.message);
     }
     const r = inserted as unknown as DocRow;
+
+    // Best-effort Google Drive sync if enabled for this contract.
+    let driveMeta: {
+      driveFileId: string | null;
+      driveUrl: string | null;
+      driveMimeType: string | null;
+      driveSyncStatus: string;
+      driveLastError: string | null;
+      driveLastSyncedAt: string | null;
+    } = {
+      driveFileId: null,
+      driveUrl: null,
+      driveMimeType: null,
+      driveSyncStatus: "not_enabled",
+      driveLastError: null,
+      driveLastSyncedAt: null,
+    };
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: folder } = await supabaseAdmin
+        .from("rental_drive_folders")
+        .select("folder_id,owner_user_id,sync_enabled")
+        .eq("contract_id", data.contractId)
+        .maybeSingle();
+      const f = folder as unknown as {
+        folder_id: string;
+        owner_user_id: string;
+        sync_enabled: boolean;
+      } | null;
+      if (f?.sync_enabled) {
+        const { withAccessToken, uploadFile, logAudit } = await import(
+          "@/lib/google-drive/drive.server"
+        );
+        const { data: fileBlob, error: dlErr } = await supabaseAdmin.storage
+          .from(DOCS_BUCKET)
+          .download(data.filePath);
+        if (dlErr || !fileBlob) throw new Error(dlErr?.message || "Falha ao ler storage.");
+        const bytes = new Uint8Array(await fileBlob.arrayBuffer());
+        const uploaded = await withAccessToken(f.owner_user_id, (t) =>
+          uploadFile(t, {
+            folderId: f.folder_id,
+            name: safeName,
+            mimeType: mime,
+            bytes,
+          }),
+        );
+        driveMeta = {
+          driveFileId: uploaded.id,
+          driveUrl: uploaded.webViewLink,
+          driveMimeType: uploaded.mimeType,
+          driveSyncStatus: "synced",
+          driveLastError: null,
+          driveLastSyncedAt: new Date().toISOString(),
+        };
+        await supabaseAdmin
+          .from("rental_contract_documents")
+          .update({
+            drive_file_id: uploaded.id,
+            drive_web_view_url: uploaded.webViewLink,
+            drive_mime_type: uploaded.mimeType,
+            drive_sync_status: "synced",
+            drive_last_synced_at: driveMeta.driveLastSyncedAt,
+            drive_last_error: null,
+          })
+          .eq("id", r.id);
+        await logAudit({
+          contractId: data.contractId,
+          documentId: r.id,
+          userId: context.userId,
+          action: "document_upload",
+          result: "ok",
+          destination: uploaded.id,
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      driveMeta = {
+        driveFileId: null,
+        driveUrl: null,
+        driveMimeType: null,
+        driveSyncStatus: "failed",
+        driveLastError: msg.slice(0, 500),
+        driveLastSyncedAt: null,
+      };
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("rental_contract_documents")
+          .update({
+            drive_sync_status: "failed",
+            drive_last_error: driveMeta.driveLastError,
+          })
+          .eq("id", r.id);
+      } catch (err) {
+        console.error("[registerRentalContractDocument] update drive status fail", err);
+      }
+    }
+
     return {
       id: r.id,
       contractId: r.contract_id,
@@ -1173,6 +1271,7 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       category: normalizeRentalCategory(r.category),
       url: await signDoc(supabase, r.file_path),
       createdAt: r.created_at,
+      ...driveMeta,
     };
   });
 
