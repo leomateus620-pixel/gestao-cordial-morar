@@ -367,8 +367,16 @@ export const deleteSale = createServerFn({ method: "POST" })
       .maybeSingle();
     const filePath = (existing as { contract_file_path?: string | null } | null)
       ?.contract_file_path;
-    if (filePath) {
-      await context.supabase.storage.from("sale-documents").remove([filePath]);
+    const { data: docs } = await context.supabase
+      .from("sale_documents")
+      .select("file_path")
+      .eq("sale_id", data.id);
+    const paths = [
+      ...(filePath ? [filePath] : []),
+      ...(((docs ?? []) as Array<{ file_path: string }>).map((d) => d.file_path)),
+    ];
+    if (paths.length > 0) {
+      await context.supabase.storage.from("sale-documents").remove(paths);
     }
     const { error } = await context.supabase
       .from("real_estate_sales")
@@ -377,6 +385,7 @@ export const deleteSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 // ============================ KPIs ============================
 export const getSalesKpis = createServerFn({ method: "GET" })
