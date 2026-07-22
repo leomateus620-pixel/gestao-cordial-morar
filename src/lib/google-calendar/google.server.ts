@@ -194,6 +194,7 @@ type EventRow = {
   google_event_id: string | null;
   agenda_event_reminders: ReminderRow[];
   agenda_event_guests: GuestRow[];
+  agenda_event_participants?: { user_id: string }[];
 };
 
 const TIMEZONE = "America/Sao_Paulo";
@@ -211,7 +212,7 @@ const TIPO_LABEL: Record<string, string> = {
   outro: "Outro",
 };
 
-function buildEventPayload(ev: EventRow) {
+function buildEventPayload(ev: EventRow, extraAttendeeEmails: string[] = []) {
   const startISO = ev.inicio;
   const endISO =
     ev.fim ??
@@ -240,12 +241,22 @@ function buildEventPayload(ev: EventRow) {
       minutes: Math.max(0, Math.min(40320, r.antecedencia_min)),
     }));
 
-  const attendees = (ev.agenda_event_guests ?? [])
-    .filter((g) => g.email)
-    .map((g) => ({
-      email: g.email,
-      ...(g.nome ? { displayName: g.nome } : {}),
-    }));
+  const attendeeEmails = new Set<string>();
+  const attendees: Array<{ email: string; displayName?: string }> = [];
+  for (const g of ev.agenda_event_guests ?? []) {
+    if (!g.email) continue;
+    const key = g.email.toLowerCase();
+    if (attendeeEmails.has(key)) continue;
+    attendeeEmails.add(key);
+    attendees.push({ email: g.email, ...(g.nome ? { displayName: g.nome } : {}) });
+  }
+  for (const email of extraAttendeeEmails) {
+    if (!email) continue;
+    const key = email.toLowerCase();
+    if (attendeeEmails.has(key)) continue;
+    attendeeEmails.add(key);
+    attendees.push({ email });
+  }
 
   const base: Record<string, unknown> = {
     summary: ev.titulo,
@@ -293,93 +304,72 @@ async function callCalendar(
   return res;
 }
 
-/**
- * Push (idempotente) do evento para a agenda Google do RESPONSÁVEL.
- * Sem conexão Google → não-op silencioso.
- */
-export async function syncAgendaEventToGoogle(eventId: string): Promise<{
-  status: "sincronizado" | "nao_sincronizado" | "preparado";
-  error?: string;
-}> {
-  const { data: ev, error } = await supabaseAdmin
+async function loadEvent(eventId: string): Promise<EventRow | null> {
+  const { data, error } = await supabaseAdmin
     .from("agenda_events")
     .select(
-      "id,titulo,descricao,observacoes,tipo,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,responsavel_nome,criado_por_nome,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo),agenda_event_guests(email,nome,response_status)",
+      "id,titulo,descricao,observacoes,tipo,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,responsavel_nome,criado_por_nome,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo),agenda_event_guests(email,nome,response_status),agenda_event_participants(user_id)",
     )
     .eq("id", eventId)
     .maybeSingle();
+  if (error || !data) return null;
+  return data as unknown as EventRow;
+}
 
-  if (error || !ev) {
-    return { status: "preparado", error: error?.message ?? "Evento não encontrado" };
+function collectRecipientIds(ev: EventRow): string[] {
+  const set = new Set<string>();
+  if (ev.owner_user_id) set.add(ev.owner_user_id);
+  if (ev.created_by) set.add(ev.created_by);
+  for (const p of ev.agenda_event_participants ?? []) {
+    if (p.user_id) set.add(p.user_id);
   }
-  const event = ev as unknown as EventRow;
-  const ownerId = event.owner_user_id ?? event.created_by;
+  return [...set];
+}
 
-  const { data: conn } = await supabaseAdmin
-    .from("google_calendar_connections")
-    .select("user_id,google_email,access_token,refresh_token,expires_at,calendar_id,scope")
-    .eq("user_id", ownerId)
-    .maybeSingle();
+type SyncRow = { user_id: string; google_event_id: string; calendar_id: string };
 
-  if (!conn) {
-    await supabaseAdmin
-      .from("agenda_events")
-      .update({ google_calendar_sync_status: "nao_sincronizado" })
-      .eq("id", eventId);
-    return { status: "nao_sincronizado" };
-  }
-
+async function syncSingleRecipient(
+  ev: EventRow,
+  conn: ConnectionRow,
+  existing: SyncRow | null,
+  extraAttendeeEmails: string[],
+): Promise<{ ok: true; googleEventId: string | null } | { ok: false; error: string }> {
   try {
-    const accessToken = await getValidAccessToken(conn as ConnectionRow);
-    const calendarId = (conn as ConnectionRow).calendar_id || "primary";
-
-    const hasGuests = (event.agenda_event_guests ?? []).length > 0;
+    const accessToken = await getValidAccessToken(conn);
+    const calendarId = conn.calendar_id || "primary";
+    const hasGuests =
+      (ev.agenda_event_guests ?? []).length > 0 || extraAttendeeEmails.length > 0;
     const sendUpdates = hasGuests ? "all" : "none";
 
-    // Cancelado/soft-deleted: deletar do Google se já existir.
-    if (event.status === "cancelado" || event.deleted_at) {
-      if (event.google_event_id) {
+    if (ev.status === "cancelado" || ev.deleted_at) {
+      if (existing?.google_event_id) {
         const res = await callCalendar(
           accessToken,
-          calendarId,
-          `/events/${encodeURIComponent(event.google_event_id)}?sendUpdates=${sendUpdates}`,
+          existing.calendar_id || calendarId,
+          `/events/${encodeURIComponent(existing.google_event_id)}?sendUpdates=${sendUpdates}`,
           { method: "DELETE" },
         );
         if (!res.ok && res.status !== 404 && res.status !== 410) {
-          throw new Error(`DELETE falhou: ${res.status} ${await res.text()}`);
+          return { ok: false, error: `DELETE ${res.status}: ${await res.text()}` };
         }
-        await supabaseAdmin
-          .from("agenda_events")
-          .update({
-            google_event_id: null,
-            google_calendar_sync_status: "sincronizado",
-            google_synced_at: new Date().toISOString(),
-            google_calendar_sync_error: null,
-          })
-          .eq("id", eventId);
       }
-      return { status: "sincronizado" };
+      return { ok: true, googleEventId: null };
     }
 
-    const payload = buildEventPayload(event);
+    const payload = buildEventPayload(ev, extraAttendeeEmails);
+    let googleEventId = existing?.google_event_id ?? null;
 
-    let googleEventId = event.google_event_id;
-    type CreatedJson = { id: string; attendees?: Array<{ email: string; responseStatus?: string }> };
-    let createdJson: CreatedJson | null = null;
     if (googleEventId) {
       const res = await callCalendar(
         accessToken,
-        calendarId,
+        existing?.calendar_id || calendarId,
         `/events/${encodeURIComponent(googleEventId)}?sendUpdates=${sendUpdates}`,
         { method: "PATCH", body: JSON.stringify(payload) },
       );
       if (res.status === 404 || res.status === 410) {
-        // recriar
         googleEventId = null;
       } else if (!res.ok) {
-        throw new Error(`PATCH falhou: ${res.status} ${await res.text()}`);
-      } else {
-        createdJson = (await res.json()) as CreatedJson;
+        return { ok: false, error: `PATCH ${res.status}: ${await res.text()}` };
       }
     }
     if (!googleEventId) {
@@ -387,64 +377,166 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
         method: "POST",
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`POST falhou: ${res.status} ${await res.text()}`);
-      createdJson = (await res.json()) as CreatedJson;
-      googleEventId = createdJson!.id;
+      if (!res.ok) return { ok: false, error: `POST ${res.status}: ${await res.text()}` };
+      const json = (await res.json()) as { id: string };
+      googleEventId = json.id;
     }
+    return { ok: true, googleEventId };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
 
-    // Atualiza response_status dos convidados conforme retorno do Google (best-effort).
-    if (createdJson?.attendees?.length) {
-      for (const att of createdJson.attendees) {
-        if (!att.email) continue;
+/**
+ * Sincroniza o evento para o Google Calendar de TODOS os envolvidos:
+ * owner_user_id, created_by e cada participante (agenda_event_participants).
+ * Cada destinatário conectado recebe sua própria cópia, rastreada em
+ * agenda_event_google_syncs (event_id, user_id → google_event_id).
+ */
+export async function syncAgendaEventToGoogle(eventId: string): Promise<{
+  status: "sincronizado" | "nao_sincronizado" | "preparado";
+  error?: string;
+}> {
+  const event = await loadEvent(eventId);
+  if (!event) return { status: "preparado", error: "Evento não encontrado" };
+
+  const recipientIds = collectRecipientIds(event);
+  if (recipientIds.length === 0) {
+    await supabaseAdmin
+      .from("agenda_events")
+      .update({ google_calendar_sync_status: "nao_sincronizado" })
+      .eq("id", eventId);
+    return { status: "nao_sincronizado" };
+  }
+
+  const { data: conns } = await supabaseAdmin
+    .from("google_calendar_connections")
+    .select("user_id,google_email,access_token,refresh_token,expires_at,calendar_id,scope")
+    .in("user_id", recipientIds);
+
+  const connByUser = new Map<string, ConnectionRow>();
+  for (const c of (conns ?? []) as ConnectionRow[]) connByUser.set(c.user_id, c);
+
+  const extraAttendeeEmails = [...connByUser.values()]
+    .map((c) => c.google_email)
+    .filter((e): e is string => !!e);
+
+  const { data: existingRows } = await supabaseAdmin
+    .from("agenda_event_google_syncs")
+    .select("user_id,google_event_id,calendar_id")
+    .eq("event_id", eventId);
+  const existingByUser = new Map<string, SyncRow>();
+  for (const r of (existingRows ?? []) as SyncRow[]) existingByUser.set(r.user_id, r);
+
+  if (connByUser.size === 0) {
+    await supabaseAdmin
+      .from("agenda_events")
+      .update({ google_calendar_sync_status: "nao_sincronizado" })
+      .eq("id", eventId);
+    return { status: "nao_sincronizado" };
+  }
+
+  let anySuccess = false;
+  const errors: string[] = [];
+
+  for (const userId of recipientIds) {
+    const conn = connByUser.get(userId);
+    const existing = existingByUser.get(userId) ?? null;
+    if (!conn) continue;
+
+    const otherEmails = extraAttendeeEmails.filter(
+      (e) => e.toLowerCase() !== (conn.google_email ?? "").toLowerCase(),
+    );
+
+    const result = await syncSingleRecipient(event, conn, existing, otherEmails);
+
+    if (result.ok) {
+      if (result.googleEventId) {
+        await supabaseAdmin.from("agenda_event_google_syncs").upsert(
+          {
+            event_id: eventId,
+            user_id: userId,
+            google_event_id: result.googleEventId,
+            calendar_id: conn.calendar_id || "primary",
+            last_synced_at: new Date().toISOString(),
+            last_error: null,
+          },
+          { onConflict: "event_id,user_id" },
+        );
+      } else if (existing) {
         await supabaseAdmin
-          .from("agenda_event_guests")
-          .update({ response_status: att.responseStatus ?? "needsAction" })
+          .from("agenda_event_google_syncs")
+          .delete()
           .eq("event_id", eventId)
-          .eq("email", att.email.toLowerCase());
+          .eq("user_id", userId);
+      }
+      anySuccess = true;
+    } else {
+      errors.push(`${userId.slice(0, 8)}: ${result.error}`);
+      const tokenLooksInvalid = /invalid_grant|unauthorized|401/i.test(result.error);
+      if (tokenLooksInvalid) {
+        await supabaseAdmin
+          .from("google_calendar_connections")
+          .update({ last_error: "Token inválido. Reconecte sua conta Google." })
+          .eq("user_id", userId);
+        await notify(
+          userId,
+          "Reconecte sua conta Google",
+          "A conexão com o Google Agenda expirou. Vá em Configurações para reconectar.",
+        );
       }
     }
-
-    await supabaseAdmin
-      .from("agenda_events")
-      .update({
-        google_event_id: googleEventId,
-        google_calendar_sync_status: "sincronizado",
-        google_synced_at: new Date().toISOString(),
-        google_calendar_sync_error: null,
-      })
-      .eq("id", eventId);
-
-    return { status: "sincronizado" };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    const tokenLooksInvalid = /invalid_grant|unauthorized|401/i.test(msg);
-
-    await supabaseAdmin
-      .from("agenda_events")
-      .update({
-        google_calendar_sync_status: "preparado",
-        google_calendar_sync_error: msg.slice(0, 500),
-      })
-      .eq("id", eventId);
-
-    if (tokenLooksInvalid) {
-      await supabaseAdmin
-        .from("google_calendar_connections")
-        .update({ last_error: "Token inválido. Reconecte sua conta Google." })
-        .eq("user_id", ownerId);
-      await notify(
-        ownerId,
-        "Reconecte sua conta Google",
-        "A conexão com o Google Agenda expirou. Vá em Configurações para reconectar.",
-      );
-    } else {
-      await notify(
-        ownerId,
-        "Falha ao sincronizar com o Google Agenda",
-        `Compromisso "${event.titulo}" não pôde ser sincronizado: ${msg.slice(0, 200)}`,
-      );
-    }
-
-    return { status: "preparado", error: msg };
   }
+
+  const finalStatus: "sincronizado" | "preparado" = anySuccess ? "sincronizado" : "preparado";
+  await supabaseAdmin
+    .from("agenda_events")
+    .update({
+      google_calendar_sync_status: finalStatus,
+      google_synced_at: anySuccess ? new Date().toISOString() : null,
+      google_calendar_sync_error: errors.length ? errors.join(" | ").slice(0, 500) : null,
+    })
+    .eq("id", eventId);
+
+  return anySuccess
+    ? { status: "sincronizado" }
+    : { status: "preparado", error: errors.join(" | ") };
+}
+
+/**
+ * Reprocessa todos os eventos futuros em que o usuário é owner/created_by/participante.
+ * Chamado após conectar o Google, para popular a agenda pessoal.
+ */
+export async function backfillGoogleSyncForUser(userId: string): Promise<{ processed: number }> {
+  const nowIso = new Date().toISOString();
+
+  const [{ data: owned }, { data: parts }] = await Promise.all([
+    supabaseAdmin
+      .from("agenda_events")
+      .select("id")
+      .is("deleted_at", null)
+      .gte("inicio", nowIso)
+      .or(`owner_user_id.eq.${userId},created_by.eq.${userId}`),
+    supabaseAdmin
+      .from("agenda_event_participants")
+      .select("event_id, agenda_events!inner(id,inicio,deleted_at)")
+      .eq("user_id", userId)
+      .is("agenda_events.deleted_at", null)
+      .gte("agenda_events.inicio", nowIso),
+  ]);
+
+  const ids = new Set<string>();
+  for (const r of (owned ?? []) as { id: string }[]) ids.add(r.id);
+  for (const r of (parts ?? []) as { event_id: string }[]) ids.add(r.event_id);
+
+  let processed = 0;
+  for (const id of ids) {
+    try {
+      await syncAgendaEventToGoogle(id);
+      processed += 1;
+    } catch (e) {
+      console.error("[backfillGoogleSyncForUser] evento", id, e);
+    }
+  }
+  return { processed };
 }
