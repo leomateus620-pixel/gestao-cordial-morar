@@ -987,6 +987,42 @@ export type Database = {
         }
         Relationships: []
       }
+      google_drive_connections: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          google_email: string
+          last_error: string | null
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          google_email: string
+          last_error?: string | null
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          google_email?: string
+          last_error?: string | null
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       marketing_campaigns: {
         Row: {
           canal: string
@@ -1279,33 +1315,54 @@ export type Database = {
           category: string
           contract_id: string
           created_at: string
+          drive_file_id: string | null
+          drive_last_error: string | null
+          drive_last_synced_at: string | null
+          drive_mime_type: string | null
+          drive_sync_status: string
+          drive_web_view_url: string | null
           file_name: string
           file_path: string
           id: string
           mime_type: string | null
           size_bytes: number | null
+          updated_by: string | null
           uploaded_by: string | null
         }
         Insert: {
           category?: string
           contract_id: string
           created_at?: string
+          drive_file_id?: string | null
+          drive_last_error?: string | null
+          drive_last_synced_at?: string | null
+          drive_mime_type?: string | null
+          drive_sync_status?: string
+          drive_web_view_url?: string | null
           file_name: string
           file_path: string
           id?: string
           mime_type?: string | null
           size_bytes?: number | null
+          updated_by?: string | null
           uploaded_by?: string | null
         }
         Update: {
           category?: string
           contract_id?: string
           created_at?: string
+          drive_file_id?: string | null
+          drive_last_error?: string | null
+          drive_last_synced_at?: string | null
+          drive_mime_type?: string | null
+          drive_sync_status?: string
+          drive_web_view_url?: string | null
           file_name?: string
           file_path?: string
           id?: string
           mime_type?: string | null
           size_bytes?: number | null
+          updated_by?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -1516,6 +1573,110 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "rental_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_drive_audit_log: {
+        Row: {
+          action: string
+          contract_id: string | null
+          created_at: string
+          destination: string | null
+          document_id: string | null
+          error: string | null
+          id: string
+          result: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          contract_id?: string | null
+          created_at?: string
+          destination?: string | null
+          document_id?: string | null
+          error?: string | null
+          id?: string
+          result: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          contract_id?: string | null
+          created_at?: string
+          destination?: string | null
+          document_id?: string | null
+          error?: string | null
+          id?: string
+          result?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_drive_audit_log_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_drive_audit_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contract_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_drive_folders: {
+        Row: {
+          contract_id: string
+          created_at: string
+          folder_id: string
+          folder_name: string
+          folder_url: string
+          google_email: string
+          last_error: string | null
+          last_synced_at: string | null
+          owner_user_id: string
+          sync_enabled: boolean
+          sync_status: string
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          folder_id: string
+          folder_name: string
+          folder_url: string
+          google_email: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          owner_user_id: string
+          sync_enabled?: boolean
+          sync_status?: string
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          folder_id?: string
+          folder_name?: string
+          folder_url?: string
+          google_email?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          owner_user_id?: string
+          sync_enabled?: boolean
+          sync_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_drive_folders_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: true
+            referencedRelation: "rental_contracts"
             referencedColumns: ["id"]
           },
         ]
