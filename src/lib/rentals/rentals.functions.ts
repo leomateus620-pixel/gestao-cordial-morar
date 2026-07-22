@@ -1277,23 +1277,70 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
 
 export const deleteRentalContractDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => d)
+  .inputValidator((d: { id: string; scope?: "both" | "cloud" | "drive" }) => d)
   .handler(async ({ data, context }) => {
+    const scope = data.scope ?? "both";
     const { data: row, error } = await context.supabase
       .from("rental_contract_documents")
-      .select("file_path")
+      .select("id,contract_id,file_path,drive_file_id")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Documento não encontrado.");
-    const path = (row as unknown as { file_path: string }).file_path;
+    const r = row as unknown as {
+      id: string;
+      contract_id: string;
+      file_path: string;
+      drive_file_id: string | null;
+    };
+
+    // Trash on Drive first (best-effort) if requested.
+    if ((scope === "both" || scope === "drive") && r.drive_file_id) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: folder } = await supabaseAdmin
+          .from("rental_drive_folders")
+          .select("owner_user_id")
+          .eq("contract_id", r.contract_id)
+          .maybeSingle();
+        const f = folder as unknown as { owner_user_id: string } | null;
+        if (f) {
+          const { withAccessToken, moveToTrash, logAudit } = await import(
+            "@/lib/google-drive/drive.server"
+          );
+          await withAccessToken(f.owner_user_id, (t) => moveToTrash(t, r.drive_file_id!));
+          await logAudit({
+            contractId: r.contract_id,
+            documentId: r.id,
+            userId: context.userId,
+            action: "document_trash",
+            result: "ok",
+          });
+        }
+      } catch (e) {
+        console.error("[deleteRentalContractDocument] drive trash falhou", e);
+      }
+    }
+
+    if (scope === "drive") {
+      // Keep cloud copy; just clear drive metadata.
+      await context.supabase
+        .from("rental_contract_documents")
+        .update({
+          drive_file_id: null,
+          drive_web_view_url: null,
+          drive_sync_status: "cloud_only",
+        } as never)
+        .eq("id", r.id);
+      return { ok: true };
+    }
 
     const { error: delErr } = await context.supabase
       .from("rental_contract_documents")
       .delete()
-      .eq("id", data.id);
+      .eq("id", r.id);
     if (delErr) throw new Error(delErr.message);
-    await context.supabase.storage.from(DOCS_BUCKET).remove([path]);
+    await context.supabase.storage.from(DOCS_BUCKET).remove([r.file_path]);
     return { ok: true };
   });
 
