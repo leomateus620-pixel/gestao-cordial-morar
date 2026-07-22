@@ -332,7 +332,7 @@ export async function replaceFileContent(
     {
       method: "PATCH",
       headers: { "Content-Type": args.mimeType },
-      body: args.bytes,
+      body: args.bytes as unknown as BodyInit,
     },
   );
   if (!res.ok) throw new Error(`Drive replace ${res.status}: ${await res.text()}`);
