@@ -304,8 +304,15 @@ export const createSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const saleRow = row as unknown as SaleRow;
     await syncPayments(context.supabase, saleRow.id, data.payments);
-    const payments = await attachPayments(context.supabase, [saleRow.id]);
-    return mapSale({ ...saleRow, payments: payments[saleRow.id] ?? [] });
+    const [payments, attachments] = await Promise.all([
+      attachPayments(context.supabase, [saleRow.id]),
+      attachAttachments(context.supabase, [saleRow.id]),
+    ]);
+    return mapSale({
+      ...saleRow,
+      payments: payments[saleRow.id] ?? [],
+      attachments: attachments[saleRow.id] ?? [],
+    });
   });
 
 // ============================ UPDATE ============================
