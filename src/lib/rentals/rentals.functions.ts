@@ -960,8 +960,26 @@ type DocRow = {
   file_name: string;
   mime_type: string | null;
   size_bytes: number | null;
+  category: string | null;
   created_at: string;
 };
+
+type RentalDocCategory =
+  | "contrato_aluguel"
+  | "termo_vistoria"
+  | "checklist_aluguel"
+  | "outro";
+
+const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
+  "contrato_aluguel",
+  "termo_vistoria",
+  "checklist_aluguel",
+  "outro",
+]);
+
+function normalizeRentalCategory(v: string | null | undefined): RentalDocCategory {
+  return v && RENTAL_DOC_CATS.has(v as RentalDocCategory) ? (v as RentalDocCategory) : "outro";
+}
 
 async function signDoc(
   supabase: import("@supabase/supabase-js").SupabaseClient,
@@ -977,7 +995,7 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("rental_contract_documents")
-      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,created_at")
+      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
       .eq("contract_id", data.contractId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -990,6 +1008,7 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
         filePath: r.file_path,
         mimeType: r.mime_type,
         sizeBytes: r.size_bytes,
+        category: normalizeRentalCategory(r.category),
         url: await signDoc(context.supabase, r.file_path),
         createdAt: r.created_at,
       })),
