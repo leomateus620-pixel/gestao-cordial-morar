@@ -139,11 +139,13 @@ export function normalizeAtendimento(
     numberValue(raw.orcamentoMax ?? raw.maxBudget) ?? rangeValue(raw.faixaValor, "maximo");
   const rawHistory = Array.isArray(raw.historico) ? raw.historico : [];
 
+  const statusNorm = status;
   return {
     id,
     clienteId: optionalText(stringValue(raw.clienteId)),
     clienteNome,
     telefone,
+    pipelineStage: (raw.pipelineStage as import("@/types/atendimento").PipelineStage | undefined) ?? statusToPipelineStage(statusNorm),
     email: optionalText(stringValue(raw.email ?? cliente?.email)),
     contatoPreferencial: normalizeContato(
       raw.contatoPreferencial ??

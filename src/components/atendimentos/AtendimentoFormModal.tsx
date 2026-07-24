@@ -235,6 +235,7 @@ export function AtendimentoFormModal({
       imovelDescricao: optional(form.imovelDescricao) ?? selectedProperty?.titulo,
       prioridade: form.prioridade,
       status: form.status,
+      pipelineStage: (await import("@/types/atendimento")).statusToPipelineStage(form.status),
       proximoRetorno: buildProximoRetornoIso(form.proximoRetornoData, form.proximoRetornoHora),
       proximoPasso: form.proximoPasso || undefined,
       observacoes: optional(form.observacoes),
