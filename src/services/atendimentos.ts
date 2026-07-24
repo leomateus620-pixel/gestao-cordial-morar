@@ -5,6 +5,7 @@ import {
   atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
   atendimentoTipoImovelLabel,
+  statusToPipelineStage,
   type Atendimento,
   type AtendimentoCreateInput,
   type AtendimentoFinalidade,
@@ -13,6 +14,7 @@ import {
   type DormitoriosAtendimento,
   type ImobiliariaAtendimento,
   type OrigemLeadAtendimento,
+  type PipelineStage,
   type PrioridadeAtendimento,
   type ProximoPassoAtendimento,
   type TipoImovelInteresse,
@@ -139,11 +141,13 @@ export function normalizeAtendimento(
     numberValue(raw.orcamentoMax ?? raw.maxBudget) ?? rangeValue(raw.faixaValor, "maximo");
   const rawHistory = Array.isArray(raw.historico) ? raw.historico : [];
 
+  const statusNorm = status;
   return {
     id,
     clienteId: optionalText(stringValue(raw.clienteId)),
     clienteNome,
     telefone,
+    pipelineStage: (raw.pipelineStage as PipelineStage | undefined) ?? statusToPipelineStage(statusNorm),
     email: optionalText(stringValue(raw.email ?? cliente?.email)),
     contatoPreferencial: normalizeContato(
       raw.contatoPreferencial ??

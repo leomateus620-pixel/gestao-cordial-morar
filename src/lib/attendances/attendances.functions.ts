@@ -9,10 +9,12 @@ import type {
   DormitoriosAtendimento,
   ImobiliariaAtendimento,
   OrigemLeadAtendimento,
+  PipelineStage,
   PrioridadeAtendimento,
   ProximoPassoAtendimento,
   TipoImovelInteresse,
 } from "@/types/atendimento";
+import { statusToPipelineStage } from "@/types/atendimento";
 
 type DbRow = {
   id: string;
@@ -37,6 +39,7 @@ type DbRow = {
   corretor_nome: string | null;
   prioridade: string;
   status: string;
+  pipeline_stage: string | null;
   proximo_retorno: string | null;
   proximo_passo: string | null;
   observacoes: string | null;
@@ -84,6 +87,7 @@ function rowToAtendimento(row: DbRow): Atendimento {
     imovelDescricao: orUndef(row.imovel_descricao) ?? undefined,
     prioridade: row.prioridade as PrioridadeAtendimento,
     status: row.status as AtendimentoStatus,
+    pipelineStage: (row.pipeline_stage as PipelineStage | null) ?? statusToPipelineStage(row.status as AtendimentoStatus),
     proximoRetorno: orUndef(row.proximo_retorno) ?? undefined,
     proximoPasso: (orUndef(row.proximo_passo) as ProximoPassoAtendimento | undefined) ?? undefined,
     observacoes: orUndef(row.observacoes) ?? undefined,
@@ -142,6 +146,7 @@ function inputToPayload(input: AtendimentoCreateInput, userId: string) {
       input.corretorId && input.corretorId !== "a_definir" ? orNull(input.corretorNome) : null,
     prioridade: input.prioridade,
     status: input.status,
+    pipeline_stage: input.pipelineStage ?? statusToPipelineStage(input.status),
     proximo_retorno: input.proximoRetorno
       ? new Date(input.proximoRetorno).toISOString()
       : null,
@@ -209,6 +214,7 @@ type UpdateInput = {
   id: string;
   patch: Partial<{
     status: AtendimentoStatus;
+    pipelineStage: PipelineStage;
     convertidoEmCliente: boolean;
     clienteConvertidoId: string | null;
     motivoPerda: string | null;
@@ -226,7 +232,11 @@ export const updateAttendance = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const patch: Record<string, unknown> = {};
     const p = data.patch;
-    if (p.status !== undefined) patch.status = p.status;
+    if (p.status !== undefined) {
+      patch.status = p.status;
+      if (p.pipelineStage === undefined) patch.pipeline_stage = statusToPipelineStage(p.status);
+    }
+    if (p.pipelineStage !== undefined) patch.pipeline_stage = p.pipelineStage;
     if (p.convertidoEmCliente !== undefined)
       patch.convertido_em_cliente = p.convertidoEmCliente;
     if (p.clienteConvertidoId !== undefined)
@@ -272,5 +282,95 @@ export const markAttendanceOpened = createServerFn({ method: "POST" })
     }).rpc("mark_attendance_opened", { _id: data.id });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+
+export type AttendanceHistoryEvent = {
+  id: string;
+  attendanceId: string;
+  clientId: string | null;
+  eventType: string;
+  actorId: string | null;
+  actorName: string | null;
+  description: string | null;
+  previousValue: JsonValue;
+  newValue: JsonValue;
+  metadata: JsonValue;
+  source: string;
+  createdAt: string;
+};
+
+export const listAttendanceHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { attendanceId: string }) => d)
+  .handler(async ({ data, context }): Promise<AttendanceHistoryEvent[]> => {
+    const { data: rows, error } = await (context.supabase as never as {
+      from: (t: string) => {
+        select: (s: string) => {
+          eq: (c: string, v: string) => {
+            order: (c: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+          };
+        };
+      };
+    })
+      .from("attendance_history")
+      .select("*")
+      .eq("attendance_id", data.attendanceId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      attendanceId: r.attendance_id as string,
+      clientId: (r.client_id as string | null) ?? null,
+      eventType: r.event_type as string,
+      actorId: (r.actor_id as string | null) ?? null,
+      actorName: (r.actor_name as string | null) ?? null,
+      description: (r.description as string | null) ?? null,
+      previousValue: (r.previous_value as JsonValue) ?? null,
+      newValue: (r.new_value as JsonValue) ?? null,
+      metadata: (r.metadata as JsonValue) ?? null,
+      source: (r.source as string) ?? "trigger",
+      createdAt: r.created_at as string,
+    }));
+  });
+
+export const addAttendanceNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { attendanceId: string; texto: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as unknown as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+    }).rpc("attendance_add_note", { _attendance_id: data.attendanceId, _texto: data.texto });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const digits = (s: string) => s.replace(/\D+/g, "");
+
+export const findClientByContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { phone?: string; email?: string; document?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const phone = data.phone ? digits(data.phone) : "";
+    const email = data.email?.trim().toLowerCase() ?? "";
+    const doc = data.document ? digits(data.document) : "";
+    if (!phone && !email && !doc) return [] as Array<{ id: string; fullName: string; phone: string; email: string | null }>;
+
+    const filters: string[] = [];
+    if (phone.length >= 8) filters.push(`phone.ilike.%${phone.slice(-8)}%`);
+    if (email) filters.push(`email.ilike.${email}`);
+    if (doc) filters.push(`document.ilike.%${doc}%`);
+
+    const { data: rows, error } = await context.supabase
+      .from("clients")
+      .select("id, full_name, phone, email, document")
+      .or(filters.join(","))
+      .limit(5);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => {
+      const rec = r as unknown as { id: string; full_name: string; phone: string; email: string | null; document: string | null };
+      return { id: rec.id, fullName: rec.full_name, phone: rec.phone, email: rec.email };
+    });
   });
 

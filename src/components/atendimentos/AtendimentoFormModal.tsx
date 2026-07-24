@@ -31,6 +31,7 @@ import {
   type ProximoPassoAtendimento,
   type TipoImovelInteresse,
 } from "@/types/atendimento";
+import { statusToPipelineStage } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
 
 type FormState = {
@@ -235,6 +236,7 @@ export function AtendimentoFormModal({
       imovelDescricao: optional(form.imovelDescricao) ?? selectedProperty?.titulo,
       prioridade: form.prioridade,
       status: form.status,
+      pipelineStage: statusToPipelineStage(form.status),
       proximoRetorno: buildProximoRetornoIso(form.proximoRetornoData, form.proximoRetornoHora),
       proximoPasso: form.proximoPasso || undefined,
       observacoes: optional(form.observacoes),
