@@ -208,12 +208,11 @@ const sections: Section[] = [
       {
         type: "group",
         label: "Relacionamento",
-        desc: "Leads e clientes",
+        desc: "CRM comercial",
         icon: MessageCircleMore,
         accent: "indigo",
         children: [
           { to: "/atendimentos", label: "Atendimentos", icon: Handshake, module: "atendimentos" },
-          { to: "/clientes", label: "Clientes", icon: Users, module: "clientes" },
         ],
       },
       {
