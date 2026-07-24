@@ -4,6 +4,7 @@ import { useSession } from "@/lib/auth-mock";
 import {
   createAttendance,
   deleteAttendance,
+  findClientByContact,
   listAttendances,
   updateAttendance,
 } from "@/lib/attendances/attendances.functions";
