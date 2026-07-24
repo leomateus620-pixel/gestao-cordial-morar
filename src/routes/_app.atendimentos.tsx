@@ -58,7 +58,7 @@ function Page() {
   const qc = useQueryClient();
   const {
     atendimentos,
-    filteredAtendimentos,
+    filteredAtendimentos: baseFilteredAtendimentos,
     brokers,
     stats,
     isLoading,
@@ -70,6 +70,12 @@ function Page() {
     updateAtendimento,
     transitionStage,
   } = useAttendances(query, filters);
+  const filteredAtendimentos = useMemo(() => {
+    if (!clienteIdFilter) return baseFilteredAtendimentos;
+    return baseFilteredAtendimentos.filter(
+      (a) => a.clienteId === clienteIdFilter || a.clienteConvertidoId === clienteIdFilter,
+    );
+  }, [baseFilteredAtendimentos, clienteIdFilter]);
   const detailAtendimento = useMemo(
     () => atendimentos.find((a) => a.id === detailId) ?? null,
     [atendimentos, detailId],
