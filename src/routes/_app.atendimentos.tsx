@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Inbox, Plus, Workflow } from "lucide-react";
+import { Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
+import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
+import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
 import {
   buildLocalIso,
   type AtendimentoActionPayload,
@@ -23,10 +25,12 @@ import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { markAttendanceOpened } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
+import { cn } from "@/lib/utils";
 import type {
   Atendimento,
   AtendimentoCreateInput,
   AtendimentoStatus,
+  PipelineStage,
 } from "@/types/atendimento";
 import type { AgendaEventInput } from "@/types/agenda";
 
