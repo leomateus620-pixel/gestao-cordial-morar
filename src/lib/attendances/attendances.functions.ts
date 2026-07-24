@@ -284,3 +284,91 @@ export const markAttendanceOpened = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export type AttendanceHistoryEvent = {
+  id: string;
+  attendanceId: string;
+  clientId: string | null;
+  eventType: string;
+  actorId: string | null;
+  actorName: string | null;
+  description: string | null;
+  previousValue: unknown;
+  newValue: unknown;
+  metadata: unknown;
+  source: string;
+  createdAt: string;
+};
+
+export const listAttendanceHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { attendanceId: string }) => d)
+  .handler(async ({ data, context }): Promise<AttendanceHistoryEvent[]> => {
+    const { data: rows, error } = await (context.supabase as never as {
+      from: (t: string) => {
+        select: (s: string) => {
+          eq: (c: string, v: string) => {
+            order: (c: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+          };
+        };
+      };
+    })
+      .from("attendance_history")
+      .select("*")
+      .eq("attendance_id", data.attendanceId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      attendanceId: r.attendance_id as string,
+      clientId: (r.client_id as string | null) ?? null,
+      eventType: r.event_type as string,
+      actorId: (r.actor_id as string | null) ?? null,
+      actorName: (r.actor_name as string | null) ?? null,
+      description: (r.description as string | null) ?? null,
+      previousValue: r.previous_value,
+      newValue: r.new_value,
+      metadata: r.metadata,
+      source: (r.source as string) ?? "trigger",
+      createdAt: r.created_at as string,
+    }));
+  });
+
+export const addAttendanceNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { attendanceId: string; texto: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as unknown as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+    }).rpc("attendance_add_note", { _attendance_id: data.attendanceId, _texto: data.texto });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const digits = (s: string) => s.replace(/\D+/g, "");
+
+export const findClientByContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { phone?: string; email?: string; document?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const phone = data.phone ? digits(data.phone) : "";
+    const email = data.email?.trim().toLowerCase() ?? "";
+    const doc = data.document ? digits(data.document) : "";
+    if (!phone && !email && !doc) return [] as Array<{ id: string; fullName: string; phone: string; email: string | null }>;
+
+    const filters: string[] = [];
+    if (phone.length >= 8) filters.push(`phone.ilike.%${phone.slice(-8)}%`);
+    if (email) filters.push(`email.ilike.${email}`);
+    if (doc) filters.push(`document.ilike.%${doc}%`);
+
+    const { data: rows, error } = await context.supabase
+      .from("clients")
+      .select("id, full_name, phone, email, document")
+      .or(filters.join(","))
+      .limit(5);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => {
+      const rec = r as unknown as { id: string; full_name: string; phone: string; email: string | null; document: string | null };
+      return { id: rec.id, fullName: rec.full_name, phone: rec.phone, email: rec.email };
+    });
+  });
+
