@@ -110,6 +110,26 @@ export type AtendimentoHistorico = {
   tipo?: "criacao" | "retorno" | "visita" | "proposta" | "status" | "observacao";
 };
 
+export type AtendimentoLinkedProperty = {
+  id: string;
+  titulo: string;
+  codigo?: string;
+  endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  tipo?: string;
+  valor?: number;
+};
+
+export type AtendimentoStageTransition = {
+  from: PipelineStage | null;
+  to: PipelineStage;
+  at: string;
+  actorId?: string;
+  actorName?: string;
+  source: string;
+};
+
 export interface Atendimento {
   id: string;
   clienteId?: string;
@@ -130,9 +150,12 @@ export interface Atendimento {
   imovelId?: string;
   imovelCodigo?: string;
   imovelDescricao?: string;
+  imovel?: AtendimentoLinkedProperty;
+  interesseDescricao?: string;
   prioridade: PrioridadeAtendimento;
   status: AtendimentoStatus;
   pipelineStage: PipelineStage;
+  lastStageTransition?: AtendimentoStageTransition;
   proximoRetorno?: string;
   proximoPasso?: ProximoPassoAtendimento;
   observacoes?: string;
@@ -148,8 +171,59 @@ export interface Atendimento {
 
 export type AtendimentoCreateInput = Omit<
   Atendimento,
-  "id" | "historico" | "criadoEm" | "atualizadoEm" | "convertidoEmCliente" | "clienteConvertidoId"
+  | "id"
+  | "historico"
+  | "criadoEm"
+  | "atualizadoEm"
+  | "convertidoEmCliente"
+  | "clienteConvertidoId"
+  | "lastStageTransition"
 >;
+
+export type AtendimentoUpdatePatch = Partial<
+  Omit<
+    AtendimentoCreateInput,
+    | "clienteId"
+    | "email"
+    | "corretorId"
+    | "corretorNome"
+    | "dormitorios"
+    | "bairroInteresse"
+    | "orcamentoMin"
+    | "orcamentoMax"
+    | "imovelId"
+    | "imovelCodigo"
+    | "imovelDescricao"
+    | "imovel"
+    | "interesseDescricao"
+    | "proximoRetorno"
+    | "proximoPasso"
+    | "observacoes"
+    | "historicoInicial"
+    | "motivoPerda"
+  >
+> & {
+  clienteId?: string | null;
+  email?: string | null;
+  corretorId?: string | null;
+  corretorNome?: string | null;
+  dormitorios?: DormitoriosAtendimento | null;
+  bairroInteresse?: string | null;
+  orcamentoMin?: number | null;
+  orcamentoMax?: number | null;
+  imovelId?: string | null;
+  imovelCodigo?: string | null;
+  imovelDescricao?: string | null;
+  imovel?: AtendimentoLinkedProperty | null;
+  interesseDescricao?: string | null;
+  proximoRetorno?: string | null;
+  proximoPasso?: ProximoPassoAtendimento | null;
+  observacoes?: string | null;
+  historicoInicial?: string | null;
+  motivoPerda?: string | null;
+  convertidoEmCliente?: boolean;
+  clienteConvertidoId?: string | null;
+};
 
 export const atendimentoStatusOptions = [
   { value: "novo", label: "Novo" },
@@ -228,7 +302,6 @@ export const atendimentoProximoPassoOptions = [
   { value: "outro", label: "Outro" },
 ] as const;
 
-
 function optionLabel<T extends string>(options: readonly { value: T; label: string }[], value: T) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
@@ -247,3 +320,5 @@ export const atendimentoImobiliariaLabel = (value: ImobiliariaAtendimento) =>
   optionLabel(atendimentoImobiliariaOptions, value);
 export const atendimentoProximoPassoLabel = (value?: ProximoPassoAtendimento) =>
   value ? optionLabel(atendimentoProximoPassoOptions, value) : "A definir";
+export const atendimentoDormitoriosLabel = (value?: DormitoriosAtendimento) =>
+  value ? optionLabel(atendimentoDormitoriosOptions, value) : "Não informado";

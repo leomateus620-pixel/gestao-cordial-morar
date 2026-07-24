@@ -7,7 +7,6 @@ import {
   atendimentoStatusOptions,
   atendimentoTipoImovelOptions,
 } from "@/types/atendimento";
-import { useApp } from "@/store/app-store";
 import {
   defaultAtendimentoFilters,
   type AtendimentoFilters as AtendimentoFiltersState,
@@ -26,19 +25,21 @@ export function AtendimentoFilters({
   onQueryChange,
   filters,
   onFiltersChange,
+  brokerOptions = [],
 }: {
   query: string;
   onQueryChange: (value: string) => void;
   filters: AtendimentoFiltersState;
   onFiltersChange: (filters: AtendimentoFiltersState) => void;
+  brokerOptions?: Array<{ id: string; nome: string }>;
 }) {
   const [showFilters, setShowFilters] = useState(false);
-  const corretores = useApp((state) => state.corretores);
-  const brokerOptions = [...corretores]
+  const sortedBrokerOptions = [...brokerOptions]
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((c) => ({ id: c.id, label: c.nome }));
   const isDefault = JSON.stringify(filters) === JSON.stringify(defaultAtendimentoFilters);
   const activeSecondary = [
+    filters.status,
     filters.finalidade,
     filters.tipoImovel,
     filters.origem,
@@ -82,10 +83,7 @@ export function AtendimentoFilters({
             </span>
           )}
           <ChevronDown
-            className={cn(
-              "size-3.5 transition-transform",
-              showFilters && "rotate-180",
-            )}
+            className={cn("size-3.5 transition-transform", showFilters && "rotate-180")}
           />
         </button>
         {activeSecondary > 0 && (
@@ -100,30 +98,25 @@ export function AtendimentoFilters({
         )}
       </div>
 
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5">
-        <StatusChip
-          active={filters.status === "todos"}
-          onClick={() => onFiltersChange({ ...filters, status: "todos" })}
-        >
-          Todos
-        </StatusChip>
-        {atendimentoStatusOptions.map((option) => (
-          <StatusChip
-            key={option.value}
-            active={filters.status === option.value}
-            onClick={() => onFiltersChange({ ...filters, status: option.value })}
-          >
-            {option.label}
-          </StatusChip>
-        ))}
-      </div>
-
       <div
         className={cn(
           "gap-2 animate-accordion-down",
           showFilters ? "grid grid-cols-2 lg:flex lg:flex-wrap" : "hidden",
         )}
       >
+        <FilterShell>
+          <Select
+            value={filters.status}
+            onChange={(value) => onFiltersChange({ ...filters, status: value as never })}
+          >
+            <option value="todos">Todos os status</option>
+            {atendimentoStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </FilterShell>
         <FilterShell>
           <Select
             value={filters.finalidade}
@@ -169,7 +162,7 @@ export function AtendimentoFilters({
             onChange={(value) => onFiltersChange({ ...filters, corretor: value })}
           >
             <option value="todos">Corretor</option>
-            {brokerOptions.map((option) => (
+            {sortedBrokerOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
@@ -212,31 +205,6 @@ export function AtendimentoFilters({
         </button>
       </div>
     </section>
-  );
-}
-
-function StatusChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
-        active
-          ? "bg-teal-700 text-white shadow-md shadow-teal-900/18"
-          : "glass-panel text-foreground/58 hover:bg-white/75 hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

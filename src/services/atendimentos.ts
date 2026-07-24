@@ -1,10 +1,12 @@
 import {
+  ACTIVE_PIPELINE_STAGES,
   atendimentoFinalidadeLabel,
   atendimentoImobiliariaLabel,
   atendimentoOrigemLabel,
   atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
   atendimentoTipoImovelLabel,
+  pipelineStageLabel,
   statusToPipelineStage,
   type Atendimento,
   type AtendimentoCreateInput,
@@ -20,11 +22,18 @@ import {
   type TipoImovelInteresse,
 } from "@/types/atendimento";
 import type { ClientCreateInput, ClientStatus, LeadOrigin } from "@/types/client";
+import { mapCanonicalPropertyFields } from "@/lib/attendances/attendance-field-mapping";
+import { normalizeWhatsAppNumber, whatsappHref } from "@/lib/attendances/whatsapp";
 
 type LegacyRecord = Record<string, unknown>;
 
 type NormalizationContext = {
   clientes?: unknown[];
+  corretores?: unknown[];
+  imoveis?: unknown[];
+};
+
+type RelationshipContext = {
   corretores?: unknown[];
   imoveis?: unknown[];
 };
@@ -47,6 +56,23 @@ const canonicalStatuses = new Set<AtendimentoStatus>([
   "arquivado",
 ]);
 
+const canonicalPipelineStages = new Set<PipelineStage>([
+  ...ACTIVE_PIPELINE_STAGES,
+  "perdido",
+  "arquivado",
+]);
+
+const canonicalNextActions = new Set<ProximoPassoAtendimento>([
+  "ligar_cliente",
+  "enviar_whatsapp",
+  "enviar_opcoes",
+  "agendar_visita",
+  "fazer_proposta",
+  "aguardar_cliente",
+  "encaminhar_corretor",
+  "outro",
+]);
+
 const generatedId = () => Math.random().toString(36).slice(2, 10);
 
 export function createAtendimentoRecord(
@@ -67,7 +93,9 @@ export function createAtendimentoRecord(
     corretorNome: input.corretorId === "a_definir" ? undefined : optionalText(input.corretorNome),
     bairroInteresse: optionalText(input.bairroInteresse),
     imovelId: optionalText(input.imovelId),
-    imovelDescricao: optionalText(input.imovelDescricao),
+    imovelCodigo: optionalText(input.imovelCodigo),
+    imovelDescricao: input.imovelId ? optionalText(input.imovelDescricao) : undefined,
+    interesseDescricao: optionalText(input.interesseDescricao),
     observacoes: optionalText(input.observacoes),
     historicoInicial: initialDetails,
     motivoPerda: input.status === "perdido" ? optionalText(input.motivoPerda) : undefined,
@@ -140,6 +168,17 @@ export function normalizeAtendimento(
   const maxBudget =
     numberValue(raw.orcamentoMax ?? raw.maxBudget) ?? rangeValue(raw.faixaValor, "maximo");
   const rawHistory = Array.isArray(raw.historico) ? raw.historico : [];
+  const canonicalProperty = mapCanonicalPropertyFields({
+    propertyId: optionalText(stringValue(raw.imovelId)),
+    propertyCode: optionalText(stringValue(raw.imovelCodigo ?? imovel?.codigoInterno)),
+    propertyTitle: optionalText(stringValue(imovel?.titulo ?? raw.imovelDescricao)),
+    interestDescription: optionalText(
+      stringValue(
+        raw.interesseDescricao ?? raw.interestDescription ?? raw.propertyInterestDescription,
+      ),
+    ),
+  });
+  const imovelId = canonicalProperty.propertyId;
 
   const statusNorm = status;
   return {
@@ -147,7 +186,8 @@ export function normalizeAtendimento(
     clienteId: optionalText(stringValue(raw.clienteId)),
     clienteNome,
     telefone,
-    pipelineStage: (raw.pipelineStage as PipelineStage | undefined) ?? statusToPipelineStage(statusNorm),
+    pipelineStage:
+      (raw.pipelineStage as PipelineStage | undefined) ?? statusToPipelineStage(statusNorm),
     email: optionalText(stringValue(raw.email ?? cliente?.email)),
     contatoPreferencial: normalizeContato(
       raw.contatoPreferencial ??
@@ -167,10 +207,11 @@ export function normalizeAtendimento(
     ),
     orcamentoMin: minBudget,
     orcamentoMax: maxBudget,
-    imovelId: optionalText(stringValue(raw.imovelId)),
-    imovelDescricao:
-      optionalText(stringValue(raw.imovelDescricao ?? raw.propertyInterestDescription)) ??
-      optionalText(stringValue(imovel?.titulo)),
+    imovelId,
+    imovelCodigo: canonicalProperty.propertyCode,
+    imovelDescricao: canonicalProperty.propertyTitle,
+    imovel: imovelId ? linkedPropertyFromRecord(imovelId, imovel, raw) : undefined,
+    interesseDescricao: canonicalProperty.interestDescription,
     prioridade: normalizePrioridade(raw.prioridade ?? raw.urgencia),
     status,
     proximoRetorno: dateValue(raw.proximoRetorno ?? raw.nextFollowUpAt),
@@ -248,7 +289,10 @@ export function atendimentoMatchesSearch(atendimento: Atendimento, query: string
     atendimento.corretorNome,
     atendimentoStatusLabel(atendimento.status),
     atendimento.observacoes,
+    atendimento.interesseDescricao,
     atendimento.imovelDescricao,
+    atendimento.imovelCodigo,
+    atendimento.imovel?.endereco,
   ]
     .filter(Boolean)
     .join(" ");
@@ -268,10 +312,10 @@ export function atendimentoMatchesAgency(
 export function formatAtendimentoBudget(atendimento: Atendimento) {
   const min = atendimento.orcamentoMin;
   const max = atendimento.orcamentoMax;
-  if (min && max && min !== max)
+  if (min !== undefined && max !== undefined && min !== max)
     return `${formatCompactCurrency(min)} a ${formatCompactCurrency(max)}`;
   const value = max ?? min;
-  return value ? formatCompactCurrency(value) : "A combinar";
+  return value !== undefined ? formatCompactCurrency(value) : "A combinar";
 }
 
 export function atendimentoInterestLine(atendimento: Atendimento) {
@@ -301,7 +345,7 @@ export function atendimentoToClientInput(atendimento: Atendimento): ClientCreate
     minBudget: atendimento.orcamentoMin,
     maxBudget: atendimento.orcamentoMax,
     notes:
-      [atendimento.imovelDescricao, atendimento.observacoes].filter(Boolean).join(" · ") ||
+      [atendimento.interesseDescricao, atendimento.observacoes].filter(Boolean).join(" · ") ||
       undefined,
     nextStep: atendimentoProximoPassoLabel(atendimento.proximoPasso),
     nextFollowUpAt: atendimento.proximoRetorno,
@@ -328,6 +372,179 @@ export function formatDateTime(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+export function formatDate(value?: string) {
+  if (!value) return "Não informado";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Não informado";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatExactDateTime(value?: string) {
+  if (!value) return "Data não informada";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data não informada";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+export function hydrateAtendimentoRelationships(
+  atendimento: Atendimento,
+  context: RelationshipContext,
+): Atendimento {
+  const corretor = context.corretores?.find(
+    (item) => isRecord(item) && stringValue(item.id) === atendimento.corretorId,
+  );
+  const imovel = atendimento.imovelId
+    ? context.imoveis?.find(
+        (item) => isRecord(item) && stringValue(item.id) === atendimento.imovelId,
+      )
+    : undefined;
+  const interesseDescricao =
+    atendimento.interesseDescricao ??
+    (!atendimento.imovelId ? optionalText(atendimento.imovelDescricao) : undefined);
+
+  return {
+    ...atendimento,
+    corretorNome:
+      (isRecord(corretor) ? optionalText(stringValue(corretor.nome)) : undefined) ??
+      atendimento.corretorNome,
+    interesseDescricao,
+    imovelDescricao: atendimento.imovelId
+      ? ((isRecord(imovel) ? optionalText(stringValue(imovel.titulo)) : undefined) ??
+        atendimento.imovelDescricao)
+      : undefined,
+    imovelCodigo: atendimento.imovelId
+      ? ((isRecord(imovel) ? optionalText(stringValue(imovel.codigoInterno)) : undefined) ??
+        atendimento.imovelCodigo)
+      : undefined,
+    imovel: atendimento.imovelId
+      ? linkedPropertyFromRecord(
+          atendimento.imovelId,
+          imovel,
+          atendimento as unknown as LegacyRecord,
+        )
+      : undefined,
+  };
+}
+
+export function isAtendimentoOverdue(atendimento: Atendimento, now = new Date()) {
+  if (
+    !atendimento.proximoRetorno ||
+    atendimento.pipelineStage === "fechamento" ||
+    atendimento.pipelineStage === "perdido" ||
+    atendimento.pipelineStage === "arquivado"
+  ) {
+    return false;
+  }
+  const returnAt = new Date(atendimento.proximoRetorno);
+  return !Number.isNaN(returnAt.getTime()) && returnAt.getTime() < now.getTime();
+}
+
+export function getPipelineContext(atendimento: Atendimento) {
+  const current = atendimento.pipelineStage;
+  const currentIndex = ACTIVE_PIPELINE_STAGES.indexOf(current);
+  const logicalPrevious = currentIndex > 0 ? ACTIVE_PIPELINE_STAGES[currentIndex - 1] : null;
+  const logicalNext =
+    currentIndex >= 0 && currentIndex < ACTIVE_PIPELINE_STAGES.length - 1
+      ? ACTIVE_PIPELINE_STAGES[currentIndex + 1]
+      : null;
+  return {
+    previous: atendimento.lastStageTransition?.from ?? logicalPrevious,
+    current,
+    next: logicalNext,
+    transitionAt: atendimento.lastStageTransition?.at,
+    transitionActor: atendimento.lastStageTransition?.actorName,
+    transitionSource: atendimento.lastStageTransition?.source,
+  };
+}
+
+type HistoryEventLike = {
+  eventType: string;
+  description?: string | null;
+  previousValue?: unknown;
+  newValue?: unknown;
+};
+
+export function describeAttendanceHistoryEvent(event: HistoryEventLike): string {
+  const previous = isRecord(event.previousValue) ? event.previousValue : {};
+  const next = isRecord(event.newValue) ? event.newValue : {};
+
+  if (event.eventType === "stage_change") {
+    const from = pipelineStageValue(previous.pipeline_stage);
+    const to = pipelineStageValue(next.pipeline_stage);
+    if (from && to)
+      return `Etapa alterada de ${pipelineStageLabel(from)} para ${pipelineStageLabel(to)}.`;
+  }
+  if (event.eventType === "status_change") {
+    const from = statusValue(previous.status);
+    const to = statusValue(next.status);
+    if (from && to)
+      return `Status alterado de ${atendimentoStatusLabel(from)} para ${atendimentoStatusLabel(to)}.`;
+  }
+  if (event.eventType === "broker_change") {
+    const from = optionalText(stringValue(previous.corretor_nome)) ?? "A definir";
+    const to = optionalText(stringValue(next.corretor_nome)) ?? "A definir";
+    return `Corretor responsável alterado de ${from} para ${to}.`;
+  }
+  if (event.eventType === "property_link") {
+    const from =
+      optionalText(stringValue(previous.imovel_descricao ?? previous.imovel_codigo)) ??
+      "nenhum imóvel";
+    const to =
+      optionalText(stringValue(next.imovel_descricao ?? next.imovel_codigo)) ?? "nenhum imóvel";
+    return `Imóvel vinculado alterado de ${from} para ${to}.`;
+  }
+  if (event.eventType === "next_return") {
+    const nextReturn = optionalText(stringValue(next.proximo_retorno));
+    return nextReturn
+      ? `Próximo retorno agendado para ${formatExactDateTime(nextReturn)}.`
+      : "Próximo retorno removido.";
+  }
+  if (event.eventType === "next_action") {
+    const action = proximoPassoValue(next.proximo_passo);
+    return action
+      ? `Próxima ação definida como ${atendimentoProximoPassoLabel(action)}.`
+      : "Próxima ação removida.";
+  }
+  return optionalText(event.description ?? undefined) ?? "Atualização registrada.";
+}
+
+function linkedPropertyFromRecord(
+  id: string,
+  propertyValue: unknown,
+  fallback: LegacyRecord,
+): Atendimento["imovel"] {
+  const property = isRecord(propertyValue) ? propertyValue : {};
+  const titulo =
+    optionalText(stringValue(property.titulo ?? fallback.imovelDescricao)) ??
+    optionalText(stringValue(property.codigoInterno ?? fallback.imovelCodigo)) ??
+    `Imóvel ${id.slice(0, 8)}`;
+  const valor =
+    numberValue(property.valorVenda) ??
+    numberValue(property.valorAluguel) ??
+    numberValue(property.valor);
+  return {
+    id,
+    titulo,
+    codigo: optionalText(stringValue(property.codigoInterno ?? fallback.imovelCodigo)),
+    endereco: optionalText(stringValue(property.endereco)),
+    bairro: optionalText(stringValue(property.bairro)),
+    cidade: optionalText(stringValue(property.cidade)),
+    tipo: optionalText(stringValue(property.tipo)),
+    valor,
+  };
 }
 
 function normalizeHistory(
@@ -361,6 +578,24 @@ function normalizeStatus(value: unknown): AtendimentoStatus {
   if (normalized.includes("aguard")) return "aguardando_retorno";
   if (normalized.includes("atendimento")) return "em_atendimento";
   return "novo";
+}
+
+function pipelineStageValue(value: unknown): PipelineStage | undefined {
+  return typeof value === "string" && canonicalPipelineStages.has(value as PipelineStage)
+    ? (value as PipelineStage)
+    : undefined;
+}
+
+function statusValue(value: unknown): AtendimentoStatus | undefined {
+  return typeof value === "string" && canonicalStatuses.has(value as AtendimentoStatus)
+    ? (value as AtendimentoStatus)
+    : undefined;
+}
+
+function proximoPassoValue(value: unknown): ProximoPassoAtendimento | undefined {
+  return typeof value === "string" && canonicalNextActions.has(value as ProximoPassoAtendimento)
+    ? (value as ProximoPassoAtendimento)
+    : undefined;
 }
 
 function normalizeFinalidade(value: unknown): AtendimentoFinalidade {
@@ -503,4 +738,5 @@ function normalizeText(value: string) {
 }
 
 export { formatCurrencyBR, formatPhoneBR, parseCurrencyBR } from "@/services/clients";
+export { normalizeWhatsAppNumber, whatsappHref };
 export { atendimentoImobiliariaLabel };

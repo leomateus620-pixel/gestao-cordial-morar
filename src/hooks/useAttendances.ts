@@ -1,33 +1,35 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/lib/auth-mock";
 import {
   createAttendance,
   deleteAttendance,
   findClientByContact,
+  listAttendanceBrokers,
   listAttendances,
+  transitionAttendanceStage,
   updateAttendance,
 } from "@/lib/attendances/attendances.functions";
 import { createClient } from "@/lib/clients/clients.functions";
 import { CLIENTS_QUERY_KEY } from "@/hooks/useClients";
 import { useApp } from "@/store/app-store";
-import { atendimentoMatchesAgency, atendimentoMatchesSearch } from "@/services/atendimentos";
+import {
+  atendimentoMatchesAgency,
+  atendimentoMatchesSearch,
+  hydrateAtendimentoRelationships,
+  isAtendimentoOverdue,
+} from "@/services/atendimentos";
 import type {
   Atendimento,
   AtendimentoCreateInput,
   AtendimentoFinalidade,
   AtendimentoStatus,
   OrigemLeadAtendimento,
+  PipelineStage,
   PrioridadeAtendimento,
   TipoImovelInteresse,
 } from "@/types/atendimento";
-import type {
-  ClientCreateInput,
-  ClientPurpose,
-  ClientStatus,
-  LeadOrigin,
-} from "@/types/client";
-
+import type { ClientCreateInput, ClientPurpose, ClientStatus, LeadOrigin } from "@/types/client";
 
 export type AtendimentoPeriodFilter = "todos" | "hoje" | "sete_dias" | "mes";
 
@@ -52,11 +54,17 @@ export const defaultAtendimentoFilters: AtendimentoFilters = {
 };
 
 export const ATTENDANCES_QUERY_KEY = ["attendances"] as const;
+export const ATTENDANCE_BROKERS_QUERY_KEY = ["attendance-brokers"] as const;
+export const attendanceHistoryQueryKey = (id: string | null | undefined) =>
+  ["attendance-history", id] as const;
 
 export function useAttendances(query: string, filters: AtendimentoFilters) {
   const user = useSession();
   const agency = useApp((state) => state.agency);
+  const imoveis = useApp((state) => state.imoveis);
+  const corretores = useApp((state) => state.corretores);
   const qc = useQueryClient();
+  const stageTransitionsInFlight = useRef(new Set<string>());
 
   const attendancesQuery = useQuery({
     queryKey: ATTENDANCES_QUERY_KEY,
@@ -65,7 +73,13 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
     staleTime: 15_000,
   });
 
-  const atendimentos: Atendimento[] = attendancesQuery.data ?? [];
+  const atendimentos = useMemo(
+    () =>
+      (attendancesQuery.data ?? []).map((atendimento) =>
+        hydrateAtendimentoRelationships(atendimento, { imoveis, corretores }),
+      ),
+    [attendancesQuery.data, corretores, imoveis],
+  );
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY });
 
@@ -75,9 +89,51 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (vars: { id: string; patch: Parameters<typeof updateAttendance>[0]["data"]["patch"] }) =>
-      updateAttendance({ data: { id: vars.id, patch: vars.patch } }),
-    onSuccess: invalidate,
+    mutationFn: (vars: {
+      id: string;
+      patch: Parameters<typeof updateAttendance>[0]["data"]["patch"];
+    }) => updateAttendance({ data: { id: vars.id, patch: vars.patch } }),
+    onSuccess: (updated) => {
+      qc.setQueryData<Atendimento[]>(ATTENDANCES_QUERY_KEY, (current) =>
+        current?.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(updated.id) });
+      invalidate();
+    },
+  });
+  const brokersQuery = useQuery({
+    queryKey: ATTENDANCE_BROKERS_QUERY_KEY,
+    queryFn: () => listAttendanceBrokers(),
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+
+  const stageMutation = useMutation({
+    mutationFn: (vars: { id: string; to: PipelineStage }) =>
+      transitionAttendanceStage({ data: vars }),
+    onMutate: async ({ id, to }) => {
+      await qc.cancelQueries({ queryKey: ATTENDANCES_QUERY_KEY });
+      const previous = qc.getQueryData<Atendimento[]>(ATTENDANCES_QUERY_KEY);
+      qc.setQueryData<Atendimento[]>(ATTENDANCES_QUERY_KEY, (current) =>
+        current?.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                pipelineStage: to,
+                atualizadoEm: new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) qc.setQueryData(ATTENDANCES_QUERY_KEY, context.previous);
+    },
+    onSettled: (_data, _error, vars) => {
+      qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(vars.id) });
+      invalidate();
+    },
   });
 
   const removeMutation = useMutation({
@@ -111,6 +167,7 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
   return {
     agency,
     atendimentos: agencyAtendimentos,
+    brokers: brokersQuery.data ?? [],
     filteredAtendimentos,
     stats,
     isLoading: attendancesQuery.isLoading,
@@ -119,6 +176,20 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
     refetch: () => attendancesQuery.refetch(),
     isSaving: createMutation.isPending,
     addAtendimento: (input: AtendimentoCreateInput) => createMutation.mutateAsync(input),
+    transitionStage: async (id: string, to: PipelineStage) => {
+      const current = atendimentos.find((item) => item.id === id);
+      if (!current) throw new Error("Atendimento não encontrado.");
+      if (current.pipelineStage === to) return current;
+      if (stageTransitionsInFlight.current.has(id)) {
+        throw new Error("A mudança de etapa deste atendimento já está em andamento.");
+      }
+      stageTransitionsInFlight.current.add(id);
+      try {
+        return await stageMutation.mutateAsync({ id, to });
+      } finally {
+        stageTransitionsInFlight.current.delete(id);
+      }
+    },
     convertAtendimento: async (id: string) => {
       const atendimento = atendimentos.find((a) => a.id === id);
       if (!atendimento) throw new Error("Atendimento não encontrado.");
@@ -157,6 +228,7 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
     },
     updateAtendimento: updateMutation.mutateAsync,
     removeAtendimento: removeMutation.mutateAsync,
+    isTransitioningStage: stageMutation.isPending,
   };
 }
 
@@ -197,8 +269,8 @@ function finalidadeToPurpose(value: AtendimentoFinalidade): ClientPurpose {
 }
 
 function atendimentoToClientInput(a: Atendimento): ClientCreateInput {
-  const notesParts = [a.observacoes?.trim(), a.historicoInicial?.trim()].filter(
-    (v): v is string => Boolean(v && v.length),
+  const notesParts = [a.observacoes?.trim(), a.historicoInicial?.trim()].filter((v): v is string =>
+    Boolean(v && v.length),
   );
   return {
     fullName: a.clienteNome,
@@ -223,7 +295,6 @@ function atendimentoToClientInput(a: Atendimento): ClientCreateInput {
   };
 }
 
-
 function getStats(atendimentos: Atendimento[]) {
   const status = atendimentos.reduce<Partial<Record<AtendimentoStatus, number>>>((acc, item) => {
     acc[item.status] = (acc[item.status] ?? 0) + 1;
@@ -238,11 +309,19 @@ function getStats(atendimentos: Atendimento[]) {
     })
     .filter((value): value is number => typeof value === "number" && value > 0);
   const now = new Date();
+  const pipeline = atendimentos.reduce<Partial<Record<PipelineStage, number>>>((acc, item) => {
+    acc[item.pipelineStage] = (acc[item.pipelineStage] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return {
     status,
-    compra: atendimentos.filter((i) => i.finalidade === "compra" || i.finalidade === "ambos").length,
-    aluguel: atendimentos.filter((i) => i.finalidade === "aluguel" || i.finalidade === "ambos").length,
+    pipeline,
+    overdue: atendimentos.filter((item) => isAtendimentoOverdue(item, now)).length,
+    compra: atendimentos.filter((i) => i.finalidade === "compra" || i.finalidade === "ambos")
+      .length,
+    aluguel: atendimentos.filter((i) => i.finalidade === "aluguel" || i.finalidade === "ambos")
+      .length,
     ticketMedio: budgetValues.length
       ? budgetValues.reduce((total, value) => total + value, 0) / budgetValues.length
       : 0,

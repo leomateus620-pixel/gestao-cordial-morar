@@ -20,6 +20,8 @@ import {
   atendimentoProximoPassoOptions,
   atendimentoStatusOptions,
   atendimentoTipoImovelOptions,
+  pipelineStageOptions,
+  type Atendimento,
   type AtendimentoCreateInput,
   type AtendimentoFinalidade,
   type AtendimentoStatus,
@@ -29,6 +31,7 @@ import {
   type OrigemLeadAtendimento,
   type PrioridadeAtendimento,
   type ProximoPassoAtendimento,
+  type PipelineStage,
   type TipoImovelInteresse,
 } from "@/types/atendimento";
 import { statusToPipelineStage } from "@/types/atendimento";
@@ -45,6 +48,7 @@ type FormState = {
   corretorId: string;
   prioridade: PrioridadeAtendimento;
   status: AtendimentoStatus;
+  pipelineStage: PipelineStage;
   finalidade: AtendimentoFinalidade;
   tipoImovel: TipoImovelInteresse;
   dormitorios: DormitoriosAtendimento;
@@ -54,6 +58,7 @@ type FormState = {
   imovelId: string;
   imovelCodigo: string;
   imovelDescricao: string;
+  interesseDescricao: string;
   proximoRetornoData: string;
   proximoRetornoHora: string;
   proximoPasso: "" | ProximoPassoAtendimento;
@@ -73,6 +78,7 @@ const initialForm: FormState = {
   corretorId: "a_definir",
   prioridade: "media",
   status: "novo",
+  pipelineStage: "primeiro_contato",
   finalidade: "compra",
   tipoImovel: "apartamento",
   dormitorios: "nao_aplica",
@@ -82,6 +88,7 @@ const initialForm: FormState = {
   imovelId: "",
   imovelCodigo: "",
   imovelDescricao: "",
+  interesseDescricao: "",
   proximoRetornoData: "",
   proximoRetornoHora: "",
   proximoPasso: "",
@@ -110,21 +117,24 @@ export function AtendimentoFormModal({
   open,
   onOpenChange,
   onSubmit,
+  initialValue,
+  brokerOptions = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AtendimentoCreateInput) => void | Promise<void>;
+  initialValue?: Atendimento | null;
+  brokerOptions?: Array<{ id: string; nome: string }>;
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
-  const corretores = useApp((state) => state.corretores);
   const currentUser = useSession();
-  const brokerOptions = [...corretores]
+  const sortedBrokerOptions = [...brokerOptions]
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((c) => ({ id: c.id, label: c.nome }))
     .concat({ id: "a_definir", label: "A definir" });
 
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [form, setForm] = useState<FormState>(() => formFromAtendimento(initialValue));
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
@@ -159,6 +169,12 @@ export function AtendimentoFormModal({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(formFromAtendimento(initialValue));
+    setValidation({});
+  }, [initialValue, open]);
 
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
@@ -202,6 +218,16 @@ export function AtendimentoFormModal({
     setForm((current) => ({
       ...current,
       status,
+      pipelineStage:
+        status === "perdido"
+          ? "perdido"
+          : status === "arquivado"
+            ? "arquivado"
+            : status === "fechado"
+              ? "fechamento"
+              : current.pipelineStage === "perdido" || current.pipelineStage === "arquivado"
+                ? statusToPipelineStage(status)
+                : current.pipelineStage,
       proximoPasso:
         status === "visita_agendada" && !current.proximoPasso
           ? "agendar_visita"
@@ -213,7 +239,7 @@ export function AtendimentoFormModal({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    const broker = brokerOptions.find((item) => item.id === form.corretorId);
+    const broker = sortedBrokerOptions.find((item) => item.id === form.corretorId);
     const selectedProperty = imoveis.find((item) => item.id === form.imovelId);
     const input: AtendimentoCreateInput = {
       clienteId: optional(form.clienteId),
@@ -232,11 +258,27 @@ export function AtendimentoFormModal({
       orcamentoMin: parseCurrencyBR(form.orcamentoMin),
       orcamentoMax: parseCurrencyBR(form.orcamentoMax),
       imovelId: optional(form.imovelId),
-      imovelCodigo: optional(form.imovelCodigo),
-      imovelDescricao: optional(form.imovelDescricao) ?? selectedProperty?.titulo,
+      imovelCodigo: selectedProperty?.codigoInterno,
+      imovelDescricao: selectedProperty?.titulo,
+      imovel: selectedProperty
+        ? {
+            id: selectedProperty.id,
+            titulo: selectedProperty.titulo,
+            codigo: selectedProperty.codigoInterno,
+            endereco: selectedProperty.endereco,
+            bairro: selectedProperty.bairro,
+            cidade: selectedProperty.cidade,
+            tipo: selectedProperty.tipo,
+            valor:
+              selectedProperty.valorVenda ||
+              selectedProperty.valorAluguel ||
+              selectedProperty.valor,
+          }
+        : undefined,
+      interesseDescricao: optional(form.interesseDescricao),
       prioridade: form.prioridade,
       status: form.status,
-      pipelineStage: statusToPipelineStage(form.status),
+      pipelineStage: form.pipelineStage,
       proximoRetorno: buildProximoRetornoIso(form.proximoRetornoData, form.proximoRetornoHora),
       proximoPasso: form.proximoPasso || undefined,
       observacoes: optional(form.observacoes),
@@ -251,7 +293,7 @@ export function AtendimentoFormModal({
     setSaving(true);
     try {
       await onSubmit(input);
-      setForm(initialForm);
+      setForm(formFromAtendimento());
       setValidation({});
       requestClose();
     } catch {
@@ -293,11 +335,12 @@ export function AtendimentoFormModal({
                 Pré-atendimento comercial
               </div>
               <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">
-                Novo atendimento
+                {initialValue ? "Editar atendimento" : "Novo atendimento"}
               </h2>
               <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
-                Registre o essencial na entrada. Cliente, imóvel e corretor podem ser vinculados
-                agora ou complementados depois.
+                {initialValue
+                  ? "Atualize dados canônicos do cliente, interesse, etapa e próxima ação."
+                  : "Registre o essencial na entrada. Cliente, imóvel e corretor podem ser vinculados agora ou complementados depois."}
               </p>
             </div>
             <button
@@ -474,26 +517,26 @@ export function AtendimentoFormModal({
 
               <Field label="Descrição livre do interesse">
                 <textarea
-                  value={form.imovelDescricao}
-                  onChange={(event) => update("imovelDescricao", event.target.value)}
+                  value={form.interesseDescricao}
+                  onChange={(event) => update("interesseDescricao", event.target.value)}
                   className={cn(inputClass(), "min-h-20 resize-none leading-5")}
-                  placeholder="Características desejadas, referência do anúncio ou contexto da busca."
-                />
-              </Field>
-
-              <Field label="Código do imóvel ou nome do residencial (opcional)">
-                <input
-                  value={form.imovelCodigo}
-                  onChange={(event) => update("imovelCodigo", event.target.value)}
-                  className={inputClass()}
-                  placeholder="Ex.: CI-2045, Residencial Aurora, Ap. 302..."
+                  placeholder="Características desejadas e contexto da busca. Este texto não será usado como imóvel vinculado."
                 />
               </Field>
 
               <Field label="Vincular imóvel existente (opcional)">
                 <select
                   value={form.imovelId}
-                  onChange={(event) => update("imovelId", event.target.value)}
+                  onChange={(event) => {
+                    const nextId = event.target.value;
+                    const property = imoveis.find((item) => item.id === nextId);
+                    setForm((current) => ({
+                      ...current,
+                      imovelId: nextId,
+                      imovelCodigo: property?.codigoInterno ?? "",
+                      imovelDescricao: property?.titulo ?? "",
+                    }));
+                  }}
                   className={inputClass()}
                 >
                   <option value="">Nenhum imóvel vinculado</option>
@@ -503,6 +546,12 @@ export function AtendimentoFormModal({
                     </option>
                   ))}
                 </select>
+                {form.imovelId ? (
+                  <p className="mt-1.5 text-[11px] font-medium text-foreground/60">
+                    {form.imovelCodigo ? `${form.imovelCodigo} · ` : ""}
+                    {form.imovelDescricao}
+                  </p>
+                ) : null}
               </Field>
             </FormSection>
 
@@ -525,7 +574,7 @@ export function AtendimentoFormModal({
                     onChange={(event) => update("corretorId", event.target.value)}
                     className={inputClass()}
                   >
-                    {brokerOptions.map((broker) => (
+                    {sortedBrokerOptions.map((broker) => (
                       <option key={broker.id} value={broker.id}>
                         {broker.label}
                       </option>
@@ -541,7 +590,6 @@ export function AtendimentoFormModal({
                 </Field>
               </div>
 
-
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Prioridade" error={validation.prioridade}>
                   <TypedSelect
@@ -550,14 +598,43 @@ export function AtendimentoFormModal({
                     options={atendimentoPrioridadeOptions}
                   />
                 </Field>
-                <Field label="Status" error={validation.status}>
-                  <TypedSelect
-                    value={form.status}
-                    onChange={(value) => updateStatus(value as AtendimentoStatus)}
-                    options={atendimentoStatusOptions}
-                  />
+                <Field label="Etapa do funil">
+                  <select
+                    value={form.pipelineStage}
+                    onChange={(event) => {
+                      const stage = event.target.value as PipelineStage;
+                      setForm((current) => ({
+                        ...current,
+                        pipelineStage: stage,
+                        status:
+                          stage === "perdido"
+                            ? "perdido"
+                            : stage === "arquivado"
+                              ? "arquivado"
+                              : current.status === "perdido" || current.status === "arquivado"
+                                ? "em_atendimento"
+                                : current.status,
+                        motivoPerda: stage === "perdido" ? current.motivoPerda : "",
+                      }));
+                    }}
+                    className={inputClass()}
+                  >
+                    {pipelineStageOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               </div>
+
+              <Field label="Status detalhado" error={validation.status}>
+                <TypedSelect
+                  value={form.status}
+                  onChange={(value) => updateStatus(value as AtendimentoStatus)}
+                  options={atendimentoStatusOptions}
+                />
+              </Field>
 
               {form.status === "perdido" && (
                 <Field label="Motivo da perda" error={validation.motivoPerda}>
@@ -651,7 +728,7 @@ export function AtendimentoFormModal({
             disabled={saving}
             className="flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800 active:scale-[0.98] disabled:opacity-70"
           >
-            {saving ? "Salvando..." : "Salvar atendimento"}
+            {saving ? "Salvando..." : initialValue ? "Salvar alterações" : "Salvar atendimento"}
             {!saving && <ChevronRight className="size-4" />}
           </button>
         </footer>
@@ -730,6 +807,58 @@ function inputClass(error?: string) {
     "placeholder:text-foreground/35 focus:border-teal-700/45 focus:ring-4 focus:ring-teal-700/10",
     error ? "border-destructive/35" : "border-white/65",
   );
+}
+
+function formFromAtendimento(value?: Atendimento | null): FormState {
+  if (!value) return { ...initialForm };
+  return {
+    clienteId: value.clienteId ?? "",
+    clienteNome: value.clienteNome,
+    telefone: formatPhoneBR(value.telefone),
+    email: value.email ?? "",
+    contatoPreferencial: value.contatoPreferencial,
+    origem: value.origem,
+    imobiliaria: value.imobiliaria,
+    corretorId: value.corretorId ?? "a_definir",
+    prioridade: value.prioridade,
+    status: value.status,
+    pipelineStage: value.pipelineStage,
+    finalidade: value.finalidade,
+    tipoImovel: value.tipoImovel,
+    dormitorios: value.dormitorios ?? "nao_aplica",
+    bairroInteresse: value.bairroInteresse ?? "",
+    orcamentoMin: formatCurrencyBR(value.orcamentoMin),
+    orcamentoMax: formatCurrencyBR(value.orcamentoMax),
+    imovelId: value.imovelId ?? "",
+    imovelCodigo: value.imovelCodigo ?? value.imovel?.codigo ?? "",
+    imovelDescricao: value.imovelDescricao ?? value.imovel?.titulo ?? "",
+    interesseDescricao: value.interesseDescricao ?? "",
+    proximoRetornoData: toDateInput(value.proximoRetorno),
+    proximoRetornoHora: toTimeInput(value.proximoRetorno),
+    proximoPasso: value.proximoPasso ?? "",
+    observacoes: value.observacoes ?? "",
+    historicoInicial: value.historicoInicial ?? "",
+    motivoPerda: value.motivoPerda ?? "",
+  };
+}
+
+function toDateInput(iso?: string) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
+}
+
+function toTimeInput(iso?: string) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(
+    2,
+    "0",
+  )}`;
 }
 
 function optional(value: string) {
