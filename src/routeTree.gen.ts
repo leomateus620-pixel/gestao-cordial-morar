@@ -9,51 +9,45 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
-import { Route as AppVendasRouteImport } from './routes/_app.vendas'
-import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
-import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
-import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
-import { Route as AppMaisRouteImport } from './routes/_app.mais'
-import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
-import { Route as AppImoveisDestaqueRouteImport } from './routes/_app.imoveis-destaque'
-import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
-import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
-import { Route as AppDocumentosRouteImport } from './routes/_app.documentos'
-import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
-import { Route as AppContratosRouteImport } from './routes/_app.contratos'
-import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
-import { Route as AppClientesRouteImport } from './routes/_app.clientes'
-import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
-import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
-import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
-import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
+import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
+import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
+import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
+import { Route as AppClientesRouteImport } from './routes/_app.clientes'
+import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
+import { Route as AppContratosRouteImport } from './routes/_app.contratos'
+import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
+import { Route as AppDocumentosRouteImport } from './routes/_app.documentos'
+import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
+import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
+import { Route as AppImoveisDestaqueRouteImport } from './routes/_app.imoveis-destaque'
+import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
+import { Route as AppMaisRouteImport } from './routes/_app.mais'
+import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
+import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
+import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppVendasRouteImport } from './routes/_app.vendas'
+import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
-import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
-import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
+import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
+import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
+import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
+import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
+import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 
-const UnsubscribeRoute = UnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -61,8 +55,14 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -70,94 +70,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
-  id: '/avaliar/$token',
-  path: '/avaliar/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppVendasRoute = AppVendasRouteImport.update({
-  id: '/vendas',
-  path: '/vendas',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPesquisaSatisfacaoRoute = AppPesquisaSatisfacaoRouteImport.update({
-  id: '/pesquisa-satisfacao',
-  path: '/pesquisa-satisfacao',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMarketingRoute = AppMarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMaisRoute = AppMaisRouteImport.update({
-  id: '/mais',
-  path: '/mais',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
-  id: '/integracoes',
-  path: '/integracoes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImoveisDestaqueRoute = AppImoveisDestaqueRouteImport.update({
-  id: '/imoveis-destaque',
-  path: '/imoveis-destaque',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImoveisRoute = AppImoveisRouteImport.update({
-  id: '/imoveis',
-  path: '/imoveis',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
-  id: '/financeiro',
-  path: '/financeiro',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDocumentosRoute = AppDocumentosRouteImport.update({
-  id: '/documentos',
-  path: '/documentos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCorretoresRoute = AppCorretoresRouteImport.update({
-  id: '/corretores',
-  path: '/corretores',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppContratosRoute = AppContratosRouteImport.update({
-  id: '/contratos',
-  path: '/contratos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppClientesRoute = AppClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAtendimentosRoute = AppAtendimentosRouteImport.update({
-  id: '/atendimentos',
-  path: '/atendimentos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAlugueisRoute = AppAlugueisRouteImport.update({
-  id: '/alugueis',
-  path: '/alugueis',
+const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
+  id: '/agenciamentos',
+  path: '/agenciamentos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
@@ -165,59 +80,120 @@ const AppAgendaRoute = AppAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
-  id: '/agenciamentos',
-  path: '/agenciamentos',
+const AppAlugueisRoute = AppAlugueisRouteImport.update({
+  id: '/alugueis',
+  path: '/alugueis',
   getParentRoute: () => AppRoute,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
+const AppAtendimentosRoute = AppAtendimentosRouteImport.update({
+  id: '/atendimentos',
+  path: '/atendimentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesRoute = AppClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContratosRoute = AppContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCorretoresRoute = AppCorretoresRouteImport.update({
+  id: '/corretores',
+  path: '/corretores',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentosRoute = AppDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisRoute = AppImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisDestaqueRoute = AppImoveisDestaqueRouteImport.update({
+  id: '/imoveis-destaque',
+  path: '/imoveis-destaque',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMaisRoute = AppMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMarketingRoute = AppMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPesquisaSatisfacaoRoute = AppPesquisaSatisfacaoRouteImport.update({
+  id: '/pesquisa-satisfacao',
+  path: '/pesquisa-satisfacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVendasRoute = AppVendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
+  id: '/avaliar/$token',
+  path: '/avaliar/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
-  id: '/$imovelId',
-  path: '/$imovelId',
-  getParentRoute: () => AppImoveisRoute,
-} as any)
-const AppContratosContratoIdRoute = AppContratosContratoIdRouteImport.update({
-  id: '/$contratoId',
-  path: '/$contratoId',
-  getParentRoute: () => AppContratosRoute,
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
   getParentRoute: () => AppClientesRoute,
 } as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksSalePaymentRemindersRoute =
-  ApiPublicHooksSalePaymentRemindersRouteImport.update({
-    id: '/api/public/hooks/sale-payment-reminders',
-    path: '/api/public/hooks/sale-payment-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksFinanceiroSheetsSyncRoute =
-  ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
-    id: '/api/public/hooks/financeiro-sheets-sync',
-    path: '/api/public/hooks/financeiro-sheets-sync',
+const AppContratosContratoIdRoute = AppContratosContratoIdRouteImport.update({
+  id: '/$contratoId',
+  path: '/$contratoId',
+  getParentRoute: () => AppContratosRoute,
+} as any)
+const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
+  id: '/$imovelId',
+  path: '/$imovelId',
+  getParentRoute: () => AppImoveisRoute,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicGoogleCalendarCallbackRoute =
+  ApiPublicGoogleCalendarCallbackRouteImport.update({
+    id: '/api/public/google-calendar/callback',
+    path: '/api/public/google-calendar/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksAgendaRemindersRoute =
@@ -226,10 +202,34 @@ const ApiPublicHooksAgendaRemindersRoute =
     path: '/api/public/hooks/agenda-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicGoogleCalendarCallbackRoute =
-  ApiPublicGoogleCalendarCallbackRouteImport.update({
-    id: '/api/public/google-calendar/callback',
-    path: '/api/public/google-calendar/callback',
+const ApiPublicHooksFinanceiroSheetsSyncRoute =
+  ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
+    id: '/api/public/hooks/financeiro-sheets-sync',
+    path: '/api/public/hooks/financeiro-sheets-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSalePaymentRemindersRoute =
+  ApiPublicHooksSalePaymentRemindersRouteImport.update({
+    id: '/api/public/hooks/sale-payment-reminders',
+    path: '/api/public/hooks/sale-payment-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -480,18 +480,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unsubscribe': {
-      id: '/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/unsubscribe'
-      preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -501,11 +494,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -515,130 +515,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/avaliar/$token': {
-      id: '/avaliar/$token'
-      path: '/avaliar/$token'
-      fullPath: '/avaliar/$token'
-      preLoaderRoute: typeof AvaliarTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/vendas': {
-      id: '/_app/vendas'
-      path: '/vendas'
-      fullPath: '/vendas'
-      preLoaderRoute: typeof AppVendasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/relatorios': {
-      id: '/_app/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof AppRelatoriosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/pesquisa-satisfacao': {
-      id: '/_app/pesquisa-satisfacao'
-      path: '/pesquisa-satisfacao'
-      fullPath: '/pesquisa-satisfacao'
-      preLoaderRoute: typeof AppPesquisaSatisfacaoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing': {
-      id: '/_app/marketing'
-      path: '/marketing'
-      fullPath: '/marketing'
-      preLoaderRoute: typeof AppMarketingRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/mais': {
-      id: '/_app/mais'
-      path: '/mais'
-      fullPath: '/mais'
-      preLoaderRoute: typeof AppMaisRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/integracoes': {
-      id: '/_app/integracoes'
-      path: '/integracoes'
-      fullPath: '/integracoes'
-      preLoaderRoute: typeof AppIntegracoesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/imoveis-destaque': {
-      id: '/_app/imoveis-destaque'
-      path: '/imoveis-destaque'
-      fullPath: '/imoveis-destaque'
-      preLoaderRoute: typeof AppImoveisDestaqueRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/imoveis': {
-      id: '/_app/imoveis'
-      path: '/imoveis'
-      fullPath: '/imoveis'
-      preLoaderRoute: typeof AppImoveisRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/financeiro': {
-      id: '/_app/financeiro'
-      path: '/financeiro'
-      fullPath: '/financeiro'
-      preLoaderRoute: typeof AppFinanceiroRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/documentos': {
-      id: '/_app/documentos'
-      path: '/documentos'
-      fullPath: '/documentos'
-      preLoaderRoute: typeof AppDocumentosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/corretores': {
-      id: '/_app/corretores'
-      path: '/corretores'
-      fullPath: '/corretores'
-      preLoaderRoute: typeof AppCorretoresRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/contratos': {
-      id: '/_app/contratos'
-      path: '/contratos'
-      fullPath: '/contratos'
-      preLoaderRoute: typeof AppContratosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/configuracoes': {
-      id: '/_app/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof AppConfiguracoesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/clientes': {
-      id: '/_app/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AppClientesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/atendimentos': {
-      id: '/_app/atendimentos'
-      path: '/atendimentos'
-      fullPath: '/atendimentos'
-      preLoaderRoute: typeof AppAtendimentosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/alugueis': {
-      id: '/_app/alugueis'
-      path: '/alugueis'
-      fullPath: '/alugueis'
-      preLoaderRoute: typeof AppAlugueisRouteImport
+    '/_app/agenciamentos': {
+      id: '/_app/agenciamentos'
+      path: '/agenciamentos'
+      fullPath: '/agenciamentos'
+      preLoaderRoute: typeof AppAgenciamentosRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/agenda': {
@@ -648,33 +529,131 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/agenciamentos': {
-      id: '/_app/agenciamentos'
-      path: '/agenciamentos'
-      fullPath: '/agenciamentos'
-      preLoaderRoute: typeof AppAgenciamentosRouteImport
+    '/_app/alugueis': {
+      id: '/_app/alugueis'
+      path: '/alugueis'
+      fullPath: '/alugueis'
+      preLoaderRoute: typeof AppAlugueisRouteImport
       parentRoute: typeof AppRoute
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+    '/_app/atendimentos': {
+      id: '/_app/atendimentos'
+      path: '/atendimentos'
+      fullPath: '/atendimentos'
+      preLoaderRoute: typeof AppAtendimentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes': {
+      id: '/_app/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/configuracoes': {
+      id: '/_app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contratos': {
+      id: '/_app/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof AppContratosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/corretores': {
+      id: '/_app/corretores'
+      path: '/corretores'
+      fullPath: '/corretores'
+      preLoaderRoute: typeof AppCorretoresRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/documentos': {
+      id: '/_app/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof AppDocumentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/financeiro': {
+      id: '/_app/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis': {
+      id: '/_app/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof AppImoveisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis-destaque': {
+      id: '/_app/imoveis-destaque'
+      path: '/imoveis-destaque'
+      fullPath: '/imoveis-destaque'
+      preLoaderRoute: typeof AppImoveisDestaqueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/integracoes': {
+      id: '/_app/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof AppIntegracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/mais': {
+      id: '/_app/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof AppMaisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing': {
+      id: '/_app/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof AppMarketingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pesquisa-satisfacao': {
+      id: '/_app/pesquisa-satisfacao'
+      path: '/pesquisa-satisfacao'
+      fullPath: '/pesquisa-satisfacao'
+      preLoaderRoute: typeof AppPesquisaSatisfacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/relatorios': {
+      id: '/_app/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/vendas': {
+      id: '/_app/vendas'
+      path: '/vendas'
+      fullPath: '/vendas'
+      preLoaderRoute: typeof AppVendasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/avaliar/$token': {
+      id: '/avaliar/$token'
+      path: '/avaliar/$token'
+      fullPath: '/avaliar/$token'
+      preLoaderRoute: typeof AvaliarTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/imoveis/$imovelId': {
-      id: '/_app/imoveis/$imovelId'
-      path: '/$imovelId'
-      fullPath: '/imoveis/$imovelId'
-      preLoaderRoute: typeof AppImoveisImovelIdRouteImport
-      parentRoute: typeof AppImoveisRoute
-    }
-    '/_app/contratos/$contratoId': {
-      id: '/_app/contratos/$contratoId'
-      path: '/$contratoId'
-      fullPath: '/contratos/$contratoId'
-      preLoaderRoute: typeof AppContratosContratoIdRouteImport
-      parentRoute: typeof AppContratosRoute
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/clientes/$clienteId': {
       id: '/_app/clientes/$clienteId'
@@ -683,39 +662,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesClienteIdRouteImport
       parentRoute: typeof AppClientesRoute
     }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/_app/contratos/$contratoId': {
+      id: '/_app/contratos/$contratoId'
+      path: '/$contratoId'
+      fullPath: '/contratos/$contratoId'
+      preLoaderRoute: typeof AppContratosContratoIdRouteImport
+      parentRoute: typeof AppContratosRoute
+    }
+    '/_app/imoveis/$imovelId': {
+      id: '/_app/imoveis/$imovelId'
+      path: '/$imovelId'
+      fullPath: '/imoveis/$imovelId'
+      preLoaderRoute: typeof AppImoveisImovelIdRouteImport
+      parentRoute: typeof AppImoveisRoute
+    }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/sale-payment-reminders': {
-      id: '/api/public/hooks/sale-payment-reminders'
-      path: '/api/public/hooks/sale-payment-reminders'
-      fullPath: '/api/public/hooks/sale-payment-reminders'
-      preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/financeiro-sheets-sync': {
-      id: '/api/public/hooks/financeiro-sheets-sync'
-      path: '/api/public/hooks/financeiro-sheets-sync'
-      fullPath: '/api/public/hooks/financeiro-sheets-sync'
-      preLoaderRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRouteImport
+    '/api/public/google-calendar/callback': {
+      id: '/api/public/google-calendar/callback'
+      path: '/api/public/google-calendar/callback'
+      fullPath: '/api/public/google-calendar/callback'
+      preLoaderRoute: typeof ApiPublicGoogleCalendarCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/agenda-reminders': {
@@ -725,11 +697,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAgendaRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/google-calendar/callback': {
-      id: '/api/public/google-calendar/callback'
-      path: '/api/public/google-calendar/callback'
-      fullPath: '/api/public/google-calendar/callback'
-      preLoaderRoute: typeof ApiPublicGoogleCalendarCallbackRouteImport
+    '/api/public/hooks/financeiro-sheets-sync': {
+      id: '/api/public/hooks/financeiro-sheets-sync'
+      path: '/api/public/hooks/financeiro-sheets-sync'
+      fullPath: '/api/public/hooks/financeiro-sheets-sync'
+      preLoaderRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/sale-payment-reminders': {
+      id: '/api/public/hooks/sale-payment-reminders'
+      path: '/api/public/hooks/sale-payment-reminders'
+      fullPath: '/api/public/hooks/sale-payment-reminders'
+      preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
