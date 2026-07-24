@@ -214,6 +214,7 @@ type UpdateInput = {
   id: string;
   patch: Partial<{
     status: AtendimentoStatus;
+    pipelineStage: PipelineStage;
     convertidoEmCliente: boolean;
     clienteConvertidoId: string | null;
     motivoPerda: string | null;
@@ -231,7 +232,11 @@ export const updateAttendance = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const patch: Record<string, unknown> = {};
     const p = data.patch;
-    if (p.status !== undefined) patch.status = p.status;
+    if (p.status !== undefined) {
+      patch.status = p.status;
+      if (p.pipelineStage === undefined) patch.pipeline_stage = statusToPipelineStage(p.status);
+    }
+    if (p.pipelineStage !== undefined) patch.pipeline_stage = p.pipelineStage;
     if (p.convertidoEmCliente !== undefined)
       patch.convertido_em_cliente = p.convertidoEmCliente;
     if (p.clienteConvertidoId !== undefined)
