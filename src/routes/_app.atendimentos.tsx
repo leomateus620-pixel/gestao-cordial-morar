@@ -47,7 +47,7 @@ function Page() {
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const canAssignBroker = canManageAttendanceAssignments(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
-  const { id: highlightId } = Route.useSearch();
+  const { id: highlightId, clienteId: clienteIdFilter } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
