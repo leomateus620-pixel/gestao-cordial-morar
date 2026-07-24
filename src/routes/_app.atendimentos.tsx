@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Inbox, Plus, Workflow } from "lucide-react";
+import { Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
+import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
+import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
 import {
   buildLocalIso,
   type AtendimentoActionPayload,
@@ -23,10 +25,12 @@ import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { markAttendanceOpened } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
+import { cn } from "@/lib/utils";
 import type {
   Atendimento,
   AtendimentoCreateInput,
   AtendimentoStatus,
+  PipelineStage,
 } from "@/types/atendimento";
 import type { AgendaEventInput } from "@/types/agenda";
 
@@ -45,6 +49,8 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
+  const [view, setView] = useState<"kanban" | "list">("kanban");
+  const [detailId, setDetailId] = useState<string | null>(null);
   const {
     atendimentos,
     filteredAtendimentos,
@@ -56,6 +62,10 @@ function Page() {
     convertAtendimento,
     updateAtendimento,
   } = useAttendances(query, filters);
+  const detailAtendimento = useMemo(
+    () => atendimentos.find((a) => a.id === detailId) ?? null,
+    [atendimentos, detailId],
+  );
 
   useEffect(() => {
     if (!highlightId || isLoading) return;
@@ -298,17 +308,36 @@ function Page() {
       />
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3 px-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
           <div>
-            <h2 className="text-sm font-semibold tracking-tight">Fila de atendimentos</h2>
+            <h2 className="text-sm font-semibold tracking-tight">CRM comercial</h2>
             <p className="text-[11px] text-foreground/50">
               {filteredAtendimentos.length} atendimento
               {filteredAtendimentos.length === 1 ? "" : "s"} no recorte atual
             </p>
           </div>
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800">
-            Operação comercial
-          </span>
+          <div className="flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setView("kanban")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                view === "kanban" ? "bg-teal-700 text-white shadow" : "text-teal-800 hover:bg-teal-700/8",
+              )}
+            >
+              <LayoutGrid className="size-3" /> Funil
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                view === "list" ? "bg-teal-700 text-white shadow" : "text-teal-800 hover:bg-teal-700/8",
+              )}
+            >
+              <List className="size-3" /> Lista
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -318,26 +347,39 @@ function Page() {
             icon={<Inbox className="size-5" />}
           />
         ) : filteredAtendimentos.length > 0 ? (
-          <div className="grid gap-3 xl:grid-cols-2">
-            {filteredAtendimentos.map((atendimento) => (
-              <div
-                key={atendimento.id}
-                id={`atendimento-${atendimento.id}`}
-                className={
-                  highlightId === atendimento.id
-                    ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
-                    : undefined
-                }
-              >
-                <AtendimentoCard
-                  atendimento={atendimento}
-                  onConvert={handleConvert}
-                  onAction={handleAction}
-                />
-              </div>
-            ))}
-          </div>
-
+          view === "kanban" ? (
+            <AtendimentoKanban
+              atendimentos={filteredAtendimentos}
+              highlightId={highlightId}
+              onOpenDetail={(a) => setDetailId(a.id)}
+              onConvert={handleConvert}
+              onAction={handleAction}
+            />
+          ) : (
+            <div className="grid gap-3 xl:grid-cols-2">
+              {filteredAtendimentos.map((atendimento) => (
+                <div
+                  key={atendimento.id}
+                  id={`atendimento-${atendimento.id}`}
+                  className={
+                    highlightId === atendimento.id
+                      ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
+                      : undefined
+                  }
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button,select,textarea,input,a")) return;
+                    setDetailId(atendimento.id);
+                  }}
+                >
+                  <AtendimentoCard
+                    atendimento={atendimento}
+                    onConvert={handleConvert}
+                    onAction={handleAction}
+                  />
+                </div>
+              ))}
+            </div>
+          )
         ) : hasAtendimentos ? (
           <EmptyState
             title="Nenhum atendimento encontrado com os filtros atuais."
@@ -362,6 +404,16 @@ function Page() {
           />
         )}
       </section>
+
+      <AtendimentoDetailDrawer
+        atendimento={detailAtendimento}
+        open={detailId !== null}
+        onOpenChange={(o) => { if (!o) setDetailId(null); }}
+        onStageChange={async (id, stage: PipelineStage) => {
+          await updateAtendimento({ id, patch: { pipelineStage: stage } });
+        }}
+      />
+
 
       {open && (
         <AtendimentoFormModal open={open} onOpenChange={setOpen} onSubmit={createAtendimento} />

@@ -98,15 +98,6 @@ export const moduleItems: ModuleItem[] = [
     primaryFor: ["admin_owner", "financeiro_admin", "corretor", "secretaria"],
   },
   {
-    to: "/clientes",
-    label: "Clientes",
-    shortLabel: "Clientes",
-    desc: "Cadastro e relacionamento",
-    icon: Users,
-    module: "clientes",
-    primaryFor: ["corretor", "secretaria"],
-  },
-  {
     to: "/alugueis",
     label: "Aluguéis",
     desc: "Locações e repasses",
