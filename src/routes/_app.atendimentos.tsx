@@ -37,6 +37,7 @@ export const Route = createFileRoute("/_app/atendimentos")({
   head: () => ({ meta: [{ title: "Atendimentos — Gestão Cordial" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === "string" ? search.id : undefined,
+    clienteId: typeof search.clienteId === "string" ? search.clienteId : undefined,
   }),
   component: Page,
 });
@@ -46,7 +47,7 @@ function Page() {
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const canAssignBroker = canManageAttendanceAssignments(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
-  const { id: highlightId } = Route.useSearch();
+  const { id: highlightId, clienteId: clienteIdFilter } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
@@ -57,7 +58,7 @@ function Page() {
   const qc = useQueryClient();
   const {
     atendimentos,
-    filteredAtendimentos,
+    filteredAtendimentos: baseFilteredAtendimentos,
     brokers,
     stats,
     isLoading,
@@ -69,6 +70,12 @@ function Page() {
     updateAtendimento,
     transitionStage,
   } = useAttendances(query, filters);
+  const filteredAtendimentos = useMemo(() => {
+    if (!clienteIdFilter) return baseFilteredAtendimentos;
+    return baseFilteredAtendimentos.filter(
+      (a) => a.clienteId === clienteIdFilter || a.clienteConvertidoId === clienteIdFilter,
+    );
+  }, [baseFilteredAtendimentos, clienteIdFilter]);
   const detailAtendimento = useMemo(
     () => atendimentos.find((a) => a.id === detailId) ?? null,
     [atendimentos, detailId],
