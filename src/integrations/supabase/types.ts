@@ -467,6 +467,59 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_history: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          attendance_id: string
+          client_id: string | null
+          created_at: string
+          description: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          new_value: Json | null
+          previous_value: Json | null
+          source: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          attendance_id: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          new_value?: Json | null
+          previous_value?: Json | null
+          source?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          attendance_id?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          new_value?: Json | null
+          previous_value?: Json | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_history_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendances: {
         Row: {
           bairro_interesse: string | null
@@ -495,6 +548,7 @@ export type Database = {
           orcamento_max: number | null
           orcamento_min: number | null
           origem: string
+          pipeline_stage: Database["public"]["Enums"]["pipeline_stage"]
           prioridade: string
           proximo_passo: string | null
           proximo_retorno: string | null
@@ -530,6 +584,7 @@ export type Database = {
           orcamento_max?: number | null
           orcamento_min?: number | null
           origem?: string
+          pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"]
           prioridade?: string
           proximo_passo?: string | null
           proximo_retorno?: string | null
@@ -565,6 +620,7 @@ export type Database = {
           orcamento_max?: number | null
           orcamento_min?: number | null
           origem?: string
+          pipeline_stage?: Database["public"]["Enums"]["pipeline_stage"]
           prioridade?: string
           proximo_passo?: string | null
           proximo_retorno?: string | null
@@ -2081,6 +2137,14 @@ export type Database = {
     Functions: {
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
+      attendance_add_note: {
+        Args: { _attendance_id: string; _texto: string }
+        Returns: string
+      }
+      attendance_can_access: {
+        Args: { _attendance_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2166,6 +2230,14 @@ export type Database = {
         | "interno"
         | "outro"
       app_role: "admin" | "secretaria" | "corretor" | "financeiro"
+      pipeline_stage:
+        | "primeiro_contato"
+        | "apresentando_solucao"
+        | "visita"
+        | "proposta"
+        | "fechamento"
+        | "perdido"
+        | "arquivado"
       rental_brand: "cordial" | "morar" | "ambas"
       rental_contract_status:
         | "ativo"
@@ -2350,6 +2422,15 @@ export const Constants = {
         "outro",
       ],
       app_role: ["admin", "secretaria", "corretor", "financeiro"],
+      pipeline_stage: [
+        "primeiro_contato",
+        "apresentando_solucao",
+        "visita",
+        "proposta",
+        "fechamento",
+        "perdido",
+        "arquivado",
+      ],
       rental_brand: ["cordial", "morar", "ambas"],
       rental_contract_status: [
         "ativo",
