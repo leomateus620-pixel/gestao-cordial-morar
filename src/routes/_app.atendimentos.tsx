@@ -49,6 +49,8 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
+  const [view, setView] = useState<"kanban" | "list">("kanban");
+  const [detailId, setDetailId] = useState<string | null>(null);
   const {
     atendimentos,
     filteredAtendimentos,
@@ -60,6 +62,10 @@ function Page() {
     convertAtendimento,
     updateAtendimento,
   } = useAttendances(query, filters);
+  const detailAtendimento = useMemo(
+    () => atendimentos.find((a) => a.id === detailId) ?? null,
+    [atendimentos, detailId],
+  );
 
   useEffect(() => {
     if (!highlightId || isLoading) return;
