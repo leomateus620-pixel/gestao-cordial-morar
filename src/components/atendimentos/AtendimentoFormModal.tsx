@@ -31,6 +31,7 @@ import {
   type ProximoPassoAtendimento,
   type TipoImovelInteresse,
 } from "@/types/atendimento";
+import { statusToPipelineStage } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
 
 type FormState = {
