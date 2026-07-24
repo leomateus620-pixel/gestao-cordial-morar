@@ -125,23 +125,35 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
       if (atendimento.clienteConvertidoId) {
         throw new Error("Este atendimento já foi vinculado a um cliente.");
       }
-      const clientInput = atendimentoToClientInput(atendimento);
-      const created = await createClient({ data: clientInput });
+      // Deduplicate by phone/email/document before creating a new client.
+      const existing = await findClientByContact({
+        data: { phone: atendimento.telefone, email: atendimento.email },
+      });
+      let clientId: string;
+      if (existing && existing.length > 0) {
+        clientId = existing[0].id;
+      } else {
+        const clientInput = atendimentoToClientInput(atendimento);
+        const created = await createClient({ data: clientInput });
+        clientId = created.id;
+      }
       const stamp = formatHistoryStamp(new Date());
-      const historyLine = `[${stamp}] Cliente vinculado: cadastro criado em Clientes.`;
+      const linkNote = existing?.length
+        ? `[${stamp}] Cliente vinculado a cadastro existente.`
+        : `[${stamp}] Cliente vinculado: cadastro criado em Clientes.`;
       const observacoes = atendimento.observacoes?.trim()
-        ? `${atendimento.observacoes.trim()}\n${historyLine}`
-        : historyLine;
+        ? `${atendimento.observacoes.trim()}\n${linkNote}`
+        : linkNote;
       await updateMutation.mutateAsync({
         id,
         patch: {
           convertidoEmCliente: true,
-          clienteConvertidoId: created.id,
+          clienteConvertidoId: clientId,
           observacoes,
         },
       });
       qc.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
-      return created;
+      return { id: clientId };
     },
     updateAtendimento: updateMutation.mutateAsync,
     removeAtendimento: removeMutation.mutateAsync,
