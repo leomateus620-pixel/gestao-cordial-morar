@@ -20,7 +20,7 @@ const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const DOCS_BUCKET = "rental-documents";
 
 function sanitize(name: string) {
-  return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+  return name.replace(/[^\w.-]+/g, "_").slice(0, 120);
 }
 
 export function useRentalDocuments(contractId: string | null) {
@@ -49,10 +49,11 @@ export function useRentalDocuments(contractId: string | null) {
     staleTime: 30_000,
   });
 
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ["rentals", "documents", contractId] });
-    qc.invalidateQueries({ queryKey: ["rentals", "drive-folder", contractId] });
-  };
+  const invalidateAll = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["rentals", "documents", contractId] }),
+      qc.invalidateQueries({ queryKey: ["rentals", "drive-folder", contractId] }),
+    ]);
 
   const uploadMutation = useMutation({
     mutationFn: async (args: { file: File; category?: RentalDocumentCategory }) => {
@@ -100,8 +101,7 @@ export function useRentalDocuments(contractId: string | null) {
     onSuccess: invalidateAll,
   });
   const disableSyncMutation = useMutation({
-    mutationFn: (trash: boolean) =>
-      disableSync({ data: { contractId: contractId!, trash } }),
+    mutationFn: (trash: boolean) => disableSync({ data: { contractId: contractId!, trash } }),
     onSuccess: invalidateAll,
   });
   const syncOneMutation = useMutation({
@@ -121,6 +121,7 @@ export function useRentalDocuments(contractId: string | null) {
     documents: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
+    error: query.error as Error | null,
     driveFolder: folderQuery.data ?? null,
     isFolderLoading: folderQuery.isLoading,
     uploadFile: (file: File, category?: RentalDocumentCategory) =>
@@ -140,8 +141,12 @@ export function useRentalDocuments(contractId: string | null) {
       syncOneMutation.isPending || syncAllMutation.isPending || trashDriveOnlyMutation.isPending,
     uploadError: uploadMutation.error as Error | null,
     driveError:
+      (folderQuery.error as Error | null) ||
       (enableSyncMutation.error as Error | null) ||
+      (disableSyncMutation.error as Error | null) ||
+      (syncOneMutation.error as Error | null) ||
       (syncAllMutation.error as Error | null) ||
+      (trashDriveOnlyMutation.error as Error | null) ||
       null,
   };
 }

@@ -28,14 +28,14 @@ function GuardedPage() {
   );
 }
 
-
 function Page() {
   const r = useRentals();
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<RentalContractFull | null>(null);
-  const [selected, setSelected] = useState<RentalContractFull | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = r.allContracts.find((contract) => contract.id === selectedId) ?? null;
 
   const k = r.kpis;
 
@@ -145,7 +145,7 @@ function Page() {
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {r.contracts.map((c) => (
-              <RentalCard key={c.id} contract={c} onClick={() => setSelected(c)} />
+              <RentalCard key={c.id} contract={c} onClick={() => setSelectedId(c.id)} />
             ))}
           </div>
         )}
@@ -166,32 +166,31 @@ function Page() {
 
       <RentalExpandedDetails
         contract={selected}
-        open={selected !== null}
-        onOpenChange={(o) => !o && setSelected(null)}
+        open={selectedId !== null && selected !== null}
+        onOpenChange={(o) => !o && setSelectedId(null)}
         onEdit={(c) => {
-          setSelected(null);
+          setSelectedId(null);
           setEditing(c);
           setOpenForm(true);
         }}
         onClose={async (id) => {
           await r.closeRental(id);
-          setSelected(null);
+          setSelectedId(null);
         }}
         onRenew={async (id) => {
           if (!selected) return;
           const d = new Date(selected.dataFim);
           d.setFullYear(d.getFullYear() + 1);
           await r.renewRental(id, d.toISOString().slice(0, 10));
-          setSelected(null);
+          setSelectedId(null);
         }}
         onMarkPaid={async (id) => {
           await r.markPaid(id);
         }}
         onDelete={async (id) => {
-          if (!window.confirm("Excluir este contrato? Esta ação não pode ser desfeita."))
-            return;
+          if (!window.confirm("Excluir este contrato? Esta ação não pode ser desfeita.")) return;
           await r.deleteRental(id);
-          setSelected(null);
+          setSelectedId(null);
         }}
       />
     </>

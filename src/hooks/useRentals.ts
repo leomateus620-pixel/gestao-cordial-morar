@@ -59,9 +59,10 @@ export function useRentals() {
     staleTime: 60_000,
   });
 
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["rentals"] });
-  }, [queryClient]);
+  const invalidate = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ["rentals"] }),
+    [queryClient],
+  );
 
   const createMutation = useMutation({
     mutationFn: (input: RentalContractInput) => create({ data: input }),
@@ -88,8 +89,7 @@ export function useRentals() {
     onSuccess: invalidate,
   });
   const replaceMutation = useMutation({
-    mutationFn: (input: RentalContractInput & { contractId: string }) =>
-      replace({ data: input }),
+    mutationFn: (input: RentalContractInput & { contractId: string }) => replace({ data: input }),
     onSuccess: invalidate,
   });
 
@@ -97,7 +97,7 @@ export function useRentals() {
   const [search, setSearch] = useState("");
   const agency = useApp((s) => s.agency);
 
-  const contracts = contractsQuery.data ?? [];
+  const contracts = useMemo(() => contractsQuery.data ?? [], [contractsQuery.data]);
   const filtered = useMemo(() => {
     const today = new Date();
     return contracts.filter((c) => {
