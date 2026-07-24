@@ -132,6 +132,7 @@ export interface Atendimento {
   imovelDescricao?: string;
   prioridade: PrioridadeAtendimento;
   status: AtendimentoStatus;
+  pipelineStage: PipelineStage;
   proximoRetorno?: string;
   proximoPasso?: ProximoPassoAtendimento;
   observacoes?: string;
