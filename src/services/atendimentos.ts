@@ -147,7 +147,7 @@ export function normalizeAtendimento(
     clienteId: optionalText(stringValue(raw.clienteId)),
     clienteNome,
     telefone,
-    pipelineStage: (raw.pipelineStage as import("@/types/atendimento").PipelineStage | undefined) ?? statusToPipelineStage(statusNorm),
+    pipelineStage: (raw.pipelineStage as PipelineStage | undefined) ?? statusToPipelineStage(statusNorm),
     email: optionalText(stringValue(raw.email ?? cliente?.email)),
     contatoPreferencial: normalizeContato(
       raw.contatoPreferencial ??
