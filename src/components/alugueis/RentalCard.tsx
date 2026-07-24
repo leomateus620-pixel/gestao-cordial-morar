@@ -1,12 +1,8 @@
 import { AlertTriangle, CalendarClock, MapPin, User, Wallet } from "lucide-react";
 import { brl } from "@/lib/format";
+import { formatRentalDate } from "@/lib/rentals/rental-detail.utils";
 import type { RentalContractFull } from "@/types/rental";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
-
-function fmtDate(s?: string | null) {
-  if (!s) return "—";
-  return new Date(s).toLocaleDateString("pt-BR");
-}
 
 function BrandBadge({ brand }: { brand?: string | null }) {
   const b = brand === "morar" ? "morar" : "cordial";
@@ -16,12 +12,13 @@ function BrandBadge({ brand }: { brand?: string | null }) {
       ? "bg-[color:var(--morar-primary,#8b5cf6)]/12 text-[color:var(--morar-primary,#8b5cf6)] ring-[color:var(--morar-primary,#8b5cf6)]/25"
       : "bg-[color:var(--cordial-primary,#0ea5e9)]/12 text-[color:var(--cordial-primary,#0ea5e9)] ring-[color:var(--cordial-primary,#0ea5e9)]/25";
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 ${cls}`}>
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 ${cls}`}
+    >
       {label}
     </span>
   );
 }
-
 
 export function RentalCard({
   contract,
@@ -52,9 +49,8 @@ export function RentalCard({
             </div>
             <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-foreground/55">
               <MapPin className="size-3 shrink-0" />
-              {[contract.property.bairro, contract.property.cidade]
-                .filter(Boolean)
-                .join(" · ") || contract.property.logradouro}
+              {[contract.property.bairro, contract.property.cidade].filter(Boolean).join(" · ") ||
+                contract.property.logradouro}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -62,7 +58,6 @@ export function RentalCard({
             <RentalPaymentBadge status={contract.paymentStatus} />
           </div>
         </div>
-
 
         <div className="mt-3 flex items-end justify-between border-t border-white/40 pt-3">
           <div className="min-w-0">
@@ -77,7 +72,7 @@ export function RentalCard({
             </p>
             <p className="mt-1 flex items-center gap-1 text-[10px] text-foreground/55">
               <CalendarClock className="size-3 shrink-0" />
-              {fmtDate(contract.dataInicio)} → {fmtDate(contract.dataFim)}
+              {formatRentalDate(contract.dataInicio)} → {formatRentalDate(contract.dataFim)}
             </p>
           </div>
           <div className="text-right">
@@ -86,7 +81,7 @@ export function RentalCard({
               {brl(contract.valorMensal)}
             </p>
             <p className="text-[10px] text-foreground/55">
-              Próx: {fmtDate(contract.proximoVencimento)}
+              Próx: {formatRentalDate(contract.proximoVencimento)}
             </p>
           </div>
         </div>
@@ -95,9 +90,7 @@ export function RentalCard({
           <div
             className={
               "mt-3 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[10px] font-medium " +
-              (atrasado
-                ? "bg-rose-500/10 text-rose-700"
-                : "bg-amber-500/10 text-amber-700")
+              (atrasado ? "bg-rose-500/10 text-rose-700" : "bg-amber-500/10 text-amber-700")
             }
           >
             <AlertTriangle className="size-3" />
