@@ -284,6 +284,8 @@ export const markAttendanceOpened = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+
 export type AttendanceHistoryEvent = {
   id: string;
   attendanceId: string;
@@ -292,9 +294,9 @@ export type AttendanceHistoryEvent = {
   actorId: string | null;
   actorName: string | null;
   description: string | null;
-  previousValue: Record<string, unknown> | null;
-  newValue: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
+  previousValue: JsonValue;
+  newValue: JsonValue;
+  metadata: JsonValue;
   source: string;
   createdAt: string;
 };
@@ -325,9 +327,9 @@ export const listAttendanceHistory = createServerFn({ method: "GET" })
       actorId: (r.actor_id as string | null) ?? null,
       actorName: (r.actor_name as string | null) ?? null,
       description: (r.description as string | null) ?? null,
-      previousValue: (r.previous_value as Record<string, unknown> | null) ?? null,
-      newValue: (r.new_value as Record<string, unknown> | null) ?? null,
-      metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+      previousValue: (r.previous_value as JsonValue) ?? null,
+      newValue: (r.new_value as JsonValue) ?? null,
+      metadata: (r.metadata as JsonValue) ?? null,
       source: (r.source as string) ?? "trigger",
       createdAt: r.created_at as string,
     }));
