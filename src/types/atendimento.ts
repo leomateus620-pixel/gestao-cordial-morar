@@ -10,6 +10,61 @@ export type AtendimentoStatus =
   | "sem_retorno"
   | "arquivado";
 
+export type PipelineStage =
+  | "primeiro_contato"
+  | "apresentando_solucao"
+  | "visita"
+  | "proposta"
+  | "fechamento"
+  | "perdido"
+  | "arquivado";
+
+export const ACTIVE_PIPELINE_STAGES: PipelineStage[] = [
+  "primeiro_contato",
+  "apresentando_solucao",
+  "visita",
+  "proposta",
+  "fechamento",
+];
+
+export const pipelineStageOptions = [
+  { value: "primeiro_contato", label: "Primeiro contato", short: "1º contato" },
+  { value: "apresentando_solucao", label: "Apresentando solução", short: "Solução" },
+  { value: "visita", label: "Visita", short: "Visita" },
+  { value: "proposta", label: "Proposta", short: "Proposta" },
+  { value: "fechamento", label: "Fechamento", short: "Fechamento" },
+  { value: "perdido", label: "Perdido", short: "Perdido" },
+  { value: "arquivado", label: "Arquivado", short: "Arquivado" },
+] as const;
+
+export function pipelineStageLabel(value: PipelineStage): string {
+  return pipelineStageOptions.find((o) => o.value === value)?.label ?? value;
+}
+
+export function statusToPipelineStage(status: AtendimentoStatus): PipelineStage {
+  switch (status) {
+    case "novo":
+    case "aguardando_retorno":
+    case "sem_retorno":
+      return "primeiro_contato";
+    case "em_atendimento":
+      return "apresentando_solucao";
+    case "visita_agendada":
+      return "visita";
+    case "proposta_enviada":
+    case "negociacao":
+      return "proposta";
+    case "fechado":
+      return "fechamento";
+    case "perdido":
+      return "perdido";
+    case "arquivado":
+      return "arquivado";
+    default:
+      return "primeiro_contato";
+  }
+}
+
 export type AtendimentoFinalidade = "compra" | "aluguel" | "ambos";
 
 export type TipoImovelInteresse =
