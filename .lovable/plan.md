@@ -1,97 +1,56 @@
+## Objetivo
 
-# Revisão técnica — CRM Atendimentos (branch `codex/atendimentos-crm-production`)
+Migrar todos os registros existentes em `public.clients` para o CRM unificado (`public.attendances`), preservando propriedade por usuário e categorizando cada um na etapa correta do funil.
 
-## 1. Estado real encontrado (evidências)
+## Situação atual (verificada)
 
-**Migrations aplicadas** (últimas no remoto, `20260724180506` é a mais recente aplicada). A migration `20260724233000_atendimentos_integridade_contextual.sql` **ainda NÃO foi aplicada**: as colunas `imovel_ref`, `interesse_descricao`, `imovel_endereco`, `imovel_bairro`, `imovel_cidade`, `imovel_tipo`, `imovel_valor` não existem em `public.attendances`. A função `attendances_log_history` no remoto ainda é a versão antiga (um evento por campo, com `event_type` tipado — `stage_change`, `status_change`, `broker_change`, etc.).
+- 12 clientes cadastrados em `clients`. Apenas 3 já possuem `attendance` vinculado; 9 estão órfãos do CRM.
+- `assigned_broker_id` mistura IDs reais (UUIDs de Felipe, Pablo, Bruna, Geandre) com strings mock antigas: `"ricardo"`, `"bianca"`, `"a_definir"`.
+- `attendances.cliente_id` já existe e `pipeline_stage` está ativo — a migração unificada mais recente já preparou o schema.
+- `handle_new_user` / triggers de histórico continuam válidos: cada INSERT dispara `attendances_log_history` e cria evento `criacao` automaticamente.
 
-**Triggers atuais em `attendances`**: `trg_attendances_history_ins`, `trg_attendances_history_upd`, `trg_notify_atendimento_corretor`, `attendances_touch_updated_at`. Sem duplicação.
+## Regras de mapeamento
 
-**Dados reais** (19 linhas):
-- `imovel_id` (uuid) preenchido em **0/19**. Nunca foi usado — o catálogo de imóveis no app usa IDs locais tipo `im1`, incompatíveis com `uuid`.
-- `imovel_descricao` preenchido em **12/19** — mistura de texto livre ("Cliente quer visitar…") e referências reais ("Interesse no cód 806", "Interesse no Residencial Cambará").
-- `imovel_codigo` preenchido em **9/19** com valores como `"Cód 1258"`, `"Cód 2940 e 3109"`, `"Cod 1259"` — **códigos reais de imóveis** já digitados manualmente.
+**Broker (`corretor_id` / `corretor_nome`)**
+- UUID válido em `assigned_broker_id` → mantém como texto (formato atual da coluna).
+- `"ricardo"` → `87e85211-12a8-4f1a-bce2-73eddd1cedad` (Ricardo Caetano).
+- `"bianca"` → `b06a522f-65b4-4e2a-8bb4-e9e1f0675b75` (Bianca Regina).
+- `"a_definir"` → `NULL` (sem corretor atribuído; aparece na fila para a secretaria distribuir).
 
-**Fonte canônica de imóveis**: **não existe** tabela `public.imoveis` / `properties`. Só `rental_properties` (aluguéis). O catálogo de imóveis para venda vive hoje em mocks/serviços front-end.
+**Status → pipeline_stage** (via `statusToPipelineStage` já existente)
+- `novo`, `aguardando_retorno`, `sem_retorno` → `primeiro_contato`
+- `em_atendimento` → `apresentando_solucao`
+- `visita_agendada` → `visita`
+- `proposta_enviada`, `negociacao` → `proposta`
+- `fechado` → `fechamento`
+- `perdido` → `perdido`; `arquivado` → `arquivado`
 
-**Dependências do front no `event_type` estruturado**:
-- `src/lib/attendances/attendances.functions.ts:309` filtra `event_type='stage_change'` para reconstruir a transição atual do funil.
-- `src/components/atendimentos/AtendimentoDetailDrawer.tsx:857-860` mapeia `stage_change`, `status_change`, `broker_change` para rótulos na timeline.
+**Campos copiados 1:1**: `full_name→cliente_nome`, `phone→telefone`, `email`, `contact_preference→contato_preferencial`, `lead_origin→origem`, `brand→imobiliaria`, `purpose→finalidade` (com `locacao→aluguel`, `venda→compra`), `property_type→tipo_imovel`, `bedrooms→dormitorios`, `neighborhood→bairro_interesse`, `min_budget`, `max_budget`, `notes→observacoes`, `next_step→proximo_passo` (quando bate com enum, senão vira observação), `next_follow_up_at→proximo_retorno`, `created_by`, `created_at`.
 
-## 2. Problemas identificados na migration recente
+**Ownership**: `created_by` = `clients.created_by` (mantém dono original — a maioria foi criada pela Bianca, e as políticas RLS já dão acesso a criador, corretor atribuído, admin e secretaria).
 
-1. **Backfill destrutivo**. `UPDATE … SET imovel_descricao=NULL, imovel_codigo=NULL WHERE imovel_id IS NULL` afeta **19/19 linhas** e **apaga códigos reais** ("Cód 1258", "Cód 2940 e 3109") que hoje são a única referência ao imóvel. Também move texto de descrição sem separar código de observação. Não é idempotente auditável (nenhum log).
-2. **Quebra o histórico estruturado**. A nova função grava tudo como `event_type='attendance_update'` (um único tipo consolidado), enquanto o app filtra por `stage_change` para descobrir a etapa atual e renderiza rótulos por tipo. Aplicar como está silenciosamente esvazia badges e a lógica de "última transição".
-3. **`imovel_ref TEXT` sem contrato**. Adiciona coluna nova sem plano de escrita: o front nunca grava nela, e nada migra `imovel_codigo` existente para `imovel_ref`. Fica órfã.
-4. **Sem GRANT/policy revisitados** para as novas colunas (herdam da tabela — OK), mas a policy `Attendance staff can view assignment profiles` para `profiles` amplia leitura globalmente para todo `authenticated`; considerar restringir a linhas com role admin/secretaria/corretor.
-5. **Sem consulta de diagnóstico** antes do UPDATE — o requisito do usuário exige diagnóstico antes de mover.
+## Passos
 
-## 3. Plano de correção (aditivo, idempotente, sem editar migration já revisada)
+1. **Migração idempotente** (`supabase/migrations/<timestamp>_backfill_atendimentos_from_clients.sql`):
+   - `INSERT INTO public.attendances (...) SELECT ... FROM public.clients c WHERE NOT EXISTS (SELECT 1 FROM public.attendances a WHERE a.cliente_id = c.id)`.
+   - Aplica todas as regras de mapeamento acima em CTEs (broker resolver, finalidade, prioridade default `media`, contato default `whatsapp`).
+   - Deixa `pipeline_stage` explícito no INSERT (para que o trigger de histórico registre o valor correto de entrada).
+   - Aditiva e re-executável (o `NOT EXISTS` garante idempotência).
 
-Como a migration `20260724233000` **ainda não foi aplicada**, o correto é **editá-la in-place** (nunca aplicada = não é histórico) para removê-la do risco. Regra do prompt "não editar migration aplicada" não se aplica aqui — confirmado por consulta.
+2. **Validação pós-migração** (executada como parte do plano de verificação, não como código):
+   - `SELECT count(*) FROM clients` = `SELECT count(DISTINCT cliente_id) FROM attendances WHERE cliente_id IS NOT NULL`.
+   - Amostragem por corretor: cada broker real vê seus atendimentos migrados; itens `a_definir` aparecem sem corretor.
+   - Distribuição por `pipeline_stage` coerente com o `status` de origem.
+   - Timeline (`attendance_history`) contém o evento `criacao` para cada linha nova (gerado automaticamente pelo trigger).
 
-### 3.1 Reescrever a migration `20260724233000`
+## Fora de escopo
 
-- **Manter**: colunas snapshot novas (`imovel_endereco`, `imovel_bairro`, `imovel_cidade`, `imovel_tipo`, `imovel_valor`, `interesse_descricao`) — são aditivas e úteis.
-- **Trocar `imovel_ref TEXT` por reuso de `imovel_codigo`** como referência textual canônica enquanto não há tabela `imoveis`. Documentar em comentário SQL: quando existir catálogo, migrar `imovel_codigo` → FK.
-- **Remover o UPDATE destrutivo**. Substituir por:
-  - `interesse_descricao := imovel_descricao` apenas quando `imovel_codigo IS NULL AND imovel_id IS NULL` (linhas comprovadamente sem referência).
-  - **NÃO** anular `imovel_descricao` nem `imovel_codigo`. `imovel_descricao` passa a ser tratado como snapshot textual do imóvel; `interesse_descricao` como observação livre.
-  - Registrar contagem afetada via `RAISE NOTICE`.
-- **Reescrever a função `attendances_log_history` preservando `event_type` estruturado**: manter os tipos `stage_change`, `status_change`, `broker_change`, `client_link`, `property_link`, `next_return`, `next_action` (como já existe no remoto). Adicionar novos tipos apenas para o que faltava: `contact_change`, `preferences_change`. Cada evento continua sendo uma linha, com `previous_value`/`new_value` e `metadata.changed_fields`. Isso mantém compat com `attendances.functions.ts` e o Drawer.
-- **Guardar contra "ruído"**: ignorar mudanças que só afetam `updated_at`, `opened_at`, `opened_by` (já ignorados hoje porque não estão listados — verificar).
-- **Policy de profiles**: restringir a `has_role(id,'admin') OR has_role(id,'secretaria') OR has_role(id,'corretor')` para não expor perfis fora do time comercial.
+- Não altera schema, RLS, triggers, nem o módulo Clientes (já redirecionado para `/atendimentos`).
+- Não mexe em atendimentos existentes — só cria os que faltam.
+- Não cria "properties" canônicas; `imovel_codigo`/`imovel_descricao` permanecem como snapshot textual.
 
-### 3.2 Frontend
+## Detalhes técnicos
 
-- `attendance-field-mapping.ts` / `AtendimentoFormModal`: gravar `imovel_codigo` quando o usuário digita "Cód 1258" (parser leve: trim, normalizar). Manter `imovel_descricao` como snapshot do título, `interesse_descricao` como observação.
-- `AtendimentoDetailDrawer`: exibir `imovel_codigo` como badge principal + `interesse_descricao` separado de `imovel_descricao`.
-- Não adicionar consumo de `imovel_ref` (removido do schema).
-
-### 3.3 Rotas / redirects
-
-- `src/routes/_app.clientes.$clienteId.tsx`: preservar o id como `clienteId` explícito no destino em vez de descartar:
-  ```ts
-  throw redirect({ to: "/atendimentos", search: { clienteId: params.clienteId } })
-  ```
-- `_app.atendimentos.tsx` `validateSearch`: aceitar `clienteId?: string` além de `id?: string`. Ao entrar com `clienteId`, filtrar a lista/kanban por esse cliente e destacar o card correspondente.
-- `_app.clientes.tsx`: mantém redirect para `/atendimentos` sem parâmetros.
-- `routeTree.gen.ts`: não tocar (gerado).
-
-### 3.4 Validações e higiene
-
-- WhatsApp: `wa.me` só quando `normalizePhoneToE164()` retornar válido; caso contrário, botão desabilitado com tooltip "telefone inválido". Aplicar em Card e Drawer.
-- Concorrência de transição de etapa: em `transitionStage`, adicionar `.eq("pipeline_stage", expectedPrevious)` (compare-and-set); em conflito, invalidar queries e mostrar toast "etapa mudou em outra sessão".
-- Botões de ação do drawer com `disabled` durante mutation (evita double-submit).
-
-## 4. Validação obrigatória
-
-- Diagnóstico SQL (executar antes de aplicar migration): contagem de linhas `WHERE imovel_id IS NULL AND imovel_codigo IS NOT NULL` (não devem perder código); linhas `WHERE imovel_id IS NULL AND imovel_codigo IS NULL AND imovel_descricao IS NOT NULL` (candidatas ao backfill).
-- Após aplicar: `SELECT count(*) FROM attendance_history WHERE event_type='stage_change'` continua > 0 (compat mantida).
-- `tsgo` + `bunx vitest run` em `src/lib/attendances/**`.
-- Teste manual: criar atendimento → mudar etapa (1 evento `stage_change`), trocar corretor (1 evento `broker_change`), editar telefone (1 evento `contact_change` novo). Timeline deve renderizar 3 linhas distintas.
-- Deep links: `/atendimentos`, `/atendimentos?id=<uuid>`, `/atendimentos?clienteId=<uuid>`, `/clientes` (302), `/clientes/<uuid>` (302 preservando clienteId).
-
-## 5. Riscos remanescentes
-
-- Sem catálogo real de imóveis, `imovel_codigo` permanece campo textual — busca por código não é indexada por FK.
-- Policy de `profiles` mais restrita pode impactar telas que hoje listam qualquer usuário; mitigar mantendo `list_corretores()` RPC (que é SECURITY DEFINER e continua funcionando).
-- Concorrência CAS em `transitionStage` muda contrato do erro (nova mensagem "etapa mudou"). Documentar no toast.
-
-## 6. Fora de escopo desta tarefa
-
-- Criar tabela canônica `public.imoveis` (venda). Requer decisão de produto (fonte, campos, sincronização). Fica registrado como próximo passo.
-- Deduplicar eventos históricos antigos: só se aparecer evidência (hoje o pior caso é 11 eventos em 1 atendimento por causa da separação por campo, que é o design atual — não é bug).
-
----
-
-**Arquivos que serão alterados** (na fase build):
-- `supabase/migrations/20260724233000_atendimentos_integridade_contextual.sql` (reescrita)
-- `src/lib/attendances/attendance-field-mapping.ts` (uso de `imovel_codigo` / `interesse_descricao`)
-- `src/lib/attendances/attendances.functions.ts` (CAS em `transitionStage`; leitura de `interesse_descricao`)
-- `src/components/atendimentos/AtendimentoFormModal.tsx` (campo de código + observação)
-- `src/components/atendimentos/AtendimentoDetailDrawer.tsx` (exibição + novo rótulo `contact_change`)
-- `src/components/atendimentos/AtendimentoCard.tsx` (badge de código; wa.me guard)
-- `src/routes/_app.atendimentos.tsx` (`validateSearch` + `clienteId`)
-- `src/routes/_app.clientes.$clienteId.tsx` (redirect preservando id)
-- `src/integrations/supabase/types.ts` (regenerado após migration)
+- Migração roda via `supabase--migration` (schema/DML estrutural de backfill único).
+- Enum de finalidade: `clients.purpose` armazena `compra`/`venda`/`locacao`/`aluguel` — normalizado no CTE para o domínio de `attendances.finalidade` (`compra`|`aluguel`|`ambos`).
+- `proximo_passo` só é preenchido se `next_step` corresponder a um valor do enum de próximo passo; caso contrário concatena ao `observacoes` para não perder informação.
