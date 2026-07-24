@@ -1,68 +1,173 @@
+# Unificação Clientes → Atendimentos (CRM único)
 
-## Objetivo
+Consolidar `Clientes` e `Atendimentos` em um único módulo de relacionamento comercial, preservando registros, RLS, rotas, integrações (Agenda, Contratos, Notificações) e permissões atuais.
 
-Trocar o fluxo atual de OAuth próprio do Google Drive (por-usuário) pela conexão **ricardodrive** (App connector `google_drive`, credencial única do workspace) que você acabou de adicionar, e restringir toda a operação a **uma única pasta raiz** com subpastas por contrato de aluguel.
+## 1. Auditoria (antes de codar)
 
-## Como o acesso fica limitado
+Ler e mapear:
+- Rotas: `_app.atendimentos.tsx`, `_app.clientes.tsx`, `_app.clientes.$clienteId.tsx`, `module-menu.ts`, sidebar/drawer/bottom nav.
+- Backend: `attendances.functions.ts`, `clients.functions.ts`, RLS de `attendances` e `clients`, triggers `notify_atendimento_corretor` e `mark_attendance_opened`.
+- Hooks: `useAttendances`, `useClients`, store (`app-store.ts`).
+- Tipos: `types/atendimento.ts`, `types/client.ts`.
+- Conversão atual (`convertido_em_cliente`, `cliente_convertido_id`), links com Agenda (`atendimento_id`), Vendas/Contratos e notificações.
+- Permissões: `permissions.ts` (`atendimentos`, `clientes`), `access-control.ts`.
 
-O App connector do Google Drive usa uma única conta compartilhada (Leonardo/ricardodrive). Todos os anexos de aluguéis do sistema serão gravados nessa conta. Para "limitar somente à pasta principal e subpastas dos anexos do menu Aluguéis":
+Entregar sumário interno antes das mudanças de código.
 
-- Criar/reutilizar uma **pasta raiz fixa** no Drive dessa conta: `Gestão Cordial — Aluguéis` (ID salvo em `app_settings`).
-- Toda pasta de contrato vira **subpasta** dessa raiz (`Aluguel - <endereço> - <locatário> - <id-curto>`).
-- Todo upload, rename, replace, trash é feito **exclusivamente** com `parents=[root|contractFolder]` e via `fileId` já registrado em `rental_contract_documents.drive_file_id` / `rental_drive_folders.drive_folder_id`. O código nunca lista/consulta arquivos fora dessa árvore.
-- Toda chamada passa por um helper único `driveFetch()` que valida que o `fileId`/`folderId` alvo pertence à árvore (via `parents` ou lookup na tabela) antes de executar. Isso confina a operação mesmo com o escopo amplo do connector.
+## 2. Modelo de domínio final
 
-## Mudanças de código
+- `clients` = registro canônico da pessoa (perfil durável).
+- `attendances` = oportunidade comercial (1 cliente → N atendimentos).
+- Novo campo `pipeline_stage` em `attendances` (enum), separado do `status` detalhado.
+- Nova tabela `attendance_history` para auditoria estruturada.
 
-### Backend — `src/lib/google-drive/drive.server.ts`
-- Remover OAuth próprio (`GOOGLE_AUTH_URL`, `exchangeCode`, `refreshAccessToken`, `revokeToken`, `getUserinfo`, `signState/verifyState`, `getRedirectUri`, `buildAuthUrl`, `getConnectionForUser`, `getValidAccessToken`, `withAccessToken`, `markConnError`).
-- Substituir `driveFetch` para chamar via **connector gateway**:
-  - Base: `https://connector-gateway.lovable.dev/google_drive/drive/v3`
-  - Upload base: `https://connector-gateway.lovable.dev/google_drive/upload/drive/v3`
-  - Headers: `Authorization: Bearer ${LOVABLE_API_KEY}`, `X-Connection-Api-Key: ${GOOGLE_DRIVE_API_KEY}`
-- Adicionar `getRootFolderId()`:
-  - Lê `app_settings.google_drive_root_folder_id`.
-  - Se ausente, cria pasta `Gestão Cordial — Aluguéis` (mimeType folder, sem `parents`) e persiste o id.
-- Reescrever `ensureFolder(folderName)` para criar a subpasta **sempre com `parents=[rootFolderId]`** e buscar apenas dentro da raiz (`'<rootId>' in parents`).
-- Manter `uploadFile`, `renameFile`, `replaceFileContent`, `moveToTrash`, `logAudit`, `buildFolderName`, `sanitizeSegment`.
-- Adicionar guard `assertInsideRentalTree(fileId)` usado antes de rename/replace/trash (checa `parents` do arquivo contra `rootId` ou pastas de contrato conhecidas).
+### Enum `pipeline_stage`
+`primeiro_contato | apresentando_solucao | visita | proposta | fechamento | perdido | arquivado`
 
-### Backend — `src/lib/google-drive/google-drive.functions.ts`
-- Remover `startGoogleDriveOAuth`, `disconnectGoogleDrive`, `getMyDriveConnection`.
-- Substituir por:
-  - `getDriveConnectionStatus()` → verifica presença das env vars do connector + faz um `about.get` leve para confirmar acesso; retorna `{ connected, rootFolderId, rootFolderUrl, lastError }`.
-  - `ensureRentalDriveFolder(contractId)`, `syncRentalDocumentToDrive(documentId)`, `syncAllContractDocuments(contractId)`, `removeDocumentFromDrive(documentId)` — mantidos, agora sem `userId` como chave (uma única conta), ainda gravando em `rental_drive_folders` / `rental_contract_documents` como hoje.
-- Restringir chamada a admin/secretaria (as ações operam sobre a conta compartilhada).
+### Mapeamento status → stage (backfill idempotente)
+- novo, aguardando_retorno, sem_retorno → `primeiro_contato`
+- em_atendimento → `apresentando_solucao`
+- visita_agendada → `visita`
+- proposta_enviada, em_negociacao → `proposta`
+- fechado → `fechamento`
+- perdido → `perdido`
 
-### Rota OAuth
-- Deletar `src/routes/api/public/google-drive.callback.ts` (não é mais necessário).
+`perdido`/`arquivado` são terminais fora dos 5 ativos.
 
-### Frontend — `src/components/configuracoes/GoogleDriveCard.tsx`
-- Remover fluxo de conectar/desconectar/reconectar por usuário.
-- Passar a exibir status da conexão do workspace: "Conectado como conta compartilhada do workspace (ricardodrive) — pasta raiz: **Gestão Cordial — Aluguéis**" + link para a pasta no Drive + botão "Testar conexão".
-- Mensagem clara: todos os anexos de Aluguéis são espelhados nessa conta única, dentro da pasta raiz.
+### Tabela `attendance_history`
+Colunas: `id, attendance_id, client_id, event_type, actor_id, actor_name, description, previous_value(jsonb), new_value(jsonb), metadata(jsonb), source, created_at`.
+RLS: leitura para quem tem acesso ao atendimento pai; insert por trigger/RPC (bloquear insert/update/delete direto).
 
-### Frontend — `src/components/alugueis/RentalDocuments.tsx`
-- Sem mudança funcional, apenas ajustar copy quando `connection.connected === false` (pedir para admin conectar o connector no workspace).
+Eventos rastreados: criação, vínculo de cliente, atribuição de corretor, mudança de stage, mudança de status, vínculo de imóvel, agendamento, visita, proposta, nota, edição de perfil do cliente, perda, fechamento, reabertura.
 
-### Banco de dados (migração)
-- Nova tabela `app_settings (key text primary key, value jsonb, updated_at)` (se ainda não existir) com GRANT e RLS restrita ao service_role — usada só pelo servidor para guardar `google_drive_root_folder_id`.
-- **Drop** de `public.google_drive_connections` (não é mais usada). Manter `rental_drive_folders`, `rental_contract_documents.drive_*` e `rental_drive_audit_log`.
+## 3. Migrações Supabase (idempotentes)
 
-### Env vars
-- Passam a ser usadas automaticamente após `standard_connectors--connect` da `ricardodrive`: `LOVABLE_API_KEY`, `GOOGLE_DRIVE_API_KEY`. Nada precisa ser adicionado manualmente.
+1. `CREATE TYPE public.pipeline_stage AS ENUM (...)`.
+2. `ALTER TABLE attendances ADD COLUMN pipeline_stage pipeline_stage`.
+3. Backfill `pipeline_stage` a partir de `status`.
+4. `CREATE TABLE attendance_history` + GRANTs + RLS + policies.
+5. Triggers em `attendances` que gravam history em: INSERT, UPDATE de `corretor_id`, `pipeline_stage`, `status`, `imovel_id`, `proximo_retorno`, `proximo_passo`, `cliente_id`.
+6. Dedup de clientes criados por conversão (mesmo telefone/email/CPF normalizado + mesmo `created_by`) → apontar `attendances.cliente_id` para o canônico e marcar duplicatas.
+7. Índices: `attendances(cliente_id)`, `attendances(pipeline_stage, corretor_id)`, `attendances(proximo_retorno)`, `attendance_history(attendance_id, created_at desc)`.
+8. Função `link_or_create_client_for_attendance(payload)` que normaliza telefone/email/CPF, retorna cliente existente ou cria novo, tudo em uma transação com o insert do atendimento.
 
-## Passo a passo de execução
+## 4. Backend / Server Functions
 
-1. Vincular a conexão `ricardodrive` ao projeto (`standard_connectors--connect` com `connector_id: google_drive`).
-2. Migração SQL: criar `app_settings`, dropar `google_drive_connections`.
-3. Reescrever `drive.server.ts` para gateway + root folder guard.
-4. Reescrever `google-drive.functions.ts` para o novo modelo compartilhado.
-5. Deletar rota `api/public/google-drive.callback.ts`.
-6. Reescrever `GoogleDriveCard.tsx`.
-7. Verificar `rentals.functions.ts` (o auto-sync em `registerRentalContractDocument` continua igual — só troca a implementação por baixo).
-8. Testar: criar contrato de teste, subir anexo, confirmar pasta raiz + subpasta + arquivo no Drive do ricardodrive; renomear e remover; validar `rental_drive_audit_log`.
+- `attendances.functions.ts`: novo `createAttendanceWithClient` (usa RPC acima); `updateAttendance` grava history via trigger; `listAttendances` retorna `pipeline_stage`, `client` embutido (join) e `next_action` derivado.
+- `clients.functions.ts`: manter CRUD; adicionar `findClientByContact({phone,email,document})` para checagem de duplicidade no formulário.
+- Nova `listAttendanceHistory({attendanceId})`.
+- Remover uso de `convertido_em_cliente` como caminho de criação (manter coluna para retrocompat).
 
-## Ponto a confirmar
+## 5. Rotas e navegação
 
-Este connector é **App connector** (uma única conta Google compartilhada — a `ricardodrive` da sua conta). Isso significa que **todos os anexos de aluguéis de todos os usuários** serão armazenados nessa conta única, dentro da pasta raiz. Está de acordo com o que você quer? Se preferir que cada corretor use o próprio Drive, precisamos do **App User connector** de Google Drive (fluxo diferente), não do App connector — me avise antes de eu executar.
+- Menu: manter apenas `Atendimentos` (descrição: "Relacionamento, clientes e funil comercial"). Remover `Clientes` de sidebar, drawer, bottom-nav, `Mais`.
+- `permissions.ts`: qualquer perfil que tinha `clientes` recebe automaticamente `atendimentos` (garantir superset). Manter módulo `clientes` internamente para RLS/consultas.
+- Redirects (preservar bookmarks):
+  - `/clientes` → `/atendimentos?view=clientes`
+  - `/clientes/$clienteId` → `/atendimentos?clienteId=<id>` (abre drawer do cliente)
+- Rotas antigas viram `beforeLoad`/`loader` que faz `throw redirect(...)`, sem quebrar deep links de notificações.
+
+## 6. UI — `_app.atendimentos.tsx`
+
+Hierarquia:
+1. Header do módulo + ação primária `Novo atendimento`.
+2. Busca + filtros (corretor, marca, origem, próximo retorno, prioridade).
+3. Seletor de view: `Funil` (default) | `Lista` | `Clientes`.
+4. KPIs por stage.
+5. Conteúdo por view.
+
+### View Funil
+- **Desktop (≥1280px)**: board Kanban de 5 colunas com contagem, overdue e virtualização leve.
+- **Desktop médio (1024–1279px)**: seletor de stage + grid adaptativo (evita colunas espremidas).
+- **Mobile**: tabs horizontais scrolláveis por stage, 1 stage por vez, cards em coluna, sem overflow.
+
+### View Lista
+Tabela densa com stage, status, cliente, corretor, próximo retorno, prioridade.
+
+### View Clientes
+Diretório de clientes (inclui clientes sem atendimento ativo). Card → abre drawer de cliente com atendimentos relacionados.
+
+## 7. Card de atendimento (redesign)
+
+Conteúdo: nome + iniciais, stage atual (chip colorido), status detalhado (sutil), finalidade + tipo, bairro, faixa de orçamento, corretor, última interação, próximo retorno (com indicador de atraso), prioridade.
+Ações rápidas: abrir, mover stage (menu), agendar, nota, WhatsApp/ligação (quando autorizado). Acessível (foco visível, teclado).
+
+## 8. Formulário unificado `Novo atendimento`
+
+Multi-step com 5 seções (Identificação / Origem / Interesse / Complementares / Próxima ação). Modo:
+- **Selecionar cliente existente** (autocomplete por nome/telefone/email/CPF).
+- **Novo contato** → ao digitar telefone/email/CPF, dispara `findClientByContact`; se houver match, mostra card do possível duplicado com opções `Vincular` / `Revisar` / `É outro contato`.
+Campos obrigatórios mínimos: nome, telefone, finalidade, tipo imóvel, corretor (ou "a definir"), stage inicial.
+
+## 9. Workspace de detalhe
+
+Drawer responsivo (fullscreen no mobile) com abas:
+- **Visão geral**: header com cliente/stage/status/corretor + próxima ação.
+- **Cliente**: perfil completo (edita in-place com permissão).
+- **Interesse comercial**: finalidade, tipo, bairro, orçamento, imóveis vinculados.
+- **Histórico**: timeline estruturada (filtrável por tipo, com autor).
+- **Ações**: registrar nota, mudar stage/status, atribuir corretor, agendar (link para Agenda pré-preenchido), vincular imóvel, registrar proposta, marcar perdido/fechado, contato WhatsApp/email.
+- **Relacionados**: outros atendimentos do cliente, eventos de Agenda, contratos, documentos.
+
+## 10. Queries / State
+
+- Chaves canônicas: `["attendances", filters]`, `["attendance", id]`, `["attendance", id, "history"]`, `["client", id]`, `["client", id, "attendances"]`.
+- `listAttendances` retorna cliente embutido (evita N+1).
+- Invalidar `attendance` + `attendances` + `attendance history` após mutations.
+- Remover leituras via app-store para cliente/atendimento; manter store só para sessão/marca.
+
+## 11. Permissões / RLS
+
+- Manter isolamento atual (corretor vê só seus; secretaria e admin veem tudo da agência).
+- `attendance_history`: SELECT via `agenda_can_access`-like helper (`attendance_can_access(id)`); INSERT restrito a triggers/service_role.
+- Migração de permissões: perfis com `clientes` ganham `atendimentos` se ainda não têm (nenhum caso hoje, mas garantir idempotência).
+- UI oculta não substitui RLS: todas as checagens de duplicidade e criação passam pela RPC.
+
+## 12. Preservação de dados
+
+- Nada é deletado. Duplicatas de cliente identificadas por normalização → merge lógico: `attendances.cliente_id` re-apontado para o canônico; duplicata recebe flag `merged_into` (nova coluna nullable) para auditoria e possível rollback.
+- Clientes sem atendimento ativo → view `Clientes` interna.
+- Contratos, Agenda events e notificações continuam válidos (usam IDs de atendimento, que não mudam).
+
+## 13. Responsividade
+
+Validar em 320/360/375/390/430/768/1024/1280/1440+.
+- Mobile: bottom-nav não sobrepõe, drawers respeitam safe-area, tabs de stage sem clipping.
+- Desktop: larguras controladas, cards não esticam além de ~360px.
+
+## 14. Validação visual (obrigatória)
+
+Playwright autenticado (sessão injetada) em cada iteração:
+1. Snapshot Atendimentos + Clientes atuais.
+2. Após cada grupo de mudanças, abrir preview, capturar mobile+desktop, corrigir.
+Cenários: novo contato, cliente existente, telefone duplicado, atendimento sem corretor, retorno atrasado, imóvel vinculado, visita agendada, proposta, fechado, perdido, cliente com múltiplos atendimentos, cliente sem atendimento ativo, nomes longos, loading/erro.
+
+## 15. Testes
+
+- Unit: mapeamento status→stage, normalização de contato, dedup.
+- Integration (server fns): `createAttendanceWithClient` (novo/existente/duplicado), transição de stage grava history, RLS por perfil.
+- E2E leve: redirects de `/clientes*`, criação via existing client, abertura do drawer.
+- Rodar: typecheck, lint, build.
+
+## 16. Ordem de execução
+
+1. Migração SQL (enum, coluna, backfill, history, triggers, dedup, índices, RPC).
+2. Server functions + tipos.
+3. Redirects de rota + remoção do item de menu (com permissão migrada).
+4. UI: página unificada com view Funil (desktop+mobile).
+5. Card redesenhado.
+6. Formulário unificado com dedup.
+7. Drawer de detalhe com abas + histórico.
+8. Views Lista e Clientes.
+9. Validação visual iterativa + testes + build.
+
+## Riscos
+
+- Backfill de `pipeline_stage` em base grande: mitigar com update em lote.
+- Dedup de clientes: usar merge lógico (não deletar) para permitir rollback.
+- Triggers de history podem acoplar performance de updates massivos: manter payload mínimo.
+- Redirects precisam cobrir notificações e emails já enviados com `/atendimentos?id=...` e `/clientes/...`.
+
+## Entregáveis finais
+
+Auditoria, modelo de domínio, migração+backfill, mapeamento de stages, rotas/nav alteradas, arquivos alterados, implementação de history, impacto em permissões, larguras validadas, evidências visuais, testes e comandos executados, riscos remanescentes.
