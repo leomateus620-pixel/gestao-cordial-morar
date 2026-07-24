@@ -292,9 +292,9 @@ export type AttendanceHistoryEvent = {
   actorId: string | null;
   actorName: string | null;
   description: string | null;
-  previousValue: unknown;
-  newValue: unknown;
-  metadata: unknown;
+  previousValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   source: string;
   createdAt: string;
 };
@@ -325,9 +325,9 @@ export const listAttendanceHistory = createServerFn({ method: "GET" })
       actorId: (r.actor_id as string | null) ?? null,
       actorName: (r.actor_name as string | null) ?? null,
       description: (r.description as string | null) ?? null,
-      previousValue: r.previous_value,
-      newValue: r.new_value,
-      metadata: r.metadata,
+      previousValue: (r.previous_value as Record<string, unknown> | null) ?? null,
+      newValue: (r.new_value as Record<string, unknown> | null) ?? null,
+      metadata: (r.metadata as Record<string, unknown> | null) ?? null,
       source: (r.source as string) ?? "trigger",
       createdAt: r.created_at as string,
     }));
