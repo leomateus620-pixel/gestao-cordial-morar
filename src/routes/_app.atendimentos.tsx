@@ -6,32 +6,31 @@ import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
 import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
-import {
-  buildLocalIso,
-  type AtendimentoActionPayload,
-} from "@/components/atendimentos/AtendimentoActionsDialog";
+import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
+import { buildLocalIso } from "@/components/atendimentos/atendimento-action-utils";
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   defaultAtendimentoFilters,
+  attendanceHistoryQueryKey,
   useAttendances,
   type AtendimentoFilters as AtendimentoFiltersState,
 } from "@/hooks/useAttendances";
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
-import { markAttendanceOpened } from "@/lib/attendances/attendances.functions";
+import { addAttendanceNote, markAttendanceOpened } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
-import { canSeeFinancialInsights } from "@/lib/access-control";
+import {
+  canManageAttendanceAssignments,
+  canManageAttendanceTerminalState,
+  canSeeFinancialInsights,
+} from "@/lib/access-control";
 import { cn } from "@/lib/utils";
-import type {
-  Atendimento,
-  AtendimentoCreateInput,
-  AtendimentoStatus,
-  PipelineStage,
-} from "@/types/atendimento";
+import type { Atendimento, AtendimentoCreateInput, PipelineStage } from "@/types/atendimento";
+import { ACTIVE_PIPELINE_STAGES } from "@/types/atendimento";
 import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
@@ -45,26 +44,38 @@ export const Route = createFileRoute("/_app/atendimentos")({
 function Page() {
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
+  const canAssignBroker = canManageAttendanceAssignments(session);
+  const canManageTerminalState = canManageAttendanceTerminalState(session);
   const { id: highlightId } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
   const [view, setView] = useState<"kanban" | "list">("kanban");
+  const [selectedStage, setSelectedStage] = useState<PipelineStage>("primeiro_contato");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const qc = useQueryClient();
   const {
     atendimentos,
     filteredAtendimentos,
+    brokers,
     stats,
     isLoading,
     isError,
     error,
+    refetch,
     addAtendimento,
     convertAtendimento,
     updateAtendimento,
+    transitionStage,
   } = useAttendances(query, filters);
   const detailAtendimento = useMemo(
     () => atendimentos.find((a) => a.id === detailId) ?? null,
     [atendimentos, detailId],
+  );
+  const editAtendimento = useMemo(
+    () => atendimentos.find((atendimento) => atendimento.id === editId) ?? null,
+    [atendimentos, editId],
   );
 
   useEffect(() => {
@@ -80,11 +91,7 @@ function Page() {
     if (isLoading || !session?.id) return;
     const uid = session.id;
     for (const a of atendimentos) {
-      if (
-        a.corretorId === uid &&
-        !a.openedAt &&
-        !openedMarkedRef.current.has(a.id)
-      ) {
+      if (a.corretorId === uid && !a.openedAt && !openedMarkedRef.current.has(a.id)) {
         openedMarkedRef.current.add(a.id);
         markAttendanceOpened({ data: { id: a.id } })
           .then(() => {
@@ -95,10 +102,8 @@ function Page() {
           });
       }
     }
-  }, [atendimentos, isLoading, session?.id]);
+  }, [atendimentos, isLoading, qc, session?.id]);
 
-
-  const qc = useQueryClient();
   const createVisitMutation = useMutation({
     mutationFn: (input: AgendaEventInput) => upsertAgendaEvent({ data: { input } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY }),
@@ -119,9 +124,13 @@ function Page() {
           if (res.status === "sent") {
             toast.success(`Atendimento de ${input.clienteNome} salvo e e-mail enviado ao cliente.`);
           } else if (res.status === "skipped" && res.reason === "no_email") {
-            toast.success(`Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (cliente sem e-mail).`);
+            toast.success(
+              `Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (cliente sem e-mail).`,
+            );
           } else if (res.status === "skipped" && res.reason === "invalid_email") {
-            toast.success(`Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (endereço inválido).`);
+            toast.success(
+              `Atendimento de ${input.clienteNome} salvo. E-mail automático não enviado (endereço inválido).`,
+            );
           } else if (res.status === "failed") {
             toast.success(`Atendimento de ${input.clienteNome} salvo.`);
             toast.error("Não foi possível enviar o e-mail automático agora.");
@@ -140,7 +149,6 @@ function Page() {
     }
   }
 
-
   async function handleConvert(id: string) {
     try {
       await convertAtendimento(id);
@@ -149,7 +157,6 @@ function Page() {
       toast.error(err instanceof Error ? err.message : "Não foi possível converter.");
     }
   }
-
 
   async function handleAction(payload: AtendimentoActionPayload, atendimento: Atendimento) {
     try {
@@ -165,9 +172,7 @@ function Page() {
         const startIso = buildLocalIso(payload.data, payload.hora);
         if (!startIso) throw new Error("Data/horário inválidos.");
         const startDate = new Date(startIso);
-        const endIso = new Date(
-          startDate.getTime() + payload.duracaoMin * 60_000,
-        ).toISOString();
+        const endIso = new Date(startDate.getTime() + payload.duracaoMin * 60_000).toISOString();
         const input: AgendaEventInput = {
           titulo: `Visita — ${atendimento.clienteNome}`,
           descricao: payload.observacoes || undefined,
@@ -198,7 +203,12 @@ function Page() {
         await createVisitMutation.mutateAsync(input);
         await updateAtendimento({
           id: atendimento.id,
-          patch: { status: "visita_agendada", proximoRetorno: startIso },
+          patch: {
+            status: "visita_agendada",
+            pipelineStage: "visita",
+            proximoRetorno: startIso,
+            proximoPasso: "agendar_visita",
+          },
         });
         toast.success("Visita criada na agenda.");
         return;
@@ -218,22 +228,24 @@ function Page() {
         return;
       }
       if (payload.kind === "registrar-historico") {
-        const stamp = new Date();
-        const prefix = `[${pad(stamp.getDate())}/${pad(stamp.getMonth() + 1)} ${pad(stamp.getHours())}:${pad(stamp.getMinutes())}]`;
-        const next = atendimento.observacoes
-          ? `${atendimento.observacoes}\n${prefix} ${payload.texto}`
-          : `${prefix} ${payload.texto}`;
-        await updateAtendimento({
-          id: atendimento.id,
-          patch: { observacoes: next },
+        await addAttendanceNote({
+          data: {
+            attendanceId: atendimento.id,
+            texto: payload.texto,
+          },
         });
+        qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(atendimento.id) });
         toast.success("Histórico registrado.");
         return;
       }
       if (payload.kind === "motivo-perda") {
         await updateAtendimento({
           id: atendimento.id,
-          patch: { status: "perdido", motivoPerda: payload.motivoPerda },
+          patch: {
+            status: "perdido",
+            pipelineStage: "perdido",
+            motivoPerda: payload.motivoPerda,
+          },
         });
         toast.success("Atendimento marcado como perdido.");
         return;
@@ -244,16 +256,90 @@ function Page() {
     }
   }
 
-  function pad(n: number) {
-    return String(n).padStart(2, "0");
+  async function handleStageChange(id: string, stage: PipelineStage) {
+    const atendimento = atendimentos.find((item) => item.id === id);
+    if (!atendimento) throw new Error("Atendimento não encontrado.");
+    const reopening =
+      atendimento.pipelineStage === "perdido" ||
+      atendimento.pipelineStage === "arquivado" ||
+      atendimento.status === "perdido" ||
+      atendimento.status === "arquivado";
+    if (reopening) {
+      await updateAtendimento({
+        id,
+        patch: {
+          pipelineStage: stage,
+          status: "em_atendimento",
+          motivoPerda: null,
+        },
+      });
+      return;
+    }
+    await transitionStage(id, stage);
   }
 
+  async function saveEditedAtendimento(input: AtendimentoCreateInput) {
+    if (!editId) return;
+    try {
+      await updateAtendimento({ id: editId, patch: input });
+      setEditId(null);
+      toast.success("Atendimento atualizado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao atualizar atendimento.");
+      throw error;
+    }
+  }
 
-  function setStatus(status: "todos" | AtendimentoStatus) {
-    setFilters((current) => ({ ...current, status }));
+  async function registerProposal(atendimento: Atendimento) {
+    try {
+      await updateAtendimento({
+        id: atendimento.id,
+        patch: {
+          pipelineStage: "proposta",
+          status: "proposta_enviada",
+          proximoPasso: "aguardar_cliente",
+        },
+      });
+      toast.success("Proposta registrada no atendimento.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao registrar proposta.");
+    }
+  }
+
+  async function closeAtendimento(atendimento: Atendimento) {
+    try {
+      await updateAtendimento({
+        id: atendimento.id,
+        patch: {
+          pipelineStage: "fechamento",
+          status: "fechado",
+        },
+      });
+      toast.success("Atendimento fechado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao fechar atendimento.");
+    }
+  }
+
+  async function archiveAtendimento(atendimento: Atendimento) {
+    try {
+      await updateAtendimento({
+        id: atendimento.id,
+        patch: {
+          pipelineStage: "arquivado",
+          status: "arquivado",
+        },
+      });
+      toast.success("Atendimento arquivado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao arquivar atendimento.");
+    }
   }
 
   const hasAtendimentos = atendimentos.length > 0;
+  const activeFilteredCount = filteredAtendimentos.filter((atendimento) =>
+    ACTIVE_PIPELINE_STAGES.includes(atendimento.pipelineStage),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -298,12 +384,16 @@ function Page() {
         onQueryChange={setQuery}
         filters={filters}
         onFiltersChange={setFilters}
+        brokerOptions={brokers}
       />
 
       <AtendimentoSummaryCards
         stats={stats}
-        activeStatus={filters.status}
-        onStatusChange={setStatus}
+        selectedStage={selectedStage}
+        onStageChange={(stage) => {
+          setSelectedStage(stage);
+          setView("kanban");
+        }}
         canViewFinancialInsights={canViewFinancialInsights}
       />
 
@@ -312,8 +402,10 @@ function Page() {
           <div>
             <h2 className="text-sm font-semibold tracking-tight">CRM comercial</h2>
             <p className="text-[11px] text-foreground/50">
-              {filteredAtendimentos.length} atendimento
-              {filteredAtendimentos.length === 1 ? "" : "s"} no recorte atual
+              {activeFilteredCount} ativo{activeFilteredCount === 1 ? "" : "s"}
+              {filteredAtendimentos.length !== activeFilteredCount
+                ? ` · ${filteredAtendimentos.length} no recorte atual`
+                : " no recorte atual"}
             </p>
           </div>
           <div className="flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-sm">
@@ -322,7 +414,9 @@ function Page() {
               onClick={() => setView("kanban")}
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-                view === "kanban" ? "bg-teal-700 text-white shadow" : "text-teal-800 hover:bg-teal-700/8",
+                view === "kanban"
+                  ? "bg-teal-700 text-white shadow"
+                  : "text-teal-800 hover:bg-teal-700/8",
               )}
             >
               <LayoutGrid className="size-3" /> Funil
@@ -332,7 +426,9 @@ function Page() {
               onClick={() => setView("list")}
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-                view === "list" ? "bg-teal-700 text-white shadow" : "text-teal-800 hover:bg-teal-700/8",
+                view === "list"
+                  ? "bg-teal-700 text-white shadow"
+                  : "text-teal-800 hover:bg-teal-700/8",
               )}
             >
               <List className="size-3" /> Lista
@@ -346,21 +442,38 @@ function Page() {
             description="Buscando registros na nuvem."
             icon={<Inbox className="size-5" />}
           />
+        ) : isError ? (
+          <EmptyState
+            title="Não foi possível carregar os atendimentos."
+            description={error?.message ?? "Verifique sua conexão e tente novamente."}
+            icon={<Inbox className="size-5" />}
+            action={
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="rounded-xl bg-teal-800 px-4 py-2.5 text-xs font-bold text-white"
+              >
+                Tentar novamente
+              </button>
+            }
+          />
         ) : filteredAtendimentos.length > 0 ? (
           view === "kanban" ? (
             <AtendimentoKanban
               atendimentos={filteredAtendimentos}
+              selectedStage={selectedStage}
+              onSelectedStageChange={setSelectedStage}
               highlightId={highlightId}
               onOpenDetail={(a) => setDetailId(a.id)}
-              onConvert={handleConvert}
+              onStageChange={handleStageChange}
               onAction={handleAction}
+              brokerOptions={brokers}
             />
           ) : (
             <div className="grid gap-3 xl:grid-cols-2">
               {filteredAtendimentos.map((atendimento) => (
                 <div
                   key={atendimento.id}
-                  id={`atendimento-${atendimento.id}`}
                   className={
                     highlightId === atendimento.id
                       ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
@@ -373,8 +486,10 @@ function Page() {
                 >
                   <AtendimentoCard
                     atendimento={atendimento}
-                    onConvert={handleConvert}
+                    onOpen={(item) => setDetailId(item.id)}
+                    onStageChange={handleStageChange}
                     onAction={handleAction}
+                    brokerOptions={brokers}
                   />
                 </div>
               ))}
@@ -408,16 +523,43 @@ function Page() {
       <AtendimentoDetailDrawer
         atendimento={detailAtendimento}
         open={detailId !== null}
-        onOpenChange={(o) => { if (!o) setDetailId(null); }}
-        onStageChange={async (id, stage: PipelineStage) => {
-          await updateAtendimento({ id, patch: { pipelineStage: stage } });
+        onOpenChange={(o) => {
+          if (!o) setDetailId(null);
         }}
+        onStageChange={handleStageChange}
+        onAction={handleAction}
+        onEdit={(atendimento) => {
+          setDetailId(null);
+          setEditId(atendimento.id);
+        }}
+        onConvert={handleConvert}
+        onRegisterProposal={registerProposal}
+        onCloseAttendance={closeAtendimento}
+        onArchive={archiveAtendimento}
+        brokerOptions={brokers}
+        canAssignBroker={canAssignBroker}
+        canManageTerminalState={canManageTerminalState}
       />
 
-
       {open && (
-        <AtendimentoFormModal open={open} onOpenChange={setOpen} onSubmit={createAtendimento} />
+        <AtendimentoFormModal
+          open={open}
+          onOpenChange={setOpen}
+          onSubmit={createAtendimento}
+          brokerOptions={brokers}
+        />
       )}
+      {editId && editAtendimento ? (
+        <AtendimentoFormModal
+          open
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setEditId(null);
+          }}
+          onSubmit={saveEditedAtendimento}
+          initialValue={editAtendimento}
+          brokerOptions={brokers}
+        />
+      ) : null}
     </div>
   );
 }

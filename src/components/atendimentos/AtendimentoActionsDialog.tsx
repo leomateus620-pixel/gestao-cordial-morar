@@ -13,7 +13,6 @@ import {
   type Atendimento,
   type ProximoPassoAtendimento,
 } from "@/types/atendimento";
-import { useApp } from "@/store/app-store";
 
 export type AtendimentoActionKind =
   | "vincular-corretor"
@@ -59,12 +58,14 @@ export function AtendimentoActionsDialog({
   open,
   onOpenChange,
   onSubmit,
+  brokerOptions = [],
 }: {
   kind: AtendimentoActionKind | null;
   atendimento: Atendimento;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: AtendimentoActionPayload) => Promise<void> | void;
+  brokerOptions?: Array<{ id: string; nome: string }>;
 }) {
   if (!kind) return null;
   return (
@@ -81,6 +82,7 @@ export function AtendimentoActionsDialog({
         <FormBody
           kind={kind}
           atendimento={atendimento}
+          brokerOptions={brokerOptions}
           onSubmit={async (payload) => {
             await onSubmit(payload);
             onOpenChange(false);
@@ -127,17 +129,17 @@ function FormBody({
   atendimento,
   onSubmit,
   onCancel,
+  brokerOptions,
 }: {
   kind: AtendimentoActionKind;
   atendimento: Atendimento;
   onSubmit: (payload: AtendimentoActionPayload) => Promise<void>;
   onCancel: () => void;
+  brokerOptions: Array<{ id: string; nome: string }>;
 }) {
   // Local state per-kind
   const [corretorId, setCorretorId] = useState(
-    atendimento.corretorId && atendimento.corretorId !== "a_definir"
-      ? atendimento.corretorId
-      : "",
+    atendimento.corretorId && atendimento.corretorId !== "a_definir" ? atendimento.corretorId : "",
   );
   const [data, setData] = useState(toDateInput(atendimento.proximoRetorno) || todayInput());
   const [hora, setHora] = useState(toTimeInput(atendimento.proximoRetorno) || "09:00");
@@ -152,10 +154,9 @@ function FormBody({
   const [motivoLivre, setMotivoLivre] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const corretores = useApp((state) => state.corretores);
-  const brokerOptions = [...corretores]
+  const sortedBrokerOptions = [...brokerOptions]
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-    .map((c) => ({ id: c.id, label: c.nome }));
+    .map((broker) => ({ id: broker.id, label: broker.nome }));
 
   useEffect(() => {
     setError(null);
@@ -168,7 +169,7 @@ function FormBody({
       setSaving(true);
       if (kind === "vincular-corretor") {
         if (!corretorId) throw new Error("Selecione um corretor.");
-        const option = brokerOptions.find((o) => o.id === corretorId);
+        const option = sortedBrokerOptions.find((o) => o.id === corretorId);
         await onSubmit({
           kind,
           corretorId,
@@ -187,8 +188,7 @@ function FormBody({
         if (!texto.trim()) throw new Error("Escreva a anotação.");
         await onSubmit({ kind, texto: texto.trim() });
       } else if (kind === "motivo-perda") {
-        const motivo =
-          motivoPreset === "Outro" ? motivoLivre.trim() : motivoPreset;
+        const motivo = motivoPreset === "Outro" ? motivoLivre.trim() : motivoPreset;
         if (!motivo) throw new Error("Informe o motivo.");
         await onSubmit({ kind, motivoPerda: motivo });
       }
@@ -209,11 +209,11 @@ function FormBody({
             className={inputClass}
           >
             <option value="">Selecione...</option>
-            {brokerOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
+            {sortedBrokerOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </Field>
       )}
@@ -349,9 +349,7 @@ function FormBody({
       )}
 
       {error && (
-        <p className="rounded-xl bg-destructive/8 px-3 py-2 text-xs text-destructive">
-          {error}
-        </p>
+        <p className="rounded-xl bg-destructive/8 px-3 py-2 text-xs text-destructive">{error}</p>
       )}
 
       <DialogFooter className="gap-2 pt-2 sm:gap-2">
@@ -406,13 +404,4 @@ function toTimeInput(iso?: string) {
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
-}
-
-/** Constrói ISO em horário local, sem deslocamento de timezone. */
-export function buildLocalIso(dateStr: string, timeStr: string) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const [hh, mm] = (timeStr || "09:00").split(":").map(Number);
-  if (!y || !m || !d) return undefined;
-  const local = new Date(y, m - 1, d, hh || 0, mm || 0, 0, 0);
-  return local.toISOString();
 }

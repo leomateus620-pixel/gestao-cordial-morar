@@ -2,11 +2,7 @@
 // so we do not scatter session.perfil === "admin_owner" across the codebase.
 
 import type { MockUser } from "@/lib/auth-mock";
-import {
-  roleDefinitions,
-  type AppModule,
-  type UserProfile,
-} from "@/lib/mock/permissions";
+import { roleDefinitions, type AppModule, type UserProfile } from "@/lib/mock/permissions";
 
 type SessionLike = Pick<MockUser, "perfil" | "modules"> | null | undefined;
 
@@ -28,6 +24,18 @@ export function canSeeFinancialInsights(session: SessionLike): boolean {
  */
 export function canSeeAdminInsights(session: SessionLike): boolean {
   return session?.perfil === "admin_owner";
+}
+
+export function canManageAttendanceAssignments(session: SessionLike): boolean {
+  return session?.perfil === "admin_owner" || session?.perfil === "secretaria";
+}
+
+export function canManageAttendanceTerminalState(session: SessionLike): boolean {
+  return (
+    session?.perfil === "admin_owner" ||
+    session?.perfil === "secretaria" ||
+    session?.perfil === "corretor"
+  );
 }
 
 export function getAllowedModulesForProfile(profile: UserProfile | undefined): AppModule[] {

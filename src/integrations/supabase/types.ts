@@ -539,8 +539,15 @@ export type Database = {
           id: string
           imobiliaria: string
           imovel_codigo: string | null
+          imovel_bairro: string | null
+          imovel_cidade: string | null
           imovel_descricao: string | null
+          imovel_endereco: string | null
           imovel_id: string | null
+          imovel_ref: string | null
+          imovel_tipo: string | null
+          imovel_valor: number | null
+          interesse_descricao: string | null
           motivo_perda: string | null
           observacoes: string | null
           opened_at: string | null
@@ -575,8 +582,15 @@ export type Database = {
           id?: string
           imobiliaria: string
           imovel_codigo?: string | null
+          imovel_bairro?: string | null
+          imovel_cidade?: string | null
           imovel_descricao?: string | null
+          imovel_endereco?: string | null
           imovel_id?: string | null
+          imovel_ref?: string | null
+          imovel_tipo?: string | null
+          imovel_valor?: number | null
+          interesse_descricao?: string | null
           motivo_perda?: string | null
           observacoes?: string | null
           opened_at?: string | null
@@ -611,8 +625,15 @@ export type Database = {
           id?: string
           imobiliaria?: string
           imovel_codigo?: string | null
+          imovel_bairro?: string | null
+          imovel_cidade?: string | null
           imovel_descricao?: string | null
+          imovel_endereco?: string | null
           imovel_id?: string | null
+          imovel_ref?: string | null
+          imovel_tipo?: string | null
+          imovel_valor?: number | null
+          interesse_descricao?: string | null
           motivo_perda?: string | null
           observacoes?: string | null
           opened_at?: string | null

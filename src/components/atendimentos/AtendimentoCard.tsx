@@ -1,204 +1,325 @@
 import { useState } from "react";
 import {
-  CalendarPlus,
-  CheckCircle2,
-  Clock3,
-  History,
-  Link2,
-  UserPlus,
-  UserRoundCog,
-  XCircle,
+  ArrowRight,
+  Building2,
+  CalendarClock,
+  CalendarDays,
+  ChevronRight,
+  CircleAlert,
+  MapPin,
+  MessageCircle,
+  Phone,
+  UserRound,
 } from "lucide-react";
-import { StatusBadge } from "@/components/status-badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   AtendimentoActionsDialog,
-  type AtendimentoActionKind,
   type AtendimentoActionPayload,
 } from "@/components/atendimentos/AtendimentoActionsDialog";
+import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import {
   atendimentoInterestLine,
   formatAtendimentoBudget,
+  formatDate,
   formatDateTime,
+  getPipelineContext,
+  isAtendimentoOverdue,
+  whatsappHref,
 } from "@/services/atendimentos";
-import { timeAgo } from "@/lib/format";
 import {
+  ACTIVE_PIPELINE_STAGES,
   atendimentoImobiliariaLabel,
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
+  atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
+  pipelineStageLabel,
   type Atendimento,
+  type PipelineStage,
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
 
-const secondaryActions: { kind: AtendimentoActionKind; label: string; icon: typeof UserRoundCog }[] = [
-  { kind: "vincular-corretor", label: "Vincular corretor", icon: UserRoundCog },
-  { kind: "criar-visita", label: "Criar visita", icon: CalendarPlus },
-  { kind: "criar-retorno", label: "Criar tarefa de retorno", icon: Clock3 },
-  { kind: "registrar-historico", label: "Registrar histórico", icon: History },
-  { kind: "motivo-perda", label: "Marcar motivo de perda", icon: XCircle },
-];
+type Props = {
+  atendimento: Atendimento;
+  onOpen: (atendimento: Atendimento) => void;
+  onStageChange: (id: string, stage: PipelineStage) => Promise<void> | void;
+  onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
+  brokerOptions?: Array<{ id: string; nome: string }>;
+};
 
 export function AtendimentoCard({
   atendimento,
-  onConvert,
+  onOpen,
+  onStageChange,
   onAction,
-}: {
-  atendimento: Atendimento;
-  onConvert: (id: string) => void;
-  onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
-}) {
-  const [activeKind, setActiveKind] = useState<AtendimentoActionKind | null>(null);
-  const converted = atendimento.convertidoEmCliente || Boolean(atendimento.clienteConvertidoId);
+  brokerOptions = [],
+}: Props) {
+  const [schedulingReturn, setSchedulingReturn] = useState(false);
+  const [moving, setMoving] = useState(false);
   const initials = getInitials(atendimento.clienteNome);
+  const overdue = isAtendimentoOverdue(atendimento);
+  const whatsapp = whatsappHref(atendimento.telefone);
+  const pipeline = getPipelineContext(atendimento);
+  const nextStage = pipeline.next;
+  const stageUi = pipelineStageUi[atendimento.pipelineStage];
+
+  async function moveTo(stage: PipelineStage) {
+    if (moving || stage === atendimento.pipelineStage) return;
+    setMoving(true);
+    try {
+      await onStageChange(atendimento.id, stage);
+    } finally {
+      setMoving(false);
+    }
+  }
 
   return (
-    <article className="glass-panel-strong rounded-3xl p-4 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-stone-950/8 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-teal-700/12 text-[11px] font-bold text-teal-800 ring-1 ring-teal-700/10 sm:size-12">
+    <article
+      className={cn(
+        "group relative overflow-hidden rounded-[1.4rem] border border-l-[3px] bg-[#fffdf9] shadow-[0_10px_28px_-22px_rgba(31,41,55,0.7)] transition-[border-color,box-shadow,transform] duration-200",
+        "hover:-translate-y-0.5 hover:border-foreground/18 hover:shadow-[0_18px_36px_-22px_rgba(31,41,55,0.55)]",
+        stageUi.accent,
+      )}
+      id={`atendimento-${atendimento.id}`}
+    >
+      <div className="p-4">
+        <header className="flex items-start gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-teal-900/8 bg-teal-800/10 text-[11px] font-extrabold tracking-wide text-teal-900">
             {initials}
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-semibold sm:text-base">
-                {atendimento.clienteNome}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="min-w-0 text-[15px] font-bold leading-5 tracking-[-0.015em] text-stone-950">
+                <span className="line-clamp-2">{atendimento.clienteNome}</span>
               </h3>
-              {converted && (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-emerald-700">
-                  <CheckCircle2 className="size-3" /> Cliente
-                </span>
-              )}
+              <span
+                className={cn(
+                  "shrink-0 rounded-full border px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.08em]",
+                  stageUi.badge,
+                )}
+              >
+                {pipelineStageLabel(atendimento.pipelineStage)}
+              </span>
             </div>
-            <p className="mt-1 text-[11px] leading-5 text-foreground/64 sm:text-xs">
-              <span className="font-semibold text-foreground/76">Busca:</span>{" "}
+            <p className="mt-1 line-clamp-2 text-[11px] font-medium leading-4.5 text-stone-600">
               {atendimentoInterestLine(atendimento)}
             </p>
-            <p className="text-[11px] leading-5 text-foreground/58 sm:text-xs">
-              <span className="font-semibold text-foreground/72">Faixa:</span>{" "}
-              {formatAtendimentoBudget(atendimento)}
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium text-stone-500">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="size-3.5 text-stone-400" />
+                Criado em {formatDate(atendimento.criadoEm)}
+              </span>
+              <span className="font-semibold text-stone-700">
+                {atendimentoStatusLabel(atendimento.status)}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <section
+          className={cn(
+            "mt-3 rounded-2xl border px-3 py-2.5",
+            overdue
+              ? "border-rose-700/20 bg-rose-50 text-rose-950"
+              : "border-teal-900/10 bg-teal-950/[0.035] text-stone-800",
+          )}
+          aria-label="Próxima ação"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-current/60">
+                {overdue ? (
+                  <CircleAlert className="size-3.5" />
+                ) : (
+                  <CalendarClock className="size-3.5" />
+                )}
+                {overdue ? "Retorno atrasado" : "Próxima ação"}
+              </p>
+              <p className="mt-1 truncate text-xs font-bold">
+                {atendimentoProximoPassoLabel(atendimento.proximoPasso)}
+              </p>
+            </div>
+            <p className="shrink-0 text-right text-[10px] font-semibold leading-4">
+              {formatDateTime(atendimento.proximoRetorno)}
             </p>
           </div>
-        </div>
+        </section>
 
-        <div className="shrink-0 text-right">
-          <StatusBadge status={atendimentoStatusLabel(atendimento.status)} />
-          <p className="mt-1 font-mono text-[9px] text-foreground/40">
-            {timeAgo(atendimento.criadoEm)}
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[11px]">
+          <ContextRow icon={UserRound} label="Corretor">
+            {atendimento.corretorNome ?? "A definir"}
+          </ContextRow>
+          <ContextRow icon={Phone} label="Telefone">
+            <span className="break-words">{atendimento.telefone || "Não informado"}</span>
+          </ContextRow>
+          <ContextRow icon={MapPin} label="Região">
+            {atendimento.bairroInteresse ?? "A definir"}
+          </ContextRow>
+          <ContextRow icon={Building2} label="Faixa">
+            {formatAtendimentoBudget(atendimento)}
+          </ContextRow>
+        </dl>
+
+        {atendimento.imovel ? (
+          <div className="mt-3 rounded-xl border border-amber-800/12 bg-amber-50/70 px-3 py-2.5">
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.11em] text-amber-900/55">
+              Imóvel vinculado
+            </p>
+            <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-4.5 text-stone-800">
+              {atendimento.imovel.codigo ? `${atendimento.imovel.codigo} · ` : ""}
+              {atendimento.imovel.titulo}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mt-3 grid grid-cols-3 divide-x divide-stone-200 overflow-hidden rounded-xl border border-stone-900/8 bg-stone-50 text-center">
+          <PipelinePoint label="Anterior">
+            {pipeline.previous ? pipelineStageLabel(pipeline.previous) : "Entrada"}
+          </PipelinePoint>
+          <PipelinePoint label="Atual" active>
+            {pipelineStageLabel(pipeline.current)}
+          </PipelinePoint>
+          <PipelinePoint label="Próxima">
+            {nextStage ? pipelineStageLabel(nextStage) : "Concluído"}
+          </PipelinePoint>
+        </div>
+        {pipeline.transitionAt ? (
+          <p className="mt-1.5 truncate px-1 text-[9px] font-medium text-stone-500">
+            Última transição: {formatDateTime(pipeline.transitionAt)}
+            {pipeline.transitionActor ? ` · ${pipeline.transitionActor}` : ""}
           </p>
-        </div>
+        ) : null}
       </div>
 
-      <div className="mt-3 grid gap-2 rounded-2xl bg-white/42 p-3 text-[10px] text-foreground/58 sm:grid-cols-2 sm:text-[11px]">
-        <p>
-          <span className="font-semibold text-foreground/72">Origem:</span>{" "}
-          {atendimentoOrigemLabel(atendimento.origem)} ·{" "}
-          <span className="font-semibold text-foreground/72">Corretor:</span>{" "}
-          {atendimento.corretorNome ?? "A definir"}
-        </p>
-        <p className="sm:text-right">
-          <span className="font-semibold text-foreground/72">Imobiliária:</span>{" "}
-          {atendimentoImobiliariaLabel(atendimento.imobiliaria)} ·{" "}
-          <span
-            className={cn(
-              "font-semibold",
-              atendimento.prioridade === "urgente" || atendimento.prioridade === "alta"
-                ? "text-amber-700"
-                : "text-foreground/72",
-            )}
+      <footer className="border-t border-stone-900/8 bg-stone-50/75 p-3">
+        {ACTIVE_PIPELINE_STAGES.includes(atendimento.pipelineStage) ? (
+          <label className="block">
+            <span className="sr-only">Mover atendimento para outra etapa</span>
+            <select
+              value={atendimento.pipelineStage}
+              disabled={moving}
+              onChange={(event) => void moveTo(event.target.value as PipelineStage)}
+              className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-[11px] font-bold text-stone-800 outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-700/15 disabled:opacity-60"
+              aria-label={`Etapa de ${atendimento.clienteNome}`}
+            >
+              {ACTIVE_PIPELINE_STAGES.map((stage) => (
+                <option key={stage} value={stage}>
+                  {pipelineStageLabel(stage)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-center text-[10px] font-bold text-stone-600">
+            {pipelineStageLabel(atendimento.pipelineStage)} · gerencie no atendimento completo
+          </p>
+        )}
+
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+          <button
+            type="button"
+            onClick={() => onOpen(atendimento)}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-teal-800 px-3 text-xs font-bold text-white shadow-[0_8px_18px_-10px_rgba(17,94,89,0.9)] transition duration-200 hover:bg-teal-900 active:scale-[0.98]"
           >
-            {atendimentoPrioridadeLabel(atendimento.prioridade)}
-          </span>
-        </p>
-        <p className="sm:col-span-2">
-          <span className="font-semibold text-foreground/72">Próximo retorno:</span>{" "}
-          {formatDateTime(atendimento.proximoRetorno)}
-        </p>
-      </div>
-
-      {atendimento.observacoes && (
-        <p className="mt-3 line-clamp-2 rounded-2xl bg-white/48 px-3 py-2.5 text-[11px] leading-5 text-foreground/62">
-          {atendimento.observacoes}
-        </p>
-      )}
-
-      <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button
-              type="button"
-              disabled={converted}
-              className="flex items-center gap-1.5 rounded-xl bg-teal-700/9 px-2.5 py-2 text-left text-[10px] font-semibold text-teal-800 transition hover:bg-teal-700/15 active:scale-[0.98] disabled:cursor-default disabled:opacity-45"
+            Abrir atendimento
+            <ArrowRight className="size-3.5" />
+          </button>
+          {whatsapp ? (
+            <a
+              href={whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Falar com ${atendimento.clienteNome} no WhatsApp`}
+              title="Falar no WhatsApp"
+              className="grid size-10 place-items-center rounded-xl border border-emerald-700/20 bg-emerald-50 text-emerald-800 transition duration-200 hover:bg-emerald-100 active:scale-[0.98]"
             >
-              <UserPlus className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {converted ? "Cliente vinculado" : "Transformar em cliente"}
-              </span>
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="w-[calc(100%-2rem)] rounded-3xl border-white/70 bg-background/95 shadow-2xl backdrop-blur-xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Transformar em cliente?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Os dados comerciais de {atendimento.clienteNome} serão usados para criar ou
-                completar um cadastro de cliente. Se telefone ou nome já existirem, o atendimento
-                será vinculado ao cadastro atual.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-2xl">Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => onConvert(atendimento.id)}
-                className="rounded-2xl bg-teal-700 text-white hover:bg-teal-800"
-              >
-                Confirmar conversão
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {secondaryActions
-          .filter(({ kind }) => (kind === "motivo-perda" ? atendimento.status !== "perdido" : true))
-          .map(({ kind, label, icon: Icon }) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => setActiveKind(kind)}
-              className="flex items-center gap-1.5 rounded-xl bg-white/52 px-2.5 py-2 text-left text-[10px] font-semibold text-foreground/60 transition hover:bg-teal-700/9 hover:text-teal-800 active:scale-[0.98]"
+              <MessageCircle className="size-4.5" />
+            </a>
+          ) : (
+            <span
+              className="grid size-10 place-items-center rounded-xl border border-stone-200 bg-stone-100 text-stone-400"
+              title="Telefone inválido para WhatsApp"
+              aria-label="WhatsApp indisponível: telefone inválido"
             >
-              <Icon className="size-3.5 shrink-0" />
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-      </div>
-
-      {atendimento.status === "perdido" && (
-        <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-destructive/8 px-3 py-2 text-[10px] font-medium text-destructive">
-          <Link2 className="size-3 shrink-0" />
-          Motivo: {atendimento.motivoPerda ?? "Não informado"}
+              <MessageCircle className="size-4.5" />
+            </span>
+          )}
         </div>
-      )}
+
+        {overdue || !atendimento.proximoRetorno ? (
+          <button
+            type="button"
+            onClick={() => setSchedulingReturn(true)}
+            className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-700/20 bg-amber-50 px-3 text-[11px] font-bold text-amber-950 transition duration-200 hover:bg-amber-100 active:scale-[0.99]"
+          >
+            <CalendarClock className="size-3.5" />
+            {overdue ? "Reagendar próxima ação" : "Agendar próxima ação"}
+          </button>
+        ) : nextStage ? (
+          <button
+            type="button"
+            disabled={moving}
+            onClick={() => void moveTo(nextStage)}
+            className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-teal-800/15 bg-white px-3 text-[11px] font-bold text-teal-900 transition duration-200 hover:bg-teal-50 active:scale-[0.99] disabled:opacity-60"
+          >
+            Avançar para {pipelineStageLabel(nextStage)}
+            <ChevronRight className="size-3.5" />
+          </button>
+        ) : null}
+      </footer>
 
       <AtendimentoActionsDialog
-        kind={activeKind}
+        kind="criar-retorno"
         atendimento={atendimento}
-        open={activeKind !== null}
-        onOpenChange={(open) => {
-          if (!open) setActiveKind(null);
-        }}
+        brokerOptions={brokerOptions}
+        open={schedulingReturn}
+        onOpenChange={setSchedulingReturn}
         onSubmit={(payload) => onAction(payload, atendimento)}
       />
     </article>
+  );
+}
+
+function ContextRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof UserRound;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-[0.1em] text-stone-400">
+        <Icon className="size-3" />
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate font-semibold text-stone-700">{children}</dd>
+    </div>
+  );
+}
+
+function PipelinePoint({
+  label,
+  active = false,
+  children,
+}: {
+  label: string;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 px-1.5 py-2">
+      <p className="text-[7px] font-extrabold uppercase tracking-[0.1em] text-stone-400">{label}</p>
+      <p
+        className={cn(
+          "mt-0.5 line-clamp-2 text-[9px] font-bold leading-3.5 text-stone-600",
+          active && "text-teal-900",
+        )}
+      >
+        {children}
+      </p>
+    </div>
   );
 }
 
