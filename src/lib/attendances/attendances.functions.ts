@@ -9,10 +9,12 @@ import type {
   DormitoriosAtendimento,
   ImobiliariaAtendimento,
   OrigemLeadAtendimento,
+  PipelineStage,
   PrioridadeAtendimento,
   ProximoPassoAtendimento,
   TipoImovelInteresse,
 } from "@/types/atendimento";
+import { statusToPipelineStage } from "@/types/atendimento";
 
 type DbRow = {
   id: string;
@@ -37,6 +39,7 @@ type DbRow = {
   corretor_nome: string | null;
   prioridade: string;
   status: string;
+  pipeline_stage: string | null;
   proximo_retorno: string | null;
   proximo_passo: string | null;
   observacoes: string | null;
@@ -84,6 +87,7 @@ function rowToAtendimento(row: DbRow): Atendimento {
     imovelDescricao: orUndef(row.imovel_descricao) ?? undefined,
     prioridade: row.prioridade as PrioridadeAtendimento,
     status: row.status as AtendimentoStatus,
+    pipelineStage: (row.pipeline_stage as PipelineStage | null) ?? statusToPipelineStage(row.status as AtendimentoStatus),
     proximoRetorno: orUndef(row.proximo_retorno) ?? undefined,
     proximoPasso: (orUndef(row.proximo_passo) as ProximoPassoAtendimento | undefined) ?? undefined,
     observacoes: orUndef(row.observacoes) ?? undefined,
@@ -142,6 +146,7 @@ function inputToPayload(input: AtendimentoCreateInput, userId: string) {
       input.corretorId && input.corretorId !== "a_definir" ? orNull(input.corretorNome) : null,
     prioridade: input.prioridade,
     status: input.status,
+    pipeline_stage: input.pipelineStage ?? statusToPipelineStage(input.status),
     proximo_retorno: input.proximoRetorno
       ? new Date(input.proximoRetorno).toISOString()
       : null,
