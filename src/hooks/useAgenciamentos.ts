@@ -140,17 +140,9 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     [effectiveBrokerId, rawAgenciamentos, session],
   );
 
-  const effectiveFilters = useMemo(
-    () => ({
-      ...filters,
-      corretorId: isAdminLike ? filters.corretorId : (effectiveBrokerId ?? "__sem_corretor__"),
-    }),
-    [effectiveBrokerId, filters, isAdminLike],
-  );
-
   const agenciamentos = useMemo(
-    () => filterAgenciamentos(visibleAgenciamentos, effectiveFilters),
-    [effectiveFilters, visibleAgenciamentos],
+    () => filterAgenciamentos(visibleAgenciamentos, filters),
+    [filters, visibleAgenciamentos],
   );
 
   const summary = useMemo(() => calculateAgenciamentosSummary(agenciamentos), [agenciamentos]);
