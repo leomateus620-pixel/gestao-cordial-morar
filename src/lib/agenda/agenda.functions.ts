@@ -40,6 +40,7 @@ type DbEvent = {
   atendimento_id: string | null;
   imovel_id: string | null;
   imovel_descricao: string | null;
+  agenciamento_id: string | null;
   local: string | null;
   video_call_url: string | null;
   responsavel_nome: string | null;
@@ -97,6 +98,7 @@ function rowToEvent(row: DbEvent): AgendaEvent {
     atendimentoId: orUndef(row.atendimento_id),
     imovelId: orUndef(row.imovel_id),
     imovelDescricao: orUndef(row.imovel_descricao),
+    agenciamentoId: orUndef(row.agenciamento_id),
     local: orUndef(row.local),
     videoCallUrl: orUndef(row.video_call_url),
     responsavelPrincipalId: orUndef(row.owner_user_id),
@@ -148,16 +150,24 @@ function validate(input: AgendaEventInput) {
   }
 }
 
+type ListScope = "todos" | "geral" | "fotos";
+const PHOTO_TIPOS: AgendaTipo[] = ["fotos", "video"];
+
 export const listAgendaEvents = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+  .inputValidator((d?: { scope?: ListScope }) => d ?? {})
+  .handler(async ({ data, context }) => {
+    const scope: ListScope = data?.scope ?? "todos";
+    let query = context.supabase
       .from("agenda_events")
       .select(SELECT)
       .is("deleted_at", null)
       .order("inicio", { ascending: true });
+    if (scope === "fotos") query = query.in("tipo", PHOTO_TIPOS);
+    else if (scope === "geral") query = query.not("tipo", "in", `(${PHOTO_TIPOS.join(",")})`);
+    const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => rowToEvent(row as unknown as DbEvent));
+    return (rows ?? []).map((row) => rowToEvent(row as unknown as DbEvent));
   });
 
 type UpsertInput = { id?: string; input: AgendaEventInput };
@@ -188,8 +198,9 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       cliente_id: orNull(input.clienteId),
       cliente_nome: orNull(input.clienteNome),
       atendimento_id: orNull(input.atendimentoId),
-      imovel_id: orNull(input.imovelId),
+      imovel_id: asUuid(input.imovelId),
       imovel_descricao: orNull(input.imovelDescricao),
+      agenciamento_id: asUuid(input.agenciamentoId),
       local: orNull(input.local),
       video_call_url: orNull(input.videoCallUrl),
       responsavel_nome: orNull(input.responsavelPrincipalNome),
@@ -324,11 +335,28 @@ export const completeAgendaEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
+    const { data: existing, error: readErr } = await context.supabase
+      .from("agenda_events")
+      .select("tipo, agenciamento_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+
     const { error } = await context.supabase
       .from("agenda_events")
       .update({ status: "concluido", concluido_em: new Date().toISOString() })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Photo events completed against an agenciamento flip the "fotos_realizadas" checklist.
+    if (existing && PHOTO_TIPOS.includes(existing.tipo as AgendaTipo) && existing.agenciamento_id) {
+      const { error: upErr } = await context.supabase
+        .from("agenciamentos")
+        .update({ fotos_realizadas: true })
+        .eq("id", existing.agenciamento_id);
+      if (upErr) console.error("[agenda] update agenciamento fotos_realizadas falhou:", upErr);
+    }
+
     try {
       const { syncAgendaEventToGoogle } = await import(
         "@/lib/google-calendar/google.server"

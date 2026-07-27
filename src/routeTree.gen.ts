@@ -38,6 +38,7 @@ import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/em
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
+import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -190,6 +191,11 @@ const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   path: '/$clienteId',
   getParentRoute: () => AppClientesRoute,
 } as any)
+const AppAgendaFotosRoute = AppAgendaFotosRouteImport.update({
+  id: '/fotos',
+  path: '/fotos',
+  getParentRoute: () => AppAgendaRoute,
+} as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -239,7 +245,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
-  '/agenda': typeof AppAgendaRoute
+  '/agenda': typeof AppAgendaRouteWithChildren
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
@@ -275,7 +282,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
-  '/agenda': typeof AppAgendaRoute
+  '/agenda': typeof AppAgendaRouteWithChildren
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -295,6 +302,7 @@ export interface FileRoutesByTo {
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/': typeof AppIndexRoute
+  '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
@@ -314,7 +322,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
-  '/_app/agenda': typeof AppAgendaRoute
+  '/_app/agenda': typeof AppAgendaRouteWithChildren
   '/_app/alugueis': typeof AppAlugueisRoute
   '/_app/atendimentos': typeof AppAtendimentosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
@@ -410,6 +420,7 @@ export interface FileRouteTypes {
     | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/'
+    | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
@@ -448,6 +459,7 @@ export interface FileRouteTypes {
     | '/avaliar/$token'
     | '/email/unsubscribe'
     | '/_app/'
+    | '/_app/agenda/fotos'
     | '/_app/clientes/$clienteId'
     | '/_app/contratos/$contratoId'
     | '/_app/imoveis/$imovelId'
@@ -683,6 +695,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesClienteIdRouteImport
       parentRoute: typeof AppClientesRoute
     }
+    '/_app/agenda/fotos': {
+      id: '/_app/agenda/fotos'
+      path: '/fotos'
+      fullPath: '/agenda/fotos'
+      preLoaderRoute: typeof AppAgendaFotosRouteImport
+      parentRoute: typeof AppAgendaRoute
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -735,6 +754,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppAgendaRouteChildren {
+  AppAgendaFotosRoute: typeof AppAgendaFotosRoute
+}
+
+const AppAgendaRouteChildren: AppAgendaRouteChildren = {
+  AppAgendaFotosRoute: AppAgendaFotosRoute,
+}
+
+const AppAgendaRouteWithChildren = AppAgendaRoute._addFileChildren(
+  AppAgendaRouteChildren,
+)
+
 interface AppClientesRouteChildren {
   AppClientesClienteIdRoute: typeof AppClientesClienteIdRoute
 }
@@ -773,7 +804,7 @@ const AppImoveisRouteWithChildren = AppImoveisRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAgenciamentosRoute: typeof AppAgenciamentosRoute
-  AppAgendaRoute: typeof AppAgendaRoute
+  AppAgendaRoute: typeof AppAgendaRouteWithChildren
   AppAlugueisRoute: typeof AppAlugueisRoute
   AppAtendimentosRoute: typeof AppAtendimentosRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
@@ -795,7 +826,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgenciamentosRoute: AppAgenciamentosRoute,
-  AppAgendaRoute: AppAgendaRoute,
+  AppAgendaRoute: AppAgendaRouteWithChildren,
   AppAlugueisRoute: AppAlugueisRoute,
   AppAtendimentosRoute: AppAtendimentosRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
@@ -838,13 +869,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

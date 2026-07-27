@@ -48,15 +48,24 @@ export const defaultAgendaFilters: AgendaFilters = {
   dataFim: "",
 };
 
-export const AGENDA_QUERY_KEY = ["agenda", "events"] as const;
+export type AgendaScope = "todos" | "geral" | "fotos";
 
-export function useAgenda(query: string, filters: AgendaFilters) {
+export const AGENDA_QUERY_KEY = ["agenda", "events"] as const;
+export const agendaQueryKey = (scope: AgendaScope = "todos") =>
+  ["agenda", "events", scope] as const;
+
+export function useAgenda(
+  query: string,
+  filters: AgendaFilters,
+  options: { scope?: AgendaScope } = {},
+) {
+  const scope = options.scope ?? "todos";
   const user = useSession();
   const qc = useQueryClient();
 
   const eventsQuery = useQuery({
-    queryKey: AGENDA_QUERY_KEY,
-    queryFn: () => listAgendaEvents(),
+    queryKey: agendaQueryKey(scope),
+    queryFn: () => listAgendaEvents({ data: { scope } }),
     enabled: Boolean(user),
     staleTime: 15_000,
   });
@@ -72,9 +81,13 @@ export function useAgenda(query: string, filters: AgendaFilters) {
     [events, filters, query],
   );
 
-  const stats = useMemo(() => getAgendaStats(events), [events]);
+  const stats = useMemo(
+    () => (scope === "fotos" ? getPhotoStats(events) : getAgendaStats(events)),
+    [events, scope],
+  );
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY });
+  // Invalidate every agenda view (geral + fotos + todos) so mutations propagate.
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["agenda", "events"] });
 
   const upsert = useMutation({
     mutationFn: (payload: { id?: string; input: AgendaEventInput }) =>
@@ -186,6 +199,27 @@ function getAgendaStats(events: AgendaEvent[]) {
     pendingConfirmation: pending.filter((event) => event.status === "agendado").length,
   };
 }
+
+function getPhotoStats(events: AgendaEvent[]) {
+  const now = new Date();
+  const nextWeek = new Date(startOfDay(now));
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const active = events.filter((event) => event.status !== "cancelado");
+  return {
+    today: active.filter((event) => isSameDay(new Date(event.inicio), now)).length,
+    nextSevenDays: active.filter((event) => {
+      const date = new Date(event.inicio);
+      return date >= startOfDay(now) && date < nextWeek;
+    }).length,
+    visits: 0,
+    returns: 0,
+    media: active.filter((event) => event.status === "agendado" || event.status === "confirmado")
+      .length,
+    signatures: active.filter((event) => event.status === "concluido").length,
+    pendingConfirmation: active.filter((event) => event.status === "reagendado").length,
+  };
+}
+
 
 function startOfDay(value: Date) {
   const result = new Date(value);

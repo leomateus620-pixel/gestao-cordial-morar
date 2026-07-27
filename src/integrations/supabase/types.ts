@@ -314,6 +314,7 @@ export type Database = {
       }
       agenda_events: {
         Row: {
+          agenciamento_id: string | null
           atendimento_id: string | null
           cliente_id: string | null
           cliente_nome: string | null
@@ -348,6 +349,7 @@ export type Database = {
           video_call_url: string | null
         }
         Insert: {
+          agenciamento_id?: string | null
           atendimento_id?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -382,6 +384,7 @@ export type Database = {
           video_call_url?: string | null
         }
         Update: {
+          agenciamento_id?: string | null
           atendimento_id?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -415,7 +418,15 @@ export type Database = {
           updated_at?: string
           video_call_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agenda_events_agenciamento_id_fkey"
+            columns: ["agenciamento_id"]
+            isOneToOne: false
+            referencedRelation: "agenciamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agenda_reminder_deliveries: {
         Row: {
