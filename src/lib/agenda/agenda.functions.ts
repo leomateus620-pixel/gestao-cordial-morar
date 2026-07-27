@@ -150,16 +150,24 @@ function validate(input: AgendaEventInput) {
   }
 }
 
+type ListScope = "todos" | "geral" | "fotos";
+const PHOTO_TIPOS: AgendaTipo[] = ["fotos", "video"];
+
 export const listAgendaEvents = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+  .inputValidator((d?: { scope?: ListScope }) => d ?? {})
+  .handler(async ({ data, context }) => {
+    const scope: ListScope = data?.scope ?? "todos";
+    let query = context.supabase
       .from("agenda_events")
       .select(SELECT)
       .is("deleted_at", null)
       .order("inicio", { ascending: true });
+    if (scope === "fotos") query = query.in("tipo", PHOTO_TIPOS);
+    else if (scope === "geral") query = query.not("tipo", "in", `(${PHOTO_TIPOS.join(",")})`);
+    const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => rowToEvent(row as unknown as DbEvent));
+    return (rows ?? []).map((row) => rowToEvent(row as unknown as DbEvent));
   });
 
 type UpsertInput = { id?: string; input: AgendaEventInput };
