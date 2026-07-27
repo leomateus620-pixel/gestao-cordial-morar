@@ -195,6 +195,7 @@ function mapSale(r: SaleRow): SaleRecord {
     updatedAt: r.updated_at,
     payments: r.payments ?? [],
     attachments: r.attachments ?? [],
+    commissionPlan: r.commissionPlan,
   };
 }
 
