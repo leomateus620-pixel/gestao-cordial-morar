@@ -53,6 +53,7 @@ function Page() {
     addAttachment,
     removeAttachment,
     setPaymentPaid,
+    setCommissionInstallmentPaid,
     isCreating,
     isUpdating,
   } = useSales();
