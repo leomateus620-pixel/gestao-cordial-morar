@@ -59,6 +59,27 @@ type SaleRow = {
   owner?: { id: string; nome: string | null; iniciais: string | null } | null;
   payments?: SalePayment[];
   attachments?: SaleAttachment[];
+  commissionPlan?: SaleCommissionPlan;
+};
+
+type CommissionPlanRow = {
+  sale_id: string;
+  metodo: string;
+  timing: string;
+  data_pagamento: string | null;
+  parcelado: boolean;
+  observacoes: string | null;
+};
+
+type CommissionInstallmentRow = {
+  id: string;
+  sale_id: string;
+  sequence: number;
+  amount: number | string;
+  due_date: string;
+  paid: boolean;
+  paid_at: string | null;
+  notified_at: string | null;
 };
 
 type AttachmentRow = {
