@@ -311,7 +311,78 @@ async function attachAttachments(
   return grouped;
 }
 
-// ============================ LIST ============================
+async function syncCommissionPlan(
+  supabase: any,
+  saleId: string,
+  plan: SaleCommissionPlanInput | null | undefined,
+) {
+  if (plan === undefined) return; // No changes requested
+  if (plan === null) {
+    await supabase.from("sale_commission_installments").delete().eq("sale_id", saleId);
+    await supabase.from("sale_commission_plan").delete().eq("sale_id", saleId);
+    return;
+  }
+  const payload = {
+    sale_id: saleId,
+    metodo: plan.metodo,
+    timing: plan.timing,
+    data_pagamento: plan.dataPagamento ?? null,
+    parcelado: Boolean(plan.parcelado),
+    observacoes: orNull(plan.observacoes),
+  };
+  const { error: upErr } = await supabase
+    .from("sale_commission_plan")
+    .upsert(payload, { onConflict: "sale_id" });
+  if (upErr) throw new Error(upErr.message);
+
+  await supabase.from("sale_commission_installments").delete().eq("sale_id", saleId);
+  const installments = (plan.installments ?? []).filter(
+    (i) => Number.isFinite(i.amount) && i.amount > 0 && i.dueDate,
+  );
+  if (plan.parcelado && installments.length > 0) {
+    const rows = installments.map((i, idx) => ({
+      sale_id: saleId,
+      sequence: i.sequence ?? idx,
+      amount: i.amount,
+      due_date: i.dueDate,
+      paid: i.paid ?? false,
+    }));
+    const { error } = await supabase.from("sale_commission_installments").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+async function attachCommissionPlans(
+  supabase: any,
+  saleIds: string[],
+): Promise<Record<string, SaleCommissionPlan>> {
+  if (saleIds.length === 0) return {};
+  const [{ data: plans }, { data: installments }] = await Promise.all([
+    supabase.from("sale_commission_plan").select("*").in("sale_id", saleIds),
+    supabase
+      .from("sale_commission_installments")
+      .select("*")
+      .in("sale_id", saleIds)
+      .order("sequence", { ascending: true }),
+  ]);
+  const grouped: Record<string, SaleCommissionInstallment[]> = {};
+  for (const row of (installments ?? []) as CommissionInstallmentRow[]) {
+    const key = row.sale_id;
+    (grouped[key] ||= []).push(mapCommissionInstallment(row));
+  }
+  const result: Record<string, SaleCommissionPlan> = {};
+  for (const p of (plans ?? []) as CommissionPlanRow[]) {
+    result[p.sale_id] = {
+      metodo: p.metodo as SaleCommissionMetodo,
+      timing: p.timing as SaleCommissionTiming,
+      dataPagamento: p.data_pagamento,
+      parcelado: Boolean(p.parcelado),
+      observacoes: p.observacoes,
+      installments: grouped[p.sale_id] ?? [],
+    };
+  }
+  return result;
+}
 export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SaleRecord[]> => {
