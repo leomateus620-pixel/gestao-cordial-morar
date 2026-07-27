@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type {
   SaleAttachment,
+  SaleCommissionInstallment,
+  SaleCommissionInstallmentInput,
+  SaleCommissionMetodo,
+  SaleCommissionPlan,
+  SaleCommissionPlanInput,
+  SaleCommissionTiming,
   SaleDocumentStatus,
   SalePayment,
   SalePaymentInput,
@@ -53,6 +59,27 @@ type SaleRow = {
   owner?: { id: string; nome: string | null; iniciais: string | null } | null;
   payments?: SalePayment[];
   attachments?: SaleAttachment[];
+  commissionPlan?: SaleCommissionPlan;
+};
+
+type CommissionPlanRow = {
+  sale_id: string;
+  metodo: string;
+  timing: string;
+  data_pagamento: string | null;
+  parcelado: boolean;
+  observacoes: string | null;
+};
+
+type CommissionInstallmentRow = {
+  id: string;
+  sale_id: string;
+  sequence: number;
+  amount: number | string;
+  due_date: string;
+  paid: boolean;
+  paid_at: string | null;
+  notified_at: string | null;
 };
 
 type AttachmentRow = {
@@ -114,6 +141,19 @@ function mapPayment(r: PaymentRow): SalePayment {
   };
 }
 
+function mapCommissionInstallment(r: CommissionInstallmentRow): SaleCommissionInstallment {
+  return {
+    id: r.id,
+    saleId: r.sale_id,
+    sequence: Number(r.sequence ?? 0),
+    amount: Number(r.amount),
+    dueDate: r.due_date,
+    paid: Boolean(r.paid),
+    paidAt: r.paid_at,
+    notifiedAt: r.notified_at,
+  };
+}
+
 function mapSale(r: SaleRow): SaleRecord {
   return {
     id: r.id,
@@ -155,6 +195,7 @@ function mapSale(r: SaleRow): SaleRecord {
     updatedAt: r.updated_at,
     payments: r.payments ?? [],
     attachments: r.attachments ?? [],
+    commissionPlan: r.commissionPlan,
   };
 }
 
@@ -270,6 +311,78 @@ async function attachAttachments(
   return grouped;
 }
 
+async function syncCommissionPlan(
+  supabase: any,
+  saleId: string,
+  plan: SaleCommissionPlanInput | null | undefined,
+) {
+  if (plan === undefined) return; // No changes requested
+  if (plan === null) {
+    await supabase.from("sale_commission_installments").delete().eq("sale_id", saleId);
+    await supabase.from("sale_commission_plan").delete().eq("sale_id", saleId);
+    return;
+  }
+  const payload = {
+    sale_id: saleId,
+    metodo: plan.metodo,
+    timing: plan.timing,
+    data_pagamento: plan.dataPagamento ?? null,
+    parcelado: Boolean(plan.parcelado),
+    observacoes: orNull(plan.observacoes),
+  };
+  const { error: upErr } = await supabase
+    .from("sale_commission_plan")
+    .upsert(payload, { onConflict: "sale_id" });
+  if (upErr) throw new Error(upErr.message);
+
+  await supabase.from("sale_commission_installments").delete().eq("sale_id", saleId);
+  const installments = (plan.installments ?? []).filter(
+    (i) => Number.isFinite(i.amount) && i.amount > 0 && i.dueDate,
+  );
+  if (plan.parcelado && installments.length > 0) {
+    const rows = installments.map((i, idx) => ({
+      sale_id: saleId,
+      sequence: i.sequence ?? idx,
+      amount: i.amount,
+      due_date: i.dueDate,
+      paid: i.paid ?? false,
+    }));
+    const { error } = await supabase.from("sale_commission_installments").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+async function attachCommissionPlans(
+  supabase: any,
+  saleIds: string[],
+): Promise<Record<string, SaleCommissionPlan>> {
+  if (saleIds.length === 0) return {};
+  const [{ data: plans }, { data: installments }] = await Promise.all([
+    supabase.from("sale_commission_plan").select("*").in("sale_id", saleIds),
+    supabase
+      .from("sale_commission_installments")
+      .select("*")
+      .in("sale_id", saleIds)
+      .order("sequence", { ascending: true }),
+  ]);
+  const grouped: Record<string, SaleCommissionInstallment[]> = {};
+  for (const row of (installments ?? []) as CommissionInstallmentRow[]) {
+    const key = row.sale_id;
+    (grouped[key] ||= []).push(mapCommissionInstallment(row));
+  }
+  const result: Record<string, SaleCommissionPlan> = {};
+  for (const p of (plans ?? []) as CommissionPlanRow[]) {
+    result[p.sale_id] = {
+      metodo: p.metodo as SaleCommissionMetodo,
+      timing: p.timing as SaleCommissionTiming,
+      dataPagamento: p.data_pagamento,
+      parcelado: Boolean(p.parcelado),
+      observacoes: p.observacoes,
+      installments: grouped[p.sale_id] ?? [],
+    };
+  }
+  return result;
+}
 // ============================ LIST ============================
 export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -295,9 +408,10 @@ export const listSales = createServerFn({ method: "GET" })
       );
     }
     const ids = rows.map((r) => r.id);
-    const [payments, attachments] = await Promise.all([
+    const [payments, attachments, commissionPlans] = await Promise.all([
       attachPayments(context.supabase, ids),
       attachAttachments(context.supabase, ids),
+      attachCommissionPlans(context.supabase, ids),
     ]);
     return rows.map((r) =>
       mapSale({
@@ -305,6 +419,7 @@ export const listSales = createServerFn({ method: "GET" })
         owner: owners[r.user_id] ?? null,
         payments: payments[r.id] ?? [],
         attachments: attachments[r.id] ?? [],
+        commissionPlan: commissionPlans[r.id],
       }),
     );
   });
@@ -323,14 +438,17 @@ export const createSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const saleRow = row as unknown as SaleRow;
     await syncPayments(context.supabase, saleRow.id, data.payments);
-    const [payments, attachments] = await Promise.all([
+    await syncCommissionPlan(context.supabase, saleRow.id, data.commissionPlan);
+    const [payments, attachments, commissionPlans] = await Promise.all([
       attachPayments(context.supabase, [saleRow.id]),
       attachAttachments(context.supabase, [saleRow.id]),
+      attachCommissionPlans(context.supabase, [saleRow.id]),
     ]);
     return mapSale({
       ...saleRow,
       payments: payments[saleRow.id] ?? [],
       attachments: attachments[saleRow.id] ?? [],
+      commissionPlan: commissionPlans[saleRow.id],
     });
   });
 
@@ -348,14 +466,17 @@ export const updateSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const saleRow = row as unknown as SaleRow;
     await syncPayments(context.supabase, saleRow.id, data.input.payments);
-    const [payments, attachments] = await Promise.all([
+    await syncCommissionPlan(context.supabase, saleRow.id, data.input.commissionPlan);
+    const [payments, attachments, commissionPlans] = await Promise.all([
       attachPayments(context.supabase, [saleRow.id]),
       attachAttachments(context.supabase, [saleRow.id]),
+      attachCommissionPlans(context.supabase, [saleRow.id]),
     ]);
     return mapSale({
       ...saleRow,
       payments: payments[saleRow.id] ?? [],
       attachments: attachments[saleRow.id] ?? [],
+      commissionPlan: commissionPlans[saleRow.id],
     });
   });
 
@@ -526,4 +647,23 @@ export const removeSaleAttachment = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ============================ MARK COMMISSION INSTALLMENT PAID ============================
+export const setSaleCommissionInstallmentPaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; paid: boolean }) => data)
+  .handler(async ({ data, context }): Promise<SaleCommissionInstallment> => {
+    const { data: row, error } = await context.supabase
+      .from("sale_commission_installments")
+      .update({
+        paid: data.paid,
+        paid_at: data.paid ? new Date().toISOString() : null,
+      })
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapCommissionInstallment(row as unknown as CommissionInstallmentRow);
+  });
+
 

@@ -53,6 +53,7 @@ function Page() {
     addAttachment,
     removeAttachment,
     setPaymentPaid,
+    setCommissionInstallmentPaid,
     isCreating,
     isUpdating,
   } = useSales();
@@ -312,6 +313,9 @@ function Page() {
         }}
         onMarkPaymentPaid={(paymentId, paid) =>
           setPaymentPaid({ id: paymentId, paid }).catch(() => undefined)
+        }
+        onMarkCommissionPaid={(installmentId, paid) =>
+          setCommissionInstallmentPaid({ id: installmentId, paid }).catch(() => undefined)
         }
       />
     </>

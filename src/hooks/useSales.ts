@@ -11,6 +11,7 @@ import {
   getSalesKpis as kpisFn,
   listSales,
   removeSaleAttachment as removeAttachmentFn,
+  setSaleCommissionInstallmentPaid as setCommissionPaidFn,
   setSalePaymentPaid as setPaidFn,
   updateSale as updateFn,
 } from "@/lib/sales/sales.functions";
@@ -28,6 +29,7 @@ export function useSales() {
   const remove = useServerFn(deleteFn);
   const signUrl = useServerFn(signedUrlFn);
   const setPaid = useServerFn(setPaidFn);
+  const setCommissionPaid = useServerFn(setCommissionPaidFn);
   const addAttachment = useServerFn(addAttachmentFn);
   const removeAttachment = useServerFn(removeAttachmentFn);
 
@@ -69,6 +71,11 @@ export function useSales() {
 
   const setPaidMutation = useMutation({
     mutationFn: (vars: { id: string; paid: boolean }) => setPaid({ data: vars }),
+    onSuccess: invalidate,
+  });
+
+  const setCommissionPaidMutation = useMutation({
+    mutationFn: (vars: { id: string; paid: boolean }) => setCommissionPaid({ data: vars }),
     onSuccess: invalidate,
   });
 
@@ -121,6 +128,8 @@ export function useSales() {
     isCanceling: cancelMutation.isPending,
     setPaymentPaid: setPaidMutation.mutateAsync,
     isSettingPaid: setPaidMutation.isPending,
+    setCommissionInstallmentPaid: setCommissionPaidMutation.mutateAsync,
+    isSettingCommissionPaid: setCommissionPaidMutation.isPending,
     openContract,
     openAttachment: openContract,
     addAttachment: addAttachmentAsync,
