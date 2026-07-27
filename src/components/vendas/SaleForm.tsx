@@ -524,6 +524,32 @@ export function SaleForm({
       documentStatus: saleStatus === "cancelada" ? "cancelado" : documentStatus,
       notes: notes.trim() || undefined,
       payments: buildPaymentsPayload(entradaAmount, entradaDueDate, parcelas),
+      commissionPlan: commissionPlanEnabled
+        ? ({
+            metodo: commissionMetodo,
+            timing: commissionTiming,
+            dataPagamento:
+              commissionTiming === "data_especifica" && commissionDataPagamento
+                ? commissionDataPagamento
+                : null,
+            parcelado: commissionParcelado,
+            observacoes: commissionObservacoes.trim() || null,
+            installments: commissionParcelado
+              ? commissionInstallments
+                  .map((i, idx): SaleCommissionInstallmentInput | null => {
+                    const val = parseMoney(i.amount);
+                    if (!(val > 0) || !i.dueDate) return null;
+                    return {
+                      sequence: idx,
+                      amount: val,
+                      dueDate: i.dueDate,
+                      paid: i.paid,
+                    };
+                  })
+                  .filter((x): x is SaleCommissionInstallmentInput => x !== null)
+              : [],
+          } satisfies SaleCommissionPlanInput)
+        : null,
     };
 
     try {
