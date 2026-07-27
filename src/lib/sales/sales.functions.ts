@@ -466,14 +466,17 @@ export const updateSale = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const saleRow = row as unknown as SaleRow;
     await syncPayments(context.supabase, saleRow.id, data.input.payments);
-    const [payments, attachments] = await Promise.all([
+    await syncCommissionPlan(context.supabase, saleRow.id, data.input.commissionPlan);
+    const [payments, attachments, commissionPlans] = await Promise.all([
       attachPayments(context.supabase, [saleRow.id]),
       attachAttachments(context.supabase, [saleRow.id]),
+      attachCommissionPlans(context.supabase, [saleRow.id]),
     ]);
     return mapSale({
       ...saleRow,
       payments: payments[saleRow.id] ?? [],
       attachments: attachments[saleRow.id] ?? [],
+      commissionPlan: commissionPlans[saleRow.id],
     });
   });
 
