@@ -128,6 +128,8 @@ export function useSales() {
     isCanceling: cancelMutation.isPending,
     setPaymentPaid: setPaidMutation.mutateAsync,
     isSettingPaid: setPaidMutation.isPending,
+    setCommissionInstallmentPaid: setCommissionPaidMutation.mutateAsync,
+    isSettingCommissionPaid: setCommissionPaidMutation.isPending,
     openContract,
     openAttachment: openContract,
     addAttachment: addAttachmentAsync,
