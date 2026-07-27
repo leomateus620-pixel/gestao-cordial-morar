@@ -478,6 +478,65 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          attendance_id: string
+          broker_id: string
+          cancelled_at: string | null
+          created_at: string
+          first_opened_at: string | null
+          first_opened_by: string | null
+          id: string
+          imobiliaria: string | null
+          response_time_seconds: number | null
+          status: Database["public"]["Enums"]["attendance_assignment_status"]
+          superseded_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          attendance_id: string
+          broker_id: string
+          cancelled_at?: string | null
+          created_at?: string
+          first_opened_at?: string | null
+          first_opened_by?: string | null
+          id?: string
+          imobiliaria?: string | null
+          response_time_seconds?: number | null
+          status?: Database["public"]["Enums"]["attendance_assignment_status"]
+          superseded_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          attendance_id?: string
+          broker_id?: string
+          cancelled_at?: string | null
+          created_at?: string
+          first_opened_at?: string | null
+          first_opened_by?: string | null
+          id?: string
+          imobiliaria?: string | null
+          response_time_seconds?: number | null
+          status?: Database["public"]["Enums"]["attendance_assignment_status"]
+          superseded_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_assignments_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_history: {
         Row: {
           actor_id: string | null
@@ -2255,6 +2314,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _try_uuid: { Args: { _txt: string }; Returns: string }
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
       attendance_add_note: {
@@ -2273,6 +2333,31 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_attendance_assignment_status: {
+        Args: { _attendance_id: string }
+        Returns: {
+          assigned_at: string
+          assignment_id: string
+          broker_id: string
+          broker_nome: string
+          first_opened_at: string
+          response_time_seconds: number
+          status: Database["public"]["Enums"]["attendance_assignment_status"]
+        }[]
+      }
+      get_corretores_response_metrics: {
+        Args: { _end?: string; _imobiliaria?: string; _start?: string }
+        Returns: {
+          avg_seconds: number
+          broker_id: string
+          broker_nome: string
+          completed_count: number
+          fastest_seconds: number
+          median_seconds: number
+          pending_count: number
+          slowest_seconds: number
+        }[]
       }
       get_satisfaction_survey_by_token: {
         Args: { _token: string }
@@ -2302,6 +2387,10 @@ export type Database = {
           nome: string
           role: Database["public"]["Enums"]["app_role"]
         }[]
+      }
+      mark_attendance_first_opened: {
+        Args: { _attendance_id: string }
+        Returns: Json
       }
       mark_attendance_opened: { Args: { _id: string }; Returns: undefined }
       move_to_dlq: {
@@ -2350,6 +2439,11 @@ export type Database = {
         | "interno"
         | "outro"
       app_role: "admin" | "secretaria" | "corretor" | "financeiro"
+      attendance_assignment_status:
+        | "pending_open"
+        | "opened"
+        | "superseded"
+        | "cancelled"
       pipeline_stage:
         | "primeiro_contato"
         | "apresentando_solucao"
@@ -2542,6 +2636,12 @@ export const Constants = {
         "outro",
       ],
       app_role: ["admin", "secretaria", "corretor", "financeiro"],
+      attendance_assignment_status: [
+        "pending_open",
+        "opened",
+        "superseded",
+        "cancelled",
+      ],
       pipeline_stage: [
         "primeiro_contato",
         "apresentando_solucao",
