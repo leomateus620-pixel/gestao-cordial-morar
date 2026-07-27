@@ -11,6 +11,7 @@ import {
   getSalesKpis as kpisFn,
   listSales,
   removeSaleAttachment as removeAttachmentFn,
+  setSaleCommissionInstallmentPaid as setCommissionPaidFn,
   setSalePaymentPaid as setPaidFn,
   updateSale as updateFn,
 } from "@/lib/sales/sales.functions";
