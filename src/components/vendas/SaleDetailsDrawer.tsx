@@ -57,6 +57,7 @@ export function SaleDetailsDrawer({
   onAddAttachment,
   onRemoveAttachment,
   onMarkPaymentPaid,
+  onMarkCommissionPaid,
 }: {
   sale: SaleRecord | null;
   open: boolean;
