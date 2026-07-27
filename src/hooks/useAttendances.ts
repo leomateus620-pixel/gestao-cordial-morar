@@ -19,6 +19,7 @@ import {
   hydrateAtendimentoRelationships,
   isAtendimentoOverdue,
 } from "@/services/atendimentos";
+import { matchesTrack, type CommercialTrack } from "@/lib/atendimentos/track";
 import type {
   Atendimento,
   AtendimentoCreateInput,
