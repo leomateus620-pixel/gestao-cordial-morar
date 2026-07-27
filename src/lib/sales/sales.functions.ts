@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type {
   SaleAttachment,
+  SaleCommissionInstallment,
+  SaleCommissionInstallmentInput,
+  SaleCommissionMetodo,
+  SaleCommissionPlan,
+  SaleCommissionPlanInput,
+  SaleCommissionTiming,
   SaleDocumentStatus,
   SalePayment,
   SalePaymentInput,
