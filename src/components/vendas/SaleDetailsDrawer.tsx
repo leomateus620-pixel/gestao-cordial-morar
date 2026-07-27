@@ -24,11 +24,18 @@ import {
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
+  SALE_COMMISSION_METHODS,
+  SALE_COMMISSION_TIMINGS,
   SALE_DOCUMENT_CATEGORIES,
   type SaleDocumentCategory,
   type SaleRecord,
 } from "@/types/sale";
 import { SaleStatusBadge } from "./SaleStatusBadge";
+
+const commissionMethodLabel = (id: string) =>
+  SALE_COMMISSION_METHODS.find((m) => m.id === id)?.label ?? id;
+const commissionTimingLabel = (id: string) =>
+  SALE_COMMISSION_TIMINGS.find((t) => t.id === id)?.label ?? id;
 
 function formatDate(date: string) {
   return new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR");
