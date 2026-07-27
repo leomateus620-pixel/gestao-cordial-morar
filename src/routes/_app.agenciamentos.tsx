@@ -372,7 +372,7 @@ function Page() {
           />
         </div>
 
-        <section aria-labelledby="agenciamentos-list-title" className="min-w-0">
+        <section ref={listRef} aria-labelledby="agenciamentos-list-title" className="min-w-0 scroll-mt-4">
           <div className="mb-2.5 flex items-end justify-between gap-3 px-0.5">
             <div>
               <h2 id="agenciamentos-list-title" className="text-base font-extrabold tracking-tight">
