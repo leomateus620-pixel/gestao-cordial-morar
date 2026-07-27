@@ -269,7 +269,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
 
   const remove = useCallback(
     async (id: string) => {
-      if (!session || !canManage) return false;
+      if (!session) return false;
       try {
         await deleteMutation.mutateAsync(id);
         return true;
@@ -278,7 +278,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
         return false;
       }
     },
-    [canManage, deleteMutation, session],
+    [deleteMutation, session],
   );
 
   return {
