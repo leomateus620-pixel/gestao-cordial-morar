@@ -383,6 +383,7 @@ async function attachCommissionPlans(
   }
   return result;
 }
+// ============================ LIST ============================
 export const listSales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SaleRecord[]> => {
