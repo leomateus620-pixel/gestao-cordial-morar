@@ -62,7 +62,7 @@ function Page() {
     if (nextTrack === track) return;
     navigate({
       to: ".",
-      search: (prev) => ({ ...prev, track: nextTrack }),
+      search: { track: nextTrack, id: highlightId, clienteId: clienteIdFilter },
     });
     setSelectedStage("primeiro_contato");
   };
