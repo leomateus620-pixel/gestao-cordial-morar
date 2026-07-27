@@ -514,13 +514,12 @@ export function canEditAgenciamento(
 export function getAgenciamentosVisibleToUser(
   agenciamentos: Agenciamento[],
   user: { perfil: string; id: string } | null | undefined,
-  corretorId?: string,
+  _corretorId?: string,
 ) {
   if (!user) return [];
-  if (user.perfil === "admin_owner" || user.perfil === "secretaria") return agenciamentos;
-  if (user.perfil === "corretor" && corretorId) {
-    return agenciamentos.filter((item) => item.corretorId === corretorId);
-  }
-  return [];
+  // Server-side RLS + listAgenciamentos already scopes rows to the user
+  // (created_by OR corretor_id). Trust the server response here to avoid
+  // hiding rows during transient client-side hydration.
+  return agenciamentos;
 }
 
