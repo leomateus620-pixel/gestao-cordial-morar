@@ -20,17 +20,20 @@ import {
   isAtendimentoOverdue,
 } from "@/services/atendimentos";
 import { matchesTrack, type CommercialTrack } from "@/lib/atendimentos/track";
-import type {
-  Atendimento,
-  AtendimentoCreateInput,
-  AtendimentoFinalidade,
-  AtendimentoStatus,
-  OrigemLeadAtendimento,
-  PipelineStage,
-  PrioridadeAtendimento,
-  TipoImovelInteresse,
+import {
+  ACTIVE_PIPELINE_STAGES,
+  type Atendimento,
+  type AtendimentoCreateInput,
+  type AtendimentoFinalidade,
+  type AtendimentoStatus,
+  type OrigemLeadAtendimento,
+  type PipelineStage,
+  type PrioridadeAtendimento,
+  type TipoImovelInteresse,
 } from "@/types/atendimento";
 import type { ClientCreateInput, ClientPurpose, ClientStatus, LeadOrigin } from "@/types/client";
+
+const ACTIVE_STAGES_FOR_COUNT = new Set<PipelineStage>(ACTIVE_PIPELINE_STAGES);
 
 export type AtendimentoPeriodFilter = "todos" | "hoje" | "sete_dias" | "mes";
 
