@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
 import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
+import { PipelineTrackSelector } from "@/components/atendimentos/PipelineTrackSelector";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { buildLocalIso } from "@/components/atendimentos/atendimento-action-utils";
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
@@ -28,6 +29,12 @@ import {
   canManageAttendanceTerminalState,
   canSeeFinancialInsights,
 } from "@/lib/access-control";
+import {
+  parseTrackParam,
+  trackToFinalidade,
+  trackLabel,
+  type CommercialTrack,
+} from "@/lib/atendimentos/track";
 import { cn } from "@/lib/utils";
 import type { Atendimento, AtendimentoCreateInput, PipelineStage } from "@/types/atendimento";
 import { ACTIVE_PIPELINE_STAGES } from "@/types/atendimento";
@@ -38,9 +45,11 @@ export const Route = createFileRoute("/_app/atendimentos")({
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === "string" ? search.id : undefined,
     clienteId: typeof search.clienteId === "string" ? search.clienteId : undefined,
+    track: parseTrackParam(search.track),
   }),
   component: Page,
 });
+
 
 function Page() {
   const session = useSession();
