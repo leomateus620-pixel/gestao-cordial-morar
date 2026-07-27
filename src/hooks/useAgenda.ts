@@ -48,15 +48,24 @@ export const defaultAgendaFilters: AgendaFilters = {
   dataFim: "",
 };
 
-export const AGENDA_QUERY_KEY = ["agenda", "events"] as const;
+export type AgendaScope = "todos" | "geral" | "fotos";
 
-export function useAgenda(query: string, filters: AgendaFilters) {
+export const AGENDA_QUERY_KEY = ["agenda", "events"] as const;
+export const agendaQueryKey = (scope: AgendaScope = "todos") =>
+  ["agenda", "events", scope] as const;
+
+export function useAgenda(
+  query: string,
+  filters: AgendaFilters,
+  options: { scope?: AgendaScope } = {},
+) {
+  const scope = options.scope ?? "todos";
   const user = useSession();
   const qc = useQueryClient();
 
   const eventsQuery = useQuery({
-    queryKey: AGENDA_QUERY_KEY,
-    queryFn: () => listAgendaEvents(),
+    queryKey: agendaQueryKey(scope),
+    queryFn: () => listAgendaEvents({ data: { scope } }),
     enabled: Boolean(user),
     staleTime: 15_000,
   });
@@ -72,9 +81,13 @@ export function useAgenda(query: string, filters: AgendaFilters) {
     [events, filters, query],
   );
 
-  const stats = useMemo(() => getAgendaStats(events), [events]);
+  const stats = useMemo(
+    () => (scope === "fotos" ? getPhotoStats(events) : getAgendaStats(events)),
+    [events, scope],
+  );
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY });
+  // Invalidate every agenda view (geral + fotos + todos) so mutations propagate.
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["agenda", "events"] });
 
   const upsert = useMutation({
     mutationFn: (payload: { id?: string; input: AgendaEventInput }) =>
