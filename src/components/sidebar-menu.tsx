@@ -4,6 +4,8 @@ import {
   BriefcaseBusiness,
   Cable,
   CalendarCheck2,
+  Camera,
+
   ChartNoAxesCombined,
   ChevronDown,
   CircleDollarSign,
@@ -183,14 +185,28 @@ const sections: Section[] = [
         accent: "cyan",
       },
       {
-        type: "item",
-        to: "/agenda",
+        type: "group",
         label: "Agenda",
-        desc: "Visitas e retornos",
+        desc: "Visitas e sessões de fotos",
         icon: CalendarCheck2,
-        module: "agenda",
         accent: "teal",
+        children: [
+          {
+            to: "/agenda",
+            label: "Visitas e compromissos",
+            icon: CalendarCheck2,
+            module: "agenda",
+            exact: true,
+          },
+          {
+            to: "/agenda/fotos",
+            label: "Agenda de fotos",
+            icon: Camera,
+            module: "agenda",
+          },
+        ],
       },
+
       {
         type: "item",
         to: "/agenciamentos",
