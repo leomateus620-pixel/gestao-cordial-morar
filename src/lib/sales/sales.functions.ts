@@ -141,6 +141,19 @@ function mapPayment(r: PaymentRow): SalePayment {
   };
 }
 
+function mapCommissionInstallment(r: CommissionInstallmentRow): SaleCommissionInstallment {
+  return {
+    id: r.id,
+    saleId: r.sale_id,
+    sequence: Number(r.sequence ?? 0),
+    amount: Number(r.amount),
+    dueDate: r.due_date,
+    paid: Boolean(r.paid),
+    paidAt: r.paid_at,
+    notifiedAt: r.notified_at,
+  };
+}
+
 function mapSale(r: SaleRow): SaleRecord {
   return {
     id: r.id,
