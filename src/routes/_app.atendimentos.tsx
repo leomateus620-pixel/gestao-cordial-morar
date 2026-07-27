@@ -56,7 +56,16 @@ function Page() {
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const canAssignBroker = canManageAttendanceAssignments(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
-  const { id: highlightId, clienteId: clienteIdFilter } = Route.useSearch();
+  const { id: highlightId, clienteId: clienteIdFilter, track } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setTrack = (nextTrack: CommercialTrack) => {
+    if (nextTrack === track) return;
+    navigate({
+      search: (prev) => ({ ...prev, track: nextTrack }),
+      replace: false,
+    });
+    setSelectedStage("primeiro_contato");
+  };
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
@@ -68,6 +77,7 @@ function Page() {
   const {
     atendimentos,
     filteredAtendimentos: baseFilteredAtendimentos,
+    trackCounts,
     brokers,
     stats,
     isLoading,
@@ -78,7 +88,7 @@ function Page() {
     convertAtendimento,
     updateAtendimento,
     transitionStage,
-  } = useAttendances(query, filters);
+  } = useAttendances(query, filters, track);
   const filteredAtendimentos = useMemo(() => {
     if (!clienteIdFilter) return baseFilteredAtendimentos;
     return baseFilteredAtendimentos.filter(
