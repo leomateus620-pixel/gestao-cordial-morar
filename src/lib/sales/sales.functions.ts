@@ -408,9 +408,10 @@ export const listSales = createServerFn({ method: "GET" })
       );
     }
     const ids = rows.map((r) => r.id);
-    const [payments, attachments] = await Promise.all([
+    const [payments, attachments, commissionPlans] = await Promise.all([
       attachPayments(context.supabase, ids),
       attachAttachments(context.supabase, ids),
+      attachCommissionPlans(context.supabase, ids),
     ]);
     return rows.map((r) =>
       mapSale({
@@ -418,6 +419,7 @@ export const listSales = createServerFn({ method: "GET" })
         owner: owners[r.user_id] ?? null,
         payments: payments[r.id] ?? [],
         attachments: attachments[r.id] ?? [],
+        commissionPlan: commissionPlans[r.id],
       }),
     );
   });
