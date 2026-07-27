@@ -648,3 +648,22 @@ export const removeSaleAttachment = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ============================ MARK COMMISSION INSTALLMENT PAID ============================
+export const setSaleCommissionInstallmentPaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; paid: boolean }) => data)
+  .handler(async ({ data, context }): Promise<SaleCommissionInstallment> => {
+    const { data: row, error } = await context.supabase
+      .from("sale_commission_installments")
+      .update({
+        paid: data.paid,
+        paid_at: data.paid ? new Date().toISOString() : null,
+      })
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return mapCommissionInstallment(row as unknown as CommissionInstallmentRow);
+  });
+
+
