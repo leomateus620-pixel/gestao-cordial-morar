@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
 import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
+import { PipelineTrackSelector } from "@/components/atendimentos/PipelineTrackSelector";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { buildLocalIso } from "@/components/atendimentos/atendimento-action-utils";
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
@@ -28,6 +29,12 @@ import {
   canManageAttendanceTerminalState,
   canSeeFinancialInsights,
 } from "@/lib/access-control";
+import {
+  parseTrackParam,
+  trackToFinalidade,
+  trackLabel,
+  type CommercialTrack,
+} from "@/lib/atendimentos/track";
 import { cn } from "@/lib/utils";
 import type { Atendimento, AtendimentoCreateInput, PipelineStage } from "@/types/atendimento";
 import { ACTIVE_PIPELINE_STAGES } from "@/types/atendimento";
@@ -38,16 +45,27 @@ export const Route = createFileRoute("/_app/atendimentos")({
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === "string" ? search.id : undefined,
     clienteId: typeof search.clienteId === "string" ? search.clienteId : undefined,
+    track: parseTrackParam(search.track),
   }),
   component: Page,
 });
+
 
 function Page() {
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const canAssignBroker = canManageAttendanceAssignments(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
-  const { id: highlightId, clienteId: clienteIdFilter } = Route.useSearch();
+  const { id: highlightId, clienteId: clienteIdFilter, track } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setTrack = (nextTrack: CommercialTrack) => {
+    if (nextTrack === track) return;
+    navigate({
+      to: ".",
+      search: { track: nextTrack, id: highlightId, clienteId: clienteIdFilter },
+    });
+    setSelectedStage("primeiro_contato");
+  };
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
@@ -59,6 +77,7 @@ function Page() {
   const {
     atendimentos,
     filteredAtendimentos: baseFilteredAtendimentos,
+    trackCounts,
     brokers,
     stats,
     isLoading,
@@ -69,7 +88,7 @@ function Page() {
     convertAtendimento,
     updateAtendimento,
     transitionStage,
-  } = useAttendances(query, filters);
+  } = useAttendances(query, filters, track);
   const filteredAtendimentos = useMemo(() => {
     if (!clienteIdFilter) return baseFilteredAtendimentos;
     return baseFilteredAtendimentos.filter(
@@ -386,6 +405,10 @@ function Page() {
         </div>
       </section>
 
+      <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} />
+
+
+
       <AtendimentoFilters
         query={query}
         onQueryChange={setQuery}
@@ -554,6 +577,7 @@ function Page() {
           onOpenChange={setOpen}
           onSubmit={createAtendimento}
           brokerOptions={brokers}
+          presetTrack={track}
         />
       )}
       {editId && editAtendimento ? (
