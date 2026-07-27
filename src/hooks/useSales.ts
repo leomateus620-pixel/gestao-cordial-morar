@@ -74,6 +74,11 @@ export function useSales() {
     onSuccess: invalidate,
   });
 
+  const setCommissionPaidMutation = useMutation({
+    mutationFn: (vars: { id: string; paid: boolean }) => setCommissionPaid({ data: vars }),
+    onSuccess: invalidate,
+  });
+
   const openContract = useCallback(
     async (path: string) => {
       const { url } = await signUrl({ data: { path } });
