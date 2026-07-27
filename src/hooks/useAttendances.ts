@@ -200,6 +200,8 @@ export function useAttendances(
   return {
     agency,
     atendimentos: agencyAtendimentos,
+    trackAtendimentos,
+    trackCounts,
     brokers: brokersQuery.data ?? [],
     filteredAtendimentos,
     stats,
