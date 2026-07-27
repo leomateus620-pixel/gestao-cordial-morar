@@ -57,7 +57,7 @@ function Page() {
   const canAssignBroker = canManageAttendanceAssignments(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
   const { id: highlightId, clienteId: clienteIdFilter, track } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+  const navigate = Route.useNavigate();
   const setTrack = (nextTrack: CommercialTrack) => {
     if (nextTrack === track) return;
     navigate({
