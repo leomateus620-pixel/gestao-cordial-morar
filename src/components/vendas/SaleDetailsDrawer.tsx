@@ -238,6 +238,83 @@ export function SaleDetailsDrawer({
                 </Panel>
               )}
 
+              {sale.commissionPlan && (
+                <Panel title="Plano de comissão" icon={Wallet}>
+                  <MetricRow label="Método" value={commissionMethodLabel(sale.commissionPlan.metodo)} />
+                  <MetricRow
+                    label="Prazo / gatilho"
+                    value={commissionTimingLabel(sale.commissionPlan.timing)}
+                  />
+                  {sale.commissionPlan.timing === "data_especifica" && sale.commissionPlan.dataPagamento && (
+                    <MetricRow
+                      label="Data de vencimento"
+                      value={formatDate(sale.commissionPlan.dataPagamento)}
+                    />
+                  )}
+                  {sale.commissionPlan.observacoes && (
+                    <MetricRow label="Observações" value={sale.commissionPlan.observacoes} />
+                  )}
+                  {sale.commissionPlan.parcelado && sale.commissionPlan.installments.length > 0 && (
+                    <div className="space-y-2">
+                      {sale.commissionPlan.installments.map((p) => {
+                        const overdue =
+                          !p.paid && new Date(`${p.dueDate}T23:59:59`) < new Date();
+                        return (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between gap-3 rounded-2xl bg-amber-50/70 px-3 py-3 ring-1 ring-amber-200/70"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-amber-900">
+                                Parcela {p.sequence + 1}
+                              </p>
+                              <p className="mt-0.5 text-[11px] font-semibold text-amber-900/70">
+                                Vence em {formatDate(p.dueDate)}
+                                {p.paid && p.paidAt
+                                  ? ` · pago em ${formatDate(p.paidAt.slice(0, 10))}`
+                                  : overdue
+                                    ? " · em atraso"
+                                    : ""}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "font-mono text-sm font-black tabular-nums",
+                                  p.paid
+                                    ? "text-emerald-700"
+                                    : overdue
+                                      ? "text-rose-700"
+                                      : "text-amber-900",
+                                )}
+                              >
+                                {brl(p.amount)}
+                              </span>
+                              {onMarkCommissionPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => onMarkCommissionPaid(p.id, !p.paid)}
+                                  className={cn(
+                                    "inline-flex h-8 items-center gap-1 rounded-xl px-2.5 text-[11px] font-bold ring-1 transition",
+                                    p.paid
+                                      ? "bg-emerald-500/10 text-emerald-800 ring-emerald-500/25 hover:bg-emerald-500/15"
+                                      : "bg-amber-500/15 text-amber-900 ring-amber-400/40 hover:bg-amber-500/20",
+                                  )}
+                                >
+                                  <Check className="size-3.5" />
+                                  {p.paid ? "Pago" : "Marcar pago"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Panel>
+              )}
+
+
               <Panel title="Documentos" icon={FileText}>
                 <MetricRow
                   label="Contrato"
