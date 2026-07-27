@@ -1,97 +1,71 @@
+## Diagnóstico
 
-## Objetivo
+O refactor anterior criou `/agenda/fotos` como rota separada, adicionou entrada em `module-menu.ts`, mas **não foi conectado ao `sidebar-menu.tsx`** (só existe uma entrada "Agenda" apontando para `/agenda`). Consequência: usuários não têm como navegar entre as duas áreas, e a página `/agenda` continua parecendo o módulo original unificado (mesmo já filtrando fora eventos de foto no backend via `scope: "geral"`).
 
-Separar a Agenda em duas experiências operacionais reutilizando a mesma infraestrutura (`agenda_events` + tabelas filhas), sem duplicar calendário. Fotos passam a ser **compartilhadas para leitura** por todos os usuários operacionais autorizados; edição/cancelamento continuam restritos. Visitas, retornos e compromissos internos mantêm a privacidade atual.
+Além disso, mesmo em `/agenda`, `AgendaSummaryCards` ainda exibe o card "Fotos/Vídeos", reforçando a percepção de que nada mudou.
 
-## Estado atual (auditoria)
+## Correção
 
-- Tabela única `agenda_events` com enum `agenda_tipo` já contendo `fotos` e `video` (canônico existe — não precisa duplicar registros).
-- RLS via `agenda_can_access(_event_id)`: vê quem é `created_by` / `owner_user_id` / admin / secretaria / participante. **Não há regra por "tipo=foto"** — fotos são privadas hoje.
-- Vínculo com Agenciamentos: hoje só existe `agenciamentos.fotos_realizadas` (boolean, sem relação com evento da agenda). Não há coluna `agenciamento_id` em `agenda_events`.
-- Rota única `/_app/agenda` renderiza tudo em uma timeline; filtros por tipo já existem.
-- Sync Google Calendar por participante já implementada; lembretes automáticos já implementados. Ambos são agnósticos ao tipo — funcionarão para fotos sem mudança.
+### 1. Segmented control no topo da Agenda
+Criar `AgendaViewSwitcher` (segmented control com 2 opções: "Visitas e compromissos" / "Agenda de fotos", com ícones `CalendarCheck2` e `Camera`, estado ativo forte, keyboard nav, foco visível, touch >=44px, responsivo). Renderizado no topo de **ambas** as rotas (`_app.agenda.tsx` e `_app.agenda.fotos.tsx`), usando `Link` do TanStack para trocar rota sem full reload. Refresh/back/forward preservam naturalmente (rota real).
 
-## Escopo da mudança
+### 2. Sidebar / navegação mobile
+Em `sidebar-menu.tsx`, substituir a entrada única "Agenda" por um grupo com dois filhos:
+- `Visitas e compromissos` → `/agenda`
+- `Agenda de fotos` → `/agenda/fotos`
 
-### 1. Banco (uma migration)
+Verificar navegação mobile (bottom nav / mais) e ajustar se necessário.
 
-- `ALTER TABLE agenda_events ADD COLUMN agenciamento_id uuid REFERENCES public.agenciamentos(id) ON DELETE SET NULL` + index.
-- Index em `agenda_events(tipo, inicio)` para consultas de fotos.
-- Atualizar `agenda_can_access(_event_id)` (SECURITY DEFINER) para incluir: **OU** (`tipo IN ('fotos','video')` **AND** usuário autenticado com role em `admin|secretaria|corretor` **AND** `imobiliaria` compatível com a organização do usuário — hoje o sistema é single-tenant Cordial+Morar, então basta exigir usuário autenticado com uma dessas roles).
-- Criar função `agenda_can_edit(_event_id)` já existe — **manter inalterada**. Ela continua restringindo edição/cancelamento a criador/responsável/admin/secretaria, o que já cobre o requisito de "edição restrita" para fotos.
-- Política SELECT em `agenda_events`: já usa `agenda_can_access` — herda a nova regra automaticamente.
-- Backfill: nenhum registro precisa migrar (tipo `fotos` já existe).
+### 3. Métricas contextuais
+`AgendaSummaryCards` hoje é fixo. Torná-lo variant-aware:
+- **Geral**: Hoje, Próximos 7 dias, Visitas, Retornos, Assinaturas, A confirmar (remover Fotos/Vídeos).
+- **Fotos**: Fotos hoje, Próximos 7 dias, Agendadas, Pendentes, Concluídas, Reagendadas.
 
-### 2. Backend (server functions)
+`useAgenda` já retorna `stats` diferente por scope (`getPhotoStats` vs `getAgendaStats`); ajustar `getPhotoStats` para produzir as chaves corretas e passar `variant` para o card.
 
-- `listAgendaEvents({ scope?: "geral" | "fotos" })`: filtro server-side por `tipo IN ('fotos','video')` ou `tipo NOT IN (...)`. Uma query por view, cache keys separadas.
-- `upsertAgendaEvent`: aceitar `agenciamentoId` no input; persistir em `agenda_events.agenciamento_id`.
-- Quando `tipo='fotos'` e `agenciamentoId` presente, após concluir/cancelar, atualizar `agenciamentos.fotos_realizadas` (concluir=true; cancelar/reagendar não alteram) via update simples no mesmo handler.
+### 4. Header dedicado da Agenda de fotos
+Já existe hero fúcsia em `_app.agenda.fotos.tsx`. Manter, mas remover o `AgendaCreateCard` genérico e substituir por CTA "Agendar fotos" no próprio hero. Ajustar empty states para as strings exigidas:
+- "Nenhuma sessão de fotos agendada neste período."
+- "Agende uma sessão de fotos para que ela apareça aqui."
 
-### 3. Tipos e hooks
+Cartões de evento (via `AgendaTimeline`/`AgendaEventCard`) já mostram data, hora, imóvel, responsável, imobiliária, status. Verificar que `agenciamentoId` está exibido quando presente; adicionar link para o agenciamento se houver.
 
-- `AgendaEvent`/`AgendaEventInput`: adicionar `agenciamentoId?: string`.
-- `useAgenda(query, filters, { scope })` — dois query keys: `["agenda","events","geral"]` e `["agenda","events","fotos"]`.
-- Stats separadas: para fotos → `hoje | próximos 7 dias | agendadas | pendentes | concluídas | reagendadas`.
+### 5. Backend / RLS
+Já implementado no refactor anterior:
+- `agenda_can_access` permite qualquer role operacional (admin, secretaria, corretor) ler eventos `fotos`/`video`.
+- `agenda_can_edit` mantém edição restrita.
+- `listAgendaEvents` aceita `scope` e filtra por tipos.
+- Coluna `agenciamento_id` existe.
 
-### 4. Rotas e navegação
+**Verificar** com `supabase--read_query` que RLS realmente broadening está aplicada em produção; se não, reaplicar migração.
 
-- `/_app/agenda` (existente) → **Visitas e compromissos** (mantém componentes atuais; remove `fotos`/`video` do filtro de tipo).
-- Nova `/_app/agenda.fotos.tsx` → **Agenda de fotos** (novo header, KPIs próprios, filtros focados, form de agendamento com seletor de agenciamento e imóvel).
-- Sidebar/mobile nav: agrupar "Agenda" com dois itens filhos ("Visitas e compromissos", "Fotos"). Ícone câmera para fotos.
+### 6. Integração Agenciamentos
+Já existe. Validar: ao concluir evento foto/vídeo com `agenciamento_id`, atualiza `agenciamentos.fotos_realizadas` (via `completeAgendaEvent`). Se a lógica não estiver conectada, adicioná-la em `completeAgendaEvent`.
 
-### 5. Componentes reutilizados vs. novos
+### 7. Google Calendar / notificações
+Não alterar. Fluxo atual preservado — eventos de foto continuam sincronizando pelo responsável, não pelos viewers (visibility compartilhada é read-only, não gera notificação/sync duplicado).
 
-- Reutilizar: `AgendaTimeline`, `AgendaEventCard` (com pequenos ajustes para exibir agenciamento/código do imóvel quando `tipo='fotos'`), `AgendaFormModal` (adicionar campo agenciamento; ocultar campos irrelevantes quando `tipo='fotos'`).
-- Novos: `FotosSummaryCards` (KPIs próprios), `FotosFilters` (data, responsável, status, imobiliária, imóvel, agenciamento), `FotosCreateCard`.
-- Integração Agenciamentos: no `AgenciamentoDetailDrawer`/`AgenciamentoCard`, botão "Agendar fotos" que abre o mesmo modal pré-preenchido (`tipo='fotos'`, `agenciamentoId`).
-
-### 6. Notificações & Google Calendar
-
-- Sem mudança estrutural — sistemas atuais já disparam por responsável/participantes/criador. Adicionar responsáveis do agendamento de fotos como participantes garante notificações corretas.
-- Deep link de notificações de fotos → `/agenda/fotos?id=<event_id>`.
-
-### 7. UI/Visual
-
-- **Visitas**: mantém identidade teal atual.
-- **Fotos**: header com accent fotográfico contido (ícone câmera, badge diferenciada). Reusar `glass-panel` e paleta existente — sem novas dependências visuais.
+### 8. Deep-links
+`/agenda` e `/agenda/fotos` são rotas estáveis; links de notificação continuam válidos. Nenhum link antigo quebra.
 
 ## Detalhes técnicos
 
-- Migration única SQL: `ADD COLUMN`, index, `CREATE OR REPLACE FUNCTION agenda_can_access` com lógica ampliada, sem quebrar chamadores existentes.
-- RLS herda automaticamente porque as policies existentes já usam a função `agenda_can_access` / `agenda_can_edit`.
-- Cache: `queryClient.invalidateQueries({ queryKey: ["agenda"] })` invalida ambas as views.
-- Tenant: sistema é single-tenant com duas marcas (Cordial/Morar); "organização autorizada" = filtro por `imobiliaria` já existente no schema. Não é necessário `tenant_id` novo.
-- Sem realtime novo; polling/refetch atual é suficiente.
+**Arquivos a editar:**
+- `src/components/agenda/AgendaViewSwitcher.tsx` (novo) — segmented control.
+- `src/components/agenda/AgendaSummaryCards.tsx` — aceitar prop `variant: "geral" | "fotos"` e mudar items + labels.
+- `src/routes/_app.agenda.tsx` — renderizar `AgendaViewSwitcher` no topo; passar `variant="geral"` aos cards.
+- `src/routes/_app.agenda.fotos.tsx` — renderizar switcher; passar `variant="fotos"`; substituir `AgendaCreateCard` por CTA no hero; empty states dedicados.
+- `src/hooks/useAgenda.ts` — ajustar `getPhotoStats` para retornar as chaves `agendadas/pendentes/concluidas/reagendadas` (ou manter as chaves atuais e mapear no card).
+- `src/components/sidebar-menu.tsx` — grupo com dois filhos.
+- `src/components/agenda/AgendaEventCard.tsx` (leve) — badge/link para agenciamento se `agenciamentoId`.
 
-## Validação (obrigatória em preview Lovable)
-
-1. Admin: cria evento tipo `fotos` vinculado a um agenciamento em `/agenda/fotos`.
-2. Corretor B (não é criador, não é responsável): logar e confirmar que **vê** o agendamento em `/agenda/fotos` mas **não** aparece em `/agenda` (visitas).
-3. Corretor B: tentar editar → botão desabilitado; tentar cancelar → bloqueado por RLS (`agenda_can_edit`).
-4. Criar visita privada; confirmar que corretor B **não** vê.
-5. Concluir agendamento de fotos → `agenciamentos.fotos_realizadas` vira `true`; indicador atualizado.
-6. Reagendar → notificação enviada ao responsável, evento Google Calendar atualizado (não duplicado).
-7. Testar em 375px, 768px e 1440px; verificar mobile nav não sobrepõe conteúdo.
-8. KPI de fotos clicável → filtra lista corretamente.
-
-## Arquivos afetados (estimativa)
-
-- Nova migration SQL.
-- `src/types/agenda.ts`, `src/lib/agenda/agenda.functions.ts`, `src/hooks/useAgenda.ts`, `src/services/agenda.ts`.
-- `src/routes/_app.agenda.tsx` (ajustar título/filtro de tipos), **novo** `src/routes/_app.agenda.fotos.tsx`.
-- `src/components/agenda/AgendaFormModal.tsx`, `AgendaEventCard.tsx`, `AgendaFilters.tsx`.
-- **Novos**: `src/components/agenda/FotosSummaryCards.tsx`, `FotosFilters.tsx`, `FotosCreateCard.tsx`.
-- `src/components/sidebar-menu.tsx` e mobile nav (grupo Agenda com dois itens).
-- `src/lib/agenciamentos/agenciamentos.functions.ts` (opcional: helper para consultar evento de fotos vinculado).
-- `src/components/agenciamentos/AgenciamentoDetailDrawer.tsx` (botão "Agendar fotos").
+**Validação:**
+- `tsgo` typecheck.
+- Playwright: abrir `/agenda`, confirmar switcher visível e "Visitas" selecionado, mudar para "Fotos", refresh, back/forward.
+- Query no Supabase para confirmar RLS e coluna `agenciamento_id`.
+- Screenshots em 390px e 1280px.
 
 ## Fora de escopo
-
-- Multi-tenant real (organização como entidade separada) — sistema segue single-tenant Cordial/Morar.
-- Alterações no fluxo de sincronização Google Calendar (já funcional).
-- Alterações no motor de lembretes automáticos (já funcional).
-
-## Critérios de aceite
-
-Todos os itens da seção 17 do briefing atendidos, com validação manual no preview em roles admin, secretaria e corretor.
+- Não redesenhar `AgendaFormModal`.
+- Não mexer em Google Calendar sync.
+- Não migrar dados existentes.

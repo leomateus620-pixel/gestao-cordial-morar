@@ -7,8 +7,10 @@ import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
 import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
 import { AgendaTimeline } from "@/components/agenda/AgendaTimeline";
+import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
 import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 import { SectionHeader } from "@/components/section-header";
+
 import {
   defaultAgendaFilters,
   useAgenda,
@@ -119,6 +121,8 @@ function AgendaPage() {
         <GoogleCalendarCard />
       </section>
 
+      <AgendaViewSwitcher />
+
       <AgendaCreateCard
         onClick={openCreate}
         isOpen={open && !selected}
@@ -132,7 +136,8 @@ function AgendaPage() {
         clients={clientOptions}
       />
 
-      <AgendaSummaryCards stats={stats} />
+      <AgendaSummaryCards variant="geral" stats={stats as never} />
+
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3 px-1">
