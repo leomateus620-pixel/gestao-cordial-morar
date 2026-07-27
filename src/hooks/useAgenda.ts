@@ -194,7 +194,6 @@ function getAgendaStats(events: AgendaEvent[]) {
     visits: active.filter((event) => event.tipo === "visita" && event.status !== "concluido")
       .length,
     returns: pending.filter((event) => event.tipo === "retorno").length,
-    media: pending.filter((event) => event.tipo === "fotos" || event.tipo === "video").length,
     signatures: pending.filter((event) => event.tipo === "assinatura").length,
     pendingConfirmation: pending.filter((event) => event.status === "agendado").length,
   };
@@ -211,14 +210,17 @@ function getPhotoStats(events: AgendaEvent[]) {
       const date = new Date(event.inicio);
       return date >= startOfDay(now) && date < nextWeek;
     }).length,
-    visits: 0,
-    returns: 0,
-    media: active.filter((event) => event.status === "agendado" || event.status === "confirmado")
-      .length,
-    signatures: active.filter((event) => event.status === "concluido").length,
-    pendingConfirmation: active.filter((event) => event.status === "reagendado").length,
+    agendadas: active.filter(
+      (event) => event.status === "agendado" || event.status === "confirmado",
+    ).length,
+    pendentes: active.filter(
+      (event) => event.status === "agendado" || event.status === "em_andamento",
+    ).length,
+    concluidas: active.filter((event) => event.status === "concluido").length,
+    reagendadas: active.filter((event) => event.status === "reagendado").length,
   };
 }
+
 
 
 function startOfDay(value: Date) {

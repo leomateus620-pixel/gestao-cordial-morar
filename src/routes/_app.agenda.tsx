@@ -7,8 +7,10 @@ import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
 import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
 import { AgendaTimeline } from "@/components/agenda/AgendaTimeline";
+import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
 import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 import { SectionHeader } from "@/components/section-header";
+
 import {
   defaultAgendaFilters,
   useAgenda,
