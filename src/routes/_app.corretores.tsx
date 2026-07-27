@@ -121,6 +121,8 @@ function Page() {
 
         {ranking.length > 0 && <CorretoresRanking ranking={ranking} onSelect={handleSelect} />}
 
+        <CorretoresResponseTimeCard />
+
         <section className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {corretores.map((corretor) => (
             <CorretorCard key={corretor.id} corretor={corretor} onSelect={handleSelect} />
