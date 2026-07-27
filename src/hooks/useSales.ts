@@ -29,6 +29,7 @@ export function useSales() {
   const remove = useServerFn(deleteFn);
   const signUrl = useServerFn(signedUrlFn);
   const setPaid = useServerFn(setPaidFn);
+  const setCommissionPaid = useServerFn(setCommissionPaidFn);
   const addAttachment = useServerFn(addAttachmentFn);
   const removeAttachment = useServerFn(removeAttachmentFn);
 
