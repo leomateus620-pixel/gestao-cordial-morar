@@ -19,7 +19,7 @@ import { useApp } from "@/store/app-store";
 import type { AgendaEvent, AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/agenda")({
-  head: () => ({ meta: [{ title: "Agenda — Gestão Cordial" }] }),
+  head: () => ({ meta: [{ title: "Visitas e compromissos — Gestão Cordial" }] }),
   component: GuardedAgendaPage,
 });
 
@@ -52,7 +52,7 @@ function AgendaPage() {
     isError,
     error,
     refetch,
-  } = useAgenda("", filters);
+  } = useAgenda("", filters, { scope: "geral" });
 
   const people = useMemo(() => {
     const values = [
