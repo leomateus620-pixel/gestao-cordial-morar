@@ -1,139 +1,112 @@
-# Ciclo de correção: Agenciamentos, Agenda e Vendas
+# Ciclo restante: Tasks 2, 3 (backend) e 4 — execução completa
 
-## Diagnóstico confirmado
+Task 1 (RLS de Agenciamentos) e as tabelas `sale_commission_plan` / `sale_commission_installments` já foram aplicadas em migração aprovada. Agora executo o restante em uma única passada, sem novas migrações.
 
-**Bug de visibilidade em Agenciamentos.** A tabela `public.agenciamentos` tem a policy de SELECT restrita a `created_by = auth.uid() OR admin OR secretaria`. Ela ignora `corretor_id` (o campo que identifica o corretor responsável). Consequências:
+## Task 2 — Cards de resumo interativos
 
-- Quando a Bianca (secretaria) cadastra e vincula o Felipe, o `created_by` é da Bianca e o Felipe não enxerga o registro.
-- Quando o Felipe cria para si próprio, `created_by = corretor_id = Felipe`, então em teoria vê. Mas se o formulário for salvo com `corretor_id` de outro corretor selecionado, o registro fica escondido do corretor "dono" declarado. Também há registros legados criados antes das mudanças recentes com `created_by` apontando para admins/mock.
-- `corretor_id` é `TEXT` e nem sempre é um UUID válido — precisa de conversão segura no policy.
+**Fonte única de verdade.** `summary` e `stats` continuam derivados do mesmo array filtrado que alimenta a lista/kanban. Nenhuma query extra.
 
-**KPIs não-interativos.** `AgenciamentoSummaryCards`, `AgenciamentosQuickStrip` e `AgendaSummaryCards` são apenas visuais. Precisamos ligá-los aos filtros existentes (`AgenciamentoFilters` já cobre status, checklist, imobiliária, período; `AgendaFilters` já cobre tipo/período), mantendo a mesma fonte canônica de dados.
+**Search params (TanStack Router):**
 
-**Comissão em Vendas.** `real_estate_sales` guarda `commission_value` e `commission_percentage` como escalares. `sale_payments` só cobre o plano da venda (kind `entrada`/`parcela`). Não há plano de comissão nem persistência de método/prazo.
+- `/agenciamentos`: adicionar `validateSearch` com `focus?: "mes" | "pendentes" | "fotos" | "placas" | "site" | "validados"` usando `zodValidator` + `fallback`. Compõe com os filtros já existentes (não sobrescreve).
+- `/agenda`: `focus?: "hoje" | "prox7" | "visitas" | "retornos" | "midia" | "assinaturas" | "confirmar"` idem.
 
----
+**Mapeamento focus → filtro derivado (aplicado depois dos filtros do usuário):**
 
-## Task 1 — Restaurar visibilidade do corretor em Agenciamentos
-
-**Migração de RLS (segura, sem afrouxar isolamento):**
-
-- Substituir `agenciamentos_select_own_admin_or_secretaria` por uma policy que inclua também `corretor_id` do usuário logado, usando cast defensivo:
-  ```sql
-  USING (
-    created_by = auth.uid()
-    OR corretor_id = auth.uid()::text
-    OR has_role(auth.uid(), 'admin')
-    OR has_role(auth.uid(), 'secretaria')
-  )
-  ```
-- Aplicar o mesmo ajuste na policy de UPDATE (mantendo delete só para admin).
-- Criar índice `agenciamentos_corretor_id_uuid_idx` já existe como btree em texto — suficiente.
-
-**Correção de dados legados (idempotente):**
-
-- Script SQL que, para registros onde `corretor_id` é um UUID válido de um profile existente e `created_by` aponta para um usuário que não corresponde nem a admin/secretaria conhecidos, **não altera `created_by`** (preserva histórico), mas garante que `corretor_nome` esteja consistente com `profiles.nome` daquele `corretor_id`. Nenhuma remoção de dado.
-- Relatório (SELECT) mostrando quantos registros passam a ser visíveis para cada corretor após a policy.
-
-**Servidor/serviço:**
-
-- `agenciamentos.functions.ts#insertAgenciamento`: garantir que, quando o corretor logado cria sem selecionar outro corretor, `corretor_id` seja preenchido com `userId` e `corretor_nome` com o profile do usuário. Bloquear salvar com `corretor_id` vazio.
-- Validar no server que quem cria com role `corretor` só pode atribuir a si mesmo (admin/secretaria podem atribuir a outros).
-
-**Cliente:**
-
-- `useAgenciamentos` invalida `["agenciamentos"]` após create/update (verificar; adicionar se faltar).
-- `AgenciamentoFormModal`: pré-selecionar o próprio usuário quando role = corretor e travar o campo (secretaria/admin mantêm seleção livre).
-
-**Regressão:**
-
-- Teste (vitest) em `agenciamentos.functions.test.ts` cobrindo três cenários: (a) corretor cria para si → visível; (b) secretaria cria e vincula corretor → visível para o corretor; (c) corretor A não vê registro do corretor B; (d) admin vê tudo.
-- Validação Playwright autenticada como Felipe: cria agenciamento, refetch imediato, registro aparece na lista.
-
----
-
-## Task 2 — KPI cards interativos (Agenciamentos + Agenda)
-
-**Fonte única de verdade:** manter o cálculo do `summary` derivado do mesmo array `filteredAgenciamentos` / `filteredEventos` que alimenta a listagem. Assim contagens e registros exibidos batem sempre.
-
-**Estado do filtro em URL (TanStack search params):**
-
-- Rota `/agenciamentos`: adicionar `validateSearch` com `focus` opcional (`"pendentes" | "fotos" | "placas" | "site" | "validados" | "mes"`). Idem para `AgendaFilters` (`focus: "hoje" | "prox7" | "visita" | "retorno" | "media" | "assinatura" | "confirmar"`).
-- Cada card usa `<Link search={(prev) => ({...prev, focus: X === prev.focus ? undefined : X})}>`, produzindo toggle nativo e estado `aria-pressed` com estilo ativo (não depende só de cor: borda + ícone preenchido + underline no valor).
-- O filtro `focus` compõe com os filtros existentes (status/imobiliária/tipo/checklist/busca). Ex.: `focus = "fotos"` aplica `checklist=pendentes_fotos` internamente sem sobrescrever seleções do usuário.
+- Agenciamentos:
+  - `mes` → recorte do mês atual (mesma regra do KPI atual)
+  - `pendentes` → `!validado && status ≠ cancelado`
+  - `fotos` → `!checklist.fotosDrive`
+  - `placas` → `!checklist.placaInstalada`
+  - `site` → `!checklist.cadastradoSite`
+  - `validados` → `checklist.validado`
+- Agenda:
+  - `hoje` → eventos com `inicio` no dia atual (local)
+  - `prox7` → próximos 7 dias
+  - `visitas` → `tipo=visita`
+  - `retornos` → `tipo=retorno`
+  - `midia` → `tipo in (fotos, video)`
+  - `assinaturas` → `tipo=assinatura`
+  - `confirmar` → `status=agendado` (a confirmar)
 
 **Componentes atualizados:**
 
-- `AgenciamentoSummaryCards`, `AgenciamentosQuickStrip`, `AgendaSummaryCards` → cada item vira `<Link>` (ou `<button>` para toggle) com `data-active`, foco visível, target-size ≥ 44px, e chip "Limpar filtro" ao lado do título quando `focus` está ativo.
-- Empty state específico quando o `focus` filtra tudo ("Nenhum agenciamento com fotos pendentes no recorte atual.").
+- `AgenciamentoSummaryCards`, `AgenciamentosQuickStrip`, `AgendaSummaryCards`: cada card vira `<Link>` com `search={(prev) => ({ ...prev, focus: prev.focus === key ? undefined : key })}`, `aria-pressed`, estado ativo com borda em anel + ícone preenchido + valor sublinhado (não depende só de cor), min-height 44px.
+- Rotas exibem chip "Filtrando por X · Limpar" quando `focus` está definido.
+- Empty state específico por foco quando a lista fica vazia.
+- Mobile: manter carrossel horizontal, adicionar `snap-x snap-mandatory` e fade nas bordas; garantir `pb-24` no wrapper.
 
-**Responsivo:**
+## Task 3 — Backend do Plano de Comissão
 
-- Mobile: manter carrossel horizontal com fade nas bordas + shadow indicando scroll; snap-x para melhor sensação; sem overflow-x na página.
-- Desktop: grid 6 colunas (Agenciamentos) / 7 (Agenda) já em `lg:`. Adicionar hover/focus rings.
-- Bottom nav fixa já tem `pb-24` no scroll container; garantir espaço quando lista filtrada é curta.
+**Tipos (`src/types/sale.ts`):**
+```ts
+type SaleCommissionMetodo = "pix"|"transferencia"|"boleto"|"dinheiro"|"cheque"|"desconto_repasse"|"outro";
+type SaleCommissionTiming = "assinatura"|"entrada"|"primeira_parcela"|"conclusao"|"data_especifica"|"parcelado"|"outro";
+type SaleCommissionInstallment = { id: string; sequence: number; amount: number; dueDate: string; paid: boolean; paidAt?: string|null };
+type SaleCommissionPlan = { metodo: SaleCommissionMetodo; timing: SaleCommissionTiming; dataPagamento?: string|null; parcelado: boolean; observacoes?: string|null; installments: SaleCommissionInstallment[] };
+```
+`SaleRecord` ganha `commissionPlan?: SaleCommissionPlan`. `SaleRecordInput` ganha `commissionPlan?` com `installments?: { sequence?, amount, dueDate }[]`.
 
----
+**`sales.functions.ts`:**
 
-## Task 3 & 4 — Plano de Comissão em Vendas
+- `listSales`: passa a fazer join manual (dois selects em paralelo por sale) via `.select(..., sale_commission_plan(*), sale_commission_installments(*))` embutido no relacionamento; mapear para `commissionPlan`.
+- `createSale` e `updateSale`: depois do upsert da venda, **em bloco try/catch consistente**:
+  - Se `input.commissionPlan` presente: `upsert` em `sale_commission_plan` (metodo, timing, dataPagamento, parcelado, observacoes).
+  - Se `parcelado`: validar soma (tolerância 1 centavo) contra `commissionValue`; recusar com erro claro se divergente ou sem `dueDate`/valor negativo. `DELETE` das installments existentes + `INSERT` das novas.
+  - Se não parcelado: apagar installments existentes.
+- `setSaleCommissionInstallmentPaid` (nova serverFn): marca parcela como paga/aberta. Retorna registro atualizado.
+- Autorização: reutilizar `attendance_can_access`-style checks já implicit via RLS; validação server-side extra impede setar `commissionValue` divergente da soma.
 
-**Modelo de dados (nova migração):**
+**Reminders:** por segurança e escopo, o cron atual de `sale-payment-reminders` **não** é alterado nesta iteração; adiciono TODO documentado em código e no relatório final para próximo ciclo. UI já mostra "paga/em aberto/vencida" com base em `dueDate` e `paid`.
 
-- Nova tabela `public.sale_commission_plan` (1×1 com `real_estate_sales`):
-  - `sale_id UUID PK REFERENCES real_estate_sales(id) ON DELETE CASCADE`
-  - `metodo TEXT` (pix, transferencia, boleto, dinheiro, cheque, desconto_repasse, outro)
-  - `timing TEXT` (assinatura, entrada, primeira_parcela, conclusao, data_especifica, parcelado, outro)
-  - `data_pagamento DATE NULL` (usado quando timing = data_especifica ou parcela única)
-  - `parcelado BOOLEAN NOT NULL DEFAULT false`
-  - `observacoes TEXT`
-  - timestamps + trigger `touch_updated_at`.
-- Nova tabela `public.sale_commission_installments`:
-  - `id UUID PK`, `sale_id UUID REFERENCES real_estate_sales(id) ON DELETE CASCADE`, `sequence INT`, `amount NUMERIC(14,2) CHECK (amount >= 0)`, `due_date DATE NOT NULL`, `paid BOOLEAN DEFAULT false`, `paid_at TIMESTAMPTZ`, `notified_at TIMESTAMPTZ`, timestamps.
-  - Índices: `(sale_id)`, `(due_date) WHERE paid=false`.
-- GRANTs para authenticated/service_role. RLS espelhando `sale_payments` (via EXISTS em `real_estate_sales` com regras atuais de user_id/admin/secretaria). Corretor só vê comissão da própria venda; policy respeita a regra existente de "ticket médio só para admin" no lado da agregação/KPI (não expor `commission_value` em queries usadas por não-admin fora do próprio registro).
+## Task 4 — UI do Plano de Comissão em `SaleForm` + `SaleDetailsDrawer`
 
-**Backend (`sales.functions.ts`):**
+**`SaleForm.tsx`:**
 
-- `createSale`/`updateSale` passam a aceitar `commissionPlan: { metodo, timing, dataPagamento?, parcelado, observacoes?, installments?: SalePaymentInput[] }`.
-- Transação: upsert em `sale_commission_plan` + delete-and-insert das installments quando `parcelado`. Validação server-side: soma das installments === `commission_value` (tolerância 1 centavo); `due_date` obrigatório em cada parcela; sem valores negativos; datas coerentes com `sale_date`.
-- `listSales` traz o plano e as parcelas (join) para o dono/admin/secretaria.
-- Reaproveitar o cron/worker de `sale-payment-reminders` para também disparar lembrete de parcela de comissão vencendo (mesma tabela de estado ou queue separada — decidir na implementação usando o padrão atual).
-
-**Frontend (`SaleForm.tsx`):**
-
-- Em `Informações da LOU` manter `Comissão (R$)` e `Comissão (%)` com sincronização bidirecional (já parcialmente feita). Adicionar campos compactos:
+- Em "Informações da LOU": manter `Comissão (R$)` e `Comissão (%)` (bidirecionais).
+- Adicionar linha compacta abaixo com:
   - `Método de pagamento` (select)
-  - `Quando será paga` (select com as opções listadas)
-  - `Data de pagamento` (aparece quando timing = data_especifica ou não-parcelado)
+  - `Quando será paga` (select)
+  - `Data prevista` (aparece quando timing = `data_especifica` ou pagamento único não-vinculado a evento)
   - Toggle `Parcelar comissão`
-- Quando `Parcelar comissão = true`, renderizar componente novo `<CommissionInstallmentsPlan>` (mesmo padrão visual/UX do `SalePaymentPlan` da imagem 2, mas com cabeçalho e cor distintos para não confundir).
-- Rodapé com `Total da comissão`, `Soma do plano`, `Diferença` — validação inline em vermelho quando divergente.
-- Zod schema no cliente + server garantindo consistência.
-- `SaleDetailsDrawer`: nova seção "Plano de comissão" com status por parcela e ação de marcar como paga.
+- Quando `Parcelar comissão = true`: renderizar componente novo `CommissionInstallmentsPlan` (arquivo `src/components/vendas/CommissionInstallmentsPlan.tsx`) inspirado no `SalePaymentPlan` existente, mas com header "PLANO DE COMISSÃO" (ícone `Percent` + accent âmbar `bg-amber-500/10`, borda âmbar) para distinguir do plano da venda.
+  - Lista de parcelas: `Parcela N`, `Valor (R$)`, `Vencimento`, botão remover.
+  - `+ parcela` adiciona parcela com sequence auto.
+  - Rodapé: `Total da comissão`, `Soma do plano`, `Diferença` (vermelho quando ≠ 0).
+- Zod client: valida soma quando `parcelado`, valida `dueDate` presente e `amount > 0`.
+- Ambos schemas (client + server) rejeitam divergência.
 
-**Separação visual:** títulos e cor de acento diferentes entre `Plano de pagamento da venda` (accent primário atual) e `Plano de comissão` (accent secundário/âmbar). Textos auxiliares deixam claro o que cada plano representa.
+**`SaleDetailsDrawer.tsx`:**
 
-**Responsivo:** validar 320/360/390/430/768/1024/1280/1440. Grid do form colapsa para 1 coluna abaixo de 640px; installments viram cards empilhados como no mobile atual.
+- Nova seção "Plano de comissão" com:
+  - Cabeçalho: método + timing legíveis, valor total.
+  - Se parcelado: tabela/lista de parcelas com status (`Paga em dd/mm` / `Vence em dd/mm` / `Vencida há Nd`) e botão `Marcar como paga` / `Desfazer` (usa `setSaleCommissionInstallmentPaid`).
+  - Se pagamento único: chip único com data e status.
+- Continua distinto visualmente do "Plano de pagamento da venda" (accent primário) — accent âmbar consistente.
 
----
+**`useSales.ts`:**
 
-## Detalhes técnicos
+- Novo mutation `setCommissionInstallmentPaid` com invalidação de `SALES_KEY`.
+- Novo callback `setCommissionInstallmentPaid` exportado.
 
-- Migrações: `alter_agenciamentos_broker_visibility.sql`, `create_sale_commission_plan.sql`. Sem `ALTER DATABASE`. Cada `CREATE TABLE` seguido de GRANT + RLS + policies.
-- Sem quebra de tipos: regenerar `src/integrations/supabase/types.ts` automaticamente após migração.
-- Testes: vitest para `agenciamentos.functions` e `sales.functions` (soma da comissão, parcelamento, permissões).
-- Validação visual: Playwright headless autenticado (usar `LOVABLE_BROWSER_SUPABASE_*`) — login Felipe, criar agenciamento, screenshot; login admin, criar venda com comissão parcelada, screenshot em 390px e 1280px.
-- Sem mock, sem workaround de permissão no frontend, sem duplicação de queries.
+## Testes / verificação
+
+- `bun tsgo --noEmit` para typecheck; `bun run build:dev` para garantir SSR/prerender.
+- Playwright headless: login como Felipe (via `LOVABLE_BROWSER_SUPABASE_*`), navegar em `/agenciamentos`, screenshot antes/depois de clicar num card, screenshot em 390px. Login como admin, criar venda com comissão parcelada em `/vendas`, screenshot do drawer.
+- Ajustes finais se algo quebrar visualmente.
 
 ## Arquivos previstos
 
-- SQL: 2 migrações novas.
-- Backend: `src/lib/agenciamentos/agenciamentos.functions.ts`, `src/lib/sales/sales.functions.ts`, `src/types/sale.ts`, `src/types/agenciamento.ts`.
-- UI: `src/routes/_app.agenciamentos.tsx`, `src/routes/_app.agenda.tsx`, `AgenciamentoSummaryCards.tsx`, `AgenciamentosQuickStrip.tsx`, `AgendaSummaryCards.tsx`, `AgenciamentoFormModal.tsx`, `SaleForm.tsx`, `SaleDetailsDrawer.tsx`, novo `CommissionInstallmentsPlan.tsx`.
-- Hooks: `useSales.ts`, `useAgenciamentos.ts` (invalidations e novos campos).
-- Testes: `agenciamentos.functions.test.ts`, `sales.commission.test.ts`.
+- `src/routes/_app.agenciamentos.tsx`, `src/routes/_app.agenda.tsx`
+- `src/components/agenciamentos/AgenciamentoSummaryCards.tsx`, `AgenciamentosQuickStrip.tsx`
+- `src/components/agenda/AgendaSummaryCards.tsx`
+- `src/types/sale.ts`
+- `src/lib/sales/sales.functions.ts`
+- `src/hooks/useSales.ts`
+- `src/components/vendas/SaleForm.tsx`, `SaleDetailsDrawer.tsx`
+- novo `src/components/vendas/CommissionInstallmentsPlan.tsx`
 
-## Riscos / limitações
+## Riscos
 
-- Registros legados com `corretor_id` inválido continuarão invisíveis para corretores até serem reatribuídos manualmente — reportarei a lista após a migração.
-- Se o worker de reminders atual não suportar dois tipos de vencimento, o lembrete de comissão entra num segundo passo (documento como "próxima iteração") em vez de forçar refactor arriscado agora.
+- Se `zodValidator` já usado nas rotas divergir do padrão do projeto, uso `validateSearch: (s) => ({...})` puro para consistência.
+- Reminder cron de comissão fica para próximo ciclo (documentado).
