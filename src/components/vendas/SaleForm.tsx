@@ -1372,3 +1372,39 @@ function PaymentPlanSummary({
     </div>
   );
 }
+
+function CommissionSummary({ total, parcelas }: { total: number; parcelas: number[] }) {
+  const sum = parcelas.reduce((t, v) => t + (Number.isFinite(v) ? v : 0), 0);
+  const diff = (total || 0) - sum;
+  const brl = (n: number) =>
+    n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  if (total <= 0 && sum <= 0) return null;
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-white/70">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/45">
+          Comissão total
+        </p>
+        <p className="mt-1 font-mono text-sm font-black">{brl(total || 0)}</p>
+      </div>
+      <div className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-white/70">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/45">
+          Soma das parcelas
+        </p>
+        <p className="mt-1 font-mono text-sm font-black">{brl(sum)}</p>
+      </div>
+      <div
+        className={
+          "rounded-2xl px-3 py-2 ring-1 " +
+          (Math.abs(diff) < 0.01
+            ? "bg-emerald-500/10 text-emerald-800 ring-emerald-500/25"
+            : "bg-amber-500/10 text-amber-800 ring-amber-500/25")
+        }
+      >
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em]">Diferença</p>
+        <p className="mt-1 font-mono text-sm font-black">{brl(diff)}</p>
+      </div>
+    </div>
+  );
+}
+
