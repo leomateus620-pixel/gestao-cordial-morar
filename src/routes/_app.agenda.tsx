@@ -121,6 +121,8 @@ function AgendaPage() {
         <GoogleCalendarCard />
       </section>
 
+      <AgendaViewSwitcher />
+
       <AgendaCreateCard
         onClick={openCreate}
         isOpen={open && !selected}
@@ -134,7 +136,8 @@ function AgendaPage() {
         clients={clientOptions}
       />
 
-      <AgendaSummaryCards stats={stats} />
+      <AgendaSummaryCards variant="geral" stats={stats as never} />
+
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3 px-1">
