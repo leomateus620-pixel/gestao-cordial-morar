@@ -10,13 +10,24 @@ import {
 import type { AgenciamentoSummary } from "@/types/agenciamento";
 import { cn } from "@/lib/utils";
 
+export type AgenciamentoSummaryKey =
+  | "total"
+  | "pendentes"
+  | "fotos"
+  | "placas"
+  | "site"
+  | "validados";
+
 type AgenciamentoSummaryCardsProps = {
   summary: AgenciamentoSummary;
   variant: "admin" | "corretor";
   periodLabel: string;
+  activeKey?: AgenciamentoSummaryKey | null;
+  onSelect?: (key: AgenciamentoSummaryKey) => void;
 };
 
 type Metric = {
+  key: AgenciamentoSummaryKey;
   label: string;
   value: number;
   detail: string;
@@ -28,6 +39,8 @@ export function AgenciamentoSummaryCards({
   summary,
   variant,
   periodLabel,
+  activeKey,
+  onSelect,
 }: AgenciamentoSummaryCardsProps) {
   const pendingPhotos = Math.max(summary.total - summary.fotosDrive, 0);
   const pendingSigns = Math.max(summary.total - summary.placasInstaladas, 0);
@@ -35,6 +48,7 @@ export function AgenciamentoSummaryCards({
 
   const metrics: Metric[] = [
     {
+      key: "total",
       label: variant === "admin" ? "Agenciamentos no período" : "Meus agenciamentos",
       value: summary.total,
       detail: periodLabel,
@@ -42,6 +56,7 @@ export function AgenciamentoSummaryCards({
       tone: "primary",
     },
     {
+      key: "pendentes",
       label: "Pendentes de validação",
       value: summary.pendentesValidacao,
       detail: "aguardando conferência",
@@ -49,6 +64,7 @@ export function AgenciamentoSummaryCards({
       tone: "warning",
     },
     {
+      key: "fotos",
       label: "Fotos pendentes",
       value: pendingPhotos,
       detail: "ainda sem envio ao Drive",
@@ -56,6 +72,7 @@ export function AgenciamentoSummaryCards({
       tone: pendingPhotos > 0 ? "warning" : "neutral",
     },
     {
+      key: "placas",
       label: "Placas pendentes",
       value: pendingSigns,
       detail: "imóveis sem sinalização",
@@ -63,6 +80,7 @@ export function AgenciamentoSummaryCards({
       tone: pendingSigns > 0 ? "warning" : "neutral",
     },
     {
+      key: "site",
       label: "Imóveis fora do site",
       value: outsideSite,
       detail: "publicação a concluir",
@@ -70,6 +88,7 @@ export function AgenciamentoSummaryCards({
       tone: outsideSite > 0 ? "warning" : "neutral",
     },
     {
+      key: "validados",
       label: "Agenciamentos validados",
       value: summary.validados,
       detail: `${summary.percentualChecklistMedio}% de checklist médio`,
@@ -86,7 +105,7 @@ export function AgenciamentoSummaryCards({
             Resumo operacional
           </h2>
           <p className="mt-0.5 text-xs text-foreground/58">
-            Pendências calculadas a partir dos registros filtrados.
+            Toque em um card para filtrar a lista abaixo.
           </p>
         </div>
         <span className="hidden text-xs font-semibold text-foreground/52 sm:inline">
@@ -97,21 +116,33 @@ export function AgenciamentoSummaryCards({
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
         {metrics.map((metric) => {
           const Icon = metric.icon;
+          const isActive = activeKey === metric.key;
+          const isPrimary = metric.tone === "primary";
           return (
-            <article
-              key={metric.label}
+            <button
+              key={metric.key}
+              type="button"
+              onClick={() => onSelect?.(metric.key)}
+              aria-pressed={isActive}
+              aria-label={`Filtrar por ${metric.label}`}
               className={cn(
-                "relative min-w-0 overflow-hidden rounded-[1.25rem] border px-3.5 py-3 shadow-[0_14px_36px_-30px_rgba(23,27,33,0.36)] sm:px-4",
-                metric.tone === "primary"
+                "group relative min-w-0 overflow-hidden rounded-[1.25rem] border px-3.5 py-3 text-left shadow-[0_14px_36px_-30px_rgba(23,27,33,0.36)] transition-all duration-200 sm:px-4",
+                "hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-26px_rgba(23,27,33,0.44)] active:translate-y-0 active:scale-[0.99]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                isPrimary
                   ? "border-[#245f70] bg-[#174d61] text-white"
                   : "border-white/72 bg-white/68 text-foreground backdrop-blur-lg",
+                isActive &&
+                  (isPrimary
+                    ? "ring-2 ring-cyan-200/80 ring-offset-2 ring-offset-background"
+                    : "border-primary/60 bg-white ring-2 ring-primary/50 ring-offset-2 ring-offset-background"),
               )}
             >
               <div className="flex items-start justify-between gap-2">
                 <p
                   className={cn(
                     "max-w-[9.5rem] text-xs font-semibold leading-snug",
-                    metric.tone === "primary" ? "text-white/82" : "text-foreground/68",
+                    isPrimary ? "text-white/82" : "text-foreground/68",
                   )}
                 >
                   {metric.label}
@@ -119,7 +150,7 @@ export function AgenciamentoSummaryCards({
                 <Icon
                   aria-hidden="true"
                   className={cn(
-                    "size-[1.15rem] shrink-0",
+                    "size-[1.15rem] shrink-0 transition-transform duration-200 group-hover:scale-110",
                     metric.tone === "primary" && "text-cyan-100",
                     metric.tone === "warning" && "text-[var(--system-accent-dark)]",
                     metric.tone === "neutral" && "text-primary/72",
@@ -134,13 +165,13 @@ export function AgenciamentoSummaryCards({
               <p
                 className={cn(
                   "mt-2 truncate text-[11px] leading-tight",
-                  metric.tone === "primary" ? "text-white/58" : "text-foreground/52",
+                  isPrimary ? "text-white/58" : "text-foreground/52",
                 )}
                 title={metric.detail}
               >
-                {metric.detail}
+                {isActive ? "Filtro ativo · toque novamente para limpar" : metric.detail}
               </p>
-            </article>
+            </button>
           );
         })}
       </div>
