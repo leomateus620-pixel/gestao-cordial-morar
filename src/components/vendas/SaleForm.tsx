@@ -834,6 +834,183 @@ export function SaleForm({
             </SectionCard>
 
             <SectionCard
+              icon={ReceiptText}
+              title="Plano de comissão"
+              subtitle="Método, prazo e (opcional) parcelamento da comissão do corretor"
+            >
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 rounded-2xl border border-white/60 bg-white/60 px-3 py-2 text-xs font-semibold text-foreground/72">
+                  <input
+                    type="checkbox"
+                    checked={commissionPlanEnabled}
+                    onChange={(e) => setCommissionPlanEnabled(e.target.checked)}
+                    className="size-4"
+                  />
+                  Configurar plano de comissão para esta venda
+                </label>
+
+                {commissionPlanEnabled && (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+                      <Field label="Método de pagamento" className="sm:col-span-3">
+                        <select
+                          value={commissionMetodo}
+                          onChange={(e) =>
+                            setCommissionMetodo(e.target.value as SaleCommissionMetodo)
+                          }
+                          className={inputCls}
+                        >
+                          {SALE_COMMISSION_METHODS.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Prazo / gatilho" className="sm:col-span-3">
+                        <select
+                          value={commissionTiming}
+                          onChange={(e) => {
+                            const v = e.target.value as SaleCommissionTiming;
+                            setCommissionTiming(v);
+                            setCommissionParcelado(v === "parcelado");
+                          }}
+                          className={inputCls}
+                        >
+                          {SALE_COMMISSION_TIMINGS.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      {commissionTiming === "data_especifica" && (
+                        <Field label="Data de vencimento" className="sm:col-span-3">
+                          <input
+                            type="date"
+                            value={commissionDataPagamento}
+                            onChange={(e) => setCommissionDataPagamento(e.target.value)}
+                            className={inputCls}
+                          />
+                        </Field>
+                      )}
+                      <Field label="Observações" className="sm:col-span-6">
+                        <textarea
+                          rows={2}
+                          value={commissionObservacoes}
+                          onChange={(e) => setCommissionObservacoes(e.target.value)}
+                          placeholder="Ex.: acordo com a construtora, desconto no repasse..."
+                          className={`${inputCls} resize-none`}
+                        />
+                      </Field>
+                    </div>
+
+                    <label className="flex items-center gap-2 rounded-2xl border border-amber-300/50 bg-amber-50/60 px-3 py-2 text-xs font-semibold text-amber-900">
+                      <input
+                        type="checkbox"
+                        checked={commissionParcelado}
+                        onChange={(e) => {
+                          setCommissionParcelado(e.target.checked);
+                          if (e.target.checked && commissionTiming !== "parcelado") {
+                            setCommissionTiming("parcelado");
+                          }
+                        }}
+                        className="size-4"
+                      />
+                      Parcelar comissão (gera lembretes automáticos por parcela)
+                    </label>
+
+                    {commissionParcelado && (
+                      <div className="space-y-2">
+                        {commissionInstallments.length === 0 && (
+                          <p className="rounded-2xl bg-white/50 px-3 py-3 text-xs font-semibold text-foreground/56 ring-1 ring-white/70">
+                            Nenhuma parcela cadastrada. Adicione ao menos uma parcela.
+                          </p>
+                        )}
+                        {commissionInstallments.map((p, idx) => (
+                          <div
+                            key={p.id}
+                            className="grid grid-cols-1 gap-2 rounded-2xl border border-amber-200/60 bg-amber-50/50 p-3 sm:grid-cols-[auto_1fr_1fr_auto] sm:items-end"
+                          >
+                            <div className="grid size-8 place-items-center rounded-lg bg-amber-500/15 text-xs font-black text-amber-800">
+                              {idx + 1}
+                            </div>
+                            <Field label={`Parcela ${idx + 1} (R$)`}>
+                              <input
+                                value={p.amount}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCommissionInstallments((prev) =>
+                                    prev.map((it, i) =>
+                                      i === idx ? { ...it, amount: val } : it,
+                                    ),
+                                  );
+                                }}
+                                inputMode="decimal"
+                                placeholder="Ex.: 4000"
+                                className={inputCls}
+                              />
+                            </Field>
+                            <Field label="Vencimento">
+                              <input
+                                type="date"
+                                value={p.dueDate}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setCommissionInstallments((prev) =>
+                                    prev.map((it, i) =>
+                                      i === idx ? { ...it, dueDate: val } : it,
+                                    ),
+                                  );
+                                }}
+                                className={inputCls}
+                              />
+                            </Field>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCommissionInstallments((prev) =>
+                                  prev.filter((_, i) => i !== idx),
+                                )
+                              }
+                              aria-label={`Remover parcela ${idx + 1}`}
+                              className="grid size-10 place-items-center rounded-xl bg-white/70 text-foreground/55 ring-1 ring-white/70 transition hover:text-rose-700"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCommissionInstallments((prev) => [
+                              ...prev,
+                              {
+                                id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                                amount: "",
+                                dueDate: "",
+                                paid: false,
+                              },
+                            ])
+                          }
+                          className="inline-flex h-10 items-center gap-2 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 text-sm font-bold text-amber-800 transition hover:bg-amber-500/15"
+                        >
+                          <Plus className="size-4" />
+                          Adicionar parcela da comissão
+                        </button>
+                        <CommissionSummary
+                          total={parseMoney(commissionValue)}
+                          parcelas={commissionInstallments.map((p) => parseMoney(p.amount))}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </SectionCard>
+
+
+            <SectionCard
               icon={UserRound}
               title="Comprador"
               subtitle="Dados de contato e identificação"
