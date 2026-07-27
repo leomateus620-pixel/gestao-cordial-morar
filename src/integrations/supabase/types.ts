@@ -1917,6 +1917,94 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_commission_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          notified_at: string | null
+          paid: boolean
+          paid_at: string | null
+          sale_id: string
+          sequence: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          notified_at?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          sale_id: string
+          sequence?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          notified_at?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          sale_id?: string
+          sequence?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_commission_installments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "real_estate_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sale_commission_plan: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          metodo: string
+          observacoes: string | null
+          parcelado: boolean
+          sale_id: string
+          timing: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          metodo?: string
+          observacoes?: string | null
+          parcelado?: boolean
+          sale_id: string
+          timing?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          metodo?: string
+          observacoes?: string | null
+          parcelado?: boolean
+          sale_id?: string
+          timing?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_commission_plan_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "real_estate_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_documents: {
         Row: {
           category: string
