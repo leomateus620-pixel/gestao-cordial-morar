@@ -93,6 +93,52 @@ function Page() {
     [currentBroker?.nome, effectiveBrokerId, session?.id, session?.nome],
   );
 
+  const listRef = useRef<HTMLElement | null>(null);
+
+  const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
+    if (filters.status === "aguardando_validacao") return "pendentes";
+    if (filters.status === "validado") return "validados";
+    if (filters.checklist === "sem_fotos") return "fotos";
+    if (filters.checklist === "sem_placa") return "placas";
+    if (filters.checklist === "fora_site") return "site";
+    if (filters.status === "todos" && filters.checklist === "todos") return "total";
+    return null;
+  }, [filters.status, filters.checklist]);
+
+  const handleSummarySelect = useCallback(
+    (key: AgenciamentoSummaryKey) => {
+      const isActive = activeSummaryKey === key;
+      if (isActive) {
+        setFilters({ status: "todos", checklist: "todos" });
+      } else {
+        switch (key) {
+          case "total":
+            setFilters({ status: "todos", checklist: "todos" });
+            break;
+          case "pendentes":
+            setFilters({ status: "aguardando_validacao", checklist: "todos" });
+            break;
+          case "validados":
+            setFilters({ status: "validado", checklist: "todos" });
+            break;
+          case "fotos":
+            setFilters({ status: "todos", checklist: "sem_fotos" });
+            break;
+          case "placas":
+            setFilters({ status: "todos", checklist: "sem_placa" });
+            break;
+          case "site":
+            setFilters({ status: "todos", checklist: "fora_site" });
+            break;
+        }
+      }
+      window.requestAnimationFrame(() => {
+        listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [activeSummaryKey, setFilters],
+  );
+
   useEffect(
     () => () => {
       if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current);
