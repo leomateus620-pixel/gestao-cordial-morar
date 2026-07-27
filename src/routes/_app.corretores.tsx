@@ -6,6 +6,7 @@ import { CorretorCard } from "@/components/corretores/CorretorCard";
 import { CorretorDetailDrawer } from "@/components/corretores/CorretorDetailDrawer";
 import { CorretoresFilters } from "@/components/corretores/CorretoresFilters";
 import { CorretoresRanking } from "@/components/corretores/CorretoresRanking";
+import { CorretoresResponseTimeCard } from "@/components/corretores/CorretoresResponseTimeCard";
 import { CorretoresSummaryCards } from "@/components/corretores/CorretoresSummaryCards";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useCorretores } from "@/hooks/useCorretores";
