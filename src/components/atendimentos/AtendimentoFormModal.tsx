@@ -174,9 +174,15 @@ export function AtendimentoFormModal({
 
   useEffect(() => {
     if (!open) return;
-    setForm(formFromAtendimento(initialValue));
+    const base = formFromAtendimento(initialValue);
+    // Preseleciona finalidade conforme a trilha aberta (apenas em novo cadastro
+    // ou quando o registro legado estava marcado como "ambos").
+    if (presetTrack && (!initialValue || initialValue.finalidade === "ambos")) {
+      base.finalidade = presetTrack === "aluguel" ? "aluguel" : "compra";
+    }
+    setForm(base);
     setValidation({});
-  }, [initialValue, open]);
+  }, [initialValue, open, presetTrack]);
 
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
