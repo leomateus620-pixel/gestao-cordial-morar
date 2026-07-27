@@ -51,7 +51,82 @@ export type SaleRecord = {
   imobiliaria: AgencyId;
   payments?: SalePayment[];
   attachments?: SaleAttachment[];
+  commissionPlan?: SaleCommissionPlan;
 };
+
+export type SaleCommissionMetodo =
+  | "pix"
+  | "transferencia"
+  | "boleto"
+  | "dinheiro"
+  | "cheque"
+  | "desconto_repasse"
+  | "outro";
+
+export type SaleCommissionTiming =
+  | "assinatura"
+  | "entrada"
+  | "primeira_parcela"
+  | "conclusao"
+  | "data_especifica"
+  | "parcelado"
+  | "outro";
+
+export type SaleCommissionInstallment = {
+  id: string;
+  saleId: string;
+  sequence: number;
+  amount: number;
+  dueDate: string;
+  paid: boolean;
+  paidAt?: string | null;
+  notifiedAt?: string | null;
+};
+
+export type SaleCommissionInstallmentInput = {
+  sequence?: number;
+  amount: number;
+  dueDate: string;
+  paid?: boolean;
+};
+
+export type SaleCommissionPlan = {
+  metodo: SaleCommissionMetodo;
+  timing: SaleCommissionTiming;
+  dataPagamento?: string | null;
+  parcelado: boolean;
+  observacoes?: string | null;
+  installments: SaleCommissionInstallment[];
+};
+
+export type SaleCommissionPlanInput = {
+  metodo: SaleCommissionMetodo;
+  timing: SaleCommissionTiming;
+  dataPagamento?: string | null;
+  parcelado: boolean;
+  observacoes?: string | null;
+  installments?: SaleCommissionInstallmentInput[];
+};
+
+export const SALE_COMMISSION_METHODS: { id: SaleCommissionMetodo; label: string }[] = [
+  { id: "pix", label: "PIX" },
+  { id: "transferencia", label: "Transferência" },
+  { id: "boleto", label: "Boleto" },
+  { id: "dinheiro", label: "Dinheiro" },
+  { id: "cheque", label: "Cheque" },
+  { id: "desconto_repasse", label: "Desconto no repasse" },
+  { id: "outro", label: "Outro" },
+];
+
+export const SALE_COMMISSION_TIMINGS: { id: SaleCommissionTiming; label: string }[] = [
+  { id: "assinatura", label: "Na assinatura" },
+  { id: "entrada", label: "Na entrada" },
+  { id: "primeira_parcela", label: "No recebimento da 1ª parcela" },
+  { id: "conclusao", label: "Na conclusão da venda" },
+  { id: "data_especifica", label: "Em data específica" },
+  { id: "parcelado", label: "Parcelado" },
+  { id: "outro", label: "Outro" },
+];
 
 export type SaleDocumentCategory =
   | "contrato_venda"
