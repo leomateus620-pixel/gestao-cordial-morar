@@ -7,6 +7,8 @@ import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
 import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
 import { AgendaTimeline } from "@/components/agenda/AgendaTimeline";
+import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
+
 import {
   defaultAgendaFilters,
   useAgenda,
@@ -124,6 +126,8 @@ function AgendaFotosPage() {
 
   return (
     <div className="space-y-4">
+      <AgendaViewSwitcher />
+
       <section className="glass-panel flex items-start gap-3 rounded-2xl border border-fuchsia-200/40 bg-gradient-to-br from-fuchsia-50/60 via-white/70 to-white/60 p-4 shadow-sm">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-fuchsia-100 text-fuchsia-700 ring-1 ring-fuchsia-200/60">
           <Camera className="size-5" />
@@ -152,7 +156,8 @@ function AgendaFotosPage() {
         clients={clientOptions}
       />
 
-      <AgendaSummaryCards stats={stats} />
+      <AgendaSummaryCards variant="fotos" stats={stats as never} />
+
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3 px-1">
