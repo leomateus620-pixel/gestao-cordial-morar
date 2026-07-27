@@ -4,6 +4,7 @@ import {
   Building2,
   Cable,
   CalendarCheck2,
+  Camera,
   ClipboardCheck,
   FileText,
   FolderArchive,
