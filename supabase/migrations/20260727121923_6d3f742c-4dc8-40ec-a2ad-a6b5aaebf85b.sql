@@ -1,0 +1,2 @@
+ALTER TABLE public.rental_contract_documents DROP CONSTRAINT rental_contract_documents_category_check;
+ALTER TABLE public.rental_contract_documents ADD CONSTRAINT rental_contract_documents_category_check CHECK (category = ANY (ARRAY['contrato_aluguel'::text, 'termo_vistoria'::text, 'checklist_aluguel'::text, 'apolice_seguro_fianca'::text, 'outro'::text]));

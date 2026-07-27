@@ -191,6 +191,7 @@ export function RentalDocuments({
       contrato_aluguel: [],
       termo_vistoria: [],
       checklist_aluguel: [],
+      apolice_seguro_fianca: [],
       outro: [],
     };
     for (const document of documents) groups[document.category].push(document);

@@ -934,12 +934,13 @@ type DocRow = {
   drive_last_synced_at?: string | null;
 };
 
-type RentalDocCategory = "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "outro";
+type RentalDocCategory = "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "apolice_seguro_fianca" | "outro";
 
 const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
   "contrato_aluguel",
   "termo_vistoria",
   "checklist_aluguel",
+  "apolice_seguro_fianca",
   "outro",
 ]);
 
