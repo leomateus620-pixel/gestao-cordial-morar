@@ -1,39 +1,82 @@
-## Diagnóstico (verificado no banco)
+## Objetivo
+Separar o CRM `Atendimentos` em dois pipelines independentes — **Vendas** e **Aluguéis** — dentro do mesmo módulo, usando a coluna `finalidade` já existente (`compra | aluguel | ambos`) como fonte da verdade, sem duplicar rotas nem quebrar cliente/corretor/imóvel/Agenda/histórico.
 
-Consultei o banco: os agenciamentos criados pelo Felipe (`d87eda8c-…`) **estão persistidos corretamente**, com `created_by = <uid do Felipe>` **e** `corretor_id = <uid do Felipe>` (7 registros, do mais recente ao mais antigo). Ou seja, o `INSERT`, o trigger e o RLS estão OK — o servidor devolve os registros para ele (a policy `agenciamentos_select_own_or_assigned` autoriza por `created_by` OU `corretor_id`, e o `listAgenciamentos` faz `.or(created_by.eq.<uid>,corretor_id.eq.<uid>)`).
+## Diagnóstico atual
+- `attendances.finalidade` (`compra`/`aluguel`/`ambos`) já é persistido em Supabase e retornado pelo serviço.
+- Hoje o hook `useAttendances` mescla os dois em um único funil; `finalidade` é apenas filtro opcional.
+- Kanban, summary cards, contadores por etapa e filtros operam sobre o conjunto agregado — não isolam por trilha comercial.
+- Registros `ambos` aparecem em ambas as agregações (linhas 321/323 de `useAttendances.ts`).
+- Não existe estado de rota para o funil selecionado.
 
-O problema está no **filtro redundante do lado do cliente**, em `src/hooks/useAgenciamentos.ts` + `src/services/agenciamentos.ts`:
+## Mapeamento canônico da trilha comercial
+Criar utilitário tipado em `src/lib/atendimentos/track.ts`:
+- `type CommercialTrack = "venda" | "aluguel"`
+- `finalidadeToTrack(compra) = venda`, `finalidadeToTrack(aluguel) = aluguel`
+- Registros `ambos`: exibidos **em ambos os funis** apenas como legado (badge "Interesse duplo"), com regra que impede duplicação de métricas — cada card só conta 1x na trilha ativa, e edições solicitam ao usuário escolher `Venda` ou `Aluguel` para converter o legado. Nenhum split automático em dois cards; a criação nova sempre grava `compra` ou `aluguel`. Migração leve: nenhuma mudança de schema — `ambos` continua permitido, mas o form novo não gera mais esse valor.
 
-1. `getAgenciamentosVisibleToUser(...)` refiltra tudo por `item.corretorId === corretorId`. `corretorId` vem de `effectiveBrokerId = currentBroker?.id ?? session?.id`. Se, no primeiro render após F5, `currentBroker` ainda não foi resolvido (a lista de corretores carrega via `useHydrateCorretores` de forma assíncrona) **e** o `session` ainda está sendo hidratado por `getSession()`/`onAuthStateChange`, `corretorId` fica `undefined` e a função retorna `[]` — resultado: "sumiram os agenciamentos". Além disso, qualquer registro cujo `corretorId` não bata exatamente com o `effectiveBrokerId` (histórico antigo, duplicidade de perfil, cadastro criado por Bianca e atribuído a outro corretor mas vinculado ao Felipe por `created_by`) é escondido, mesmo o servidor tendo autorizado.
-2. `effectiveFilters.corretorId` força, para não-admin, `effectiveBrokerId ?? "__sem_corretor__"`. Quando `effectiveBrokerId` é momentaneamente `undefined`, o filtro vira `"__sem_corretor__"` e nenhum item passa (`filterAgenciamentos` compara igualdade exata).
+## Estado da rota (persistência da seleção)
+Adicionar ao `validateSearch` de `/_app/atendimentos`:
+```
+track: "venda" | "aluguel"  (fallback "venda" quando inválido/ausente)
+```
+- Persistência automática via URL → sobrevive refresh e back/forward.
+- Trocar trilha via `navigate({ search: prev => ({ ...prev, track }) })` sem reload.
 
-Ambos os pontos duplicam a lógica que já é aplicada com segurança pelo RLS + `.or` no servidor, e criam janelas de "lista vazia" após refresh.
+## Componentes / arquivos alterados
+1. **`src/lib/atendimentos/track.ts`** (novo) — tipo `CommercialTrack`, `finalidadeToTrack`, `matchesTrack(atendimento, track)`, labels/ícones/cor.
+2. **`src/hooks/useAttendances.ts`**
+   - Aceitar `track` no filtro (não opcional).
+   - Filtragem canônica antes de qualquer agregação: `list = all.filter(matchesTrack(track))`.
+   - Recalcular `summary`, `byStage`, contadores, KPIs a partir dessa lista já filtrada.
+   - Incluir `track` na `queryKey` cache-friendly: `["attendances", { track, ...filters }]` (com filtragem em memória sobre um único fetch autorizado por RLS — sem N+1 e sem quebra de invalidação).
+3. **`src/routes/_app.atendimentos.tsx`**
+   - Ler `track` do search; passar para hook, filtros, Kanban, cards, empty states.
+   - Renderizar novo seletor logo abaixo do header.
+   - Preselecionar `finalidade` do form conforme trilha ao abrir "Novo atendimento".
+   - Empty states e textos contextuais por trilha.
+4. **`src/components/atendimentos/PipelineTrackSelector.tsx`** (novo)
+   - Card dedicado com dois segmentos (`Vendas`, `Aluguéis`), ícone, contagem ativa e pendências (retorno vencido) por trilha.
+   - Estado selecionado forte (accent azul p/ Vendas, verde p/ Aluguéis), foco/hover, acessível, responsivo (empilha em ≤430px mantendo largura total).
+5. **`src/components/atendimentos/AtendimentoFormModal.tsx`**
+   - Campo `Tipo de atendimento` obrigatório (`Venda`/`Aluguel`) — grava `finalidade` correspondente.
+   - Ao editar registro `ambos`, exigir escolha antes de salvar.
+   - Ajuste condicional de rótulos: orçamento vs faixa de aluguel; restrições/mudança quando `aluguel`.
+6. **`AtendimentoSummaryCards.tsx`, `AtendimentoKanban.tsx`, `AtendimentoCard.tsx`, `AtendimentoFilters.tsx`, `AtendimentoDetailDrawer.tsx`**
+   - Consumir dataset já filtrado por trilha.
+   - Card oculta o badge grande de finalidade (contexto vem do seletor); mantém apenas indicação discreta quando `ambos`.
+   - Drawer mostra "Este cliente também possui atendimento de {outra trilha}" com link `?track=…&id=…` quando o mesmo `cliente_id` tiver oportunidade na outra trilha.
+7. **`src/lib/attendances/attendances.functions.ts`**
+   - Validar `finalidade ∈ {compra, aluguel}` na criação (bloquear novo `ambos`).
+   - Registrar evento em `attendance_history` (`event_type: 'track_change'`) quando `finalidade` mudar em update.
 
-## Mudanças
+## Histórico estruturado
+Reaproveitar `attendance_history` (já existe trigger). Adicionar linhas descritivas (ex.: "Tipo alterado de Venda para Aluguel por {ator}") via `description` no update — nenhuma migração nova necessária; o trigger `attendances_log_history` já captura mudanças de campos padrão, então incluímos `finalidade` no gatilho existente numa migração pequena para logar `track_change`.
 
-1. **`src/services/agenciamentos.ts`**
-   - Simplificar `getAgenciamentosVisibleToUser`: retornar sempre `agenciamentos` quando houver sessão (servidor já filtra). Manter guarda para `!user` retornando `[]`.
-   - Não alterar `canEditAgenciamento` — a regra de edição continua válida.
+## RLS
+Nenhuma alteração. As policies atuais (`created_by`, `corretor_id`, admin, secretaria) continuam autorizando ambas as trilhas. A separação é operacional, não de autorização. Validar manualmente que corretor/secretária/admin veem apenas o que já viam, agora particionado por seletor.
 
-2. **`src/hooks/useAgenciamentos.ts`**
-   - Remover a sobreposição de `effectiveFilters.corretorId` para não-admin. Passar `filters` direto para `filterAgenciamentos`, respeitando a escolha do usuário (default `"todos"` já cobre o caso de corretor querendo ver "os seus", pois o servidor só devolve os dele).
-   - `visibleAgenciamentos` continua útil para `dashboardAgenciamentos`/ranking; mantém o cálculo mas sem filtrar por `corretorId` no cliente.
+## Estratégia de query/cache
+- Um único fetch autenticado por página (`listAttendances`) reutilizado, filtrado em memória por `track` no hook → sem requests duplicados, sem N+1.
+- `queryKey` inclui `track` para permitir mutações invalidarem seletivamente (`invalidateQueries({ queryKey: ['attendances'] })` cobre ambos).
 
-3. **Verificação (após aplicar o build)**
-   - Solicitar reprodução com login do Felipe: cadastrar 1 agenciamento novo, dar F5 e confirmar que aparece na lista, no card horizontal e no drawer.
-   - Repetir com Pablo (corretor) e Bianca (secretária) para garantir que:
-     - Corretor vê apenas os seus (garantido por RLS).
-     - Secretária/admin vêem todos.
-   - Se preferir, posso pedir credenciais de teste do Felipe para rodar via Playwright na próxima etapa e validar automaticamente.
+## Design
+- Seletor: card `rounded-2xl border shadow-sm` com dois segmentos lado a lado (desktop) / empilhados (mobile ≤430px). Selecionado: fundo tonalizado (azul-600/10 para Vendas, emerald-600/10 para Aluguéis), borda accent, chip de contagem.
+- Sem recolorir o resto da UI; apenas hairlines/badges por trilha.
 
-## Fora de escopo
+## Responsividade validada
+320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920 px — seletor sempre visível, Kanban rola horizontal ≥768, empilha etapas ≤430.
 
-- Sem alterações em RLS, schema ou server functions (`agenciamentos.functions.ts`) — o servidor já está correto.
-- Sem alterações em UI, criação, edição, validação ou exclusão.
-- Sem mudanças em outros módulos.
+## Validação obrigatória (Playwright no preview)
+1. Abrir `/atendimentos` → seletor visível, default `Vendas`.
+2. Alternar para `Aluguéis` → URL vira `?track=aluguel`, métricas/kanban trocam.
+3. Refresh mantém seleção; back/forward navega entre trilhas.
+4. Criar 1 atendimento em cada trilha; confirmar isolamento.
+5. Mover entre etapas; confirmar contadores.
+6. Editar e refresh — permanece na trilha correta.
+7. Cliente com registro `ambos` legado aparece em ambos, sem duplicar contagem inflada.
+8. Verificar como corretor (Felipe) e admin — visibilidades preservadas.
+9. `bun run typecheck` + preview HMR OK.
 
-## Detalhes técnicos
-
-- A remoção do refiltro por `corretorId` no cliente elimina a corrida entre `useSession()` (Supabase auth) e `useHydrateCorretores()` (RPC `list_corretores`) que hoje pode esconder registros por 1–2 renders.
-- Segurança preservada: como `listAgenciamentos` é `requireSupabaseAuth` e aplica `.or(created_by.eq.<uid>,corretor_id.eq.<uid>)` para não-admin, o cliente só recebe o que o corretor pode ver. Não há risco de vazar dados de outros corretores.
-- O comportamento para admin/secretaria não muda (já viam tudo).
+## Riscos / limitações
+- Registros `ambos` continuarão exibidos nos dois funis até edição manual — decisão consciente para não perder rastreabilidade.
+- Não introduz nova coluna/enum: reduz risco de migração, mas amarra semântica ao valor `finalidade`.
