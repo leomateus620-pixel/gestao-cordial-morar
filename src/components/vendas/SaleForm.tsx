@@ -22,14 +22,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { AgencyId, Corretor, Imovel } from "@/lib/mock/data";
-import type {
-  SaleDocumentStatus,
-  SalePaymentInput,
-  SalePaymentMethod,
-  SalePropertyType,
-  SaleRecord,
-  SaleRecordInput,
-  SaleStatus,
+import {
+  SALE_COMMISSION_METHODS,
+  SALE_COMMISSION_TIMINGS,
+  type SaleCommissionInstallmentInput,
+  type SaleCommissionMetodo,
+  type SaleCommissionPlanInput,
+  type SaleCommissionTiming,
+  type SaleDocumentStatus,
+  type SalePaymentInput,
+  type SalePaymentMethod,
+  type SalePropertyType,
+  type SaleRecord,
+  type SaleRecordInput,
+  type SaleStatus,
 } from "@/types/sale";
 
 const inputCls =
