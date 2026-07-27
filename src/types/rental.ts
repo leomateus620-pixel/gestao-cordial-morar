@@ -190,6 +190,7 @@ export type RentalDocumentCategory =
   | "contrato_aluguel"
   | "termo_vistoria"
   | "checklist_aluguel"
+  | "apolice_seguro_fianca"
   | "outro";
 
 export const RENTAL_DOCUMENT_CATEGORIES: {
@@ -211,6 +212,11 @@ export const RENTAL_DOCUMENT_CATEGORIES: {
     id: "checklist_aluguel",
     label: "Check-list aluguel",
     description: "Roteiro de conferência da locação.",
+  },
+  {
+    id: "apolice_seguro_fianca",
+    label: "Apólice de Seguro Fiança",
+    description: "Apólice emitida pela seguradora da fiança locatícia.",
   },
   {
     id: "outro",
