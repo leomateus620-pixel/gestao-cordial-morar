@@ -59,7 +59,11 @@ export const ATTENDANCE_BROKERS_QUERY_KEY = ["attendance-brokers"] as const;
 export const attendanceHistoryQueryKey = (id: string | null | undefined) =>
   ["attendance-history", id] as const;
 
-export function useAttendances(query: string, filters: AtendimentoFilters) {
+export function useAttendances(
+  query: string,
+  filters: AtendimentoFilters,
+  track?: CommercialTrack,
+) {
   const user = useSession();
   const agency = useApp((state) => state.agency);
   const imoveis = useApp((state) => state.imoveis);
@@ -147,9 +151,33 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
     [agency, atendimentos],
   );
 
+  // Trilha comercial (Vendas/Aluguéis) — filtragem canônica antes de qualquer agregação.
+  const trackAtendimentos = useMemo(
+    () => (track ? agencyAtendimentos.filter((item) => matchesTrack(item, track)) : agencyAtendimentos),
+    [agencyAtendimentos, track],
+  );
+
+  // Contagens ativas por trilha para o seletor (independem do filtro/busca atuais).
+  const trackCounts = useMemo(() => {
+    const now = new Date();
+    const active = (a: Atendimento) => ACTIVE_STAGES_FOR_COUNT.has(a.pipelineStage);
+    const venda = agencyAtendimentos.filter((a) => matchesTrack(a, "venda"));
+    const aluguel = agencyAtendimentos.filter((a) => matchesTrack(a, "aluguel"));
+    return {
+      venda: {
+        total: venda.filter(active).length,
+        overdue: venda.filter((a) => isAtendimentoOverdue(a, now)).length,
+      },
+      aluguel: {
+        total: aluguel.filter(active).length,
+        overdue: aluguel.filter((a) => isAtendimentoOverdue(a, now)).length,
+      },
+    };
+  }, [agencyAtendimentos]);
+
   const filteredAtendimentos = useMemo(
     () =>
-      agencyAtendimentos.filter((item) => {
+      trackAtendimentos.filter((item) => {
         if (!atendimentoMatchesSearch(item, query)) return false;
         if (filters.status !== "todos" && item.status !== filters.status) return false;
         if (filters.finalidade !== "todos" && item.finalidade !== filters.finalidade) return false;
@@ -160,10 +188,11 @@ export function useAttendances(query: string, filters: AtendimentoFilters) {
         if (!matchesPeriod(item, filters.periodo)) return false;
         return true;
       }),
-    [agencyAtendimentos, filters, query],
+    [trackAtendimentos, filters, query],
   );
 
-  const stats = useMemo(() => getStats(agencyAtendimentos), [agencyAtendimentos]);
+  const stats = useMemo(() => getStats(trackAtendimentos), [trackAtendimentos]);
+
 
   return {
     agency,
