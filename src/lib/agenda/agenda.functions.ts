@@ -40,6 +40,7 @@ type DbEvent = {
   atendimento_id: string | null;
   imovel_id: string | null;
   imovel_descricao: string | null;
+  agenciamento_id: string | null;
   local: string | null;
   video_call_url: string | null;
   responsavel_nome: string | null;
