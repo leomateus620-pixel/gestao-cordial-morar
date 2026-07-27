@@ -405,6 +405,10 @@ function Page() {
         </div>
       </section>
 
+      <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} />
+
+
+
       <AtendimentoFilters
         query={query}
         onQueryChange={setQuery}
