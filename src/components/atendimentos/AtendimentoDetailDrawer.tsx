@@ -56,6 +56,7 @@ import {
   listAttendanceHistory,
   type AttendanceHistoryEvent,
 } from "@/lib/attendances/attendances.functions";
+import { markAttendanceFirstOpened } from "@/lib/attendances/assignments.functions";
 import {
   ACTIVE_PIPELINE_STAGES,
   atendimentoDormitoriosLabel,
@@ -148,6 +149,30 @@ export function AtendimentoDetailDrawer({
       setConfirmAction(null);
     }
   }, [open]);
+
+  // Canonical first-open trigger: fires only when the detail is actually
+  // opened AND real attendance data is available. The backend RPC is idempotent
+  // and only closes the timer when auth.uid() === assigned broker; admins,
+  // secretaries, and non-assigned users are safely no-ops.
+  const firstOpenSentRef = useRef<string | null>(null);
+  const attendanceIdForOpen = atendimento?.id ?? null;
+  useEffect(() => {
+    if (!open || !attendanceIdForOpen) return;
+    if (firstOpenSentRef.current === attendanceIdForOpen) return;
+    firstOpenSentRef.current = attendanceIdForOpen;
+    markAttendanceFirstOpened({ data: { attendanceId: attendanceIdForOpen } })
+      .then(() => {
+        qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(attendanceIdForOpen) });
+        qc.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY });
+        qc.invalidateQueries({ queryKey: ["notifications"] });
+        qc.invalidateQueries({ queryKey: ["attendance-assignment", attendanceIdForOpen] });
+        qc.invalidateQueries({ queryKey: ["corretores-response-metrics"] });
+      })
+      .catch(() => {
+        // Keep the timer active if the mutation fails
+        firstOpenSentRef.current = null;
+      });
+  }, [open, attendanceIdForOpen, qc]);
 
   if (!atendimento) return null;
   const pipeline = getPipelineContext(atendimento);

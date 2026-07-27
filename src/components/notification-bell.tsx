@@ -12,6 +12,10 @@ import {
   markAllNotificationsRead as markAllRemoteRead,
 } from "@/lib/notifications/notifications.functions";
 import { cn } from "@/lib/utils";
+import {
+  AssignmentStatusBadge,
+  attendanceIdFromLink,
+} from "@/components/notifications/AssignmentStatusBadge";
 
 const priorityTone: Record<NotificationPriority, { bg: string; fg: string }> = {
   alta: { bg: "rgba(201,76,76,0.14)", fg: "#a83838" },
@@ -148,6 +152,11 @@ export function NotificationBell() {
                           {n.mensagem}
                         </p>
                       )}
+                      {(n.tipo === "atendimento_atribuido" || n.tipo === "atendimento_iniciado") &&
+                        (() => {
+                          const aid = attendanceIdFromLink(n.link);
+                          return aid ? <AssignmentStatusBadge attendanceId={aid} /> : null;
+                        })()}
                       <p className="mt-1 text-[10px] text-foreground/45">
                         {new Date(n.created_at).toLocaleString("pt-BR", {
                           day: "2-digit",

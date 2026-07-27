@@ -6,6 +6,7 @@ import { CorretorCard } from "@/components/corretores/CorretorCard";
 import { CorretorDetailDrawer } from "@/components/corretores/CorretorDetailDrawer";
 import { CorretoresFilters } from "@/components/corretores/CorretoresFilters";
 import { CorretoresRanking } from "@/components/corretores/CorretoresRanking";
+import { CorretoresResponseTimeCard } from "@/components/corretores/CorretoresResponseTimeCard";
 import { CorretoresSummaryCards } from "@/components/corretores/CorretoresSummaryCards";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useCorretores } from "@/hooks/useCorretores";
@@ -119,6 +120,8 @@ function Page() {
         />
 
         {ranking.length > 0 && <CorretoresRanking ranking={ranking} onSelect={handleSelect} />}
+
+        <CorretoresResponseTimeCard />
 
         <section className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {corretores.map((corretor) => (
