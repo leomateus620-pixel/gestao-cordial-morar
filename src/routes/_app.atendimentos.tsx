@@ -112,23 +112,8 @@ function Page() {
     }
   }, [highlightId, isLoading, filteredAtendimentos.length]);
 
-  const openedMarkedRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (isLoading || !session?.id) return;
-    const uid = session.id;
-    for (const a of atendimentos) {
-      if (a.corretorId === uid && !a.openedAt && !openedMarkedRef.current.has(a.id)) {
-        openedMarkedRef.current.add(a.id);
-        markAttendanceOpened({ data: { id: a.id } })
-          .then(() => {
-            qc.invalidateQueries({ queryKey: ["attendances"] });
-          })
-          .catch(() => {
-            openedMarkedRef.current.delete(a.id);
-          });
-      }
-    }
-  }, [atendimentos, isLoading, qc, session?.id]);
+  // First-open timing is closed only by the attendance detail drawer via the
+  // backend RPC `mark_attendance_first_opened`, never from list rendering.
 
   const createVisitMutation = useMutation({
     mutationFn: (input: AgendaEventInput) => upsertAgendaEvent({ data: { input } }),
