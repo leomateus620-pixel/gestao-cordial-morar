@@ -200,6 +200,27 @@ function getAgendaStats(events: AgendaEvent[]) {
   };
 }
 
+function getPhotoStats(events: AgendaEvent[]) {
+  const now = new Date();
+  const nextWeek = new Date(startOfDay(now));
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const active = events.filter((event) => event.status !== "cancelado");
+  return {
+    today: active.filter((event) => isSameDay(new Date(event.inicio), now)).length,
+    nextSevenDays: active.filter((event) => {
+      const date = new Date(event.inicio);
+      return date >= startOfDay(now) && date < nextWeek;
+    }).length,
+    visits: 0,
+    returns: 0,
+    media: active.filter((event) => event.status === "agendado" || event.status === "confirmado")
+      .length,
+    signatures: active.filter((event) => event.status === "concluido").length,
+    pendingConfirmation: active.filter((event) => event.status === "reagendado").length,
+  };
+}
+
+
 function startOfDay(value: Date) {
   const result = new Date(value);
   result.setHours(0, 0, 0, 0);
