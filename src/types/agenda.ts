@@ -67,6 +67,7 @@ export interface AgendaEvent {
   atendimentoId?: string;
   imovelId?: string;
   imovelDescricao?: string;
+  agenciamentoId?: string;
   local?: string;
   videoCallUrl?: string;
   responsavelPrincipalId?: string;
@@ -82,6 +83,12 @@ export interface AgendaEvent {
   criadoEm: string;
   atualizadoEm: string;
   googleCalendarSyncStatus: GoogleCalendarSyncStatus;
+}
+
+/** Event types that belong to the shared "Agenda de fotos" view. */
+export const AGENDA_PHOTO_TIPOS: readonly AgendaTipo[] = ["fotos", "video"] as const;
+export function isPhotoAgendaTipo(tipo: AgendaTipo) {
+  return AGENDA_PHOTO_TIPOS.includes(tipo);
 }
 
 export type AgendaEventInput = Omit<
