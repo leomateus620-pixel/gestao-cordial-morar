@@ -119,12 +119,14 @@ export function AtendimentoFormModal({
   onSubmit,
   initialValue,
   brokerOptions = [],
+  presetTrack,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AtendimentoCreateInput) => void | Promise<void>;
   initialValue?: Atendimento | null;
   brokerOptions?: Array<{ id: string; nome: string }>;
+  presetTrack?: "venda" | "aluguel";
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
