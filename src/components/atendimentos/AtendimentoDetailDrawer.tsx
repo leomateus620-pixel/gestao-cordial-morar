@@ -56,6 +56,7 @@ import {
   listAttendanceHistory,
   type AttendanceHistoryEvent,
 } from "@/lib/attendances/attendances.functions";
+import { markAttendanceFirstOpened } from "@/lib/attendances/assignments.functions";
 import {
   ACTIVE_PIPELINE_STAGES,
   atendimentoDormitoriosLabel,
