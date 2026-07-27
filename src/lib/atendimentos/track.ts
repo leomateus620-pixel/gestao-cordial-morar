@@ -12,10 +12,13 @@ export function parseTrackParam(value: unknown): CommercialTrack {
   return isCommercialTrack(value) ? value : "venda";
 }
 
-/** Legacy `ambos` is exposed in both funnels until the user edits it. */
+/**
+ * Cada atendimento pertence a exatamente uma trilha, determinada pela finalidade.
+ * `ambos` é legado e fica fora das duas contagens até ser reclassificado
+ * manualmente para `compra` ou `aluguel`.
+ */
 export function matchesTrack(atendimento: Atendimento, track: CommercialTrack): boolean {
   const f = atendimento.finalidade;
-  if (f === "ambos") return true;
   return track === "venda" ? f === "compra" : f === "aluguel";
 }
 
