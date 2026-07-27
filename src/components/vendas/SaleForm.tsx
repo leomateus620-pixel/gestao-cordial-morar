@@ -297,6 +297,18 @@ export function SaleForm({
     Array<{ id: string; amount: string; dueDate: string; paid: boolean }>
   >([]);
 
+  // Plano de comissão (independente do pagamento do imóvel)
+  const [commissionPlanEnabled, setCommissionPlanEnabled] = useState(false);
+  const [commissionMetodo, setCommissionMetodo] = useState<SaleCommissionMetodo>("pix");
+  const [commissionTiming, setCommissionTiming] =
+    useState<SaleCommissionTiming>("conclusao");
+  const [commissionDataPagamento, setCommissionDataPagamento] = useState("");
+  const [commissionParcelado, setCommissionParcelado] = useState(false);
+  const [commissionObservacoes, setCommissionObservacoes] = useState("");
+  const [commissionInstallments, setCommissionInstallments] = useState<
+    Array<{ id: string; amount: string; dueDate: string; paid: boolean }>
+  >([]);
+
   const [documentStatus, setDocumentStatus] = useState<SaleDocumentStatus>("contrato_pendente");
   const [contractFile, setContractFile] = useState<FileMeta | null>(null);
   const [contractFileObj, setContractFileObj] = useState<File | null>(null);
