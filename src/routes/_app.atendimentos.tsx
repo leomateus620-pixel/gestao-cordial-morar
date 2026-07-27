@@ -61,8 +61,8 @@ function Page() {
   const setTrack = (nextTrack: CommercialTrack) => {
     if (nextTrack === track) return;
     navigate({
+      to: ".",
       search: (prev) => ({ ...prev, track: nextTrack }),
-      replace: false,
     });
     setSelectedStage("primeiro_contato");
   };
