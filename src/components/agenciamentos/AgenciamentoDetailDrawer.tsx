@@ -259,7 +259,7 @@ export function AgenciamentoDetailDrawer({
               className="flex flex-col gap-2 border-t border-white/60 bg-white/70 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end sm:px-6"
               style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
             >
-              {canManage && onDelete && (
+              {onDelete && (
                 <Button
                   type="button"
                   variant="outline"

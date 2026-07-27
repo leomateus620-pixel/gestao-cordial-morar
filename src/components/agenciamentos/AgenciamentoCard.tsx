@@ -205,7 +205,7 @@ function AgenciamentoCardComponent({
             <Pencil className="size-3.5" />
           </Button>
         )}
-        {canManage && onDelete && (
+        {onDelete && (
           <Button
             type="button"
             size="icon"
