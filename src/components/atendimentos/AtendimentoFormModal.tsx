@@ -464,11 +464,14 @@ export function AtendimentoFormModal({
               description="Dados estruturados para entender demanda, região e ticket."
             >
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Finalidade" error={validation.finalidade}>
+                <Field label="Tipo de atendimento" error={validation.finalidade}>
                   <TypedSelect
                     value={form.finalidade}
                     onChange={(value) => update("finalidade", value as AtendimentoFinalidade)}
-                    options={atendimentoFinalidadeOptions}
+                    options={atendimentoFinalidadeOptions.filter(
+                      (opt) =>
+                        opt.value !== "ambos" || form.finalidade === "ambos",
+                    )}
                   />
                 </Field>
                 <Field label="Tipo de imóvel" error={validation.tipoImovel}>
