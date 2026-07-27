@@ -14,7 +14,10 @@ import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
-import { AgenciamentoSummaryCards } from "@/components/agenciamentos/AgenciamentoSummaryCards";
+import {
+  AgenciamentoSummaryCards,
+  type AgenciamentoSummaryKey,
+} from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import {
   AlertDialog,
