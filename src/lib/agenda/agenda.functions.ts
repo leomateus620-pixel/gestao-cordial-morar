@@ -335,11 +335,28 @@ export const completeAgendaEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
+    const { data: existing, error: readErr } = await context.supabase
+      .from("agenda_events")
+      .select("tipo, agenciamento_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+
     const { error } = await context.supabase
       .from("agenda_events")
       .update({ status: "concluido", concluido_em: new Date().toISOString() })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Photo events completed against an agenciamento flip the "fotos_realizadas" checklist.
+    if (existing && PHOTO_TIPOS.includes(existing.tipo as AgendaTipo) && existing.agenciamento_id) {
+      const { error: upErr } = await context.supabase
+        .from("agenciamentos")
+        .update({ fotos_realizadas: true })
+        .eq("id", existing.agenciamento_id);
+      if (upErr) console.error("[agenda] update agenciamento fotos_realizadas falhou:", upErr);
+    }
+
     try {
       const { syncAgendaEventToGoogle } = await import(
         "@/lib/google-calendar/google.server"
