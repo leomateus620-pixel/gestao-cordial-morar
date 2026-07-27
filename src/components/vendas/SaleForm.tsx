@@ -372,6 +372,25 @@ export function SaleForm({
         paid: p.paid,
       })),
     );
+    // Commission plan
+    const plan = record?.commissionPlan;
+    setCommissionPlanEnabled(Boolean(plan));
+    setCommissionMetodo(plan?.metodo ?? "pix");
+    setCommissionTiming(plan?.timing ?? "conclusao");
+    setCommissionDataPagamento(plan?.dataPagamento ?? "");
+    setCommissionParcelado(Boolean(plan?.parcelado));
+    setCommissionObservacoes(plan?.observacoes ?? "");
+    setCommissionInstallments(
+      (plan?.installments ?? [])
+        .slice()
+        .sort((a, b) => a.sequence - b.sequence)
+        .map((i) => ({
+          id: i.id,
+          amount: String(i.amount),
+          dueDate: i.dueDate,
+          paid: i.paid,
+        })),
+    );
     setError(null);
     if (contractInputRef.current) contractInputRef.current.value = "";
     if (supportInputRef.current) supportInputRef.current.value = "";
