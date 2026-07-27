@@ -73,6 +73,7 @@ export function SaleDetailsDrawer({
   ) => Promise<void> | void;
   onRemoveAttachment?: (attachmentId: string) => Promise<void> | void;
   onMarkPaymentPaid?: (paymentId: string, paid: boolean) => void;
+  onMarkCommissionPaid?: (installmentId: string, paid: boolean) => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
