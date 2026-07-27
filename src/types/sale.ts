@@ -196,8 +196,8 @@ export type SalePaymentInput = {
 
 export type SaleRecordInput = Omit<
   SaleRecord,
-  "id" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerInitials" | "payments"
-> & { payments?: SalePaymentInput[] };
+  "id" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerInitials" | "payments" | "commissionPlan"
+> & { payments?: SalePaymentInput[]; commissionPlan?: SaleCommissionPlanInput | null };
 
 export type SalesKpis = {
   totalSold: number;
