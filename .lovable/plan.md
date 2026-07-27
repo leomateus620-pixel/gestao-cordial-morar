@@ -1,34 +1,19 @@
-## Objetivo
-Tornar os 6 cards do "Resumo operacional" em Agenciamentos clicáveis, aplicando um filtro correspondente à lista abaixo, com indicação visual do card ativo e rolagem suave até os resultados.
+## Adicionar categoria "Apólice de Seguro Fiança" nos anexos de Aluguéis
 
-## Mapeamento card → filtro
-Reaproveitando `AgenciamentoFiltersState` (já usa `status` e `checklist`):
+### O que muda
+Nova categoria de documento no módulo Aluguéis, ao lado de Contrato de aluguel, Termo de vistoria e Check-list aluguel, para anexar a apólice do seguro fiança.
 
-| Card | Filtro aplicado |
-|---|---|
-| Agenciamentos no período | `status: "todos"`, `checklist: "todos"` (limpa) |
-| Pendentes de validação | `status: "aguardando_validacao"` |
-| Fotos pendentes | `checklist: "sem_fotos"` |
-| Placas pendentes | `checklist: "sem_placa"` |
-| Imóveis fora do site | `checklist: "fora_site"` |
-| Agenciamentos validados | `status: "validado"` |
+### Alterações
 
-O período (`periodo`) e demais filtros são preservados.
+1. **`src/types/rental.ts`**
+   - Adicionar `"apolice_seguro_fianca"` ao tipo `RentalDocumentCategory`.
+   - Adicionar a entrada correspondente em `RENTAL_DOCUMENT_CATEGORIES` (label: "Apólice de Seguro Fiança", descrição curta), posicionada logicamente antes de "Outros".
 
-## Alterações
+2. **Backend (migração Supabase)**
+   - Atualizar o CHECK constraint da coluna `category` em `rental_contract_documents` para incluir o novo valor `apolice_seguro_fianca`, preservando os existentes.
 
-### 1. `src/components/agenciamentos/AgenciamentoSummaryCards.tsx`
-- Cada `Metric` recebe uma `key` estável (`total | pendentes | fotos | placas | site | validados`).
-- Nova prop `onSelect(key)` e `activeKey`.
-- `<article>` vira `<button type="button">` mantendo o mesmo layout; adiciona `aria-pressed`, foco visível, `hover/active` sutil (translate/scale), e um estado ativo (anel/borda destacada) quando `activeKey === key`.
-- Contagens zeradas continuam clicáveis (mostram lista vazia com o filtro aplicado — comportamento consistente).
+3. **UI**
+   - Nenhuma mudança estrutural: `RentalDocuments.tsx` já renderiza dinamicamente a partir de `RENTAL_DOCUMENT_CATEGORIES`, então o novo card "Apólice de Seguro Fiança" aparece automaticamente com botão Adicionar e listagem, seguindo o mesmo padrão visual dos demais.
 
-### 2. `src/routes/_app.agenciamentos.tsx`
-- Adiciona `listRef = useRef<HTMLElement>(null)` na `<section aria-labelledby="agenciamentos-list-title">`.
-- Deriva `activeSummaryKey` a partir de `filters.status`/`filters.checklist` para destacar o card correspondente.
-- Handler `handleSummarySelect(key)` que chama `setFilters(...)` com o preset e faz `listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })`.
-- Passa `onSelect` e `activeKey` para `<AgenciamentoSummaryCards>`.
-
-## Fora do escopo
-- Sem mudanças de schema, RLS, hooks ou queries — apenas UI/estado local de filtros já existente.
-- Sem alteração no `AgendaSummaryCards` (a solicitação é sobre Agenciamentos).
+### Fora do escopo
+- Nenhuma alteração em RLS, storage, sincronização com Google Drive ou fluxo de upload — a nova categoria reutiliza toda a infraestrutura existente.
