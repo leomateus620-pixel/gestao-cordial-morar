@@ -354,6 +354,8 @@ function Page() {
             summary={summary}
             variant={isAdmin ? "admin" : "corretor"}
             periodLabel={periodLabel}
+            activeKey={activeSummaryKey}
+            onSelect={handleSummarySelect}
           />
         </div>
 
