@@ -79,13 +79,22 @@ export const moduleItems: ModuleItem[] = [
   },
   {
     to: "/agenda",
-    label: "Agenda",
+    label: "Visitas e compromissos",
     shortLabel: "Agenda",
     desc: "Visitas, retornos e compromissos",
     icon: CalendarCheck2,
     module: "agenda",
+    exact: true,
     primary: true,
     primaryFor: ["admin_owner"],
+  },
+  {
+    to: "/agenda/fotos",
+    label: "Agenda de fotos",
+    shortLabel: "Fotos",
+    desc: "Sessões de fotos e vídeos dos imóveis",
+    icon: Camera,
+    module: "agenda",
   },
   {
     to: "/mais",
