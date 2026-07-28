@@ -343,6 +343,56 @@ function collectRecipientIds(ev: EventRow): string[] {
 
 type SyncRow = { user_id: string; google_event_id: string; calendar_id: string };
 
+const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+const SCOPE_ERROR = "Permissão do Google Agenda incompleta. Reconecte sua conta Google.";
+
+function hasCalendarScope(conn: ConnectionRow) {
+  // Conexões antigas foram autorizadas antes do escopo calendar.events existir.
+  return (conn.scope ?? "").includes(CALENDAR_SCOPE);
+}
+
+function needsReconnect(error: string) {
+  return /invalid_grant|unauthorized|insufficient|401|403/i.test(error);
+}
+
+/** Apaga a cópia do Google de um destinatário que deixou de estar vinculado ao evento. */
+async function removeRecipientCopy(eventId: string, row: SyncRow) {
+  const { data: conn } = await supabaseAdmin
+    .from("google_calendar_connections")
+    .select(
+      "user_id,google_email,access_token,refresh_token,expires_at,calendar_id,scope,last_error",
+    )
+    .eq("user_id", row.user_id)
+    .maybeSingle();
+
+  if (conn && row.google_event_id) {
+    try {
+      const accessToken = await getValidAccessToken(conn as ConnectionRow);
+      const res = await callCalendar(
+        accessToken,
+        row.calendar_id || (conn as ConnectionRow).calendar_id || "primary",
+        `/events/${encodeURIComponent(row.google_event_id)}?sendUpdates=none`,
+        { method: "DELETE" },
+      );
+      if (!res.ok && res.status !== 404 && res.status !== 410) {
+        console.error("[google] falha ao remover cópia obsoleta", res.status, await res.text());
+        return false;
+      }
+    } catch (e) {
+      console.error("[google] erro ao remover cópia obsoleta", e);
+      return false;
+    }
+  }
+
+  await supabaseAdmin
+    .from("agenda_event_google_syncs")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("user_id", row.user_id);
+  return true;
+}
+
+
 async function syncSingleRecipient(
   ev: EventRow,
   conn: ConnectionRow,
