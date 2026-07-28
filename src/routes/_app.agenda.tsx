@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { AgendaCreateCard } from "@/components/agenda/AgendaCreateCard";
 import { AgendaFilters } from "@/components/agenda/AgendaFilters";
@@ -22,6 +22,9 @@ import type { AgendaEvent, AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/agenda")({
   head: () => ({ meta: [{ title: "Visitas e compromissos — Gestão Cordial" }] }),
+  validateSearch: (search: { id?: unknown } & SearchSchemaInput) => ({
+    id: typeof search.id === "string" ? search.id : undefined,
+  }),
   component: GuardedAgendaPage,
 });
 
@@ -33,18 +36,21 @@ function GuardedAgendaPage() {
   );
 }
 
-
 function AgendaPage() {
   const session = useSession();
+  const { id: highlightedId } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AgendaEvent | undefined>();
   const [filters, setFilters] = useState<AgendaFiltersState>(defaultAgendaFilters);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const unavailableDeepLink = useRef<string | null>(null);
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
   const corretores = useApp((state) => state.corretores);
   const atendimentos = useApp((state) => state.atendimentos);
   const {
+    events,
     filteredEvents,
     stats,
     createEvent,
@@ -55,6 +61,21 @@ function AgendaPage() {
     error,
     refetch,
   } = useAgenda("", filters, { scope: "geral" });
+
+  useEffect(() => {
+    if (!highlightedId || isLoading || isError) return;
+    const event = events.find((item) => item.id === highlightedId);
+    if (!event) {
+      if (unavailableDeepLink.current !== highlightedId) {
+        unavailableDeepLink.current = highlightedId;
+        setFeedback("Compromisso indisponível ou sem permissão para este usuário.");
+      }
+      return;
+    }
+    unavailableDeepLink.current = null;
+    setSelected(event);
+    setOpen(true);
+  }, [events, highlightedId, isError, isLoading]);
 
   const people = useMemo(() => {
     const values = [
@@ -138,7 +159,6 @@ function AgendaPage() {
 
       <AgendaSummaryCards variant="geral" stats={stats as never} />
 
-
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3 px-1">
           <div>
@@ -187,7 +207,12 @@ function AgendaPage() {
         <AgendaFormModal
           open={open}
           event={selected}
-          onOpenChange={setOpen}
+          onOpenChange={(nextOpen) => {
+            setOpen(nextOpen);
+            if (!nextOpen && highlightedId) {
+              void navigate({ to: ".", search: {}, replace: true });
+            }
+          }}
           onSubmit={save}
           canEdit={
             selected ? canEdit(selected) : Boolean(session?.permissions.includes("agenda:write"))

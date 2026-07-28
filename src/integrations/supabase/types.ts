@@ -868,6 +868,33 @@ export type Database = {
           },
         ]
       }
+      email_dispatch_claims: {
+        Row: {
+          claim_key: string
+          created_at: string
+          error_message: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          claim_key: string
+          created_at?: string
+          error_message?: string | null
+          source: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          claim_key?: string
+          created_at?: string
+          error_message?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1264,36 +1291,81 @@ export type Database = {
       }
       notifications: {
         Row: {
+          actor_id: string | null
+          assignment_id: string | null
+          category: string
           created_at: string
+          dedup_key: string | null
+          entity_id: string | null
+          entity_type: string | null
           id: string
+          imobiliaria: string | null
           lida: boolean
           link: string | null
           mensagem: string | null
           metadata: Json
+          read_at: string | null
           tipo: string
           titulo: string
           user_id: string
         }
         Insert: {
+          actor_id?: string | null
+          assignment_id?: string | null
+          category?: string
           created_at?: string
+          dedup_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
+          imobiliaria?: string | null
           lida?: boolean
           link?: string | null
           mensagem?: string | null
           metadata?: Json
+          read_at?: string | null
           tipo: string
           titulo: string
           user_id: string
         }
         Update: {
+          actor_id?: string | null
+          assignment_id?: string | null
+          category?: string
           created_at?: string
+          dedup_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           id?: string
+          imobiliaria?: string | null
           lida?: boolean
           link?: string | null
           mensagem?: string | null
           metadata?: Json
+          read_at?: string | null
           tipo?: string
           titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_agencies: {
+        Row: {
+          agency: string
+          created_at: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          agency: string
+          created_at?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          agency?: string
+          created_at?: string
+          source?: string
           user_id?: string
         }
         Relationships: []
@@ -2330,21 +2402,13 @@ export type Database = {
         Returns: boolean
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      current_user_has_notification_agency_access: {
+        Args: { _agency: string }
+        Returns: boolean
+      }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
-      }
-      get_attendance_assignment_status: {
-        Args: { _attendance_id: string }
-        Returns: {
-          assigned_at: string
-          assignment_id: string
-          broker_id: string
-          broker_nome: string
-          first_opened_at: string
-          response_time_seconds: number
-          status: Database["public"]["Enums"]["attendance_assignment_status"]
-        }[]
       }
       get_corretores_response_metrics: {
         Args: { _end?: string; _imobiliaria?: string; _start?: string }
@@ -2357,6 +2421,28 @@ export type Database = {
           median_seconds: number
           pending_count: number
           slowest_seconds: number
+        }[]
+      }
+      get_my_notification_summary: { Args: never; Returns: Json }
+      get_notification_attendance_statuses: {
+        Args: { _notification_ids: string[] }
+        Returns: {
+          assigned_at: string
+          broker_nome: string | null
+          first_opened_at: string | null
+          notification_id: string
+          response_time_seconds: number | null
+          status: string
+        }[]
+      }
+      get_notification_management_summary: {
+        Args: { _end: string; _imobiliaria?: string; _start: string }
+        Returns: {
+          assigned_count: number
+          avg_first_open_seconds: number | null
+          median_first_open_seconds: number | null
+          opened_count: number
+          pending_open_count: number
         }[]
       }
       get_satisfaction_survey_by_token: {
@@ -2377,6 +2463,37 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_notification_agency_access: {
+        Args: { _agency: string; _user_id: string }
+        Returns: boolean
+      }
+      list_my_notifications: {
+        Args: {
+          _before_created_at?: string
+          _before_id?: string
+          _category?: string
+          _limit?: number
+        }
+        Returns: {
+          actor_id: string | null
+          category: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          imobiliaria: string | null
+          lida: boolean
+          link: string | null
+          mensagem: string | null
+          read_at: string | null
+          tipo: string
+          titulo: string
+        }[]
+      }
+      list_assignable_brokers: {
+        Args: { _agency?: string | null }
+        Returns: { agencies: string[]; id: string; nome: string }[]
+      }
       list_corretores: {
         Args: never
         Returns: {
@@ -2392,7 +2509,8 @@ export type Database = {
         Args: { _attendance_id: string }
         Returns: Json
       }
-      mark_attendance_opened: { Args: { _id: string }; Returns: undefined }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_read: { Args: { _id: string }; Returns: Json }
       move_to_dlq: {
         Args: {
           dlq_name: string

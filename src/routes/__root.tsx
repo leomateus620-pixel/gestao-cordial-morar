@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "@/components/ui/sonner";
+import { NotificationExperienceProvider } from "@/components/notifications/NotificationExperienceProvider";
 
 function NotFoundComponent() {
   return (
@@ -81,14 +83,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Gestão integrada para Cordial Imóveis e Morar Imóveis." },
       { name: "author", content: "Gestão Cordial" },
       { property: "og:title", content: "Gestão Cordial" },
-      { property: "og:description", content: "Gestão integrada para Cordial Imóveis e Morar Imóveis." },
+      {
+        property: "og:description",
+        content: "Gestão integrada para Cordial Imóveis e Morar Imóveis.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@GestaoCordial" },
       { name: "twitter:title", content: "Gestão Cordial" },
-      { name: "twitter:description", content: "Gestão integrada para Cordial Imóveis e Morar Imóveis." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp" },
+      {
+        name: "twitter:description",
+        content: "Gestão integrada para Cordial Imóveis e Morar Imóveis.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -111,7 +127,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
@@ -128,8 +144,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <NotificationExperienceProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster position="bottom-center" richColors closeButton />
+      </NotificationExperienceProvider>
     </QueryClientProvider>
   );
 }

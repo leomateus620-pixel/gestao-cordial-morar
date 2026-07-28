@@ -36,7 +36,6 @@ import {
   type UsuarioSistema,
   type Venda,
 } from "@/lib/mock/data";
-import { notificationsSeed, type AppNotification } from "@/lib/mock/notifications";
 import { createStoreClientRecord, normalizeStoreClient } from "@/services/clients";
 import {
   atendimentoToClientInput,
@@ -73,7 +72,6 @@ type State = {
   permissoes: Permissao[];
   usuariosSistema: UsuarioSistema[];
   projecoesFinanceiras: ProjecaoFinanceira[];
-  notifications: AppNotification[];
   setAgency: (a: AgencyFilter) => void;
   addCliente: (c: ClientCreateInput) => void;
   addImovel: (i: Omit<Imovel, "id">) => void;
@@ -84,8 +82,6 @@ type State = {
   updateVenda: (id: string, v: SaleRecordInput) => void;
   cancelVenda: (id: string) => void;
   upsertAgendaEvent: (event: AgendaEvent) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
 };
 
 const id = () => Math.random().toString(36).slice(2, 10);
@@ -128,7 +124,6 @@ export const useApp = create<State>()(
       permissoes: permissoesSeed,
       usuariosSistema: usuariosSistemaSeed,
       projecoesFinanceiras: projecoesFinanceirasSeed,
-      notifications: notificationsSeed,
       setAgency: (agency) => set({ agency }),
       addCliente: (c) =>
         set((s) => ({
@@ -256,12 +251,6 @@ export const useApp = create<State>()(
               : [toLegacyAgendaEvent(event), ...s.agenda],
           };
         }),
-      markNotificationRead: (nid) =>
-        set((s) => ({
-          notifications: s.notifications.map((n) => (n.id === nid ? { ...n, read: true } : n)),
-        })),
-      markAllNotificationsRead: () =>
-        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
     }),
     {
       name: "gc.store.v2",

@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/access-control";
 import {
   parseTrackParam,
+  finalidadeToTrack,
   trackToFinalidade,
   trackLabel,
   type CommercialTrack,
@@ -42,14 +43,15 @@ import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
   head: () => ({ meta: [{ title: "Atendimentos — Gestão Cordial" }] }),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: { id?: unknown; clienteId?: unknown; track?: unknown } & SearchSchemaInput,
+  ) => ({
     id: typeof search.id === "string" ? search.id : undefined,
     clienteId: typeof search.clienteId === "string" ? search.clienteId : undefined,
     track: parseTrackParam(search.track),
   }),
   component: Page,
 });
-
 
 function Page() {
   const session = useSession();
@@ -73,6 +75,7 @@ function Page() {
   const [selectedStage, setSelectedStage] = useState<PipelineStage>("primeiro_contato");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const unavailableDeepLink = useRef<string | null>(null);
   const qc = useQueryClient();
   const {
     atendimentos,
@@ -105,12 +108,27 @@ function Page() {
   );
 
   useEffect(() => {
-    if (!highlightId || isLoading) return;
-    const el = document.getElementById(`atendimento-${highlightId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!highlightId || isLoading || isError) return;
+    const target = atendimentos.find((item) => item.id === highlightId);
+    if (!target) {
+      if (unavailableDeepLink.current !== highlightId) {
+        unavailableDeepLink.current = highlightId;
+        toast.error("Atendimento indisponível ou sem permissão para este usuário.");
+      }
+      return;
     }
-  }, [highlightId, isLoading, filteredAtendimentos.length]);
+    unavailableDeepLink.current = null;
+    const targetTrack = finalidadeToTrack(target.finalidade);
+    if (targetTrack !== "ambos" && targetTrack !== track) {
+      navigate({
+        to: ".",
+        search: { track: targetTrack, id: highlightId, clienteId: clienteIdFilter },
+        replace: true,
+      });
+    }
+    setSelectedStage(target.pipelineStage);
+    setDetailId(target.id);
+  }, [atendimentos, clienteIdFilter, highlightId, isError, isLoading, navigate, track]);
 
   // First-open timing is closed only by the attendance detail drawer via the
   // backend RPC `mark_attendance_first_opened`, never from list rendering.
@@ -392,8 +410,6 @@ function Page() {
 
       <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} />
 
-
-
       <AtendimentoFilters
         query={query}
         onQueryChange={setQuery}
@@ -539,7 +555,16 @@ function Page() {
         atendimento={detailAtendimento}
         open={detailId !== null}
         onOpenChange={(o) => {
-          if (!o) setDetailId(null);
+          if (!o) {
+            setDetailId(null);
+            if (highlightId) {
+              navigate({
+                to: ".",
+                search: { track, clienteId: clienteIdFilter },
+                replace: true,
+              });
+            }
+          }
         }}
         onStageChange={handleStageChange}
         onAction={handleAction}

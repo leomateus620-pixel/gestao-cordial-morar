@@ -3,6 +3,7 @@ import { ChevronRight, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/store/app-store";
 import { useSession } from "@/lib/auth-mock";
+import { brokerCanServeAgency, type ScopedBrokerOption } from "@/lib/attendances/broker-scope";
 import {
   formatCurrencyBR,
   formatPhoneBR,
@@ -125,18 +126,18 @@ export function AtendimentoFormModal({
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AtendimentoCreateInput) => void | Promise<void>;
   initialValue?: Atendimento | null;
-  brokerOptions?: Array<{ id: string; nome: string }>;
+  brokerOptions?: ScopedBrokerOption[];
   presetTrack?: "venda" | "aluguel";
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
   const currentUser = useSession();
-  const sortedBrokerOptions = [...brokerOptions]
-    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-    .map((c) => ({ id: c.id, label: c.nome }))
-    .concat({ id: "a_definir", label: "A definir" });
-
   const [form, setForm] = useState<FormState>(() => formFromAtendimento(initialValue));
+  const sortedBrokerOptions = brokerOptions
+    .filter((broker) => brokerCanServeAgency(broker, form.imobiliaria))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .map((broker) => ({ id: broker.id, label: broker.nome }))
+    .concat({ id: "a_definir", label: "A definir" });
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
@@ -469,8 +470,7 @@ export function AtendimentoFormModal({
                     value={form.finalidade}
                     onChange={(value) => update("finalidade", value as AtendimentoFinalidade)}
                     options={atendimentoFinalidadeOptions.filter(
-                      (opt) =>
-                        opt.value !== "ambos" || form.finalidade === "ambos",
+                      (opt) => opt.value !== "ambos" || form.finalidade === "ambos",
                     )}
                   />
                 </Field>

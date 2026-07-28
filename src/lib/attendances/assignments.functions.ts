@@ -8,16 +8,6 @@ type RpcClient = {
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
-export type AttendanceAssignmentStatus = {
-  assignment_id: string;
-  broker_id: string;
-  broker_nome: string | null;
-  assigned_at: string;
-  first_opened_at: string | null;
-  response_time_seconds: number | null;
-  status: "pending_open" | "opened" | "superseded" | "cancelled";
-};
-
 export type CorretorResponseMetric = {
   broker_id: string;
   broker_nome: string | null;
@@ -39,20 +29,7 @@ export const markAttendanceFirstOpened = createServerFn({ method: "POST" })
       { _attendance_id: data.attendanceId },
     );
     if (error) throw new Error(error.message);
-    return result as { ok: boolean; response_time_seconds?: number } | null;
-  });
-
-/** Management-only. Returns [] for brokers by design (RPC gates the read). */
-export const getAttendanceAssignmentStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { attendanceId: string }) => d)
-  .handler(async ({ data, context }) => {
-    const { data: rows, error } = await (context.supabase as unknown as RpcClient).rpc(
-      "get_attendance_assignment_status",
-      { _attendance_id: data.attendanceId },
-    );
-    if (error) throw new Error(error.message);
-    return (rows as AttendanceAssignmentStatus[] | null) ?? [];
+    return result as { ok: boolean; noop: boolean } | null;
   });
 
 /** Aggregate broker metrics. Management-only. */

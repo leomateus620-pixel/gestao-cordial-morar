@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { ReceiptText } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EmptySalesState } from "@/components/vendas/EmptySalesState";
 import { SaleDetailsDrawer } from "@/components/vendas/SaleDetailsDrawer";
@@ -19,6 +19,9 @@ import type { SaleRecord, SaleRecordInput, SalesFiltersState } from "@/types/sal
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Gestão Cordial" }] }),
+  validateSearch: (search: { id?: unknown } & SearchSchemaInput) => ({
+    id: typeof search.id === "string" ? search.id : undefined,
+  }),
   component: GuardedPage,
 });
 
@@ -32,6 +35,8 @@ function GuardedPage() {
 
 function Page() {
   const session = useSession();
+  const { id: highlightedId } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const isAdmin = session?.perfil === "admin_owner";
   const agency = useApp((state) => state.agency);
   const imoveis = useFiltered(useApp((state) => state.imoveis));
@@ -64,6 +69,7 @@ function Page() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const [editingSale, setEditingSale] = useState<SaleRecord | null>(null);
+  const unavailableDeepLink = useRef<string | null>(null);
 
   const scopedSales = useMemo(
     () => (agency === "todas" ? sales : sales.filter((s) => s.imobiliaria === agency)),
@@ -76,6 +82,21 @@ function Page() {
   );
 
   const defaultAgency: AgencyId = agency === "todas" ? "cordial" : agency;
+
+  useEffect(() => {
+    if (!highlightedId || isLoading || isError) return;
+    const sale = sales.find((item) => item.id === highlightedId);
+    if (!sale) {
+      if (unavailableDeepLink.current !== highlightedId) {
+        unavailableDeepLink.current = highlightedId;
+        toast.error("Venda indisponível ou sem permissão para este usuário.");
+      }
+      return;
+    }
+    unavailableDeepLink.current = null;
+    setSelectedSale(sale);
+    setDetailsOpen(true);
+  }, [highlightedId, isError, isLoading, sales]);
 
   function openCreateForm() {
     setEditingSale(null);
@@ -181,7 +202,6 @@ function Page() {
     }
   }
 
-
   const isSaving = isCreating || isUpdating;
 
   return (
@@ -273,7 +293,12 @@ function Page() {
       <SaleDetailsDrawer
         sale={selectedSale}
         open={detailsOpen}
-        onOpenChange={setDetailsOpen}
+        onOpenChange={(nextOpen) => {
+          setDetailsOpen(nextOpen);
+          if (!nextOpen && highlightedId) {
+            void navigate({ to: ".", search: {}, replace: true });
+          }
+        }}
         onEdit={openEditForm}
         onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
@@ -296,9 +321,7 @@ function Page() {
             });
             toast.success("Anexo adicionado.");
           } catch (err) {
-            toast.error(
-              err instanceof Error ? err.message : "Não foi possível adicionar o anexo.",
-            );
+            toast.error(err instanceof Error ? err.message : "Não foi possível adicionar o anexo.");
           }
         }}
         onRemoveAttachment={async (id) => {
@@ -306,9 +329,7 @@ function Page() {
             await removeAttachment(id);
             toast.success("Anexo removido.");
           } catch (err) {
-            toast.error(
-              err instanceof Error ? err.message : "Não foi possível remover o anexo.",
-            );
+            toast.error(err instanceof Error ? err.message : "Não foi possível remover o anexo.");
           }
         }}
         onMarkPaymentPaid={(paymentId, paid) =>
