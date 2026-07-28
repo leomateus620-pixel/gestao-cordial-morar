@@ -378,3 +378,32 @@ export const completeAgendaEvent = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/**
+ * Atendimentos reais disponíveis para vincular a um compromisso.
+ * A RLS já restringe o corretor aos seus próprios atendimentos.
+ */
+export const listAgendaAttendanceOptions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("attendances")
+      .select(
+        "id,cliente_nome,telefone,finalidade,tipo_imovel,corretor_nome,imovel_descricao,imovel_codigo,pipeline_stage,updated_at",
+      )
+      .not("pipeline_stage", "in", "(perdido,arquivado)")
+      .order("updated_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      clienteNome: row.cliente_nome,
+      telefone: row.telefone ?? undefined,
+      finalidade: row.finalidade ?? undefined,
+      tipoImovel: row.tipo_imovel ?? undefined,
+      corretorNome: row.corretor_nome ?? undefined,
+      imovelDescricao: row.imovel_descricao ?? undefined,
+      imovelCodigo: row.imovel_codigo ?? undefined,
+      etapa: row.pipeline_stage ?? undefined,
+    }));
+  });
