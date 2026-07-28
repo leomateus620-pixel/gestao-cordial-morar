@@ -8,13 +8,18 @@ export const Route = createFileRoute("/api/public/hooks/google-calendar-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env.NOTIFICATION_HOOK_SECRET;
+        // O cron envia a service-role key (guardada no vault do banco).
+        // Aceita também o segredo de hooks já usado pelos demais endpoints internos.
+        const accepted = [
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+          process.env.NOTIFICATION_HOOK_SECRET,
+        ].filter((v): v is string => Boolean(v));
         const provided =
           request.headers.get("apikey") ??
           request.headers.get("x-api-key") ??
           request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
           "";
-        if (!secret || provided !== secret) {
+        if (!accepted.some((v) => v === provided)) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json" },
