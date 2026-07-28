@@ -180,7 +180,6 @@ async function notify(
     link: "/configuracoes",
     dedup_key: dedupKey,
   } as never);
-
 }
 
 type ReminderRow = { tipo: string; antecedencia_min: number; ativo: boolean };
@@ -199,6 +198,8 @@ type EventRow = {
   local: string | null;
   cliente_nome: string | null;
   imovel_descricao: string | null;
+  imovel_nome: string | null;
+  imovel_endereco: string | null;
   owner_user_id: string | null;
   created_by: string;
   responsavel_nome: string | null;
@@ -242,7 +243,9 @@ function buildEventPayload(ev: EventRow, extraAttendeeEmails: string[] = []) {
     tipoLabel ? `Tipo: ${tipoLabel}` : null,
     inviter ? `Convidado por: ${inviter}` : null,
     ev.cliente_nome ? `Cliente: ${ev.cliente_nome}` : null,
-    ev.imovel_descricao ? `Imóvel: ${ev.imovel_descricao}` : null,
+    ev.imovel_nome ? `Imóvel: ${ev.imovel_nome}` : null,
+    ev.imovel_descricao ? `Detalhes do imóvel: ${ev.imovel_descricao}` : null,
+    ev.imovel_endereco ? `Endereço: ${ev.imovel_endereco}` : null,
     ev.observacoes ? `Obs.: ${ev.observacoes}` : null,
     "— sincronizado pelo Gestão Cordial",
   ].filter(Boolean);
@@ -275,7 +278,7 @@ function buildEventPayload(ev: EventRow, extraAttendeeEmails: string[] = []) {
   const base: Record<string, unknown> = {
     summary: ev.titulo,
     description: descricaoParts.join("\n"),
-    location: ev.local ?? undefined,
+    location: ev.imovel_endereco ?? ev.local ?? undefined,
     reminders: overrides.length ? { useDefault: false, overrides } : { useDefault: true },
     status: ev.status === "cancelado" ? "cancelled" : "confirmed",
   };
@@ -320,7 +323,7 @@ async function loadEvent(eventId: string): Promise<EventRow | null> {
   const { data, error } = await supabaseAdmin
     .from("agenda_events")
     .select(
-      "id,titulo,descricao,observacoes,tipo,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,owner_user_id,created_by,responsavel_nome,criado_por_nome,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo),agenda_event_guests(email,nome,response_status),agenda_event_participants(user_id)",
+      "id,titulo,descricao,observacoes,tipo,inicio,fim,duracao_min,dia_inteiro,local,cliente_nome,imovel_descricao,imovel_nome,imovel_endereco,owner_user_id,created_by,responsavel_nome,criado_por_nome,status,deleted_at,google_event_id,agenda_event_reminders(tipo,antecedencia_min,ativo),agenda_event_guests(email,nome,response_status),agenda_event_participants(user_id)",
     )
     .eq("id", eventId)
     .maybeSingle();

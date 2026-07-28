@@ -39,6 +39,8 @@ type DbEvent = {
   cliente_nome: string | null;
   atendimento_id: string | null;
   imovel_id: string | null;
+  imovel_nome: string | null;
+  imovel_endereco: string | null;
   imovel_descricao: string | null;
   agenciamento_id: string | null;
   local: string | null;
@@ -97,6 +99,8 @@ function rowToEvent(row: DbEvent): AgendaEvent {
     clienteNome: orUndef(row.cliente_nome),
     atendimentoId: orUndef(row.atendimento_id),
     imovelId: orUndef(row.imovel_id),
+    imovelNome: orUndef(row.imovel_nome),
+    imovelEndereco: orUndef(row.imovel_endereco),
     imovelDescricao: orUndef(row.imovel_descricao),
     agenciamentoId: orUndef(row.agenciamento_id),
     local: orUndef(row.local),
@@ -179,9 +183,17 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     const { id, input } = data;
     validate(input);
     const ownerId = asUuid(input.responsavelPrincipalId) ?? context.userId;
+    const inicioIso = new Date(input.inicio).toISOString();
+    const fimIso = input.fim ? new Date(input.fim).toISOString() : null;
+    // A duração é sempre derivada do intervalo informado (o formulário não pede duração).
+    const duracaoMin = fimIso
+      ? Math.max(
+          1,
+          Math.round((new Date(fimIso).getTime() - new Date(inicioIso).getTime()) / 60000),
+        )
+      : (input.duracaoMin ?? 60);
 
     const payload = {
-      created_by: context.userId,
       owner_user_id: ownerId,
       tipo: input.tipo,
       status: input.status,
@@ -190,18 +202,20 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       titulo: input.titulo.trim(),
       descricao: orNull(input.descricao),
       observacoes: orNull(input.observacoes),
-      inicio: new Date(input.inicio).toISOString(),
-      fim: input.fim ? new Date(input.fim).toISOString() : null,
-      duracao_min: input.duracaoMin ?? null,
+      inicio: inicioIso,
+      fim: fimIso,
+      duracao_min: duracaoMin,
       dia_inteiro: Boolean(input.diaInteiro),
       repeticao: input.repeticao ?? "nao",
       cliente_id: orNull(input.clienteId),
       cliente_nome: orNull(input.clienteNome),
       atendimento_id: orNull(input.atendimentoId),
       imovel_id: asUuid(input.imovelId),
+      imovel_nome: orNull(input.imovelNome),
+      imovel_endereco: orNull(input.imovelEndereco),
       imovel_descricao: orNull(input.imovelDescricao),
       agenciamento_id: asUuid(input.agenciamentoId),
-      local: orNull(input.local),
+      local: orNull(input.local) ?? orNull(input.imovelEndereco),
       video_call_url: orNull(input.videoCallUrl),
       responsavel_nome: orNull(input.responsavelPrincipalNome),
       google_calendar_sync_status: input.googleCalendarSyncStatus ?? "nao_sincronizado",
@@ -218,7 +232,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     } else {
       const { data: inserted, error } = await context.supabase
         .from("agenda_events")
-        .insert(payload)
+        .insert({ ...payload, created_by: context.userId })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
@@ -294,9 +308,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
 
     // Best-effort push para o Google Agenda do responsável (não bloqueia em caso de erro).
     try {
-      const { syncAgendaEventToGoogle } = await import(
-        "@/lib/google-calendar/google.server"
-      );
+      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
       await syncAgendaEventToGoogle(eventId!);
     } catch (e) {
       console.error("[agenda] sync google falhou:", e);
@@ -321,9 +333,7 @@ export const softDeleteAgendaEvent = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     try {
-      const { syncAgendaEventToGoogle } = await import(
-        "@/lib/google-calendar/google.server"
-      );
+      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
       await syncAgendaEventToGoogle(data.id);
     } catch (e) {
       console.error("[agenda] sync google delete falhou:", e);
@@ -358,12 +368,39 @@ export const completeAgendaEvent = createServerFn({ method: "POST" })
     }
 
     try {
-      const { syncAgendaEventToGoogle } = await import(
-        "@/lib/google-calendar/google.server"
-      );
+      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
       await syncAgendaEventToGoogle(data.id);
     } catch (e) {
       console.error("[agenda] sync google complete falhou:", e);
     }
     return { ok: true };
+  });
+
+/**
+ * Atendimentos reais disponíveis para vincular a um compromisso.
+ * A RLS já restringe o corretor aos seus próprios atendimentos.
+ */
+export const listAgendaAttendanceOptions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("attendances")
+      .select(
+        "id,cliente_nome,telefone,finalidade,tipo_imovel,corretor_nome,imovel_descricao,imovel_codigo,pipeline_stage,updated_at",
+      )
+      .not("pipeline_stage", "in", "(perdido,arquivado)")
+      .order("updated_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      clienteNome: row.cliente_nome,
+      telefone: row.telefone ?? undefined,
+      finalidade: row.finalidade ?? undefined,
+      tipoImovel: row.tipo_imovel ?? undefined,
+      corretorNome: row.corretor_nome ?? undefined,
+      imovelDescricao: row.imovel_descricao ?? undefined,
+      imovelCodigo: row.imovel_codigo ?? undefined,
+      etapa: row.pipeline_stage ?? undefined,
+    }));
   });

@@ -158,7 +158,6 @@ function AgendaFotosPage() {
 
       <AgendaSummaryCards variant="fotos" stats={stats as never} />
 
-
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3 px-1">
           <div>
@@ -213,12 +212,6 @@ function AgendaFotosPage() {
             selected ? canEdit(selected) : Boolean(session?.permissions.includes("agenda:write"))
           }
           clients={clientOptions}
-          atendimentos={atendimentos.map((item) => ({
-            id: item.id,
-            clienteNome: item.clienteNome,
-            imovelDescricao: item.imovelDescricao,
-          }))}
-          properties={propertyOptions}
           people={people}
           currentUser={session ? { id: session.id, nome: session.nome } : undefined}
         />

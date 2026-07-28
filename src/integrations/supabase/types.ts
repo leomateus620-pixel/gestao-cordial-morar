@@ -334,7 +334,9 @@ export type Database = {
           id: string
           imobiliaria: Database["public"]["Enums"]["agenda_imobiliaria"]
           imovel_descricao: string | null
+          imovel_endereco: string | null
           imovel_id: string | null
+          imovel_nome: string | null
           inicio: string
           local: string | null
           observacoes: string | null
@@ -369,7 +371,9 @@ export type Database = {
           id?: string
           imobiliaria?: Database["public"]["Enums"]["agenda_imobiliaria"]
           imovel_descricao?: string | null
+          imovel_endereco?: string | null
           imovel_id?: string | null
+          imovel_nome?: string | null
           inicio: string
           local?: string | null
           observacoes?: string | null
@@ -404,7 +408,9 @@ export type Database = {
           id?: string
           imobiliaria?: Database["public"]["Enums"]["agenda_imobiliaria"]
           imovel_descricao?: string | null
+          imovel_endereco?: string | null
           imovel_id?: string | null
+          imovel_nome?: string | null
           inicio?: string
           local?: string | null
           observacoes?: string | null
