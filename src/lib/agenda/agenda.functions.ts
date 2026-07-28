@@ -183,9 +183,14 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     const { id, input } = data;
     validate(input);
     const ownerId = asUuid(input.responsavelPrincipalId) ?? context.userId;
+    const inicioIso = new Date(input.inicio).toISOString();
+    const fimIso = input.fim ? new Date(input.fim).toISOString() : null;
+    // A duração é sempre derivada do intervalo informado (o formulário não pede duração).
+    const duracaoMin = fimIso
+      ? Math.max(1, Math.round((new Date(fimIso).getTime() - new Date(inicioIso).getTime()) / 60000))
+      : (input.duracaoMin ?? 60);
 
     const payload = {
-      created_by: context.userId,
       owner_user_id: ownerId,
       tipo: input.tipo,
       status: input.status,
@@ -194,18 +199,20 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       titulo: input.titulo.trim(),
       descricao: orNull(input.descricao),
       observacoes: orNull(input.observacoes),
-      inicio: new Date(input.inicio).toISOString(),
-      fim: input.fim ? new Date(input.fim).toISOString() : null,
-      duracao_min: input.duracaoMin ?? null,
+      inicio: inicioIso,
+      fim: fimIso,
+      duracao_min: duracaoMin,
       dia_inteiro: Boolean(input.diaInteiro),
       repeticao: input.repeticao ?? "nao",
       cliente_id: orNull(input.clienteId),
       cliente_nome: orNull(input.clienteNome),
       atendimento_id: orNull(input.atendimentoId),
       imovel_id: asUuid(input.imovelId),
+      imovel_nome: orNull(input.imovelNome),
+      imovel_endereco: orNull(input.imovelEndereco),
       imovel_descricao: orNull(input.imovelDescricao),
       agenciamento_id: asUuid(input.agenciamentoId),
-      local: orNull(input.local),
+      local: orNull(input.local) ?? orNull(input.imovelEndereco),
       video_call_url: orNull(input.videoCallUrl),
       responsavel_nome: orNull(input.responsavelPrincipalNome),
       google_calendar_sync_status: input.googleCalendarSyncStatus ?? "nao_sincronizado",
@@ -222,7 +229,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     } else {
       const { data: inserted, error } = await context.supabase
         .from("agenda_events")
-        .insert(payload)
+        .insert({ ...payload, created_by: context.userId })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
