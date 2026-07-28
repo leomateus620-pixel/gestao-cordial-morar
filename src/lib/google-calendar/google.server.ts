@@ -746,10 +746,12 @@ export async function backfillGoogleSyncForUser(userId: string): Promise<{ proce
   let processed = 0;
   for (const id of ids) {
     try {
-      await syncAgendaEventToGoogle(id);
+      // Passa pela fila: falhas transitórias são reprocessadas pelo cron.
+      await scheduleGoogleSync(id);
       processed += 1;
     } catch (e) {
       console.error("[backfillGoogleSyncForUser] evento", id, e);
+      await enqueueGoogleSync(id).catch(() => undefined);
     }
   }
   return { processed };
