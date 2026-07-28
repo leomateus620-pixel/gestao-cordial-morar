@@ -34,7 +34,7 @@ const DEFAULT_CHECKLIST: AgenciamentoChecklist = {
 const DEFAULT_FILTERS: AgenciamentoFiltersState = {
   imobiliaria: "todas",
   status: "todos",
-  periodo: "mes",
+  periodo: "todos",
   corretorId: "todos",
   tipoImovel: "todos",
   checklist: "todos",
@@ -176,6 +176,7 @@ export function getAgenciamentoImobiliariaLabel(imobiliaria: AgenciamentoImobili
 
 export function getAgenciamentoPeriodLabel(periodo: AgenciamentoPeriodFilter) {
   const labels: Record<AgenciamentoPeriodFilter, string> = {
+    todos: "Todo período",
     mes: "Este mês",
     ultimos_30: "Últimos 30 dias",
     trimestre: "Trimestre",
@@ -249,6 +250,7 @@ function startOfCurrentYear(reference: Date) {
 }
 
 function matchesPeriod(dateIso: string, periodo: AgenciamentoPeriodFilter, reference = new Date()) {
+  if (periodo === "todos") return true;
   const date = new Date(dateIso);
   if (Number.isNaN(date.getTime())) return false;
   if (periodo === "ano") return date >= startOfCurrentYear(reference);

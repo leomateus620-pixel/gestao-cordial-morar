@@ -85,7 +85,7 @@ export type AgenciamentoInput = Omit<
   validadoPorNome?: string;
 };
 
-export type AgenciamentoPeriodFilter = "mes" | "ultimos_30" | "trimestre" | "ano";
+export type AgenciamentoPeriodFilter = "todos" | "mes" | "ultimos_30" | "trimestre" | "ano";
 
 export type AgenciamentoStatusFilter =
   | "todos"

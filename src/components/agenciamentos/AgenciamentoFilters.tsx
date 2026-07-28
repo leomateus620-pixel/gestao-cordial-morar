@@ -37,7 +37,7 @@ type AgenciamentoFiltersProps = {
   onReset: () => void;
 };
 
-const periodOptions: AgenciamentoPeriodFilter[] = ["mes", "ultimos_30", "trimestre", "ano"];
+const periodOptions: AgenciamentoPeriodFilter[] = ["todos", "mes", "ultimos_30", "trimestre", "ano"];
 const statusOptions: AgenciamentoStatusFilter[] = [
   "todos",
   "novo",
@@ -498,7 +498,7 @@ function getActiveFilterCount(filters: AgenciamentoFiltersState, isAdmin: boolea
   return [
     filters.imobiliaria !== "todas",
     filters.status !== "todos",
-    filters.periodo !== "mes",
+    filters.periodo !== "todos",
     filters.tipoImovel !== "todos",
     filters.checklist !== "todos",
     isAdmin && filters.corretorId !== "todos",

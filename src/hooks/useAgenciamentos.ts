@@ -140,9 +140,17 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     [effectiveBrokerId, rawAgenciamentos, session],
   );
 
+  const effectiveFilters = useMemo(
+    () => ({
+      ...filters,
+      corretorId: canManage ? filters.corretorId : "todos",
+    }),
+    [canManage, filters],
+  );
+
   const agenciamentos = useMemo(
-    () => filterAgenciamentos(visibleAgenciamentos, filters),
-    [filters, visibleAgenciamentos],
+    () => filterAgenciamentos(visibleAgenciamentos, effectiveFilters),
+    [effectiveFilters, visibleAgenciamentos],
   );
 
   const summary = useMemo(() => calculateAgenciamentosSummary(agenciamentos), [agenciamentos]);
@@ -168,9 +176,16 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     [dashboardAgenciamentos],
   );
 
-  const setFilters = useCallback((patch: Partial<AgenciamentoFiltersState>) => {
-    setFilterState((current) => ({ ...current, ...patch }));
-  }, []);
+  const setFilters = useCallback(
+    (patch: Partial<AgenciamentoFiltersState>) => {
+      setFilterState((current) => ({
+        ...current,
+        ...patch,
+        corretorId: canManage ? (patch.corretorId ?? current.corretorId) : "todos",
+      }));
+    },
+    [canManage],
+  );
 
   const resetFilters = useCallback(() => {
     setFilterState(getDefaultAgenciamentoFilters());
