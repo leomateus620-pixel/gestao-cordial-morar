@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
-  BellRing,
   Check,
   ChevronRight,
   CircleAlert,
   Clock3,
-  Cloud,
   Mail,
   Plus,
   RefreshCcw,
@@ -16,13 +15,11 @@ import {
   X,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { agendaTitleSuggestion, validateAgendaEvent } from "@/services/agenda";
+import { listAgendaAttendanceOptions } from "@/lib/agenda/agenda.functions";
 import {
   agendaImobiliariaOptions,
   agendaPrioridadeOptions,
-  agendaRecorrenciaOptions,
-  agendaReminderOptions,
   agendaStatusOptions,
   agendaTipoOptions,
   type AgendaChecklistItem,
@@ -31,15 +28,12 @@ import {
   type AgendaGuest,
   type AgendaImobiliaria,
   type AgendaPrioridade,
-  type AgendaRecorrencia,
   type AgendaStatus,
   type AgendaTipo,
 } from "@/types/agenda";
 import { cn } from "@/lib/utils";
 
 type NamedOption = { id: string; nome: string };
-type PropertyOption = { id: string; titulo: string; endereco?: string };
-type AtendimentoOption = { id: string; clienteNome?: string; imovelDescricao?: string };
 
 type FormState = {
   tipo: AgendaTipo;
@@ -48,26 +42,17 @@ type FormState = {
   data: string;
   horaInicio: string;
   horaFim: string;
-  duracaoMin: string;
-  diaInteiro: boolean;
-  repeticao: AgendaRecorrencia;
   status: AgendaStatus;
   prioridade: AgendaPrioridade;
   clienteId: string;
   atendimentoId: string;
-  imovelId: string;
+  imovelNome: string;
+  imovelEndereco: string;
   imovelDescricao: string;
-  local: string;
-  videoCallUrl: string;
   imobiliaria: AgendaImobiliaria;
   responsavelPrincipalId: string;
   participantesIds: string[];
   participanteOutro: string;
-  lembreteAtivo: boolean;
-  lembreteMin: string;
-  lembretePersonalizado: string;
-  emailAtivo: boolean;
-  whatsappAtivo: boolean;
   observacoes: string;
   checklist: AgendaChecklistItem[];
   convidados: AgendaGuest[];
@@ -75,13 +60,15 @@ type FormState = {
   convidadoNomeInput: string;
 };
 
-const checklistSeed = [
-  "Confirmar com cliente",
-  "Separar documentos",
-  "Enviar endereço",
-  "Confirmar responsável",
-  "Enviar mensagem de lembrete",
-  "Registrar resultado depois",
+const checklistSeed = ["Confirmar com o cliente", "Enviar endereço", "Levar documentos"];
+
+const STEPS = [
+  "Tipo e título",
+  "Data e horário",
+  "Vínculos e imóvel",
+  "Responsáveis",
+  "Convidados",
+  "Checklist",
 ];
 
 export function AgendaFormModal({
@@ -91,8 +78,6 @@ export function AgendaFormModal({
   onSubmit,
   canEdit,
   clients,
-  atendimentos,
-  properties,
   people,
   currentUser,
 }: {
@@ -102,8 +87,6 @@ export function AgendaFormModal({
   onSubmit: (input: AgendaEventInput) => void;
   canEdit: boolean;
   clients: NamedOption[];
-  atendimentos: AtendimentoOption[];
-  properties: PropertyOption[];
   people: NamedOption[];
   currentUser?: NamedOption;
 }) {
@@ -112,6 +95,14 @@ export function AgendaFormModal({
   const [closing, setClosing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
+  const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
+
+  const { data: attendanceOptions = [] } = useQuery({
+    queryKey: ["agenda", "attendance-options"],
+    queryFn: () => listAgendaAttendanceOptions(),
+    enabled: open,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (open) {
@@ -145,8 +136,8 @@ export function AgendaFormModal({
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") requestClose();
+    function onKey(keyEvent: KeyboardEvent) {
+      if (keyEvent.key === "Escape") requestClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -154,8 +145,11 @@ export function AgendaFormModal({
   }, [open]);
 
   const selectedClient = clients.find((client) => client.id === form.clienteId);
-  const selectedProperty = properties.find((property) => property.id === form.imovelId);
-  const selectedResponsible = people.find((person) => person.id === form.responsavelPrincipalId);
+  const responsibleName =
+    people.find((person) => person.id === form.responsavelPrincipalId)?.nome ??
+    currentUser?.nome ??
+    event?.responsavelPrincipalNome ??
+    "Você";
   const hasErrors = Object.keys(errors).length > 0;
   const isEditing = Boolean(event);
 
@@ -181,12 +175,12 @@ export function AgendaFormModal({
       const currentSuggestion = agendaTitleSuggestion(
         current.tipo,
         selectedClient?.nome,
-        current.imovelDescricao || selectedProperty?.titulo,
+        current.imovelNome || current.imovelDescricao,
       );
       const nextSuggestion = agendaTitleSuggestion(
         tipo,
         selectedClient?.nome,
-        current.imovelDescricao || selectedProperty?.titulo,
+        current.imovelNome || current.imovelDescricao,
       );
       return {
         ...current,
@@ -213,13 +207,18 @@ export function AgendaFormModal({
     }));
   }
 
-  function updateProperty(imovelId: string) {
-    const property = properties.find((item) => item.id === imovelId);
+  function updateAttendance(atendimentoId: string) {
+    const attendance = attendanceOptions.find((item) => item.id === atendimentoId);
     setForm((current) => ({
       ...current,
-      imovelId,
-      imovelDescricao: current.imovelDescricao || property?.titulo || "",
-      local: current.local || property?.endereco || "",
+      atendimentoId,
+      imovelNome:
+        current.imovelNome || attendance?.imovelCodigo || attendance?.imovelDescricao || "",
+      imovelDescricao: current.imovelDescricao || attendance?.imovelDescricao || "",
+      titulo:
+        !isEditing && !current.titulo.trim() && attendance?.clienteNome
+          ? agendaTitleSuggestion(current.tipo, attendance.clienteNome, attendance.imovelDescricao)
+          : current.titulo,
     }));
   }
 
@@ -260,27 +259,21 @@ export function AgendaFormModal({
     }));
   }
 
-  const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   function addGuest() {
     const email = form.convidadoEmailInput.trim().toLowerCase();
     const nome = form.convidadoNomeInput.trim();
-    if (!email) {
-      setGuestEmailError("Informe um e-mail.");
-      return;
-    }
-    if (!EMAIL_RE.test(email)) {
-      setGuestEmailError("E-mail inválido.");
-      return;
-    }
-    if (form.convidados.some((g) => g.email === email)) {
-      setGuestEmailError("E-mail já adicionado.");
-      return;
-    }
+    if (!email) return setGuestEmailError("Informe um e-mail.");
+    if (!EMAIL_RE.test(email)) return setGuestEmailError("E-mail inválido.");
+    if (form.convidados.some((guest) => guest.email === email))
+      return setGuestEmailError("E-mail já adicionado.");
     setGuestEmailError(undefined);
     setForm((current) => ({
       ...current,
-      convidados: [...current.convidados, { email, nome: nome || undefined, responseStatus: "needsAction" }],
+      convidados: [
+        ...current.convidados,
+        { email, nome: nome || undefined, responseStatus: "needsAction" },
+      ],
       convidadoEmailInput: "",
       convidadoNomeInput: "",
     }));
@@ -289,22 +282,14 @@ export function AgendaFormModal({
   function removeGuest(email: string) {
     setForm((current) => ({
       ...current,
-      convidados: current.convidados.filter((g) => g.email !== email),
+      convidados: current.convidados.filter((guest) => guest.email !== email),
     }));
   }
-
-
 
   async function submit(submitEvent: FormEvent) {
     submitEvent.preventDefault();
     if (!canEdit) return;
-    const input = buildInput(
-      form,
-      selectedClient,
-      selectedProperty,
-      selectedResponsible,
-      selectedParticipants,
-    );
+    const input = buildInput(form, selectedClient, responsibleName, selectedParticipants);
     const validation = validateAgendaEvent(input);
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
@@ -353,7 +338,8 @@ export function AgendaFormModal({
                 {isEditing ? "Editar compromisso" : "Novo compromisso"}
               </h2>
               <p className="mt-1 hidden max-w-2xl text-xs leading-5 text-foreground/58 sm:block">
-                Organize o compromisso, os vínculos, os responsáveis e os lembretes em um só lugar.
+                Preencha o essencial: horário, imóvel e quem participa. Os lembretes são automáticos
+                (1 dia, 1 hora e 30 minutos antes).
               </p>
             </div>
             <button
@@ -366,20 +352,18 @@ export function AgendaFormModal({
             </button>
           </div>
 
-          <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto sm:mt-4">
-            {["Tipo e título", "Data e horário", "Vínculos", "Responsáveis", "Convidados", "Lembretes"].map(
-              (section, index) => (
-                <span
-                  key={section}
-                  className="flex shrink-0 items-center gap-2 rounded-full bg-white/65 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-foreground/58"
-                >
-                  <span className="grid size-5 place-items-center rounded-full bg-teal-700 text-[9px] text-white">
-                    {index + 1}
-                  </span>
-                  {section}
+          <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto sm:mt-4">
+            {STEPS.map((section, index) => (
+              <span
+                key={section}
+                className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/65 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-foreground/55"
+              >
+                <span className="grid size-4 place-items-center rounded-full bg-teal-700 text-[8px] text-white">
+                  {index + 1}
                 </span>
-              ),
-            )}
+                {section}
+              </span>
+            ))}
           </div>
         </header>
 
@@ -406,7 +390,7 @@ export function AgendaFormModal({
               <Field label="Tipo de compromisso">
                 <select
                   value={form.tipo}
-                  onChange={(event) => updateType(event.target.value as AgendaTipo)}
+                  onChange={(inputEvent) => updateType(inputEvent.target.value as AgendaTipo)}
                   className={inputClass()}
                 >
                   {agendaTipoOptions.map((option) => (
@@ -419,16 +403,16 @@ export function AgendaFormModal({
               <Field label="Título" error={errors.titulo}>
                 <input
                   value={form.titulo}
-                  onChange={(event) => update("titulo", event.target.value)}
+                  onChange={(inputEvent) => update("titulo", inputEvent.target.value)}
                   className={inputClass(errors.titulo)}
-                  placeholder="Ex.: Fotos do imóvel no Centro"
+                  placeholder="Ex.: Visita ao imóvel do Centro"
                   required
                 />
               </Field>
               <Field label="Descrição curta">
                 <textarea
                   value={form.descricao}
-                  onChange={(event) => update("descricao", event.target.value)}
+                  onChange={(inputEvent) => update("descricao", inputEvent.target.value)}
                   className={cn(inputClass(), "min-h-20 resize-none leading-5")}
                   placeholder="Objetivo e contexto rápido para quem participar."
                 />
@@ -437,77 +421,45 @@ export function AgendaFormModal({
 
             <FormSection
               step="2"
-              title="Data, horário e duração"
-              description="Horários claros evitam sobreposição e esquecimento."
+              title="Data e horário"
+              description="Informe o início e o fim. A duração é calculada automaticamente."
             >
+              <Field label="Data" error={errors.inicio}>
+                <input
+                  type="date"
+                  value={form.data}
+                  onChange={(inputEvent) => update("data", inputEvent.target.value)}
+                  className={inputClass(errors.inicio)}
+                  required
+                />
+              </Field>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Data" error={errors.inicio}>
+                <Field label="Início" error={errors.inicio}>
                   <input
-                    type="date"
-                    value={form.data}
-                    onChange={(event) => update("data", event.target.value)}
+                    type="time"
+                    value={form.horaInicio}
+                    onChange={(inputEvent) => update("horaInicio", inputEvent.target.value)}
                     className={inputClass(errors.inicio)}
                     required
                   />
                 </Field>
-                <Field label="Dia inteiro">
-                  <ToggleLine
-                    checked={form.diaInteiro}
-                    onCheckedChange={(checked) => update("diaInteiro", checked)}
-                    label={form.diaInteiro ? "Ativado" : "Não"}
+                <Field label="Fim" error={errors.fim}>
+                  <input
+                    type="time"
+                    value={form.horaFim}
+                    onChange={(inputEvent) => update("horaFim", inputEvent.target.value)}
+                    className={inputClass(errors.fim)}
+                    required
                   />
                 </Field>
               </div>
-              {!form.diaInteiro && (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Início" error={errors.inicio}>
-                    <input
-                      type="time"
-                      value={form.horaInicio}
-                      onChange={(event) => update("horaInicio", event.target.value)}
-                      className={inputClass(errors.inicio)}
-                      required
-                    />
-                  </Field>
-                  <Field label="Fim" error={errors.fim}>
-                    <input
-                      type="time"
-                      value={form.horaFim}
-                      onChange={(event) => update("horaFim", event.target.value)}
-                      className={inputClass(errors.fim)}
-                    />
-                  </Field>
-                  <Field label="Duração (min)" error={errors.duracao}>
-                    <input
-                      type="number"
-                      min="1"
-                      value={form.duracaoMin}
-                      onChange={(event) => update("duracaoMin", event.target.value)}
-                      className={inputClass(errors.duracao)}
-                    />
-                  </Field>
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Repetir">
-                  <select
-                    value={form.repeticao}
-                    onChange={(event) =>
-                      update("repeticao", event.target.value as AgendaRecorrencia)
-                    }
-                    className={inputClass()}
-                  >
-                    {agendaRecorrenciaOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Status">
                   <select
                     value={form.status}
-                    onChange={(event) => update("status", event.target.value as AgendaStatus)}
+                    onChange={(inputEvent) =>
+                      update("status", inputEvent.target.value as AgendaStatus)
+                    }
                     className={inputClass()}
                   >
                     {agendaStatusOptions.map((option) => (
@@ -520,8 +472,8 @@ export function AgendaFormModal({
                 <Field label="Prioridade">
                   <select
                     value={form.prioridade}
-                    onChange={(event) =>
-                      update("prioridade", event.target.value as AgendaPrioridade)
+                    onChange={(inputEvent) =>
+                      update("prioridade", inputEvent.target.value as AgendaPrioridade)
                     }
                     className={inputClass()}
                   >
@@ -533,23 +485,18 @@ export function AgendaFormModal({
                   </select>
                 </Field>
               </div>
-              {form.repeticao === "personalizado" && (
-                <FutureNote>
-                  Recorrência personalizada está estruturada para uma fase futura.
-                </FutureNote>
-              )}
             </FormSection>
 
             <FormSection
               step="3"
-              title="Vínculos comerciais"
-              description="Todos os vínculos são opcionais; endereço e descrição livre continuam disponíveis."
+              title="Vínculos e imóvel"
+              description="Vincule um atendimento real e cadastre o imóvel do compromisso."
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Cliente vinculado">
                   <select
                     value={form.clienteId}
-                    onChange={(event) => updateClient(event.target.value)}
+                    onChange={(inputEvent) => updateClient(inputEvent.target.value)}
                     className={inputClass()}
                   >
                     <option value="">Sem cliente vinculado</option>
@@ -563,64 +510,51 @@ export function AgendaFormModal({
                 <Field label="Atendimento vinculado">
                   <select
                     value={form.atendimentoId}
-                    onChange={(event) => update("atendimentoId", event.target.value)}
+                    onChange={(inputEvent) => updateAttendance(inputEvent.target.value)}
                     className={inputClass()}
                   >
                     <option value="">Sem atendimento vinculado</option>
-                    {atendimentos.map((item) => (
+                    {attendanceOptions.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.clienteNome || item.imovelDescricao || item.id}
+                        {[item.clienteNome, item.finalidade, item.corretorNome]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </option>
                     ))}
                   </select>
                 </Field>
               </div>
-              <Field label="Imóvel vinculado">
-                <select
-                  value={form.imovelId}
-                  onChange={(event) => updateProperty(event.target.value)}
-                  className={inputClass()}
-                >
-                  <option value="">Sem imóvel cadastrado</option>
-                  {properties.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.titulo}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Descrição livre do imóvel">
-                <input
-                  value={form.imovelDescricao}
-                  onChange={(event) => update("imovelDescricao", event.target.value)}
-                  className={inputClass()}
-                  placeholder="Referência, nome do prédio ou características"
-                />
-              </Field>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Endereço/local">
+                <Field label="Nome / referência do imóvel">
                   <input
-                    value={form.local}
-                    onChange={(event) => update("local", event.target.value)}
+                    value={form.imovelNome}
+                    onChange={(inputEvent) => update("imovelNome", inputEvent.target.value)}
                     className={inputClass()}
-                    placeholder="Rua, número ou sala"
+                    placeholder="Ex.: Residencial Aurora — Apto 302"
                   />
                 </Field>
-                <Field label="Link de videochamada">
+                <Field label="Endereço do imóvel">
                   <input
-                    type="url"
-                    value={form.videoCallUrl}
-                    onChange={(event) => update("videoCallUrl", event.target.value)}
+                    value={form.imovelEndereco}
+                    onChange={(inputEvent) => update("imovelEndereco", inputEvent.target.value)}
                     className={inputClass()}
-                    placeholder="https://meet..."
+                    placeholder="Rua, número, bairro"
                   />
                 </Field>
               </div>
+              <Field label="Descrição do imóvel">
+                <input
+                  value={form.imovelDescricao}
+                  onChange={(inputEvent) => update("imovelDescricao", inputEvent.target.value)}
+                  className={inputClass()}
+                  placeholder="Características, andar, ponto de referência"
+                />
+              </Field>
               <Field label="Imobiliária">
                 <select
                   value={form.imobiliaria}
-                  onChange={(event) =>
-                    update("imobiliaria", event.target.value as AgendaImobiliaria)
+                  onChange={(inputEvent) =>
+                    update("imobiliaria", inputEvent.target.value as AgendaImobiliaria)
                   }
                   className={inputClass()}
                 >
@@ -636,21 +570,13 @@ export function AgendaFormModal({
             <FormSection
               step="4"
               title="Responsáveis"
-              description="Admins podem complementar responsáveis e participantes depois da criação."
+              description="O responsável principal é quem está criando o compromisso."
             >
-              <Field label="Responsável principal" error={errors.responsavel}>
-                <select
-                  value={form.responsavelPrincipalId}
-                  onChange={(event) => update("responsavelPrincipalId", event.target.value)}
-                  className={inputClass(errors.responsavel)}
-                >
-                  <option value="">A definir</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.nome}
-                    </option>
-                  ))}
-                </select>
+              <Field label="Responsável principal">
+                <div className="flex items-center gap-2 rounded-2xl border border-white/65 bg-white/60 px-3 py-3 text-sm font-medium text-foreground/75">
+                  <UserRoundCheck className="size-4 text-teal-700" />
+                  {responsibleName}
+                </div>
               </Field>
               <Field label="Participantes adicionais / quem acompanha">
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -671,46 +597,41 @@ export function AgendaFormModal({
               <Field label="Outro acompanhante">
                 <input
                   value={form.participanteOutro}
-                  onChange={(event) => update("participanteOutro", event.target.value)}
+                  onChange={(inputEvent) => update("participanteOutro", inputEvent.target.value)}
                   className={inputClass()}
                   placeholder="Nome de participante externo"
                 />
               </Field>
-              <div className="rounded-2xl border border-teal-700/10 bg-teal-700/6 px-3 py-2.5 text-[10px] leading-5 text-teal-900/70">
-                <UserRoundCheck className="mr-1 inline size-3.5" />
-                Permissão preparada: administradores editam qualquer evento; corretores editam
-                eventos próprios ou em que participam.
-              </div>
             </FormSection>
 
             <FormSection
               step="5"
               title="Convidados externos"
-              description="Envie convite por e-mail. O Google Agenda dispara o e-mail e cria o evento na agenda de cada convidado, com tipo do evento e quem convidou na descrição."
+              description="O Google Agenda envia o convite por e-mail e cria o evento na agenda de cada convidado."
               className="lg:col-span-2"
             >
               <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                 <input
                   type="email"
                   value={form.convidadoEmailInput}
-                  onChange={(event) => update("convidadoEmailInput", event.target.value)}
+                  onChange={(inputEvent) => update("convidadoEmailInput", inputEvent.target.value)}
                   className={inputClass(guestEmailError)}
                   placeholder="email@exemplo.com"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
+                  onKeyDown={(keyEvent) => {
+                    if (keyEvent.key === "Enter") {
+                      keyEvent.preventDefault();
                       addGuest();
                     }
                   }}
                 />
                 <input
                   value={form.convidadoNomeInput}
-                  onChange={(event) => update("convidadoNomeInput", event.target.value)}
+                  onChange={(inputEvent) => update("convidadoNomeInput", inputEvent.target.value)}
                   className={inputClass()}
                   placeholder="Nome (opcional)"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
+                  onKeyDown={(keyEvent) => {
+                    if (keyEvent.key === "Enter") {
+                      keyEvent.preventDefault();
                       addGuest();
                     }
                   }}
@@ -731,7 +652,7 @@ export function AgendaFormModal({
                   {form.convidados.map((guest) => (
                     <span
                       key={guest.email}
-                      className="inline-flex items-center gap-2 rounded-full bg-white/72 px-3 py-1.5 text-[11px] font-medium text-foreground/78 ring-1 ring-teal-700/15 shadow-sm"
+                      className="inline-flex items-center gap-2 rounded-full bg-white/72 px-3 py-1.5 text-[11px] font-medium text-foreground/78 shadow-sm ring-1 ring-teal-700/15"
                     >
                       <Mail className="size-3 text-teal-700" />
                       <span className="max-w-[200px] truncate">
@@ -751,90 +672,18 @@ export function AgendaFormModal({
                 </div>
               ) : (
                 <p className="text-[11px] leading-5 text-foreground/52">
-                  Nenhum convidado adicionado. Os convidados recebem e-mail do Google Agenda e o
-                  evento aparece automaticamente na agenda deles.
+                  Nenhum convidado adicionado. O convite sai da conta Google do responsável.
                 </p>
               )}
-              <div className="flex items-start gap-2 rounded-2xl border border-dashed border-teal-700/20 bg-teal-700/6 px-3 py-2.5 text-[10px] leading-5 text-teal-900/70">
-                <Mail className="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  O convite é enviado a partir da conta Google do responsável principal. Se ele não
-                  tiver o Google Agenda conectado, o cadastro é salvo, mas o convite não é
-                  disparado.
-                </span>
-              </div>
             </FormSection>
-
-
 
             <FormSection
               step="6"
-              title="Lembretes e notificações"
-              description="Canais externos ficam preparados, sem chamadas de API nesta fase."
+              title="Checklist e observações"
+              description="Itens rápidos de preparação. Os lembretes são automáticos."
               className="lg:col-span-2"
             >
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-3">
-                  <Field label="Lembrete interno">
-                    <div className="flex items-center gap-3 rounded-2xl bg-white/55 px-3 py-2 ring-1 ring-white/65">
-                      <Switch
-                        checked={form.lembreteAtivo}
-                        onCheckedChange={(checked) => update("lembreteAtivo", checked)}
-                      />
-                      <select
-                        value={form.lembreteMin}
-                        onChange={(event) => update("lembreteMin", event.target.value)}
-                        className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-                        disabled={!form.lembreteAtivo}
-                      >
-                        {agendaReminderOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </Field>
-                  {form.lembreteMin === "-1" && form.lembreteAtivo && (
-                    <Field label="Antecedência personalizada (min)">
-                      <input
-                        type="number"
-                        min="1"
-                        value={form.lembretePersonalizado}
-                        onChange={(event) => update("lembretePersonalizado", event.target.value)}
-                        className={inputClass()}
-                      />
-                    </Field>
-                  )}
-                  <ToggleLine
-                    checked={form.emailAtivo}
-                    onCheckedChange={(checked) => update("emailAtivo", checked)}
-                    label="Notificar por e-mail"
-                    detail="Estrutura local, sem envio real"
-                  />
-                  <ToggleLine
-                    checked={form.whatsappAtivo}
-                    onCheckedChange={(checked) => update("whatsappAtivo", checked)}
-                    label="Notificar por WhatsApp"
-                    detail="Canal futuro, sem API"
-                    future
-                  />
-                  <div className="flex items-center gap-3 rounded-2xl border border-dashed border-sky-600/20 bg-sky-600/6 px-3 py-3 text-xs text-sky-900/72">
-                    <Cloud className="size-4 shrink-0" />
-                    <span>
-                      <strong>Google Agenda:</strong> preparado para sincronização futura.
-                    </span>
-                  </div>
-                  <Field label="Observações internas">
-                    <textarea
-                      value={form.observacoes}
-                      onChange={(event) => update("observacoes", event.target.value)}
-                      className={cn(inputClass(), "min-h-24 resize-none leading-5")}
-                      placeholder="Informações úteis apenas para a equipe."
-                    />
-                  </Field>
-                </div>
-
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/52">
@@ -862,8 +711,8 @@ export function AgendaFormModal({
                         />
                         <input
                           value={item.label}
-                          onChange={(event) =>
-                            updateChecklist(item.id, { label: event.target.value })
+                          onChange={(inputEvent) =>
+                            updateChecklist(item.id, { label: inputEvent.target.value })
                           }
                           className={cn(
                             "min-w-0 flex-1 bg-transparent text-xs outline-none",
@@ -883,6 +732,14 @@ export function AgendaFormModal({
                     ))}
                   </div>
                 </div>
+                <Field label="Observações internas">
+                  <textarea
+                    value={form.observacoes}
+                    onChange={(inputEvent) => update("observacoes", inputEvent.target.value)}
+                    className={cn(inputClass(), "min-h-32 resize-none leading-5")}
+                    placeholder="Informações úteis apenas para a equipe."
+                  />
+                </Field>
               </div>
             </FormSection>
           </fieldset>
@@ -947,18 +804,11 @@ export function AgendaFormModal({
 function buildInput(
   form: FormState,
   client: NamedOption | undefined,
-  property: PropertyOption | undefined,
-  responsible: NamedOption | undefined,
+  responsibleName: string,
   participants: NamedOption[],
 ): AgendaEventInput {
-  const inicio = localToIso(form.data, form.diaInteiro ? "00:00" : form.horaInicio);
-  const explicitEnd = form.horaFim
-    ? localToIso(form.data, form.diaInteiro ? "23:59" : form.horaFim)
-    : undefined;
-  const duration = Math.max(1, Number(form.duracaoMin) || 60);
-  const fim = explicitEnd ?? addMinutesIso(inicio, duration);
-  const reminderMinutes =
-    form.lembreteMin === "-1" ? Number(form.lembretePersonalizado) : Number(form.lembreteMin);
+  const inicio = localToIso(form.data, form.horaInicio);
+  const fim = form.horaFim ? localToIso(form.data, form.horaFim) : addMinutesIso(inicio, 60);
   const customParticipant = form.participanteOutro.trim();
 
   return {
@@ -969,19 +819,19 @@ function buildInput(
     prioridade: form.prioridade,
     inicio,
     fim,
-    duracaoMin: form.diaInteiro ? 1439 : explicitEnd ? minutesBetween(inicio, fim) : duration,
-    diaInteiro: form.diaInteiro,
-    repeticao: form.repeticao,
+    duracaoMin: Math.max(1, minutesBetween(inicio, fim)),
+    diaInteiro: false,
+    repeticao: "nao",
     imobiliaria: form.imobiliaria,
     clienteId: optional(form.clienteId),
     clienteNome: client?.nome,
     atendimentoId: optional(form.atendimentoId),
-    imovelId: optional(form.imovelId),
-    imovelDescricao: optional(form.imovelDescricao) ?? property?.titulo,
-    local: optional(form.local) ?? property?.endereco,
-    videoCallUrl: optional(form.videoCallUrl),
+    imovelNome: optional(form.imovelNome),
+    imovelEndereco: optional(form.imovelEndereco),
+    imovelDescricao: optional(form.imovelDescricao) ?? optional(form.imovelNome),
+    local: optional(form.imovelEndereco),
     responsavelPrincipalId: optional(form.responsavelPrincipalId),
-    responsavelPrincipalNome: responsible?.nome,
+    responsavelPrincipalNome: responsibleName,
     participantes: [
       ...participants.map((participant) => ({
         userId: participant.id,
@@ -998,47 +848,16 @@ function buildInput(
           ]
         : []),
     ],
-    lembretes: [
-      ...(form.lembreteAtivo
-        ? [
-            {
-              id: `interno-${Date.now()}`,
-              tipo: "interno" as const,
-              antecedenciaMin: Math.max(1, reminderMinutes || 30),
-              ativo: true,
-            },
-          ]
-        : []),
-      ...(form.emailAtivo
-        ? [
-            {
-              id: `email-${Date.now()}`,
-              tipo: "email" as const,
-              antecedenciaMin: Math.max(1, reminderMinutes || 30),
-              ativo: true,
-            },
-          ]
-        : []),
-      ...(form.whatsappAtivo
-        ? [
-            {
-              id: `whatsapp-${Date.now()}`,
-              tipo: "whatsapp" as const,
-              antecedenciaMin: Math.max(1, reminderMinutes || 30),
-              ativo: true,
-              canalFuturo: true,
-            },
-          ]
-        : []),
-    ],
+    // Lembretes são criados automaticamente pelo banco (1 dia, 1 hora e 30 min antes).
+    lembretes: [],
     checklist: form.checklist
       .filter((item) => item.label.trim())
       .map((item) => ({ ...item, label: item.label.trim() })),
     observacoes: optional(form.observacoes),
-    convidados: form.convidados.map((g) => ({
-      email: g.email.trim().toLowerCase(),
-      nome: g.nome?.trim() || undefined,
-      responseStatus: g.responseStatus ?? "needsAction",
+    convidados: form.convidados.map((guest) => ({
+      email: guest.email.trim().toLowerCase(),
+      nome: guest.nome?.trim() || undefined,
+      responseStatus: guest.responseStatus ?? "needsAction",
     })),
     googleCalendarSyncStatus: "preparado",
   };
@@ -1047,11 +866,6 @@ function buildInput(
 function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption): FormState {
   const start = event ? new Date(event.inicio) : nextRoundedHour();
   const end = event?.fim ? new Date(event.fim) : new Date(start.getTime() + 60 * 60_000);
-  const internalReminder = event?.lembretes.find(
-    (reminder) => reminder.tipo === "interno" && reminder.ativo,
-  );
-  const reminderValue = internalReminder?.antecedenciaMin ?? 30;
-  const knownReminder = agendaReminderOptions.some((option) => option.value === reminderValue);
   const customParticipants =
     event?.participantes
       .filter((participant) => participant.userId.startsWith("externo-"))
@@ -1064,17 +878,13 @@ function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption):
     data: localDate(start),
     horaInicio: localTime(start),
     horaFim: localTime(end),
-    duracaoMin: String(event?.duracaoMin ?? 60),
-    diaInteiro: event?.diaInteiro ?? false,
-    repeticao: event?.repeticao ?? "nao",
     status: event?.status ?? "agendado",
     prioridade: event?.prioridade ?? "media",
     clienteId: event?.clienteId ?? "",
     atendimentoId: event?.atendimentoId ?? "",
-    imovelId: event?.imovelId ?? "",
+    imovelNome: event?.imovelNome ?? "",
+    imovelEndereco: event?.imovelEndereco ?? event?.local ?? "",
     imovelDescricao: event?.imovelDescricao ?? "",
-    local: event?.local ?? "",
-    videoCallUrl: event?.videoCallUrl ?? "",
     imobiliaria: event?.imobiliaria ?? "cordial",
     responsavelPrincipalId: event?.responsavelPrincipalId ?? currentUser?.id ?? "",
     participantesIds:
@@ -1082,18 +892,11 @@ function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption):
         .filter((participant) => !participant.userId.startsWith("externo-"))
         .map((participant) => participant.userId) ?? [],
     participanteOutro: customParticipants,
-    lembreteAtivo: Boolean(internalReminder),
-    lembreteMin: knownReminder ? String(reminderValue) : "-1",
-    lembretePersonalizado: knownReminder ? "45" : String(reminderValue),
-    emailAtivo:
-      event?.lembretes.some((reminder) => reminder.tipo === "email" && reminder.ativo) ?? false,
-    whatsappAtivo:
-      event?.lembretes.some((reminder) => reminder.tipo === "whatsapp" && reminder.ativo) ?? false,
     observacoes: event?.observacoes ?? "",
     checklist: event?.checklist.length
       ? event.checklist.map((item) => ({ ...item }))
       : checklistSeed.map((label, index) => ({ id: `check-${index}`, label, done: false })),
-    convidados: event?.convidados ? event.convidados.map((g) => ({ ...g })) : [],
+    convidados: event?.convidados ? event.convidados.map((guest) => ({ ...guest })) : [],
     convidadoEmailInput: "",
     convidadoNomeInput: "",
   };
@@ -1142,44 +945,6 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       </span>
       <div className="mt-1.5">{children}</div>
     </label>
-  );
-}
-
-function ToggleLine({
-  checked,
-  onCheckedChange,
-  label,
-  detail,
-  future,
-}: {
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  label: string;
-  detail?: string;
-  future?: boolean;
-}) {
-  return (
-    <label className="flex items-center gap-3 rounded-2xl bg-white/55 px-3 py-2.5 ring-1 ring-white/65">
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-semibold text-foreground/72">{label}</span>
-        {detail && <span className="block text-[9px] text-foreground/42">{detail}</span>}
-      </span>
-      {future && (
-        <span className="rounded-full bg-orange-400/14 px-2 py-1 text-[8px] font-bold uppercase tracking-wider text-orange-800">
-          Futuro
-        </span>
-      )}
-    </label>
-  );
-}
-
-function FutureNote({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 rounded-2xl border border-dashed border-teal-700/20 bg-teal-700/6 px-3 py-2 text-[10px] text-teal-900/65">
-      <BellRing className="size-3.5" />
-      {children}
-    </div>
   );
 }
 
