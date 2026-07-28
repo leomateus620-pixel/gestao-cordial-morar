@@ -1,50 +1,49 @@
-## Goal
+## What the audit found (verified against the live database)
 
-Make the Agenda > Novo compromisso modal faster and fully backed by real data, keeping auth, RLS, routes and the working reminder/Google sync rules intact.
+**Access control is already correct — no RLS rebuild needed.**
+- `agenda_can_access(event_id)` allows: creator, `owner_user_id` (primary responsible), participant row, plus `admin`/`secretaria`, all scoped by agency. `agenda_can_edit` is the same minus participants. Policies on `agenda_events` and all four child tables (participants, guests, reminders, checklist) route through those two functions. This matches the requested rules exactly.
+- `listAgendaEvents` does no client-side owner filtering — it relies purely on RLS, so the "Todos" tab already shows only what policy allows.
 
-## What changes
+**Real defects found:**
 
-### Step 2 — Data e horário
-- Remove "Dia inteiro", "Duração (min)" and "Repetição" from the form.
-- Keep: Data, Hora início, Hora fim, Status, Prioridade.
-- End time must be after start time, validated inline under the field (no alerts). Duration keeps being derived on the server from start/end, so existing data and lists stay correct.
+1. **Broken sync for 4 of 7 connected accounts.** Their stored OAuth scope is only `openid/email/profile` — no `calendar.events` (they connected before the scope was added: Felipe, Bianca, Geandre, and one more). Google returns `403 insufficient authentication scopes`; 3 events currently sit in `preparado` with that error. The code only detects `401/invalid_grant` as "reconnect needed", so 403-scope failures never raise a reconnect prompt and never surface in the card.
 
-### Step 3 — Vínculos comerciais
-- Replace the current attendance dropdown (which reads a local store) with a real backend query:
-  - Broker: attendances where he is creator or assigned broker.
-  - Admin/secretária: all attendances inside their agency scope (existing RLS already enforces this — no new exposure).
-- Selector gets: search box, loading, empty, error and selected states, showing client name, track/type, date and responsible broker so records are distinguishable.
-- Remove the mock "Imóvel vinculado" dropdown. Replace with three real inputs saved with the event:
-  - Nome/referência do imóvel
-  - Endereço/localização
-  - Descrição curta
-- Remove the "Link de videochamada" field.
+2. **Obsolete Google events are never removed on unassignment.** `syncAgendaEventToGoogle` loops only over *current* recipients. When a participant is removed or the responsible user is reassigned, the old user's row in `agenda_event_google_syncs` and their Google copy stay behind forever. Same when an event loses all recipients or all connections.
 
-### Step 4 — Responsáveis
-- "Responsável principal" is preselected from the authenticated session and shown read-only when creating (editing keeps existing behavior/permissions).
-- Additional participants and permission rules unchanged.
+3. **No retry / no background execution.** Sync runs inline in the request with `try/catch → console.error`. A transient Google failure is silently lost; nothing ever retries. `google_calendar_sync_error` is written but never displayed in the UI.
 
-### Steps 5 and 6
-- Step 5 (convidados externos) unchanged.
-- Step 6 becomes only the final checklist (add, mark done, remove, persist). Reminder toggles, e-mail/WhatsApp options and the sync banner are removed from the UI. The automatic reminders (1 day / 1 hour / 30 min) continue to be created by the database, so the existing reminder notifications keep working.
+4. **Manual "Sincronizar próximos eventos" button** still exists on the connection card, and reconnect does not explicitly re-run a backfill from the client side.
 
-### Google Calendar audit
-Verify and fix as needed across the sync path:
-- Event goes to the connected Google account of each involved user (owner, creator, participants), tokens resolved per user, never shared.
-- Guests get invitations when present; title, description, location, linked context, start/end and timezone (America/Sao_Paulo) sent correctly.
-- Updates patch the existing Google event and cancellations delete it — no duplicates, retries idempotent via the per-user sync record.
-- Google failures never block saving; status and readable error are stored and surfaced in the UI.
+Recipient resolution itself is already correct and server-side (`created_by` + `owner_user_id` + persisted participants, never the visibility query), and the mapping table already has `UNIQUE (event_id, user_id)`.
 
-### UI/UX
-Tighter modal: compact step navigation, less explanatory text and vertical padding, clearer typography/contrast, grouped fields, sticky footer that doesn't cover content, better dropdown/search/empty/validation/focus states, keyboard navigation, smooth scrolling, and responsive layout for mobile, tablet and desktop.
+## Plan
 
-## Technical notes
+### 1. Detect and surface invalid scope (fixes the 4 broken accounts)
+- In `google.server.ts`, before syncing a connection, check the stored `scope` contains `calendar.events`; if not, skip the Google call, write a clear `last_error` ("Permissão do Google Agenda incompleta — reconecte sua conta") and emit the existing dedup-keyed notification.
+- Extend the failure classifier to treat `403 insufficient authentication scopes` / `insufficientPermissions` the same as `401/invalid_grant`.
+- Show `last_error` prominently on the connection card with an inline "Reconectar" call to action (the card already renders `last_error`; make it actionable).
 
-- Database migration: add `imovel_nome` and `imovel_endereco` to `agenda_events` (description reuses `imovel_descricao`); no policy changes.
-- New server function `listAttendanceOptions` in the agenda/attendances function modules, using `requireSupabaseAuth` so RLS scopes rows; consumed with TanStack Query (loading/error/empty handled by the selector).
-- `AgendaFormModal.tsx` is refactored step by step; `AgendaEventInput`/mapper/`upsertAgendaEvent` updated for the new fields and for dropping `videoCallUrl`, `diaInteiro`, `repeticao`, `duracaoMin` from the form path (columns stay, defaults applied server-side).
-- Google Calendar changes stay inside `src/lib/google-calendar/google.server.ts` (payload, sendUpdates, error persistence) plus surfacing `google_calendar_sync_error` in the agenda UI.
+### 2. Reconcile obsolete recipients (unassignment / reassignment / participant removal)
+- In `syncAgendaEventToGoogle`, after computing `recipientIds`, load **all** existing `agenda_event_google_syncs` rows for the event and compute the set difference. For every stale `user_id`: DELETE the Google event using that row's own `calendar_id`/`google_event_id`, then delete the mapping row.
+- Apply the same reconciliation when `recipientIds` is empty or no recipient has a connection (today those paths return early without cleanup).
+- Cancellation and soft delete already flow through the same function, so they inherit the cleanup.
 
-## Validation
+### 3. Idempotent, fault-tolerant, background sync
+- Add a `agenda_google_sync_queue` table (`event_id` unique, `attempts`, `next_attempt_at`, `last_error`) written by the same server code path. Write-side operations (`upsertAgendaEvent`, `softDeleteAgendaEvent`, `completeAgendaEvent`) enqueue and attempt one inline pass; on failure the row stays queued with exponential backoff.
+- Add a drain endpoint under `src/routes/api/public/hooks/google-calendar-sync.ts`, secret-protected like the existing `agenda-reminders` hook, and schedule it with `pg_cron` (every minute) to retry pending rows and clear them on success.
+- Sync stays keyed on `(event_id, user_id)` upsert, so repeated drains never duplicate Google events.
 
-Typecheck, unit tests, and a browser pass on the authenticated preview: create an event, reload to confirm persistence, link an attendance, check checklist persistence, edit and cancel to confirm no duplicate Google events, and confirm sync errors are displayed instead of blocking the save.
+### 4. Auto-sync, no manual button
+- Remove the "Sincronizar próximos eventos" button and the `backfillMyGoogleAgenda` call from `GoogleCalendarCard.tsx`.
+- Trigger the backfill server-side instead: the OAuth callback already calls `backfillGoogleSyncForUser` — route it through the new queue so it retries, and it then covers both first connection and reconnection.
+- Keep `backfillMyGoogleAgenda` as a server function (used by the callback), just unexposed in the UI.
+- Replace the button area with a passive status line: connected account, last sync time, and error state when present.
+
+### 5. Validation with real data
+- Re-run sync for the 3 currently failing events after the affected users reconnect, and verify `agenda_event_google_syncs` rows match exactly `{creator, responsible, participants}` for each event.
+- Cross-check a broker account and an admin account: confirm the broker sees only their events, the admin sees all, and that admin *visibility* of another broker's event produces **no** sync row for the admin.
+- Verify a reassignment removes the previous responsible user's mapping row and their Google copy.
+
+### Technical notes
+- No policy, function, or grant is weakened or duplicated; the only schema change is the additive retry-queue table plus its GRANTs and RLS (service-role only).
+- All recipient resolution stays in `google.server.ts` under the service-role client, driven by persisted relationships, never by the RLS visibility query.
