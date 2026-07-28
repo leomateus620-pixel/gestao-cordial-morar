@@ -2,13 +2,12 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, Loader2, RefreshCw, Unlink2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   startGoogleOAuth,
   getMyGoogleConnection,
   disconnectGoogleCalendar,
-  backfillMyGoogleAgenda,
 } from "@/lib/google-calendar/google-calendar.functions";
 import googleCalendarLogo from "@/assets/google-calendar.svg";
 
@@ -27,7 +26,7 @@ export function GoogleCalendarCard() {
   // Flash messages do callback
   useEffect(() => {
     if (search.google === "connected") {
-      toast.success("Google Agenda conectada com sucesso");
+      toast.success("Google Agenda conectada — seus compromissos estão sendo sincronizados");
       qc.invalidateQueries({ queryKey: QK });
       window.history.replaceState({}, "", "/agenda");
     } else if (search.google === "error") {
@@ -53,17 +52,6 @@ export function GoogleCalendarCard() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const backfillMut = useMutation({
-    mutationFn: () => backfillMyGoogleAgenda(),
-    onSuccess: (res) => {
-      toast.success(
-        res?.processed
-          ? `${res.processed} compromisso(s) sincronizado(s) com o Google`
-          : "Nenhum compromisso futuro para sincronizar",
-      );
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const conn = connection.data;
 
@@ -89,9 +77,15 @@ export function GoogleCalendarCard() {
               <p className="mt-0.5 text-[11px] text-foreground/55">
                 {conn.google_email} · agenda <code>{conn.calendar_id}</code>
               </p>
-              {conn.last_error && (
-                <p className="mt-1 rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-800">
-                  {conn.last_error}
+              {conn.last_error ? (
+                <p className="mt-1 flex items-start gap-1.5 rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-800">
+                  <AlertTriangle className="mt-[1px] size-3 shrink-0" />
+                  <span>{conn.last_error}</span>
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-foreground/50">
+                  Sincronização automática ativa — compromissos criados, editados,
+                  reatribuídos ou cancelados são enviados sozinhos.
                 </p>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -110,24 +104,11 @@ export function GoogleCalendarCard() {
                 </Button>
                 <Button
                   size="sm"
-                  variant="secondary"
-                  onClick={() => backfillMut.mutate()}
-                  disabled={backfillMut.isPending}
-                >
-                  {backfillMut.isPending ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="size-3" />
-                  )}
-                  Sincronizar próximos eventos
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
+                  variant={conn.last_error ? "default" : "ghost"}
                   onClick={() => connectMut.mutate()}
                   disabled={connectMut.isPending}
                 >
-                  Reconectar / trocar conta
+                  {conn.last_error ? "Reconectar agora" : "Reconectar / trocar conta"}
                 </Button>
               </div>
             </>

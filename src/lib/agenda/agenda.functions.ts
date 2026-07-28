@@ -306,10 +306,10 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // Best-effort push para o Google Agenda do responsável (não bloqueia em caso de erro).
+    // Sincronização automática (enfileirada + tentativa imediata no servidor).
     try {
-      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
-      await syncAgendaEventToGoogle(eventId!);
+      const { scheduleGoogleSync } = await import("@/lib/google-calendar/google.server");
+      await scheduleGoogleSync(eventId!);
     } catch (e) {
       console.error("[agenda] sync google falhou:", e);
     }
@@ -333,8 +333,8 @@ export const softDeleteAgendaEvent = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     try {
-      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
-      await syncAgendaEventToGoogle(data.id);
+      const { scheduleGoogleSync } = await import("@/lib/google-calendar/google.server");
+      await scheduleGoogleSync(data.id);
     } catch (e) {
       console.error("[agenda] sync google delete falhou:", e);
     }
@@ -368,8 +368,8 @@ export const completeAgendaEvent = createServerFn({ method: "POST" })
     }
 
     try {
-      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
-      await syncAgendaEventToGoogle(data.id);
+      const { scheduleGoogleSync } = await import("@/lib/google-calendar/google.server");
+      await scheduleGoogleSync(data.id);
     } catch (e) {
       console.error("[agenda] sync google complete falhou:", e);
     }

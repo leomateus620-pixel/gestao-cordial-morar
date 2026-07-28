@@ -434,6 +434,41 @@ export type Database = {
           },
         ]
       }
+      agenda_google_sync_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          event_id: string
+          last_error: string | null
+          next_attempt_at: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          event_id: string
+          last_error?: string | null
+          next_attempt_at?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          event_id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_google_sync_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_reminder_deliveries: {
         Row: {
           channel: string
