@@ -35,7 +35,11 @@ export function getRedirectUri(origin: string) {
 }
 
 function b64url(buf: Buffer | string) {
-  return Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return Buffer.from(buf)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 function b64urlDecode(s: string) {
   s = s.replace(/-/g, "+").replace(/_/g, "/");
@@ -141,6 +145,7 @@ type ConnectionRow = {
   expires_at: string;
   calendar_id: string;
   scope: string | null;
+  last_error: string | null;
 };
 
 async function getValidAccessToken(conn: ConnectionRow): Promise<string> {
@@ -159,13 +164,21 @@ async function getValidAccessToken(conn: ConnectionRow): Promise<string> {
   return refreshed.access_token;
 }
 
-async function notify(userId: string, titulo: string, mensagem: string, tipo = "google_calendar") {
+async function notify(
+  userId: string,
+  titulo: string,
+  mensagem: string,
+  tipo = "google_calendar",
+  dedupKey?: string,
+) {
   await supabaseAdmin.from("notifications").insert({
     user_id: userId,
     tipo,
+    category: "system",
     titulo,
     mensagem,
     link: "/configuracoes",
+    dedup_key: dedupKey,
   });
 }
 
@@ -220,7 +233,7 @@ function buildEventPayload(ev: EventRow, extraAttendeeEmails: string[] = []) {
       new Date(ev.inicio).getTime() + Math.max(1, ev.duracao_min ?? 60) * 60_000,
     ).toISOString();
 
-  const tipoLabel = ev.tipo ? TIPO_LABEL[ev.tipo] ?? ev.tipo : null;
+  const tipoLabel = ev.tipo ? (TIPO_LABEL[ev.tipo] ?? ev.tipo) : null;
   const inviter = ev.responsavel_nome || ev.criado_por_nome || null;
 
   const descricaoParts = [
@@ -262,9 +275,7 @@ function buildEventPayload(ev: EventRow, extraAttendeeEmails: string[] = []) {
     summary: ev.titulo,
     description: descricaoParts.join("\n"),
     location: ev.local ?? undefined,
-    reminders: overrides.length
-      ? { useDefault: false, overrides }
-      : { useDefault: true },
+    reminders: overrides.length ? { useDefault: false, overrides } : { useDefault: true },
     status: ev.status === "cancelado" ? "cancelled" : "confirmed",
   };
 
@@ -337,8 +348,7 @@ async function syncSingleRecipient(
   try {
     const accessToken = await getValidAccessToken(conn);
     const calendarId = conn.calendar_id || "primary";
-    const hasGuests =
-      (ev.agenda_event_guests ?? []).length > 0 || extraAttendeeEmails.length > 0;
+    const hasGuests = (ev.agenda_event_guests ?? []).length > 0 || extraAttendeeEmails.length > 0;
     const sendUpdates = hasGuests ? "all" : "none";
 
     if (ev.status === "cancelado" || ev.deleted_at) {
@@ -373,10 +383,15 @@ async function syncSingleRecipient(
       }
     }
     if (!googleEventId) {
-      const res = await callCalendar(accessToken, calendarId, `/events?sendUpdates=${sendUpdates}`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const res = await callCalendar(
+        accessToken,
+        calendarId,
+        `/events?sendUpdates=${sendUpdates}`,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
       if (!res.ok) return { ok: false, error: `POST ${res.status}: ${await res.text()}` };
       const json = (await res.json()) as { id: string };
       googleEventId = json.id;
@@ -411,7 +426,9 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
 
   const { data: conns } = await supabaseAdmin
     .from("google_calendar_connections")
-    .select("user_id,google_email,access_token,refresh_token,expires_at,calendar_id,scope")
+    .select(
+      "user_id,google_email,access_token,refresh_token,expires_at,calendar_id,scope,last_error",
+    )
     .in("user_id", recipientIds);
 
   const connByUser = new Map<string, ConnectionRow>();
@@ -475,15 +492,20 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
       errors.push(`${userId.slice(0, 8)}: ${result.error}`);
       const tokenLooksInvalid = /invalid_grant|unauthorized|401/i.test(result.error);
       if (tokenLooksInvalid) {
+        const reconnectError = "Token inválido. Reconecte sua conta Google.";
         await supabaseAdmin
           .from("google_calendar_connections")
-          .update({ last_error: "Token inválido. Reconecte sua conta Google." })
+          .update({ last_error: reconnectError })
           .eq("user_id", userId);
-        await notify(
-          userId,
-          "Reconecte sua conta Google",
-          "A conexão com o Google Agenda expirou. Vá em Configurações para reconectar.",
-        );
+        if (conn.last_error !== reconnectError) {
+          await notify(
+            userId,
+            "Reconecte sua conta Google",
+            "A conexão com o Google Agenda expirou. Vá em Configurações para reconectar.",
+            "google_calendar",
+            `google_calendar:${userId}:reconnect:${conn.expires_at}`,
+          );
+        }
       }
     }
   }

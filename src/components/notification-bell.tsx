@@ -1,227 +1,43 @@
-import { Bell, CheckCheck, CircleAlert } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useApp } from "@/store/app-store";
-import { useSession } from "@/lib/auth-mock";
-import { notificationLabels, type NotificationPriority } from "@/lib/mock/notifications";
-import {
-  listMyNotifications,
-  markNotificationRead as markRemoteRead,
-  markAllNotificationsRead as markAllRemoteRead,
-} from "@/lib/notifications/notifications.functions";
+import { Bell } from "lucide-react";
+import { useNotificationExperience } from "@/components/notifications/notification-experience-context";
 import { cn } from "@/lib/utils";
-import {
-  AssignmentStatusBadge,
-  attendanceIdFromLink,
-} from "@/components/notifications/AssignmentStatusBadge";
-
-const priorityTone: Record<NotificationPriority, { bg: string; fg: string }> = {
-  alta: { bg: "rgba(201,76,76,0.14)", fg: "#a83838" },
-  media: { bg: "rgba(217,120,45,0.16)", fg: "#9a4f17" },
-  baixa: { bg: "rgba(59,130,160,0.14)", fg: "#235f7a" },
-};
-
-const REMOTE_QK = ["notifications", "mine"] as const;
 
 export function NotificationBell() {
-  const user = useSession();
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const notifications = useApp((s) => s.notifications);
-  const markNotificationRead = useApp((s) => s.markNotificationRead);
-  const markAllNotificationsRead = useApp((s) => s.markAllNotificationsRead);
-
-
-  const remote = useQuery({
-    queryKey: REMOTE_QK,
-    queryFn: () => listMyNotifications(),
-    enabled: Boolean(user),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
-  const remoteList = remote.data ?? [];
-  const remoteUnread = remoteList.filter((n) => !n.lida).length;
-
-  const markRemote = useMutation({
-    mutationFn: (id: string) => markRemoteRead({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: REMOTE_QK }),
-  });
-  const markAllRemote = useMutation({
-    mutationFn: () => markAllRemoteRead(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: REMOTE_QK }),
-  });
-
-  const unread = notifications.filter((n) => !n.read).length + remoteUnread;
-  const latest = [...notifications]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  const { summary, isSummaryError, bellSequence, centerOpen, setCenterOpen } =
+    useNotificationExperience();
+  const unread = summary.unreadTotal;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          className="glass-panel relative grid size-10 shrink-0 place-items-center rounded-full text-primary transition active:scale-95 md:size-11"
-          aria-label={`Notificações mockadas${unread ? `: ${unread} não lidas` : ""}`}
-        >
-          <Bell className="size-4 md:size-5" />
-          {unread > 0 && (
-            <span
-              className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full px-1 text-[10px] font-bold text-white shadow-sm"
-              style={{ background: "var(--system-accent)" }}
-            >
-              {unread > 9 ? "9+" : unread}
-            </span>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="premium-card w-[min(22rem,calc(100vw-2rem))] p-0"
-      >
-        <div className="border-b border-foreground/10 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-bold">Central de notificações</p>
-              <p className="mt-0.5 text-[11px] text-foreground/55">
-                Alertas simulados para validar UX antes de Supabase/RLS.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-[11px]"
-              onClick={() => {
-                markAllNotificationsRead();
-                if (remoteUnread > 0) markAllRemote.mutate();
-              }}
-            >
-              <CheckCheck className="size-3" /> Ler tudo
-            </Button>
-          </div>
-        </div>
-
-        <div className="max-h-[24rem] overflow-y-auto p-2">
-          {remoteList.length > 0 && (
-            <>
-              <p className="px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-foreground/55">
-                Alertas do sistema
-              </p>
-              {remoteList.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => {
-                    if (!n.lida) markRemote.mutate(n.id);
-                    if (n.link) {
-                      void navigate({ to: n.link as string } as never);
-                    }
-                  }}
-
-                  className={cn(
-                    "w-full rounded-2xl p-3 text-left transition hover:bg-primary/5",
-                    !n.lida && "bg-primary/5",
-                  )}
-                >
-
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl"
-                      style={{
-                        background: priorityTone.media.bg,
-                        color: priorityTone.media.fg,
-                      }}
-                    >
-                      <CircleAlert className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-[10px] font-bold uppercase tracking-wider text-primary">
-                          {n.tipo.replace(/_/g, " ")}
-                        </span>
-                        {!n.lida && (
-                          <span
-                            className="size-1.5 shrink-0 rounded-full"
-                            style={{ background: "var(--system-accent)" }}
-                          />
-                        )}
-                      </div>
-                      <p className="mt-0.5 truncate text-sm font-semibold">{n.titulo}</p>
-                      {n.mensagem && (
-                        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-foreground/60">
-                          {n.mensagem}
-                        </p>
-                      )}
-                      {(n.tipo === "atendimento_atribuido" || n.tipo === "atendimento_iniciado") &&
-                        (() => {
-                          const aid = attendanceIdFromLink(n.link);
-                          return aid ? <AssignmentStatusBadge attendanceId={aid} /> : null;
-                        })()}
-                      <p className="mt-1 text-[10px] text-foreground/45">
-                        {new Date(n.created_at).toLocaleString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-              <div className="my-2 h-px bg-foreground/10" />
-            </>
-          )}
-
-          {latest.map((notification) => (
-            <button
-              key={notification.id}
-              onClick={() => markNotificationRead(notification.id)}
-              className={cn(
-                "w-full rounded-2xl p-3 text-left transition hover:bg-primary/5",
-                !notification.read && "bg-primary/5",
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl"
-                  style={{
-                    background: priorityTone[notification.priority].bg,
-                    color: priorityTone[notification.priority].fg,
-                  }}
-                >
-                  <CircleAlert className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-[10px] font-bold uppercase tracking-wider text-primary">
-                      {notificationLabels[notification.type]}
-                    </span>
-                    {!notification.read && (
-                      <span
-                        className="size-1.5 shrink-0 rounded-full"
-                        style={{ background: "var(--system-accent)" }}
-                      />
-                    )}
-                  </div>
-                  <p className="mt-0.5 truncate text-sm font-semibold">{notification.title}</p>
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-foreground/60">
-                    {notification.description}
-                  </p>
-                  <p className="mt-1 text-[10px] text-foreground/45">
-                    {new Date(notification.date).toLocaleString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <button
+      type="button"
+      className={cn(
+        "notification-bell glass-panel relative grid size-11 shrink-0 place-items-center rounded-full text-primary",
+        unread > 0 && "notification-bell--active",
+      )}
+      onClick={() => setCenterOpen(true)}
+      aria-label={
+        isSummaryError
+          ? "Abrir central de notificações; totais temporariamente indisponíveis"
+          : unread > 0
+            ? `Abrir central de notificações, ${unread} ${unread === 1 ? "não lida" : "não lidas"}`
+            : "Abrir central de notificações"
+      }
+      aria-haspopup="dialog"
+      aria-expanded={centerOpen}
+      aria-controls="notification-center"
+    >
+      <Bell
+        key={bellSequence}
+        className={cn(
+          "notification-bell-icon size-[1.08rem] md:size-5",
+          bellSequence > 0 && "notification-bell-icon--ring",
+        )}
+      />
+      {unread > 0 ? (
+        <span className="notification-bell-count" aria-hidden="true">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      ) : null}
+    </button>
   );
 }

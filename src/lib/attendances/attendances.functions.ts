@@ -57,11 +57,14 @@ type DbRow = {
   motivo_perda: string | null;
   convertido_em_cliente: boolean;
   cliente_convertido_id: string | null;
-  opened_at: string | null;
-  opened_by: string | null;
   created_at: string;
   updated_at: string;
 };
+
+// Timing columns are intentionally absent. They are only available through
+// management RPCs, never through the general attendance data path.
+const ATTENDANCE_SAFE_COLUMNS =
+  "id,created_by,imobiliaria,cliente_id,cliente_nome,telefone,email,contato_preferencial,origem,finalidade,tipo_imovel,dormitorios,bairro_interesse,orcamento_min,orcamento_max,imovel_id,imovel_ref,imovel_codigo,imovel_descricao,imovel_endereco,imovel_bairro,imovel_cidade,imovel_tipo,imovel_valor,interesse_descricao,corretor_id,corretor_nome,prioridade,status,pipeline_stage,proximo_retorno,proximo_passo,observacoes,historico_inicial,motivo_perda,convertido_em_cliente,cliente_convertido_id,created_at,updated_at";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const asUuid = (v?: string | null) => (v && UUID_RE.test(v) ? v : null);
@@ -135,7 +138,7 @@ function rowToAtendimento(
     motivoPerda: orUndef(row.motivo_perda) ?? undefined,
     convertidoEmCliente: row.convertido_em_cliente,
     clienteConvertidoId: orUndef(row.cliente_convertido_id) ?? undefined,
-    openedAt: row.opened_at ?? null,
+    openedAt: null,
     historico: [
       {
         id: `hist-${id}-1`,
@@ -288,7 +291,7 @@ export const listAttendances = createServerFn({ method: "GET" })
     ]);
     let query = context.supabase
       .from("attendances")
-      .select("*")
+      .select(ATTENDANCE_SAFE_COLUMNS)
       .order("created_at", { ascending: false });
     if (!isAdmin && !isSecretaria) {
       query = query.or(`created_by.eq.${context.userId},corretor_id.eq.${context.userId}`);
@@ -318,19 +321,30 @@ export const listAttendances = createServerFn({ method: "GET" })
 export type AttendanceBrokerOption = {
   id: string;
   nome: string;
+  agencies: Array<"cordial" | "morar">;
 };
 
 export const listAttendanceBrokers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AttendanceBrokerOption[]> => {
-    const { data, error } = await context.supabase
-      .from("profiles")
-      .select("id,nome")
-      .order("nome", { ascending: true });
+    const { data, error } = await (
+      context.supabase as unknown as {
+        rpc: (
+          name: "list_assignable_brokers",
+          args: { _agency: null },
+        ) => Promise<{
+          data: Array<{ id: string; nome: string; agencies: string[] | null }> | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("list_assignable_brokers", { _agency: null });
     if (error) throw new Error(error.message);
-    return ((data ?? []) as Array<{ id: string; nome: string }>).map((profile) => ({
+    return (data ?? []).map((profile) => ({
       id: profile.id,
       nome: profile.nome,
+      agencies: (profile.agencies ?? []).filter(
+        (agency): agency is "cordial" | "morar" => agency === "cordial" || agency === "morar",
+      ),
     }));
   });
 
@@ -342,13 +356,13 @@ export const createAttendance = createServerFn({ method: "POST" })
     let { data: inserted, error } = await context.supabase
       .from("attendances")
       .insert(inputToPayload(data, context.userId) as never)
-      .select("*")
+      .select(ATTENDANCE_SAFE_COLUMNS)
       .single();
     if (isExtendedAttendanceSchemaMissing(error)) {
       const legacyResult = await context.supabase
         .from("attendances")
         .insert(inputToPayload(data, context.userId, { legacySchema: true }) as never)
-        .select("*")
+        .select(ATTENDANCE_SAFE_COLUMNS)
         .single();
       inserted = legacyResult.data;
       error = legacyResult.error;
@@ -420,7 +434,7 @@ export const updateAttendance = createServerFn({ method: "POST" })
       .from("attendances")
       .update(patch as never)
       .eq("id", data.id)
-      .select("*")
+      .select(ATTENDANCE_SAFE_COLUMNS)
       .single();
     if (isExtendedAttendanceSchemaMissing(error)) {
       const legacyPatch = { ...patch };
@@ -438,7 +452,7 @@ export const updateAttendance = createServerFn({ method: "POST" })
         .from("attendances")
         .update(legacyPatch as never)
         .eq("id", data.id)
-        .select("*")
+        .select(ATTENDANCE_SAFE_COLUMNS)
         .single();
       updated = legacyResult.data;
       error = legacyResult.error;
@@ -458,7 +472,7 @@ export const transitionAttendanceStage = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: current, error: currentError } = await context.supabase
       .from("attendances")
-      .select("*")
+      .select(ATTENDANCE_SAFE_COLUMNS)
       .eq("id", data.id)
       .single();
     if (currentError) throw new Error(currentError.message);
@@ -474,14 +488,14 @@ export const transitionAttendanceStage = createServerFn({ method: "POST" })
       .update({ pipeline_stage: data.to } as never)
       .eq("id", data.id)
       .eq("pipeline_stage", from)
-      .select("*")
+      .select(ATTENDANCE_SAFE_COLUMNS)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (updated) return rowToAtendimento(updated as unknown as DbRow);
 
     const { data: latest, error: latestError } = await context.supabase
       .from("attendances")
-      .select("*")
+      .select(ATTENDANCE_SAFE_COLUMNS)
       .eq("id", data.id)
       .single();
     if (latestError) throw new Error(latestError.message);
@@ -497,22 +511,6 @@ export const deleteAttendance = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("attendances").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const markAttendanceOpened = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => d)
-  .handler(async ({ data, context }) => {
-    const { error } = await (
-      context.supabase as unknown as {
-        rpc: (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ error: { message: string } | null }>;
-      }
-    ).rpc("mark_attendance_opened", { _id: data.id });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

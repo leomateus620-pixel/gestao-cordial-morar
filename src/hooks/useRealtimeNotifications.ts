@@ -1,82 +1,83 @@
 import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth-mock";
 
-type NotificationRow = {
-  id: string;
-  user_id: string;
-  tipo: string | null;
-  titulo: string | null;
-  mensagem: string | null;
-  link: string | null;
-  lida: boolean;
-  created_at: string;
+type RealtimeNotificationBroadcast = {
+  payload?: {
+    notification_id?: unknown;
+  };
 };
 
-const HIGH_PRIORITY = new Set([
-  "atendimento_atribuido",
-  "atendimento_iniciado",
-]);
+function notificationIdFromBroadcast(message: RealtimeNotificationBroadcast): string | null {
+  const value = message.payload?.notification_id;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
 
 /**
- * Subscribes to realtime inserts on public.notifications for the signed-in user
- * and pushes visual toasts + refreshes the bell query. This complements the
- * existing NotificationBell polling.
+ * Exactly one authenticated INSERT subscription, owned by the global provider.
+ * The websocket row is intentionally opaque; the provider retrieves the safe
+ * display payload through the role-scoped inbox RPC.
  */
-export function useRealtimeNotifications() {
+export function useRealtimeNotifications(
+  onNotification: (notificationId: string) => void | Promise<void>,
+  onUnavailable?: () => void,
+) {
   const user = useSession();
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const lastShownRef = useRef<Set<string>>(new Set());
+  const callbackRef = useRef(onNotification);
+  const unavailableRef = useRef(onUnavailable);
+  const seenRef = useRef(new Set<string>());
+  const orderRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    callbackRef.current = onNotification;
+  }, [onNotification]);
+
+  useEffect(() => {
+    unavailableRef.current = onUnavailable;
+  }, [onUnavailable]);
 
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`notif:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const row = payload.new as NotificationRow;
-          if (!row?.id || lastShownRef.current.has(row.id)) return;
-          lastShownRef.current.add(row.id);
-          qc.invalidateQueries({ queryKey: ["notifications", "mine"] });
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          const isHigh = HIGH_PRIORITY.has(row.tipo ?? "");
-          const title = row.titulo ?? "Nova notificação";
-          const description = row.mensagem ?? undefined;
-          const action = row.link
-            ? {
-                label: "Abrir",
-                onClick: () => {
-                  void navigate({ to: row.link as string } as never);
-                },
-              }
-            : undefined;
-
-          if (isHigh) {
-            toast.success(title, {
-              description,
-              duration: 8000,
-              action,
-            });
-          } else {
-            toast(title, { description, action });
+    void (async () => {
+      await supabase.realtime.setAuth();
+      if (cancelled) return;
+      channel = supabase
+        .channel(`notifications:${user.id}`, { config: { private: true } })
+        .on("broadcast", { event: "notification.created" }, (message) => {
+          const notificationId = notificationIdFromBroadcast(
+            message as RealtimeNotificationBroadcast,
+          );
+          if (!notificationId || seenRef.current.has(notificationId)) return;
+          seenRef.current.add(notificationId);
+          orderRef.current.push(notificationId);
+          while (orderRef.current.length > 100) {
+            const expired = orderRef.current.shift();
+            if (expired) seenRef.current.delete(expired);
           }
-        },
-      )
-      .subscribe();
+          void callbackRef.current(notificationId);
+        })
+        .subscribe((status) => {
+          if (cancelled) return;
+          if (
+            status === "SUBSCRIBED" ||
+            status === "CHANNEL_ERROR" ||
+            status === "TIMED_OUT" ||
+            status === "CLOSED"
+          ) {
+            // SUBSCRIBED also closes the race between the initial inbox fetch and
+            // socket readiness. Reconciliation only invalidates persisted queries,
+            // so missed historical rows never replay sound or transient motion.
+            unavailableRef.current?.();
+          }
+        });
+    })().catch(() => unavailableRef.current?.());
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [user, qc, navigate]);
+  }, [user]);
 }

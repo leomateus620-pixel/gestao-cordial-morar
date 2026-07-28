@@ -30,6 +30,14 @@ export function canManageAttendanceAssignments(session: SessionLike): boolean {
   return session?.perfil === "admin_owner" || session?.perfil === "secretaria";
 }
 
+/**
+ * Operational response-time metrics are intentionally narrower than financial
+ * insights. Brokers and finance roles must never receive first-open timing.
+ */
+export function canSeeNotificationMetrics(session: SessionLike): boolean {
+  return session?.perfil === "admin_owner" || session?.perfil === "secretaria";
+}
+
 export function canManageAttendanceTerminalState(session: SessionLike): boolean {
   return (
     session?.perfil === "admin_owner" ||

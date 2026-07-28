@@ -12,12 +12,11 @@ import { NotificationBell } from "./notification-bell";
 import { getPrimaryItemsForProfile } from "./shared/module-menu";
 import { roleDefinitions } from "@/lib/mock/permissions";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
-import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
-import { NotificationsSpotlight } from "./notifications/NotificationsSpotlight";
+import { NotificationCenter } from "./notifications/NotificationCenter";
+import { NotificationTransientRegion } from "./notifications/NotificationTransientRegion";
 
 export function AppShell() {
   useHydrateCorretores();
-  useRealtimeNotifications();
   const session = useSession();
   const authReady = useAuthReady();
   const hasAuthSession = useHasAuthSession();
@@ -246,7 +245,7 @@ export function AppShell() {
         </header>
 
         <main className="mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10">
-          <NotificationsSpotlight />
+          <NotificationTransientRegion />
           <Outlet />
         </main>
       </div>
@@ -280,6 +279,7 @@ export function AppShell() {
           );
         })}
       </nav>
+      <NotificationCenter />
     </div>
   );
 }

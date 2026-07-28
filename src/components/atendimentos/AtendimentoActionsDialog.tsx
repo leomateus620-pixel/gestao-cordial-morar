@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { brokerCanServeAgency, type ScopedBrokerOption } from "@/lib/attendances/broker-scope";
 import {
   atendimentoProximoPassoOptions,
   type Atendimento,
@@ -65,7 +66,7 @@ export function AtendimentoActionsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: AtendimentoActionPayload) => Promise<void> | void;
-  brokerOptions?: Array<{ id: string; nome: string }>;
+  brokerOptions?: ScopedBrokerOption[];
 }) {
   if (!kind) return null;
   return (
@@ -135,7 +136,7 @@ function FormBody({
   atendimento: Atendimento;
   onSubmit: (payload: AtendimentoActionPayload) => Promise<void>;
   onCancel: () => void;
-  brokerOptions: Array<{ id: string; nome: string }>;
+  brokerOptions: ScopedBrokerOption[];
 }) {
   // Local state per-kind
   const [corretorId, setCorretorId] = useState(
@@ -155,6 +156,7 @@ function FormBody({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sortedBrokerOptions = [...brokerOptions]
+    .filter((broker) => brokerCanServeAgency(broker, atendimento.imobiliaria))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((broker) => ({ id: broker.id, label: broker.nome }));
 
