@@ -1,23 +1,20 @@
-import { useCallback, useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useShallow } from "zustand/react/shallow";
 import {
   calculateCorretoresSummary,
   filterCorretores,
   filterCorretoresByAgency,
   getCorretoresDashboardChart,
   getDefaultCorretorFilters,
-  normalizeCorretores,
   rankCorretores,
   type AgencyFilter,
 } from "@/services/corretores";
-import { applyAgenciamentoStatsToCorretores } from "@/services/agenciamentos";
-import { listAgenciamentos } from "@/lib/agenciamentos/agenciamentos.functions";
-import { useApp } from "@/store/app-store";
+import { getEquipePerformance, type EquipePerformanceResult } from "@/lib/equipe/equipe.functions";
 import { useSession } from "@/lib/auth-mock";
-import type { Agenciamento } from "@/types/agenciamento";
-import type { CorretorFiltersState } from "@/types/corretor";
+import { useApp } from "@/store/app-store";
+import type { CorretorFiltersState, CorretorSourceStatus } from "@/types/corretor";
 
 type UseCorretoresOptions = {
   initialFilters?: Partial<CorretorFiltersState>;
@@ -25,70 +22,79 @@ type UseCorretoresOptions = {
   skipDashboard?: boolean;
 };
 
+const EMPTY_SOURCE_STATUS: CorretorSourceStatus = {
+  atendimentos: "ready",
+  agenda: "ready",
+  agenciamentos: "ready",
+  vendas: "ready",
+  alugueis: "ready",
+  respostas: "ready",
+};
+
 export function useCorretores(options: UseCorretoresOptions = {}) {
   const session = useSession();
-  const { rawCorretores, agency, setAgency } = useApp(
+  const { agency, setAgency } = useApp(
     useShallow((state) => ({
-      rawCorretores: state.corretores,
       agency: state.agency,
       setAgency: state.setAgency,
     })),
   );
-
-  const list = useServerFn(listAgenciamentos);
-  const agenciamentosQuery = useQuery<Agenciamento[]>({
-    queryKey: ["agenciamentos"],
-    queryFn: () => list(),
-    enabled: Boolean(session),
-    staleTime: 30_000,
-  });
-  const normalizedAgenciamentos = useMemo(
-    () => agenciamentosQuery.data ?? [],
-    [agenciamentosQuery.data],
-  );
-
   const [filters, setFilterState] = useState<CorretorFiltersState>(() => ({
     ...getDefaultCorretorFilters(),
     ...options.initialFilters,
   }));
-
   const effectiveAgency = options.agencyOverride ?? agency;
-
-  const normalizedCorretores = useMemo(
-    () =>
-      applyAgenciamentoStatsToCorretores(
-        normalizeCorretores(rawCorretores),
-        normalizedAgenciamentos,
-      ),
-    [normalizedAgenciamentos, rawCorretores],
-  );
-
-
+  const performanceFn = useServerFn(getEquipePerformance);
+  const query = useQuery<EquipePerformanceResult>({
+    queryKey: ["equipe-performance", session?.id ?? "anonymous", filters.periodo, effectiveAgency],
+    queryFn: ({ signal }) => {
+      if (signal.aborted) throw new DOMException("Consulta cancelada", "AbortError");
+      return performanceFn({
+        data: { periodo: filters.periodo, imobiliaria: effectiveAgency },
+      });
+    },
+    enabled: Boolean(session) && !options.skipDashboard,
+    staleTime: 30_000,
+  });
+  const allCorretores = useMemo(() => query.data?.rows ?? [], [query.data?.rows]);
   const agencyCorretores = useMemo(
-    () => filterCorretoresByAgency(normalizedCorretores, effectiveAgency),
-    [effectiveAgency, normalizedCorretores],
+    () => filterCorretoresByAgency(allCorretores, effectiveAgency),
+    [allCorretores, effectiveAgency],
   );
-
+  useEffect(() => {
+    if (
+      query.isFetching ||
+      filters.corretorId === "todos" ||
+      agencyCorretores.some((corretor) => corretor.id === filters.corretorId)
+    ) {
+      return;
+    }
+    setFilterState((current) => ({ ...current, corretorId: "todos" }));
+  }, [agencyCorretores, filters.corretorId, query.isFetching]);
   const filteredCorretores = useMemo(
-    () => filterCorretores(normalizedCorretores, effectiveAgency, filters),
-    [effectiveAgency, filters, normalizedCorretores],
+    () => filterCorretores(allCorretores, effectiveAgency, filters),
+    [allCorretores, effectiveAgency, filters],
   );
-
-  const ranking = useMemo(() => rankCorretores(filteredCorretores), [filteredCorretores]);
-
-  const corretores = useMemo(() => {
-    const positions = new Map(ranking.map((corretor) => [corretor.id, corretor.rankingPosicao]));
-    return filteredCorretores.map((corretor) => ({
-      ...corretor,
-      rankingPosicao: positions.get(corretor.id),
-    }));
-  }, [filteredCorretores, ranking]);
-
+  const ranking = useMemo(
+    () => rankCorretores(filteredCorretores, filters.ordenacao),
+    [filteredCorretores, filters.ordenacao],
+  );
+  const positions = useMemo(
+    () => new Map(ranking.map((corretor) => [corretor.id, corretor.rankingPosicao])),
+    [ranking],
+  );
+  const corretores = useMemo(
+    () =>
+      filteredCorretores.map((corretor) => ({
+        ...corretor,
+        rankingPosicao: positions.get(corretor.id),
+      })),
+    [filteredCorretores, positions],
+  );
   const summary = useMemo(
     () => calculateCorretoresSummary(filteredCorretores),
     [filteredCorretores],
   );
-
   const dashboardCorretores = useMemo(
     () =>
       options.skipDashboard
@@ -96,17 +102,14 @@ export function useCorretores(options: UseCorretoresOptions = {}) {
         : agencyCorretores.filter((corretor) => corretor.status === "ativo"),
     [agencyCorretores, options.skipDashboard],
   );
-
   const dashboardSummary = useMemo(
     () => calculateCorretoresSummary(dashboardCorretores),
     [dashboardCorretores],
   );
-
   const dashboardRanking = useMemo(
-    () => rankCorretores(dashboardCorretores),
+    () => rankCorretores(dashboardCorretores, "contratos"),
     [dashboardCorretores],
   );
-
   const dashboardChart = useMemo(
     () => getCorretoresDashboardChart(dashboardCorretores),
     [dashboardCorretores],
@@ -115,7 +118,6 @@ export function useCorretores(options: UseCorretoresOptions = {}) {
   const updateFilters = useCallback((patch: Partial<CorretorFiltersState>) => {
     setFilterState((current) => ({ ...current, ...patch }));
   }, []);
-
   const resetFilters = useCallback(() => {
     setFilterState(getDefaultCorretorFilters());
   }, []);
@@ -133,5 +135,14 @@ export function useCorretores(options: UseCorretoresOptions = {}) {
     dashboardSummary,
     dashboardRanking,
     dashboardChart,
+    unattributed: query.data?.unattributed ?? { sales: 0, rentals: 0 },
+    sourceStatus: query.data?.sourceStatus ?? EMPTY_SOURCE_STATUS,
+    periodoInicio: query.data?.periodoInicio,
+    periodoFim: query.data?.periodoFim,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
   };
 }

@@ -80,7 +80,10 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const rawAgenciamentos = useMemo(() => query.data ?? [], [query.data]);
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["agenciamentos"] });
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["agenciamentos"] }),
+      queryClient.invalidateQueries({ queryKey: ["equipe-performance"] }),
+    ]);
   }, [queryClient]);
 
   const createMutation = useMutation({
@@ -121,10 +124,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     (session.permissions.includes("agenciamentos:manage") ||
       hasPermission(session.perfil, "agenciamentos:manage")),
   );
-  const isAdminLike =
-    session?.perfil === "admin_owner" || session?.perfil === "secretaria";
-
-
+  const isAdminLike = session?.perfil === "admin_owner" || session?.perfil === "secretaria";
 
   const currentBroker = useMemo(
     () => resolveCurrentBroker(session?.nome, session?.iniciais, corretores),
@@ -164,7 +164,6 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     () => (options.skipDashboard || !isAdminLike ? [] : filterAgenciamentos(visibleAgenciamentos)),
     [isAdminLike, options.skipDashboard, visibleAgenciamentos],
   );
-
 
   const dashboardSummary = useMemo(
     () => calculateAgenciamentosSummary(dashboardAgenciamentos),

@@ -5,7 +5,7 @@ import { listCorretores, type CorretorProfile } from "@/lib/corretores/corretore
 import { useSession } from "@/lib/auth-mock";
 import { useApp } from "@/store/app-store";
 import { normalizeCorretores } from "@/services/corretores";
-import type { Corretor, CorretorImobiliaria } from "@/types/corretor";
+import type { CorretorImobiliaria } from "@/types/corretor";
 
 function toIniciais(nome: string, fallback?: string | null): string {
   if (fallback && fallback.trim()) return fallback.trim().toUpperCase().slice(0, 2);
@@ -15,7 +15,7 @@ function toIniciais(nome: string, fallback?: string | null): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function toCorretor(profile: CorretorProfile): Corretor {
+function toCorretor(profile: CorretorProfile) {
   const imobiliaria: CorretorImobiliaria = "cordial";
   return {
     id: profile.id,
@@ -23,27 +23,6 @@ function toCorretor(profile: CorretorProfile): Corretor {
     iniciais: toIniciais(profile.nome, profile.iniciais),
     imobiliaria,
     creci: "",
-    status: "ativo",
-    atendimentosMes: 0,
-    atendimentosRecebidos: 0,
-    atendimentosEmAndamento: 0,
-    visitasRealizadas: 0,
-    propostasFeitas: 0,
-    contratosFechados: 0,
-    vendasFechadas: 0,
-    alugueisFechados: 0,
-    agenciamentosFeitos: 0,
-    agenciamentosComPlaca: 0,
-    agenciamentosComFotos: 0,
-    agenciamentosNoSite: 0,
-    agenciamentosValidados: 0,
-    comissaoPrevista: 0,
-    comissaoPaga: 0,
-    comissaoMes: 0,
-    taxaConversao: 0,
-    mediaMensalContratos: 0,
-    ticketMedio: 0,
-    performanceTrend: "estavel",
   };
 }
 
@@ -59,11 +38,7 @@ export function useHydrateCorretores() {
 
   useEffect(() => {
     if (!query.data) return;
-    const onlyCorretores = query.data.filter(
-      (p) =>
-        (p.role === "corretor" || p.role === "admin") &&
-        !/^leonardo\b/i.test(p.nome ?? ""),
-    );
+    const onlyCorretores = query.data.filter((profile) => profile.role === "corretor");
     const corretores = normalizeCorretores(onlyCorretores.map(toCorretor));
     useApp.setState({ corretores });
   }, [query.data]);

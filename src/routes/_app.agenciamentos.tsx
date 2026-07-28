@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import {
   AlertCircle,
   CheckCircle2,
@@ -32,11 +32,29 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
-import type { Agenciamento, AgenciamentoInput } from "@/types/agenciamento";
+import type {
+  Agenciamento,
+  AgenciamentoInput,
+  AgenciamentoPeriodFilter,
+  AgenciamentoStatusFilter,
+} from "@/types/agenciamento";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/agenciamentos")({
   head: () => ({ meta: [{ title: "Agenciamentos - Gestão Cordial" }] }),
+  validateSearch: (
+    search: {
+      corretorId?: unknown;
+      periodo?: unknown;
+      imobiliaria?: unknown;
+      status?: unknown;
+    } & SearchSchemaInput,
+  ) => ({
+    corretorId: parseBrokerId(search.corretorId),
+    periodo: parseOperationalPeriod(search.periodo),
+    imobiliaria: parseAgency(search.imobiliaria),
+    status: parseAgenciamentoStatus(search.status),
+  }),
   component: GuardedPage,
 });
 
@@ -54,6 +72,7 @@ function GuardedPage() {
 }
 
 function Page() {
+  const { corretorId, periodo, imobiliaria, status } = Route.useSearch();
   const {
     session,
     canRead,
@@ -78,7 +97,14 @@ function Page() {
     isError,
     error,
     refetchAgenciamentos,
-  } = useAgenciamentos();
+  } = useAgenciamentos({
+    initialFilters: {
+      corretorId: corretorId ?? "todos",
+      periodo: periodo ?? "todos",
+      imobiliaria: imobiliaria ?? "todas",
+      status: status ?? "todos",
+    },
+  });
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
@@ -94,6 +120,15 @@ function Page() {
   );
 
   const listRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setFilters({
+      corretorId: corretorId ?? "todos",
+      periodo: periodo ?? "todos",
+      imobiliaria: imobiliaria ?? "todas",
+      status: status ?? "todos",
+    });
+  }, [corretorId, imobiliaria, periodo, setFilters, status]);
 
   const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
     if (filters.status === "aguardando_validacao") return "pendentes";
@@ -272,7 +307,6 @@ function Page() {
     }
   }, [deleteAgenciamento, pendingDelete, showFeedback]);
 
-
   if (!canRead) {
     return (
       <section className="mx-auto mt-8 max-w-xl rounded-[1.5rem] border border-white/70 bg-white/68 p-6 text-center shadow-[0_20px_60px_-42px_rgba(23,27,33,0.4)]">
@@ -372,7 +406,11 @@ function Page() {
           />
         </div>
 
-        <section ref={listRef} aria-labelledby="agenciamentos-list-title" className="min-w-0 scroll-mt-4">
+        <section
+          ref={listRef}
+          aria-labelledby="agenciamentos-list-title"
+          className="min-w-0 scroll-mt-4"
+        >
           <div className="mb-2.5 flex items-end justify-between gap-3 px-0.5">
             <div>
               <h2 id="agenciamentos-list-title" className="text-base font-extrabold tracking-tight">
@@ -512,7 +550,6 @@ function Page() {
   );
 }
 
-
 function OperationalEmptyState({
   hasRecords,
   canCreate,
@@ -561,6 +598,46 @@ function OperationalEmptyState({
       </div>
     </div>
   );
+}
+
+const BROKER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const operationalPeriods = new Set<AgenciamentoPeriodFilter>([
+  "mes",
+  "ultimos_30",
+  "trimestre",
+  "ano",
+]);
+const agenciamentoStatuses = new Set<AgenciamentoStatusFilter>([
+  "novo",
+  "em_andamento",
+  "pendente_fotos",
+  "pendente_placa",
+  "pendente_site",
+  "pendentes",
+  "aguardando_validacao",
+  "validado",
+  "cancelado",
+]);
+
+function parseBrokerId(value: unknown) {
+  return typeof value === "string" && BROKER_ID_PATTERN.test(value) ? value : undefined;
+}
+
+function parseOperationalPeriod(value: unknown): AgenciamentoPeriodFilter | undefined {
+  return typeof value === "string" && operationalPeriods.has(value as AgenciamentoPeriodFilter)
+    ? (value as AgenciamentoPeriodFilter)
+    : undefined;
+}
+
+function parseAgency(value: unknown): "todas" | "cordial" | "morar" | undefined {
+  return value === "todas" || value === "cordial" || value === "morar" ? value : undefined;
+}
+
+function parseAgenciamentoStatus(value: unknown): AgenciamentoStatusFilter | undefined {
+  return typeof value === "string" && agenciamentoStatuses.has(value as AgenciamentoStatusFilter)
+    ? (value as AgenciamentoStatusFilter)
+    : undefined;
 }
 
 function AgenciamentoListSkeleton() {

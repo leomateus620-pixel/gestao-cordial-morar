@@ -17,15 +17,13 @@ import type {
   AgendaTipo,
 } from "@/types/agenda";
 
-
-
-
 export type AgendaPeriod = "hoje" | "sete_dias" | "mes" | "todos" | "personalizado";
 
 export type AgendaFilters = {
   periodo: AgendaPeriod;
   tipo: "todos" | AgendaTipo;
   status: "todos" | AgendaStatus;
+  corretorContexto: "todos" | string;
   responsavel: "todos" | string;
   participante: "todos" | string;
   imobiliaria: "todas" | AgendaImobiliaria;
@@ -39,6 +37,7 @@ export const defaultAgendaFilters: AgendaFilters = {
   periodo: "todos",
   tipo: "todos",
   status: "todos",
+  corretorContexto: "todos",
   responsavel: "todos",
   participante: "todos",
   imobiliaria: "todas",
@@ -70,7 +69,7 @@ export function useAgenda(
     staleTime: 15_000,
   });
 
-  const events = eventsQuery.data ?? [];
+  const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
 
   const filteredEvents = useMemo(
     () =>
@@ -82,12 +81,16 @@ export function useAgenda(
   );
 
   const stats = useMemo(
-    () => (scope === "fotos" ? getPhotoStats(events) : getAgendaStats(events)),
-    [events, scope],
+    () => (scope === "fotos" ? getPhotoStats(filteredEvents) : getAgendaStats(filteredEvents)),
+    [filteredEvents, scope],
   );
 
   // Invalidate every agenda view (geral + fotos + todos) so mutations propagate.
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["agenda", "events"] });
+  const invalidate = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["agenda", "events"] }),
+      qc.invalidateQueries({ queryKey: ["equipe-performance"] }),
+    ]);
 
   const upsert = useMutation({
     mutationFn: (payload: { id?: string; input: AgendaEventInput }) =>
@@ -137,6 +140,12 @@ export function useAgenda(
 function matchesFilters(event: AgendaEvent, filters: AgendaFilters) {
   if (filters.tipo !== "todos" && event.tipo !== filters.tipo) return false;
   if (filters.status !== "todos" && event.status !== filters.status) return false;
+  if (
+    filters.corretorContexto !== "todos" &&
+    event.responsavelPrincipalId !== filters.corretorContexto &&
+    !event.participantes.some((participant) => participant.userId === filters.corretorContexto)
+  )
+    return false;
   if (filters.responsavel !== "todos" && event.responsavelPrincipalId !== filters.responsavel)
     return false;
   if (
@@ -220,8 +229,6 @@ function getPhotoStats(events: AgendaEvent[]) {
     reagendadas: active.filter((event) => event.status === "reagendado").length,
   };
 }
-
-
 
 function startOfDay(value: Date) {
   const result = new Date(value);

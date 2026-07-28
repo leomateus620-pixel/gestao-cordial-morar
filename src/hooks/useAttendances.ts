@@ -35,7 +35,14 @@ import type { ClientCreateInput, ClientPurpose, ClientStatus, LeadOrigin } from 
 
 const ACTIVE_STAGES_FOR_COUNT = new Set<PipelineStage>(ACTIVE_PIPELINE_STAGES);
 
-export type AtendimentoPeriodFilter = "todos" | "hoje" | "sete_dias" | "mes";
+export type AtendimentoPeriodFilter =
+  | "todos"
+  | "hoje"
+  | "sete_dias"
+  | "mes"
+  | "ultimos_30"
+  | "trimestre"
+  | "ano";
 
 export type AtendimentoFilters = {
   status: "todos" | AtendimentoStatus;
@@ -66,9 +73,11 @@ export function useAttendances(
   query: string,
   filters: AtendimentoFilters,
   track?: CommercialTrack,
+  options: { agency?: "todas" | "cordial" | "morar" } = {},
 ) {
   const user = useSession();
-  const agency = useApp((state) => state.agency);
+  const selectedAgency = useApp((state) => state.agency);
+  const agency = options.agency ?? selectedAgency;
   const imoveis = useApp((state) => state.imoveis);
   const corretores = useApp((state) => state.corretores);
   const qc = useQueryClient();
@@ -89,7 +98,11 @@ export function useAttendances(
     [attendancesQuery.data, corretores, imoveis],
   );
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY });
+  const invalidate = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY }),
+      qc.invalidateQueries({ queryKey: ["equipe-performance"] }),
+    ]);
 
   const createMutation = useMutation({
     mutationFn: (input: AtendimentoCreateInput) => createAttendance({ data: input }),
@@ -156,7 +169,8 @@ export function useAttendances(
 
   // Trilha comercial (Vendas/Aluguéis) — filtragem canônica antes de qualquer agregação.
   const trackAtendimentos = useMemo(
-    () => (track ? agencyAtendimentos.filter((item) => matchesTrack(item, track)) : agencyAtendimentos),
+    () =>
+      track ? agencyAtendimentos.filter((item) => matchesTrack(item, track)) : agencyAtendimentos,
     [agencyAtendimentos, track],
   );
 
@@ -194,8 +208,7 @@ export function useAttendances(
     [trackAtendimentos, filters, query],
   );
 
-  const stats = useMemo(() => getStats(trackAtendimentos), [trackAtendimentos]);
-
+  const stats = useMemo(() => getStats(filteredAtendimentos), [filteredAtendimentos]);
 
   return {
     agency,
@@ -374,5 +387,18 @@ function matchesPeriod(item: Atendimento, period: AtendimentoPeriodFilter) {
   const now = new Date();
   if (period === "hoje") return created.toDateString() === now.toDateString();
   if (period === "sete_dias") return now.getTime() - created.getTime() <= 7 * 24 * 60 * 60 * 1000;
+  if (period === "ultimos_30") {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 29);
+    return created >= start && created <= now;
+  }
+  if (period === "trimestre") {
+    const start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    return created >= start && created <= now;
+  }
+  if (period === "ano") {
+    const start = new Date(now.getFullYear(), 0, 1);
+    return created >= start && created <= now;
+  }
   return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
 }

@@ -18,12 +18,27 @@ import {
 } from "@/hooks/useAgenda";
 import { mockUsers, useSession } from "@/lib/auth-mock";
 import { useApp } from "@/store/app-store";
-import type { AgendaEvent, AgendaEventInput } from "@/types/agenda";
+import type { AgendaEvent, AgendaEventInput, AgendaStatus } from "@/types/agenda";
+import { agendaStatusOptions } from "@/types/agenda";
+
+type OperationalPeriod = "mes" | "ultimos_30" | "trimestre" | "ano";
 
 export const Route = createFileRoute("/_app/agenda")({
   head: () => ({ meta: [{ title: "Visitas e compromissos — Gestão Cordial" }] }),
-  validateSearch: (search: { id?: unknown } & SearchSchemaInput) => ({
+  validateSearch: (
+    search: {
+      id?: unknown;
+      corretorId?: unknown;
+      periodo?: unknown;
+      imobiliaria?: unknown;
+      status?: unknown;
+    } & SearchSchemaInput,
+  ) => ({
     id: typeof search.id === "string" ? search.id : undefined,
+    corretorId: parseBrokerId(search.corretorId),
+    periodo: parseOperationalPeriod(search.periodo),
+    imobiliaria: parseAgency(search.imobiliaria),
+    status: parseAgendaStatus(search.status),
   }),
   component: GuardedAgendaPage,
 });
@@ -38,11 +53,14 @@ function GuardedAgendaPage() {
 
 function AgendaPage() {
   const session = useSession();
-  const { id: highlightedId } = Route.useSearch();
+  const { id: highlightedId, corretorId, periodo, imobiliaria, status } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AgendaEvent | undefined>();
-  const [filters, setFilters] = useState<AgendaFiltersState>(defaultAgendaFilters);
+  const [filters, setFilters] = useState<AgendaFiltersState>(() => ({
+    ...defaultAgendaFilters,
+    ...buildAgendaContextFilters({ corretorId, periodo, imobiliaria, status }),
+  }));
   const [feedback, setFeedback] = useState<string | null>(null);
   const unavailableDeepLink = useRef<string | null>(null);
   const clientes = useApp((state) => state.clientes);
@@ -61,6 +79,13 @@ function AgendaPage() {
     error,
     refetch,
   } = useAgenda("", filters, { scope: "geral" });
+
+  useEffect(() => {
+    setFilters((current) => ({
+      ...current,
+      ...buildAgendaContextFilters({ corretorId, periodo, imobiliaria, status }),
+    }));
+  }, [corretorId, imobiliaria, periodo, status]);
 
   useEffect(() => {
     if (!highlightedId || isLoading || isError) return;
@@ -210,7 +235,11 @@ function AgendaPage() {
           onOpenChange={(nextOpen) => {
             setOpen(nextOpen);
             if (!nextOpen && highlightedId) {
-              void navigate({ to: ".", search: {}, replace: true });
+              void navigate({
+                to: ".",
+                search: { corretorId, periodo, imobiliaria, status },
+                replace: true,
+              });
             }
           }}
           onSubmit={save}
@@ -224,4 +253,86 @@ function AgendaPage() {
       )}
     </div>
   );
+}
+
+const BROKER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const operationalPeriods = new Set<OperationalPeriod>(["mes", "ultimos_30", "trimestre", "ano"]);
+const agendaStatuses = new Set<AgendaStatus>(agendaStatusOptions.map((option) => option.value));
+
+function parseBrokerId(value: unknown) {
+  return typeof value === "string" && BROKER_ID_PATTERN.test(value) ? value : undefined;
+}
+
+function parseOperationalPeriod(value: unknown): OperationalPeriod | undefined {
+  return typeof value === "string" && operationalPeriods.has(value as OperationalPeriod)
+    ? (value as OperationalPeriod)
+    : undefined;
+}
+
+function parseAgency(value: unknown): "todas" | "cordial" | "morar" | undefined {
+  return value === "todas" || value === "cordial" || value === "morar" ? value : undefined;
+}
+
+function parseAgendaStatus(value: unknown): AgendaStatus | undefined {
+  return typeof value === "string" && agendaStatuses.has(value as AgendaStatus)
+    ? (value as AgendaStatus)
+    : undefined;
+}
+
+function buildAgendaContextFilters({
+  corretorId,
+  periodo,
+  imobiliaria,
+  status,
+}: {
+  corretorId?: string;
+  periodo?: OperationalPeriod;
+  imobiliaria?: "todas" | "cordial" | "morar";
+  status?: AgendaStatus;
+}): Partial<AgendaFiltersState> {
+  const periodFilters = getAgendaPeriodFilters(periodo);
+  return {
+    corretorContexto: corretorId ?? "todos",
+    responsavel: "todos",
+    imobiliaria: imobiliaria ?? "todas",
+    status: status ?? "todos",
+    ...periodFilters,
+  };
+}
+
+function getAgendaPeriodFilters(
+  period?: OperationalPeriod,
+): Pick<AgendaFiltersState, "periodo" | "dataInicio" | "dataFim"> {
+  if (!period) return { periodo: "todos", dataInicio: "", dataFim: "" };
+  if (period === "mes") return { periodo: "mes", dataInicio: "", dataFim: "" };
+
+  const now = new Date();
+  let start: Date;
+  let end: Date;
+
+  if (period === "ultimos_30") {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+    end = now;
+  } else if (period === "trimestre") {
+    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    start = new Date(now.getFullYear(), quarterStartMonth, 1);
+    end = new Date(now.getFullYear(), quarterStartMonth + 3, 0);
+  } else {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear(), 11, 31);
+  }
+
+  return {
+    periodo: "personalizado",
+    dataInicio: formatDateInput(start),
+    dataFim: formatDateInput(end),
+  };
+}
+
+function formatDateInput(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
