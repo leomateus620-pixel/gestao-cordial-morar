@@ -99,6 +99,8 @@ function rowToEvent(row: DbEvent): AgendaEvent {
     clienteNome: orUndef(row.cliente_nome),
     atendimentoId: orUndef(row.atendimento_id),
     imovelId: orUndef(row.imovel_id),
+    imovelNome: orUndef(row.imovel_nome),
+    imovelEndereco: orUndef(row.imovel_endereco),
     imovelDescricao: orUndef(row.imovel_descricao),
     agenciamentoId: orUndef(row.agenciamento_id),
     local: orUndef(row.local),
