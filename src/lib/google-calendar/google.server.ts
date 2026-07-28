@@ -469,11 +469,35 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
   const event = await loadEvent(eventId);
   if (!event) return { status: "preparado", error: "Evento não encontrado" };
 
+  // Destinatários vêm SEMPRE de relações persistidas (autor, responsável,
+  // participantes) — nunca da consulta de visibilidade/RLS da tela "Todos".
   const recipientIds = collectRecipientIds(event);
+  const recipientSet = new Set(recipientIds);
+
+  const { data: existingRows } = await supabaseAdmin
+    .from("agenda_event_google_syncs")
+    .select("user_id,google_event_id,calendar_id")
+    .eq("event_id", eventId);
+  const existingByUser = new Map<string, SyncRow>();
+  for (const r of (existingRows ?? []) as SyncRow[]) existingByUser.set(r.user_id, r);
+
+  // Reconciliação: remove do Google quem deixou de ser destinatário
+  // (reatribuição de responsável, participante removido, evento sem vínculos).
+  const errors: string[] = [];
+  for (const [userId, row] of existingByUser) {
+    if (recipientSet.has(userId)) continue;
+    const removed = await removeRecipientCopy(eventId, row);
+    if (!removed) errors.push(`${userId.slice(0, 8)}: falha ao remover cópia obsoleta`);
+    existingByUser.delete(userId);
+  }
+
   if (recipientIds.length === 0) {
     await supabaseAdmin
       .from("agenda_events")
-      .update({ google_calendar_sync_status: "nao_sincronizado" })
+      .update({
+        google_calendar_sync_status: "nao_sincronizado",
+        google_calendar_sync_error: errors.length ? errors.join(" | ").slice(0, 500) : null,
+      })
       .eq("id", eventId);
     return { status: "nao_sincronizado" };
   }
@@ -489,31 +513,36 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
   for (const c of (conns ?? []) as ConnectionRow[]) connByUser.set(c.user_id, c);
 
   const extraAttendeeEmails = [...connByUser.values()]
+    .filter(hasCalendarScope)
     .map((c) => c.google_email)
     .filter((e): e is string => !!e);
-
-  const { data: existingRows } = await supabaseAdmin
-    .from("agenda_event_google_syncs")
-    .select("user_id,google_event_id,calendar_id")
-    .eq("event_id", eventId);
-  const existingByUser = new Map<string, SyncRow>();
-  for (const r of (existingRows ?? []) as SyncRow[]) existingByUser.set(r.user_id, r);
 
   if (connByUser.size === 0) {
     await supabaseAdmin
       .from("agenda_events")
-      .update({ google_calendar_sync_status: "nao_sincronizado" })
+      .update({
+        google_calendar_sync_status: "nao_sincronizado",
+        google_calendar_sync_error: errors.length ? errors.join(" | ").slice(0, 500) : null,
+      })
       .eq("id", eventId);
     return { status: "nao_sincronizado" };
   }
 
   let anySuccess = false;
-  const errors: string[] = [];
+  let anyConnected = false;
 
   for (const userId of recipientIds) {
     const conn = connByUser.get(userId);
     const existing = existingByUser.get(userId) ?? null;
     if (!conn) continue;
+    anyConnected = true;
+
+    // Conexões sem o escopo calendar.events nunca vão funcionar: sinalize e siga.
+    if (!hasCalendarScope(conn)) {
+      errors.push(`${userId.slice(0, 8)}: escopo insuficiente`);
+      await flagReconnect(conn, SCOPE_ERROR);
+      continue;
+    }
 
     const otherEmails = extraAttendeeEmails.filter(
       (e) => e.toLowerCase() !== (conn.google_email ?? "").toLowerCase(),
@@ -541,30 +570,31 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
           .eq("event_id", eventId)
           .eq("user_id", userId);
       }
+      if (conn.last_error) {
+        await supabaseAdmin
+          .from("google_calendar_connections")
+          .update({ last_error: null })
+          .eq("user_id", userId);
+      }
       anySuccess = true;
     } else {
       errors.push(`${userId.slice(0, 8)}: ${result.error}`);
-      const tokenLooksInvalid = /invalid_grant|unauthorized|401/i.test(result.error);
-      if (tokenLooksInvalid) {
-        const reconnectError = "Token inválido. Reconecte sua conta Google.";
-        await supabaseAdmin
-          .from("google_calendar_connections")
-          .update({ last_error: reconnectError })
-          .eq("user_id", userId);
-        if (conn.last_error !== reconnectError) {
-          await notify(
-            userId,
-            "Reconecte sua conta Google",
-            "A conexão com o Google Agenda expirou. Vá em Configurações para reconectar.",
-            "google_calendar",
-            `google_calendar:${userId}:reconnect:${conn.expires_at}`,
-          );
-        }
+      if (needsReconnect(result.error)) {
+        await flagReconnect(
+          conn,
+          /insufficient|403/i.test(result.error)
+            ? SCOPE_ERROR
+            : "Token inválido. Reconecte sua conta Google.",
+        );
       }
     }
   }
 
-  const finalStatus: "sincronizado" | "preparado" = anySuccess ? "sincronizado" : "preparado";
+  const finalStatus: "sincronizado" | "preparado" | "nao_sincronizado" = anySuccess
+    ? "sincronizado"
+    : anyConnected
+      ? "preparado"
+      : "nao_sincronizado";
   await supabaseAdmin
     .from("agenda_events")
     .update({
@@ -576,8 +606,116 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
 
   return anySuccess
     ? { status: "sincronizado" }
-    : { status: "preparado", error: errors.join(" | ") };
+    : { status: finalStatus, error: errors.join(" | ") || undefined };
 }
+
+async function flagReconnect(conn: ConnectionRow, message: string) {
+  await supabaseAdmin
+    .from("google_calendar_connections")
+    .update({ last_error: message })
+    .eq("user_id", conn.user_id);
+  if (conn.last_error !== message) {
+    await notify(
+      conn.user_id,
+      "Reconecte sua conta Google",
+      `${message} Abra a Agenda e use “Reconectar / trocar conta”.`,
+      "google_calendar",
+      `google_calendar:${conn.user_id}:reconnect:${conn.expires_at}`,
+    );
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Fila de retentativas — mantém a sincronização tolerante a falhas.
+ * ------------------------------------------------------------------ */
+
+const MAX_SYNC_ATTEMPTS = 6;
+
+export async function enqueueGoogleSync(eventId: string) {
+  await supabaseAdmin.from("agenda_google_sync_queue").upsert(
+    {
+      event_id: eventId,
+      attempts: 0,
+      next_attempt_at: new Date().toISOString(),
+      last_error: null,
+    },
+    { onConflict: "event_id" },
+  );
+}
+
+/**
+ * Enfileira e já tenta uma vez em linha. Se falhar, a linha permanece na fila
+ * e o cron reprocessa com backoff exponencial.
+ */
+export async function scheduleGoogleSync(eventId: string) {
+  await enqueueGoogleSync(eventId);
+  try {
+    const result = await syncAgendaEventToGoogle(eventId);
+    if (result.status !== "preparado") {
+      await supabaseAdmin.from("agenda_google_sync_queue").delete().eq("event_id", eventId);
+      return result;
+    }
+    await bumpAttempt(eventId, 0, result.error ?? "sync incompleto");
+    return result;
+  } catch (e) {
+    await bumpAttempt(eventId, 0, e instanceof Error ? e.message : String(e));
+    return { status: "preparado" as const, error: "sync adiado" };
+  }
+}
+
+async function bumpAttempt(eventId: string, attempts: number, error: string) {
+  const next = attempts + 1;
+  if (next >= MAX_SYNC_ATTEMPTS) {
+    await supabaseAdmin
+      .from("agenda_google_sync_queue")
+      .update({ attempts: next, last_error: error.slice(0, 500) })
+      .eq("event_id", eventId);
+    return;
+  }
+  const delayMs = Math.min(30 * 60_000, 60_000 * 2 ** next);
+  await supabaseAdmin
+    .from("agenda_google_sync_queue")
+    .update({
+      attempts: next,
+      last_error: error.slice(0, 500),
+      next_attempt_at: new Date(Date.now() + delayMs).toISOString(),
+    })
+    .eq("event_id", eventId);
+}
+
+/** Drena a fila — chamado pelo cron. */
+export async function drainGoogleSyncQueue(limit = 25) {
+  const { data: rows } = await supabaseAdmin
+    .from("agenda_google_sync_queue")
+    .select("event_id,attempts")
+    .lt("attempts", MAX_SYNC_ATTEMPTS)
+    .lte("next_attempt_at", new Date().toISOString())
+    .order("next_attempt_at", { ascending: true })
+    .limit(limit);
+
+  let done = 0;
+  let retried = 0;
+  for (const row of (rows ?? []) as { event_id: string; attempts: number }[]) {
+    try {
+      const result = await syncAgendaEventToGoogle(row.event_id);
+      if (result.status !== "preparado") {
+        await supabaseAdmin
+          .from("agenda_google_sync_queue")
+          .delete()
+          .eq("event_id", row.event_id);
+        done += 1;
+      } else {
+        await bumpAttempt(row.event_id, row.attempts, result.error ?? "sync incompleto");
+        retried += 1;
+      }
+    } catch (e) {
+      await bumpAttempt(row.event_id, row.attempts, e instanceof Error ? e.message : String(e));
+      retried += 1;
+    }
+  }
+  return { pending: rows?.length ?? 0, done, retried };
+}
+
 
 /**
  * Reprocessa todos os eventos futuros em que o usuário é owner/created_by/participante.
