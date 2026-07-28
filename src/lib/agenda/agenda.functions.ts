@@ -39,6 +39,8 @@ type DbEvent = {
   cliente_nome: string | null;
   atendimento_id: string | null;
   imovel_id: string | null;
+  imovel_nome: string | null;
+  imovel_endereco: string | null;
   imovel_descricao: string | null;
   agenciamento_id: string | null;
   local: string | null;
