@@ -180,7 +180,6 @@ async function notify(
     link: "/configuracoes",
     dedup_key: dedupKey,
   } as never);
-
 }
 
 type ReminderRow = { tipo: string; antecedencia_min: number; ativo: boolean };

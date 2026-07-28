@@ -187,7 +187,10 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
     const fimIso = input.fim ? new Date(input.fim).toISOString() : null;
     // A duração é sempre derivada do intervalo informado (o formulário não pede duração).
     const duracaoMin = fimIso
-      ? Math.max(1, Math.round((new Date(fimIso).getTime() - new Date(inicioIso).getTime()) / 60000))
+      ? Math.max(
+          1,
+          Math.round((new Date(fimIso).getTime() - new Date(inicioIso).getTime()) / 60000),
+        )
       : (input.duracaoMin ?? 60);
 
     const payload = {
@@ -305,9 +308,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
 
     // Best-effort push para o Google Agenda do responsável (não bloqueia em caso de erro).
     try {
-      const { syncAgendaEventToGoogle } = await import(
-        "@/lib/google-calendar/google.server"
-      );
+      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
       await syncAgendaEventToGoogle(eventId!);
     } catch (e) {
       console.error("[agenda] sync google falhou:", e);
@@ -332,9 +333,7 @@ export const softDeleteAgendaEvent = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     try {
-      const { syncAgendaEventToGoogle } = await import(
-        "@/lib/google-calendar/google.server"
-      );
+      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
       await syncAgendaEventToGoogle(data.id);
     } catch (e) {
       console.error("[agenda] sync google delete falhou:", e);
@@ -369,9 +368,7 @@ export const completeAgendaEvent = createServerFn({ method: "POST" })
     }
 
     try {
-      const { syncAgendaEventToGoogle } = await import(
-        "@/lib/google-calendar/google.server"
-      );
+      const { syncAgendaEventToGoogle } = await import("@/lib/google-calendar/google.server");
       await syncAgendaEventToGoogle(data.id);
     } catch (e) {
       console.error("[agenda] sync google complete falhou:", e);
