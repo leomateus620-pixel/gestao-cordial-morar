@@ -199,6 +199,8 @@ type EventRow = {
   local: string | null;
   cliente_nome: string | null;
   imovel_descricao: string | null;
+  imovel_nome: string | null;
+  imovel_endereco: string | null;
   owner_user_id: string | null;
   created_by: string;
   responsavel_nome: string | null;
