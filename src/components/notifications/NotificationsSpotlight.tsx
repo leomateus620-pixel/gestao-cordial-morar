@@ -9,6 +9,7 @@ import {
   markNotificationRead,
 } from "@/lib/notifications/notifications.functions";
 import { cn } from "@/lib/utils";
+import { AssignmentStatusBadge, attendanceIdFromLink } from "@/components/notifications/AssignmentStatusBadge";
 
 const HIGH = new Set(["atendimento_atribuido", "atendimento_iniciado"]);
 const DISMISS_KEY = "notif-spotlight-dismissed";
@@ -120,6 +121,14 @@ export function NotificationsSpotlight() {
               {first.mensagem}
             </p>
           )}
+          {(() => {
+            const aid = attendanceIdFromLink(first.link);
+            return aid ? (
+              <div className="mt-2">
+                <AssignmentStatusBadge attendanceId={aid} />
+              </div>
+            ) : null;
+          })()}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {first.link && (
               <button

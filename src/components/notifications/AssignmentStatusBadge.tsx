@@ -8,7 +8,7 @@ import {
 import { elapsedSecondsSince, formatElapsedSeconds } from "@/lib/time/elapsed";
 import { useSession } from "@/lib/auth-mock";
 
-const MANAGEMENT_ROLES = new Set(["admin", "secretaria"]);
+const MANAGEMENT_ROLES = new Set(["admin_owner", "secretaria", "financeiro_admin"]);
 
 /** Extract `id=<uuid>` from `/atendimentos?id=<uuid>`. */
 export function attendanceIdFromLink(link: string | null | undefined): string | null {
