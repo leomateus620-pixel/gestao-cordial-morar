@@ -10,7 +10,8 @@ export const Route = createFileRoute("/api/public/hooks/google-calendar-sync")({
       POST: async ({ request }) => {
         const secret = process.env.NOTIFICATION_HOOK_SECRET;
         const provided =
-          request.headers.get("x-hook-secret") ??
+          request.headers.get("apikey") ??
+          request.headers.get("x-api-key") ??
           request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
           "";
         if (!secret || provided !== secret) {
