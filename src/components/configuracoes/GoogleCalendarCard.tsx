@@ -2,13 +2,12 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, Loader2, RefreshCw, Unlink2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   startGoogleOAuth,
   getMyGoogleConnection,
   disconnectGoogleCalendar,
-  backfillMyGoogleAgenda,
 } from "@/lib/google-calendar/google-calendar.functions";
 import googleCalendarLogo from "@/assets/google-calendar.svg";
 
@@ -27,7 +26,7 @@ export function GoogleCalendarCard() {
   // Flash messages do callback
   useEffect(() => {
     if (search.google === "connected") {
-      toast.success("Google Agenda conectada com sucesso");
+      toast.success("Google Agenda conectada — seus compromissos estão sendo sincronizados");
       qc.invalidateQueries({ queryKey: QK });
       window.history.replaceState({}, "", "/agenda");
     } else if (search.google === "error") {
@@ -53,17 +52,6 @@ export function GoogleCalendarCard() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const backfillMut = useMutation({
-    mutationFn: () => backfillMyGoogleAgenda(),
-    onSuccess: (res) => {
-      toast.success(
-        res?.processed
-          ? `${res.processed} compromisso(s) sincronizado(s) com o Google`
-          : "Nenhum compromisso futuro para sincronizar",
-      );
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const conn = connection.data;
 
