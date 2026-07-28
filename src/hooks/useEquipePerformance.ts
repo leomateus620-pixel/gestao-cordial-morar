@@ -7,6 +7,7 @@ import {
   type EquipePeriodo,
   type EquipePerformanceResult,
 } from "@/lib/equipe/equipe.functions";
+import { useSession } from "@/lib/auth-mock";
 
 type Options = {
   periodo?: EquipePeriodo;
@@ -17,19 +18,30 @@ type Options = {
 const EMPTY: EquipePerformanceResult = {
   periodo: "mes",
   periodoInicio: new Date().toISOString(),
+  periodoFim: new Date().toISOString(),
+  generatedAt: new Date().toISOString(),
   rows: [],
-  totals: { atendimentos: 0, contratos: 0, agenciamentos: 0, conversaoMedia: 0 },
+  unattributed: { sales: 0, rentals: 0 },
+  sourceStatus: {
+    atendimentos: "ready",
+    agenda: "ready",
+    agenciamentos: "ready",
+    vendas: "ready",
+    alugueis: "ready",
+    respostas: "ready",
+  },
 };
 
 export function useEquipePerformance(options: Options = {}) {
+  const session = useSession();
   const [periodo, setPeriodo] = useState<EquipePeriodo>(options.periodo ?? "mes");
   const imobiliaria: EquipeAgencyFilter = options.imobiliaria ?? "todas";
   const fn = useServerFn(getEquipePerformance);
 
   const query = useQuery<EquipePerformanceResult>({
-    queryKey: ["equipe-performance", periodo, imobiliaria],
+    queryKey: ["equipe-performance", session?.id ?? "anonymous", periodo, imobiliaria],
     queryFn: () => fn({ data: { periodo, imobiliaria } }),
-    enabled: options.enabled !== false,
+    enabled: Boolean(session) && options.enabled !== false,
     staleTime: 30_000,
   });
 

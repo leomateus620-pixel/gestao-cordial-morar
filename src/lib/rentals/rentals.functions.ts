@@ -61,6 +61,7 @@ type GuarantorRow = {
 };
 type ContractRow = {
   id: string;
+  created_by: string | null;
   property_id: string;
   tenant_id: string;
   guarantor_id: string | null;
@@ -117,6 +118,7 @@ function mapGuarantor(r: GuarantorRow): RentalGuarantor {
 function mapContract(r: ContractRow): RentalContract {
   return {
     id: r.id,
+    ...(r.created_by ? { createdById: r.created_by } : {}),
     propertyId: r.property_id,
     tenantId: r.tenant_id,
     guarantorId: r.guarantor_id,
@@ -934,7 +936,12 @@ type DocRow = {
   drive_last_synced_at?: string | null;
 };
 
-type RentalDocCategory = "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "apolice_seguro_fianca" | "outro";
+type RentalDocCategory =
+  | "contrato_aluguel"
+  | "termo_vistoria"
+  | "checklist_aluguel"
+  | "apolice_seguro_fianca"
+  | "outro";
 
 const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
   "contrato_aluguel",

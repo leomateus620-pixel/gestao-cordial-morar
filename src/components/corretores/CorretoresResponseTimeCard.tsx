@@ -1,106 +1,143 @@
-import { useQuery } from "@tanstack/react-query";
-import { Timer, Clock3, Zap } from "lucide-react";
-import { useSession } from "@/lib/auth-mock";
-import { getCorretoresResponseMetrics } from "@/lib/attendances/assignments.functions";
+import { AlertCircle, Clock3, Timer, Zap } from "lucide-react";
 import { formatElapsedSeconds } from "@/lib/time/elapsed";
+import type { Corretor, CorretorSourceStatus } from "@/types/corretor";
 
-const MANAGEMENT_ROLES = new Set(["admin", "secretaria"]);
+type CorretoresResponseTimeCardProps = {
+  corretores: Corretor[];
+  sourceStatus: CorretorSourceStatus;
+  isLoading: boolean;
+  isError: boolean;
+};
 
-/**
- * Response-time performance card — visible only to admin/secretaria.
- * The backend RPC also gates the read, so brokers who somehow render this
- * component receive an empty payload.
- */
-export function CorretoresResponseTimeCard() {
-  const user = useSession();
-  const isManagement = user ? MANAGEMENT_ROLES.has(user.perfil) : false;
-
-  const q = useQuery({
-    queryKey: ["corretores-response-metrics", { start: null, end: null, imobiliaria: null }],
-    queryFn: () =>
-      getCorretoresResponseMetrics({ data: { start: null, end: null, imobiliaria: null } }),
-    enabled: isManagement,
-    staleTime: 60_000,
-  });
-
-  if (!isManagement) return null;
-
-  const rows = (q.data ?? []).filter((r) => (r.completed_count ?? 0) > 0 || (r.pending_count ?? 0) > 0);
-  if (rows.length === 0) return null;
-
-  const ranked = [...rows]
-    .filter((r) => r.avg_seconds != null && (r.completed_count ?? 0) > 0)
-    .sort((a, b) => (a.avg_seconds ?? 0) - (b.avg_seconds ?? 0));
-
-  const fastest = ranked[0] ?? null;
-  const totalPending = rows.reduce((sum, r) => sum + (Number(r.pending_count) || 0), 0);
+export function CorretoresResponseTimeCard({
+  corretores,
+  sourceStatus,
+  isLoading,
+  isError,
+}: CorretoresResponseTimeCardProps) {
+  const sourceError = isError || sourceStatus.respostas === "error";
+  const measured = corretores
+    .filter(
+      (corretor) =>
+        corretor.mediaRespostaSegundos != null &&
+        Number.isFinite(corretor.mediaRespostaSegundos) &&
+        corretor.mediaRespostaSegundos >= 0 &&
+        corretor.respostasMedidas > 0,
+    )
+    .sort(
+      (a, b) =>
+        (a.mediaRespostaSegundos ?? Number.POSITIVE_INFINITY) -
+        (b.mediaRespostaSegundos ?? Number.POSITIVE_INFINITY),
+    );
+  const bestAverage = measured[0] ?? null;
+  const totalPending = corretores.reduce(
+    (total, corretor) => total + Math.max(0, corretor.respostasPendentes),
+    0,
+  );
 
   return (
-    <article className="premium-card min-w-0 p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <article className="premium-card min-w-0 p-4 sm:p-5" aria-labelledby="response-time-title">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/70">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/75">
             Tempo de resposta
           </p>
-          <h2 className="mt-0.5 text-base font-semibold tracking-tight">
-            Tempo médio para abertura
+          <h2 id="response-time-title" className="mt-0.5 text-base font-semibold tracking-tight">
+            Início dos atendimentos
           </h2>
-          <p className="mt-1 text-[11px] text-foreground/55">
-            Da atribuição do corretor até a primeira abertura efetiva do detalhe do atendimento.
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-foreground/58">
+            Da atribuição ao primeiro acesso persistido pelo corretor, considerando apenas ciclos
+            com os dois horários válidos.
           </p>
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Timer className="size-5" />
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <Timer className="size-5" aria-hidden />
         </span>
       </div>
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-2">
-        <MiniStat
-          icon={<Zap className="size-3.5 text-primary/70" />}
-          label="Abertura mais rápida"
-          name={fastest?.broker_nome ?? "-"}
-          value={fastest?.avg_seconds != null ? formatElapsedSeconds(Math.round(fastest.avg_seconds)) : "-"}
-        />
-        <MiniStat
-          icon={<Clock3 className="size-3.5 text-primary/70" />}
-          label="Aguardando abertura agora"
-          name="Total pendente"
-          value={String(totalPending).padStart(2, "0")}
-        />
-      </div>
+      {isLoading && <ResponseSkeleton />}
 
-      <div className="space-y-2">
-        {ranked.slice(0, 6).map((r, index) => (
-          <div
-            key={r.broker_id}
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/[0.55] px-3 py-2.5 ring-1 ring-white/60"
-          >
-            <span className="grid size-8 place-items-center rounded-full bg-primary/10 font-mono text-xs font-bold text-primary">
-              {index + 1}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">
-                {r.broker_nome ?? "Sem nome"}
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-foreground/52">
-                {Number(r.completed_count)} abert.
-                {r.fastest_seconds != null
-                  ? ` · min ${formatElapsedSeconds(r.fastest_seconds)}`
-                  : ""}
-                {r.slowest_seconds != null
-                  ? ` · máx ${formatElapsedSeconds(r.slowest_seconds)}`
-                  : ""}
-                {Number(r.pending_count) > 0 ? ` · ${Number(r.pending_count)} pendentes` : ""}
-              </span>
-            </span>
-            <span className="font-mono text-xs font-bold text-primary">
-              {r.avg_seconds != null ? formatElapsedSeconds(Math.round(r.avg_seconds)) : "-"}
-            </span>
+      {!isLoading && sourceError && (
+        <ResponseNotice
+          tone="error"
+          title="Tempo de resposta indisponível"
+          description="A fonte de notificações e aberturas não respondeu. Nenhuma duração foi estimada no navegador."
+        />
+      )}
+
+      {!isLoading && !sourceError && measured.length === 0 && (
+        <ResponseNotice
+          title="Dados insuficientes para calcular a média"
+          description={
+            totalPending > 0
+              ? `${totalPending} atendimento${totalPending === 1 ? "" : "s"} ainda aguardando abertura. A média aparecerá quando houver atribuição e primeira ação persistidas.`
+              : "Nenhum atendimento deste recorte possui atribuição e primeira ação persistidas para o mesmo ciclo."
+          }
+        />
+      )}
+
+      {!isLoading && !sourceError && measured.length > 0 && (
+        <>
+          <div className="mb-3 grid gap-2 sm:grid-cols-2">
+            <MiniStat
+              icon={<Zap className="size-3.5 text-primary/75" aria-hidden />}
+              label="Melhor média"
+              name={bestAverage?.nome ?? "—"}
+              value={formatDuration(bestAverage?.mediaRespostaSegundos)}
+            />
+            <MiniStat
+              icon={<Clock3 className="size-3.5 text-primary/75" aria-hidden />}
+              label="Aguardando primeira ação"
+              name="Ciclos pendentes"
+              value={String(totalPending)}
+            />
           </div>
-        ))}
-      </div>
+
+          <ol className="space-y-2" aria-label="Média de resposta por corretor">
+            {measured.slice(0, 6).map((corretor, index) => (
+              <li
+                key={corretor.id}
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border/45 bg-background/58 px-3 py-2.5"
+              >
+                <span
+                  className="grid size-8 place-items-center rounded-full bg-primary/10 font-mono text-xs font-bold text-primary"
+                  aria-hidden
+                >
+                  {index + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{corretor.nome}</span>
+                  <span className="mt-0.5 block truncate text-[11px] text-foreground/55">
+                    {corretor.respostasMedidas} ciclo
+                    {corretor.respostasMedidas === 1 ? "" : "s"} medido
+                    {corretor.respostasMedidas === 1 ? "" : "s"}
+                    {corretor.respostasPendentes > 0
+                      ? ` · ${corretor.respostasPendentes} pendente${
+                          corretor.respostasPendentes === 1 ? "" : "s"
+                        }`
+                      : ""}
+                  </span>
+                </span>
+                <span className="text-right">
+                  <span className="block font-mono text-sm font-bold text-primary">
+                    {formatDuration(corretor.mediaRespostaSegundos)}
+                  </span>
+                  <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/42">
+                    média
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
     </article>
   );
+}
+
+function formatDuration(seconds: number | null | undefined) {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
+  return formatElapsedSeconds(Math.round(seconds));
 }
 
 function MiniStat({
@@ -115,8 +152,8 @@ function MiniStat({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white/[0.55] p-3 ring-1 ring-white/60">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/45">
+    <div className="rounded-xl border border-border/45 bg-background/58 p-3">
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/52">
         {icon}
         {label}
       </div>
@@ -124,6 +161,61 @@ function MiniStat({
         <p className="min-w-0 truncate text-sm font-semibold">{name}</p>
         <p className="shrink-0 font-mono text-base font-bold text-primary">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function ResponseNotice({
+  title,
+  description,
+  tone = "empty",
+}: {
+  title: string;
+  description: string;
+  tone?: "empty" | "error";
+}) {
+  return (
+    <div
+      role={tone === "error" ? "alert" : "status"}
+      className={`rounded-xl border border-dashed px-4 py-6 text-center ${
+        tone === "error"
+          ? "border-destructive/25 bg-destructive/[0.035]"
+          : "border-border/70 bg-background/45"
+      }`}
+    >
+      <AlertCircle
+        className={`mx-auto size-5 ${
+          tone === "error" ? "text-destructive/65" : "text-foreground/35"
+        }`}
+        aria-hidden
+      />
+      <p className="mt-2 text-sm font-semibold">{title}</p>
+      <p className="mx-auto mt-1 max-w-xl text-xs leading-relaxed text-foreground/55">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function ResponseSkeleton() {
+  return (
+    <div role="status" aria-label="Carregando tempos de resposta" className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {[0, 1].map((item) => (
+          <div
+            key={item}
+            aria-hidden
+            className="h-20 animate-pulse rounded-xl bg-foreground/[0.06] motion-reduce:animate-none"
+          />
+        ))}
+      </div>
+      {[0, 1, 2].map((item) => (
+        <div
+          key={item}
+          aria-hidden
+          className="h-14 animate-pulse rounded-xl bg-foreground/[0.06] motion-reduce:animate-none"
+        />
+      ))}
     </div>
   );
 }

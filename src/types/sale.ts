@@ -3,10 +3,19 @@ import type { AgencyId, ImovelTipo } from "@/lib/mock/data";
 export type SaleStatus = "concluida" | "aguardando_assinatura" | "em_analise" | "cancelada";
 
 export type SaleDocumentStatus =
-  "contrato_anexado" | "contrato_pendente" | "aguardando_assinatura" | "em_analise" | "cancelado";
+  | "contrato_anexado"
+  | "contrato_pendente"
+  | "aguardando_assinatura"
+  | "em_analise"
+  | "cancelado";
 
 export type SalePaymentMethod =
-  "À vista" | "Financiamento" | "Consórcio" | "Permuta" | "Parcelado" | "Outro";
+  | "À vista"
+  | "Financiamento"
+  | "Consórcio"
+  | "Permuta"
+  | "Parcelado"
+  | "Outro";
 
 export type SalePropertyType = ImovelTipo | "Fazenda" | "Outro";
 
@@ -196,7 +205,14 @@ export type SalePaymentInput = {
 
 export type SaleRecordInput = Omit<
   SaleRecord,
-  "id" | "createdAt" | "updatedAt" | "ownerId" | "ownerName" | "ownerInitials" | "payments" | "commissionPlan"
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "ownerId"
+  | "ownerName"
+  | "ownerInitials"
+  | "payments"
+  | "commissionPlan"
 > & { payments?: SalePaymentInput[]; commissionPlan?: SaleCommissionPlanInput | null };
 
 export type SalesKpis = {
@@ -208,9 +224,14 @@ export type SalesKpis = {
   documentPendencies: number;
 };
 
-export type SalesStatusFilter = "todos" | "concluidas" | "em_analise";
+export type SalesStatusFilter =
+  | "todos"
+  | "concluidas"
+  | "aguardando_assinatura"
+  | "em_analise"
+  | "canceladas";
 
-export type SalesPeriodFilter = "todos" | "mes";
+export type SalesPeriodFilter = "todos" | "mes" | "ultimos_30" | "trimestre" | "ano";
 
 export type SalesContractFilter = "todos" | "com_contrato" | "sem_contrato";
 
@@ -219,6 +240,7 @@ export type SalesSort = "recentes" | "maior_valor";
 export type SalesFiltersState = {
   status: SalesStatusFilter;
   period: SalesPeriodFilter;
+  corretorId: "todos" | string;
   contract: SalesContractFilter;
   sort: SalesSort;
 };
@@ -226,6 +248,7 @@ export type SalesFiltersState = {
 export const DEFAULT_SALES_FILTERS: SalesFiltersState = {
   status: "todos",
   period: "todos",
+  corretorId: "todos",
   contract: "todos",
   sort: "recentes",
 };

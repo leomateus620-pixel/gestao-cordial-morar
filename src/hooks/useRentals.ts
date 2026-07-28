@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -16,13 +16,22 @@ import {
 } from "@/lib/rentals/rentals.functions";
 import { useApp } from "@/store/app-store";
 import type {
+  RentalBrand,
   RentalContractFull,
   RentalContractInput,
   RentalFilter,
   RentalKpis,
+  RentalPeriodFilter,
 } from "@/types/rental";
 
-export function useRentals() {
+type UseRentalsOptions = {
+  initialFilter?: RentalFilter;
+  corretorId?: string;
+  periodo?: RentalPeriodFilter;
+  imobiliaria?: "todas" | Exclude<RentalBrand, "ambas">;
+};
+
+export function useRentals(options: UseRentalsOptions = {}) {
   const queryClient = useQueryClient();
   const list = useServerFn(listRentalContracts);
   const kpis = useServerFn(kpisFn);
@@ -60,7 +69,11 @@ export function useRentals() {
   });
 
   const invalidate = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: ["rentals"] }),
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["rentals"] }),
+        queryClient.invalidateQueries({ queryKey: ["equipe-performance"] }),
+      ]),
     [queryClient],
   );
 
@@ -93,15 +106,22 @@ export function useRentals() {
     onSuccess: invalidate,
   });
 
-  const [filter, setFilter] = useState<RentalFilter>("todos");
+  const [filter, setFilter] = useState<RentalFilter>(options.initialFilter ?? "todos");
   const [search, setSearch] = useState("");
-  const agency = useApp((s) => s.agency);
+  const selectedAgency = useApp((s) => s.agency);
+  const agency = options.imobiliaria ?? selectedAgency;
+
+  useEffect(() => {
+    setFilter(options.initialFilter ?? "todos");
+  }, [options.initialFilter]);
 
   const contracts = useMemo(() => contractsQuery.data ?? [], [contractsQuery.data]);
   const filtered = useMemo(() => {
     const today = new Date();
     return contracts.filter((c) => {
       if (agency !== "todas" && c.brand !== agency && c.brand !== "ambas") return false;
+      if (options.corretorId && c.createdById !== options.corretorId) return false;
+      if (!matchesRentalPeriod(c, options.periodo ?? "todos", today)) return false;
       // status filter
       if (filter !== "todos") {
         if (filter === "ativos" && c.status !== "ativo") return false;
@@ -129,12 +149,37 @@ export function useRentals() {
       void today;
       return true;
     });
-  }, [contracts, filter, search, agency]);
+  }, [agency, contracts, filter, options.corretorId, options.periodo, search]);
+  const hasOperationalContext = Boolean(
+    options.corretorId || options.periodo || options.imobiliaria || options.initialFilter,
+  );
+  const contextualKpis = useMemo<RentalKpis | undefined>(() => {
+    if (!hasOperationalContext) return kpisQuery.data;
+    const today = new Date();
+    const in30Days = new Date(today);
+    in30Days.setDate(in30Days.getDate() + 30);
+    const active = filtered.filter((contract) => contract.status === "ativo");
+    return {
+      receitaMensalAtiva: active.reduce(
+        (total, contract) => total + (Number(contract.valorMensal) || 0),
+        0,
+      ),
+      contratosAtivos: active.length,
+      contratosPendentes: filtered.filter((contract) => contract.status === "pendente_assinatura")
+        .length,
+      vencendoEm30: active.filter((contract) => {
+        const end = new Date(`${contract.dataFim}T12:00:00`);
+        return end >= today && end <= in30Days;
+      }).length,
+      atrasos: filtered.filter((contract) => contract.paymentStatus === "atrasado").length,
+      imoveisDisponiveis: kpisQuery.data?.imoveisDisponiveis ?? 0,
+    };
+  }, [filtered, hasOperationalContext, kpisQuery.data]);
 
   return {
     contracts: filtered,
     allContracts: contracts,
-    kpis: kpisQuery.data,
+    kpis: contextualKpis,
     properties: propsQuery.data ?? [],
     tenants: tenantsQuery.data ?? [],
     isLoading: contractsQuery.isLoading,
@@ -166,4 +211,28 @@ export function useRentals() {
       payMutation.isPending ||
       deleteMutation.isPending,
   };
+}
+
+function matchesRentalPeriod(contract: RentalContractFull, period: RentalPeriodFilter, now: Date) {
+  if (period === "todos") return true;
+  const startsAt = new Date(`${contract.dataInicio}T12:00:00`);
+  const endsAt = new Date(`${contract.dataEncerramento ?? contract.dataFim}T12:00:00`);
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) return false;
+  let start: Date;
+  let end: Date;
+  if (period === "ultimos_30") {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+    end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  } else if (period === "trimestre") {
+    const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+    start = new Date(now.getFullYear(), quarterMonth, 1);
+    end = new Date(now.getFullYear(), quarterMonth + 3, 1);
+  } else if (period === "ano") {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear() + 1, 0, 1);
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  }
+  return startsAt < end && endsAt >= start;
 }

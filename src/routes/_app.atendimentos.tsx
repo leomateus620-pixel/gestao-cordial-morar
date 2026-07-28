@@ -18,6 +18,7 @@ import {
   attendanceHistoryQueryKey,
   useAttendances,
   type AtendimentoFilters as AtendimentoFiltersState,
+  type AtendimentoPeriodFilter,
 } from "@/hooks/useAttendances";
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
@@ -37,18 +38,35 @@ import {
   type CommercialTrack,
 } from "@/lib/atendimentos/track";
 import { cn } from "@/lib/utils";
-import type { Atendimento, AtendimentoCreateInput, PipelineStage } from "@/types/atendimento";
-import { ACTIVE_PIPELINE_STAGES } from "@/types/atendimento";
+import type {
+  Atendimento,
+  AtendimentoCreateInput,
+  AtendimentoStatus,
+  PipelineStage,
+} from "@/types/atendimento";
+import { ACTIVE_PIPELINE_STAGES, atendimentoStatusOptions } from "@/types/atendimento";
 import type { AgendaEventInput } from "@/types/agenda";
 
 export const Route = createFileRoute("/_app/atendimentos")({
   head: () => ({ meta: [{ title: "Atendimentos — Gestão Cordial" }] }),
   validateSearch: (
-    search: { id?: unknown; clienteId?: unknown; track?: unknown } & SearchSchemaInput,
+    search: {
+      id?: unknown;
+      clienteId?: unknown;
+      track?: unknown;
+      corretorId?: unknown;
+      periodo?: unknown;
+      imobiliaria?: unknown;
+      status?: unknown;
+    } & SearchSchemaInput,
   ) => ({
     id: typeof search.id === "string" ? search.id : undefined,
     clienteId: typeof search.clienteId === "string" ? search.clienteId : undefined,
     track: parseTrackParam(search.track),
+    corretorId: parseBrokerId(search.corretorId),
+    periodo: parseOperationalPeriod(search.periodo),
+    imobiliaria: parseAgency(search.imobiliaria),
+    status: parseAttendanceStatus(search.status),
   }),
   component: Page,
 });
@@ -58,19 +76,40 @@ function Page() {
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const canAssignBroker = canManageAttendanceAssignments(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
-  const { id: highlightId, clienteId: clienteIdFilter, track } = Route.useSearch();
+  const {
+    id: highlightId,
+    clienteId: clienteIdFilter,
+    track,
+    corretorId,
+    periodo,
+    imobiliaria,
+    status,
+  } = Route.useSearch();
   const navigate = Route.useNavigate();
   const setTrack = (nextTrack: CommercialTrack) => {
     if (nextTrack === track) return;
     navigate({
       to: ".",
-      search: { track: nextTrack, id: highlightId, clienteId: clienteIdFilter },
+      search: {
+        track: nextTrack,
+        id: highlightId,
+        clienteId: clienteIdFilter,
+        corretorId,
+        periodo,
+        imobiliaria,
+        status,
+      },
     });
     setSelectedStage("primeiro_contato");
   };
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<AtendimentoFiltersState>(defaultAtendimentoFilters);
+  const [filters, setFilters] = useState<AtendimentoFiltersState>(() => ({
+    ...defaultAtendimentoFilters,
+    corretor: corretorId ?? "todos",
+    periodo: periodo ?? "todos",
+    status: status ?? "todos",
+  }));
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [selectedStage, setSelectedStage] = useState<PipelineStage>("primeiro_contato");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -91,7 +130,16 @@ function Page() {
     convertAtendimento,
     updateAtendimento,
     transitionStage,
-  } = useAttendances(query, filters, track);
+  } = useAttendances(query, filters, track, { agency: imobiliaria });
+
+  useEffect(() => {
+    setFilters((current) => ({
+      ...current,
+      corretor: corretorId ?? "todos",
+      periodo: periodo ?? "todos",
+      status: status ?? "todos",
+    }));
+  }, [corretorId, periodo, status]);
   const filteredAtendimentos = useMemo(() => {
     if (!clienteIdFilter) return baseFilteredAtendimentos;
     return baseFilteredAtendimentos.filter(
@@ -122,13 +170,33 @@ function Page() {
     if (targetTrack !== "ambos" && targetTrack !== track) {
       navigate({
         to: ".",
-        search: { track: targetTrack, id: highlightId, clienteId: clienteIdFilter },
+        search: {
+          track: targetTrack,
+          id: highlightId,
+          clienteId: clienteIdFilter,
+          corretorId,
+          periodo,
+          imobiliaria,
+          status,
+        },
         replace: true,
       });
     }
     setSelectedStage(target.pipelineStage);
     setDetailId(target.id);
-  }, [atendimentos, clienteIdFilter, highlightId, isError, isLoading, navigate, track]);
+  }, [
+    atendimentos,
+    clienteIdFilter,
+    corretorId,
+    highlightId,
+    imobiliaria,
+    isError,
+    isLoading,
+    navigate,
+    periodo,
+    status,
+    track,
+  ]);
 
   // First-open timing is closed only by the attendance detail drawer via the
   // backend RPC `mark_attendance_first_opened`, never from list rendering.
@@ -560,7 +628,14 @@ function Page() {
             if (highlightId) {
               navigate({
                 to: ".",
-                search: { track, clienteId: clienteIdFilter },
+                search: {
+                  track,
+                  clienteId: clienteIdFilter,
+                  corretorId,
+                  periodo,
+                  imobiliaria,
+                  status,
+                },
                 replace: true,
               });
             }
@@ -603,4 +678,36 @@ function Page() {
       ) : null}
     </div>
   );
+}
+
+const BROKER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const operationalPeriods = new Set<AtendimentoPeriodFilter>([
+  "mes",
+  "ultimos_30",
+  "trimestre",
+  "ano",
+]);
+const attendanceStatuses = new Set<AtendimentoStatus>(
+  atendimentoStatusOptions.map((option) => option.value),
+);
+
+function parseBrokerId(value: unknown) {
+  return typeof value === "string" && BROKER_ID_PATTERN.test(value) ? value : undefined;
+}
+
+function parseOperationalPeriod(value: unknown): AtendimentoPeriodFilter | undefined {
+  return typeof value === "string" && operationalPeriods.has(value as AtendimentoPeriodFilter)
+    ? (value as AtendimentoPeriodFilter)
+    : undefined;
+}
+
+function parseAgency(value: unknown): "todas" | "cordial" | "morar" | undefined {
+  return value === "todas" || value === "cordial" || value === "morar" ? value : undefined;
+}
+
+function parseAttendanceStatus(value: unknown): AtendimentoStatus | undefined {
+  return typeof value === "string" && attendanceStatuses.has(value as AtendimentoStatus)
+    ? (value as AtendimentoStatus)
+    : undefined;
 }

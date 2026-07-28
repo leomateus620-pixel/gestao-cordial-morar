@@ -13,14 +13,33 @@ import { SalesKpiCards } from "@/components/vendas/SalesKpiCards";
 import { useSales, uploadSaleDocument } from "@/hooks/useSales";
 import { useSession } from "@/lib/auth-mock";
 import { useApp, useFiltered } from "@/store/app-store";
+import { getSalesKpis as calculateSalesKpis } from "@/services/sales";
 import { DEFAULT_SALES_FILTERS } from "@/types/sale";
 import type { AgencyId } from "@/lib/mock/data";
-import type { SaleRecord, SaleRecordInput, SalesFiltersState } from "@/types/sale";
+import type {
+  SaleRecord,
+  SaleRecordInput,
+  SalesFiltersState,
+  SalesPeriodFilter,
+  SalesStatusFilter,
+} from "@/types/sale";
 
 export const Route = createFileRoute("/_app/vendas")({
   head: () => ({ meta: [{ title: "Vendas — Gestão Cordial" }] }),
-  validateSearch: (search: { id?: unknown } & SearchSchemaInput) => ({
+  validateSearch: (
+    search: {
+      id?: unknown;
+      corretorId?: unknown;
+      periodo?: unknown;
+      imobiliaria?: unknown;
+      status?: unknown;
+    } & SearchSchemaInput,
+  ) => ({
     id: typeof search.id === "string" ? search.id : undefined,
+    corretorId: parseBrokerId(search.corretorId),
+    periodo: parseOperationalPeriod(search.periodo),
+    imobiliaria: parseAgency(search.imobiliaria),
+    status: parseSalesStatus(search.status),
   }),
   component: GuardedPage,
 });
@@ -35,10 +54,11 @@ function GuardedPage() {
 
 function Page() {
   const session = useSession();
-  const { id: highlightedId } = Route.useSearch();
+  const { id: highlightedId, corretorId, periodo, imobiliaria, status } = Route.useSearch();
   const navigate = Route.useNavigate();
   const isAdmin = session?.perfil === "admin_owner";
   const agency = useApp((state) => state.agency);
+  const effectiveAgency = imobiliaria ?? agency;
   const imoveis = useFiltered(useApp((state) => state.imoveis));
   const corretores = useFiltered(useApp((state) => state.corretores));
 
@@ -63,7 +83,12 @@ function Page() {
     isUpdating,
   } = useSales();
 
-  const [filters, setFilters] = useState<SalesFiltersState>(DEFAULT_SALES_FILTERS);
+  const [filters, setFilters] = useState<SalesFiltersState>(() => ({
+    ...DEFAULT_SALES_FILTERS,
+    corretorId: corretorId ?? "todos",
+    period: periodo ?? "todos",
+    status: status ?? "todos",
+  }));
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -71,17 +96,34 @@ function Page() {
   const [editingSale, setEditingSale] = useState<SaleRecord | null>(null);
   const unavailableDeepLink = useRef<string | null>(null);
 
+  useEffect(() => {
+    setFilters((current) => ({
+      ...current,
+      corretorId: corretorId ?? "todos",
+      period: periodo ?? "todos",
+      status: status ?? "todos",
+    }));
+  }, [corretorId, periodo, status]);
+
   const scopedSales = useMemo(
-    () => (agency === "todas" ? sales : sales.filter((s) => s.imobiliaria === agency)),
-    [sales, agency],
+    () =>
+      effectiveAgency === "todas"
+        ? sales
+        : sales.filter((sale) => sale.imobiliaria === effectiveAgency),
+    [effectiveAgency, sales],
   );
 
   const filteredRecords = useMemo(
     () => filterSales(scopedSales, filters, search),
     [scopedSales, filters, search],
   );
+  const hasOperationalContext = Boolean(corretorId || periodo || imobiliaria || status);
+  const displayedKpis = useMemo(
+    () => (hasOperationalContext ? calculateSalesKpis(filteredRecords) : kpis),
+    [filteredRecords, hasOperationalContext, kpis],
+  );
 
-  const defaultAgency: AgencyId = agency === "todas" ? "cordial" : agency;
+  const defaultAgency: AgencyId = effectiveAgency === "todas" ? "cordial" : effectiveAgency;
 
   useEffect(() => {
     if (!highlightedId || isLoading || isError) return;
@@ -209,10 +251,10 @@ function Page() {
       <div className="mx-auto w-full max-w-[84rem] space-y-4 pb-3 sm:space-y-5">
         <SalesHeader onCreate={openCreateForm} />
         <SalesKpiCards
-          kpis={kpis}
+          kpis={displayedKpis}
           showAverageTicket={isAdmin}
-          isLoading={isKpisLoading}
-          isUnavailable={isKpisError}
+          isLoading={hasOperationalContext ? isLoading : isKpisLoading}
+          isUnavailable={hasOperationalContext ? isError : isKpisError}
         />
         <SalesFilters
           filters={filters}
@@ -296,7 +338,11 @@ function Page() {
         onOpenChange={(nextOpen) => {
           setDetailsOpen(nextOpen);
           if (!nextOpen && highlightedId) {
-            void navigate({ to: ".", search: {}, replace: true });
+            void navigate({
+              to: ".",
+              search: { corretorId, periodo, imobiliaria, status },
+              replace: true,
+            });
           }
         }}
         onEdit={openEditForm}
@@ -373,7 +419,8 @@ function filterSales(records: SaleRecord[], filters: SalesFiltersState, search: 
     : records;
 
   const filtered = searched.filter((sale) => {
-    const matchesPeriod = filters.period === "todos" || isCurrentMonth(sale.saleDate);
+    const matchesPeriod = matchesSalesPeriod(sale.saleDate, filters.period);
+    const matchesBroker = filters.corretorId === "todos" || sale.ownerId === filters.corretorId;
     const matchesContract =
       filters.contract === "todos" ||
       (filters.contract === "com_contrato"
@@ -381,11 +428,13 @@ function filterSales(records: SaleRecord[], filters: SalesFiltersState, search: 
         : !sale.contractFilePath);
     const matchesStatus =
       filters.status === "todos" ||
-      (filters.status === "concluidas"
-        ? sale.saleStatus === "concluida"
-        : sale.saleStatus === "em_analise" || sale.documentStatus === "em_analise");
+      (filters.status === "concluidas" && sale.saleStatus === "concluida") ||
+      (filters.status === "aguardando_assinatura" && sale.saleStatus === "aguardando_assinatura") ||
+      (filters.status === "em_analise" &&
+        (sale.saleStatus === "em_analise" || sale.documentStatus === "em_analise")) ||
+      (filters.status === "canceladas" && sale.saleStatus === "cancelada");
 
-    return matchesPeriod && matchesContract && matchesStatus;
+    return matchesPeriod && matchesBroker && matchesContract && matchesStatus;
   });
 
   return [...filtered].sort((a, b) => {
@@ -396,8 +445,49 @@ function filterSales(records: SaleRecord[], filters: SalesFiltersState, search: 
   });
 }
 
-function isCurrentMonth(date: string) {
+function matchesSalesPeriod(date: string, period: SalesPeriodFilter) {
+  if (period === "todos") return true;
   const value = new Date(`${date}T12:00:00`);
+  if (Number.isNaN(value.getTime())) return false;
   const now = new Date();
+  if (period === "ultimos_30") {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return value >= start && value < end;
+  }
+  if (period === "trimestre") {
+    const start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    return value >= start && value <= now;
+  }
+  if (period === "ano") {
+    const start = new Date(now.getFullYear(), 0, 1);
+    return value >= start && value <= now;
+  }
   return value.getFullYear() === now.getFullYear() && value.getMonth() === now.getMonth();
+}
+
+const BROKER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const salesPeriods = new Set<SalesPeriodFilter>(["mes", "ultimos_30", "trimestre", "ano"]);
+
+function parseBrokerId(value: unknown) {
+  return typeof value === "string" && BROKER_ID_PATTERN.test(value) ? value : undefined;
+}
+
+function parseOperationalPeriod(value: unknown): SalesPeriodFilter | undefined {
+  return typeof value === "string" && salesPeriods.has(value as SalesPeriodFilter)
+    ? (value as SalesPeriodFilter)
+    : undefined;
+}
+
+function parseAgency(value: unknown): "todas" | AgencyId | undefined {
+  return value === "todas" || value === "cordial" || value === "morar" ? value : undefined;
+}
+
+function parseSalesStatus(value: unknown): SalesStatusFilter | undefined {
+  if (value === "concluida" || value === "concluidas") return "concluidas";
+  if (value === "aguardando_assinatura") return "aguardando_assinatura";
+  if (value === "em_analise") return "em_analise";
+  if (value === "cancelada" || value === "canceladas") return "canceladas";
+  return undefined;
 }

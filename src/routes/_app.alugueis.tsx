@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarClock, CheckCircle2, Plus, Wallet } from "lucide-react";
 import { useRentals } from "@/hooks/useRentals";
 import { RentalKpiCards } from "@/components/alugueis/RentalKpiCards";
@@ -10,13 +10,28 @@ import { RentalExpandedDetails } from "@/components/alugueis/RentalExpandedDetai
 import { RentalFormModal } from "@/components/alugueis/RentalFormModal";
 import { RentalSkeleton } from "@/components/alugueis/RentalSkeleton";
 import { EmptyRentalState } from "@/components/alugueis/EmptyRentalState";
-import type { RentalContractFull } from "@/types/rental";
+import type { RentalContractFull, RentalFilter, RentalPeriodFilter } from "@/types/rental";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/alugueis")({
   head: () => ({ meta: [{ title: "Aluguéis — Gestão Cordial" }] }),
+  validateSearch: (
+    search: {
+      id?: unknown;
+      corretorId?: unknown;
+      periodo?: unknown;
+      imobiliaria?: unknown;
+      status?: unknown;
+    } & SearchSchemaInput,
+  ) => ({
+    id: typeof search.id === "string" ? search.id : undefined,
+    corretorId: parseBrokerId(search.corretorId),
+    periodo: parseOperationalPeriod(search.periodo),
+    imobiliaria: parseAgency(search.imobiliaria),
+    status: parseRentalStatus(search.status),
+  }),
   component: GuardedPage,
 });
 
@@ -29,13 +44,43 @@ function GuardedPage() {
 }
 
 function Page() {
-  const r = useRentals();
+  const { id: highlightedId, corretorId, periodo, imobiliaria, status } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const r = useRentals({
+    initialFilter: status,
+    corretorId,
+    periodo,
+    imobiliaria,
+  });
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<RentalContractFull | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(highlightedId ?? null);
   const selected = r.allContracts.find((contract) => contract.id === selectedId) ?? null;
+
+  useEffect(() => {
+    setSelectedId(highlightedId ?? null);
+  }, [highlightedId]);
+
+  function selectContract(id: string) {
+    setSelectedId(id);
+    void navigate({
+      to: ".",
+      search: { id, corretorId, periodo, imobiliaria, status },
+    });
+  }
+
+  function clearSelection() {
+    setSelectedId(null);
+    if (highlightedId) {
+      void navigate({
+        to: ".",
+        search: { corretorId, periodo, imobiliaria, status },
+        replace: true,
+      });
+    }
+  }
 
   const k = r.kpis;
 
@@ -145,7 +190,7 @@ function Page() {
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {r.contracts.map((c) => (
-              <RentalCard key={c.id} contract={c} onClick={() => setSelectedId(c.id)} />
+              <RentalCard key={c.id} contract={c} onClick={() => selectContract(c.id)} />
             ))}
           </div>
         )}
@@ -167,22 +212,22 @@ function Page() {
       <RentalExpandedDetails
         contract={selected}
         open={selectedId !== null && selected !== null}
-        onOpenChange={(o) => !o && setSelectedId(null)}
+        onOpenChange={(o) => !o && clearSelection()}
         onEdit={(c) => {
-          setSelectedId(null);
+          clearSelection();
           setEditing(c);
           setOpenForm(true);
         }}
         onClose={async (id) => {
           await r.closeRental(id);
-          setSelectedId(null);
+          clearSelection();
         }}
         onRenew={async (id) => {
           if (!selected) return;
           const d = new Date(selected.dataFim);
           d.setFullYear(d.getFullYear() + 1);
           await r.renewRental(id, d.toISOString().slice(0, 10));
-          setSelectedId(null);
+          clearSelection();
         }}
         onMarkPaid={async (id) => {
           await r.markPaid(id);
@@ -190,9 +235,36 @@ function Page() {
         onDelete={async (id) => {
           if (!window.confirm("Excluir este contrato? Esta ação não pode ser desfeita.")) return;
           await r.deleteRental(id);
-          setSelectedId(null);
+          clearSelection();
         }}
       />
     </>
   );
+}
+
+const BROKER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const rentalPeriods = new Set<RentalPeriodFilter>(["mes", "ultimos_30", "trimestre", "ano"]);
+
+function parseBrokerId(value: unknown) {
+  return typeof value === "string" && BROKER_ID_PATTERN.test(value) ? value : undefined;
+}
+
+function parseOperationalPeriod(value: unknown): RentalPeriodFilter | undefined {
+  return typeof value === "string" && rentalPeriods.has(value as RentalPeriodFilter)
+    ? (value as RentalPeriodFilter)
+    : undefined;
+}
+
+function parseAgency(value: unknown): "todas" | "cordial" | "morar" | undefined {
+  return value === "todas" || value === "cordial" || value === "morar" ? value : undefined;
+}
+
+function parseRentalStatus(value: unknown): RentalFilter | undefined {
+  if (value === "ativo" || value === "ativos") return "ativos";
+  if (value === "pendente_assinatura" || value === "pendentes") return "pendentes";
+  if (value === "vencido" || value === "vencidos") return "vencidos";
+  if (value === "encerrado" || value === "cancelado" || value === "encerrados") return "encerrados";
+  if (value === "atrasado" || value === "atrasados") return "atrasados";
+  return undefined;
 }

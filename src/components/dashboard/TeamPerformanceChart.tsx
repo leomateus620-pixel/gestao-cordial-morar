@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { axisTick, chartCordial, chartMorar, chartSystem, gridStroke } from "@/lib/chart-palette";
 import type { EquipePeriodo, EquipePerformanceResult } from "@/lib/equipe/equipe.functions";
+import { calculateCorretoresSummary } from "@/services/corretores";
 
 type Props = {
   data: EquipePerformanceResult;
@@ -121,27 +122,28 @@ export function TeamPerformanceChart({
   const chartData = useMemo<ChartRow[]>(
     () =>
       data.rows.map((r) => ({
-        nome: r.primeiroNome,
+        nome: r.nome.trim().split(/\s+/)[0] ?? "—",
         nomeCompleto: r.nome,
-        atendimentos: r.atendimentos,
-        contratos: r.contratos,
-        agenciamentos: r.agenciamentos,
-        conversao: r.conversao,
-        total: r.atendimentos + r.contratos + r.agenciamentos,
+        atendimentos: r.atendimentosRecebidos,
+        contratos: r.contratosFechados,
+        agenciamentos: r.agenciamentosFeitos,
+        conversao: r.taxaConversao,
+        total: r.atendimentosRecebidos + r.contratosFechados + r.agenciamentosFeitos,
       })),
     [data.rows],
   );
+  const totals = useMemo(() => calculateCorretoresSummary(data.rows), [data.rows]);
 
   const visibleKeys = useMemo(
     () => METRIC_KEYS.filter((key) => visibleMetrics[key]),
     [visibleMetrics],
   );
-  const hasData = chartData.length > 0;
+  const hasData = chartData.some((row) => row.total > 0);
   const selectedPeriod = PERIODOS.find((p) => p.value === periodo) ?? PERIODOS[0];
   const maxMetricTotal = Math.max(
-    data.totals.atendimentos,
-    data.totals.contratos,
-    data.totals.agenciamentos,
+    totals.atendimentosRecebidos,
+    totals.contratosFechados,
+    totals.agenciamentosFeitos,
     1,
   );
 
@@ -247,25 +249,25 @@ export function TeamPerformanceChart({
       <div className="relative z-10 mt-4 grid gap-2 sm:grid-cols-3">
         <MetricSummaryTile
           metric="atendimentos"
-          value={data.totals.atendimentos}
+          value={totals.atendimentosRecebidos}
           context={`${selectedPeriod.label} selecionado`}
-          share={(data.totals.atendimentos / maxMetricTotal) * 100}
+          share={(totals.atendimentosRecebidos / maxMetricTotal) * 100}
           active={visibleMetrics.atendimentos}
           onToggle={() => toggleMetric("atendimentos")}
         />
         <MetricSummaryTile
           metric="contratos"
-          value={data.totals.contratos}
-          context={`${data.totals.conversaoMedia}% de conversão média`}
-          share={(data.totals.contratos / maxMetricTotal) * 100}
+          value={totals.contratosFechados}
+          context={`${totals.taxaMediaConversao}% de conversão média`}
+          share={(totals.contratosFechados / maxMetricTotal) * 100}
           active={visibleMetrics.contratos}
           onToggle={() => toggleMetric("contratos")}
         />
         <MetricSummaryTile
           metric="agenciamentos"
-          value={data.totals.agenciamentos}
+          value={totals.agenciamentosFeitos}
           context="Captação no período"
-          share={(data.totals.agenciamentos / maxMetricTotal) * 100}
+          share={(totals.agenciamentosFeitos / maxMetricTotal) * 100}
           active={visibleMetrics.agenciamentos}
           onToggle={() => toggleMetric("agenciamentos")}
         />

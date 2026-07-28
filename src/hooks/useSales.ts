@@ -46,7 +46,10 @@ export function useSales() {
   });
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: SALES_KEY });
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: SALES_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["equipe-performance"] }),
+    ]);
   }, [queryClient]);
 
   const createMutation = useMutation({
@@ -95,18 +98,20 @@ export function useSales() {
       mimeType?: string | null;
       sizeBytes?: number | null;
       category?: SaleAttachment["category"];
-    }) => addAttachment({ data: vars }).then((r: SaleAttachment) => {
-      invalidate();
-      return r;
-    }),
+    }) =>
+      addAttachment({ data: vars }).then((r: SaleAttachment) => {
+        invalidate();
+        return r;
+      }),
     [addAttachment, invalidate],
   );
 
   const removeAttachmentAsync = useCallback(
-    (id: string) => removeAttachment({ data: { id } }).then((r) => {
-      invalidate();
-      return r;
-    }),
+    (id: string) =>
+      removeAttachment({ data: { id } }).then((r) => {
+        invalidate();
+        return r;
+      }),
     [removeAttachment, invalidate],
   );
 

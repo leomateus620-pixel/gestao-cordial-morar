@@ -20,20 +20,11 @@ export type RentalContractStatus =
   | "encerrado"
   | "cancelado";
 
-export type RentalPaymentStatus =
-  | "em_dia"
-  | "vence_hoje"
-  | "atrasado"
-  | "pago"
-  | "pendente";
+export type RentalPaymentStatus = "em_dia" | "vence_hoje" | "atrasado" | "pago" | "pendente";
 
 export type RentalBrand = "cordial" | "morar" | "ambas";
 
-export type RentalGuaranteeType =
-  | "sem_garantia"
-  | "fiador"
-  | "caucao"
-  | "seguro_fianca";
+export type RentalGuaranteeType = "sem_garantia" | "fiador" | "caucao" | "seguro_fianca";
 
 export type RentalProperty = {
   id: string;
@@ -93,6 +84,7 @@ export type RentalGuarantor = {
 
 export type RentalContract = {
   id: string;
+  createdById?: string;
   propertyId: string;
   tenantId: string;
   guarantorId?: string | null;
@@ -257,3 +249,5 @@ export type RentalFilter =
   | "vencidos"
   | "encerrados"
   | "atrasados";
+
+export type RentalPeriodFilter = "todos" | "mes" | "ultimos_30" | "trimestre" | "ano";
