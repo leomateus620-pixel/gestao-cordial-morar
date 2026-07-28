@@ -66,6 +66,8 @@ export interface AgendaEvent {
   clienteNome?: string;
   atendimentoId?: string;
   imovelId?: string;
+  imovelNome?: string;
+  imovelEndereco?: string;
   imovelDescricao?: string;
   agenciamentoId?: string;
   local?: string;
