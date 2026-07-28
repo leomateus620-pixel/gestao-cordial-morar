@@ -1,38 +1,39 @@
-## Auditoria técnica — Nova Central de Notificações
+## Ativar a nova Central de Notificações
 
-Todos os 7 artefatos exigidos estão presentes no repositório (componentes, libs, migration `20260728013000` e doc de release). Ambiente sincronizado — auditoria pode prosseguir.
+A auditoria mostrou que os artefatos de código já existem no repositório, mas o backend está no estado antigo: a migration `20260728013000_notification_experience_security.sql` (1.381 linhas) nunca foi aplicada. Sem ela, o provider quebra em runtime — as RPCs `list_my_notifications`, `get_my_notification_summary`, `mark_notification_read`, `mark_all_notifications_read`, `get_notification_attendance_statuses`, `get_notification_management_summary` não existem, `public.notifications` não tem `category / read_at / imobiliaria / entity_type / entity_id / assignment_id / actor_id / dedup_key`, as tabelas `public.user_agencies` e `public.email_dispatch_claims` não existem e `public.notifications` ainda está em `pg_publication_tables` para `supabase_realtime` (o modelo novo é 100% Broadcast privado).
 
-Esta é uma auditoria **read-only**: nenhum commit, PR, deploy, migration nova ou atualização de pacote será executado sem aprovação explícita adicional. Se algum passo exigir sessão autenticada real que não esteja disponível no sandbox, o item será registrado como "bloqueado", não simulado.
+Também falta um segredo de servidor exigido pelos webhooks de cron (`NOTIFICATION_HOOK_SECRET`).
 
-### Escopo por seção
+### O que será feito
 
-1. **Dependências JS** — inspeção de `package.json`, lockfile e `node_modules/*/package.json` para React 19, TanStack Router/Start/Query, `@supabase/supabase-js` (verificar `realtime.setAuth`, canais `config.private`, Broadcast privado — requer ≥ 2.45), Radix Dialog/Sheet/Switch, lucide-react, sonner, zod, @react-email/components, Tailwind v4. Sem update em massa; só flag de incompatibilidade com versão atual × mínima × risco.
+1. **Aplicar a migration `20260728013000_notification_experience_security.sql`** exatamente como está no repositório. Ela é idempotente e cobre:
+   - novos campos, índices e constraints em `public.notifications`;
+   - backfill de `category`, `entity_type`, `entity_id`, `imobiliaria`, `assignment_id`, `read_at`;
+   - criação de `public.user_agencies` (autorização de imobiliária, fail-closed) e `public.email_dispatch_claims` (idempotência do envio de e-mail);
+   - remoção de `public.notifications` da publicação `supabase_realtime` (o cliente novo consome só Broadcast privado no tópico `notifications:<auth.uid()>`, com payload contendo apenas `notification_id`);
+   - políticas de RLS `TO authenticated` bloqueando leitura/escrita direta em `notifications` — todo acesso passa pelas RPCs `SECURITY DEFINER`;
+   - RPCs de inbox, marcação de leitura, status de atendimento e resumo gerencial, todas com escopo por papel (corretor / secretaria / admin / financeiro) e por imobiliária autorizada em `user_agencies`;
+   - trigger/função que emite o Broadcast privado só com `notification_id`.
 
-2. **Validação limpa** — rodar em sequência: install reproduzível, `npm run typecheck`, `npm test` (esperado 13 OK), `eslint` restrito aos arquivos da experiência, `npm run build`. Registrar stdout resumido. Sem regenerar `routeTree.gen.ts`.
+2. **Provisionar vínculos iniciais em `public.user_agencies`** para os usuários operacionais atuais, seguindo o runbook `docs/notification-experience-release.md`:
+   - admins/secretaria com acesso a `cordial` e `morar`;
+   - corretores conforme a imobiliária em que já operam (derivada de `attendances.imobiliaria` recentes por `created_by` / `corretor_id`).
+   Sem esse passo, atribuições passam a falhar fechadas (comportamento correto, mas quebraria o fluxo atual).
 
-3. **Dependências de banco** — via `supabase--read_query` inspecionar existência/tipos de: `notifications`, `attendances`, `attendance_assignments`, `attendance_history`, `agenda_events(+participants,+reminders)`, `real_estate_sales`, `sale_payments`, `sale_commission_installments`, `profiles`, `user_roles`, `has_role`, `_try_uuid`, enums `app_role`/`attendance_assignment_status`, disponibilidade de `realtime.messages`, `realtime.topic()`, `realtime.send()`. Ler o SQL da migration 20260728013000 e cruzar cada dependência. Nenhuma migration aplicada será alterada; qualquer gap gera migration **aditiva idempotente proposta**, não aplicada.
+3. **Cadastrar `NOTIFICATION_HOOK_SECRET`** como secret de servidor (gerado, 48 chars) — usado por `src/routes/api/public/hooks/agenda-reminders.ts` e `sale-payment-reminders.ts` para validar o cron. Não reutiliza a chave publicável. `ALLOW_NOTIFICATION_HOOK_FORCE` **não** será definido (fica ausente em produção, como o runbook exige).
 
-4. **Realtime & segurança** — checar: `notifications` fora de `pg_publication_tables` para `supabase_realtime`; nome de canal `notifications:<auth.uid()>`; RLS de `realtime.messages` bloqueando cross-user; payload Broadcast contém somente `notification_id` (grep no provider); RPCs autenticadas devolvem payload completo; `notifications` sem SELECT/INSERT/UPDATE direto para `authenticated`; particionamento de cache React Query por `user.id`.
+4. **Atualizar as chamadas de cron** (agenda-reminders e sale-payment-reminders no `pg_cron`) para enviar `NOTIFICATION_HOOK_SECRET` no header `apikey`, substituindo a chave publicável usada hoje.
 
-5. **Papéis e imobiliárias** — validar `public.user_agencies` (existência, RLS fail-closed), e para cada papel (`corretor`, `secretaria`, `admin`, `financeiro`, sem vínculo) verificar via leitura de policies/funções que `opened_at`, `opened_by`, `first_opened_at`, `response_time_seconds`, médias/medianas não vazam. Testes por sessão real ficam **bloqueados** se não houver login disponível.
-
-6. **Variáveis e serviços** — checar presença (nunca valores) de `SUPABASE_URL`, publishable/anon, `SUPABASE_SERVICE_ROLE_KEY`, `NOTIFICATION_HOOK_SECRET`, envs de e-mail, crons agenda/vendas. Confirmar guarda `ALLOW_NOTIFICATION_HOOK_FORCE` só fora de produção e que `NOTIFICATION_HOOK_SECRET ≠ publishable`.
-
-7. **Integração da app** — grep para garantir exatamente 1 `NotificationExperienceProvider`, 1 subscription Realtime, 1 Center, 1 TransientRegion; ausência de imports de `src/lib/mock/notifications.ts`, `NotificationsSpotlight`, `AssignmentStatusBadge`, fallbacks. Validar CTAs em allowlist e que aberturas de Atendimento/Agenda/Venda usam IDs vindos do backend.
-
-8. **Compatibilidade / acessibilidade** — revisar `notification-sound.ts` (AudioContext gated em interação), uso de `crypto.subtle`, `prefers-reduced-motion`, foco/teclado/close do Sheet no `NotificationCenter`, tap targets ≥44px, animações via transform/opacity, limite de 2 toasts.
-
-### Entregável final
-
-Matriz por item (dependência • versão/objeto • status OK/incompatível/ausente/não-verificável • evidência • impacto • correção mínima) seguida de:
-- comandos executados + resultados resumidos;
-- deps propostas alterar (se houver) com justificativa;
-- envs ausentes (sem valores);
-- pré-requisitos da migration 20260728013000;
-- bloqueios (ex.: sessão autenticada indisponível);
-- decisão **GO / NO-GO** e gates obrigatórios de deploy.
+5. **Validação pós-deploy** (sem simulação; itens que exigirem login real ficam registrados):
+   - `psql` confirmando novas colunas, tabelas, RPCs e ausência de `notifications` em `pg_publication_tables`;
+   - build + typecheck do app;
+   - smoke autenticado por papel conforme runbook — quando não houver sessão disponível no sandbox, o item é registrado como bloqueado, não simulado.
 
 ### Fora de escopo
-Alterações em migrations já aplicadas, atualização em massa de dependências, mudanças em regras de notificação/atendimento/permissões/atribuição/tempo de resposta, commits, PRs, deploy.
 
-Aprovando este plano, executo a auditoria e devolvo o relatório completo.
+- Alterar UI/UX das notificações, provider, sino, spotlight, toasts ou e-mails (os arquivos já estão prontos e a auditoria não pediu mudança).
+- Alterar regras de atribuição, tempo de resposta, permissões ou pipeline.
+- Reescrever a migration `20260728013000` — ela é aplicada como está.
+- Adicionar novas migrations que não sejam estritamente aditivas para gaps encontrados após a validação.
+
+Aprovando, aplico a migration, provisiono `user_agencies`, gero o segredo, ajusto os cron jobs e rodo a validação.
