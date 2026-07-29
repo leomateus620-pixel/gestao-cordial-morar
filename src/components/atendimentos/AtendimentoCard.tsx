@@ -150,37 +150,35 @@ export function AtendimentoCard({
           className="mt-2.5 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
           aria-label="Última ação"
         >
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-            <div className="min-w-0">
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
                 <History className="size-3.5" />
                 Última ação
               </p>
               {atendimento.ultimaAcao ? (
-                <>
-                  <p className="mt-1 text-[11px] font-extrabold text-stone-800">
-                    {attendanceEventLabel(atendimento.ultimaAcao.tipo)}
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-[11px] leading-4.5 text-stone-600">
-                    {atendimento.ultimaAcao.descricao}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1 text-[11px] font-semibold text-stone-500">
-                  Sem movimentações registradas
+                <p className="text-[10px] font-semibold leading-4 text-stone-500">
+                  {formatDateTime(atendimento.ultimaAcao.em)}
+                  {atendimento.ultimaAcao.ator ? (
+                    <span className="font-medium text-stone-400"> · por {atendimento.ultimaAcao.ator}</span>
+                  ) : null}
                 </p>
-              )}
+              ) : null}
             </div>
             {atendimento.ultimaAcao ? (
-              <p className="shrink-0 text-[10px] font-semibold leading-4 text-stone-500 sm:text-right">
-                {formatDateTime(atendimento.ultimaAcao.em)}
-                {atendimento.ultimaAcao.ator ? (
-                  <span className="block text-[10px] font-medium text-stone-400">
-                    por {atendimento.ultimaAcao.ator}
-                  </span>
-                ) : null}
+              <>
+                <p className="text-[11px] font-extrabold text-stone-800">
+                  {attendanceEventLabel(atendimento.ultimaAcao.tipo)}
+                </p>
+                <p className="text-[11px] leading-4.5 text-stone-600 [overflow-wrap:anywhere]">
+                  {atendimento.ultimaAcao.descricao}
+                </p>
+              </>
+            ) : (
+              <p className="text-[11px] font-semibold text-stone-500">
+                Sem movimentações registradas
               </p>
-            ) : null}
+            )}
           </div>
         </section>
 
@@ -190,11 +188,12 @@ export function AtendimentoCard({
               <CircleAlert className="size-3.5" />
               Lead perdido
             </p>
-            <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4.5 text-rose-900">
+            <p className="mt-1 text-[11px] font-semibold leading-4.5 text-rose-900 [overflow-wrap:anywhere]">
               {atendimento.motivoPerda?.trim() || "Motivo da perda não informado."}
             </p>
           </div>
         ) : null}
+
 
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[11px]">
           <ContextRow icon={UserRound} label="Corretor">
