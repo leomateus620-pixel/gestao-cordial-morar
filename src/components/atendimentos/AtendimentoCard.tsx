@@ -324,14 +324,6 @@ export function AtendimentoCard({
         ) : null}
       </footer>
 
-      <AtendimentoActionsDialog
-        kind="criar-retorno"
-        atendimento={atendimento}
-        brokerOptions={brokerOptions}
-        open={schedulingReturn}
-        onOpenChange={setSchedulingReturn}
-        onSubmit={(payload) => onAction(payload, atendimento)}
-      />
     </article>
   );
 }
