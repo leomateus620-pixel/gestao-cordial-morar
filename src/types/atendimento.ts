@@ -27,6 +27,12 @@ export const ACTIVE_PIPELINE_STAGES: PipelineStage[] = [
   "fechamento",
 ];
 
+/** Etapas navegáveis do funil: as 5 ativas + a coluna de perdidos. */
+export const FUNNEL_PIPELINE_STAGES: PipelineStage[] = [
+  ...ACTIVE_PIPELINE_STAGES,
+  "perdido",
+];
+
 export const pipelineStageOptions = [
   { value: "primeiro_contato", label: "Primeiro contato", short: "1º contato" },
   { value: "apresentando_solucao", label: "Apresentando solução", short: "Solução" },
@@ -192,6 +198,7 @@ export interface Atendimento {
   status: AtendimentoStatus;
   pipelineStage: PipelineStage;
   lastStageTransition?: AtendimentoStageTransition;
+  ultimaAcao?: AtendimentoUltimaAcao;
   proximoRetorno?: string;
   proximoPasso?: ProximoPassoAtendimento;
   observacoes?: string;
