@@ -118,34 +118,8 @@ export function AtendimentoCard({
           </div>
         </header>
 
-        <section
-          className={cn(
-            "mt-3 rounded-2xl border px-3 py-2.5",
-            overdue
-              ? "border-rose-700/20 bg-rose-50 text-rose-950"
-              : "border-teal-900/10 bg-teal-950/[0.035] text-stone-800",
-          )}
-          aria-label="Próxima ação"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-current/60">
-                {overdue ? (
-                  <CircleAlert className="size-3.5" />
-                ) : (
-                  <CalendarClock className="size-3.5" />
-                )}
-                {overdue ? "Retorno atrasado" : "Próxima ação"}
-              </p>
-              <p className="mt-1 text-xs font-bold [overflow-wrap:anywhere]">
-                {atendimentoProximoPassoLabel(atendimento.proximoPasso)}
-              </p>
-            </div>
-            <p className="shrink-0 text-right text-[10px] font-semibold leading-4">
-              {formatDateTime(atendimento.proximoRetorno)}
-            </p>
-          </div>
-        </section>
+
+
 
         <section
           className="mt-2.5 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
