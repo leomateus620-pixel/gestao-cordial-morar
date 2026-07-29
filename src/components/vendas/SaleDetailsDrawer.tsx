@@ -66,6 +66,7 @@ export function SaleDetailsDrawer({
   onEdit: (sale: SaleRecord) => void;
   onReplaceContract: (sale: SaleRecord) => void;
   onCancel: (sale: SaleRecord) => void;
+  onDelete?: (sale: SaleRecord) => Promise<void> | void;
   onOpenContract?: () => void;
   onOpenAttachment?: (path: string) => void;
   onAddAttachment?: (
