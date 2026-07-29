@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  ArrowRight,
+  Building2,
   Building2,
   CalendarDays,
   ChevronRight,
