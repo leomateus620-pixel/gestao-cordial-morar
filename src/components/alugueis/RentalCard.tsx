@@ -80,9 +80,19 @@ export function RentalCard({
               <Wallet className="size-3" />
               {brl(contract.valorMensal)}
             </p>
+            {contract.comissaoMensal ? (
+              <p className="text-[10px] font-medium text-[color:var(--success)]">
+                Comissão {brl(contract.comissaoMensal)} (
+                {((contract.comissaoMensal / (contract.valorMensal || 1)) * 100)
+                  .toFixed(2)
+                  .replace(".", ",")}
+                %)
+              </p>
+            ) : null}
             <p className="text-[10px] text-foreground/55">
               Próx: {formatRentalDate(contract.proximoVencimento)}
             </p>
+
           </div>
         </div>
 
