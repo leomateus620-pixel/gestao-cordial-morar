@@ -68,9 +68,20 @@ export function AtendimentoCard({
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir atendimento de ${atendimento.clienteNome}`}
+      onClick={() => onOpen(atendimento)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(atendimento);
+        }
+      }}
       className={cn(
-        "group relative overflow-hidden rounded-[1.4rem] border border-l-[3px] bg-[#fffdf9] shadow-[0_10px_28px_-22px_rgba(31,41,55,0.7)] transition-[border-color,box-shadow,transform] duration-200",
+        "group relative cursor-pointer overflow-hidden rounded-[1.4rem] border border-l-[3px] bg-[#fffdf9] shadow-[0_10px_28px_-22px_rgba(31,41,55,0.7)] transition-[border-color,box-shadow,transform] duration-200",
         "hover:-translate-y-0.5 hover:border-foreground/18 hover:shadow-[0_18px_36px_-22px_rgba(31,41,55,0.55)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40",
         stageUi.accent,
       )}
       id={`atendimento-${atendimento.id}`}
