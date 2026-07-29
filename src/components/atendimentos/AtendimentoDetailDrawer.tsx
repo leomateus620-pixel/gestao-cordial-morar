@@ -255,8 +255,19 @@ export function AtendimentoDetailDrawer({
                 <StageProgress
                   atendimento={atendimento}
                   pending={stagePending}
-                  onPick={(stage) => void changeStage(stage)}
+                  onPick={(stage) => {
+                    if (
+                      stage === "fechamento" &&
+                      canManageTerminalState &&
+                      atendimento.pipelineStage !== "fechamento"
+                    ) {
+                      setConfirmAction("close");
+                      return;
+                    }
+                    void changeStage(stage);
+                  }}
                 />
+
 
                 <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
                   <div className="space-y-4">
