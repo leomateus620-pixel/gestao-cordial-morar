@@ -362,6 +362,7 @@ function Page() {
         onEdit={openEditForm}
         onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
+        onDelete={handleDeleteSale}
         onOpenContract={handleOpenContract}
         onOpenAttachment={(path) =>
           openAttachment(path).catch((err: unknown) =>
