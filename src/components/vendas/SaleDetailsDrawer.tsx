@@ -52,6 +52,7 @@ export function SaleDetailsDrawer({
   onEdit,
   onReplaceContract,
   onCancel,
+  onDelete,
   onOpenContract,
   onOpenAttachment,
   onAddAttachment,
