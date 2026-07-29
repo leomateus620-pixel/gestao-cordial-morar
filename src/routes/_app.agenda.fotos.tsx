@@ -55,6 +55,7 @@ function AgendaFotosPage() {
     stats,
     createEvent,
     editEvent,
+    deleteEvent,
     canEdit,
     isLoading,
     isError,
