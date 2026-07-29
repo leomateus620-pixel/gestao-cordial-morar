@@ -55,10 +55,9 @@ export function AtendimentoCard({
   onAction,
   brokerOptions = [],
 }: Props) {
-  const [schedulingReturn, setSchedulingReturn] = useState(false);
   const [moving, setMoving] = useState(false);
   const initials = getInitials(atendimento.clienteNome);
-  const overdue = isAtendimentoOverdue(atendimento);
+
   const whatsapp = whatsappHref(atendimento.telefone);
   const pipeline = getPipelineContext(atendimento);
   const nextStage = pipeline.next;
