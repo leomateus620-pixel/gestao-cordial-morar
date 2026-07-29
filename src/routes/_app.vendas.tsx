@@ -73,6 +73,7 @@ function Page() {
     createSale,
     updateSale,
     cancelSale,
+    deleteSale,
     openContract,
     openAttachment,
     addAttachment,
