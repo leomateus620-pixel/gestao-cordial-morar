@@ -650,7 +650,6 @@ function Page() {
         onConvert={handleConvert}
         onRegisterProposal={registerProposal}
         onCloseAttendance={closeAtendimento}
-        onArchive={archiveAtendimento}
         brokerOptions={brokers}
         canAssignBroker={canAssignBroker}
         canManageTerminalState={canManageTerminalState}
