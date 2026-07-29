@@ -159,11 +159,18 @@ export function useRentals(options: UseRentalsOptions = {}) {
     const in30Days = new Date(today);
     in30Days.setDate(in30Days.getDate() + 30);
     const active = filtered.filter((contract) => contract.status === "ativo");
+    const receita = active.reduce(
+      (total, contract) => total + (Number(contract.valorMensal) || 0),
+      0,
+    );
+    const comissao = active.reduce(
+      (total, contract) => total + (Number(contract.comissaoMensal) || 0),
+      0,
+    );
     return {
-      receitaMensalAtiva: active.reduce(
-        (total, contract) => total + (Number(contract.valorMensal) || 0),
-        0,
-      ),
+      receitaMensalAtiva: receita,
+      comissaoMensalAtiva: comissao,
+      comissaoPercentualMedio: receita > 0 ? (comissao / receita) * 100 : 0,
       contratosAtivos: active.length,
       contratosPendentes: filtered.filter((contract) => contract.status === "pendente_assinatura")
         .length,

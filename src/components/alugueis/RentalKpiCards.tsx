@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   Clock,
   Home,
+  Percent,
+  PiggyBank,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -86,6 +88,8 @@ export function RentalKpiCards({
 }) {
   const k = kpis ?? {
     receitaMensalAtiva: 0,
+    comissaoMensalAtiva: 0,
+    comissaoPercentualMedio: 0,
     contratosAtivos: 0,
     contratosPendentes: 0,
     vencendoEm30: 0,
@@ -93,7 +97,7 @@ export function RentalKpiCards({
     imoveisDisponiveis: 0,
   };
   return (
-    <section className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-6">
+    <section className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:grid-cols-8">
       {canViewFinancialInsights && (
         <Kpi
           icon={Wallet}
@@ -101,6 +105,22 @@ export function RentalKpiCards({
           value={brl(k.receitaMensalAtiva, { compact: true })}
           tone="primary"
           featured
+        />
+      )}
+      {canViewFinancialInsights && (
+        <Kpi
+          icon={PiggyBank}
+          label="Comissão mensal"
+          value={brl(k.comissaoMensalAtiva, { compact: true })}
+          tone="success"
+        />
+      )}
+      {canViewFinancialInsights && (
+        <Kpi
+          icon={Percent}
+          label="% comissão"
+          value={`${k.comissaoPercentualMedio.toFixed(2).replace(".", ",")}%`}
+          tone="primary"
         />
       )}
       <Kpi icon={CheckCircle2} label="Ativos" value={String(k.contratosAtivos)} tone="success" />
