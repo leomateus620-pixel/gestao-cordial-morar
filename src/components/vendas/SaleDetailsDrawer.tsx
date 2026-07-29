@@ -10,10 +10,22 @@ import {
   RefreshCw,
   UserRound,
   Wallet,
+  Trash2,
   X,
   XCircle,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Sheet,
   SheetContent,
