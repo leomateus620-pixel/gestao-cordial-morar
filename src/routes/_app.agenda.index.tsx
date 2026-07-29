@@ -157,6 +157,7 @@ function AgendaPage() {
     } catch (err) {
       setFeedback(`Não foi possível salvar: ${(err as Error).message}`);
       throw err;
+    }
   }
 
   async function removeEvent(event: AgendaEvent) {
