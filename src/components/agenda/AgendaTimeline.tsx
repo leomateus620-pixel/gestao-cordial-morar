@@ -28,11 +28,32 @@ export function AgendaTimeline({
     groups.set(key, [...(groups.get(key) ?? []), event]);
   });
 
+  // Hoje primeiro, depois os próximos dias em ordem crescente e, por fim,
+  // o histórico do mais recente para o mais antigo.
+  const todayKey = localDateKey(new Date());
+  const orderedGroups = Array.from(groups.entries())
+    .map(([day, dayEvents]) => {
+      const bucket = day === todayKey ? 0 : day > todayKey ? 1 : 2;
+      const sorted = [...dayEvents].sort((a, b) =>
+        bucket === 2
+          ? new Date(b.inicio).getTime() - new Date(a.inicio).getTime()
+          : new Date(a.inicio).getTime() - new Date(b.inicio).getTime(),
+      );
+      return { day, bucket, events: sorted };
+    })
+    .sort((a, b) =>
+      a.bucket !== b.bucket
+        ? a.bucket - b.bucket
+        : a.bucket === 2
+          ? b.day.localeCompare(a.day)
+          : a.day.localeCompare(b.day),
+    );
+
   return (
     <div className="space-y-5">
-      {Array.from(groups.entries()).map(([day, dayEvents]) => (
+      {orderedGroups.map(({ day, bucket, events: dayEvents }) => (
         <section key={day} className="space-y-2">
-          <div className="flex items-center gap-2 px-1">
+          <div className="sticky top-0 z-10 -mx-1 flex items-center gap-2 rounded-xl bg-background/85 px-2 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-background/65">
             <CalendarDays className="size-3.5 text-teal-700" />
             <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/65">
               {dayLabel(day)}
@@ -40,8 +61,14 @@ export function AgendaTimeline({
             <span className="rounded-full bg-white/50 px-2 py-0.5 text-[9px] font-semibold text-foreground/42">
               {dayEvents.length}
             </span>
+            {bucket === 2 ? (
+              <span className="ml-auto text-[9px] font-semibold uppercase tracking-[0.12em] text-foreground/35">
+                Histórico
+              </span>
+            ) : null}
           </div>
-          <div className="grid gap-2.5 xl:grid-cols-2">
+          <div className="grid gap-2.5 xl:grid-cols-2 2xl:grid-cols-3">
+
             {dayEvents.map((event) => (
               <AgendaEventCard
                 key={event.id}

@@ -23,7 +23,7 @@ import { agendaStatusOptions } from "@/types/agenda";
 
 type OperationalPeriod = "mes" | "ultimos_30" | "trimestre" | "ano";
 
-export const Route = createFileRoute("/_app/agenda")({
+export const Route = createFileRoute("/_app/agenda/")({
   head: () => ({ meta: [{ title: "Visitas e compromissos — Gestão Cordial" }] }),
   validateSearch: (
     search: {

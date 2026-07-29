@@ -32,8 +32,8 @@ import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoe
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
 import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
-import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
+import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
@@ -162,14 +162,14 @@ const AppAlugueisRoute = AppAlugueisRouteImport.update({
   path: '/alugueis',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAgendaRoute = AppAgendaRouteImport.update({
-  id: '/agenda',
-  path: '/agenda',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
   id: '/agenciamentos',
   path: '/agenciamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
+  id: '/agenda/',
+  path: '/agenda/',
   getParentRoute: () => AppRoute,
 } as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
@@ -193,9 +193,9 @@ const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   getParentRoute: () => AppClientesRoute,
 } as any)
 const AppAgendaFotosRoute = AppAgendaFotosRouteImport.update({
-  id: '/fotos',
-  path: '/fotos',
-  getParentRoute: () => AppAgendaRoute,
+  id: '/agenda/fotos',
+  path: '/agenda/fotos',
+  getParentRoute: () => AppRoute,
 } as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
@@ -252,7 +252,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
-  '/agenda': typeof AppAgendaRouteWithChildren
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -276,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/agenda/': typeof AppAgendaIndexRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
@@ -290,7 +290,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
-  '/agenda': typeof AppAgendaRouteWithChildren
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
   '/clientes': typeof AppClientesRouteWithChildren
@@ -315,6 +314,7 @@ export interface FileRoutesByTo {
   '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/agenda': typeof AppAgendaIndexRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
@@ -331,7 +331,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
-  '/_app/agenda': typeof AppAgendaRouteWithChildren
   '/_app/alugueis': typeof AppAlugueisRoute
   '/_app/atendimentos': typeof AppAtendimentosRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
@@ -356,6 +355,7 @@ export interface FileRoutesById {
   '/_app/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/_app/agenda/': typeof AppAgendaIndexRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
@@ -373,7 +373,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/agenciamentos'
-    | '/agenda'
     | '/alugueis'
     | '/atendimentos'
     | '/clientes'
@@ -397,6 +396,7 @@ export interface FileRouteTypes {
     | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
+    | '/agenda/'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
@@ -411,7 +411,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/agenciamentos'
-    | '/agenda'
     | '/alugueis'
     | '/atendimentos'
     | '/clientes'
@@ -436,6 +435,7 @@ export interface FileRouteTypes {
     | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
+    | '/agenda'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
@@ -451,7 +451,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unsubscribe'
     | '/_app/agenciamentos'
-    | '/_app/agenda'
     | '/_app/alugueis'
     | '/_app/atendimentos'
     | '/_app/clientes'
@@ -476,6 +475,7 @@ export interface FileRouteTypes {
     | '/_app/contratos/$contratoId'
     | '/_app/imoveis/$imovelId'
     | '/lovable/email/suppression'
+    | '/_app/agenda/'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
@@ -667,18 +667,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAlugueisRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/agenda': {
-      id: '/_app/agenda'
-      path: '/agenda'
-      fullPath: '/agenda'
-      preLoaderRoute: typeof AppAgendaRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/agenciamentos': {
       id: '/_app/agenciamentos'
       path: '/agenciamentos'
       fullPath: '/agenciamentos'
       preLoaderRoute: typeof AppAgenciamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda/': {
+      id: '/_app/agenda/'
+      path: '/agenda'
+      fullPath: '/agenda/'
+      preLoaderRoute: typeof AppAgendaIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/lovable/email/suppression': {
@@ -711,10 +711,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/agenda/fotos': {
       id: '/_app/agenda/fotos'
-      path: '/fotos'
+      path: '/agenda/fotos'
       fullPath: '/agenda/fotos'
       preLoaderRoute: typeof AppAgendaFotosRouteImport
-      parentRoute: typeof AppAgendaRoute
+      parentRoute: typeof AppRoute
     }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
@@ -775,18 +775,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AppAgendaRouteChildren {
-  AppAgendaFotosRoute: typeof AppAgendaFotosRoute
-}
-
-const AppAgendaRouteChildren: AppAgendaRouteChildren = {
-  AppAgendaFotosRoute: AppAgendaFotosRoute,
-}
-
-const AppAgendaRouteWithChildren = AppAgendaRoute._addFileChildren(
-  AppAgendaRouteChildren,
-)
-
 interface AppClientesRouteChildren {
   AppClientesClienteIdRoute: typeof AppClientesClienteIdRoute
 }
@@ -825,7 +813,6 @@ const AppImoveisRouteWithChildren = AppImoveisRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAgenciamentosRoute: typeof AppAgenciamentosRoute
-  AppAgendaRoute: typeof AppAgendaRouteWithChildren
   AppAlugueisRoute: typeof AppAlugueisRoute
   AppAtendimentosRoute: typeof AppAtendimentosRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
@@ -843,11 +830,12 @@ interface AppRouteChildren {
   AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppVendasRoute: typeof AppVendasRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAgendaFotosRoute: typeof AppAgendaFotosRoute
+  AppAgendaIndexRoute: typeof AppAgendaIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgenciamentosRoute: AppAgenciamentosRoute,
-  AppAgendaRoute: AppAgendaRouteWithChildren,
   AppAlugueisRoute: AppAlugueisRoute,
   AppAtendimentosRoute: AppAtendimentosRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
@@ -865,6 +853,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppRelatoriosRoute: AppRelatoriosRoute,
   AppVendasRoute: AppVendasRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAgendaFotosRoute: AppAgendaFotosRoute,
+  AppAgendaIndexRoute: AppAgendaIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

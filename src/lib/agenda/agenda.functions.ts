@@ -154,6 +154,40 @@ function validate(input: AgendaEventInput) {
   }
 }
 
+type DbErrorLike = { message: string; code?: string; details?: string | null; hint?: string | null };
+
+/**
+ * Erros do banco viram mensagens acionáveis, com log completo no servidor para
+ * diagnóstico (código, detalhes e o recorte do payload que causou a rejeição).
+ */
+function agendaDbError(
+  action: string,
+  error: DbErrorLike,
+  payload: Record<string, unknown>,
+  userId: string,
+) {
+  console.error(`[agenda] falha ao ${action}`, {
+    userId,
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    imobiliaria: payload.imobiliaria,
+    tipo: payload.tipo,
+    owner_user_id: payload.owner_user_id,
+  });
+  if (error.code === "42501" || /row-level security/i.test(error.message)) {
+    return new Error(
+      `Não foi possível ${action}: seu usuário não tem permissão para esta imobiliária (${String(
+        payload.imobiliaria ?? "—",
+      )}). Se você acabou de entrar no sistema, saia e entre novamente; se o problema continuar, peça ao administrador para liberar seu acesso.`,
+    );
+  }
+  return new Error(
+    `Não foi possível ${action}: ${error.message}${error.details ? ` (${error.details})` : ""}`,
+  );
+}
+
 type ListScope = "todos" | "geral" | "fotos";
 const PHOTO_TIPOS: AgendaTipo[] = ["fotos", "video"];
 
@@ -228,14 +262,14 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
         .from("agenda_events")
         .update(payload)
         .eq("id", eventId);
-      if (error) throw new Error(error.message);
+      if (error) throw agendaDbError("atualizar o compromisso", error, payload, context.userId);
     } else {
       const { data: inserted, error } = await context.supabase
         .from("agenda_events")
         .insert({ ...payload, created_by: context.userId })
         .select("id")
         .single();
-      if (error) throw new Error(error.message);
+      if (error) throw agendaDbError("salvar o compromisso", error, payload, context.userId);
       eventId = inserted.id;
     }
 
