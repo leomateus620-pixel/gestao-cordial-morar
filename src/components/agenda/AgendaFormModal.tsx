@@ -99,6 +99,9 @@ export function AgendaFormModal({
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
   const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
 
   const { data: attendanceOptions = [] } = useQuery({
     queryKey: ["agenda", "attendance-options"],
