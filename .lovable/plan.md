@@ -1,18 +1,11 @@
-## Ajuste no painel "Ações do atendimento"
+## Objetivo
+Reduzir poluição visual nos cards de Atendimentos removendo as áreas de próxima ação.
 
-Arquivo alvo: `src/components/atendimentos/AtendimentoDetailDrawer.tsx`.
+## Mudanças em `src/components/atendimentos/AtendimentoCard.tsx`
+1. Remover a seção "Próxima ação" / "Retorno atrasado" (bloco com data do próximo retorno) que fica logo abaixo do cabeçalho do card. O bloco "Última ação" passa a vir direto após o cabeçalho.
+2. Remover o botão "Agendar próxima ação" / "Reagendar próxima ação" no rodapé. Quando existir próxima etapa, o card continua exibindo o botão "Avançar para …"; caso contrário, o rodapé fica só com "Abrir atendimento" + WhatsApp.
+3. Limpar o que ficar sem uso após a remoção: estado de agendamento de retorno, diálogo `criar-retorno` disparado por esse botão, cálculo de `overdue` e imports (`CalendarClock`, `CircleAlert`) se não forem mais usados.
 
-### 1. Bloco "Encerrar atendimento"
-- Remover os botões **Arquivar** e **Fechar** do painel de ações.
-- Manter apenas **Perdido**, agora ocupando a largura total do bloco e com destaque vermelho (borda e texto em tom rose/vermelho, fundo claro e hover mais intenso), coerente com o destaque de "Perdidos" já usado no funil.
-- O rótulo da seção passa a refletir a ação restante (ex.: "Marcar como perdido"), evitando a leitura de que ainda existem três encerramentos.
-
-### 2. "Fechar" migra para "Progresso do atendimento"
-- Na régua de etapas, ao clicar em **Fechamento** o sistema abre a confirmação já existente ("Fechar atendimento? — será movido para Fechamento e marcado como fechado").
-- Confirmando, executa o mesmo fluxo atual de fechamento (`onCloseAttendance`), que move a etapa e grava o status; cancelando, nada muda.
-- Só usuários com permissão de encerramento veem esse comportamento; para os demais, clicar em Fechamento continua apenas mudando a etapa, como hoje.
-
-### 3. Arquivar
-- A ação de arquivar sai da interface do atendimento. O handler `onArchive` e o diálogo permanecem no código apenas se ainda usados por outro ponto; caso contrário, o diálogo passa a tratar somente o caso "fechar".
-
-Sem mudanças de banco, permissões ou regras de acesso — apenas UI e o gatilho de confirmação.
+## O que não muda
+- Agendar retorno continua disponível dentro do drawer de detalhes do atendimento.
+- Dados de próximo retorno permanecem no banco e nas demais telas; apenas deixam de ser exibidos no card.

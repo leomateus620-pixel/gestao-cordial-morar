@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   ArrowRight,
   Building2,
-  CalendarClock,
   CalendarDays,
   ChevronRight,
   CircleAlert,
@@ -12,10 +11,7 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
-import {
-  AtendimentoActionsDialog,
-  type AtendimentoActionPayload,
-} from "@/components/atendimentos/AtendimentoActionsDialog";
+import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import {
   atendimentoInterestLine,
@@ -23,7 +19,6 @@ import {
   formatDate,
   formatDateTime,
   getPipelineContext,
-  isAtendimentoOverdue,
   whatsappHref,
 } from "@/services/atendimentos";
 import {
@@ -32,7 +27,6 @@ import {
   atendimentoImobiliariaLabel,
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
-  atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
   pipelineStageLabel,
   type Atendimento,
@@ -44,7 +38,7 @@ type Props = {
   atendimento: Atendimento;
   onOpen: (atendimento: Atendimento) => void;
   onStageChange: (id: string, stage: PipelineStage) => Promise<void> | void;
-  onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
+  onAction?: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
   brokerOptions?: Array<{ id: string; nome: string }>;
 };
 
@@ -52,13 +46,11 @@ export function AtendimentoCard({
   atendimento,
   onOpen,
   onStageChange,
-  onAction,
-  brokerOptions = [],
 }: Props) {
-  const [schedulingReturn, setSchedulingReturn] = useState(false);
+
   const [moving, setMoving] = useState(false);
   const initials = getInitials(atendimento.clienteNome);
-  const overdue = isAtendimentoOverdue(atendimento);
+
   const whatsapp = whatsappHref(atendimento.telefone);
   const pipeline = getPipelineContext(atendimento);
   const nextStage = pipeline.next;
@@ -119,36 +111,8 @@ export function AtendimentoCard({
         </header>
 
         <section
-          className={cn(
-            "mt-3 rounded-2xl border px-3 py-2.5",
-            overdue
-              ? "border-rose-700/20 bg-rose-50 text-rose-950"
-              : "border-teal-900/10 bg-teal-950/[0.035] text-stone-800",
-          )}
-          aria-label="Próxima ação"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-current/60">
-                {overdue ? (
-                  <CircleAlert className="size-3.5" />
-                ) : (
-                  <CalendarClock className="size-3.5" />
-                )}
-                {overdue ? "Retorno atrasado" : "Próxima ação"}
-              </p>
-              <p className="mt-1 text-xs font-bold [overflow-wrap:anywhere]">
-                {atendimentoProximoPassoLabel(atendimento.proximoPasso)}
-              </p>
-            </div>
-            <p className="shrink-0 text-right text-[10px] font-semibold leading-4">
-              {formatDateTime(atendimento.proximoRetorno)}
-            </p>
-          </div>
-        </section>
+          className="mt-3 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
 
-        <section
-          className="mt-2.5 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
           aria-label="Última ação"
         >
           <div className="flex flex-col gap-1">
@@ -302,16 +266,7 @@ export function AtendimentoCard({
           )}
         </div>
 
-        {overdue || !atendimento.proximoRetorno ? (
-          <button
-            type="button"
-            onClick={() => setSchedulingReturn(true)}
-            className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-700/20 bg-amber-50 px-3 text-[11px] font-bold text-amber-950 transition duration-200 hover:bg-amber-100 active:scale-[0.99]"
-          >
-            <CalendarClock className="size-3.5" />
-            {overdue ? "Reagendar próxima ação" : "Agendar próxima ação"}
-          </button>
-        ) : nextStage ? (
+        {nextStage ? (
           <button
             type="button"
             disabled={moving}
@@ -322,16 +277,9 @@ export function AtendimentoCard({
             <ChevronRight className="size-3.5" />
           </button>
         ) : null}
+
       </footer>
 
-      <AtendimentoActionsDialog
-        kind="criar-retorno"
-        atendimento={atendimento}
-        brokerOptions={brokerOptions}
-        open={schedulingReturn}
-        onOpenChange={setSchedulingReturn}
-        onSubmit={(payload) => onAction(payload, atendimento)}
-      />
     </article>
   );
 }
