@@ -256,18 +256,6 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       concluido_em: input.status === "concluido" ? new Date().toISOString() : null,
     };
 
-    const dbg = await context.supabase.rpc("current_user_has_notification_agency_access", {
-      _agency: String(payload.imobiliaria),
-    });
-    const dbg2 = await context.supabase.from("agenda_events").select("id").limit(1);
-    console.error("[agenda][debug] identidade no banco", {
-      userId: context.userId,
-      agencyOk: dbg.data,
-      agencyErr: dbg.error?.message,
-      readOk: dbg2.data?.length,
-      readErr: dbg2.error?.message,
-    });
-
     let eventId = id;
     if (eventId) {
       const { error } = await context.supabase
