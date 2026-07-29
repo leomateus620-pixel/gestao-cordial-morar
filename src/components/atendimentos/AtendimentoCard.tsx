@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  ArrowRight,
   Building2,
   CalendarDays,
   ChevronRight,
@@ -68,9 +67,20 @@ export function AtendimentoCard({
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir atendimento de ${atendimento.clienteNome}`}
+      onClick={() => onOpen(atendimento)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(atendimento);
+        }
+      }}
       className={cn(
-        "group relative overflow-hidden rounded-[1.4rem] border border-l-[3px] bg-[#fffdf9] shadow-[0_10px_28px_-22px_rgba(31,41,55,0.7)] transition-[border-color,box-shadow,transform] duration-200",
+        "group relative cursor-pointer overflow-hidden rounded-[1.4rem] border border-l-[3px] bg-[#fffdf9] shadow-[0_10px_28px_-22px_rgba(31,41,55,0.7)] transition-[border-color,box-shadow,transform] duration-200",
         "hover:-translate-y-0.5 hover:border-foreground/18 hover:shadow-[0_18px_36px_-22px_rgba(31,41,55,0.55)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/40",
         stageUi.accent,
       )}
       id={`atendimento-${atendimento.id}`}
@@ -213,6 +223,7 @@ export function AtendimentoCard({
             <select
               value={atendimento.pipelineStage}
               disabled={moving}
+              onClick={(event) => event.stopPropagation()}
               onChange={(event) => void moveTo(event.target.value as PipelineStage)}
               className={cn(
                 "h-10 w-full rounded-xl border px-3 text-[11px] font-bold outline-none transition focus:ring-2 disabled:opacity-60",
@@ -235,48 +246,45 @@ export function AtendimentoCard({
           </p>
         )}
 
-        <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
-          <button
-            type="button"
-            onClick={() => onOpen(atendimento)}
-            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-teal-800 px-3 text-xs font-bold text-white shadow-[0_8px_18px_-10px_rgba(17,94,89,0.9)] transition duration-200 hover:bg-teal-900 active:scale-[0.98]"
+        {whatsapp ? (
+          <a
+            href={whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`Falar com ${atendimento.clienteNome} no WhatsApp`}
+            title="Falar no WhatsApp"
+            className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-extrabold text-white shadow-[0_8px_18px_-10px_rgba(5,150,105,0.9)] transition duration-200 hover:bg-emerald-700 active:scale-[0.98]"
           >
-            Abrir atendimento
-            <ArrowRight className="size-3.5" />
-          </button>
-          {whatsapp ? (
-            <a
-              href={whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Falar com ${atendimento.clienteNome} no WhatsApp`}
-              title="Falar no WhatsApp"
-              className="grid size-10 place-items-center rounded-xl border border-emerald-700/20 bg-emerald-50 text-emerald-800 transition duration-200 hover:bg-emerald-100 active:scale-[0.98]"
-            >
-              <MessageCircle className="size-4.5" />
-            </a>
-          ) : (
-            <span
-              className="grid size-10 place-items-center rounded-xl border border-stone-200 bg-stone-100 text-stone-400"
-              title="Telefone inválido para WhatsApp"
-              aria-label="WhatsApp indisponível: telefone inválido"
-            >
-              <MessageCircle className="size-4.5" />
-            </span>
-          )}
-        </div>
+            <MessageCircle className="size-4.5" />
+            Falar no WhatsApp
+          </a>
+        ) : (
+          <span
+            className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-stone-100 px-3 text-xs font-bold text-stone-400"
+            title="Telefone inválido para WhatsApp"
+            aria-label="WhatsApp indisponível: telefone inválido"
+          >
+            <MessageCircle className="size-4.5" />
+            WhatsApp indisponível
+          </span>
+        )}
 
         {nextStage ? (
           <button
             type="button"
             disabled={moving}
-            onClick={() => void moveTo(nextStage)}
+            onClick={(event) => {
+              event.stopPropagation();
+              void moveTo(nextStage);
+            }}
             className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-teal-800/15 bg-white px-3 text-[11px] font-bold text-teal-900 transition duration-200 hover:bg-teal-50 active:scale-[0.99] disabled:opacity-60"
           >
             Avançar para {pipelineStageLabel(nextStage)}
             <ChevronRight className="size-3.5" />
           </button>
         ) : null}
+
 
       </footer>
 
