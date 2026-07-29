@@ -319,6 +319,26 @@ export function AgendaFormModal({
     }
   }
 
+  async function handleDelete() {
+    if (!event || !onDelete || deleting) return;
+    setDeleting(true);
+    setSubmitError(null);
+    try {
+      await Promise.resolve(onDelete(event));
+      setConfirmingDelete(false);
+      requestClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível excluir o compromisso. Tente novamente.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+
   return createPortal(
     <div
       className={cn(
