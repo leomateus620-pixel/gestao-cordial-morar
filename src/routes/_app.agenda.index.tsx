@@ -73,6 +73,7 @@ function AgendaPage() {
     stats,
     createEvent,
     editEvent,
+    deleteEvent,
     canEdit,
     isLoading,
     isError,
