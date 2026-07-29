@@ -92,6 +92,7 @@ export function AgendaFormModal({
 }) {
   const [form, setForm] = useState<FormState>(() => initialForm(undefined, currentUser));
   const [errors, setErrors] = useState<ReturnType<typeof validateAgendaEvent>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
@@ -295,11 +296,17 @@ export function AgendaFormModal({
     if (Object.keys(validation).length > 0) return;
 
     setSaving(true);
+    setSubmitError(null);
     try {
       await Promise.resolve(onSubmit(input));
       requestClose();
-    } catch {
-      // mantém o formulário aberto para o usuário corrigir
+    } catch (error) {
+      // mantém o formulário aberto e mostra o motivo real da falha
+      setSubmitError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível salvar o compromisso. Tente novamente.",
+      );
     } finally {
       setSaving(false);
     }
@@ -744,6 +751,15 @@ export function AgendaFormModal({
             </FormSection>
           </fieldset>
         </div>
+
+        {submitError && (
+          <div
+            role="alert"
+            className="border-t border-rose-200/70 bg-rose-50/90 px-4 py-2.5 text-xs font-medium text-rose-800 sm:px-6"
+          >
+            {submitError}
+          </div>
+        )}
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/60 bg-white/68 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
           <div className="flex items-center gap-2">
