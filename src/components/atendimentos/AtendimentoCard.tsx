@@ -118,11 +118,9 @@ export function AtendimentoCard({
           </div>
         </header>
 
-
-
-
         <section
-          className="mt-2.5 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
+          className="mt-3 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
+
           aria-label="Última ação"
         >
           <div className="flex flex-col gap-1">
