@@ -418,21 +418,6 @@ function Page() {
     }
   }
 
-  async function archiveAtendimento(atendimento: Atendimento) {
-    try {
-      await updateAtendimento({
-        id: atendimento.id,
-        patch: {
-          pipelineStage: "arquivado",
-          status: "arquivado",
-        },
-      });
-      toast.success("Atendimento arquivado.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao arquivar atendimento.");
-    }
-  }
-
   const hasAtendimentos = atendimentos.length > 0;
   const activeFilteredCount = filteredAtendimentos.filter((atendimento) =>
     ACTIVE_PIPELINE_STAGES.includes(atendimento.pipelineStage),
@@ -650,7 +635,6 @@ function Page() {
         onConvert={handleConvert}
         onRegisterProposal={registerProposal}
         onCloseAttendance={closeAtendimento}
-        onArchive={archiveAtendimento}
         brokerOptions={brokers}
         canAssignBroker={canAssignBroker}
         canManageTerminalState={canManageTerminalState}

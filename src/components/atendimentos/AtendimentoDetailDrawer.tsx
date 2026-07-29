@@ -2,13 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Archive,
   ArrowRight,
   BriefcaseBusiness,
   Building2,
   CalendarCheck2,
   CalendarClock,
-  CheckCircle2,
   Clock3,
   Edit3,
   ExternalLink,
@@ -95,7 +93,6 @@ type Props = {
   onConvert: (id: string) => Promise<void> | void;
   onRegisterProposal: (atendimento: Atendimento) => Promise<void> | void;
   onCloseAttendance: (atendimento: Atendimento) => Promise<void> | void;
-  onArchive: (atendimento: Atendimento) => Promise<void> | void;
   brokerOptions?: Array<{ id: string; nome: string }>;
   canAssignBroker?: boolean;
   canManageTerminalState?: boolean;
@@ -111,14 +108,13 @@ export function AtendimentoDetailDrawer({
   onConvert,
   onRegisterProposal,
   onCloseAttendance,
-  onArchive,
   brokerOptions = [],
   canAssignBroker = false,
   canManageTerminalState = false,
 }: Props) {
   const [note, setNote] = useState("");
   const [activeKind, setActiveKind] = useState<AtendimentoActionKind | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"archive" | "close" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"close" | null>(null);
   const [stagePending, setStagePending] = useState(false);
   const qc = useQueryClient();
 
@@ -255,8 +251,19 @@ export function AtendimentoDetailDrawer({
                 <StageProgress
                   atendimento={atendimento}
                   pending={stagePending}
-                  onPick={(stage) => void changeStage(stage)}
+                  onPick={(stage) => {
+                    if (
+                      stage === "fechamento" &&
+                      canManageTerminalState &&
+                      atendimento.pipelineStage !== "fechamento"
+                    ) {
+                      setConfirmAction("close");
+                      return;
+                    }
+                    void changeStage(stage);
+                  }}
                 />
+
 
                 <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
                   <div className="space-y-4">
@@ -485,31 +492,24 @@ export function AtendimentoDetailDrawer({
                       </div>
                       {canManageTerminalState ? (
                         <div className="mt-3 border-t border-stone-900/8 pt-3">
-                          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
-                            Encerrar atendimento
+                          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-700/80">
+                            Marcar como perdido
                           </p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <SecondaryAction
-                              icon={XCircle}
-                              onClick={() => setActiveKind("motivo-perda")}
-                            >
-                              Perdido
-                            </SecondaryAction>
-                            <SecondaryAction
-                              icon={Archive}
-                              onClick={() => setConfirmAction("archive")}
-                            >
-                              Arquivar
-                            </SecondaryAction>
-                            <SecondaryAction
-                              icon={CheckCircle2}
-                              onClick={() => setConfirmAction("close")}
-                            >
-                              Fechar
-                            </SecondaryAction>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveKind("motivo-perda")}
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-600/45 bg-rose-50 px-3 text-[11px] font-extrabold text-rose-800 transition duration-200 hover:border-rose-600 hover:bg-rose-100 hover:text-rose-900 active:scale-[0.99]"
+                          >
+                            <XCircle className="size-4 shrink-0" />
+                            Perdido
+                          </button>
+                          <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
+                            Para encerrar como ganho, use a etapa “Fechamento” em Progresso do
+                            atendimento.
+                          </p>
                         </div>
                       ) : null}
+
                     </SectionCard>
 
                     <SectionCard eyebrow="Registro" title="Nova nota" icon={MessageSquare}>
@@ -594,12 +594,10 @@ export function AtendimentoDetailDrawer({
         <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md rounded-3xl border border-stone-900/10 bg-[#fffdf9] shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-extrabold text-stone-950">
-              {confirmAction === "close" ? "Fechar atendimento?" : "Arquivar atendimento?"}
+              Fechar atendimento?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-6 text-stone-600">
-              {confirmAction === "close"
-                ? "O atendimento será movido para Fechamento e marcado como fechado."
-                : "O atendimento sairá do funil ativo e continuará disponível no histórico."}
+              O atendimento será movido para Fechamento e marcado como fechado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -607,11 +605,7 @@ export function AtendimentoDetailDrawer({
             <AlertDialogAction
               className="rounded-xl bg-stone-900 text-white hover:bg-stone-800"
               onClick={() => {
-                if (confirmAction === "close") {
-                  void onCloseAttendance(atendimento);
-                } else {
-                  void onArchive(atendimento);
-                }
+                void onCloseAttendance(atendimento);
                 setConfirmAction(null);
               }}
             >
@@ -785,27 +779,6 @@ function ActionButton({
       className="flex min-h-12 items-center gap-2 rounded-xl border border-stone-900/10 bg-stone-50 px-3 text-left text-[11px] font-extrabold leading-4 text-stone-800 transition duration-200 hover:border-teal-800/20 hover:bg-teal-50 hover:text-teal-950 active:scale-[0.99] disabled:opacity-45"
     >
       <Icon className="size-4 shrink-0 text-teal-800" />
-      {children}
-    </button>
-  );
-}
-
-function SecondaryAction({
-  icon: Icon,
-  onClick,
-  children,
-}: {
-  icon: typeof Archive;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-10 flex-col items-center justify-center gap-1 rounded-xl border border-stone-900/10 bg-white px-2 py-2 text-[9px] font-bold text-stone-600 transition duration-200 hover:bg-stone-100 hover:text-stone-900"
-    >
-      <Icon className="size-3.5" />
       {children}
     </button>
   );
