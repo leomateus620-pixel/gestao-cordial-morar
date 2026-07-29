@@ -302,16 +302,7 @@ export function AtendimentoCard({
           )}
         </div>
 
-        {overdue || !atendimento.proximoRetorno ? (
-          <button
-            type="button"
-            onClick={() => setSchedulingReturn(true)}
-            className="mt-2 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-700/20 bg-amber-50 px-3 text-[11px] font-bold text-amber-950 transition duration-200 hover:bg-amber-100 active:scale-[0.99]"
-          >
-            <CalendarClock className="size-3.5" />
-            {overdue ? "Reagendar próxima ação" : "Agendar próxima ação"}
-          </button>
-        ) : nextStage ? (
+        {nextStage ? (
           <button
             type="button"
             disabled={moving}
@@ -322,6 +313,7 @@ export function AtendimentoCard({
             <ChevronRight className="size-3.5" />
           </button>
         ) : null}
+
       </footer>
 
     </article>
