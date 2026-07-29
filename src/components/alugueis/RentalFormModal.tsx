@@ -339,6 +339,7 @@ export function RentalFormModal({
   const [guaranteeEntries, setGuaranteeEntries] = useState<GuaranteeEntry[]>([]);
 
   const [valor, setValor] = useState("");
+  const [comissao, setComissao] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [dia, setDia] = useState("10");
@@ -396,6 +397,7 @@ export function RentalFormModal({
     setTenantEntries([newTenantEntry()]);
     setGuaranteeEntries([]);
     setValor("");
+    setComissao("");
     setDataInicio("");
     setDataFim("");
     setDia("10");
@@ -471,6 +473,7 @@ export function RentalFormModal({
     );
 
     setValor(String(c.valorMensal).replace(".", ","));
+    setComissao(c.comissaoMensal != null ? String(c.comissaoMensal).replace(".", ",") : "");
     setDataInicio(c.dataInicio.slice(0, 10));
     setDataFim(c.dataFim.slice(0, 10));
     setDia(String(c.diaVencimento));
@@ -489,6 +492,11 @@ export function RentalFormModal({
       const parsedValor = parseBRLNumber(valor);
       if (!Number.isFinite(parsedValor) || parsedValor <= 0) {
         setError("Informe um valor mensal válido (ex.: 1.500,00).");
+        return;
+      }
+      const parsedComissao = comissao.trim() ? parseBRLNumber(comissao) : NaN;
+      if (comissao.trim() && (!Number.isFinite(parsedComissao) || parsedComissao < 0)) {
+        setError("Informe uma comissão mensal válida (ex.: 150,00).");
         return;
       }
       const parsedArea = areaM2 ? parseBRLNumber(areaM2) : NaN;
@@ -525,6 +533,7 @@ export function RentalFormModal({
         guarantees: guaranteeEntries.map(guaranteeEntryToInput),
         garantiaTipo: guaranteeEntries[0]?.tipo ?? "sem_garantia",
         valorMensal: parsedValor,
+        comissaoMensal: Number.isFinite(parsedComissao) ? parsedComissao : null,
         dataInicio,
         dataFim,
         diaVencimento: Number(dia),
@@ -1135,7 +1144,7 @@ export function RentalFormModal({
               subtitle="Valores, vigência e condições do aluguel"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-                <Field label="Valor mensal (R$)" className="sm:col-span-6">
+                <Field label="Valor mensal (R$)" className="sm:col-span-3">
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1145,6 +1154,27 @@ export function RentalFormModal({
                     onChange={(e) => setValor(e.target.value)}
                     className={inputCls}
                   />
+                </Field>
+                <Field label="Comissão mensal (R$)" className="sm:col-span-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="150,00"
+                      value={comissao}
+                      onChange={(e) => setComissao(e.target.value)}
+                      className={inputCls}
+                    />
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold tabular-nums text-primary",
+                        comissaoPct === null && "opacity-50",
+                      )}
+                      title="Percentual da comissão sobre o valor mensal"
+                    >
+                      {comissaoPct === null ? "--%" : `${comissaoPct.toFixed(2).replace(".", ",")}%`}
+                    </span>
+                  </div>
                 </Field>
                 <Field label="Início" className="sm:col-span-2">
                   <input
