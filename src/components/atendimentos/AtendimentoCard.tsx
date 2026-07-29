@@ -89,10 +89,11 @@ export function AtendimentoCard({
             {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col items-start gap-1.5">
               <h3 className="min-w-0 text-[15px] font-bold leading-5 tracking-[-0.015em] text-stone-950">
-                <span className="[overflow-wrap:anywhere]">{atendimento.clienteNome}</span>
+                <span className="break-words">{atendimento.clienteNome}</span>
               </h3>
+
               <span
                 className={cn(
                   "shrink-0 rounded-full border px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.08em]",
