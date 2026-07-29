@@ -76,6 +76,7 @@ export function AgendaFormModal({
   event,
   onOpenChange,
   onSubmit,
+  onDelete,
   canEdit,
   clients,
   people,
@@ -85,6 +86,7 @@ export function AgendaFormModal({
   event?: AgendaEvent;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AgendaEventInput) => void;
+  onDelete?: (event: AgendaEvent) => Promise<void> | void;
   canEdit: boolean;
   clients: NamedOption[];
   people: NamedOption[];
