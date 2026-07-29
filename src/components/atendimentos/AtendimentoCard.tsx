@@ -27,7 +27,6 @@ import {
   whatsappHref,
 } from "@/services/atendimentos";
 import {
-  ACTIVE_PIPELINE_STAGES,
   FUNNEL_PIPELINE_STAGES,
   attendanceEventLabel,
   atendimentoImobiliariaLabel,

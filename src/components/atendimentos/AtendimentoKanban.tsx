@@ -6,6 +6,7 @@ import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { isAtendimentoOverdue } from "@/services/atendimentos";
 import {
   ACTIVE_PIPELINE_STAGES,
+  FUNNEL_PIPELINE_STAGES,
   pipelineStageLabel,
   type Atendimento,
   type PipelineStage,
@@ -27,9 +28,7 @@ export function AtendimentoKanban(props: Props) {
   const grouped = useMemo(() => groupByStage(props.atendimentos), [props.atendimentos]);
   const terminalItems = useMemo(
     () =>
-      props.atendimentos.filter(
-        (item) => item.pipelineStage === "perdido" || item.pipelineStage === "arquivado",
-      ),
+      props.atendimentos.filter((item) => item.pipelineStage === "arquivado"),
     [props.atendimentos],
   );
   const activeItemCount = useMemo(
@@ -56,7 +55,7 @@ export function AtendimentoKanban(props: Props) {
 
 function groupByStage(items: Atendimento[]) {
   const map = new Map<PipelineStage, Atendimento[]>(
-    ACTIVE_PIPELINE_STAGES.map((stage) => [stage, []]),
+    FUNNEL_PIPELINE_STAGES.map((stage) => [stage, []]),
   );
   for (const atendimento of items) {
     const current = map.get(atendimento.pipelineStage);
@@ -71,8 +70,8 @@ function KanbanDesktop({
 }: Props & { grouped: Map<PipelineStage, Atendimento[]> }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0">
-      <div className="grid min-w-[1500px] grid-cols-5 gap-4 2xl:min-w-0">
-        {ACTIVE_PIPELINE_STAGES.map((stage) => {
+      <div className="grid min-w-[1800px] grid-cols-6 gap-4 2xl:min-w-0">
+        {FUNNEL_PIPELINE_STAGES.map((stage) => {
           const items = grouped.get(stage) ?? [];
           const overdue = items.filter((item) => isAtendimentoOverdue(item)).length;
           const missingAction = items.filter(
@@ -191,7 +190,7 @@ function StageListMobile({
           role="tablist"
           aria-label="Etapas do funil"
         >
-          {ACTIVE_PIPELINE_STAGES.map((stage) => {
+          {FUNNEL_PIPELINE_STAGES.map((stage) => {
             const active = stage === selectedStage;
             const stageUi = pipelineStageUi[stage];
             const count = grouped.get(stage)?.length ?? 0;
@@ -277,9 +276,9 @@ function TerminalResults({ items, ...props }: Props & { items: Atendimento[] }) 
     <section className="rounded-[1.5rem] border border-stone-900/10 bg-stone-100/70 p-3">
       <header className="flex items-center justify-between gap-3 px-1 pb-3">
         <div>
-          <h3 className="text-sm font-extrabold text-stone-900">Resultados encerrados</h3>
+          <h3 className="text-sm font-extrabold text-stone-900">Arquivados</h3>
           <p className="mt-0.5 text-[10px] text-stone-500">
-            Perdidos e arquivados preservados fora do funil ativo.
+            Registros arquivados preservados fora do funil ativo.
           </p>
         </div>
         <ArrowRight className="size-4 text-stone-400" />
