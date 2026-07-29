@@ -1,12 +1,11 @@
 import { useMemo } from "react";
-import { AlertCircle, ArrowRight, CheckCircle2, CircleDot } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CircleDot } from "lucide-react";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { isAtendimentoOverdue } from "@/services/atendimentos";
 import {
   ACTIVE_PIPELINE_STAGES,
-  FUNNEL_PIPELINE_STAGES,
   pipelineStageLabel,
   type Atendimento,
   type PipelineStage,
@@ -26,6 +25,10 @@ type Props = {
 
 export function AtendimentoKanban(props: Props) {
   const grouped = useMemo(() => groupByStage(props.atendimentos), [props.atendimentos]);
+  const lostItems = useMemo(
+    () => props.atendimentos.filter((item) => item.pipelineStage === "perdido"),
+    [props.atendimentos],
+  );
   const terminalItems = useMemo(
     () =>
       props.atendimentos.filter((item) => item.pipelineStage === "arquivado"),
@@ -37,6 +40,10 @@ export function AtendimentoKanban(props: Props) {
         .length,
     [props.atendimentos],
   );
+
+  if (props.selectedStage === "perdido") {
+    return <LostBoard {...props} items={lostItems} />;
+  }
 
   return (
     <div className="space-y-4">
@@ -53,9 +60,66 @@ export function AtendimentoKanban(props: Props) {
   );
 }
 
+function LostBoard({ items, onSelectedStageChange, ...props }: Props & { items: Atendimento[] }) {
+  return (
+    <section className="rounded-[1.6rem] border border-rose-600/35 bg-rose-50/60 p-3 sm:p-4">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1 pb-3">
+        <div className="min-w-0">
+          <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-rose-700/70">
+            Fora do funil ativo
+          </p>
+          <h3 className="mt-0.5 text-base font-extrabold text-rose-900">
+            Leads perdidos ({items.length})
+          </h3>
+          <p className="mt-0.5 text-[11px] leading-4 text-rose-800/70">
+            Acompanhe os motivos de perda e recupere leads movendo-os de volta para uma etapa ativa.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelectedStageChange("primeiro_contato")}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-rose-700/25 bg-white px-3 py-2 text-[11px] font-extrabold text-rose-800 transition hover:bg-rose-100 active:scale-[0.98]"
+        >
+          <ArrowLeft className="size-3.5" />
+          Voltar ao funil
+        </button>
+      </header>
+      {items.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          {items.map((atendimento) => (
+            <div
+              key={atendimento.id}
+              className={cn(
+                "rounded-[1.4rem]",
+                props.highlightId === atendimento.id &&
+                  "ring-2 ring-rose-600 ring-offset-2 ring-offset-background",
+              )}
+            >
+              <AtendimentoCard
+                atendimento={atendimento}
+                onOpen={props.onOpenDetail}
+                onStageChange={props.onStageChange}
+                onAction={props.onAction}
+                brokerOptions={props.brokerOptions}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-rose-500/40 bg-white/70 px-5 py-12 text-center">
+          <p className="text-sm font-bold text-rose-900">Nenhum lead perdido</p>
+          <p className="mt-1 text-xs leading-5 text-rose-800/70">
+            Os atendimentos marcados como perdidos aparecerão aqui.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function groupByStage(items: Atendimento[]) {
   const map = new Map<PipelineStage, Atendimento[]>(
-    FUNNEL_PIPELINE_STAGES.map((stage) => [stage, []]),
+    ACTIVE_PIPELINE_STAGES.map((stage) => [stage, []]),
   );
   for (const atendimento of items) {
     const current = map.get(atendimento.pipelineStage);
@@ -64,14 +128,15 @@ function groupByStage(items: Atendimento[]) {
   return map;
 }
 
+
 function KanbanDesktop({
   grouped,
   ...props
 }: Props & { grouped: Map<PipelineStage, Atendimento[]> }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0">
-      <div className="grid min-w-[1800px] grid-cols-6 gap-4 2xl:min-w-0">
-        {FUNNEL_PIPELINE_STAGES.map((stage) => {
+      <div className="grid min-w-[1450px] grid-cols-5 gap-4 2xl:min-w-0">
+        {ACTIVE_PIPELINE_STAGES.map((stage) => {
           const items = grouped.get(stage) ?? [];
           const overdue = items.filter((item) => isAtendimentoOverdue(item)).length;
           const missingAction = items.filter(
@@ -190,7 +255,7 @@ function StageListMobile({
           role="tablist"
           aria-label="Etapas do funil"
         >
-          {FUNNEL_PIPELINE_STAGES.map((stage) => {
+          {ACTIVE_PIPELINE_STAGES.map((stage) => {
             const active = stage === selectedStage;
             const stageUi = pipelineStageUi[stage];
             const count = grouped.get(stage)?.length ?? 0;

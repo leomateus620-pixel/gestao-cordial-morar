@@ -1,39 +1,32 @@
 ## Objetivo
 
-Permitir excluir eventos no menu **Agenda** e vendas no menu **Vendas**, com confirmação, feedback e — na Agenda — remoção automática do evento no Google Agenda.
+Deixar o CRM de Atendimentos menos comprimido: quadro com 5 etapas ativas, perdidos em uma visão própria, colunas mais largas no desktop e "Última ação" sem cortes.
 
-## O que já existe (verificado)
+## 1. "Perdido" sai do quadro
 
-- `softDeleteAgendaEvent` (marca `deleted_at` + status `cancelado`) e o hook `useAgenda().deleteEvent` já existem, mas **nenhum botão na UI** chama isso.
-- A sincronização com o Google já trata exclusão: quando o evento está cancelado/excluído, a fila envia `DELETE` para o Google Calendar de cada destinatário conectado (com retry). Ou seja, "apagou no sistema → apaga no Google" já funciona no backend.
-- `deleteSale` (remove venda + arquivos anexos do storage) já existe em `sales.functions.ts` e é exposto por `useSales()`, mas também **sem botão na UI**.
-- As regras de acesso no banco já permitem exclusão pelo criador/responsável e por admin (Agenda e Vendas).
+- O Kanban passa a renderizar apenas as 5 etapas ativas (Primeiro contato → Fechamento).
+- O card "Perdidos" do resumo continua no topo, com a contagem real, e vira o gatilho: ao clicar, a tela troca do quadro para uma **visão dedicada de Perdidos** (lista em grade, com destaque vermelho e o motivo da perda visível).
+- Nessa visão há um botão "Voltar ao funil" que devolve o quadro das 5 etapas.
+- O seletor de etapa dentro de cada card continua oferecendo "Perdido", para marcar/recuperar leads — só a coluna sai do quadro.
+- No mobile, as abas de etapa também ficam com as 5 ativas; "Perdidos" segue acessível pelo card do resumo.
 
-Conclusão: o trabalho é essencialmente de interface + confirmação + integração dos fluxos existentes.
+## 2. Responsividade desktop
 
-## Mudanças
+- Com 5 colunas em vez de 6, reduzir a largura mínima do quadro (de ~1800px para ~1450px) para caber sem rolagem em telas comuns e dar mais respiro a cada card.
+- Card do atendimento: rótulos e valores das colunas "Corretor / Telefone / Região / Faixa" com quebra de linha em vez de corte, e a trilha "Anterior / Atual / Próxima" sem truncar o nome da etapa.
 
-### 1. Agenda
-- Adicionar ação **Excluir** no modal de detalhes/edição do evento (`AgendaFormModal`), visível apenas para quem pode editar aquele evento.
-- Adicionar ação rápida de exclusão no card do evento (`AgendaEventCard`, menu de três pontinhos), também condicionada à permissão.
-- Diálogo de confirmação (AlertDialog) avisando que o evento também será removido do Google Agenda dos participantes.
-- Após confirmar: chama `deleteEvent`, fecha o modal, invalida as listas, mostra toast de sucesso/erro com a mensagem real do banco.
+## 3. "Última ação" completa
 
-### 2. Vendas
-- Adicionar ação **Excluir venda** no `SaleDetailsDrawer` e no menu do `SaleRecordCard`.
-- Diálogo de confirmação informando que anexos e parcelas de comissão também serão removidos.
-- Após confirmar: chama `deleteSale`, fecha o drawer, atualiza lista e KPIs, toast de resultado.
-- Exibir a ação apenas para o corretor dono da venda ou admin, alinhado às regras já existentes no banco.
-
-### 3. Robustez do "apaga no Google"
-- Garantir que, ao excluir na Agenda, a sincronização seja disparada mesmo se a limpeza local falhar parcialmente, e que registros de sincronização do evento sejam limpos após a remoção no Google.
-
-## Validação
-
-- Criar um evento de teste com Google conectado, excluir e confirmar que sai da lista do sistema e do Google Agenda (verificando o registro de sincronização e a fila).
-- Excluir uma venda de teste e confirmar remoção da lista, dos KPIs e dos anexos.
-- Conferir que um corretor não consegue excluir evento/venda de outro (erro tratado, sem tela quebrada).
+- Remover o corte de 2 linhas da descrição: o texto aparece inteiro, com quebra de palavra preservada.
+- Reorganizar o bloco para data/autor abaixo do texto quando a coluna é estreita, evitando o empilhamento vertical de uma palavra por linha visto no print.
+- Mesma correção no bloco "Lead perdido" (motivo completo) e no "Imóvel vinculado".
 
 ## Detalhes técnicos
 
-Arquivos afetados: `src/components/agenda/AgendaFormModal.tsx`, `AgendaEventCard.tsx`, `AgendaTimeline.tsx`, `src/routes/_app.agenda.index.tsx`, `_app.agenda.fotos.tsx`, `src/components/vendas/SaleDetailsDrawer.tsx`, `SaleRecordCard.tsx`, `src/routes/_app.vendas.tsx`, e ajustes pontuais em `src/lib/agenda/agenda.functions.ts` / `google.server.ts`. Sem novas tabelas ou migrações.
+- `src/types/atendimento.ts`: usar `ACTIVE_PIPELINE_STAGES` como base do quadro; manter `FUNNEL_PIPELINE_STAGES` para os seletores/resumo.
+- `src/components/atendimentos/AtendimentoKanban.tsx`: colunas a partir das etapas ativas, `min-w` reduzido, e novo modo "lista de perdidos" quando `selectedStage === "perdido"`.
+- `src/components/atendimentos/AtendimentoSummaryCards.tsx`: card "Perdidos" mantido como botão de alternância.
+- `src/components/atendimentos/AtendimentoCard.tsx`: remover `line-clamp`/`truncate` dos blocos de conteúdo (última ação, motivo de perda, imóvel, contexto).
+- `src/routes/_app.atendimentos.tsx`: garantir que a etapa selecionada "perdido" acione a visão dedicada.
+
+Sem mudanças de banco de dados ou de regras de acesso.
