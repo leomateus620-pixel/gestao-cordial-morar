@@ -89,6 +89,7 @@ export type RentalContract = {
   tenantId: string;
   guarantorId?: string | null;
   valorMensal: number;
+  comissaoMensal?: number | null;
   valorCaucao?: number | null;
   garantiaTipo: RentalGuaranteeType;
   seguroSeguradora?: string | null;
@@ -154,6 +155,7 @@ export type RentalContractInput = {
   tenants?: RentalContractTenantInput[];
   guarantees?: RentalContractGuaranteeInput[];
   valorMensal: number;
+  comissaoMensal?: number | null;
   valorCaucao?: number | null;
   garantiaTipo?: RentalGuaranteeType;
   seguroSeguradora?: string | null;
@@ -171,6 +173,8 @@ export type RentalContractInput = {
 
 export type RentalKpis = {
   receitaMensalAtiva: number;
+  comissaoMensalAtiva: number;
+  comissaoPercentualMedio: number;
   contratosAtivos: number;
   contratosPendentes: number;
   vencendoEm30: number;

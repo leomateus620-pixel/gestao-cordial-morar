@@ -66,6 +66,7 @@ type ContractRow = {
   tenant_id: string;
   guarantor_id: string | null;
   valor_mensal: number;
+  comissao_mensal: number | null;
   valor_caucao: number | null;
   garantia_tipo: string | null;
   seguro_seguradora: string | null;
@@ -123,6 +124,7 @@ function mapContract(r: ContractRow): RentalContract {
     tenantId: r.tenant_id,
     guarantorId: r.guarantor_id,
     valorMensal: Number(r.valor_mensal),
+    comissaoMensal: r.comissao_mensal !== null && r.comissao_mensal !== undefined ? Number(r.comissao_mensal) : null,
     valorCaucao: r.valor_caucao !== null ? Number(r.valor_caucao) : null,
     garantiaTipo: (r.garantia_tipo as RentalContract["garantiaTipo"]) ?? "sem_garantia",
     seguroSeguradora: r.seguro_seguradora,
@@ -419,7 +421,7 @@ export const getRentalKpis = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<RentalKpis> => {
     const { data: contracts, error } = await context.supabase
       .from("rental_contracts")
-      .select("status,payment_status,valor_mensal,data_fim,proximo_vencimento");
+      .select("status,payment_status,valor_mensal,comissao_mensal,data_fim,proximo_vencimento");
     if (error) throw new Error(error.message);
     const { data: props, error: pErr } = await context.supabase
       .from("rental_properties")
@@ -430,6 +432,7 @@ export const getRentalKpis = createServerFn({ method: "GET" })
       status: string;
       payment_status: string;
       valor_mensal: number;
+      comissao_mensal: number | null;
       data_fim: string;
       proximo_vencimento: string | null;
     }>;
@@ -438,6 +441,7 @@ export const getRentalKpis = createServerFn({ method: "GET" })
     in30.setDate(today.getDate() + 30);
 
     let receita = 0;
+    let comissao = 0;
     let ativos = 0;
     let pendentes = 0;
     let vencendo = 0;
@@ -447,6 +451,7 @@ export const getRentalKpis = createServerFn({ method: "GET" })
       if (c.status === "ativo") {
         ativos++;
         receita += Number(c.valor_mensal) || 0;
+        comissao += Number(c.comissao_mensal) || 0;
         const fim = new Date(c.data_fim);
         if (fim >= today && fim <= in30) vencendo++;
       }
@@ -460,6 +465,8 @@ export const getRentalKpis = createServerFn({ method: "GET" })
 
     return {
       receitaMensalAtiva: receita,
+      comissaoMensalAtiva: comissao,
+      comissaoPercentualMedio: receita > 0 ? (comissao / receita) * 100 : 0,
       contratosAtivos: ativos,
       contratosPendentes: pendentes,
       vencendoEm30: vencendo,
@@ -654,6 +661,7 @@ export const createRentalContract = createServerFn({ method: "POST" })
       tenant_id: primaryTenantId,
       guarantor_id: primaryGuarantee?.guarantorId ?? null,
       valor_mensal: Number(data.valorMensal),
+      comissao_mensal: numOrNull(data.comissaoMensal),
       valor_caucao:
         primaryGuarantee?.tipo === "caucao" ? numOrNull(primaryGuarantee.valorCaucao) : null,
       garantia_tipo: primaryGuarantee?.tipo ?? "sem_garantia",
@@ -730,6 +738,7 @@ export const updateRentalContract = createServerFn({ method: "POST" })
       id: string;
       contract?: Partial<{
         valorMensal: number;
+        comissaoMensal: number | null;
         valorCaucao: number | null;
         dataInicio: string;
         dataFim: string;
@@ -750,6 +759,8 @@ export const updateRentalContract = createServerFn({ method: "POST" })
       const patch: Record<string, unknown> = {};
       if (data.contract.valorMensal !== undefined)
         patch.valor_mensal = Number(data.contract.valorMensal);
+      if (data.contract.comissaoMensal !== undefined)
+        patch.comissao_mensal = numOrNull(data.contract.comissaoMensal);
       if (data.contract.valorCaucao !== undefined)
         patch.valor_caucao = numOrNull(data.contract.valorCaucao);
       if (data.contract.dataInicio !== undefined)
@@ -1394,6 +1405,7 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
       tenant_id: primaryTenantId,
       guarantor_id: primaryGuarantee?.guarantorId ?? null,
       valor_mensal: Number(data.valorMensal),
+      comissao_mensal: numOrNull(data.comissaoMensal),
       valor_caucao:
         primaryGuarantee?.tipo === "caucao" ? numOrNull(primaryGuarantee.valorCaucao) : null,
       garantia_tipo: primaryGuarantee?.tipo ?? "sem_garantia",
