@@ -168,6 +168,19 @@ function Page() {
     }
   }
 
+  async function handleDeleteSale(sale: SaleRecord) {
+    try {
+      await deleteSale(sale.id);
+      toast.success("Venda excluída definitivamente.");
+      setDetailsOpen(false);
+      setSelectedSale(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível excluir a venda.");
+    }
+  }
+
+
+
   async function handleReplaceContract(sale: SaleRecord) {
     // Reuses the edit flow — user can attach a new contract in the form
     openEditForm(sale);
