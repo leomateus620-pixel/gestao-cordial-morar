@@ -485,31 +485,24 @@ export function AtendimentoDetailDrawer({
                       </div>
                       {canManageTerminalState ? (
                         <div className="mt-3 border-t border-stone-900/8 pt-3">
-                          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
-                            Encerrar atendimento
+                          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-700/80">
+                            Marcar como perdido
                           </p>
-                          <div className="grid grid-cols-3 gap-2">
-                            <SecondaryAction
-                              icon={XCircle}
-                              onClick={() => setActiveKind("motivo-perda")}
-                            >
-                              Perdido
-                            </SecondaryAction>
-                            <SecondaryAction
-                              icon={Archive}
-                              onClick={() => setConfirmAction("archive")}
-                            >
-                              Arquivar
-                            </SecondaryAction>
-                            <SecondaryAction
-                              icon={CheckCircle2}
-                              onClick={() => setConfirmAction("close")}
-                            >
-                              Fechar
-                            </SecondaryAction>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveKind("motivo-perda")}
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-600/45 bg-rose-50 px-3 text-[11px] font-extrabold text-rose-800 transition duration-200 hover:border-rose-600 hover:bg-rose-100 hover:text-rose-900 active:scale-[0.99]"
+                          >
+                            <XCircle className="size-4 shrink-0" />
+                            Perdido
+                          </button>
+                          <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
+                            Para encerrar como ganho, use a etapa “Fechamento” em Progresso do
+                            atendimento.
+                          </p>
                         </div>
                       ) : null}
+
                     </SectionCard>
 
                     <SectionCard eyebrow="Registro" title="Nova nota" icon={MessageSquare}>
