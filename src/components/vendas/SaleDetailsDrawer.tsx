@@ -456,7 +456,7 @@ export function SaleDetailsDrawer({
               </Panel>
             </div>
 
-            <div className="grid gap-2 border-t border-white/60 bg-white/45 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:grid-cols-[1fr_auto_auto] sm:px-6">
+            <div className="grid gap-2 border-t border-white/60 bg-white/45 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:grid-cols-2 sm:px-6">
               <button
                 type="button"
                 onClick={() => onEdit(sale)}
@@ -482,6 +482,39 @@ export function SaleDetailsDrawer({
                   <XCircle className="size-4" />
                   Cancelar venda
                 </button>
+              )}
+              {onDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 text-sm font-bold text-white shadow-lg shadow-rose-900/15 transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 active:scale-[0.98]"
+                    >
+                      <Trash2 className="size-4" />
+                      Excluir venda
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir esta venda?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        A venda de {sale.propertyName} será removida definitivamente, junto com os
+                        anexos, o contrato e o plano de comissão. Essa ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Manter venda</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          void onDelete(sale);
+                        }}
+                        className="bg-rose-600 text-white hover:bg-rose-700"
+                      >
+                        Excluir definitivamente
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           </>
