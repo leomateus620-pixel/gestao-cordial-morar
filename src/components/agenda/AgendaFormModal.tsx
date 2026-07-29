@@ -121,6 +121,8 @@ export function AgendaFormModal({
     if (!open) return;
     setForm(initialForm(event, currentUser));
     setErrors({});
+    setConfirmingDelete(false);
+    setSubmitError(null);
   }, [currentUser, event, open]);
 
   useEffect(() => {
