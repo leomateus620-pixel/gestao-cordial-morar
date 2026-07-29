@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChevronRight,
   CircleAlert,
+  History,
   MapPin,
   MessageCircle,
   Phone,
@@ -27,6 +28,8 @@ import {
 } from "@/services/atendimentos";
 import {
   ACTIVE_PIPELINE_STAGES,
+  FUNNEL_PIPELINE_STAGES,
+  attendanceEventLabel,
   atendimentoImobiliariaLabel,
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
@@ -144,6 +147,56 @@ export function AtendimentoCard({
           </div>
         </section>
 
+        <section
+          className="mt-2.5 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
+          aria-label="Última ação"
+        >
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-stone-500">
+                <History className="size-3.5" />
+                Última ação
+              </p>
+              {atendimento.ultimaAcao ? (
+                <>
+                  <p className="mt-1 text-[11px] font-extrabold text-stone-800">
+                    {attendanceEventLabel(atendimento.ultimaAcao.tipo)}
+                  </p>
+                  <p className="mt-0.5 line-clamp-2 text-[11px] leading-4.5 text-stone-600">
+                    {atendimento.ultimaAcao.descricao}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-[11px] font-semibold text-stone-500">
+                  Sem movimentações registradas
+                </p>
+              )}
+            </div>
+            {atendimento.ultimaAcao ? (
+              <p className="shrink-0 text-[10px] font-semibold leading-4 text-stone-500 sm:text-right">
+                {formatDateTime(atendimento.ultimaAcao.em)}
+                {atendimento.ultimaAcao.ator ? (
+                  <span className="block text-[10px] font-medium text-stone-400">
+                    por {atendimento.ultimaAcao.ator}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        {atendimento.pipelineStage === "perdido" ? (
+          <div className="mt-3 rounded-2xl border border-rose-600/40 bg-rose-50 px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-700">
+              <CircleAlert className="size-3.5" />
+              Lead perdido
+            </p>
+            <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4.5 text-rose-900">
+              {atendimento.motivoPerda?.trim() || "Motivo da perda não informado."}
+            </p>
+          </div>
+        ) : null}
+
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[11px]">
           <ContextRow icon={UserRound} label="Corretor">
             {atendimento.corretorNome ?? "A definir"}
@@ -191,17 +244,22 @@ export function AtendimentoCard({
       </div>
 
       <footer className="border-t border-stone-900/8 bg-stone-50/75 p-3">
-        {ACTIVE_PIPELINE_STAGES.includes(atendimento.pipelineStage) ? (
+        {FUNNEL_PIPELINE_STAGES.includes(atendimento.pipelineStage) ? (
           <label className="block">
             <span className="sr-only">Mover atendimento para outra etapa</span>
             <select
               value={atendimento.pipelineStage}
               disabled={moving}
               onChange={(event) => void moveTo(event.target.value as PipelineStage)}
-              className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3 text-[11px] font-bold text-stone-800 outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-700/15 disabled:opacity-60"
+              className={cn(
+                "h-10 w-full rounded-xl border px-3 text-[11px] font-bold outline-none transition focus:ring-2 disabled:opacity-60",
+                atendimento.pipelineStage === "perdido"
+                  ? "border-rose-500 bg-rose-50 text-rose-900 focus:border-rose-600 focus:ring-rose-600/20"
+                  : "border-stone-300 bg-white text-stone-800 focus:border-teal-700 focus:ring-teal-700/15",
+              )}
               aria-label={`Etapa de ${atendimento.clienteNome}`}
             >
-              {ACTIVE_PIPELINE_STAGES.map((stage) => (
+              {FUNNEL_PIPELINE_STAGES.map((stage) => (
                 <option key={stage} value={stage}>
                   {pipelineStageLabel(stage)}
                 </option>
