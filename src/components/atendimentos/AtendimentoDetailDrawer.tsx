@@ -118,7 +118,7 @@ export function AtendimentoDetailDrawer({
 }: Props) {
   const [note, setNote] = useState("");
   const [activeKind, setActiveKind] = useState<AtendimentoActionKind | null>(null);
-  const [confirmAction, setConfirmAction] = useState<"archive" | "close" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"close" | null>(null);
   const [stagePending, setStagePending] = useState(false);
   const qc = useQueryClient();
 
@@ -598,12 +598,10 @@ export function AtendimentoDetailDrawer({
         <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md rounded-3xl border border-stone-900/10 bg-[#fffdf9] shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-extrabold text-stone-950">
-              {confirmAction === "close" ? "Fechar atendimento?" : "Arquivar atendimento?"}
+              Fechar atendimento?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-6 text-stone-600">
-              {confirmAction === "close"
-                ? "O atendimento será movido para Fechamento e marcado como fechado."
-                : "O atendimento sairá do funil ativo e continuará disponível no histórico."}
+              O atendimento será movido para Fechamento e marcado como fechado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -611,11 +609,7 @@ export function AtendimentoDetailDrawer({
             <AlertDialogAction
               className="rounded-xl bg-stone-900 text-white hover:bg-stone-800"
               onClick={() => {
-                if (confirmAction === "close") {
-                  void onCloseAttendance(atendimento);
-                } else {
-                  void onArchive(atendimento);
-                }
+                void onCloseAttendance(atendimento);
                 setConfirmAction(null);
               }}
             >
