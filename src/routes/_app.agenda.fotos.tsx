@@ -125,6 +125,19 @@ function AgendaFotosPage() {
     }
   }
 
+  async function removeEvent(event: AgendaEvent) {
+    try {
+      await deleteEvent(event.id);
+      setFeedback(`Sessão “${event.titulo}” excluída do sistema e do Google Agenda.`);
+      setSelected(undefined);
+    } catch (err) {
+      setFeedback(`Não foi possível excluir: ${(err as Error).message}`);
+      throw err;
+    }
+  }
+
+
+
   return (
     <div className="space-y-4">
       <AgendaViewSwitcher />
