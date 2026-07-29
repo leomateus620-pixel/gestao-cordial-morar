@@ -76,6 +76,7 @@ const orUndef = <T>(v: T | null | undefined): T | undefined =>
 function rowToAtendimento(
   row: DbRow,
   lastStageTransition?: AtendimentoStageTransition,
+  ultimaAcao?: AtendimentoUltimaAcao,
 ): Atendimento {
   const id = row.id;
   const criadoEm = row.created_at;
@@ -282,6 +283,28 @@ function latestStageTransitions(rows: StageHistoryRow[]) {
   return result;
 }
 
+type LastActionRow = {
+  attendance_id: string;
+  event_type: string;
+  description: string | null;
+  actor_name: string | null;
+  created_at: string;
+};
+
+function latestActions(rows: LastActionRow[]) {
+  const result = new Map<string, AtendimentoUltimaAcao>();
+  for (const row of rows) {
+    if (result.has(row.attendance_id)) continue;
+    result.set(row.attendance_id, {
+      tipo: row.event_type,
+      descricao: row.description?.trim() || attendanceEventLabel(row.event_type),
+      ator: orUndef(row.actor_name),
+      em: row.created_at,
+    });
+  }
+  return result;
+}
+
 export const listAttendances = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -315,7 +338,22 @@ export const listAttendances = createServerFn({ method: "GET" })
     if (historyError) throw new Error(historyError.message);
 
     const transitions = latestStageTransitions((historyRows ?? []) as unknown as StageHistoryRow[]);
-    return rows.map((row) => rowToAtendimento(row, transitions.get(row.id)));
+
+    const { data: lastRows, error: lastError } = await context.supabase
+      .from("attendance_history")
+      .select("attendance_id, event_type, description, actor_name, created_at")
+      .in(
+        "attendance_id",
+        rows.map((row) => row.id),
+      )
+      .order("created_at", { ascending: false })
+      .limit(Math.min(Math.max(rows.length * 8, 100), 1500));
+    if (lastError) throw new Error(lastError.message);
+    const lastActions = latestActions((lastRows ?? []) as unknown as LastActionRow[]);
+
+    return rows.map((row) =>
+      rowToAtendimento(row, transitions.get(row.id), lastActions.get(row.id)),
+    );
   });
 
 export type AttendanceBrokerOption = {
