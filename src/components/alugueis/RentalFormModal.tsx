@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { parseBRLNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { registerRentalContractDocument } from "@/lib/rentals/rentals.functions";
 import {
@@ -340,6 +341,12 @@ export function RentalFormModal({
 
   const [valor, setValor] = useState("");
   const [comissao, setComissao] = useState("");
+  const comissaoPct = (() => {
+    const base = parseBRLNumber(valor);
+    const com = parseBRLNumber(comissao);
+    if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(com) || com < 0) return null;
+    return (com / base) * 100;
+  })();
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [dia, setDia] = useState("10");
