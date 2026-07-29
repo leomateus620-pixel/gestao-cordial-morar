@@ -8,7 +8,6 @@ import {
   Building2,
   CalendarCheck2,
   CalendarClock,
-  CheckCircle2,
   Clock3,
   Edit3,
   ExternalLink,
@@ -95,7 +94,6 @@ type Props = {
   onConvert: (id: string) => Promise<void> | void;
   onRegisterProposal: (atendimento: Atendimento) => Promise<void> | void;
   onCloseAttendance: (atendimento: Atendimento) => Promise<void> | void;
-  onArchive: (atendimento: Atendimento) => Promise<void> | void;
   brokerOptions?: Array<{ id: string; nome: string }>;
   canAssignBroker?: boolean;
   canManageTerminalState?: boolean;
@@ -111,7 +109,6 @@ export function AtendimentoDetailDrawer({
   onConvert,
   onRegisterProposal,
   onCloseAttendance,
-  onArchive,
   brokerOptions = [],
   canAssignBroker = false,
   canManageTerminalState = false,
@@ -783,27 +780,6 @@ function ActionButton({
       className="flex min-h-12 items-center gap-2 rounded-xl border border-stone-900/10 bg-stone-50 px-3 text-left text-[11px] font-extrabold leading-4 text-stone-800 transition duration-200 hover:border-teal-800/20 hover:bg-teal-50 hover:text-teal-950 active:scale-[0.99] disabled:opacity-45"
     >
       <Icon className="size-4 shrink-0 text-teal-800" />
-      {children}
-    </button>
-  );
-}
-
-function SecondaryAction({
-  icon: Icon,
-  onClick,
-  children,
-}: {
-  icon: typeof Archive;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-10 flex-col items-center justify-center gap-1 rounded-xl border border-stone-900/10 bg-white px-2 py-2 text-[9px] font-bold text-stone-600 transition duration-200 hover:bg-stone-100 hover:text-stone-900"
-    >
-      <Icon className="size-3.5" />
       {children}
     </button>
   );
