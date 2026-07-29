@@ -6,6 +6,7 @@ import type {
   AtendimentoFinalidade,
   AtendimentoStageTransition,
   AtendimentoStatus,
+  AtendimentoUltimaAcao,
   AtendimentoUpdatePatch,
   ContatoPreferencialAtendimento,
   DormitoriosAtendimento,
@@ -16,7 +17,7 @@ import type {
   ProximoPassoAtendimento,
   TipoImovelInteresse,
 } from "@/types/atendimento";
-import { statusToPipelineStage } from "@/types/atendimento";
+import { attendanceEventLabel, statusToPipelineStage } from "@/types/atendimento";
 import { mapCanonicalPropertyFields } from "@/lib/attendances/attendance-field-mapping";
 
 type DbRow = {
@@ -132,6 +133,7 @@ function rowToAtendimento(
       (row.pipeline_stage as PipelineStage | null) ??
       statusToPipelineStage(row.status as AtendimentoStatus),
     lastStageTransition,
+    ultimaAcao,
     proximoRetorno: orUndef(row.proximo_retorno) ?? undefined,
     proximoPasso: (orUndef(row.proximo_passo) as ProximoPassoAtendimento | undefined) ?? undefined,
     observacoes: orUndef(row.observacoes) ?? undefined,
