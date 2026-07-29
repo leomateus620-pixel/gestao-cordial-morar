@@ -645,6 +645,14 @@ export function RentalExpandedDetails({
               >
                 <dl className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
                   <DetailField label="Valor mensal" value={brl(contract.valorMensal)} emphasis />
+                  <DetailField
+                    label="Comissão mensal"
+                    value={
+                      contract.comissaoMensal
+                        ? `${brl(contract.comissaoMensal)} (${((contract.comissaoMensal / (contract.valorMensal || 1)) * 100).toFixed(2).replace(".", ",")}%)`
+                        : null
+                    }
+                  />
                   <DetailField label="Dia de vencimento" value={`Dia ${contract.diaVencimento}`} />
                   <DetailField
                     label="Início do contrato"

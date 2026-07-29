@@ -1,0 +1,1 @@
+ALTER TABLE public.rental_contracts ADD COLUMN IF NOT EXISTS comissao_mensal numeric;
