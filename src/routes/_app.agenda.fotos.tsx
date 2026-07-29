@@ -55,6 +55,7 @@ function AgendaFotosPage() {
     stats,
     createEvent,
     editEvent,
+    deleteEvent,
     canEdit,
     isLoading,
     isError,
@@ -123,6 +124,19 @@ function AgendaFotosPage() {
       throw err;
     }
   }
+
+  async function removeEvent(event: AgendaEvent) {
+    try {
+      await deleteEvent(event.id);
+      setFeedback(`Sessão “${event.titulo}” excluída do sistema e do Google Agenda.`);
+      setSelected(undefined);
+    } catch (err) {
+      setFeedback(`Não foi possível excluir: ${(err as Error).message}`);
+      throw err;
+    }
+  }
+
+
 
   return (
     <div className="space-y-4">
@@ -208,6 +222,7 @@ function AgendaFotosPage() {
           event={selected}
           onOpenChange={setOpen}
           onSubmit={save}
+          onDelete={removeEvent}
           canEdit={
             selected ? canEdit(selected) : Boolean(session?.permissions.includes("agenda:write"))
           }

@@ -76,6 +76,7 @@ export function AgendaFormModal({
   event,
   onOpenChange,
   onSubmit,
+  onDelete,
   canEdit,
   clients,
   people,
@@ -85,6 +86,7 @@ export function AgendaFormModal({
   event?: AgendaEvent;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AgendaEventInput) => void;
+  onDelete?: (event: AgendaEvent) => Promise<void> | void;
   canEdit: boolean;
   clients: NamedOption[];
   people: NamedOption[];
@@ -97,6 +99,9 @@ export function AgendaFormModal({
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
   const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
 
   const { data: attendanceOptions = [] } = useQuery({
     queryKey: ["agenda", "attendance-options"],
@@ -116,6 +121,8 @@ export function AgendaFormModal({
     if (!open) return;
     setForm(initialForm(event, currentUser));
     setErrors({});
+    setConfirmingDelete(false);
+    setSubmitError(null);
   }, [currentUser, event, open]);
 
   useEffect(() => {
@@ -311,6 +318,26 @@ export function AgendaFormModal({
       setSaving(false);
     }
   }
+
+  async function handleDelete() {
+    if (!event || !onDelete || deleting) return;
+    setDeleting(true);
+    setSubmitError(null);
+    try {
+      await Promise.resolve(onDelete(event));
+      setConfirmingDelete(false);
+      requestClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível excluir o compromisso. Tente novamente.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
 
   return createPortal(
     <div
@@ -791,6 +818,43 @@ export function AgendaFormModal({
                   active={form.status === "cancelado"}
                   danger
                 />
+              </div>
+            )}
+            {isEditing && canEdit && onDelete && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {confirmingDelete ? (
+                  <>
+                    <span className="text-[11px] font-semibold text-rose-700">
+                      Excluir e remover do Google Agenda?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-rose-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700 active:scale-[0.98] disabled:opacity-70"
+                    >
+                      <Trash2 className="size-3.5" />
+                      {deleting ? "Excluindo..." : "Confirmar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDelete(false)}
+                      disabled={deleting}
+                      className="rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold text-foreground/65 transition hover:text-foreground active:scale-[0.98]"
+                    >
+                      Manter
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-700 ring-1 ring-rose-600/15 transition hover:bg-rose-500/16 active:scale-[0.98]"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Excluir
+                  </button>
+                )}
               </div>
             )}
           </div>

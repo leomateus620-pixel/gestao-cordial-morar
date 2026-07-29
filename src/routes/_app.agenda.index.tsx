@@ -73,6 +73,7 @@ function AgendaPage() {
     stats,
     createEvent,
     editEvent,
+    deleteEvent,
     canEdit,
     isLoading,
     isError,
@@ -160,6 +161,18 @@ function AgendaPage() {
     }
   }
 
+  async function removeEvent(event: AgendaEvent) {
+    try {
+      await deleteEvent(event.id);
+      setFeedback(`Compromisso “${event.titulo}” excluído do sistema e do Google Agenda.`);
+      setSelected(undefined);
+    } catch (err) {
+      setFeedback(`Não foi possível excluir: ${(err as Error).message}`);
+      throw err;
+    }
+  }
+
+
   return (
     <div className="space-y-4">
       <section className="space-y-2">
@@ -243,6 +256,7 @@ function AgendaPage() {
             }
           }}
           onSubmit={save}
+          onDelete={removeEvent}
           canEdit={
             selected ? canEdit(selected) : Boolean(session?.permissions.includes("agenda:write"))
           }

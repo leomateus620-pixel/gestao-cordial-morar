@@ -73,6 +73,7 @@ function Page() {
     createSale,
     updateSale,
     cancelSale,
+    deleteSale,
     openContract,
     openAttachment,
     addAttachment,
@@ -166,6 +167,19 @@ function Page() {
       toast.error(err instanceof Error ? err.message : "Não foi possível cancelar a venda.");
     }
   }
+
+  async function handleDeleteSale(sale: SaleRecord) {
+    try {
+      await deleteSale(sale.id);
+      toast.success("Venda excluída definitivamente.");
+      setDetailsOpen(false);
+      setSelectedSale(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível excluir a venda.");
+    }
+  }
+
+
 
   async function handleReplaceContract(sale: SaleRecord) {
     // Reuses the edit flow — user can attach a new contract in the form
@@ -348,6 +362,7 @@ function Page() {
         onEdit={openEditForm}
         onReplaceContract={handleReplaceContract}
         onCancel={handleCancelSale}
+        onDelete={handleDeleteSale}
         onOpenContract={handleOpenContract}
         onOpenAttachment={(path) =>
           openAttachment(path).catch((err: unknown) =>
