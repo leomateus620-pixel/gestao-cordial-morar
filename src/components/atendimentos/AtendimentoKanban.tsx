@@ -135,8 +135,8 @@ function KanbanDesktop({
 }: Props & { grouped: Map<PipelineStage, Atendimento[]> }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0">
-      <div className="grid min-w-[1800px] grid-cols-6 gap-4 2xl:min-w-0">
-        {FUNNEL_PIPELINE_STAGES.map((stage) => {
+      <div className="grid min-w-[1450px] grid-cols-5 gap-4 2xl:min-w-0">
+        {ACTIVE_PIPELINE_STAGES.map((stage) => {
           const items = grouped.get(stage) ?? [];
           const overdue = items.filter((item) => isAtendimentoOverdue(item)).length;
           const missingAction = items.filter(
@@ -255,7 +255,7 @@ function StageListMobile({
           role="tablist"
           aria-label="Etapas do funil"
         >
-          {FUNNEL_PIPELINE_STAGES.map((stage) => {
+          {ACTIVE_PIPELINE_STAGES.map((stage) => {
             const active = stage === selectedStage;
             const stageUi = pipelineStageUi[stage];
             const count = grouped.get(stage)?.length ?? 0;
