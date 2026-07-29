@@ -27,6 +27,12 @@ export const ACTIVE_PIPELINE_STAGES: PipelineStage[] = [
   "fechamento",
 ];
 
+/** Etapas navegáveis do funil: as 5 ativas + a coluna de perdidos. */
+export const FUNNEL_PIPELINE_STAGES: PipelineStage[] = [
+  ...ACTIVE_PIPELINE_STAGES,
+  "perdido",
+];
+
 export const pipelineStageOptions = [
   { value: "primeiro_contato", label: "Primeiro contato", short: "1º contato" },
   { value: "apresentando_solucao", label: "Apresentando solução", short: "Solução" },
@@ -130,6 +136,42 @@ export type AtendimentoStageTransition = {
   source: string;
 };
 
+export type AtendimentoUltimaAcao = {
+  tipo: string;
+  descricao: string;
+  ator?: string;
+  em: string;
+};
+
+const attendanceEventLabels: Record<string, string> = {
+  created: "Atendimento criado",
+  create: "Atendimento criado",
+  insert: "Atendimento criado",
+  stage_change: "Etapa alterada",
+  status_change: "Status alterado",
+  note: "Nova anotação",
+  note_added: "Nova anotação",
+  assignment: "Corretor vinculado",
+  assigned: "Corretor vinculado",
+  broker_change: "Corretor alterado",
+  first_open: "Aberto pelo corretor",
+  opened: "Atendimento aberto",
+  updated: "Atendimento atualizado",
+  update: "Atendimento atualizado",
+  converted: "Convertido em cliente",
+  conversion: "Convertido em cliente",
+  return_scheduled: "Retorno agendado",
+  lost: "Atendimento perdido",
+};
+
+export function attendanceEventLabel(eventType: string): string {
+  return (
+    attendanceEventLabels[eventType] ??
+    eventType.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  );
+}
+
+
 export interface Atendimento {
   id: string;
   clienteId?: string;
@@ -156,6 +198,7 @@ export interface Atendimento {
   status: AtendimentoStatus;
   pipelineStage: PipelineStage;
   lastStageTransition?: AtendimentoStageTransition;
+  ultimaAcao?: AtendimentoUltimaAcao;
   proximoRetorno?: string;
   proximoPasso?: ProximoPassoAtendimento;
   observacoes?: string;

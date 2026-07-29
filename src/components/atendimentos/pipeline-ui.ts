@@ -46,10 +46,10 @@ export const pipelineStageUi: Record<
     dot: "bg-emerald-600",
   },
   perdido: {
-    order: "—",
-    accent: "border-rose-600/55",
-    badge: "border-rose-700/20 bg-rose-700/10 text-rose-900",
-    column: "border-rose-700/18 bg-rose-50/50",
+    order: "06",
+    accent: "border-rose-600",
+    badge: "border-rose-700 bg-rose-600 text-white",
+    column: "border-rose-600/45 bg-rose-50",
     dot: "bg-rose-600",
   },
   arquivado: {

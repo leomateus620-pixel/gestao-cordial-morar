@@ -1,44 +1,39 @@
-## Diagnóstico (verificado agora)
+## Objetivo
 
-- Nenhum evento novo entrou no banco depois de 24/07 — o evento de fotos do Ricardo **não foi salvo**, não é problema só de exibição.
-- Nos logs do banco, hoje às 12:41 UTC há exatamente um erro: `new row violates row-level security policy for table "agenda_events"` numa operação de inserção de evento. Ou seja, o gravar foi rejeitado pela regra de acesso e o usuário não recebeu um aviso claro.
-- A causa exata da rejeição ainda **não está confirmada**: Ricardo é admin e tem acesso às duas imobiliárias, então a regra deveria aprovar. Os indícios apontam para a requisição ter chegado ao banco sem sessão válida (sessão expirada no navegador), o que também explica um segundo erro no mesmo intervalo em outra tela. Confirmar isso é o primeiro passo do plano, não uma suposição a ser implementada às cegas.
-- A regra de leitura atual mostra o evento apenas para criador, responsável, participantes, admin e secretária — mas a tela "Agenda de fotos" promete "visível para toda a equipe operacional". Há uma inconsistência real a corrigir.
-- A listagem ordena por data de início crescente com filtro padrão "todos", então eventos de junho aparecem antes dos próximos — é isso que faz os cards mostrarem "os mais antigos primeiro".
+No menu **Atendimentos** (trilhas Vendas e Aluguéis):
 
-## Passo 1 — Reproduzir e confirmar a causa (antes de mudar regra de acesso)
+1. Cada card mostra a **última ação do histórico** daquele atendimento.
+2. O funil ganha uma etapa **"Perdidos"**, com destaque visual vermelho tanto no card de etapa quanto nos atendimentos classificados como perdidos.
 
-- Rodar o fluxo real de criação de evento (compromisso e fotos) com sessão autenticada e capturar o erro exato retornado pelo servidor.
-- Registrar no servidor o detalhe completo do erro do banco (código, mensagem, dica) em vez de só a mensagem genérica, para que qualquer falha futura fique identificável.
-- Confirmar se a rejeição vem de sessão expirada/token ausente ou da regra de acesso propriamente dita.
+## O que será construído
 
-## Passo 2 — Nunca mais falhar em silêncio
+### 1. Última ação no card
 
-- Se o salvamento falhar, o formulário permanece aberto com uma mensagem de erro visível e específica dentro do modal (hoje o erro é engolido no modal e só aparece um aviso genérico fora dele).
-- Se o motivo for sessão expirada, mostrar aviso claro ("sua sessão expirou, entre novamente") e tentar renovar a sessão automaticamente antes de reenviar, em vez de descartar o preenchimento.
-- Só exibir a mensagem de sucesso quando o evento realmente voltar salvo do servidor.
+- A listagem de atendimentos passa a trazer, junto dos dados atuais, o registro mais recente do histórico de cada atendimento (tipo do evento, descrição, autor e data/hora). Isso é feito numa única consulta em lote — sem requisição extra por card.
+- O card ganha uma faixa "Última ação" logo abaixo do bloco "Próxima ação", com:
+  - rótulo legível do evento (ex.: "Etapa alterada", "Nova anotação", "Corretor vinculado", "Atendimento criado");
+  - descrição resumida em até 2 linhas;
+  - autor e horário relativo/absoluto à direita.
+- Quando ainda não há histórico, exibe "Sem movimentações registradas".
+- Responsivo: no mobile o bloco empilha rótulo/descrição e data; no desktop fica em duas colunas.
 
-## Passo 3 — Garantir a exibição correta para quem criou e para a equipe
+### 2. Etapa "Perdidos"
 
-- Regra de acesso: o criador e o responsável sempre enxergam o próprio evento, sem depender de configuração de imobiliária.
-- Eventos de fotos/vídeo passam a ser visíveis para todos os usuários autenticados dentro do escopo da imobiliária, alinhando a regra ao que a tela já promete; a edição continua restrita a criador, responsável, secretária e admin.
-- Após salvar, o evento entra imediatamente na lista (atualização do cache + recarga), inclusive quando criado a partir da aba de fotos.
-
-## Passo 4 — Google Agenda
-
-- Validar que todo evento criado por qualquer usuário entra na fila de sincronização e chega ao Google Agenda do responsável, inclusive quando a sincronização imediata falha (a fila com novas tentativas já existe).
-- Exibir no evento o estado real de sincronização (sincronizado, pendente, falhou) e, quando falhar, o motivo e o convite para reconectar a conta Google.
-
-## Passo 5 — Ordenação e organização dos cards (desktop)
-
-- Prioridade para o presente e o futuro: primeiro "Hoje", depois os próximos em ordem cronológica, e por último os anteriores em ordem decrescente (mais recentes primeiro), em vez da lista atual que começa pelos mais antigos.
-- Cabeçalhos de dia fixos ao rolar, contagem por dia e separador visual entre "Próximos" e "Anteriores".
-- Grade responsiva mais aproveitada no desktop (até 3 colunas em telas largas), cards com hierarquia melhor: horário e título em destaque, imóvel/cliente, responsável e status de sincronização em linha secundária.
-- Mesma organização aplicada às duas abas: "Visitas e compromissos" e "Agenda de fotos".
+- O estágio `perdido` (já existente no modelo de dados) passa a ser uma etapa navegável do funil, ao lado das 5 atuais.
+- **Cards de etapa (Etapas do funil):** entra um 6º card "Perdidos" com identidade vermelha forte (borda, fundo e número em tom rose/vermelho), diferente das etapas ativas, clicável como as demais.
+- **Kanban desktop:** coluna "Perdidos" ao final, com cabeçalho vermelho e contagem.
+- **Kanban mobile:** aba "Perdidos" na barra de etapas.
+- **Card do atendimento perdido:** borda lateral e badge em vermelho sólido de alto contraste, e exibição do motivo da perda quando preenchido.
+- **Classificação:** o seletor de etapa dentro do card passa a incluir "Perdido" (com estilo de alerta), permitindo marcar e também reverter para uma etapa ativa. A troca usa o fluxo de transição já existente (histórico + notificações continuam funcionando).
+- O bloco "Resultados encerrados" deixa de duplicar os perdidos e passa a listar apenas arquivados.
 
 ## Detalhes técnicos
 
-- Banco: nova migração ajustando as funções de acesso da agenda (`agenda_can_access`) e a política de leitura para incluir criador/responsável incondicionalmente e liberar leitura de eventos de tipo `fotos`/`video` para usuários autenticados no escopo da imobiliária. Nenhuma mudança de estrutura de tabelas.
-- Backend: `src/lib/agenda/agenda.functions.ts` — propagar detalhes do erro do banco na criação/edição e retornar o evento salvo com estado de sincronização.
-- Frontend: `AgendaFormModal.tsx` (erro visível no modal), `_app.agenda.tsx` e `_app.agenda.fotos.tsx` (feedback e revalidação), `useAgenda.ts` (nova ordenação em grupos), `AgendaTimeline.tsx` e `AgendaEventCard.tsx` (agrupamento, grade e densidade no desktop).
-- Validação final: criar um evento de compromisso e um de fotos com uma conta real, conferir que aparecem na lista, no banco e na fila do Google, e revisar os logs sem novos erros de permissão.
+- `src/types/atendimento.ts`: novo tipo `AtendimentoUltimaAcao`, campo `ultimaAcao?` em `Atendimento`, helper `attendanceEventLabel()` e constante `FUNNEL_PIPELINE_STAGES = [...ACTIVE_PIPELINE_STAGES, "perdido"]` (mantendo `ACTIVE_PIPELINE_STAGES` intacto para as métricas de "ativos").
+- `src/lib/attendances/attendances.functions.ts`: em `listAttendances`, além da consulta já existente de `stage_change`, uma consulta em lote a `attendance_history` (todos os tipos de evento, ordenada por `created_at desc`, com limite proporcional) reduzida ao registro mais recente por atendimento; `rowToAtendimento` recebe esse dado. Sem migração de banco — RLS de `attendance_history` continua sendo respeitada.
+- `src/components/atendimentos/pipeline-ui.ts`: intensificar o preset `perdido` (badge vermelho sólido, coluna e dot em rose-600).
+- `src/components/atendimentos/AtendimentoCard.tsx`: bloco "Última ação"; seletor de etapa usando `FUNNEL_PIPELINE_STAGES`; realce vermelho + motivo da perda quando `pipelineStage === "perdido"`.
+- `src/components/atendimentos/AtendimentoKanban.tsx`: agrupamento e colunas/abas sobre `FUNNEL_PIPELINE_STAGES`; `TerminalResults` restrito a `arquivado`.
+- `src/components/atendimentos/AtendimentoSummaryCards.tsx`: grid de 6 etapas (`lg:grid-cols-6`) com variante vermelha para "Perdidos"; contagem vem de `stats.pipeline.perdido`, que já é calculado.
+
+Sem mudanças em permissões, RLS ou regras de negócio existentes.

@@ -2,7 +2,7 @@ import { AlertCircle, BadgeDollarSign, Home, ShoppingBag, TrendingUp } from "luc
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { formatCompactCurrency } from "@/services/atendimentos";
 import {
-  ACTIVE_PIPELINE_STAGES,
+  FUNNEL_PIPELINE_STAGES,
   pipelineStageLabel,
   type AtendimentoStatus,
   type PipelineStage,
@@ -67,10 +67,11 @@ export function AtendimentoSummaryCards({
             Acompanhe o volume e priorize cada etapa do atendimento.
           </p>
         </div>
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-5 lg:px-0">
-          {ACTIVE_PIPELINE_STAGES.map((stage) => {
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-6 lg:px-0">
+          {FUNNEL_PIPELINE_STAGES.map((stage) => {
             const ui = pipelineStageUi[stage];
             const active = selectedStage === stage;
+            const lost = stage === "perdido";
             return (
               <button
                 key={stage}
@@ -78,13 +79,19 @@ export function AtendimentoSummaryCards({
                 onClick={() => onStageChange(stage)}
                 className={cn(
                   "min-w-40 shrink-0 rounded-2xl border bg-white/78 px-3.5 py-3 text-left shadow-[0_10px_26px_-24px_rgba(31,41,55,0.9)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_15px_28px_-22px_rgba(31,41,55,0.7)] lg:min-w-0",
-                  active ? cn(ui.badge, "shadow-sm") : "border-stone-900/10 text-stone-700",
+                  lost
+                    ? active
+                      ? "border-rose-700 bg-rose-600 text-white shadow-sm"
+                      : "border-rose-600/45 bg-rose-50 text-rose-800"
+                    : active
+                      ? cn(ui.badge, "shadow-sm")
+                      : "border-stone-900/10 text-stone-700",
                 )}
                 aria-pressed={active}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] opacity-60">
-                    Etapa {ui.order}
+                    {stage === "perdido" ? "Perdidos" : `Etapa ${ui.order}`}
                   </span>
                   <span className="font-mono text-xl font-extrabold">
                     {stats.pipeline[stage] ?? 0}
