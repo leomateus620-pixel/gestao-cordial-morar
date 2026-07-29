@@ -2441,6 +2441,7 @@ export type Database = {
       _try_uuid: { Args: { _txt: string }; Returns: string }
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
+      agenda_is_participant: { Args: { _event_id: string }; Returns: boolean }
       attendance_add_note: {
         Args: { _attendance_id: string; _texto: string }
         Returns: string
