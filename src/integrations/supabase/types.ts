@@ -1712,6 +1712,7 @@ export type Database = {
       rental_contracts: {
         Row: {
           brand: Database["public"]["Enums"]["rental_brand"]
+          comissao_mensal: number | null
           created_at: string
           created_by: string
           data_encerramento: string | null
@@ -1736,6 +1737,7 @@ export type Database = {
         }
         Insert: {
           brand?: Database["public"]["Enums"]["rental_brand"]
+          comissao_mensal?: number | null
           created_at?: string
           created_by?: string
           data_encerramento?: string | null
@@ -1760,6 +1762,7 @@ export type Database = {
         }
         Update: {
           brand?: Database["public"]["Enums"]["rental_brand"]
+          comissao_mensal?: number | null
           created_at?: string
           created_by?: string
           data_encerramento?: string | null
