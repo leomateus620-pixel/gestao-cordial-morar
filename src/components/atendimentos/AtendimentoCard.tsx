@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   ArrowRight,
   Building2,
-  CalendarClock,
   CalendarDays,
   ChevronRight,
   CircleAlert,
@@ -12,10 +11,7 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
-import {
-  AtendimentoActionsDialog,
-  type AtendimentoActionPayload,
-} from "@/components/atendimentos/AtendimentoActionsDialog";
+import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import {
   atendimentoInterestLine,
@@ -23,7 +19,6 @@ import {
   formatDate,
   formatDateTime,
   getPipelineContext,
-  isAtendimentoOverdue,
   whatsappHref,
 } from "@/services/atendimentos";
 import {
@@ -32,7 +27,6 @@ import {
   atendimentoImobiliariaLabel,
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
-  atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
   pipelineStageLabel,
   type Atendimento,
@@ -44,7 +38,7 @@ type Props = {
   atendimento: Atendimento;
   onOpen: (atendimento: Atendimento) => void;
   onStageChange: (id: string, stage: PipelineStage) => Promise<void> | void;
-  onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
+  onAction?: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
   brokerOptions?: Array<{ id: string; nome: string }>;
 };
 
@@ -52,9 +46,8 @@ export function AtendimentoCard({
   atendimento,
   onOpen,
   onStageChange,
-  onAction,
-  brokerOptions = [],
 }: Props) {
+
   const [moving, setMoving] = useState(false);
   const initials = getInitials(atendimento.clienteNome);
 
