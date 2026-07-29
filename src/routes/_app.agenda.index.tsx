@@ -256,6 +256,7 @@ function AgendaPage() {
             }
           }}
           onSubmit={save}
+          onDelete={removeEvent}
           canEdit={
             selected ? canEdit(selected) : Boolean(session?.permissions.includes("agenda:write"))
           }
