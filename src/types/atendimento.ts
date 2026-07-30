@@ -17,6 +17,7 @@ export type PipelineStage =
   | "proposta"
   | "fechamento"
   | "perdido"
+  | "em_espera"
   | "arquivado";
 
 export const ACTIVE_PIPELINE_STAGES: PipelineStage[] = [
@@ -26,6 +27,9 @@ export const ACTIVE_PIPELINE_STAGES: PipelineStage[] = [
   "proposta",
   "fechamento",
 ];
+
+/** Etapa reservada para atendimentos pausados fora do funil ativo. */
+export const WAITING_PIPELINE_STAGE: PipelineStage = "em_espera";
 
 /** Etapas navegáveis do funil: as 5 ativas + a coluna de perdidos. */
 export const FUNNEL_PIPELINE_STAGES: PipelineStage[] = [
@@ -40,8 +44,10 @@ export const pipelineStageOptions = [
   { value: "proposta", label: "Proposta", short: "Proposta" },
   { value: "fechamento", label: "Fechamento", short: "Fechamento" },
   { value: "perdido", label: "Perdido", short: "Perdido" },
+  { value: "em_espera", label: "Fila de espera", short: "Em espera" },
   { value: "arquivado", label: "Arquivado", short: "Arquivado" },
 ] as const;
+
 
 export function pipelineStageLabel(value: PipelineStage): string {
   return pipelineStageOptions.find((o) => o.value === value)?.label ?? value;
