@@ -1,13 +1,15 @@
-import { AlertCircle, BadgeDollarSign, Home, ShoppingBag, TrendingUp } from "lucide-react";
+import { AlertCircle, BadgeDollarSign, Home, PauseCircle, ShoppingBag, TrendingUp } from "lucide-react";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { formatCompactCurrency } from "@/services/atendimentos";
 import {
   FUNNEL_PIPELINE_STAGES,
+  WAITING_PIPELINE_STAGE,
   pipelineStageLabel,
   type AtendimentoStatus,
   type PipelineStage,
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
+
 
 type AtendimentoStats = {
   status: Partial<Record<AtendimentoStatus, number>>;
