@@ -356,8 +356,17 @@ function Page() {
   async function handleStageChange(id: string, stage: PipelineStage) {
     const atendimento = atendimentos.find((item) => item.id === id);
     if (!atendimento) throw new Error("Atendimento não encontrado.");
+    if (stage === "em_espera") {
+      await updateAtendimento({
+        id,
+        patch: { pipelineStage: "em_espera", status: "aguardando_retorno" },
+      });
+      toast.success("Atendimento movido para a fila de espera.");
+      return;
+    }
     const reopening =
       atendimento.pipelineStage === "perdido" ||
+      atendimento.pipelineStage === "em_espera" ||
       atendimento.pipelineStage === "arquivado" ||
       atendimento.status === "perdido" ||
       atendimento.status === "arquivado";
