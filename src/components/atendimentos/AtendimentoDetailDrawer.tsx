@@ -23,6 +23,8 @@ import {
   UserCheck,
   UserRoundCog,
   X,
+  PauseCircle,
+  PlayCircle,
   XCircle,
 } from "lucide-react";
 import {
@@ -490,6 +492,36 @@ export function AtendimentoDetailDrawer({
                           {converted ? "Cliente vinculado" : "Vincular a cliente"}
                         </ActionButton>
                       </div>
+                      <div className="mt-3 border-t border-stone-900/8 pt-3">
+                        <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
+                          Fila de espera
+                        </p>
+                        {atendimento.pipelineStage === WAITING_PIPELINE_STAGE ? (
+                          <button
+                            type="button"
+                            disabled={stagePending}
+                            onClick={() => void changeStage("primeiro_contato")}
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal-700/45 bg-teal-50 px-3 text-[11px] font-extrabold text-teal-900 transition duration-200 hover:border-teal-700 hover:bg-teal-100 active:scale-[0.99] disabled:opacity-60"
+                          >
+                            <PlayCircle className="size-4 shrink-0" />
+                            Retomar atendimento
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={stagePending}
+                            onClick={() => void changeStage(WAITING_PIPELINE_STAGE)}
+                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-600/45 bg-amber-50 px-3 text-[11px] font-extrabold text-amber-900 transition duration-200 hover:border-amber-600 hover:bg-amber-100 active:scale-[0.99] disabled:opacity-60"
+                          >
+                            <PauseCircle className="size-4 shrink-0" />
+                            Colocar em espera
+                          </button>
+                        )}
+                        <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
+                          Atendimentos em espera saem do funil e ficam no card “Fila de espera”.
+                        </p>
+                      </div>
+
                       {canManageTerminalState ? (
                         <div className="mt-3 border-t border-stone-900/8 pt-3">
                           <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-700/80">
