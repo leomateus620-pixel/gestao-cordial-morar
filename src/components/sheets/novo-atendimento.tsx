@@ -3,8 +3,13 @@ import { toast } from "sonner";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { createAttendance } from "@/lib/attendances/attendances.functions";
 import { sendBrokerAssignmentEmail, sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
+import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
+import { buildNextStepAgendaEvent } from "@/lib/atendimentos/next-step-event";
+import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
+import { useSession } from "@/lib/auth-mock";
 import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
 import type { AtendimentoCreateInput } from "@/types/atendimento";
+
 
 /**
  * Compatibility wrapper for dashboard shortcuts.
