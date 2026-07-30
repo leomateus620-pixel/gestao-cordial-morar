@@ -1,34 +1,30 @@
-## Objetivo
+## Situação
 
-Nas duas agendas (`Visitas e compromissos` e `Agenda de fotos`), a lista deve sempre abrir mostrando primeiro o que é atual/futuro, e só depois o histórico — que fica no scroll, do mais recente para o mais antigo.
+O erro anterior de RLS foi corrigido: as políticas atuais de `agenda_events` (UPDATE/DELETE) já liberam criador, responsável, participante, admin e secretária, e todos os usuários possuem vínculo em `user_agencies`. Portanto, **a causa do erro que continua aparecendo ainda não está confirmada** — o print mostra apenas o overlay genérico "The app encountered an error", sem mensagem específica, e não há registro do erro nos logs do servidor (só aparecem chamadas 401 do cron `/api/public/hooks/agenda-reminders`, um problema separado).
 
-## Situação atual (verificada)
+Por isso o primeiro passo do trabalho é reproduzir e capturar o erro real, e só depois corrigir.
 
-- Ambas as rotas (`_app.agenda.index.tsx` e `_app.agenda.fotos.tsx`) renderizam o mesmo componente `AgendaTimeline`.
-- `useAgenda` ordena todos os eventos de forma crescente por data (`a.inicio.localeCompare(b.inicio)`), ou seja, o mais antigo primeiro.
-- `AgendaTimeline` já agrupa por dia com buckets (hoje / futuro / passado), mas não há separação visual entre blocos: quando não existem eventos de hoje ou futuros, o topo da tela mostra diretamente o histórico (como nas capturas enviadas), passando a impressão de que os eventos antigos vêm primeiro.
+## Passos
 
-## Mudanças propostas
+1. **Reproduzir com navegador automatizado**
+   - Abrir `/agenda`, editar um compromisso existente e acionar Excluir → Confirmar.
+   - Capturar console, stack trace e a resposta da server function `softDeleteAgendaEvent`.
 
-### 1. Ordenação base (`src/hooks/useAgenda.ts`)
-Manter a lista filtrada ordenada, mas de forma consistente com a exibição: futuros/hoje em ordem crescente e passados em ordem decrescente, para que a timeline não dependa de reordenações extras.
+2. **Corrigir a causa identificada**
+   Candidatos já mapeados na leitura do código, a confirmar na reprodução:
+   - `softDeleteAgendaEvent` faz `update(...).eq("id", id)` sem `.select()`: se a linha for bloqueada, nada é excluído e nenhum erro claro aparece.
+   - A exclusão no Google roda dentro do mesmo request (`scheduleGoogleSync`); falha de token/permissão pode estourar antes do retorno.
+   - Possível erro de estado no `AgendaFormModal` após a exclusão (modal fechando com dados já removidos do cache).
 
-### 2. Timeline em três seções (`src/components/agenda/AgendaTimeline.tsx`)
-Reestruturar a renderização em blocos explícitos, nesta ordem:
+3. **Tornar o fluxo à prova de falha**
+   - Retornar erro explícito quando a exclusão não afetar nenhuma linha ("Você não tem permissão para excluir este compromisso").
+   - Isolar a remoção no Google Agenda: se ela falhar, o compromisso ainda é excluído no sistema e a sincronização fica na fila (`agenda_google_sync_queue`) para nova tentativa automática.
+   - Exibir mensagem de erro legível no próprio modal em vez do overlay genérico.
 
-```text
-HOJE            → eventos do dia atual (crescente por horário)
-PRÓXIMOS        → dias futuros, crescente (dia e horário)
-HISTÓRICO       → dias passados, decrescente (mais recente primeiro)
-```
+4. **Validar**
+   - Repetir a exclusão pelo navegador com usuário admin e com corretor participante.
+   - Conferir no banco que `deleted_at`/`status = cancelado` foram gravados e que a fila de sincronização foi processada ou reagendada.
 
-- Cada bloco recebe um cabeçalho próprio (sticky), com contagem de eventos.
-- Se "Hoje" e "Próximos" estiverem vazios, exibir uma linha curta de estado vazio ("Nenhum compromisso hoje / nada agendado à frente") antes do histórico, para que a leitura comece sempre pelo que é atual.
-- O bloco Histórico ganha separação visual clara (divisor + rótulo) e continua paginado apenas por scroll.
+## Detalhes técnicos
 
-### 3. Aplicar às duas agendas
-Nada a duplicar: como as duas rotas usam `AgendaTimeline`, a reorganização vale para compromissos e para fotos automaticamente. Validação visual nas duas telas após a mudança.
-
-## Fora de escopo
-
-Sem alterações em filtros, permissões/RLS, sincronização com Google Agenda ou no conteúdo dos cards.
+Arquivos envolvidos: `src/lib/agenda/agenda.functions.ts` (`softDeleteAgendaEvent`), `src/lib/google-calendar/google.server.ts` (`scheduleGoogleSync` / `syncSingleRecipient`), `src/components/agenda/AgendaFormModal.tsx` (handler de exclusão) e `src/hooks/useAgenda.ts` (mutation `remove`). Sem alteração de esquema prevista; migração só se a reprodução mostrar bloqueio de política.

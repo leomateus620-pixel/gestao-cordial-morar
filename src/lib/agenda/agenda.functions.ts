@@ -361,11 +361,19 @@ export const softDeleteAgendaEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const { data: rows, error } = await context.supabase
       .from("agenda_events")
       .update({ deleted_at: new Date().toISOString(), status: "cancelado" })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .select("id");
+    console.error("[agenda][debug delete]", {
+      userId: context.userId,
+      id: data.id,
+      rows,
+      error,
+    });
     if (error) throw new Error(error.message);
+
     try {
       const { scheduleGoogleSync } = await import("@/lib/google-calendar/google.server");
       await scheduleGoogleSync(data.id);
