@@ -59,6 +59,8 @@ import {
 import { markAttendanceFirstOpened } from "@/lib/attendances/assignments.functions";
 import {
   ACTIVE_PIPELINE_STAGES,
+  WAITING_PIPELINE_STAGE,
+
   atendimentoDormitoriosLabel,
   atendimentoFinalidadeLabel,
   atendimentoImobiliariaLabel,
