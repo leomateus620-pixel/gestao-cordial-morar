@@ -2627,6 +2627,7 @@ export type Database = {
         | "fechamento"
         | "perdido"
         | "arquivado"
+        | "em_espera"
       rental_brand: "cordial" | "morar" | "ambas"
       rental_contract_status:
         | "ativo"
@@ -2825,6 +2826,7 @@ export const Constants = {
         "fechamento",
         "perdido",
         "arquivado",
+        "em_espera",
       ],
       rental_brand: ["cordial", "morar", "ambas"],
       rental_contract_status: [
