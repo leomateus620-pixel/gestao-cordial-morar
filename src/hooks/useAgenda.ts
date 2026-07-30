@@ -71,14 +71,22 @@ export function useAgenda(
 
   const events = useMemo(() => eventsQuery.data ?? [], [eventsQuery.data]);
 
-  const filteredEvents = useMemo(
-    () =>
-      events
-        .filter((event) => agendaMatchesSearch(event, query))
-        .filter((event) => matchesFilters(event, filters))
-        .sort((a, b) => a.inicio.localeCompare(b.inicio)),
-    [events, filters, query],
-  );
+  const filteredEvents = useMemo(() => {
+    const todayStart = startOfDay(new Date()).getTime();
+    return events
+      .filter((event) => agendaMatchesSearch(event, query))
+      .filter((event) => matchesFilters(event, filters))
+      .sort((a, b) => {
+        const aTime = new Date(a.inicio).getTime();
+        const bTime = new Date(b.inicio).getTime();
+        const aPast = aTime < todayStart;
+        const bPast = bTime < todayStart;
+        // Atual/futuro primeiro (crescente); histórico depois (mais recente primeiro).
+        if (aPast !== bPast) return aPast ? 1 : -1;
+        return aPast ? bTime - aTime : aTime - bTime;
+      });
+  }, [events, filters, query]);
+
 
   const stats = useMemo(
     () => (scope === "fotos" ? getPhotoStats(filteredEvents) : getAgendaStats(filteredEvents)),
