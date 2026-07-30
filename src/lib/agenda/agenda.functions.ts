@@ -366,6 +366,8 @@ export const softDeleteAgendaEvent = createServerFn({ method: "POST" })
       .update({ deleted_at: new Date().toISOString(), status: "cancelado" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+
     try {
       const { scheduleGoogleSync } = await import("@/lib/google-calendar/google.server");
       await scheduleGoogleSync(data.id);
