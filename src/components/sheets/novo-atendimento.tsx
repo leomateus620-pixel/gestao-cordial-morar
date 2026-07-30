@@ -24,6 +24,7 @@ export function NovoAtendimentoSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const qc = useQueryClient();
+  const session = useSession();
   const mutation = useMutation({
     mutationFn: (input: AtendimentoCreateInput) => createAttendance({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY }),
@@ -32,7 +33,23 @@ export function NovoAtendimentoSheet({
   async function handleSubmit(input: AtendimentoCreateInput) {
     try {
       const created = await mutation.mutateAsync(input);
+      // "Próximo passo" com data cria o evento correspondente na Agenda.
       void (async () => {
+        try {
+          const event = buildNextStepAgendaEvent(created, {
+            id: session?.id,
+            nome: session?.nome,
+          });
+          if (!event) return;
+          await upsertAgendaEvent({ data: { input: event } });
+          await qc.invalidateQueries({ queryKey: AGENDA_QUERY_KEY });
+          toast.success("Próximo passo agendado na Agenda.");
+        } catch {
+          toast.error("Atendimento salvo, mas não foi possível criar o evento na Agenda.");
+        }
+      })();
+      void (async () => {
+
         try {
           const res = await sendFirstAttendanceEmail({ data: { attendanceId: created.id } });
           if (res.status === "sent") {
