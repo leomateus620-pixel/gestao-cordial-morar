@@ -59,6 +59,7 @@ const canonicalStatuses = new Set<AtendimentoStatus>([
 const canonicalPipelineStages = new Set<PipelineStage>([
   ...ACTIVE_PIPELINE_STAGES,
   "perdido",
+  "em_espera",
   "arquivado",
 ]);
 
@@ -444,6 +445,7 @@ export function isAtendimentoOverdue(atendimento: Atendimento, now = new Date())
     !atendimento.proximoRetorno ||
     atendimento.pipelineStage === "fechamento" ||
     atendimento.pipelineStage === "perdido" ||
+    atendimento.pipelineStage === "em_espera" ||
     atendimento.pipelineStage === "arquivado"
   ) {
     return false;
