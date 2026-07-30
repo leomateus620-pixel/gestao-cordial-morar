@@ -665,45 +665,51 @@ export function AtendimentoFormModal({
               description="Deixe o atendimento pronto para o corretor continuar."
             >
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Próximo retorno">
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={form.proximoRetornoData}
-                      onChange={(event) => update("proximoRetornoData", event.target.value)}
-                      className={cn(inputClass(), "flex-1")}
-                      aria-label="Data do próximo retorno"
-                    />
-                    <input
-                      type="time"
-                      value={form.proximoRetornoHora}
-                      onChange={(event) => update("proximoRetornoHora", event.target.value)}
-                      className={cn(inputClass(), "w-28")}
-                      aria-label="Horário do próximo retorno (opcional)"
-                      placeholder="09:00"
-                    />
-                  </div>
-                  <p className="mt-1 text-[10px] text-foreground/45">
-                    Horário opcional — sem informar, usamos 09:00.
-                  </p>
+                <Field label="Data do próximo retorno">
+                  <input
+                    type="date"
+                    value={form.proximoRetornoData}
+                    onChange={(event) => update("proximoRetornoData", event.target.value)}
+                    className={cn(inputClass(), "w-full min-w-0")}
+                    aria-label="Data do próximo retorno"
+                  />
                 </Field>
-                <Field label="Tipo de próximo passo">
-                  <select
-                    value={form.proximoPasso}
-                    onChange={(event) =>
-                      update("proximoPasso", event.target.value as FormState["proximoPasso"])
-                    }
-                    className={inputClass()}
-                  >
-                    <option value="">A definir</option>
-                    {atendimentoProximoPassoOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                <Field label="Horário (opcional)">
+                  <input
+                    type="time"
+                    value={form.proximoRetornoHora}
+                    onChange={(event) => update("proximoRetornoHora", event.target.value)}
+                    className={cn(inputClass(), "w-full min-w-0")}
+                    aria-label="Horário do próximo retorno (opcional)"
+                    placeholder="09:00"
+                  />
                 </Field>
               </div>
+              <p className="-mt-1 text-[10px] text-foreground/45">
+                Horário opcional — sem informar, usamos 09:00.
+              </p>
+
+              <Field label="Tipo de próximo passo">
+                <select
+                  value={form.proximoPasso}
+                  onChange={(event) =>
+                    update("proximoPasso", event.target.value as FormState["proximoPasso"])
+                  }
+                  className={cn(inputClass(), "w-full min-w-0")}
+                >
+                  <option value="">A definir</option>
+                  {atendimentoProximoPassoOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p className="-mt-1 text-[10px] text-foreground/45">
+                Com data preenchida, criamos automaticamente o evento na Agenda (e no Google
+                Agenda do responsável).
+              </p>
+
 
               <Field label="Observações internas">
                 <textarea

@@ -22,6 +22,8 @@ import {
 } from "@/hooks/useAttendances";
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
+import { buildNextStepAgendaEvent } from "@/lib/atendimentos/next-step-event";
+
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { addAttendanceNote } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
@@ -214,6 +216,22 @@ function Page() {
     try {
       const created = await addAtendimento(input);
       setOpen(false);
+      // "Próximo passo" com data vira automaticamente um evento na Agenda
+      // (que já sincroniza com o Google Agenda do responsável).
+      void (async () => {
+        try {
+          const event = buildNextStepAgendaEvent(created, {
+            id: session?.id,
+            nome: session?.nome,
+          });
+          if (!event) return;
+          await createVisitMutation.mutateAsync(event);
+          toast.success("Próximo passo agendado na Agenda.");
+        } catch {
+          toast.error("Atendimento salvo, mas não foi possível criar o evento na Agenda.");
+        }
+      })();
+
       // Dispara e-mail automático (server-side). Não bloqueia o cadastro.
       void (async () => {
         try {
