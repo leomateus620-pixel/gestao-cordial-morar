@@ -1,11 +1,19 @@
 import { useMemo } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, CircleDot } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  CircleDot,
+  PauseCircle,
+} from "lucide-react";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { isAtendimentoOverdue } from "@/services/atendimentos";
 import {
   ACTIVE_PIPELINE_STAGES,
+  WAITING_PIPELINE_STAGE,
   pipelineStageLabel,
   type Atendimento,
   type PipelineStage,
@@ -41,8 +49,17 @@ export function AtendimentoKanban(props: Props) {
     [props.atendimentos],
   );
 
+  const waitingItems = useMemo(
+    () => props.atendimentos.filter((item) => item.pipelineStage === WAITING_PIPELINE_STAGE),
+    [props.atendimentos],
+  );
+
   if (props.selectedStage === "perdido") {
     return <LostBoard {...props} items={lostItems} />;
+  }
+
+  if (props.selectedStage === WAITING_PIPELINE_STAGE) {
+    return <WaitingBoard {...props} items={waitingItems} />;
   }
 
   return (
@@ -110,6 +127,64 @@ function LostBoard({ items, onSelectedStageChange, ...props }: Props & { items: 
           <p className="text-sm font-bold text-rose-900">Nenhum lead perdido</p>
           <p className="mt-1 text-xs leading-5 text-rose-800/70">
             Os atendimentos marcados como perdidos aparecerão aqui.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WaitingBoard({ items, onSelectedStageChange, ...props }: Props & { items: Atendimento[] }) {
+  return (
+    <section className="rounded-[1.6rem] border border-amber-600/35 bg-amber-50/60 p-3 sm:p-4">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1 pb-3">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-amber-700">
+            <PauseCircle className="size-3.5" />
+            Fora do funil ativo
+          </p>
+          <h3 className="mt-0.5 text-base font-extrabold text-amber-950">
+            Fila de espera ({items.length})
+          </h3>
+          <p className="mt-0.5 text-[11px] leading-4 text-amber-900/70">
+            Atendimentos pausados. Escolha uma etapa ativa no card para retomar o atendimento.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelectedStageChange("primeiro_contato")}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-amber-700/25 bg-white px-3 py-2 text-[11px] font-extrabold text-amber-900 transition hover:bg-amber-100 active:scale-[0.98]"
+        >
+          <ArrowLeft className="size-3.5" />
+          Voltar ao funil
+        </button>
+      </header>
+      {items.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          {items.map((atendimento) => (
+            <div
+              key={atendimento.id}
+              className={cn(
+                "rounded-[1.4rem]",
+                props.highlightId === atendimento.id &&
+                  "ring-2 ring-amber-500 ring-offset-2 ring-offset-background",
+              )}
+            >
+              <AtendimentoCard
+                atendimento={atendimento}
+                onOpen={props.onOpenDetail}
+                onStageChange={props.onStageChange}
+                onAction={props.onAction}
+                brokerOptions={props.brokerOptions}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-amber-500/45 bg-white/70 px-5 py-12 text-center">
+          <p className="text-sm font-bold text-amber-950">Fila de espera vazia</p>
+          <p className="mt-1 text-xs leading-5 text-amber-900/70">
+            Os atendimentos colocados em espera aparecerão aqui.
           </p>
         </div>
       )}

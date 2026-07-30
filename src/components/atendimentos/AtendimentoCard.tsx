@@ -27,6 +27,7 @@ import {
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
   atendimentoStatusLabel,
+  WAITING_PIPELINE_STAGE,
   pipelineStageLabel,
   type Atendimento,
   type PipelineStage,
@@ -217,7 +218,8 @@ export function AtendimentoCard({
       </div>
 
       <footer className="border-t border-stone-900/8 bg-stone-50/75 p-3">
-        {FUNNEL_PIPELINE_STAGES.includes(atendimento.pipelineStage) ? (
+        {FUNNEL_PIPELINE_STAGES.includes(atendimento.pipelineStage) ||
+        atendimento.pipelineStage === WAITING_PIPELINE_STAGE ? (
           <label className="block">
             <span className="sr-only">Mover atendimento para outra etapa</span>
             <select
@@ -233,7 +235,7 @@ export function AtendimentoCard({
               )}
               aria-label={`Etapa de ${atendimento.clienteNome}`}
             >
-              {FUNNEL_PIPELINE_STAGES.map((stage) => (
+              {[...FUNNEL_PIPELINE_STAGES, WAITING_PIPELINE_STAGE].map((stage) => (
                 <option key={stage} value={stage}>
                   {pipelineStageLabel(stage)}
                 </option>
