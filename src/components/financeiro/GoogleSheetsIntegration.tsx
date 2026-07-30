@@ -146,6 +146,16 @@ export function GoogleSheetsIntegration() {
           </span>
         </header>
 
+        <div className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <p>
+            <span className="font-semibold">Sincronização automática pausada.</span>{" "}
+            A importação periódica da planilha está desativada e o histórico de
+            execuções foi limpo. Use “Prévia” e “Importar agora” para importar
+            manualmente quando precisar.
+          </p>
+        </div>
+
         {isLoadingConfig ? (
           <div className="mt-6 flex items-center gap-2 text-sm text-foreground/60">
             <Loader2 className="size-4 animate-spin" /> Carregando configuração…
