@@ -1,13 +1,15 @@
-import { AlertCircle, BadgeDollarSign, Home, ShoppingBag, TrendingUp } from "lucide-react";
+import { AlertCircle, BadgeDollarSign, Home, PauseCircle, ShoppingBag, TrendingUp } from "lucide-react";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { formatCompactCurrency } from "@/services/atendimentos";
 import {
   FUNNEL_PIPELINE_STAGES,
+  WAITING_PIPELINE_STAGE,
   pipelineStageLabel,
   type AtendimentoStatus,
   type PipelineStage,
 } from "@/types/atendimento";
 import { cn } from "@/lib/utils";
+
 
 type AtendimentoStats = {
   status: Partial<Record<AtendimentoStatus, number>>;
@@ -67,7 +69,7 @@ export function AtendimentoSummaryCards({
             Acompanhe o volume e priorize cada etapa do atendimento.
           </p>
         </div>
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-6 lg:px-0">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-7 lg:px-0">
           {FUNNEL_PIPELINE_STAGES.map((stage) => {
             const ui = pipelineStageUi[stage];
             const active = selectedStage === stage;
@@ -103,8 +105,37 @@ export function AtendimentoSummaryCards({
               </button>
             );
           })}
+
+          {(() => {
+            const active = selectedStage === WAITING_PIPELINE_STAGE;
+            return (
+              <button
+                type="button"
+                onClick={() => onStageChange(WAITING_PIPELINE_STAGE)}
+                className={cn(
+                  "min-w-40 shrink-0 rounded-2xl border px-3.5 py-3 text-left shadow-[0_10px_26px_-24px_rgba(31,41,55,0.9)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_15px_28px_-22px_rgba(31,41,55,0.7)] lg:min-w-0",
+                  active
+                    ? "border-amber-600 bg-amber-500 text-amber-950 shadow-sm"
+                    : "border-amber-600/40 bg-amber-50 text-amber-900",
+                )}
+                aria-pressed={active}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-[0.15em] opacity-70">
+                    <PauseCircle className="size-3" />
+                    Em espera
+                  </span>
+                  <span className="font-mono text-xl font-extrabold">
+                    {stats.pipeline[WAITING_PIPELINE_STAGE] ?? 0}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-[11px] font-extrabold">Fila de espera</p>
+              </button>
+            );
+          })()}
         </div>
       </div>
+
 
       <div
         className={cn(

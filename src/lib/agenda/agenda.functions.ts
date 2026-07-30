@@ -424,7 +424,7 @@ export const listAgendaAttendanceOptions = createServerFn({ method: "GET" })
       .select(
         "id,cliente_nome,telefone,finalidade,tipo_imovel,corretor_nome,imovel_descricao,imovel_codigo,pipeline_stage,updated_at",
       )
-      .not("pipeline_stage", "in", "(perdido,arquivado)")
+      .not("pipeline_stage", "in", "(perdido,arquivado,em_espera)")
       .order("updated_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);

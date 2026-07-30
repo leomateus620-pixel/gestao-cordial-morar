@@ -1,30 +1,23 @@
-## Situação
+## Objetivo
 
-O erro anterior de RLS foi corrigido: as políticas atuais de `agenda_events` (UPDATE/DELETE) já liberam criador, responsável, participante, admin e secretária, e todos os usuários possuem vínculo em `user_agencies`. Portanto, **a causa do erro que continua aparecendo ainda não está confirmada** — o print mostra apenas o overlay genérico "The app encountered an error", sem mensagem específica, e não há registro do erro nos logs do servidor (só aparecem chamadas 401 do cron `/api/public/hooks/agenda-reminders`, um problema separado).
+Criar uma "Fila de espera" no módulo Atendimentos: o corretor envia um atendimento para a fila pelo bloco "Operação" (ações do atendimento), o registro sai do funil principal e passa a ser acessível por um card dedicado exibido junto às etapas do funil, que só abre a lista quando clicado — igual ao comportamento atual de "Perdidos".
 
-Por isso o primeiro passo do trabalho é reproduzir e capturar o erro real, e só depois corrigir.
+## Comportamento
 
-## Passos
-
-1. **Reproduzir com navegador automatizado**
-   - Abrir `/agenda`, editar um compromisso existente e acionar Excluir → Confirmar.
-   - Capturar console, stack trace e a resposta da server function `softDeleteAgendaEvent`.
-
-2. **Corrigir a causa identificada**
-   Candidatos já mapeados na leitura do código, a confirmar na reprodução:
-   - `softDeleteAgendaEvent` faz `update(...).eq("id", id)` sem `.select()`: se a linha for bloqueada, nada é excluído e nenhum erro claro aparece.
-   - A exclusão no Google roda dentro do mesmo request (`scheduleGoogleSync`); falha de token/permissão pode estourar antes do retorno.
-   - Possível erro de estado no `AgendaFormModal` após a exclusão (modal fechando com dados já removidos do cache).
-
-3. **Tornar o fluxo à prova de falha**
-   - Retornar erro explícito quando a exclusão não afetar nenhuma linha ("Você não tem permissão para excluir este compromisso").
-   - Isolar a remoção no Google Agenda: se ela falhar, o compromisso ainda é excluído no sistema e a sincronização fica na fila (`agenda_google_sync_queue`) para nova tentativa automática.
-   - Exibir mensagem de erro legível no próprio modal em vez do overlay genérico.
-
-4. **Validar**
-   - Repetir a exclusão pelo navegador com usuário admin e com corretor participante.
-   - Conferir no banco que `deleted_at`/`status = cancelado` foram gravados e que a fila de sincronização foi processada ou reagendada.
+1. **Enviar para a fila** — no card "Ações do atendimento" (drawer de detalhe), abaixo das ações atuais, um novo bloco "Fila de espera" com o botão **Colocar em espera** (tom âmbar, com ícone de pausa). Opcionalmente pede um motivo curto, registrado no histórico.
+2. **Saída do funil** — ao entrar na fila, o atendimento deixa de aparecer nas colunas do Kanban, na lista e nas contagens das 5 etapas ativas; continua contando nos indicadores gerais (Compra/Aluguel/Leads do mês).
+3. **Card de acesso** — junto às etapas do funil aparece um card "Fila de espera" com o total; clicando nele, o board principal é substituído por uma visão dedicada (mesma mecânica do card "Perdidos"), com botão "Voltar ao funil".
+4. **Retorno ao funil** — dentro da fila, cada card permite escolher uma etapa ativa (ou botão "Retomar atendimento"), devolvendo o registro ao funil com status "em atendimento".
+5. **Permissões** — mesmas regras já existentes: quem pode alterar etapa pode enviar/retirar da fila; corretor só age nos seus atendimentos.
 
 ## Detalhes técnicos
 
-Arquivos envolvidos: `src/lib/agenda/agenda.functions.ts` (`softDeleteAgendaEvent`), `src/lib/google-calendar/google.server.ts` (`scheduleGoogleSync` / `syncSingleRecipient`), `src/components/agenda/AgendaFormModal.tsx` (handler de exclusão) e `src/hooks/useAgenda.ts` (mutation `remove`). Sem alteração de esquema prevista; migração só se a reprodução mostrar bloqueio de política.
+- **Banco**: `ALTER TYPE public.pipeline_stage ADD VALUE 'em_espera'` (migração). Nenhuma nova tabela ou política; RLS atual de `attendances` já cobre a mudança. `status` permanece `aguardando_retorno` quando em espera; o motivo vai para `attendance_history` via `attendance_add_note`.
+- **Tipos** (`src/types/atendimento.ts`): adicionar `em_espera` a `PipelineStage` e a `pipelineStageOptions` ("Fila de espera" / "Em espera"); manter fora de `ACTIVE_PIPELINE_STAGES` e `FUNNEL_PIPELINE_STAGES`; novo helper `WAITING_PIPELINE_STAGE`.
+- **UI tokens** (`pipeline-ui.ts`): paleta âmbar/stone para `em_espera`.
+- **Cards de resumo** (`AtendimentoSummaryCards.tsx`): renderizar, ao lado das 6 etapas, o card "Fila de espera" com contagem vinda de `stats.pipeline.em_espera`.
+- **Kanban** (`AtendimentoKanban.tsx`): novo `WaitingBoard` (espelhando `LostBoard`) exibido quando `selectedStage === "em_espera"`; itens em espera excluídos do agrupamento das colunas ativas.
+- **Página** (`_app.atendimentos.tsx`): tratar `em_espera` em `handleStageChange` (reabertura limpa o estado de espera) e no cálculo de "ativos"; novo handler para colocar em espera.
+- **Drawer** (`AtendimentoDetailDrawer.tsx`): bloco e botão descritos acima; quando já estiver em espera, o botão vira "Retomar atendimento".
+- **Serviços/hook** (`services/atendimentos.ts`, `hooks/useAttendances.ts`, `attendance-field-mapping.ts`): mapear o novo valor na normalização de etapa/status e garantir que atendimentos em espera não sejam contados como atrasados nem como ativos, mas sigam visíveis por deep link e busca.
+- **Regressões a validar**: contadores do seletor Venda/Aluguel, relatórios (`services/reports.ts`, `services/corretores.ts`) e a consulta da Agenda que exclui `perdido,arquivado` — passará a excluir também `em_espera`.

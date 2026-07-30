@@ -52,7 +52,15 @@ export const pipelineStageUi: Record<
     column: "border-rose-600/45 bg-rose-50",
     dot: "bg-rose-600",
   },
+  em_espera: {
+    order: "⏸",
+    accent: "border-amber-500/60",
+    badge: "border-amber-600/35 bg-amber-500/15 text-amber-900",
+    column: "border-amber-600/25 bg-amber-50/70",
+    dot: "bg-amber-500",
+  },
   arquivado: {
+
     order: "—",
     accent: "border-stone-500/55",
     badge: "border-stone-700/20 bg-stone-700/10 text-stone-800",
