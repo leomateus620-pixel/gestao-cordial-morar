@@ -37,6 +37,7 @@ const DEFAULT_FILTERS: AgenciamentoFiltersState = {
   periodo: "todos",
   corretorId: "todos",
   tipoImovel: "todos",
+  finalidade: "todas",
   checklist: "todos",
   busca: "",
 };
