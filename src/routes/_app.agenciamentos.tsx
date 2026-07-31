@@ -436,6 +436,40 @@ function Page() {
           )}
         </div>
 
+        <AgenciamentoTrackSelector
+          value={track}
+          onChange={handleTrackChange}
+          counts={trackCounts}
+        />
+
+        {unclassifiedAgenciamentos.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 sm:flex sm:justify-between">
+            <p className="min-w-0 text-sm font-semibold">
+              {unclassifiedAgenciamentos.length} agenciamento
+              {unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou
+              Aluguel.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 rounded-xl border-amber-500/30 bg-white/70 text-amber-900 shadow-none"
+              onClick={() =>
+                setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
+              }
+            >
+              {showingUnclassified ? "Voltar à trilha" : "Revisar agora"}
+            </Button>
+          </div>
+        )}
+
+        <AgenciamentoBonusPanel
+          track={track}
+          progress={bonusProgress}
+          bonuses={trackBonuses}
+          showBrokerName={canManage && filters.corretorId === "todos"}
+        />
+
+
         <div
           className="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
           style={{ animationDelay: "40ms", animationFillMode: "both" }}
