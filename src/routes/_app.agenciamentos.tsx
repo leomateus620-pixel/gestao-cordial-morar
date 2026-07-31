@@ -10,15 +10,22 @@ import {
   SearchX,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoBonusPanel";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
+import { AgenciamentoTrackSelector } from "@/components/agenciamentos/AgenciamentoTrackSelector";
 import {
   AgenciamentoSummaryCards,
   type AgenciamentoSummaryKey,
 } from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import {
+  computeBonusProgress,
+  filterBonusesByTrack,
+  type AgenciamentoTrack,
+} from "@/lib/agenciamentos/track";
 import {
   AlertDialog,
   AlertDialogAction,
