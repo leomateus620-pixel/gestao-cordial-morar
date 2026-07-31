@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.agenciamento_bonus_notify(public.agenciamento_bonuses) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.agenciamento_bonus_recalc(uuid) FROM PUBLIC, anon, authenticated;
