@@ -455,6 +455,9 @@ export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: b
   if (!input.tipoImovel) errors.tipoImovel = "Informe o tipo do imóvel.";
   if (!input.endereco.trim()) errors.endereco = "Informe o endereço.";
   if (!input.imobiliaria) errors.imobiliaria = "Informe a imobiliária.";
+  if (input.finalidade !== "venda" && input.finalidade !== "aluguel") {
+    errors.finalidade = "Classifique o agenciamento como Venda ou Aluguel.";
+  }
   if (!input.proprietarioNome.trim()) errors.proprietarioNome = "Informe o proprietário.";
   if (digits(input.proprietarioTelefone).length < 10) {
     errors.proprietarioTelefone = "Informe um telefone válido.";
