@@ -3,6 +3,7 @@ import type {
   Agenciamento,
   AgenciamentoChecklist,
   AgenciamentoContatoPreferencial,
+  AgenciamentoFinalidade,
   AgenciamentoImobiliaria,
   AgenciamentoInput,
   AgenciamentoOrigem,
@@ -68,6 +69,10 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
     bairro: orUndef(row.bairro),
     cidade: orUndef(row.cidade),
     imobiliaria: row.imobiliaria as AgenciamentoImobiliaria,
+    finalidade:
+      row.finalidade === "venda" || row.finalidade === "aluguel"
+        ? (row.finalidade as AgenciamentoFinalidade)
+        : undefined,
     descricaoImovel: orUndef(row.descricao_imovel),
     proprietarioNome: row.proprietario_nome,
     proprietarioTelefone: row.proprietario_telefone,
