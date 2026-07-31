@@ -87,7 +87,24 @@ function AgenciamentoCardComponent({
           >
             {getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)}
           </span>
+          <span
+            className={cn(
+              "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+              agenciamento.finalidade === "aluguel"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800"
+                : agenciamento.finalidade === "venda"
+                  ? "border-sky-500/30 bg-sky-500/10 text-sky-800"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-800",
+            )}
+          >
+            {agenciamento.finalidade === "aluguel"
+              ? "Aluguel"
+              : agenciamento.finalidade === "venda"
+                ? "Venda"
+                : "Sem classificação"}
+          </span>
         </div>
+
 
         <button
           type="button"
