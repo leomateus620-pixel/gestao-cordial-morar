@@ -94,6 +94,8 @@ function Page() {
     resetFilters,
     agenciamentos,
     visibleAgenciamentos,
+    unclassifiedAgenciamentos,
+    bonuses,
     summary,
     createAgenciamento,
     updateAgenciamento,
@@ -110,8 +112,10 @@ function Page() {
       periodo: periodo ?? "todos",
       imobiliaria: imobiliaria ?? "todas",
       status: status ?? "todos",
+      finalidade: "venda",
     },
   });
+  const [track, setTrack] = useState<AgenciamentoTrack>("venda");
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
