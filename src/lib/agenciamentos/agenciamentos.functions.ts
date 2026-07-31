@@ -7,10 +7,12 @@ import {
   inputToPayload,
   patchToPayload,
   rowToAgenciamento,
+  rowToBonus,
   validateAgenciamentoInput,
+  type AgenciamentoBonusDbRow,
   type AgenciamentoDbRow,
 } from "@/lib/agenciamentos/agenciamentos.server";
-import type { AgenciamentoInput } from "@/types/agenciamento";
+import type { AgenciamentoBonus, AgenciamentoInput } from "@/types/agenciamento";
 
 export const listAgenciamentos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
