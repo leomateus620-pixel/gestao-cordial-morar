@@ -141,6 +141,51 @@ function Page() {
     });
   }, [corretorId, imobiliaria, periodo, setFilters, status]);
 
+  const handleTrackChange = useCallback(
+    (nextTrack: AgenciamentoTrack) => {
+      setTrack(nextTrack);
+      setFilters({ finalidade: nextTrack });
+    },
+    [setFilters],
+  );
+
+  const showingUnclassified = filters.finalidade === "sem_classificacao";
+
+  const trackCounts = useMemo(() => {
+    const build = (value: AgenciamentoTrack) => {
+      const items = visibleAgenciamentos.filter(
+        (item) => item.finalidade === value && item.status !== "cancelado",
+      );
+      return {
+        total: items.length,
+        pendentes: items.filter((item) => !item.checklist.validado).length,
+      };
+    };
+    return { venda: build("venda"), aluguel: build("aluguel") };
+  }, [visibleAgenciamentos]);
+
+  const bonusScopeAgenciamentos = useMemo(
+    () =>
+      filters.corretorId === "todos"
+        ? visibleAgenciamentos
+        : visibleAgenciamentos.filter((item) => item.corretorId === filters.corretorId),
+    [filters.corretorId, visibleAgenciamentos],
+  );
+
+  const bonusProgress = useMemo(
+    () => computeBonusProgress(bonusScopeAgenciamentos, track),
+    [bonusScopeAgenciamentos, track],
+  );
+
+  const trackBonuses = useMemo(() => {
+    const scoped = filterBonusesByTrack(bonuses, track);
+    return filters.corretorId === "todos"
+      ? scoped
+      : scoped.filter((bonus) => bonus.corretorId === filters.corretorId);
+  }, [bonuses, filters.corretorId, track]);
+
+
+
   const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
     if (filters.status === "aguardando_validacao") return "pendentes";
     if (filters.status === "validado") return "validados";
