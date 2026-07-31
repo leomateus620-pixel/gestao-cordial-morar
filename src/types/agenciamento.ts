@@ -65,6 +65,7 @@ export type Agenciamento = {
   bairro?: string;
   cidade?: string;
   imobiliaria: AgenciamentoImobiliaria;
+  finalidade?: AgenciamentoFinalidade;
   descricaoImovel?: string;
 
   proprietarioNome: string;
@@ -135,6 +136,7 @@ export type AgenciamentoFiltersState = {
   periodo: AgenciamentoPeriodFilter;
   corretorId: string;
   tipoImovel: "todos" | AgenciamentoTipoImovel;
+  finalidade: AgenciamentoFinalidadeFilter;
   checklist: AgenciamentoChecklistFilter;
   busca: string;
 };
