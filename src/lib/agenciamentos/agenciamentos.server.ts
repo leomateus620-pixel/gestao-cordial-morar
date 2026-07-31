@@ -110,6 +110,9 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
 export function validateAgenciamentoInput(input: AgenciamentoInput) {
   if (!input.tipoImovel) throw new Error("Informe o tipo do imóvel.");
   if (!input.imobiliaria) throw new Error("Selecione a imobiliária.");
+  if (input.finalidade !== "venda" && input.finalidade !== "aluguel") {
+    throw new Error("Classifique o agenciamento como Venda ou Aluguel.");
+  }
   if (!input.endereco?.trim()) throw new Error("Informe o endereço.");
   if (!input.proprietarioNome?.trim()) throw new Error("Informe o proprietário.");
   if (!input.proprietarioTelefone?.trim() || input.proprietarioTelefone.replace(/\D/g, "").length < 10) {
@@ -155,6 +158,7 @@ export function inputToPayload(
   return {
     created_by: userId,
     imobiliaria: input.imobiliaria,
+    finalidade: input.finalidade,
     tipo_imovel: input.tipoImovel,
     endereco: input.endereco.trim(),
     bairro: orNull(input.bairro),
@@ -185,6 +189,12 @@ export function inputToPayload(
 export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage: boolean) {
   const patch: Record<string, unknown> = {};
   if (patchInput.imobiliaria !== undefined) patch.imobiliaria = patchInput.imobiliaria;
+  if (patchInput.finalidade !== undefined) {
+    patch.finalidade =
+      patchInput.finalidade === "venda" || patchInput.finalidade === "aluguel"
+        ? patchInput.finalidade
+        : null;
+  }
   if (patchInput.tipoImovel !== undefined) patch.tipo_imovel = patchInput.tipoImovel;
   if (patchInput.endereco !== undefined) patch.endereco = patchInput.endereco.trim();
   if (patchInput.bairro !== undefined) patch.bairro = orNull(patchInput.bairro);
