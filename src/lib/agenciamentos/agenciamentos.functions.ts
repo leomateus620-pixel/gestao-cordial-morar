@@ -105,3 +105,61 @@ export const deleteAgenciamento = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+type BonusRow = {
+  id: string;
+  corretor_id: string;
+  corretor_nome: string | null;
+  categoria: string;
+  periodo_ref: string | null;
+  nivel: number;
+  listings_count: number;
+  placas_count: number;
+  status: string;
+  achieved_at: string;
+};
+
+function rowToBonus(row: BonusRow): AgenciamentoBonus {
+  return {
+    id: row.id,
+    corretorId: row.corretor_id,
+    corretorNome: row.corretor_nome ?? undefined,
+    categoria: row.categoria as AgenciamentoBonus["categoria"],
+    periodoRef: row.periodo_ref ?? undefined,
+    nivel: row.nivel,
+    listingsCount: row.listings_count,
+    placasCount: row.placas_count,
+    status: row.status as AgenciamentoBonus["status"],
+    conquistadoEm: row.achieved_at,
+  };
+}
+
+export const listAgenciamentoBonuses = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("agenciamento_bonuses")
+      .select("*")
+      .neq("status", "cancelada")
+      .order("achieved_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => rowToBonus(row as unknown as BonusRow));
+  });
+
+export const updateAgenciamentoBonusStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; status: AgenciamentoBonus["status"] }) => data)
+  .handler(async ({ data, context }) => {
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (!roles.includes("admin")) {
+      throw new Error("Somente administradores podem alterar bonificações.");
+    }
+    const { data: updated, error } = await context.supabase
+      .from("agenciamento_bonuses")
+      .update({ status: data.status } as never)
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return rowToBonus(updated as unknown as BonusRow);
+  });
