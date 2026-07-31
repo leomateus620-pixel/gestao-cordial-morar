@@ -10,6 +10,25 @@ export type AgenciamentoStatus =
 
 export type AgenciamentoImobiliaria = "cordial" | "morar" | "ambas";
 
+export type AgenciamentoFinalidade = "venda" | "aluguel";
+
+export type AgenciamentoFinalidadeFilter = "todas" | AgenciamentoFinalidade | "sem_classificacao";
+
+export type AgenciamentoBonusStatus = "pendente" | "aprovada" | "paga" | "cancelada";
+
+export type AgenciamentoBonus = {
+  id: string;
+  corretorId: string;
+  corretorNome?: string;
+  categoria: AgenciamentoFinalidade;
+  periodoRef?: string;
+  nivel: number;
+  listingsCount: number;
+  placasCount: number;
+  status: AgenciamentoBonusStatus;
+  conquistadoEm: string;
+};
+
 export type AgenciamentoTipoImovel =
   | "casa"
   | "apartamento"
