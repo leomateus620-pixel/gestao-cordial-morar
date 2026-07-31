@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Agenciamento,
+  AgenciamentoBonus,
   AgenciamentoChecklist,
   AgenciamentoContatoPreferencial,
   AgenciamentoFinalidade,
@@ -244,4 +245,31 @@ export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage
     if (canManage && checklist.validado !== undefined) patch.validado = Boolean(checklist.validado);
   }
   return patch;
+}
+export type AgenciamentoBonusDbRow = {
+  id: string;
+  corretor_id: string;
+  corretor_nome: string | null;
+  categoria: string;
+  periodo_ref: string | null;
+  nivel: number;
+  listings_count: number;
+  placas_count: number;
+  status: string;
+  achieved_at: string;
+};
+
+export function rowToBonus(row: AgenciamentoBonusDbRow): AgenciamentoBonus {
+  return {
+    id: row.id,
+    corretorId: row.corretor_id,
+    corretorNome: row.corretor_nome ?? undefined,
+    categoria: row.categoria as AgenciamentoBonus["categoria"],
+    periodoRef: row.periodo_ref ?? undefined,
+    nivel: row.nivel,
+    listingsCount: row.listings_count,
+    placasCount: row.placas_count,
+    status: row.status as AgenciamentoBonus["status"],
+    conquistadoEm: row.achieved_at,
+  };
 }

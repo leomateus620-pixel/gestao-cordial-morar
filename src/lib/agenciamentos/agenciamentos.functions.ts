@@ -120,7 +120,7 @@ export const listAgenciamentoBonuses = createServerFn({ method: "GET" })
       .neq("status", "cancelada")
       .order("achieved_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => rowToBonus(row as unknown as BonusRow));
+    return (data ?? []).map((row) => rowToBonus(row as unknown as AgenciamentoBonusDbRow));
   });
 
 export const updateAgenciamentoBonusStatus = createServerFn({ method: "POST" })
@@ -138,5 +138,5 @@ export const updateAgenciamentoBonusStatus = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
-    return rowToBonus(updated as unknown as BonusRow);
+    return rowToBonus(updated as unknown as AgenciamentoBonusDbRow);
   });
