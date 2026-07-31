@@ -106,33 +106,8 @@ export const deleteAgenciamento = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-type BonusRow = {
-  id: string;
-  corretor_id: string;
-  corretor_nome: string | null;
-  categoria: string;
-  periodo_ref: string | null;
-  nivel: number;
-  listings_count: number;
-  placas_count: number;
-  status: string;
-  achieved_at: string;
-};
 
-function rowToBonus(row: BonusRow): AgenciamentoBonus {
-  return {
-    id: row.id,
-    corretorId: row.corretor_id,
-    corretorNome: row.corretor_nome ?? undefined,
-    categoria: row.categoria as AgenciamentoBonus["categoria"],
-    periodoRef: row.periodo_ref ?? undefined,
-    nivel: row.nivel,
-    listingsCount: row.listings_count,
-    placasCount: row.placas_count,
-    status: row.status as AgenciamentoBonus["status"],
-    conquistadoEm: row.achieved_at,
-  };
-}
+
 
 export const listAgenciamentoBonuses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
