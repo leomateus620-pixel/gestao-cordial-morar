@@ -307,6 +307,11 @@ export function filterAgenciamentos(
         nextFilters.corretorId === "todos" || item.corretorId === nextFilters.corretorId;
       const matchesType =
         nextFilters.tipoImovel === "todos" || item.tipoImovel === nextFilters.tipoImovel;
+      const matchesFinalidade =
+        nextFilters.finalidade === "todas" ||
+        (nextFilters.finalidade === "sem_classificacao"
+          ? !item.finalidade
+          : item.finalidade === nextFilters.finalidade);
       const matchesSearch =
         !query ||
         [
