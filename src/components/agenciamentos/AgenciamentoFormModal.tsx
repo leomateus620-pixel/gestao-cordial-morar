@@ -64,6 +64,7 @@ import {
   type Agenciamento,
   type AgenciamentoChecklist,
   type AgenciamentoContatoPreferencial,
+  type AgenciamentoFinalidade,
   type AgenciamentoImobiliaria,
   type AgenciamentoInput,
   type AgenciamentoOrigem,
@@ -79,6 +80,7 @@ type FormState = {
   bairro: string;
   cidade: string;
   imobiliaria: AgenciamentoImobiliaria;
+  finalidade: AgenciamentoFinalidade;
   descricaoImovel: string;
   proprietarioNome: string;
   proprietarioTelefone: string;
@@ -107,6 +109,7 @@ type AgenciamentoFormModalProps = {
   currentBroker?: Corretor;
   currentUserBroker?: CurrentUserBroker;
   canManage: boolean;
+  defaultTrack?: AgenciamentoFinalidade;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AgenciamentoInput) => Promise<boolean | void> | boolean | void;
 };
@@ -127,7 +130,7 @@ const steps: Array<{
 ];
 
 const stepFieldKeys: Record<FormStep, ValidationKey[]> = {
-  0: ["tipoImovel", "imobiliaria", "endereco"],
+  0: ["tipoImovel", "imobiliaria", "finalidade", "endereco"],
   1: ["proprietarioNome", "proprietarioTelefone"],
   2: ["corretorId", "dataAgenciamento", "origem", "status"],
   3: ["permissaoValidacao"],
@@ -136,6 +139,7 @@ const stepFieldKeys: Record<FormStep, ValidationKey[]> = {
 const fieldIds: Partial<Record<ValidationKey, string>> = {
   tipoImovel: "ag-tipo-imovel",
   imobiliaria: "ag-imobiliaria",
+  finalidade: "ag-finalidade",
   endereco: "ag-endereco",
   proprietarioNome: "ag-proprietario-nome",
   proprietarioTelefone: "ag-proprietario-telefone",
@@ -149,6 +153,11 @@ const contactOptions: Array<{ value: AgenciamentoContatoPreferencial; label: str
   { value: "whatsapp", label: "WhatsApp" },
   { value: "ligacao", label: "Ligação" },
   { value: "email", label: "E-mail" },
+];
+
+const finalidadeOptions: Array<{ value: AgenciamentoFinalidade; label: string }> = [
+  { value: "venda", label: "Venda" },
+  { value: "aluguel", label: "Aluguel" },
 ];
 
 const imobiliariaOptions: Array<{ value: AgenciamentoImobiliaria; label: string }> = [
@@ -178,13 +187,14 @@ function toDateInput(value?: string) {
   return date.toISOString().slice(0, 10);
 }
 
-function initialForm(agenciamento: Agenciamento | null | undefined, currentBroker?: Corretor, currentUserBroker?: CurrentUserBroker): FormState {
+function initialForm(agenciamento: Agenciamento | null | undefined, currentBroker?: Corretor, currentUserBroker?: CurrentUserBroker, defaultTrack: AgenciamentoFinalidade = "venda"): FormState {
   return {
     tipoImovel: agenciamento?.tipoImovel ?? "casa",
     endereco: agenciamento?.endereco ?? "",
     bairro: agenciamento?.bairro ?? "",
     cidade: agenciamento?.cidade ?? "Porto Alegre",
     imobiliaria: agenciamento?.imobiliaria ?? currentBroker?.imobiliaria ?? "cordial",
+    finalidade: agenciamento?.finalidade ?? defaultTrack,
     descricaoImovel: agenciamento?.descricaoImovel ?? "",
     proprietarioNome: agenciamento?.proprietarioNome ?? "",
     proprietarioTelefone: agenciamento?.proprietarioTelefone ?? "",
@@ -216,10 +226,11 @@ export function AgenciamentoFormModal({
   currentBroker,
   currentUserBroker,
   canManage,
+  defaultTrack = "venda",
   onOpenChange,
   onSubmit,
 }: AgenciamentoFormModalProps) {
-  const initial = initialForm(agenciamento, currentBroker, currentUserBroker);
+  const initial = initialForm(agenciamento, currentBroker, currentUserBroker, defaultTrack);
   const [form, setForm] = useState<FormState>(initial);
   const [initialValue, setInitialValue] = useState<FormState>(initial);
   const [step, setStep] = useState<FormStep>(0);
@@ -233,7 +244,7 @@ export function AgenciamentoFormModal({
 
   useEffect(() => {
     if (!open) return;
-    const next = initialForm(agenciamento, currentBroker, currentUserBroker);
+    const next = initialForm(agenciamento, currentBroker, currentUserBroker, defaultTrack);
     setForm(next);
     setInitialValue(next);
     setStep(0);
@@ -244,7 +255,7 @@ export function AgenciamentoFormModal({
     setConfirmCloseOpen(false);
     setReferencesOpen(Boolean(next.driveFolderUrl || next.siteUrl || next.observacoesInternas));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, agenciamento?.id]);
+  }, [open, agenciamento?.id, defaultTrack]);
 
   const selectedBroker = useMemo(() => corretores.find((corretor) => corretor.id === form.corretorId), [corretores, form.corretorId]);
   const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initialValue), [form, initialValue]);
@@ -300,6 +311,7 @@ export function AgenciamentoFormModal({
       bairro: form.bairro.trim(),
       cidade: form.cidade.trim(),
       imobiliaria: form.imobiliaria,
+      finalidade: form.finalidade,
       descricaoImovel: form.descricaoImovel.trim(),
       proprietarioNome: form.proprietarioNome.trim(),
       proprietarioTelefone: formatPhoneBR(form.proprietarioTelefone),
@@ -550,6 +562,12 @@ function PropertyStep({ form, errors, update }: { form: FormState; errors: Agenc
           </Select>
         </Field>
       </div>
+      <Field id="ag-finalidade" label="Finalidade da captação" required error={errors.finalidade} helper="Define a trilha (Venda ou Aluguel) e a regra de bonificação.">
+        <Select value={form.finalidade} onValueChange={(value) => update("finalidade", value as AgenciamentoFinalidade)}>
+          <SelectTrigger id="ag-finalidade" aria-required="true" aria-invalid={Boolean(errors.finalidade)} aria-describedby={descriptionIds("ag-finalidade", errors.finalidade)} className={controlClass(errors.finalidade, true)}><SelectValue /></SelectTrigger>
+          <SelectContent>{finalidadeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+        </Select>
+      </Field>
       <Field id="ag-endereco" label="Endereço" required error={errors.endereco}>
         <input id="ag-endereco" value={form.endereco} onChange={(event) => update("endereco", event.target.value)} className={controlClass(errors.endereco)} placeholder="Rua, número e complemento" autoComplete="street-address" aria-required="true" aria-invalid={Boolean(errors.endereco)} aria-describedby={descriptionIds("ag-endereco", errors.endereco)} />
       </Field>

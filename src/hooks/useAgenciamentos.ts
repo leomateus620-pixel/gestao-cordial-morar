@@ -14,15 +14,19 @@ import {
 import {
   createAgenciamento as createAgenciamentoFn,
   deleteAgenciamento as deleteAgenciamentoFn,
+  listAgenciamentoBonuses,
   listAgenciamentos,
   updateAgenciamento as updateAgenciamentoFn,
+  updateAgenciamentoBonusStatus,
   validateAgenciamentoFn,
 } from "@/lib/agenciamentos/agenciamentos.functions";
+import { getUnclassifiedAgenciamentos } from "@/lib/agenciamentos/track";
 import { useSession } from "@/lib/auth-mock";
 import { hasPermission } from "@/lib/mock/permissions";
 import { useApp } from "@/store/app-store";
 import type {
   Agenciamento,
+  AgenciamentoBonus,
   AgenciamentoFiltersState,
   AgenciamentoInput,
 } from "@/types/agenciamento";
@@ -68,6 +72,8 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const updateFn = useServerFn(updateAgenciamentoFn);
   const validateFn = useServerFn(validateAgenciamentoFn);
   const removeFn = useServerFn(deleteAgenciamentoFn);
+  const listBonusesFn = useServerFn(listAgenciamentoBonuses);
+  const updateBonusFn = useServerFn(updateAgenciamentoBonusStatus);
 
   const enabled = Boolean(session);
   const query = useQuery<Agenciamento[]>({
@@ -77,14 +83,29 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     staleTime: 30_000,
   });
 
+  const bonusesQuery = useQuery<AgenciamentoBonus[]>({
+    queryKey: ["agenciamento-bonuses"],
+    queryFn: () => listBonusesFn(),
+    enabled,
+    staleTime: 30_000,
+  });
+
   const rawAgenciamentos = useMemo(() => query.data ?? [], [query.data]);
+  const bonuses = useMemo(() => bonusesQuery.data ?? [], [bonusesQuery.data]);
 
   const invalidate = useCallback(() => {
     return Promise.all([
       queryClient.invalidateQueries({ queryKey: ["agenciamentos"] }),
+      queryClient.invalidateQueries({ queryKey: ["agenciamento-bonuses"] }),
       queryClient.invalidateQueries({ queryKey: ["equipe-performance"] }),
     ]);
   }, [queryClient]);
+
+  const bonusStatusMutation = useMutation({
+    mutationFn: (vars: { id: string; status: AgenciamentoBonus["status"] }) =>
+      updateBonusFn({ data: vars }),
+    onSuccess: invalidate,
+  });
 
   const createMutation = useMutation({
     mutationFn: (input: AgenciamentoInput) => createFn({ data: input }),
@@ -154,6 +175,29 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   );
 
   const summary = useMemo(() => calculateAgenciamentosSummary(agenciamentos), [agenciamentos]);
+
+  const unclassifiedAgenciamentos = useMemo(
+    () => getUnclassifiedAgenciamentos(visibleAgenciamentos),
+    [visibleAgenciamentos],
+  );
+
+  const visibleBonuses = useMemo(
+    () => (canManage ? bonuses : bonuses.filter((bonus) => bonus.corretorId === session?.id)),
+    [bonuses, canManage, session?.id],
+  );
+
+  const updateBonusStatus = useCallback(
+    async (id: string, status: AgenciamentoBonus["status"]) => {
+      try {
+        await bonusStatusMutation.mutateAsync({ id, status });
+        return true;
+      } catch (error) {
+        console.error("[agenciamentos] bonus status update failed", error);
+        return false;
+      }
+    },
+    [bonusStatusMutation],
+  );
 
   const ranking = useMemo(
     () => (isAdminLike ? rankAgenciamentosByCorretor(agenciamentos).slice(0, 3) : []),
@@ -304,6 +348,10 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     visibleAgenciamentos,
     summary,
     ranking,
+    unclassifiedAgenciamentos,
+    bonuses: visibleBonuses,
+    isLoadingBonuses: bonusesQuery.isLoading,
+    updateBonusStatus,
     dashboardSummary,
     dashboardRanking,
     validateInput,

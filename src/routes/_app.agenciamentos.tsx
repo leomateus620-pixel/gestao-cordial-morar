@@ -10,15 +10,22 @@ import {
   SearchX,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoBonusPanel";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
+import { AgenciamentoTrackSelector } from "@/components/agenciamentos/AgenciamentoTrackSelector";
 import {
   AgenciamentoSummaryCards,
   type AgenciamentoSummaryKey,
 } from "@/components/agenciamentos/AgenciamentoSummaryCards";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import {
+  computeBonusProgress,
+  filterBonusesByTrack,
+  type AgenciamentoTrack,
+} from "@/lib/agenciamentos/track";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,6 +94,8 @@ function Page() {
     resetFilters,
     agenciamentos,
     visibleAgenciamentos,
+    unclassifiedAgenciamentos,
+    bonuses,
     summary,
     createAgenciamento,
     updateAgenciamento,
@@ -103,8 +112,10 @@ function Page() {
       periodo: periodo ?? "todos",
       imobiliaria: imobiliaria ?? "todas",
       status: status ?? "todos",
+      finalidade: "venda",
     },
   });
+  const [track, setTrack] = useState<AgenciamentoTrack>("venda");
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
@@ -129,6 +140,51 @@ function Page() {
       status: status ?? "todos",
     });
   }, [corretorId, imobiliaria, periodo, setFilters, status]);
+
+  const handleTrackChange = useCallback(
+    (nextTrack: AgenciamentoTrack) => {
+      setTrack(nextTrack);
+      setFilters({ finalidade: nextTrack });
+    },
+    [setFilters],
+  );
+
+  const showingUnclassified = filters.finalidade === "sem_classificacao";
+
+  const trackCounts = useMemo(() => {
+    const build = (value: AgenciamentoTrack) => {
+      const items = visibleAgenciamentos.filter(
+        (item) => item.finalidade === value && item.status !== "cancelado",
+      );
+      return {
+        total: items.length,
+        pendentes: items.filter((item) => !item.checklist.validado).length,
+      };
+    };
+    return { venda: build("venda"), aluguel: build("aluguel") };
+  }, [visibleAgenciamentos]);
+
+  const bonusScopeAgenciamentos = useMemo(
+    () =>
+      filters.corretorId === "todos"
+        ? visibleAgenciamentos
+        : visibleAgenciamentos.filter((item) => item.corretorId === filters.corretorId),
+    [filters.corretorId, visibleAgenciamentos],
+  );
+
+  const bonusProgress = useMemo(
+    () => computeBonusProgress(bonusScopeAgenciamentos, track),
+    [bonusScopeAgenciamentos, track],
+  );
+
+  const trackBonuses = useMemo(() => {
+    const scoped = filterBonusesByTrack(bonuses, track);
+    return filters.corretorId === "todos"
+      ? scoped
+      : scoped.filter((bonus) => bonus.corretorId === filters.corretorId);
+  }, [bonuses, filters.corretorId, track]);
+
+
 
   const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
     if (filters.status === "aguardando_validacao") return "pendentes";
@@ -380,6 +436,40 @@ function Page() {
           )}
         </div>
 
+        <AgenciamentoTrackSelector
+          value={track}
+          onChange={handleTrackChange}
+          counts={trackCounts}
+        />
+
+        {unclassifiedAgenciamentos.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 sm:flex sm:justify-between">
+            <p className="min-w-0 text-sm font-semibold">
+              {unclassifiedAgenciamentos.length} agenciamento
+              {unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou
+              Aluguel.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 rounded-xl border-amber-500/30 bg-white/70 text-amber-900 shadow-none"
+              onClick={() =>
+                setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
+              }
+            >
+              {showingUnclassified ? "Voltar à trilha" : "Revisar agora"}
+            </Button>
+          </div>
+        )}
+
+        <AgenciamentoBonusPanel
+          track={track}
+          progress={bonusProgress}
+          bonuses={trackBonuses}
+          showBrokerName={canManage && filters.corretorId === "todos"}
+        />
+
+
         <div
           className="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
           style={{ animationDelay: "40ms", animationFillMode: "both" }}
@@ -497,6 +587,7 @@ function Page() {
         currentBroker={currentBroker}
         currentUserBroker={currentUserBroker}
         canManage={canManage}
+        defaultTrack={track}
         onOpenChange={(open) => {
           setFormOpen(open);
           if (!open) setEditingAgenciamento(null);

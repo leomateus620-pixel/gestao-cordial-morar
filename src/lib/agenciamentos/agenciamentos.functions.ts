@@ -7,10 +7,12 @@ import {
   inputToPayload,
   patchToPayload,
   rowToAgenciamento,
+  rowToBonus,
   validateAgenciamentoInput,
+  type AgenciamentoBonusDbRow,
   type AgenciamentoDbRow,
 } from "@/lib/agenciamentos/agenciamentos.server";
-import type { AgenciamentoInput } from "@/types/agenciamento";
+import type { AgenciamentoBonus, AgenciamentoInput } from "@/types/agenciamento";
 
 export const listAgenciamentos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -104,4 +106,37 @@ export const deleteAgenciamento = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("agenciamentos").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+
+
+
+export const listAgenciamentoBonuses = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("agenciamento_bonuses")
+      .select("*")
+      .neq("status", "cancelada")
+      .order("achieved_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => rowToBonus(row as unknown as AgenciamentoBonusDbRow));
+  });
+
+export const updateAgenciamentoBonusStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; status: AgenciamentoBonus["status"] }) => data)
+  .handler(async ({ data, context }) => {
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (!roles.includes("admin")) {
+      throw new Error("Somente administradores podem alterar bonificações.");
+    }
+    const { data: updated, error } = await context.supabase
+      .from("agenciamento_bonuses")
+      .update({ status: data.status } as never)
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return rowToBonus(updated as unknown as AgenciamentoBonusDbRow);
   });

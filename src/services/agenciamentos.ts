@@ -37,6 +37,7 @@ const DEFAULT_FILTERS: AgenciamentoFiltersState = {
   periodo: "todos",
   corretorId: "todos",
   tipoImovel: "todos",
+  finalidade: "todas",
   checklist: "todos",
   busca: "",
 };
@@ -200,6 +201,8 @@ export function normalizeAgenciamento(input: LegacyAgenciamento): Agenciamento {
     bairro: safeString(input.bairro),
     cidade: safeString(input.cidade),
     imobiliaria: safeImobiliaria(input.imobiliaria),
+    finalidade:
+      input.finalidade === "venda" || input.finalidade === "aluguel" ? input.finalidade : undefined,
     descricaoImovel: safeString(input.descricaoImovel),
     proprietarioNome: safeString(input.proprietarioNome, "Proprietário não informado"),
     proprietarioTelefone: formatPhoneBR(safeString(input.proprietarioTelefone)),
@@ -306,6 +309,11 @@ export function filterAgenciamentos(
         nextFilters.corretorId === "todos" || item.corretorId === nextFilters.corretorId;
       const matchesType =
         nextFilters.tipoImovel === "todos" || item.tipoImovel === nextFilters.tipoImovel;
+      const matchesFinalidade =
+        nextFilters.finalidade === "todas" ||
+        (nextFilters.finalidade === "sem_classificacao"
+          ? !item.finalidade
+          : item.finalidade === nextFilters.finalidade);
       const matchesSearch =
         !query ||
         [
@@ -324,6 +332,7 @@ export function filterAgenciamentos(
         matchesAgency &&
         matchesBroker &&
         matchesType &&
+        matchesFinalidade &&
         matchesPeriod(item.dataAgenciamento, nextFilters.periodo) &&
         matchesStatus(item, nextFilters.status) &&
         matchesChecklist(item, nextFilters.checklist) &&
@@ -446,6 +455,9 @@ export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: b
   if (!input.tipoImovel) errors.tipoImovel = "Informe o tipo do imóvel.";
   if (!input.endereco.trim()) errors.endereco = "Informe o endereço.";
   if (!input.imobiliaria) errors.imobiliaria = "Informe a imobiliária.";
+  if (input.finalidade !== "venda" && input.finalidade !== "aluguel") {
+    errors.finalidade = "Classifique o agenciamento como Venda ou Aluguel.";
+  }
   if (!input.proprietarioNome.trim()) errors.proprietarioNome = "Informe o proprietário.";
   if (digits(input.proprietarioTelefone).length < 10) {
     errors.proprietarioTelefone = "Informe um telefone válido.";

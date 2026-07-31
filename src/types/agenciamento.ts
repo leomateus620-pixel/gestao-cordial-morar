@@ -10,6 +10,25 @@ export type AgenciamentoStatus =
 
 export type AgenciamentoImobiliaria = "cordial" | "morar" | "ambas";
 
+export type AgenciamentoFinalidade = "venda" | "aluguel";
+
+export type AgenciamentoFinalidadeFilter = "todas" | AgenciamentoFinalidade | "sem_classificacao";
+
+export type AgenciamentoBonusStatus = "pendente" | "aprovada" | "paga" | "cancelada";
+
+export type AgenciamentoBonus = {
+  id: string;
+  corretorId: string;
+  corretorNome?: string;
+  categoria: AgenciamentoFinalidade;
+  periodoRef?: string;
+  nivel: number;
+  listingsCount: number;
+  placasCount: number;
+  status: AgenciamentoBonusStatus;
+  conquistadoEm: string;
+};
+
 export type AgenciamentoTipoImovel =
   | "casa"
   | "apartamento"
@@ -46,6 +65,7 @@ export type Agenciamento = {
   bairro?: string;
   cidade?: string;
   imobiliaria: AgenciamentoImobiliaria;
+  finalidade?: AgenciamentoFinalidade;
   descricaoImovel?: string;
 
   proprietarioNome: string;
@@ -116,6 +136,7 @@ export type AgenciamentoFiltersState = {
   periodo: AgenciamentoPeriodFilter;
   corretorId: string;
   tipoImovel: "todos" | AgenciamentoTipoImovel;
+  finalidade: AgenciamentoFinalidadeFilter;
   checklist: AgenciamentoChecklistFilter;
   busca: string;
 };

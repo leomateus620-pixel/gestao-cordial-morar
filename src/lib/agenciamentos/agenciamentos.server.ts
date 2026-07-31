@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Agenciamento,
+  AgenciamentoBonus,
   AgenciamentoChecklist,
   AgenciamentoContatoPreferencial,
+  AgenciamentoFinalidade,
   AgenciamentoImobiliaria,
   AgenciamentoInput,
   AgenciamentoOrigem,
@@ -14,6 +16,7 @@ export type AgenciamentoDbRow = {
   id: string;
   created_by: string;
   imobiliaria: string;
+  finalidade: string | null;
   tipo_imovel: string;
   endereco: string;
   bairro: string | null;
@@ -67,6 +70,10 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
     bairro: orUndef(row.bairro),
     cidade: orUndef(row.cidade),
     imobiliaria: row.imobiliaria as AgenciamentoImobiliaria,
+    finalidade:
+      row.finalidade === "venda" || row.finalidade === "aluguel"
+        ? (row.finalidade as AgenciamentoFinalidade)
+        : undefined,
     descricaoImovel: orUndef(row.descricao_imovel),
     proprietarioNome: row.proprietario_nome,
     proprietarioTelefone: row.proprietario_telefone,
@@ -104,6 +111,9 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
 export function validateAgenciamentoInput(input: AgenciamentoInput) {
   if (!input.tipoImovel) throw new Error("Informe o tipo do imóvel.");
   if (!input.imobiliaria) throw new Error("Selecione a imobiliária.");
+  if (input.finalidade !== "venda" && input.finalidade !== "aluguel") {
+    throw new Error("Classifique o agenciamento como Venda ou Aluguel.");
+  }
   if (!input.endereco?.trim()) throw new Error("Informe o endereço.");
   if (!input.proprietarioNome?.trim()) throw new Error("Informe o proprietário.");
   if (!input.proprietarioTelefone?.trim() || input.proprietarioTelefone.replace(/\D/g, "").length < 10) {
@@ -149,6 +159,7 @@ export function inputToPayload(
   return {
     created_by: userId,
     imobiliaria: input.imobiliaria,
+    finalidade: input.finalidade,
     tipo_imovel: input.tipoImovel,
     endereco: input.endereco.trim(),
     bairro: orNull(input.bairro),
@@ -179,6 +190,12 @@ export function inputToPayload(
 export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage: boolean) {
   const patch: Record<string, unknown> = {};
   if (patchInput.imobiliaria !== undefined) patch.imobiliaria = patchInput.imobiliaria;
+  if (patchInput.finalidade !== undefined) {
+    patch.finalidade =
+      patchInput.finalidade === "venda" || patchInput.finalidade === "aluguel"
+        ? patchInput.finalidade
+        : null;
+  }
   if (patchInput.tipoImovel !== undefined) patch.tipo_imovel = patchInput.tipoImovel;
   if (patchInput.endereco !== undefined) patch.endereco = patchInput.endereco.trim();
   if (patchInput.bairro !== undefined) patch.bairro = orNull(patchInput.bairro);
@@ -228,4 +245,31 @@ export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage
     if (canManage && checklist.validado !== undefined) patch.validado = Boolean(checklist.validado);
   }
   return patch;
+}
+export type AgenciamentoBonusDbRow = {
+  id: string;
+  corretor_id: string;
+  corretor_nome: string | null;
+  categoria: string;
+  periodo_ref: string | null;
+  nivel: number;
+  listings_count: number;
+  placas_count: number;
+  status: string;
+  achieved_at: string;
+};
+
+export function rowToBonus(row: AgenciamentoBonusDbRow): AgenciamentoBonus {
+  return {
+    id: row.id,
+    corretorId: row.corretor_id,
+    corretorNome: row.corretor_nome ?? undefined,
+    categoria: row.categoria as AgenciamentoBonus["categoria"],
+    periodoRef: row.periodo_ref ?? undefined,
+    nivel: row.nivel,
+    listingsCount: row.listings_count,
+    placasCount: row.placas_count,
+    status: row.status as AgenciamentoBonus["status"],
+    conquistadoEm: row.achieved_at,
+  };
 }

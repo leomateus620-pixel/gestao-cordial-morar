@@ -1,0 +1,146 @@
+import type {
+  Agenciamento,
+  AgenciamentoBonus,
+  AgenciamentoFinalidade,
+} from "@/types/agenciamento";
+
+export type AgenciamentoTrack = AgenciamentoFinalidade;
+
+export const SALES_BONUS_LISTINGS = 8;
+export const SALES_BONUS_SIGNS = 4;
+export const RENTAL_BONUS_LISTINGS = 10;
+
+export const agenciamentoTrackOptions: Array<{
+  value: AgenciamentoTrack;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "venda",
+    label: "Agenciamentos de Venda",
+    description: `${SALES_BONUS_LISTINGS} captações + ${SALES_BONUS_SIGNS} placas no mês`,
+  },
+  {
+    value: "aluguel",
+    label: "Agenciamentos de Aluguel",
+    description: `${RENTAL_BONUS_LISTINGS} captações acumuladas`,
+  },
+];
+
+export function getTrackLabel(track: AgenciamentoTrack) {
+  return track === "aluguel" ? "Aluguel" : "Venda";
+}
+
+export function isCountableAgenciamento(item: Agenciamento) {
+  return item.status !== "cancelado";
+}
+
+export function matchesTrack(item: Agenciamento, track: AgenciamentoTrack) {
+  return item.finalidade === track;
+}
+
+export function filterByTrack(items: Agenciamento[], track: AgenciamentoTrack) {
+  return items.filter((item) => matchesTrack(item, track));
+}
+
+export function getUnclassifiedAgenciamentos(items: Agenciamento[]) {
+  return items.filter((item) => !item.finalidade);
+}
+
+export function isSameMonth(dateIso: string, reference: Date) {
+  const date = new Date(dateIso);
+  if (Number.isNaN(date.getTime())) return false;
+  return (
+    date.getFullYear() === reference.getFullYear() && date.getMonth() === reference.getMonth()
+  );
+}
+
+export type BonusProgress = {
+  track: AgenciamentoTrack;
+  /** Captações válidas consideradas no ciclo atual. */
+  listings: number;
+  /** Placas instaladas consideradas no ciclo (apenas Venda). */
+  signs: number;
+  /** Bonificações já conquistadas no ciclo atual. */
+  earned: number;
+  /** Progresso 0-100 rumo à próxima bonificação. */
+  percent: number;
+  /** Captações que ainda faltam para a próxima bonificação. */
+  listingsRemaining: number;
+  /** Placas que ainda faltam para a próxima bonificação (apenas Venda). */
+  signsRemaining: number;
+  cycleLabel: string;
+};
+
+export function computeBonusProgress(
+  items: Agenciamento[],
+  track: AgenciamentoTrack,
+  reference = new Date(),
+): BonusProgress {
+  const countable = items.filter(
+    (item) => isCountableAgenciamento(item) && matchesTrack(item, track),
+  );
+
+  if (track === "aluguel") {
+    const listings = countable.length;
+    const earned = Math.floor(listings / RENTAL_BONUS_LISTINGS);
+    const progressed = listings % RENTAL_BONUS_LISTINGS;
+    return {
+      track,
+      listings,
+      signs: 0,
+      earned,
+      percent: Math.round((progressed / RENTAL_BONUS_LISTINGS) * 100),
+      listingsRemaining: RENTAL_BONUS_LISTINGS - progressed,
+      signsRemaining: 0,
+      cycleLabel: "Acumulado (sem reinício mensal)",
+    };
+  }
+
+  const monthly = countable.filter((item) => isSameMonth(item.dataAgenciamento, reference));
+  const listings = monthly.length;
+  const signs = monthly.filter((item) => item.checklist.placaInstalada).length;
+  const earned = Math.min(
+    Math.floor(listings / SALES_BONUS_LISTINGS),
+    Math.floor(signs / SALES_BONUS_SIGNS),
+  );
+  const listingsTarget = (earned + 1) * SALES_BONUS_LISTINGS;
+  const signsTarget = (earned + 1) * SALES_BONUS_SIGNS;
+  const listingsRemaining = Math.max(listingsTarget - listings, 0);
+  const signsRemaining = Math.max(signsTarget - signs, 0);
+  const percent = Math.round(
+    (Math.min(listings / listingsTarget, 1) * 0.5 + Math.min(signs / signsTarget, 1) * 0.5) * 100,
+  );
+
+  return {
+    track,
+    listings,
+    signs,
+    earned,
+    percent,
+    listingsRemaining,
+    signsRemaining,
+    cycleLabel: reference.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+  };
+}
+
+export function getBonusStatusLabel(status: AgenciamentoBonus["status"]) {
+  const labels: Record<AgenciamentoBonus["status"], string> = {
+    pendente: "Pendente",
+    aprovada: "Aprovada",
+    paga: "Paga",
+    cancelada: "Cancelada",
+  };
+  return labels[status];
+}
+
+export function getBonusPeriodLabel(bonus: AgenciamentoBonus) {
+  if (!bonus.periodoRef) return "Acumulado";
+  const date = new Date(`${bonus.periodoRef.slice(0, 10)}T12:00:00.000`);
+  if (Number.isNaN(date.getTime())) return "Acumulado";
+  return date.toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric" });
+}
+
+export function filterBonusesByTrack(bonuses: AgenciamentoBonus[], track: AgenciamentoTrack) {
+  return bonuses.filter((bonus) => bonus.categoria === track);
+}
