@@ -176,6 +176,29 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
 
   const summary = useMemo(() => calculateAgenciamentosSummary(agenciamentos), [agenciamentos]);
 
+  const unclassifiedAgenciamentos = useMemo(
+    () => getUnclassifiedAgenciamentos(visibleAgenciamentos),
+    [visibleAgenciamentos],
+  );
+
+  const visibleBonuses = useMemo(
+    () => (canManage ? bonuses : bonuses.filter((bonus) => bonus.corretorId === session?.id)),
+    [bonuses, canManage, session?.id],
+  );
+
+  const updateBonusStatus = useCallback(
+    async (id: string, status: AgenciamentoBonus["status"]) => {
+      try {
+        await bonusStatusMutation.mutateAsync({ id, status });
+        return true;
+      } catch (error) {
+        console.error("[agenciamentos] bonus status update failed", error);
+        return false;
+      }
+    },
+    [bonusStatusMutation],
+  );
+
   const ranking = useMemo(
     () => (isAdminLike ? rankAgenciamentosByCorretor(agenciamentos).slice(0, 3) : []),
     [agenciamentos, isAdminLike],
