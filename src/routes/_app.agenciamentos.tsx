@@ -587,6 +587,7 @@ function Page() {
         currentBroker={currentBroker}
         currentUserBroker={currentUserBroker}
         canManage={canManage}
+        defaultTrack={track}
         onOpenChange={(open) => {
           setFormOpen(open);
           if (!open) setEditingAgenciamento(null);
