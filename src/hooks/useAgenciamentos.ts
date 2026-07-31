@@ -72,6 +72,8 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const updateFn = useServerFn(updateAgenciamentoFn);
   const validateFn = useServerFn(validateAgenciamentoFn);
   const removeFn = useServerFn(deleteAgenciamentoFn);
+  const listBonusesFn = useServerFn(listAgenciamentoBonuses);
+  const updateBonusFn = useServerFn(updateAgenciamentoBonusStatus);
 
   const enabled = Boolean(session);
   const query = useQuery<Agenciamento[]>({
@@ -81,14 +83,29 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     staleTime: 30_000,
   });
 
+  const bonusesQuery = useQuery<AgenciamentoBonus[]>({
+    queryKey: ["agenciamento-bonuses"],
+    queryFn: () => listBonusesFn(),
+    enabled,
+    staleTime: 30_000,
+  });
+
   const rawAgenciamentos = useMemo(() => query.data ?? [], [query.data]);
+  const bonuses = useMemo(() => bonusesQuery.data ?? [], [bonusesQuery.data]);
 
   const invalidate = useCallback(() => {
     return Promise.all([
       queryClient.invalidateQueries({ queryKey: ["agenciamentos"] }),
+      queryClient.invalidateQueries({ queryKey: ["agenciamento-bonuses"] }),
       queryClient.invalidateQueries({ queryKey: ["equipe-performance"] }),
     ]);
   }, [queryClient]);
+
+  const bonusStatusMutation = useMutation({
+    mutationFn: (vars: { id: string; status: AgenciamentoBonus["status"] }) =>
+      updateBonusFn({ data: vars }),
+    onSuccess: invalidate,
+  });
 
   const createMutation = useMutation({
     mutationFn: (input: AgenciamentoInput) => createFn({ data: input }),
