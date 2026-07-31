@@ -14,6 +14,7 @@ export type AgenciamentoDbRow = {
   id: string;
   created_by: string;
   imobiliaria: string;
+  finalidade: string | null;
   tipo_imovel: string;
   endereco: string;
   bairro: string | null;
