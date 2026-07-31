@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenciamento_bonuses: {
+        Row: {
+          achieved_at: string
+          categoria: string
+          corretor_id: string
+          corretor_nome: string | null
+          created_at: string
+          id: string
+          listings_count: number
+          nivel: number
+          periodo_ref: string | null
+          placas_count: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          achieved_at?: string
+          categoria: string
+          corretor_id: string
+          corretor_nome?: string | null
+          created_at?: string
+          id?: string
+          listings_count?: number
+          nivel: number
+          periodo_ref?: string | null
+          placas_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          achieved_at?: string
+          categoria?: string
+          corretor_id?: string
+          corretor_nome?: string | null
+          created_at?: string
+          id?: string
+          listings_count?: number
+          nivel?: number
+          periodo_ref?: string | null
+          placas_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       agenciamentos: {
         Row: {
           bairro: string | null
@@ -28,6 +73,7 @@ export type Database = {
           descricao_imovel: string | null
           drive_folder_url: string | null
           endereco: string
+          finalidade: string | null
           fotos_drive: boolean
           fotos_realizadas: boolean
           id: string
@@ -62,6 +108,7 @@ export type Database = {
           descricao_imovel?: string | null
           drive_folder_url?: string | null
           endereco: string
+          finalidade?: string | null
           fotos_drive?: boolean
           fotos_realizadas?: boolean
           id?: string
@@ -96,6 +143,7 @@ export type Database = {
           descricao_imovel?: string | null
           drive_folder_url?: string | null
           endereco?: string
+          finalidade?: string | null
           fotos_drive?: boolean
           fotos_realizadas?: boolean
           id?: string
@@ -2439,6 +2487,16 @@ export type Database = {
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
+      agenciamento_bonus_notify: {
+        Args: {
+          _bonus: Database["public"]["Tables"]["agenciamento_bonuses"]["Row"]
+        }
+        Returns: undefined
+      }
+      agenciamento_bonus_recalc: {
+        Args: { _corretor_id: string }
+        Returns: undefined
+      }
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
       agenda_is_participant: { Args: { _event_id: string }; Returns: boolean }
