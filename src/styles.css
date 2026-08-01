@@ -462,7 +462,7 @@
 }
 
 .app-sidebar-drawer {
-  padding: 0.75rem 0.625rem max(0.75rem, env(safe-area-inset-bottom));
+  padding: max(0.75rem, env(safe-area-inset-top)) 0.625rem max(0.75rem, env(safe-area-inset-bottom));
   border-color: var(--app-sidebar-border) !important;
   border-radius: 0 var(--app-sidebar-radius) var(--app-sidebar-radius) 0;
   background: var(--app-sidebar-background) !important;
@@ -476,7 +476,7 @@
 }
 
 .app-sidebar-drawer > button {
-  top: 0.5rem;
+  top: max(0.5rem, env(safe-area-inset-top));
   right: 0.5rem;
   border-radius: var(--app-sidebar-row-radius);
   color: var(--app-sidebar-secondary-text);

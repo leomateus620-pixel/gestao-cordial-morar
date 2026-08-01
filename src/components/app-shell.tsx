@@ -199,7 +199,7 @@ export function AppShell() {
                 <SheetTrigger asChild>
                   <button
                     className={cn(
-                      "grid size-9 place-items-center rounded-full text-primary outline-none transition-[background-color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95 motion-reduce:transform-none motion-reduce:transition-none",
+                      "grid size-11 place-items-center rounded-full text-primary outline-none transition-[background-color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95 motion-reduce:transform-none motion-reduce:transition-none",
                       scrolled ? "bg-white/70 shadow-sm" : "glass-panel",
                     )}
                     aria-label="Abrir navegação principal"

@@ -7,6 +7,10 @@ const stylesSource = readFileSync(fileURLToPath(new URL("../styles.css", import.
 const componentSources = ["./app-shell.tsx", "./sidebar-menu.tsx"]
   .map((path) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8"))
   .join("\n");
+const sidebarMenuSource = readFileSync(
+  fileURLToPath(new URL("./sidebar-menu.tsx", import.meta.url)),
+  "utf8",
+);
 
 function getToken(name: string) {
   const value = stylesSource.match(new RegExp(`--app-sidebar-${name}:\\s*([^;]+);`))?.[1].trim();
@@ -70,4 +74,24 @@ test("keeps primary and secondary sidebar text at WCAG AA contrast", () => {
   }
 
   assert.ok(contrastRatio(getToken("background"), getToken("section-text")) >= 4.5);
+});
+
+test("keeps route activity lightweight and sidebar scrolling isolated", () => {
+  assert.match(
+    sidebarMenuSource,
+    /activeOptions=\{\{ exact: item\.exact, includeSearch: false \}\}/,
+  );
+  assert.match(sidebarMenuSource, /activeProps=\{\{ "data-active": "true" \}\}/);
+  assert.match(sidebarMenuSource, /nav\.scrollTo\(/);
+  assert.doesNotMatch(sidebarMenuSource, /scrollIntoView\(/);
+});
+
+test("respects mobile safe areas around the drawer", () => {
+  const drawerStyles = stylesSource.match(/\.app-sidebar-drawer\s*\{([^}]+)\}/)?.[1] ?? "";
+  const closeStyles = stylesSource.match(/\.app-sidebar-drawer > button\s*\{([^}]+)\}/)?.[1] ?? "";
+
+  assert.match(drawerStyles, /safe-area-inset-top/);
+  assert.match(drawerStyles, /safe-area-inset-bottom/);
+  assert.match(closeStyles, /safe-area-inset-top/);
+  assert.match(componentSources, /size-11 place-items-center/);
 });

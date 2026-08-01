@@ -1,11 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, type RefObject } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  getSidebarSections,
-  isModuleItemActive,
-  type SidebarModuleItem,
-} from "@/components/shared/module-menu";
+import { getSidebarSections, type SidebarModuleItem } from "@/components/shared/module-menu";
 import type { AppModule } from "@/lib/mock/permissions";
 import { cn } from "@/lib/utils";
 
@@ -23,15 +19,8 @@ function getItemCopy(item: SidebarModuleItem) {
   };
 }
 
-export const SidebarMenu = memo(function SidebarMenu({
-  allowedModules,
-  className,
-  collapsed = false,
-  onNavigate,
-}: SidebarMenuProps) {
+function ActiveItemVisibility({ navRef }: { navRef: RefObject<HTMLElement | null> }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const navRef = useRef<HTMLElement>(null);
-  const visibleSections = useMemo(() => getSidebarSections(allowedModules), [allowedModules]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -41,11 +30,14 @@ export const SidebarMenu = memo(function SidebarMenu({
 
       const navRect = nav.getBoundingClientRect();
       const itemRect = activeItem.getBoundingClientRect();
-      const isOutsideViewport = itemRect.top < navRect.top || itemRect.bottom > navRect.bottom;
+      const edgePadding = 4;
+      const topDelta = itemRect.top - (navRect.top + edgePadding);
+      const bottomDelta = itemRect.bottom - (navRect.bottom - edgePadding);
+      const scrollDelta = topDelta < 0 ? topDelta : bottomDelta > 0 ? bottomDelta : 0;
 
-      if (isOutsideViewport) {
-        activeItem.scrollIntoView({
-          block: "nearest",
+      if (scrollDelta !== 0) {
+        nav.scrollTo({
+          top: nav.scrollTop + scrollDelta,
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
             ? "auto"
             : "smooth",
@@ -54,7 +46,19 @@ export const SidebarMenu = memo(function SidebarMenu({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [pathname]);
+  }, [navRef, pathname]);
+
+  return null;
+}
+
+export const SidebarMenu = memo(function SidebarMenu({
+  allowedModules,
+  className,
+  collapsed = false,
+  onNavigate,
+}: SidebarMenuProps) {
+  const navRef = useRef<HTMLElement>(null);
+  const visibleSections = useMemo(() => getSidebarSections(allowedModules), [allowedModules]);
 
   return (
     <TooltipProvider delayDuration={collapsed ? 100 : 500}>
@@ -67,6 +71,7 @@ export const SidebarMenu = memo(function SidebarMenu({
         aria-label="Navegação principal"
         data-collapsed={collapsed ? "true" : "false"}
       >
+        <ActiveItemVisibility navRef={navRef} />
         <div className="app-sidebar-sections">
           {visibleSections.map((section, sectionIndex) => {
             const headingId = `sidebar-section-${section.id}`;
@@ -89,7 +94,6 @@ export const SidebarMenu = memo(function SidebarMenu({
 
                 <ul className="app-sidebar-list" role="list">
                   {section.items.map((item) => {
-                    const active = isModuleItemActive(pathname, item);
                     const Icon = item.icon;
                     const copy = getItemCopy(item);
 
@@ -100,9 +104,9 @@ export const SidebarMenu = memo(function SidebarMenu({
                             <Link
                               to={item.to as never}
                               onClick={onNavigate}
-                              aria-current={active ? "page" : undefined}
                               aria-label={collapsed ? `${copy.label}: ${copy.desc}` : undefined}
-                              data-active={active ? "true" : "false"}
+                              activeOptions={{ exact: item.exact, includeSearch: false }}
+                              activeProps={{ "data-active": "true" }}
                               data-navigation-item={item.module}
                               data-navigation-path={item.to}
                               className="app-sidebar-nav-row group"
