@@ -87,6 +87,13 @@
   --system-muted: #6b7280;
   --system-soft: #8a8f98;
 
+  /* Shell de navegação — geometria compartilhada entre rail, drawer e conteúdo. */
+  --app-sidebar-width-expanded: 14.25rem;
+  --app-sidebar-width-collapsed: 4.25rem;
+  --app-sidebar-mobile-width: 18.5rem;
+  --app-sidebar-inset: 0.75rem;
+  --app-sidebar-content-gap: 0.75rem;
+
   /* Contextos das imobiliárias (acentos) */
   --cordial-primary: #2b7fa3;
   --cordial-dark: #165b73;
@@ -259,25 +266,65 @@
 
 @utility sidebar-glass {
   background:
-    radial-gradient(circle at 18% -8%, rgba(111, 191, 174, 0.14), transparent 36%),
-    radial-gradient(circle at 102% 104%, rgba(217, 120, 45, 0.08), transparent 42%),
-    linear-gradient(
-      180deg,
-      rgba(17, 23, 25, 0.982),
-      rgba(21, 29, 31, 0.965) 48%,
-      rgba(15, 20, 22, 0.985)
-    );
-  backdrop-filter: blur(24px) saturate(128%);
-  border: 1px solid rgba(205, 232, 223, 0.085);
+    radial-gradient(circle at 14% -6%, rgba(122, 193, 179, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(48, 63, 69, 0.985), rgba(39, 52, 58, 0.99));
+  backdrop-filter: blur(12px) saturate(112%);
+  border: 1px solid rgba(196, 220, 214, 0.15);
   box-shadow:
-    0 28px 62px -24px rgba(0, 0, 0, 0.52),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.88);
+    0 22px 48px -32px rgba(10, 23, 28, 0.7),
+    inset 0 1px 0 rgba(226, 241, 237, 0.08);
+  color: rgba(235, 244, 242, 0.92);
+}
+
+.app-shell-root {
+  --app-sidebar-current-width: var(--app-sidebar-width-expanded);
+}
+
+.app-shell-root[data-sidebar-state="collapsed"] {
+  --app-sidebar-current-width: var(--app-sidebar-width-collapsed);
+}
+
+.app-sidebar-shell {
+  inset-block: var(--app-sidebar-inset);
+  inset-inline-start: var(--app-sidebar-inset);
+  width: var(--app-sidebar-current-width);
+  max-height: calc(100dvh - (var(--app-sidebar-inset) * 2));
+  contain: layout paint;
+  transition: width 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.app-shell-content {
+  transition: padding-inline-start 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.app-sidebar-brand-copy {
+  transition:
+    opacity 120ms ease-out,
+    transform 150ms ease-out;
+}
+
+.app-shell-root[data-sidebar-state="collapsed"] .app-sidebar-brand-copy {
+  transform: translateX(-0.35rem);
+}
+
+.app-shell-root[data-sidebar-ready="false"] .app-sidebar-shell,
+.app-shell-root[data-sidebar-ready="false"] .app-shell-content,
+.app-shell-root[data-sidebar-ready="false"] .app-sidebar-brand-copy {
+  transition: none;
+}
+
+@media (min-width: 64rem) {
+  .app-shell-content {
+    padding-inline-start: calc(
+      var(--app-sidebar-current-width) + var(--app-sidebar-inset) + var(--app-sidebar-content-gap)
+    );
+  }
 }
 
 .premium-sidebar-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(205, 232, 223, 0.2) transparent;
+  scrollbar-color: rgba(190, 214, 208, 0.28) transparent;
+  scrollbar-gutter: stable;
   scroll-behavior: smooth;
   overscroll-behavior: contain;
 }
@@ -291,12 +338,12 @@
 }
 
 .premium-sidebar-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(205, 232, 223, 0.22), rgba(255, 255, 255, 0.08));
+  background: rgba(190, 214, 208, 0.24);
   border-radius: 9999px;
 }
 
 .premium-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(205, 232, 223, 0.36), rgba(255, 255, 255, 0.14));
+  background: rgba(190, 214, 208, 0.38);
 }
 
 @utility bottom-nav-glass {
@@ -1140,6 +1187,12 @@ html,
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .app-sidebar-shell,
+  .app-shell-content,
+  .app-sidebar-brand-copy {
+    transition: none !important;
   }
 }
 
