@@ -1,19 +1,30 @@
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Menu } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { BrandMark } from "./brand/BrandMark";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MeshBackground } from "./mesh-background";
 import { AgencySwitcher } from "./agency-switcher";
 import { SidebarMenu } from "./sidebar-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useAuthReady, useHasAuthSession, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
-import { getPrimaryItemsForProfile } from "./shared/module-menu";
-import { roleDefinitions } from "@/lib/mock/permissions";
+import { getPrimaryItemsForProfile, isModuleItemActive } from "./shared/module-menu";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
 import { NotificationCenter } from "./notifications/NotificationCenter";
 import { NotificationTransientRegion } from "./notifications/NotificationTransientRegion";
+import {
+  parseSidebarPreference,
+  serializeSidebarPreference,
+  SIDEBAR_PREFERENCE_KEY,
+} from "@/lib/sidebar-preference";
 
 export function AppShell() {
   useHydrateCorretores();
@@ -24,21 +35,60 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const sessionModules = useMemo(
-    () =>
-      session
-        ? Array.from(new Set([...session.modules, ...roleDefinitions[session.perfil].modules]))
-        : undefined,
+    () => (session ? Array.from(new Set(session.modules)) : []),
     [session],
   );
+
+  useEffect(() => {
+    let readyFrame = 0;
+    try {
+      setSidebarCollapsed(
+        parseSidebarPreference(window.localStorage.getItem(SIDEBAR_PREFERENCE_KEY)),
+      );
+    } catch {
+      // A preferência é progressiva; a navegação segue expandida se o storage estiver indisponível.
+    } finally {
+      readyFrame = window.requestAnimationFrame(() => setSidebarPreferenceReady(true));
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SIDEBAR_PREFERENCE_KEY) {
+        setSidebarCollapsed(parseSidebarPreference(event.newValue));
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.cancelAnimationFrame(readyFrame);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const handleSidebarCollapsedChange = useCallback((nextCollapsed: boolean) => {
+    setSidebarCollapsed(nextCollapsed);
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_PREFERENCE_KEY,
+        serializeSidebarPreference(nextCollapsed),
+      );
+    } catch {
+      // Mantém o estado da sessão mesmo em navegadores com storage bloqueado.
+    }
+  }, []);
 
   useEffect(() => {
     // Only redirect when Supabase itself confirms there is no session.
     // A missing profile row (transient DB error) must not log the user out.
     if (authReady && !hasAuthSession) navigate({ to: "/login" });
   }, [authReady, hasAuthSession, navigate]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     let ticking = false;
@@ -67,61 +117,74 @@ export function AppShell() {
   if (!session) return null;
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-full flex-col overflow-x-hidden font-sans text-foreground">
+    <div
+      className="app-shell-root relative mx-auto flex min-h-dvh w-full max-w-full flex-col overflow-x-hidden font-sans text-foreground"
+      data-sidebar-state={sidebarCollapsed ? "collapsed" : "expanded"}
+      data-sidebar-ready={sidebarPreferenceReady ? "true" : "false"}
+    >
       <MeshBackground />
 
       {/* Sidebar desktop */}
       <aside
-        className={cn(
-          "sidebar-glass fixed inset-y-4 left-4 z-40 hidden max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[1.6rem] p-3 transition-[width] duration-300 ease-out lg:flex",
-          sidebarCollapsed ? "w-20" : "w-64",
-        )}
+        id="app-primary-sidebar"
+        className="app-sidebar-shell sidebar-glass fixed z-40 hidden flex-col overflow-hidden rounded-[1.35rem] p-2 lg:flex"
+        aria-label="Navegação lateral"
       >
         <div
           className={cn(
-            "mb-4 flex items-center gap-3 px-1 pt-1",
-            sidebarCollapsed && "justify-center",
+            "relative mb-2 flex shrink-0 items-center px-1 py-0.5",
+            sidebarCollapsed ? "flex-col gap-1.5" : "gap-2",
           )}
         >
-          <div className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(145deg,rgba(111,191,174,0.18),rgba(255,255,255,0.055))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_-24px_rgba(30,100,93,0.76)] ring-1 ring-teal-100/15">
-            <BrandMark className="size-7" />
-            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-teal-200 shadow-[0_0_16px_rgba(94,234,212,0.58)]" />
+          <div className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#b9dad3]/14 bg-[#bfded7]/8 shadow-[inset_0_1px_0_rgba(225,242,238,0.09)]">
+            <BrandMark className="size-6" />
           </div>
-          {!sidebarCollapsed && (
-            <div className="min-w-0">
-              <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-teal-100/78">
-                Gestão Cordial
-              </span>
-              <p className="truncate text-sm font-semibold leading-tight tracking-[-0.01em] text-white/90">
-                Sistema Imobiliário
-              </p>
-            </div>
-          )}
+          <div
+            className={cn(
+              "app-sidebar-brand-copy min-w-0 flex-1",
+              sidebarCollapsed && "pointer-events-none absolute opacity-0",
+            )}
+            aria-hidden={sidebarCollapsed}
+          >
+            <span className="block truncate text-[8px] font-bold uppercase leading-3 tracking-[0.2em] text-[#9ad3c8]">
+              Gestão Cordial
+            </span>
+            <p className="truncate text-[12px] font-semibold leading-4 tracking-[-0.01em] text-[#e8f0ee]">
+              Sistema Imobiliário
+            </p>
+          </div>
+          <button
+            type="button"
+            className="grid size-8 shrink-0 place-items-center rounded-[0.65rem] border border-[#c9ddd8]/10 bg-[#d3e4e0]/5 text-[#b8c8c5] outline-none transition-[background-color,border-color,color,transform] duration-150 hover:border-[#9ed5c9]/22 hover:bg-[#9ed5c9]/10 hover:text-[#e9f4f1] focus-visible:ring-2 focus-visible:ring-[#9bd9cd] focus-visible:ring-offset-1 focus-visible:ring-offset-[#2a373d] active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
+            onClick={() => handleSidebarCollapsedChange(!sidebarCollapsed)}
+            aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+            aria-controls="app-primary-sidebar"
+            aria-expanded={!sidebarCollapsed}
+            title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="size-[15px]" />
+            ) : (
+              <PanelLeftClose className="size-[15px]" />
+            )}
+          </button>
         </div>
 
-        <SidebarMenu
-          collapsed={sidebarCollapsed}
-          onCollapsedChange={setSidebarCollapsed}
-          showToggle
-          tone="dark"
-        />
+        <SidebarMenu allowedModules={sessionModules} collapsed={sidebarCollapsed} />
 
         <div
           className={cn(
-            "mt-3 border-t border-white/10 pt-3 text-[9px] font-semibold uppercase leading-relaxed tracking-[0.16em] text-white/35",
-            sidebarCollapsed ? "text-center" : "px-1",
+            "mt-2 shrink-0 border-t border-[#c8d8d4]/10 pt-2 text-[8px] font-semibold uppercase leading-3 tracking-[0.12em] text-[#91a29f]",
+            sidebarCollapsed ? "text-center" : "px-1.5",
           )}
         >
-          {sidebarCollapsed ? "CI + MI" : "Cordial Imóveis + Morar Imóveis"}
+          {sidebarCollapsed ? "CI · MI" : "Cordial Imóveis · Morar Imóveis"}
         </div>
       </aside>
 
       <div
         ref={mainRef}
-        className={cn(
-          "relative z-10 flex min-h-screen w-full flex-col transition-[padding] duration-300 ease-out",
-          sidebarCollapsed ? "lg:pl-28" : "lg:pl-72",
-        )}
+        className="app-shell-content relative z-10 flex min-h-screen w-full flex-col"
       >
         {/* Header mobile — sticky com blur ao rolar */}
         <header
@@ -146,10 +209,12 @@ export function AppShell() {
                 <SheetTrigger asChild>
                   <button
                     className={cn(
-                      "grid size-9 place-items-center rounded-full text-primary transition-all",
+                      "grid size-9 place-items-center rounded-full text-primary outline-none transition-[background-color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95 motion-reduce:transform-none motion-reduce:transition-none",
                       scrolled ? "bg-white/70 shadow-sm" : "glass-panel",
                     )}
-                    aria-label="Abrir módulos"
+                    aria-label="Abrir navegação principal"
+                    aria-haspopup="dialog"
+                    aria-expanded={mobileMenuOpen}
                     type="button"
                   >
                     <Menu className="size-5" />
@@ -157,24 +222,35 @@ export function AppShell() {
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="sidebar-glass flex h-dvh w-[88vw] max-w-[340px] flex-col overflow-hidden border-white/10 bg-[#111719] p-4 text-white backdrop-blur-2xl lg:hidden [&>button]:text-white/70 [&>button]:hover:text-white [&>button]:focus-visible:ring-teal-100/70"
+                  closeLabel="Fechar navegação"
+                  overlayClassName="bg-[#152229]/55"
+                  className="app-sidebar-drawer sidebar-glass flex h-dvh !w-[min(82vw,var(--app-sidebar-mobile-width))] !max-w-none flex-col overflow-hidden border-[#bed6d1]/14 px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-[#edf5f3] lg:hidden [&>button]:right-2 [&>button]:top-2 [&>button]:text-[#b9c9c6] [&>button]:hover:bg-[#c7ddd8]/9 [&>button]:hover:text-[#edf5f3] [&>button]:focus-visible:ring-[#9bd9cd]"
                 >
-                  <div className="mb-5 flex items-center gap-3 pr-8">
-                    <div className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-teal-200/12 ring-1 ring-teal-100/15">
-                      <BrandMark className="size-7" />
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Navegação principal</SheetTitle>
+                    <SheetDescription>
+                      Acesse os módulos permitidos para o seu perfil.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="mb-3 flex shrink-0 items-center gap-2 px-1 pr-11">
+                    <div className="grid size-9 place-items-center overflow-hidden rounded-xl border border-[#b9dad3]/14 bg-[#bfded7]/8 shadow-[inset_0_1px_0_rgba(225,242,238,0.09)]">
+                      <BrandMark className="size-6" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-[9px] font-bold uppercase tracking-[0.26em] text-teal-100/78">
+                      <span className="block truncate text-[8px] font-bold uppercase leading-3 tracking-[0.2em] text-[#9ad3c8]">
                         Gestão Cordial
                       </span>
-                      <p className="truncate text-sm font-semibold leading-tight text-white/90">
+                      <p className="truncate text-[12px] font-semibold leading-4 tracking-[-0.01em] text-[#e8f0ee]">
                         Sistema Imobiliário
                       </p>
                     </div>
                   </div>
-                  <SidebarMenu onNavigate={() => setMobileMenuOpen(false)} tone="dark" />
-                  <div className="mt-3 border-t border-white/10 px-1 pt-3 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/35">
-                    Cordial Imóveis + Morar Imóveis
+                  <SidebarMenu
+                    allowedModules={sessionModules}
+                    onNavigate={() => setMobileMenuOpen(false)}
+                  />
+                  <div className="mt-2 shrink-0 border-t border-[#c8d8d4]/10 px-1.5 pt-2 text-[8px] font-semibold uppercase leading-3 tracking-[0.12em] text-[#91a29f]">
+                    Cordial Imóveis · Morar Imóveis
                   </div>
                 </SheetContent>
               </Sheet>
@@ -254,16 +330,18 @@ export function AppShell() {
       <nav
         className="bottom-nav-glass fixed left-1/2 z-40 flex h-16 w-[calc(100vw-1.5rem)] max-w-[26rem] -translate-x-1/2 items-center justify-around rounded-full px-2 lg:hidden"
         style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        aria-label="Navegação rápida"
       >
         {bottomNav.map((item) => {
-          const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+          const active = isModuleItemActive(pathname, item);
           const Icon = item.icon;
           return (
             <Link
               key={item.to}
               to={item.to as never}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors",
+                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
                 active ? "text-primary" : "text-foreground/45",
               )}
             >
