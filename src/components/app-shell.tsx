@@ -26,6 +26,20 @@ import {
   SIDEBAR_PREFERENCE_KEY,
 } from "@/lib/sidebar-preference";
 
+function SidebarBrand({ hideCopy = false }: { hideCopy?: boolean }) {
+  return (
+    <>
+      <div className="app-sidebar-brand-mark">
+        <BrandMark className="size-6" />
+      </div>
+      <div className="app-sidebar-brand-copy" aria-hidden={hideCopy}>
+        <span className="app-sidebar-brand-eyebrow">Gestão Cordial</span>
+        <p className="app-sidebar-brand-title">Sistema Imobiliário</p>
+      </div>
+    </>
+  );
+}
+
 export function AppShell() {
   useHydrateCorretores();
   const session = useSession();
@@ -80,6 +94,8 @@ export function AppShell() {
     }
   }, []);
 
+  const handleMobileNavigation = useCallback(() => setMobileMenuOpen(false), []);
+
   useEffect(() => {
     // Only redirect when Supabase itself confirms there is no session.
     // A missing profile row (transient DB error) must not log the user out.
@@ -127,35 +143,14 @@ export function AppShell() {
       {/* Sidebar desktop */}
       <aside
         id="app-primary-sidebar"
-        className="app-sidebar-shell sidebar-glass fixed z-40 hidden flex-col overflow-hidden rounded-[1.35rem] p-2 lg:flex"
+        className="app-sidebar-shell sidebar-glass fixed z-40 hidden flex-col overflow-hidden lg:flex"
         aria-label="Navegação lateral"
       >
-        <div
-          className={cn(
-            "relative mb-2 flex shrink-0 items-center px-1 py-0.5",
-            sidebarCollapsed ? "flex-col gap-1.5" : "gap-2",
-          )}
-        >
-          <div className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#b9dad3]/14 bg-[#bfded7]/8 shadow-[inset_0_1px_0_rgba(225,242,238,0.09)]">
-            <BrandMark className="size-6" />
-          </div>
-          <div
-            className={cn(
-              "app-sidebar-brand-copy min-w-0 flex-1",
-              sidebarCollapsed && "pointer-events-none absolute opacity-0",
-            )}
-            aria-hidden={sidebarCollapsed}
-          >
-            <span className="block truncate text-[8px] font-bold uppercase leading-3 tracking-[0.2em] text-[#9ad3c8]">
-              Gestão Cordial
-            </span>
-            <p className="truncate text-[12px] font-semibold leading-4 tracking-[-0.01em] text-[#e8f0ee]">
-              Sistema Imobiliário
-            </p>
-          </div>
+        <div className="app-sidebar-header" data-collapsed={sidebarCollapsed ? "true" : "false"}>
+          <SidebarBrand hideCopy={sidebarCollapsed} />
           <button
             type="button"
-            className="grid size-8 shrink-0 place-items-center rounded-[0.65rem] border border-[#c9ddd8]/10 bg-[#d3e4e0]/5 text-[#b8c8c5] outline-none transition-[background-color,border-color,color,transform] duration-150 hover:border-[#9ed5c9]/22 hover:bg-[#9ed5c9]/10 hover:text-[#e9f4f1] focus-visible:ring-2 focus-visible:ring-[#9bd9cd] focus-visible:ring-offset-1 focus-visible:ring-offset-[#2a373d] active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
+            className="app-sidebar-toggle"
             onClick={() => handleSidebarCollapsedChange(!sidebarCollapsed)}
             aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
             aria-controls="app-primary-sidebar"
@@ -172,13 +167,8 @@ export function AppShell() {
 
         <SidebarMenu allowedModules={sessionModules} collapsed={sidebarCollapsed} />
 
-        <div
-          className={cn(
-            "mt-2 shrink-0 border-t border-[#c8d8d4]/10 pt-2 text-[8px] font-semibold uppercase leading-3 tracking-[0.12em] text-[#91a29f]",
-            sidebarCollapsed ? "text-center" : "px-1.5",
-          )}
-        >
-          {sidebarCollapsed ? "CI · MI" : "Cordial Imóveis · Morar Imóveis"}
+        <div className="app-sidebar-footer">
+          {sidebarCollapsed ? "CI • MI" : "Cordial Imóveis • Morar Imóveis"}
         </div>
       </aside>
 
@@ -223,8 +213,8 @@ export function AppShell() {
                 <SheetContent
                   side="left"
                   closeLabel="Fechar navegação"
-                  overlayClassName="bg-[#152229]/55"
-                  className="app-sidebar-drawer sidebar-glass flex h-dvh !w-[min(82vw,var(--app-sidebar-mobile-width))] !max-w-none flex-col overflow-hidden border-[#bed6d1]/14 px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 text-[#edf5f3] lg:hidden [&>button]:right-2 [&>button]:top-2 [&>button]:text-[#b9c9c6] [&>button]:hover:bg-[#c7ddd8]/9 [&>button]:hover:text-[#edf5f3] [&>button]:focus-visible:ring-[#9bd9cd]"
+                  overlayClassName="!bg-[var(--app-sidebar-backdrop)]"
+                  className="app-sidebar-drawer sidebar-glass flex h-dvh !w-[min(82vw,var(--app-sidebar-mobile-width))] !max-w-none flex-col overflow-hidden lg:hidden"
                 >
                   <SheetHeader className="sr-only">
                     <SheetTitle>Navegação principal</SheetTitle>
@@ -232,26 +222,14 @@ export function AppShell() {
                       Acesse os módulos permitidos para o seu perfil.
                     </SheetDescription>
                   </SheetHeader>
-                  <div className="mb-3 flex shrink-0 items-center gap-2 px-1 pr-11">
-                    <div className="grid size-9 place-items-center overflow-hidden rounded-xl border border-[#b9dad3]/14 bg-[#bfded7]/8 shadow-[inset_0_1px_0_rgba(225,242,238,0.09)]">
-                      <BrandMark className="size-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="block truncate text-[8px] font-bold uppercase leading-3 tracking-[0.2em] text-[#9ad3c8]">
-                        Gestão Cordial
-                      </span>
-                      <p className="truncate text-[12px] font-semibold leading-4 tracking-[-0.01em] text-[#e8f0ee]">
-                        Sistema Imobiliário
-                      </p>
-                    </div>
+                  <div className="app-sidebar-mobile-brand">
+                    <SidebarBrand />
                   </div>
                   <SidebarMenu
                     allowedModules={sessionModules}
-                    onNavigate={() => setMobileMenuOpen(false)}
+                    onNavigate={handleMobileNavigation}
                   />
-                  <div className="mt-2 shrink-0 border-t border-[#c8d8d4]/10 px-1.5 pt-2 text-[8px] font-semibold uppercase leading-3 tracking-[0.12em] text-[#91a29f]">
-                    Cordial Imóveis · Morar Imóveis
-                  </div>
+                  <div className="app-sidebar-footer">Cordial Imóveis • Morar Imóveis</div>
                 </SheetContent>
               </Sheet>
               <NotificationBell />
