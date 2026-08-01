@@ -16,7 +16,6 @@ import {
   Settings,
   Star,
   UserCog,
-  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -99,18 +98,6 @@ export const moduleItems: ModuleItem[] = [
     },
   },
   {
-    to: "/clientes",
-    label: "Clientes",
-    shortLabel: "Clientes",
-    desc: "Cadastro e histórico",
-    icon: Users,
-    module: "clientes",
-    sidebar: {
-      section: "relacionamento",
-      order: 20,
-    },
-  },
-  {
     to: "/imoveis",
     label: "Imóveis",
     shortLabel: "Imóveis",
@@ -185,7 +172,7 @@ export const moduleItems: ModuleItem[] = [
     desc: "Locações e repasses",
     icon: KeyRound,
     module: "alugueis",
-    sidebar: { section: "relacionamento", order: 30 },
+    sidebar: { section: "relacionamento", order: 20 },
   },
   {
     to: "/vendas",
@@ -193,7 +180,7 @@ export const moduleItems: ModuleItem[] = [
     desc: "Funil e propostas",
     icon: BadgeDollarSign,
     module: "vendas",
-    sidebar: { section: "relacionamento", order: 40 },
+    sidebar: { section: "relacionamento", order: 30 },
   },
   {
     to: "/contratos",
@@ -203,7 +190,7 @@ export const moduleItems: ModuleItem[] = [
     module: "contratos",
     sidebar: {
       section: "relacionamento",
-      order: 50,
+      order: 40,
       desc: "Vendas e locações",
     },
   },
