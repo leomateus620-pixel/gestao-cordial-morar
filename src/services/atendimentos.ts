@@ -197,6 +197,7 @@ export function normalizeAtendimento(
         cliente?.preferenciaContato,
     ),
     origem: normalizeOrigem(raw.origem ?? raw.leadOrigin ?? cliente?.leadOrigin),
+    fonteProspeccao: normalizeFonteProspeccao(stringValue(raw.fonteProspeccao)),
     imobiliaria: normalizeImobiliaria(raw.imobiliaria ?? raw.brand ?? cliente?.brand),
     corretorId,
     corretorNome,
@@ -251,6 +252,7 @@ export function validateAtendimentoInput(
     errors.telefone = "Informe um telefone brasileiro válido.";
   }
   if (!input.origem) errors.origem = "Selecione a origem.";
+  if (!input.fonteProspeccao) errors.fonteProspeccao = "Selecione a fonte de prospecção.";
   if (!input.imobiliaria) errors.imobiliaria = "Selecione a imobiliária.";
   if (!input.finalidade) errors.finalidade = "Selecione a finalidade.";
   if (!input.tipoImovel) errors.tipoImovel = "Selecione o tipo de imóvel.";

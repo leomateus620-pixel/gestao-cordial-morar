@@ -49,6 +49,7 @@ export type AtendimentoFilters = {
   finalidade: "todos" | AtendimentoFinalidade;
   tipoImovel: "todos" | TipoImovelInteresse;
   origem: "todos" | OrigemLeadAtendimento;
+  fonteProspeccao: "todos" | FonteProspeccao | "nao_informado";
   corretor: "todos" | string;
   prioridade: "todos" | PrioridadeAtendimento;
   periodo: AtendimentoPeriodFilter;
@@ -59,6 +60,7 @@ export const defaultAtendimentoFilters: AtendimentoFilters = {
   finalidade: "todos",
   tipoImovel: "todos",
   origem: "todos",
+  fonteProspeccao: "todos",
   corretor: "todos",
   prioridade: "todos",
   periodo: "todos",
@@ -200,6 +202,13 @@ export function useAttendances(
         if (filters.finalidade !== "todos" && item.finalidade !== filters.finalidade) return false;
         if (filters.tipoImovel !== "todos" && item.tipoImovel !== filters.tipoImovel) return false;
         if (filters.origem !== "todos" && item.origem !== filters.origem) return false;
+        if (filters.fonteProspeccao === "nao_informado" && item.fonteProspeccao) return false;
+        if (
+          filters.fonteProspeccao !== "todos" &&
+          filters.fonteProspeccao !== "nao_informado" &&
+          item.fonteProspeccao !== filters.fonteProspeccao
+        )
+          return false;
         if (filters.prioridade !== "todos" && item.prioridade !== filters.prioridade) return false;
         if (filters.corretor !== "todos" && item.corretorId !== filters.corretor) return false;
         if (!matchesPeriod(item, filters.periodo)) return false;
