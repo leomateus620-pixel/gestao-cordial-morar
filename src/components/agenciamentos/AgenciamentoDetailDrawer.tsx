@@ -9,13 +9,31 @@ import {
   Home,
   MapPinned,
   Pencil,
+  Tags,
   Trash2,
   type LucideIcon,
   UserRound,
   Video,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -32,7 +50,11 @@ import {
   getChecklistCompletedCount,
   getChecklistCompletionPercent,
 } from "@/services/agenciamentos";
-import type { Agenciamento, AgenciamentoChecklist } from "@/types/agenciamento";
+import type {
+  Agenciamento,
+  AgenciamentoChecklist,
+  AgenciamentoFinalidade,
+} from "@/types/agenciamento";
 import { shortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +67,11 @@ type AgenciamentoDetailDrawerProps = {
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
   onDelete?: (agenciamento: Agenciamento) => void;
+  onReclassify?: (
+    agenciamento: Agenciamento,
+    finalidade: AgenciamentoFinalidade,
+  ) => Promise<boolean> | void;
+  isReclassifying?: boolean;
 };
 
 const checklistRows: Array<{
@@ -60,6 +87,9 @@ const checklistRows: Array<{
   { key: "validado", label: "Agenciamento validado", icon: BadgeCheck },
 ];
 
+const finalidadeLabel = (value?: AgenciamentoFinalidade) =>
+  value === "aluguel" ? "Aluguel" : value === "venda" ? "Venda" : "Sem classificação";
+
 export function AgenciamentoDetailDrawer({
   agenciamento,
   open,
@@ -69,14 +99,20 @@ export function AgenciamentoDetailDrawer({
   onEdit,
   onValidate,
   onDelete,
+  onReclassify,
+  isReclassifying,
 }: AgenciamentoDetailDrawerProps) {
+  const [pendingFinalidade, setPendingFinalidade] = useState<AgenciamentoFinalidade | null>(null);
   const progress = agenciamento ? getChecklistCompletionPercent(agenciamento.checklist) : 0;
   const completed = agenciamento ? getChecklistCompletedCount(agenciamento.checklist) : 0;
   const validated = Boolean(
     agenciamento?.checklist.validado || agenciamento?.status === "validado",
   );
 
+  const canReclassify = Boolean(onReclassify && canEdit);
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -143,6 +179,39 @@ export function AgenciamentoDetailDrawer({
                 </TabsList>
 
                 <TabsContent value="desempenho" className="mt-4 space-y-3">
+                  <Panel title="Classificação comercial" icon={Tags}>
+                    <div className="rounded-2xl bg-white/[0.62] px-3 py-3 ring-1 ring-white/70">
+                      <p className="text-xs font-medium text-foreground/48">
+                        Trilha atual: {finalidadeLabel(agenciamento.finalidade)}
+                      </p>
+                      <Select
+                        value={agenciamento.finalidade ?? ""}
+                        disabled={!canReclassify || isReclassifying}
+                        onValueChange={(value) => {
+                          const next = value as AgenciamentoFinalidade;
+                          if (next === agenciamento.finalidade) return;
+                          setPendingFinalidade(next);
+                        }}
+                      >
+                        <SelectTrigger
+                          aria-label="Classificação Venda ou Aluguel"
+                          className="mt-2 h-10 rounded-xl bg-white/80"
+                        >
+                          <SelectValue placeholder="Selecione Venda ou Aluguel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="venda">Venda</SelectItem>
+                          <SelectItem value="aluguel">Aluguel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-2 text-[11px] leading-relaxed text-foreground/50">
+                        {canReclassify
+                          ? "Você pode trocar entre Venda e Aluguel quando quiser. As bonificações são recalculadas na hora."
+                          : "Seu perfil não permite alterar a classificação deste agenciamento."}
+                      </p>
+                    </div>
+                  </Panel>
+
                   <Panel title="Dados do imóvel" icon={Home}>
                     <MetricRow
                       label="Tipo"
@@ -296,8 +365,49 @@ export function AgenciamentoDetailDrawer({
         )}
       </SheetContent>
     </Sheet>
+
+    <AlertDialog
+      open={pendingFinalidade !== null}
+      onOpenChange={(next) => {
+        if (!next && !isReclassifying) setPendingFinalidade(null);
+      }}
+    >
+      <AlertDialogContent className="w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-border bg-background p-5 shadow-2xl sm:p-6">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lg font-extrabold tracking-tight">
+            Alterar a trilha desta captação?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="leading-relaxed text-muted-foreground">
+            A classificação mudará de <strong>{finalidadeLabel(agenciamento?.finalidade)}</strong>{" "}
+            para <strong>{finalidadeLabel(pendingFinalidade ?? undefined)}</strong>. As bonificações
+            e os indicadores das duas trilhas serão recalculados imediatamente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isReclassifying} className="h-10 rounded-xl shadow-none">
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isReclassifying}
+            className="h-10 rounded-xl"
+            onClick={(event) => {
+              event.preventDefault();
+              if (!agenciamento || !pendingFinalidade || !onReclassify) return;
+              const next = pendingFinalidade;
+              void Promise.resolve(onReclassify(agenciamento, next)).finally(() =>
+                setPendingFinalidade(null),
+              );
+            }}
+          >
+            {isReclassifying ? "Salvando..." : "Confirmar mudança"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
+
 
 function MiniStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (

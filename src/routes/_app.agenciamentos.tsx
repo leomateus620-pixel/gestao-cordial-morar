@@ -41,6 +41,7 @@ import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
 import type {
   Agenciamento,
+  AgenciamentoFinalidade,
   AgenciamentoInput,
   AgenciamentoPeriodFilter,
   AgenciamentoStatusFilter,
@@ -272,13 +273,18 @@ function Page() {
       if (editingAgenciamento) {
         try {
           const updated = await updateAgenciamento(editingAgenciamento.id, input);
+          const trackChanged =
+            Boolean(input.finalidade) && input.finalidade !== editingAgenciamento.finalidade;
           showFeedback(
             updated
-              ? "Agenciamento atualizado com sucesso."
+              ? trackChanged
+                ? `Agenciamento movido para ${input.finalidade === "aluguel" ? "Aluguel" : "Venda"}.`
+                : "Agenciamento atualizado com sucesso."
               : "Não foi possível editar este agenciamento.",
             updated ? "success" : "error",
           );
           if (updated) {
+            if (trackChanged && input.finalidade) handleTrackChange(input.finalidade);
             setSelectedAgenciamento(null);
             setEditingAgenciamento(null);
           }
@@ -293,6 +299,7 @@ function Page() {
           return false;
         }
       }
+
 
       try {
         const id = await createAgenciamento(input);
@@ -311,8 +318,50 @@ function Page() {
         return false;
       }
     },
-    [createAgenciamento, editingAgenciamento, showFeedback, updateAgenciamento],
+    [
+      createAgenciamento,
+      editingAgenciamento,
+      handleTrackChange,
+      showFeedback,
+      updateAgenciamento,
+    ],
   );
+
+  const [reclassifying, setReclassifying] = useState(false);
+
+  const handleReclassify = useCallback(
+    async (agenciamento: Agenciamento, finalidade: AgenciamentoFinalidade) => {
+      if (finalidade === agenciamento.finalidade) return false;
+      setReclassifying(true);
+      try {
+        const updated = await updateAgenciamento(agenciamento.id, { finalidade });
+        if (updated) {
+          setSelectedAgenciamento((current) =>
+            current && current.id === agenciamento.id ? { ...current, finalidade } : current,
+          );
+          handleTrackChange(finalidade);
+          showFeedback(
+            `Agenciamento movido para ${finalidade === "aluguel" ? "Aluguel" : "Venda"}.`,
+          );
+        } else {
+          showFeedback("Não foi possível alterar a classificação.", "error");
+        }
+        return Boolean(updated);
+      } catch (caughtError) {
+        showFeedback(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Ocorreu um erro ao alterar a classificação.",
+          "error",
+        );
+        return false;
+      } finally {
+        setReclassifying(false);
+      }
+    },
+    [handleTrackChange, showFeedback, updateAgenciamento],
+  );
+
 
   const handleValidate = useCallback(
     async (agenciamento: Agenciamento) => {
@@ -442,25 +491,40 @@ function Page() {
           counts={trackCounts}
         />
 
-        {unclassifiedAgenciamentos.length > 0 && (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 sm:flex sm:justify-between">
-            <p className="min-w-0 text-sm font-semibold">
-              {unclassifiedAgenciamentos.length} agenciamento
-              {unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou
-              Aluguel.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 shrink-0 rounded-xl border-amber-500/30 bg-white/70 text-amber-900 shadow-none"
-              onClick={() =>
-                setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
-              }
-            >
-              {showingUnclassified ? "Voltar à trilha" : "Revisar agora"}
-            </Button>
-          </div>
-        )}
+        <div
+          className={cn(
+            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-4 py-3 sm:flex sm:justify-between",
+            unclassifiedAgenciamentos.length > 0
+              ? "border-amber-500/25 bg-amber-500/10 text-amber-900"
+              : "border-border/60 bg-white/60 text-foreground/70",
+          )}
+        >
+          <p className="min-w-0 text-sm font-semibold">
+            {unclassifiedAgenciamentos.length > 0
+              ? `${unclassifiedAgenciamentos.length} agenciamento${unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou Aluguel.`
+              : "Todos os agenciamentos estão classificados. Você pode revisar e trocar a classificação quando quiser."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              "h-9 shrink-0 rounded-xl bg-white/70 shadow-none",
+              unclassifiedAgenciamentos.length > 0
+                ? "border-amber-500/30 text-amber-900"
+                : "border-border/60",
+            )}
+            onClick={() =>
+              setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
+            }
+          >
+            {showingUnclassified
+              ? "Voltar à trilha"
+              : unclassifiedAgenciamentos.length > 0
+                ? "Revisar agora"
+                : "Ver sem classificação"}
+          </Button>
+        </div>
+
 
         <AgenciamentoBonusPanel
           track={track}
@@ -606,6 +670,8 @@ function Page() {
         onEdit={openEdit}
         onValidate={handleValidate}
         onDelete={requestDelete}
+        onReclassify={handleReclassify}
+        isReclassifying={reclassifying}
       />
 
       <AlertDialog
