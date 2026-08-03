@@ -31,11 +31,11 @@ const base: Atendimento = {
   atualizadoEm: "2026-08-03T13:12:00.000Z",
 };
 
-test("mensagem completa inclui corretor e campos preenchidos", () => {
+test("mensagem completa é natural e cita corretor, interesse e próximo passo", () => {
   const msg = buildHandoffMessage(
     {
       ...base,
-      corretorNome: "Pablo Souza",
+      corretorNome: "Leonardo Braga",
       email: "maria@ex.com",
       dormitorios: "2",
       bairroInteresse: "Centro",
@@ -47,28 +47,38 @@ test("mensagem completa inclui corretor e campos preenchidos", () => {
       proximoRetorno: "2026-08-05T17:00:00.000Z",
       observacoes: "Prefere contato após as 18h",
     },
-    "Bianca",
+    "Bianca Regina",
   );
-  assertContains(msg, "Novo atendimento — Maria Silva");
-  assertContains(msg, "Corretor responsável: Pablo Souza");
-  assertContains(msg, "Origem: Instagram");
-  assertContains(msg, "Interesse: Compra • Apartamento • 2 dormitórios");
-  assertContains(msg, "Bairro: Centro");
-  assertContains(msg, "Imóvel: AP-1042 — Residencial Bela Vista");
-  assertContains(msg, "Prioridade: Alta");
-  assertContains(msg, "Agendar visita");
-  assertContains(msg, "Obs.: Prefere contato após as 18h");
-  assertContains(msg, "Cadastrado por Bianca");
+  assertContains(msg, "Oi, Leonardo! Tem um novo atendimento vinculado a você.");
+  assertContains(msg, "Bianca acabou de falar com Maria Silva");
+  assertContains(msg, "chegou pelo Instagram");
+  assertContains(msg, "2 dormitórios");
+  assertContains(msg, "no bairro Centro");
+  assertContains(msg, "O imóvel de referência é o AP-1042 — Residencial Bela Vista.");
+  assertContains(msg, "(54) 99999-0000");
+  assertContains(msg, "prioridade desse atendimento é alta");
+  assertContains(msg, "O próximo passo é agendar visita");
+  assertContains(msg, "Observação: Prefere contato após as 18h");
 });
 
-test("mensagem mínima omite linhas sem dados", () => {
+test("não inclui e-mail do cliente nem assinatura de cadastro", () => {
+  const msg = buildHandoffMessage(
+    { ...base, corretorNome: "Leonardo", email: "maria@ex.com" },
+    "Bianca",
+  );
+  assertNotContains(msg, "maria@ex.com");
+  assertNotContains(msg, "Cadastrado por");
+  assertNotContains(msg, "E-mail:");
+});
+
+test("mensagem mínima omite blocos sem dados", () => {
   const msg = buildHandoffMessage(base);
-  assertContains(msg, "Corretor responsável: a definir");
-  assertNotContains(msg, "Bairro:");
-  assertNotContains(msg, "Orçamento:");
-  assertNotContains(msg, "Imóvel:");
-  assertNotContains(msg, "Obs.:");
-  assertNotContains(msg, "Próximo passo:");
+  assertContains(msg, "corretor a definir");
+  assertNotContains(msg, "bairro");
+  assertNotContains(msg, "orçamento");
+  assertNotContains(msg, "imóvel de referência");
+  assertNotContains(msg, "Observação:");
+  assertNotContains(msg, "próximo passo");
 });
 
 test("orçamento parcial e trilha de aluguel", () => {
@@ -79,6 +89,7 @@ test("orçamento parcial e trilha de aluguel", () => {
     orcamentoMax: 2500,
     corretorNome: "Felipe",
   });
-  assertContains(msg, "Interesse: Aluguel • Casa");
-  assertMatches(msg, /Orçamento: até R\$/);
+  assertContains(msg, "Oi, Felipe!");
+  assertContains(msg, "para aluguel");
+  assertMatches(msg, /orçamento de até R\$/);
 });

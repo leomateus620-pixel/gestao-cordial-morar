@@ -46,15 +46,15 @@ function contactChannelLabel(atendimento: Atendimento): string | null {
   }
 }
 
-function budgetLine(atendimento: Atendimento): string | null {
+function budgetPhrase(atendimento: Atendimento): string | null {
   const { orcamentoMin: min, orcamentoMax: max } = atendimento;
-  if (min && max) return `${brl(min)} a ${brl(max)}`;
-  if (max) return `até ${brl(max)}`;
-  if (min) return `a partir de ${brl(min)}`;
+  if (min && max) return `com orçamento entre ${brl(min)} e ${brl(max)}`;
+  if (max) return `com orçamento de até ${brl(max)}`;
+  if (min) return `com orçamento a partir de ${brl(min)}`;
   return null;
 }
 
-function propertyLine(atendimento: Atendimento): string | null {
+function propertyLabel(atendimento: Atendimento): string | null {
   const parts = [
     atendimento.imovelCodigo ?? atendimento.imovel?.codigo,
     atendimento.imovelDescricao ?? atendimento.imovel?.titulo ?? atendimento.interesseDescricao,
@@ -63,73 +63,92 @@ function propertyLine(atendimento: Atendimento): string | null {
   return parts.join(" — ");
 }
 
-function interestLine(atendimento: Atendimento): string {
-  const parts = [
-    atendimentoFinalidadeLabel(atendimento.finalidade),
-    atendimentoTipoImovelLabel(atendimento.tipoImovel),
-  ];
-  if (atendimento.dormitorios && atendimento.dormitorios !== "nao_aplica") {
-    parts.push(`${atendimentoDormitoriosLabel(atendimento.dormitorios)} dormitórios`);
-  }
-  return parts.join(" • ");
+function firstName(value?: string | null): string | null {
+  const name = value?.trim();
+  if (!name) return null;
+  return name.split(/\s+/)[0] ?? null;
 }
 
-function nextStepLine(atendimento: Atendimento): string | null {
-  const hasStep = Boolean(atendimento.proximoPasso);
-  const when = formatDateTime(atendimento.proximoRetorno);
-  if (!hasStep && !when) return null;
-  const label = hasStep ? atendimentoProximoPassoLabel(atendimento.proximoPasso) : "Retorno";
-  return when ? `${label} — ${when}` : label;
+function lower(value: string): string {
+  return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+function interestPhrase(atendimento: Atendimento): string {
+  const tipo = lower(atendimentoTipoImovelLabel(atendimento.tipoImovel));
+  const finalidade = lower(atendimentoFinalidadeLabel(atendimento.finalidade));
+  const dorms =
+    atendimento.dormitorios && atendimento.dormitorios !== "nao_aplica"
+      ? ` de ${atendimentoDormitoriosLabel(atendimento.dormitorios)} dormitórios`
+      : "";
+  return `procura ${tipo === "apartamento" ? "um" : "uma"} ${tipo}${dorms} para ${finalidade}`;
 }
 
 /**
- * Monta a mensagem pronta de repasse do atendimento para o corretor.
- * Somente campos preenchidos entram no texto — nada de "não informado".
+ * Monta a mensagem pronta de repasse do atendimento para o corretor,
+ * em linguagem natural. Somente informações preenchidas entram no texto.
  */
 export function buildHandoffMessage(atendimento: Atendimento, autorNome?: string): string {
-  const lines: string[] = [];
-  lines.push(`Novo atendimento — ${atendimento.clienteNome}`);
-  lines.push(`Corretor responsável: ${atendimento.corretorNome?.trim() || "a definir"}`);
-  lines.push("");
+  const paragraphs: string[] = [];
+
+  const corretor = firstName(atendimento.corretorNome);
+  paragraphs.push(
+    corretor
+      ? `Oi, ${corretor}! Tem um novo atendimento vinculado a você.`
+      : "Oi! Tem um novo atendimento vinculado a você (corretor a definir).",
+  );
+
+  // Resumo do interesse
+  const autor = firstName(autorNome);
+  const cliente = atendimento.clienteNome.trim();
+  const origem = atendimentoOrigemLabel(atendimento.origem);
+
+  const resumo: string[] = [];
+  resumo.push(
+    autor
+      ? `${autor} acabou de falar com ${cliente}`
+      : `Acabamos de registrar o atendimento de ${cliente}`,
+  );
+
+  const detalhes: string[] = [];
+  if (origem) detalhes.push(`chegou pelo ${origem}`);
+  detalhes.push(interestPhrase(atendimento));
+  if (atendimento.bairroInteresse?.trim()) {
+    detalhes.push(`no bairro ${atendimento.bairroInteresse.trim()}`);
+  }
+  const budget = budgetPhrase(atendimento);
+  if (budget) detalhes.push(budget);
+  paragraphs.push(`${resumo[0]}, que ${detalhes.join(", ")}.`);
+
+  // Imóvel, contato, prioridade e próximo passo
+  const bloco: string[] = [];
+  const property = propertyLabel(atendimento);
+  if (property) bloco.push(`O imóvel de referência é o ${property}.`);
 
   const phone = formatPhone(atendimento.telefone);
   const channel = contactChannelLabel(atendimento);
-  if (phone) lines.push(`Contato: ${phone}${channel ? ` (${channel})` : ""}`);
-  else if (atendimento.email) lines.push(`Contato: ${atendimento.email}`);
-  if (phone && atendimento.email) lines.push(`E-mail: ${atendimento.email}`);
-
-  lines.push(`Origem: ${atendimentoOrigemLabel(atendimento.origem)}`);
-  lines.push(`Interesse: ${interestLine(atendimento)}`);
-
-  if (atendimento.bairroInteresse?.trim()) {
-    lines.push(`Bairro: ${atendimento.bairroInteresse.trim()}`);
-  }
-
-  const budget = budgetLine(atendimento);
-  if (budget) lines.push(`Orçamento: ${budget}`);
-
-  const property = propertyLine(atendimento);
-  if (property) lines.push(`Imóvel: ${property}`);
-
-  lines.push(`Prioridade: ${atendimentoPrioridadeLabel(atendimento.prioridade)}`);
-
-  const nextStep = nextStepLine(atendimento);
-  if (nextStep) lines.push(`Próximo passo: ${nextStep}`);
-
-  const notes = atendimento.observacoes?.trim() || atendimento.historicoInicial?.trim();
-  if (notes) lines.push(`Obs.: ${notes}`);
-
-  const createdAt = new Date(atendimento.criadoEm);
-  if (!Number.isNaN(createdAt.getTime())) {
-    const date = createdAt.toLocaleDateString("pt-BR");
-    const time = createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    lines.push("");
-    lines.push(
-      autorNome?.trim()
-        ? `Cadastrado por ${autorNome.trim()} em ${date} às ${time}`
-        : `Cadastrado em ${date} às ${time}`,
+  if (phone) {
+    bloco.push(
+      channel && channel !== "e-mail"
+        ? `O contato preferido é por ${channel}: ${phone}.`
+        : `O telefone de contato é ${phone}.`,
     );
   }
 
-  return lines.join("\n");
+  bloco.push(`A prioridade desse atendimento é ${lower(atendimentoPrioridadeLabel(atendimento.prioridade))}.`);
+
+  const when = formatDateTime(atendimento.proximoRetorno);
+  if (atendimento.proximoPasso) {
+    const passo = lower(atendimentoProximoPassoLabel(atendimento.proximoPasso));
+    bloco.push(when ? `O próximo passo é ${passo}, em ${when}.` : `O próximo passo é ${passo}.`);
+  } else if (when) {
+    bloco.push(`O retorno está previsto para ${when}.`);
+  }
+  paragraphs.push(bloco.join(" "));
+
+  const notes = atendimento.observacoes?.trim() || atendimento.historicoInicial?.trim();
+  if (notes) paragraphs.push(`Observação: ${notes}`);
+
+  paragraphs.push("Qualquer dúvida é só chamar. Bom atendimento!");
+
+  return paragraphs.join("\n\n");
 }
