@@ -317,8 +317,50 @@ function Page() {
         return false;
       }
     },
-    [createAgenciamento, editingAgenciamento, showFeedback, updateAgenciamento],
+    [
+      createAgenciamento,
+      editingAgenciamento,
+      handleTrackChange,
+      showFeedback,
+      updateAgenciamento,
+    ],
   );
+
+  const [reclassifying, setReclassifying] = useState(false);
+
+  const handleReclassify = useCallback(
+    async (agenciamento: Agenciamento, finalidade: AgenciamentoFinalidade) => {
+      if (finalidade === agenciamento.finalidade) return false;
+      setReclassifying(true);
+      try {
+        const updated = await updateAgenciamento(agenciamento.id, { finalidade });
+        if (updated) {
+          setSelectedAgenciamento((current) =>
+            current && current.id === agenciamento.id ? { ...current, finalidade } : current,
+          );
+          handleTrackChange(finalidade);
+          showFeedback(
+            `Agenciamento movido para ${finalidade === "aluguel" ? "Aluguel" : "Venda"}.`,
+          );
+        } else {
+          showFeedback("Não foi possível alterar a classificação.", "error");
+        }
+        return Boolean(updated);
+      } catch (caughtError) {
+        showFeedback(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Ocorreu um erro ao alterar a classificação.",
+          "error",
+        );
+        return false;
+      } finally {
+        setReclassifying(false);
+      }
+    },
+    [handleTrackChange, showFeedback, updateAgenciamento],
+  );
+
 
   const handleValidate = useCallback(
     async (agenciamento: Agenciamento) => {
