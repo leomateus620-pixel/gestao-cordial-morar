@@ -107,6 +107,7 @@ function Page() {
     setSelectedStage("primeiro_contato");
   };
   const [open, setOpen] = useState(false);
+  const [handoffAtendimento, setHandoffAtendimento] = useState<Atendimento | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(() => ({
     ...defaultAtendimentoFilters,
