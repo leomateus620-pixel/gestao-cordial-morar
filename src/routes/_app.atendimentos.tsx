@@ -29,6 +29,7 @@ import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { addAttendanceNote } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import {
+  canDeleteAttendance,
   canManageAttendanceAssignments,
   canManageAttendanceTerminalState,
   canSeeAttendanceHandoffMessage,
