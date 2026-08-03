@@ -26,6 +26,7 @@ import {
   type AtendimentoCreateInput,
   type AtendimentoFinalidade,
   type AtendimentoStatus,
+  type FonteProspeccao,
   type OrigemLeadAtendimento,
   type PipelineStage,
   type PrioridadeAtendimento,

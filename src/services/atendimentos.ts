@@ -6,6 +6,7 @@ import {
   atendimentoProximoPassoLabel,
   atendimentoStatusLabel,
   atendimentoTipoImovelLabel,
+  normalizeFonteProspeccao,
   pipelineStageLabel,
   statusToPipelineStage,
   type Atendimento,
