@@ -331,8 +331,49 @@ export function AgenciamentoDetailDrawer({
         )}
       </SheetContent>
     </Sheet>
+
+    <AlertDialog
+      open={pendingFinalidade !== null}
+      onOpenChange={(next) => {
+        if (!next && !isReclassifying) setPendingFinalidade(null);
+      }}
+    >
+      <AlertDialogContent className="w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-border bg-background p-5 shadow-2xl sm:p-6">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lg font-extrabold tracking-tight">
+            Alterar a trilha desta captação?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="leading-relaxed text-muted-foreground">
+            A classificação mudará de <strong>{finalidadeLabel(agenciamento?.finalidade)}</strong>{" "}
+            para <strong>{finalidadeLabel(pendingFinalidade ?? undefined)}</strong>. As bonificações
+            e os indicadores das duas trilhas serão recalculados imediatamente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isReclassifying} className="h-10 rounded-xl shadow-none">
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isReclassifying}
+            className="h-10 rounded-xl"
+            onClick={(event) => {
+              event.preventDefault();
+              if (!agenciamento || !pendingFinalidade || !onReclassify) return;
+              const next = pendingFinalidade;
+              void Promise.resolve(onReclassify(agenciamento, next)).finally(() =>
+                setPendingFinalidade(null),
+              );
+            }}
+          >
+            {isReclassifying ? "Salvando..." : "Confirmar mudança"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
+
 
 function MiniStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
