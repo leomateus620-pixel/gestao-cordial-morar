@@ -324,6 +324,21 @@ export function AtendimentoFormModal({
   }
 
   const hasErrors = Object.keys(validation).length > 0;
+  const showDelete = Boolean(initialValue && canDelete && onDelete);
+
+  async function handleDelete() {
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+      setConfirmDeleteOpen(false);
+    } catch {
+      // erro tratado pelo caller (toast); mantém o modal aberto.
+    } finally {
+      setDeleting(false);
+    }
+  }
+
 
   return createPortal(
     <div
