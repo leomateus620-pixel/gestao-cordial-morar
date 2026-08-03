@@ -522,8 +522,15 @@ export function canEditAgenciamento(
   if (!user) return false;
   if (user.perfil === "admin_owner" || user.perfil === "secretaria") return true;
   if (user.perfil !== "corretor") return false;
-  return item.corretorId === corretorId && item.status !== "validado" && !item.checklist.validado;
+  // Ownership is decided by the real auth id stored on the record. The
+  // name/initials based `corretorId` is only a secondary hint.
+  return (
+    item.corretorId === user.id ||
+    item.criadoPorId === user.id ||
+    (Boolean(corretorId) && item.corretorId === corretorId)
+  );
 }
+
 
 export function getAgenciamentosVisibleToUser(
   agenciamentos: Agenciamento[],
