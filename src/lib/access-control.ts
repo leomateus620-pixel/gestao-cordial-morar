@@ -2,7 +2,8 @@
 // so we do not scatter session.perfil === "admin_owner" across the codebase.
 
 import type { MockUser } from "@/lib/auth-mock";
-import { roleDefinitions, type AppModule, type UserProfile } from "@/lib/mock/permissions";
+// Import relativo para permitir execução direta em `node --test`.
+import { roleDefinitions, type AppModule, type UserProfile } from "./mock/permissions.ts";
 
 type SessionLike = Pick<MockUser, "perfil" | "modules"> | null | undefined;
 
