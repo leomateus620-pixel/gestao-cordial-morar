@@ -38,6 +38,14 @@ export function canSeeNotificationMetrics(session: SessionLike): boolean {
   return session?.perfil === "admin_owner" || session?.perfil === "secretaria";
 }
 
+/**
+ * Mensagem pronta de repasse exibida ao concluir o cadastro de um atendimento.
+ * Exclusiva do perfil secretária (fluxo operacional da Bianca).
+ */
+export function canSeeAttendanceHandoffMessage(session: SessionLike): boolean {
+  return session?.perfil === "secretaria";
+}
+
 export function canManageAttendanceTerminalState(session: SessionLike): boolean {
   return (
     session?.perfil === "admin_owner" ||
