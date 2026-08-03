@@ -418,6 +418,7 @@ function Page() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao atualizar atendimento.");
       throw error;
+    }
   }
 
   async function deleteEditedAtendimento() {
@@ -433,7 +434,6 @@ function Page() {
     }
   }
 
-  }
 
   async function registerProposal(atendimento: Atendimento) {
     try {
