@@ -105,9 +105,10 @@ export function buildHandoffMessage(atendimento: Atendimento, autorNome?: string
   const resumo: string[] = [];
   resumo.push(
     autor
-      ? `${autor === "Bianca" ? "A" : ""} ${autor} acabou de falar com ${cliente}`.trim()
+      ? `${autor} acabou de falar com ${cliente}`
       : `Acabamos de registrar o atendimento de ${cliente}`,
   );
+
   const detalhes: string[] = [];
   if (origem) detalhes.push(`chegou pelo ${origem}`);
   detalhes.push(interestPhrase(atendimento));
