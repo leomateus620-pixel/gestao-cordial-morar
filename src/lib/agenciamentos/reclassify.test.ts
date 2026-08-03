@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import test from "node:test";
 import { filterByTrack, getUnclassifiedAgenciamentos, matchesTrack } from "./track";
 import { canEditAgenciamento } from "../../services/agenciamentos";
 import type { Agenciamento } from "../../types/agenciamento";
