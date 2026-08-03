@@ -17,7 +17,11 @@ import type {
   ProximoPassoAtendimento,
   TipoImovelInteresse,
 } from "@/types/atendimento";
-import { attendanceEventLabel, statusToPipelineStage } from "@/types/atendimento";
+import {
+  attendanceEventLabel,
+  normalizeFonteProspeccao,
+  statusToPipelineStage,
+} from "@/types/atendimento";
 import { mapCanonicalPropertyFields } from "@/lib/attendances/attendance-field-mapping";
 
 type DbRow = {
@@ -30,6 +34,7 @@ type DbRow = {
   email: string | null;
   contato_preferencial: string;
   origem: string;
+  fonte_prospeccao?: string | null;
   finalidade: string;
   tipo_imovel: string;
   dormitorios: string | null;
@@ -65,7 +70,7 @@ type DbRow = {
 // Timing columns are intentionally absent. They are only available through
 // management RPCs, never through the general attendance data path.
 const ATTENDANCE_SAFE_COLUMNS =
-  "id,created_by,imobiliaria,cliente_id,cliente_nome,telefone,email,contato_preferencial,origem,finalidade,tipo_imovel,dormitorios,bairro_interesse,orcamento_min,orcamento_max,imovel_id,imovel_ref,imovel_codigo,imovel_descricao,imovel_endereco,imovel_bairro,imovel_cidade,imovel_tipo,imovel_valor,interesse_descricao,corretor_id,corretor_nome,prioridade,status,pipeline_stage,proximo_retorno,proximo_passo,observacoes,historico_inicial,motivo_perda,convertido_em_cliente,cliente_convertido_id,created_at,updated_at";
+  "id,created_by,imobiliaria,cliente_id,cliente_nome,telefone,email,contato_preferencial,origem,fonte_prospeccao,finalidade,tipo_imovel,dormitorios,bairro_interesse,orcamento_min,orcamento_max,imovel_id,imovel_ref,imovel_codigo,imovel_descricao,imovel_endereco,imovel_bairro,imovel_cidade,imovel_tipo,imovel_valor,interesse_descricao,corretor_id,corretor_nome,prioridade,status,pipeline_stage,proximo_retorno,proximo_passo,observacoes,historico_inicial,motivo_perda,convertido_em_cliente,cliente_convertido_id,created_at,updated_at";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const asUuid = (v?: string | null) => (v && UUID_RE.test(v) ? v : null);
@@ -98,6 +103,7 @@ function rowToAtendimento(
     email: orUndef(row.email) ?? undefined,
     contatoPreferencial: row.contato_preferencial as ContatoPreferencialAtendimento,
     origem: row.origem as OrigemLeadAtendimento,
+    fonteProspeccao: normalizeFonteProspeccao(row.fonte_prospeccao),
     imobiliaria: row.imobiliaria as ImobiliariaAtendimento,
     corretorId: orUndef(row.corretor_id) ?? undefined,
     corretorNome: orUndef(row.corretor_nome) ?? undefined,
@@ -182,6 +188,7 @@ function inputToPayload(
     email: orNull(input.email),
     contato_preferencial: input.contatoPreferencial,
     origem: input.origem,
+    fonte_prospeccao: normalizeFonteProspeccao(input.fonteProspeccao) ?? null,
     finalidade: input.finalidade,
     tipo_imovel: input.tipoImovel,
     dormitorios: orNull(input.dormitorios),
@@ -428,6 +435,8 @@ export const updateAttendance = createServerFn({ method: "POST" })
     if (p.email !== undefined) patch.email = orNull(p.email);
     if (p.contatoPreferencial !== undefined) patch.contato_preferencial = p.contatoPreferencial;
     if (p.origem !== undefined) patch.origem = p.origem;
+    if (p.fonteProspeccao !== undefined)
+      patch.fonte_prospeccao = normalizeFonteProspeccao(p.fonteProspeccao) ?? null;
     if (p.imobiliaria !== undefined) patch.imobiliaria = p.imobiliaria;
     if (p.finalidade !== undefined) patch.finalidade = p.finalidade;
     if (p.tipoImovel !== undefined) patch.tipo_imovel = p.tipoImovel;

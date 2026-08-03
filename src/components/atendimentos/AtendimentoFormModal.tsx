@@ -16,6 +16,7 @@ import {
   atendimentoDormitoriosOptions,
   atendimentoFinalidadeOptions,
   atendimentoImobiliariaOptions,
+  atendimentoFonteProspeccaoOptions,
   atendimentoOrigemOptions,
   atendimentoPrioridadeOptions,
   atendimentoProximoPassoOptions,
@@ -26,6 +27,7 @@ import {
   type AtendimentoCreateInput,
   type AtendimentoFinalidade,
   type AtendimentoStatus,
+  type FonteProspeccao,
   type ContatoPreferencialAtendimento,
   type DormitoriosAtendimento,
   type ImobiliariaAtendimento,
@@ -45,6 +47,7 @@ type FormState = {
   email: string;
   contatoPreferencial: ContatoPreferencialAtendimento;
   origem: OrigemLeadAtendimento;
+  fonteProspeccao: "" | FonteProspeccao;
   imobiliaria: ImobiliariaAtendimento;
   corretorId: string;
   prioridade: PrioridadeAtendimento;
@@ -75,6 +78,7 @@ const initialForm: FormState = {
   email: "",
   contatoPreferencial: "whatsapp",
   origem: "whatsapp",
+  fonteProspeccao: "",
   imobiliaria: "cordial",
   corretorId: "a_definir",
   prioridade: "media",
@@ -257,6 +261,7 @@ export function AtendimentoFormModal({
       email: optional(form.email),
       contatoPreferencial: form.contatoPreferencial,
       origem: form.origem,
+      fonteProspeccao: form.fonteProspeccao || undefined,
       imobiliaria: form.imobiliaria,
       corretorId: optional(form.corretorId),
       corretorNome: form.corretorId === "a_definir" ? undefined : broker?.label,
@@ -457,6 +462,38 @@ export function AtendimentoFormModal({
                   />
                 </Field>
               </div>
+
+              <Field
+                label="Fonte de prospecção"
+                error={validation.fonteProspeccao}
+                hint={
+                  atendimentoFonteProspeccaoOptions.find(
+                    (option) => option.value === form.fonteProspeccao,
+                  )?.description ?? "Defina quem originou este cliente."
+                }
+              >
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {atendimentoFonteProspeccaoOptions.map((option) => {
+                    const active = form.fonteProspeccao === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => update("fonteProspeccao", option.value)}
+                        className={cn(
+                          "rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition",
+                          active
+                            ? "border-teal-700/45 bg-teal-700/10 text-teal-900 ring-4 ring-teal-700/10"
+                            : "border-white/65 bg-white/72 text-foreground/70 hover:bg-white",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
             </FormSection>
 
             <FormSection
@@ -782,7 +819,17 @@ function FormSection({
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({
+  label,
+  error,
+  hint,
+  children,
+}: {
+  label: string;
+  error?: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="block">
       <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/52">
@@ -790,9 +837,11 @@ function Field({ label, error, children }: { label: string; error?: string; chil
         {error && <span className="normal-case tracking-normal text-destructive">{error}</span>}
       </span>
       <div className="mt-1.5">{children}</div>
+      {hint && <span className="mt-1 block text-[11px] text-foreground/50">{hint}</span>}
     </label>
   );
 }
+
 
 function TypedSelect<T extends string>({
   value,
@@ -835,6 +884,7 @@ function formFromAtendimento(value?: Atendimento | null): FormState {
     email: value.email ?? "",
     contatoPreferencial: value.contatoPreferencial,
     origem: value.origem,
+    fonteProspeccao: value.fonteProspeccao ?? "",
     imobiliaria: value.imobiliaria,
     corretorId: value.corretorId ?? "a_definir",
     prioridade: value.prioridade,

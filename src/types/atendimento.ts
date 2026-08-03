@@ -99,6 +99,10 @@ export type OrigemLeadAtendimento =
 
 export type PrioridadeAtendimento = "baixa" | "media" | "alta" | "urgente";
 
+/** Fonte de prospecção normalizada: quem originou o cliente. */
+export type FonteProspeccao = "lead_imobiliaria" | "cliente_particular_corretor";
+
+
 export type ImobiliariaAtendimento = "cordial" | "morar" | "ambas";
 
 export type ProximoPassoAtendimento =
@@ -186,6 +190,9 @@ export interface Atendimento {
   email?: string;
   contatoPreferencial: ContatoPreferencialAtendimento;
   origem: OrigemLeadAtendimento;
+  /** Fonte de prospecção: lead da imobiliária ou cliente particular do corretor. */
+  fonteProspeccao?: FonteProspeccao;
+
   imobiliaria: ImobiliariaAtendimento;
   corretorId?: string;
   corretorNome?: string;
@@ -313,6 +320,20 @@ export const atendimentoOrigemOptions = [
   { value: "outro", label: "Outro" },
 ] as const;
 
+export const atendimentoFonteProspeccaoOptions = [
+  {
+    value: "lead_imobiliaria",
+    label: "Lead da imobiliária",
+    description: "Cliente originado por ações, canais ou atendimentos da Cordial ou Morar.",
+  },
+  {
+    value: "cliente_particular_corretor",
+    label: "Cliente particular do corretor",
+    description: "Cliente trazido diretamente pelo corretor, sem origem em lead da imobiliária.",
+  },
+] as const;
+
+
 export const atendimentoPrioridadeOptions = [
   { value: "baixa", label: "Baixa" },
   { value: "media", label: "Média" },
@@ -371,3 +392,15 @@ export const atendimentoProximoPassoLabel = (value?: ProximoPassoAtendimento) =>
   value ? optionLabel(atendimentoProximoPassoOptions, value) : "A definir";
 export const atendimentoDormitoriosLabel = (value?: DormitoriosAtendimento) =>
   value ? optionLabel(atendimentoDormitoriosOptions, value) : "Não informado";
+export const atendimentoFonteProspeccaoLabel = (value?: FonteProspeccao | null) =>
+  value
+    ? (atendimentoFonteProspeccaoOptions.find((option) => option.value === value)?.label ?? value)
+    : "Não informado";
+
+/** Normaliza qualquer valor vindo do banco/legado para a fonte de prospecção. */
+export function normalizeFonteProspeccao(value?: string | null): FonteProspeccao | undefined {
+  return value === "lead_imobiliaria" || value === "cliente_particular_corretor"
+    ? value
+    : undefined;
+}
+
