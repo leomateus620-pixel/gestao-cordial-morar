@@ -239,6 +239,7 @@ export function AgenciamentoFormModal({
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [confirmTrackOpen, setConfirmTrackOpen] = useState(false);
   const [referencesOpen, setReferencesOpen] = useState(false);
   const isEditing = Boolean(agenciamento);
 
@@ -367,6 +368,11 @@ export function AgenciamentoFormModal({
     setSubmitError(null);
   }
 
+  const previousFinalidade = agenciamento?.finalidade;
+  const trackChanged = Boolean(
+    isEditing && previousFinalidade && previousFinalidade !== form.finalidade,
+  );
+
   async function saveForm() {
     if (saving) return;
     const input = toInput();
@@ -380,6 +386,17 @@ export function AgenciamentoFormModal({
       return;
     }
 
+    if (trackChanged) {
+      setConfirmTrackOpen(true);
+      return;
+    }
+
+    await persist();
+  }
+
+  async function persist() {
+    if (saving) return;
+    const input = toInput();
     setSaving(true);
     try {
       const result = await onSubmit(input);
@@ -538,6 +555,35 @@ export function AgenciamentoFormModal({
           <AlertDialogFooter>
             <AlertDialogCancel className="h-10 rounded-xl shadow-none">Continuar preenchendo</AlertDialogCancel>
             <AlertDialogAction className="h-10 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { setConfirmCloseOpen(false); onOpenChange(false); }}>Descartar e fechar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmTrackOpen} onOpenChange={(next) => { if (!saving) setConfirmTrackOpen(next); }}>
+        <AlertDialogContent className="w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-border bg-background p-5 shadow-2xl sm:p-6">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-extrabold tracking-tight">Alterar a trilha desta captação?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-relaxed text-muted-foreground">
+              A classificação mudará de{" "}
+              <strong>{previousFinalidade === "aluguel" ? "Aluguel" : "Venda"}</strong> para{" "}
+              <strong>{form.finalidade === "aluguel" ? "Aluguel" : "Venda"}</strong>. As bonificações
+              e os indicadores das duas trilhas serão recalculados imediatamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving} className="h-10 rounded-xl shadow-none">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              className="h-10 rounded-xl"
+              onClick={(event) => {
+                event.preventDefault();
+                if (saving) return;
+                setConfirmTrackOpen(false);
+                void persist();
+              }}
+            >
+              {saving ? "Salvando..." : "Confirmar mudança"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
