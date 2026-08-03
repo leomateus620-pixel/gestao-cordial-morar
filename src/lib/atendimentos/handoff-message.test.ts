@@ -1,6 +1,18 @@
-import { expect, test } from "vitest";
-import { buildHandoffMessage } from "./handoff-message";
-import type { Atendimento } from "@/types/atendimento";
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildHandoffMessage } from "./handoff-message.ts";
+import type { Atendimento } from "../../types/atendimento.ts";
+
+
+function assertContains(value: string, needle: string) {
+  assert.ok(value.includes(needle), `esperava conter: ${needle}\n---\n${value}`);
+}
+function assertNotContains(value: string, needle: string) {
+  assert.ok(!value.includes(needle), `não esperava conter: ${needle}\n---\n${value}`);
+}
+function assertMatches(value: string, re: RegExp) {
+  assert.match(value, re);
+}
 
 const base: Atendimento = {
   id: "1",
@@ -37,26 +49,26 @@ test("mensagem completa inclui corretor e campos preenchidos", () => {
     },
     "Bianca",
   );
-  expect(msg).toContain("Novo atendimento — Maria Silva");
-  expect(msg).toContain("Corretor responsável: Pablo Souza");
-  expect(msg).toContain("Origem: Instagram");
-  expect(msg).toContain("Interesse: Compra • Apartamento • 2 dormitórios");
-  expect(msg).toContain("Bairro: Centro");
-  expect(msg).toContain("Imóvel: AP-1042 — Residencial Bela Vista");
-  expect(msg).toContain("Prioridade: Alta");
-  expect(msg).toContain("Agendar visita");
-  expect(msg).toContain("Obs.: Prefere contato após as 18h");
-  expect(msg).toContain("Cadastrado por Bianca");
+  assertContains(msg, "Novo atendimento — Maria Silva");
+  assertContains(msg, "Corretor responsável: Pablo Souza");
+  assertContains(msg, "Origem: Instagram");
+  assertContains(msg, "Interesse: Compra • Apartamento • 2 dormitórios");
+  assertContains(msg, "Bairro: Centro");
+  assertContains(msg, "Imóvel: AP-1042 — Residencial Bela Vista");
+  assertContains(msg, "Prioridade: Alta");
+  assertContains(msg, "Agendar visita");
+  assertContains(msg, "Obs.: Prefere contato após as 18h");
+  assertContains(msg, "Cadastrado por Bianca");
 });
 
 test("mensagem mínima omite linhas sem dados", () => {
   const msg = buildHandoffMessage(base);
-  expect(msg).toContain("Corretor responsável: a definir");
-  expect(msg).not.toContain("Bairro:");
-  expect(msg).not.toContain("Orçamento:");
-  expect(msg).not.toContain("Imóvel:");
-  expect(msg).not.toContain("Obs.:");
-  expect(msg).not.toContain("Próximo passo:");
+  assertContains(msg, "Corretor responsável: a definir");
+  assertNotContains(msg, "Bairro:");
+  assertNotContains(msg, "Orçamento:");
+  assertNotContains(msg, "Imóvel:");
+  assertNotContains(msg, "Obs.:");
+  assertNotContains(msg, "Próximo passo:");
 });
 
 test("orçamento parcial e trilha de aluguel", () => {
@@ -67,6 +79,6 @@ test("orçamento parcial e trilha de aluguel", () => {
     orcamentoMax: 2500,
     corretorNome: "Felipe",
   });
-  expect(msg).toContain("Interesse: Aluguel • Casa");
-  expect(msg).toMatch(/Orçamento: até R\$/);
+  assertContains(msg, "Interesse: Aluguel • Casa");
+  assertMatches(msg, /Orçamento: até R\$/);
 });
