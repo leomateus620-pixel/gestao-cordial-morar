@@ -148,6 +148,8 @@ export function AtendimentoFormModal({
     .concat({ id: "a_definir", label: "A definir" });
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<number | null>(null);
