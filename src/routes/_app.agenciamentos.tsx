@@ -272,13 +272,18 @@ function Page() {
       if (editingAgenciamento) {
         try {
           const updated = await updateAgenciamento(editingAgenciamento.id, input);
+          const trackChanged =
+            Boolean(input.finalidade) && input.finalidade !== editingAgenciamento.finalidade;
           showFeedback(
             updated
-              ? "Agenciamento atualizado com sucesso."
+              ? trackChanged
+                ? `Agenciamento movido para ${input.finalidade === "aluguel" ? "Aluguel" : "Venda"}.`
+                : "Agenciamento atualizado com sucesso."
               : "Não foi possível editar este agenciamento.",
             updated ? "success" : "error",
           );
           if (updated) {
+            if (trackChanged && input.finalidade) handleTrackChange(input.finalidade);
             setSelectedAgenciamento(null);
             setEditingAgenciamento(null);
           }
@@ -293,6 +298,7 @@ function Page() {
           return false;
         }
       }
+
 
       try {
         const id = await createAgenciamento(input);
