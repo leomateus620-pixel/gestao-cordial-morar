@@ -148,6 +148,7 @@ function rowToAtendimento(
     convertidoEmCliente: row.convertido_em_cliente,
     clienteConvertidoId: orUndef(row.cliente_convertido_id) ?? undefined,
     openedAt: null,
+    criadoPorId: row.created_by,
     historico: [
       {
         id: `hist-${id}-1`,
