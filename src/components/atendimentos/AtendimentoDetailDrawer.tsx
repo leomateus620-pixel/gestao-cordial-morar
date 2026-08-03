@@ -64,6 +64,7 @@ import {
   atendimentoDormitoriosLabel,
   atendimentoFinalidadeLabel,
   atendimentoImobiliariaLabel,
+  atendimentoFonteProspeccaoLabel,
   atendimentoOrigemLabel,
   atendimentoPrioridadeLabel,
   atendimentoProximoPassoLabel,
@@ -312,6 +313,9 @@ export function AtendimentoDetailDrawer({
                         </DataPoint>
                         <DataPoint label="Imobiliária">
                           {atendimentoImobiliariaLabel(atendimento.imobiliaria)}
+                        </DataPoint>
+                        <DataPoint label="Fonte de prospecção">
+                          {atendimentoFonteProspeccaoLabel(atendimento.fonteProspeccao)}
                         </DataPoint>
                         <DataPoint label="Última transição">
                           {pipeline.transitionAt
