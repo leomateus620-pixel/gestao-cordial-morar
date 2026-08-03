@@ -1,48 +1,52 @@
-## Situação atual (verificada)
+# Mensagem automática de repasse no cadastro de atendimento
 
-- A tabela `agenciamentos` **não possui** nenhum campo de finalidade/transação (só `tipo_imovel`). Portanto não há campo persistido para classificar os 41 registros existentes — todos ficarão como "não classificados" para revisão administrativa (nenhum será adivinhado).
-- Existem 41 agenciamentos (nenhum cancelado), de 4 corretores, entre 01/07/2026 e 30/07/2026.
-- O padrão de trilhas já existe em Atendimentos (`src/lib/atendimentos/track.ts` + `PipelineTrackSelector.tsx`) e será reaproveitado como referência estrutural.
-- Administradores reais confirmados: Ricardo Caetano e Bruna Weremchuk (papel `admin`) — serão resolvidos por papel/ID persistido, nunca por nome no código.
-- Notificações usam a tabela `notifications` com normalização automática por trigger; nenhuma alteração de RLS existente será feita.
+Ao concluir o cadastro de um novo atendimento, a secretária recebe na tela um bloco com uma mensagem pronta, montada com os dados daquele atendimento e o nome do corretor responsável, com um botão para copiar.
 
-## O que será feito
+## Quem e quando
 
-### 1. Categoria do agenciamento (Venda / Aluguel)
-- Nova coluna persistida `finalidade` em `agenciamentos` (`venda` | `aluguel`), obrigatória para novos registros e opcional (nula) para o histórico.
-- Registros antigos permanecem intactos e aparecem em um bloco "Não classificados", visível só para admin/secretaria, com ação rápida para definir a categoria.
-- Formulário de cadastro/edição passa a exigir a categoria logo no passo 1 (ao lado de Tipo de imóvel/Imobiliária).
+- Aparece apenas para usuários com perfil **secretária** (hoje, Bianca).
+- Aparece somente ao **criar** um atendimento (não na edição).
+- Admin, corretor e financeiro não veem nada de diferente.
 
-### 2. Regras de bonificação (calculadas no servidor, persistidas)
-Nova tabela de bonificações com chave única por corretor + categoria + nível/meta + período, garantindo idempotência (recalcular nunca duplica).
+## Como funciona
 
-- **Venda (mensal):** `bonus = min(floor(agenciamentos/8), floor(comPlaca/4))`, por corretor e mês-calendário. Reinicia a cada mês; meses anteriores ficam preservados como histórico.
-- **Aluguel (cumulativo):** 1 bonificação a cada 10 agenciamentos de aluguel válidos, sem reset mensal; saldo restante conta para a próxima meta.
-- Agenciamentos cancelados não contam. Ao cancelar, reatribuir, excluir ou mudar a categoria, o progresso é recalculado; bonificações já registradas mudam de status em vez de serem apagadas.
-- Status da bonificação: pendente, aprovada, paga, cancelada.
+1. A secretária preenche e salva o novo atendimento normalmente.
+2. Assim que o atendimento é salvo, sobe um card discreto na tela com a mensagem pronta.
+3. Botões: **Copiar mensagem**, **Enviar no WhatsApp** (abre a conversa com o cliente, quando há telefone válido) e **Fechar**.
+4. A mensagem é montada dinamicamente: só entram os campos que o atendimento realmente tem preenchido — nada de linhas vazias ou "não informado".
 
-### 3. Notificações
-- Ao atingir uma meta, o corretor recebe uma notificação (visível no menu Agenciamentos) com categoria, meta atingida, progresso, data e aviso de que a bonificação está pendente de processamento.
-- Ricardo e Bruna (resolvidos pelo papel `admin`) recebem notificação com corretor, categoria, meta, totais, data, status e link direto para o painel do corretor.
-- A chave de deduplicação impede notificações repetidas em recálculos ou recarregamentos.
+## Formato da mensagem
 
-### 4. Interface Agenciamentos
-- Seletor segmentado no topo: **Venda** / **Aluguel** (mesmo padrão visual do seletor de trilhas de Atendimentos), com contadores próprios.
-- KPIs e filtros independentes por categoria.
-- Painel de meta de venda: agenciamentos no mês, com placa, quantos faltam de cada, nível atual e próxima meta.
-- Painel de aluguel: total acumulado, bonificações conquistadas, saldo atual e quantos faltam para a próxima.
-- Histórico de bonificações com estados (conquistada, pendente, aprovada, paga).
-- Estados de carregamento, vazio, erro e dados parciais; layout responsivo, foco visível, navegação por teclado e alvos de toque adequados; animação sutil apenas quando o progresso muda.
+Exemplo (venda, com todos os campos preenchidos):
 
-### 5. Menu Corretores
-- No card e no painel detalhado de cada corretor: agenciamentos de venda no mês, placas instaladas, bonificações de venda do mês, acumulado de aluguel, bonificações de aluguel, total pendente e histórico com status.
-- Indicador visual quando há bonificação pendente, com atalho para os detalhes.
+```text
+Novo atendimento — Maria Silva
+Corretor responsável: Pablo Souza
+
+Contato: (54) 99999-0000 (WhatsApp)
+Origem: Instagram
+Interesse: Compra • Apartamento • 2 dormitórios
+Bairro: Centro
+Orçamento: R$ 250.000 a R$ 320.000
+Imóvel: AP-1042 — Residencial Bela Vista
+Prioridade: Alta
+Próximo passo: Agendar visita — 05/08 às 14h
+Obs.: cliente prefere contato após as 18h
+
+Cadastrado por Bianca em 03/08/2026 às 10:12
+```
+
+Linhas ausentes são omitidas. Quando não há corretor definido, sai "Corretor responsável: a definir".
 
 ## Detalhes técnicos
 
-- Migração: `ALTER TABLE public.agenciamentos ADD COLUMN finalidade text CHECK (finalidade IN ('venda','aluguel'))` + índice `(corretor_id, finalidade, data_agenciamento)`.
-- Nova tabela `agenciamento_bonuses` (corretor_id, categoria, nivel, periodo_ref, meta_num, listings_count, placas_count, achieved_at, status) com `UNIQUE (corretor_id, categoria, periodo_ref, nivel)`, GRANTs para `authenticated`/`service_role`, RLS: corretor lê as próprias, admin/secretaria leem e gerenciam todas.
-- Função `SECURITY DEFINER` `recalc_agenciamento_bonuses(_broker uuid)` calculando venda por `date_trunc('month', data_agenciamento)` e aluguel cumulativo, com `INSERT ... ON CONFLICT DO NOTHING` (idempotente) e recálculo disparado por trigger em INSERT/UPDATE/DELETE de `agenciamentos`.
-- Notificações inseridas dentro da mesma função, com `dedup_key` derivado da bonificação; destinatários admin resolvidos via `user_roles`, respeitando `has_notification_agency_access`.
-- Frontend: `src/lib/agenciamentos/track.ts` (novo, espelhando `atendimentos/track.ts`), `AgenciamentoTrackSelector.tsx`, `AgenciamentoBonusPanel.tsx`, ajustes em `AgenciamentoFormModal.tsx`, `AgenciamentoSummaryCards.tsx`, `AgenciamentoFilters.tsx`, `_app.agenciamentos.tsx`, `useAgenciamentos.ts`, `services/agenciamentos.ts`, `types/agenciamento.ts` e nos componentes de Corretores.
-- Rotas, RLS existentes, CRUD e fluxos atuais permanecem; nenhuma rota nova é criada (a categoria vira parâmetro de busca na rota atual).
+- Novo módulo `src/lib/atendimentos/handoff-message.ts`: função pura `buildHandoffMessage(atendimento, autorNome)` que retorna o texto, usando os labels já existentes em `src/types/atendimento.ts` (origem, finalidade, tipo, prioridade, próximo passo, dormitórios) e `formatCurrency`/formatação de data de `src/lib/format.ts`.
+- Novo componente `src/components/atendimentos/AtendimentoHandoffDialog.tsx`: dialog enxuto com o texto em bloco monoespaçado, botão copiar (`navigator.clipboard` com fallback de seleção) e confirmação via toast `sonner`; link WhatsApp reaproveitando `whatsappHref` de `src/lib/attendances/whatsapp.ts`.
+- Gate de acesso: nova função `canSeeAttendanceHandoffMessage(session)` em `src/lib/access-control.ts`, retornando `true` apenas para `perfil === "secretaria"`.
+- Integração: em `src/routes/_app.atendimentos.tsx`, o handler passado como `onSubmit` do `AtendimentoFormModal` de criação guarda o atendimento criado em estado e abre o dialog quando o gate permite. Mesmo tratamento no atalho `src/components/sheets/novo-atendimento.tsx` (criação pelo dashboard), para o fluxo ser idêntico onde a Bianca criar.
+- Nenhuma mudança de banco, RLS ou server function: tudo é apresentação sobre o registro já persistido.
+
+## Testes
+
+- Testes unitários em `handoff-message.test.ts` cobrindo: atendimento completo, atendimento mínimo (sem e-mail/orçamento/imóvel/observação), corretor a definir e trilha de aluguel.
+- Validação no navegador: criar um atendimento como secretária e conferir que o card sobe com os dados corretos; conferir que outro perfil não vê o card.
