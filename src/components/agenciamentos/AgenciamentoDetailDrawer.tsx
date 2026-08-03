@@ -108,8 +108,10 @@ export function AgenciamentoDetailDrawer({
     agenciamento?.checklist.validado || agenciamento?.status === "validado",
   );
 
+  const canReclassify = Boolean(onReclassify && canEdit);
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
