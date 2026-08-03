@@ -49,7 +49,11 @@ import {
   getChecklistCompletedCount,
   getChecklistCompletionPercent,
 } from "@/services/agenciamentos";
-import type { Agenciamento, AgenciamentoChecklist } from "@/types/agenciamento";
+import type {
+  Agenciamento,
+  AgenciamentoChecklist,
+  AgenciamentoFinalidade,
+} from "@/types/agenciamento";
 import { shortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +66,11 @@ type AgenciamentoDetailDrawerProps = {
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
   onDelete?: (agenciamento: Agenciamento) => void;
+  onReclassify?: (
+    agenciamento: Agenciamento,
+    finalidade: AgenciamentoFinalidade,
+  ) => Promise<boolean> | void;
+  isReclassifying?: boolean;
 };
 
 const checklistRows: Array<{
@@ -77,6 +86,9 @@ const checklistRows: Array<{
   { key: "validado", label: "Agenciamento validado", icon: BadgeCheck },
 ];
 
+const finalidadeLabel = (value?: AgenciamentoFinalidade) =>
+  value === "aluguel" ? "Aluguel" : value === "venda" ? "Venda" : "Sem classificação";
+
 export function AgenciamentoDetailDrawer({
   agenciamento,
   open,
@@ -86,12 +98,16 @@ export function AgenciamentoDetailDrawer({
   onEdit,
   onValidate,
   onDelete,
+  onReclassify,
+  isReclassifying,
 }: AgenciamentoDetailDrawerProps) {
+  const [pendingFinalidade, setPendingFinalidade] = useState<AgenciamentoFinalidade | null>(null);
   const progress = agenciamento ? getChecklistCompletionPercent(agenciamento.checklist) : 0;
   const completed = agenciamento ? getChecklistCompletedCount(agenciamento.checklist) : 0;
   const validated = Boolean(
     agenciamento?.checklist.validado || agenciamento?.status === "validado",
   );
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
