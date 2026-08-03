@@ -153,7 +153,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   );
 
   // Effective broker id: real corretor record match, or fallback to auth user id.
-  const effectiveBrokerId = currentBroker?.id ?? session?.id;
+  const effectiveBrokerId = session?.id ?? currentBroker?.id;
   const effectiveBrokerNome = currentBroker?.nome ?? session?.nome ?? "";
 
   const visibleAgenciamentos = useMemo(
@@ -276,7 +276,12 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     async (id: string, patch: Partial<AgenciamentoInput>) => {
       if (!session) return false;
       const current = rawAgenciamentos.find((item) => item.id === id);
-      if (!current || !canEditAgenciamento(current, session, effectiveBrokerId)) return false;
+      if (!current) {
+        throw new Error("Agenciamento não encontrado. Atualize a lista e tente novamente.");
+      }
+      if (!canEditAgenciamento(current, session, effectiveBrokerId)) {
+        throw new Error("Este agenciamento pertence a outro corretor, por isso não pode ser editado por você.");
+      }
 
       const safePatch: Partial<AgenciamentoInput> = canManage
         ? patch
