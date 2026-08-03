@@ -125,6 +125,8 @@ export function AtendimentoFormModal({
   initialValue,
   brokerOptions = [],
   presetTrack,
+  onDelete,
+  canDelete = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -132,6 +134,8 @@ export function AtendimentoFormModal({
   initialValue?: Atendimento | null;
   brokerOptions?: ScopedBrokerOption[];
   presetTrack?: "venda" | "aluguel";
+  onDelete?: () => void | Promise<void>;
+  canDelete?: boolean;
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
