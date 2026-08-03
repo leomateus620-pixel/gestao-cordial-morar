@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Copy, Check, MessageCircle } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { buildHandoffMessage } from "@/lib/atendimentos/handoff-message";
-import { whatsappHref } from "@/lib/attendances/whatsapp";
 import type { Atendimento } from "@/types/atendimento";
 
 export function AtendimentoHandoffDialog({
@@ -26,7 +25,7 @@ export function AtendimentoHandoffDialog({
   const [copied, setCopied] = useState(false);
 
   const message = atendimento ? buildHandoffMessage(atendimento, autorNome) : "";
-  const waHref = atendimento ? whatsappHref(atendimento.telefone) : null;
+
 
   const copy = useCallback(async () => {
     try {
