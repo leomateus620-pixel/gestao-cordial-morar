@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, Trash2, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useApp } from "@/store/app-store";
 import { useSession } from "@/lib/auth-mock";
 import { brokerCanServeAgency, type ScopedBrokerOption } from "@/lib/attendances/broker-scope";
