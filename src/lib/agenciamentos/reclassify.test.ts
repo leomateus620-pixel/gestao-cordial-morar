@@ -32,37 +32,37 @@ function makeAgenciamento(overrides: Partial<Agenciamento> = {}): Agenciamento {
   };
 }
 
-describe("reclassificação Venda/Aluguel", () => {
-  it("move o registro para a trilha de destino após a troca", () => {
-    const before = makeAgenciamento({ finalidade: "venda" });
-    const after = { ...before, finalidade: "aluguel" as const };
+test("move o registro para a trilha de destino após a troca", () => {
+  const before = makeAgenciamento({ finalidade: "venda" });
+  const after = { ...before, finalidade: "aluguel" as const };
 
-    expect(matchesTrack(before, "venda")).toBe(true);
-    expect(matchesTrack(after, "venda")).toBe(false);
-    expect(filterByTrack([after], "aluguel")).toHaveLength(1);
-  });
-
-  it("classificar um registro esvazia a lista de sem classificação", () => {
-    const semClassificacao = makeAgenciamento({ finalidade: undefined });
-    expect(getUnclassifiedAgenciamentos([semClassificacao])).toHaveLength(1);
-    expect(
-      getUnclassifiedAgenciamentos([{ ...semClassificacao, finalidade: "aluguel" }]),
-    ).toHaveLength(0);
-  });
-
-  it("permite reclassificar mesmo depois de validado", () => {
-    const validado = makeAgenciamento({
-      status: "validado",
-      checklist: { ...makeAgenciamento().checklist, validado: true },
-    });
-
-    expect(canEditAgenciamento(validado, { perfil: "corretor", id: "user-corretor" })).toBe(true);
-    expect(canEditAgenciamento(validado, { perfil: "secretaria", id: "user-bianca" })).toBe(true);
-    expect(canEditAgenciamento(validado, { perfil: "admin_owner", id: "user-admin" })).toBe(true);
-  });
-
-  it("mantém o bloqueio para corretor que não é dono do registro", () => {
-    const item = makeAgenciamento({ corretorId: "outro", criadoPorId: "outro" });
-    expect(canEditAgenciamento(item, { perfil: "corretor", id: "user-corretor" })).toBe(false);
-  });
+  assert.equal(matchesTrack(before, "venda"), true);
+  assert.equal(matchesTrack(after, "venda"), false);
+  assert.equal(filterByTrack([after], "aluguel").length, 1);
 });
+
+test("classificar um registro esvazia a lista de sem classificação", () => {
+  const semClassificacao = makeAgenciamento({ finalidade: undefined });
+  assert.equal(getUnclassifiedAgenciamentos([semClassificacao]).length, 1);
+  assert.equal(
+    getUnclassifiedAgenciamentos([{ ...semClassificacao, finalidade: "aluguel" }]).length,
+    0,
+  );
+});
+
+test("permite reclassificar mesmo depois de validado", () => {
+  const validado = makeAgenciamento({
+    status: "validado",
+    checklist: { ...makeAgenciamento().checklist, validado: true },
+  });
+
+  assert.equal(canEditAgenciamento(validado, { perfil: "corretor", id: "user-corretor" }), true);
+  assert.equal(canEditAgenciamento(validado, { perfil: "secretaria", id: "user-bianca" }), true);
+  assert.equal(canEditAgenciamento(validado, { perfil: "admin_owner", id: "user-admin" }), true);
+});
+
+test("mantém o bloqueio para corretor que não é dono do registro", () => {
+  const item = makeAgenciamento({ corretorId: "outro", criadoPorId: "outro" });
+  assert.equal(canEditAgenciamento(item, { perfil: "corretor", id: "user-corretor" }), false);
+});
+
