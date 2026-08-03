@@ -418,7 +418,21 @@ function Page() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao atualizar atendimento.");
       throw error;
+  }
+
+  async function deleteEditedAtendimento() {
+    if (!editId) return;
+    try {
+      await removeAtendimento(editId);
+      setEditId(null);
+      setDetailId(null);
+      toast.success("Atendimento excluído.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir atendimento.");
+      throw error;
     }
+  }
+
   }
 
   async function registerProposal(atendimento: Atendimento) {
