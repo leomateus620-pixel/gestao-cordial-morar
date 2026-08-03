@@ -1,0 +1,2 @@
+GRANT SELECT (fonte_prospeccao), INSERT (fonte_prospeccao), UPDATE (fonte_prospeccao) ON public.attendances TO authenticated;
+GRANT SELECT (opened_at, opened_by), UPDATE (opened_at, opened_by) ON public.attendances TO authenticated;
