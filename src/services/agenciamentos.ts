@@ -449,7 +449,11 @@ export function applyAgenciamentoStatsToCorretores(
   });
 }
 
-export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: boolean) {
+export function validateAgenciamentoInput(
+  input: AgenciamentoInput,
+  canManage: boolean,
+  alreadyValidated = false,
+) {
   const errors: AgenciamentoValidationErrors = {};
 
   if (!input.tipoImovel) errors.tipoImovel = "Informe o tipo do imóvel.";
@@ -466,9 +470,12 @@ export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: b
   if (!input.dataAgenciamento.trim()) errors.dataAgenciamento = "Informe a data.";
   if (!input.origem) errors.origem = "Informe a origem.";
   if (!input.status) errors.status = "Informe o status.";
-  if (input.checklist.validado && !canManage) {
+  // Only block when the user is *turning on* validation. A record that is
+  // already validated must stay editable (e.g. to reclassify Venda/Aluguel).
+  if (input.checklist.validado && !canManage && !alreadyValidated) {
     errors.permissaoValidacao = "Somente administradores podem validar o agenciamento.";
   }
+
 
   return errors;
 }
@@ -522,8 +529,15 @@ export function canEditAgenciamento(
   if (!user) return false;
   if (user.perfil === "admin_owner" || user.perfil === "secretaria") return true;
   if (user.perfil !== "corretor") return false;
-  return item.corretorId === corretorId && item.status !== "validado" && !item.checklist.validado;
+  // Ownership is decided by the real auth id stored on the record. The
+  // name/initials based `corretorId` is only a secondary hint.
+  return (
+    item.corretorId === user.id ||
+    item.criadoPorId === user.id ||
+    (Boolean(corretorId) && item.corretorId === corretorId)
+  );
 }
+
 
 export function getAgenciamentosVisibleToUser(
   agenciamentos: Agenciamento[],

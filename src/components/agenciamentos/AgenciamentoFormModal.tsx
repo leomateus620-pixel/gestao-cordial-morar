@@ -335,8 +335,10 @@ export function AgenciamentoFormModal({
     };
   }
 
+  const alreadyValidated = Boolean(agenciamento?.checklist.validado);
+
   function validateStep(targetStep: FormStep) {
-    const allErrors = validateAgenciamentoInput(toInput(), canManage);
+    const allErrors = validateAgenciamentoInput(toInput(), canManage, alreadyValidated);
     const nextErrors = selectErrors(allErrors, stepFieldKeys[targetStep]);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -376,7 +378,7 @@ export function AgenciamentoFormModal({
   async function saveForm() {
     if (saving) return;
     const input = toInput();
-    const nextErrors = validateAgenciamentoInput(input, canManage);
+    const nextErrors = validateAgenciamentoInput(input, canManage, alreadyValidated);
     setErrors(nextErrors);
     setSubmitError(null);
     if (Object.keys(nextErrors).length > 0) {

@@ -134,6 +134,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "alugueis:write",
       "agenciamentos:read",
       "agenciamentos:write",
+      "agenciamentos:manage",
       "agenda:read",
       "agenda:write",
 
