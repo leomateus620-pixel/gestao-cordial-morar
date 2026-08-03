@@ -220,6 +220,8 @@ export interface Atendimento {
   convertidoEmCliente?: boolean;
   clienteConvertidoId?: string;
   openedAt?: string | null;
+  /** Usuário que criou o atendimento (usado para permissão de exclusão). */
+  criadoPorId?: string;
   historico: AtendimentoHistorico[];
   criadoEm: string;
   atualizadoEm: string;
@@ -234,6 +236,7 @@ export type AtendimentoCreateInput = Omit<
   | "convertidoEmCliente"
   | "clienteConvertidoId"
   | "lastStageTransition"
+  | "criadoPorId"
 >;
 
 export type AtendimentoUpdatePatch = Partial<

@@ -2,7 +2,8 @@
 // so we do not scatter session.perfil === "admin_owner" across the codebase.
 
 import type { MockUser } from "@/lib/auth-mock";
-import { roleDefinitions, type AppModule, type UserProfile } from "@/lib/mock/permissions";
+// Import relativo para permitir execução direta em `node --test`.
+import { roleDefinitions, type AppModule, type UserProfile } from "./mock/permissions.ts";
 
 type SessionLike = Pick<MockUser, "perfil" | "modules"> | null | undefined;
 
@@ -52,6 +53,19 @@ export function canManageAttendanceTerminalState(session: SessionLike): boolean 
     session?.perfil === "secretaria" ||
     session?.perfil === "corretor"
   );
+}
+
+/**
+ * Exclusão definitiva de um atendimento. Espelha a policy RLS de DELETE:
+ * administradores ou o usuário que criou o registro.
+ */
+export function canDeleteAttendance(
+  session: (SessionLike & { id?: string }) | null | undefined,
+  attendance: { criadoPorId?: string } | null | undefined,
+): boolean {
+  if (!session || !attendance) return false;
+  if (isAdminUser(session)) return true;
+  return Boolean(attendance.criadoPorId && attendance.criadoPorId === session.id);
 }
 
 export function getAllowedModulesForProfile(profile: UserProfile | undefined): AppModule[] {

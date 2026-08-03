@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, Trash2, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useApp } from "@/store/app-store";
 import { useSession } from "@/lib/auth-mock";
 import { brokerCanServeAgency, type ScopedBrokerOption } from "@/lib/attendances/broker-scope";
@@ -125,6 +135,8 @@ export function AtendimentoFormModal({
   initialValue,
   brokerOptions = [],
   presetTrack,
+  onDelete,
+  canDelete = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -132,6 +144,8 @@ export function AtendimentoFormModal({
   initialValue?: Atendimento | null;
   brokerOptions?: ScopedBrokerOption[];
   presetTrack?: "venda" | "aluguel";
+  onDelete?: () => void | Promise<void>;
+  canDelete?: boolean;
 }) {
   const clientes = useApp((state) => state.clientes);
   const imoveis = useApp((state) => state.imoveis);
@@ -144,6 +158,8 @@ export function AtendimentoFormModal({
     .concat({ id: "a_definir", label: "A definir" });
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<number | null>(null);
@@ -318,6 +334,21 @@ export function AtendimentoFormModal({
   }
 
   const hasErrors = Object.keys(validation).length > 0;
+  const showDelete = Boolean(initialValue && canDelete && onDelete);
+
+  async function handleDelete() {
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+      setConfirmDeleteOpen(false);
+    } catch {
+      // erro tratado pelo caller (toast); mantém o modal aberto.
+    } finally {
+      setDeleting(false);
+    }
+  }
+
 
   return createPortal(
     <div
@@ -770,16 +801,31 @@ export function AtendimentoFormModal({
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-white/60 bg-white/62 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
-          <button
-            type="button"
-            onClick={requestClose}
-            className="rounded-2xl bg-white/75 px-4 py-3 text-sm font-semibold text-foreground/70 shadow-sm transition hover:text-foreground active:scale-[0.98]"
-          >
-            Cancelar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={requestClose}
+              disabled={deleting}
+              className="rounded-2xl bg-white/75 px-4 py-3 text-sm font-semibold text-foreground/70 shadow-sm transition hover:text-foreground active:scale-[0.98] disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            {showDelete && (
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteOpen(true)}
+                disabled={deleting || saving}
+                className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold text-destructive transition hover:bg-destructive/10 active:scale-[0.98] disabled:opacity-60"
+              >
+                <Trash2 className="size-4" />
+                <span className="hidden sm:inline">Excluir atendimento</span>
+                <span className="sm:hidden">Excluir</span>
+              </button>
+            )}
+          </div>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || deleting}
             className="flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition hover:bg-teal-800 active:scale-[0.98] disabled:opacity-70"
           >
             {saving ? "Salvando..." : initialValue ? "Salvar alterações" : "Salvar atendimento"}
@@ -787,6 +833,41 @@ export function AtendimentoFormModal({
           </button>
         </footer>
       </form>
+
+      {showDelete && (
+        <AlertDialog
+          open={confirmDeleteOpen}
+          onOpenChange={(next) => {
+            if (deleting) return;
+            setConfirmDeleteOpen(next);
+          }}
+        >
+          <AlertDialogContent className="w-[calc(100%_-_2rem)] max-w-md rounded-2xl border-border bg-background p-5 shadow-2xl sm:p-6">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O atendimento de{" "}
+                <strong className="text-foreground">{initialValue?.clienteNome}</strong> será
+                removido definitivamente, junto com o histórico, os vínculos de corretor e os
+                registros de notificação. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Manter atendimento</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleDelete();
+                }}
+              >
+                {deleting ? "Excluindo..." : "Excluir definitivamente"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>,
     document.body,
   );
