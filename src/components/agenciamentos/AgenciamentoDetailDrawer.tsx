@@ -9,6 +9,7 @@ import {
   Home,
   MapPinned,
   Pencil,
+  Tags,
   Trash2,
   type LucideIcon,
   UserRound,
