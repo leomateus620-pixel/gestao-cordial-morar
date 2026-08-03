@@ -12,6 +12,7 @@ import { buildLocalIso } from "@/components/atendimentos/atendimento-action-util
 import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
+import { AtendimentoHandoffDialog } from "@/components/atendimentos/AtendimentoHandoffDialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   defaultAtendimentoFilters,
@@ -30,6 +31,7 @@ import { useSession } from "@/lib/auth-mock";
 import {
   canManageAttendanceAssignments,
   canManageAttendanceTerminalState,
+  canSeeAttendanceHandoffMessage,
   canSeeFinancialInsights,
 } from "@/lib/access-control";
 import {
@@ -216,6 +218,7 @@ function Page() {
     try {
       const created = await addAtendimento(input);
       setOpen(false);
+      if (canSeeAttendanceHandoffMessage(session)) setHandoffAtendimento(created);
       // "Próximo passo" com data vira automaticamente um evento na Agenda
       // (que já sincroniza com o Google Agenda do responsável).
       void (async () => {
@@ -676,6 +679,11 @@ function Page() {
           presetTrack={track}
         />
       )}
+      <AtendimentoHandoffDialog
+        atendimento={handoffAtendimento}
+        autorNome={session?.nome}
+        onClose={() => setHandoffAtendimento(null)}
+      />
       {editId && editAtendimento ? (
         <AtendimentoFormModal
           open
