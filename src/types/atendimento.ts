@@ -99,6 +99,10 @@ export type OrigemLeadAtendimento =
 
 export type PrioridadeAtendimento = "baixa" | "media" | "alta" | "urgente";
 
+/** Fonte de prospecção normalizada: quem originou o cliente. */
+export type FonteProspeccao = "lead_imobiliaria" | "cliente_particular_corretor";
+
+
 export type ImobiliariaAtendimento = "cordial" | "morar" | "ambas";
 
 export type ProximoPassoAtendimento =
