@@ -313,6 +313,20 @@ export const atendimentoOrigemOptions = [
   { value: "outro", label: "Outro" },
 ] as const;
 
+export const atendimentoFonteProspeccaoOptions = [
+  {
+    value: "lead_imobiliaria",
+    label: "Lead da imobiliária",
+    description: "Cliente originado por ações, canais ou atendimentos da Cordial ou Morar.",
+  },
+  {
+    value: "cliente_particular_corretor",
+    label: "Cliente particular do corretor",
+    description: "Cliente trazido diretamente pelo corretor, sem origem em lead da imobiliária.",
+  },
+] as const;
+
+
 export const atendimentoPrioridadeOptions = [
   { value: "baixa", label: "Baixa" },
   { value: "media", label: "Média" },
