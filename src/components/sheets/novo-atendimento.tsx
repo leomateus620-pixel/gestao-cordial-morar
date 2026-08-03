@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
+import { AtendimentoHandoffDialog } from "@/components/atendimentos/AtendimentoHandoffDialog";
+import { canSeeAttendanceHandoffMessage } from "@/lib/access-control";
 import { createAttendance } from "@/lib/attendances/attendances.functions";
 import { sendBrokerAssignmentEmail, sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
@@ -8,7 +11,7 @@ import { buildNextStepAgendaEvent } from "@/lib/atendimentos/next-step-event";
 import { AGENDA_QUERY_KEY } from "@/hooks/useAgenda";
 import { useSession } from "@/lib/auth-mock";
 import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
-import type { AtendimentoCreateInput } from "@/types/atendimento";
+import type { Atendimento, AtendimentoCreateInput } from "@/types/atendimento";
 
 
 /**
@@ -25,6 +28,7 @@ export function NovoAtendimentoSheet({
 }) {
   const qc = useQueryClient();
   const session = useSession();
+  const [handoffAtendimento, setHandoffAtendimento] = useState<Atendimento | null>(null);
   const mutation = useMutation({
     mutationFn: (input: AtendimentoCreateInput) => createAttendance({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ATTENDANCES_QUERY_KEY }),
@@ -33,6 +37,7 @@ export function NovoAtendimentoSheet({
   async function handleSubmit(input: AtendimentoCreateInput) {
     try {
       const created = await mutation.mutateAsync(input);
+      if (canSeeAttendanceHandoffMessage(session)) setHandoffAtendimento(created);
       // "Próximo passo" com data cria o evento correspondente na Agenda.
       void (async () => {
         try {
@@ -87,5 +92,14 @@ export function NovoAtendimentoSheet({
     }
   }
 
-  return <AtendimentoFormModal open={open} onOpenChange={onOpenChange} onSubmit={handleSubmit} />;
+  return (
+    <>
+      <AtendimentoFormModal open={open} onOpenChange={onOpenChange} onSubmit={handleSubmit} />
+      <AtendimentoHandoffDialog
+        atendimento={handoffAtendimento}
+        autorNome={session?.nome}
+        onClose={() => setHandoffAtendimento(null)}
+      />
+    </>
+  );
 }
