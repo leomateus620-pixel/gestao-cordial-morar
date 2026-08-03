@@ -135,6 +135,8 @@ function Page() {
     addAtendimento,
     convertAtendimento,
     updateAtendimento,
+    removeAtendimento,
+
     transitionStage,
   } = useAttendances(query, filters, track, { agency: imobiliaria });
 
