@@ -178,6 +178,39 @@ export function AgenciamentoDetailDrawer({
                 </TabsList>
 
                 <TabsContent value="desempenho" className="mt-4 space-y-3">
+                  <Panel title="Classificação comercial" icon={Tags}>
+                    <div className="rounded-2xl bg-white/[0.62] px-3 py-3 ring-1 ring-white/70">
+                      <p className="text-xs font-medium text-foreground/48">
+                        Trilha atual: {finalidadeLabel(agenciamento.finalidade)}
+                      </p>
+                      <Select
+                        value={agenciamento.finalidade ?? ""}
+                        disabled={!canReclassify || isReclassifying}
+                        onValueChange={(value) => {
+                          const next = value as AgenciamentoFinalidade;
+                          if (next === agenciamento.finalidade) return;
+                          setPendingFinalidade(next);
+                        }}
+                      >
+                        <SelectTrigger
+                          aria-label="Classificação Venda ou Aluguel"
+                          className="mt-2 h-10 rounded-xl bg-white/80"
+                        >
+                          <SelectValue placeholder="Selecione Venda ou Aluguel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="venda">Venda</SelectItem>
+                          <SelectItem value="aluguel">Aluguel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="mt-2 text-[11px] leading-relaxed text-foreground/50">
+                        {canReclassify
+                          ? "Você pode trocar entre Venda e Aluguel quando quiser. As bonificações são recalculadas na hora."
+                          : "Seu perfil não permite alterar a classificação deste agenciamento."}
+                      </p>
+                    </div>
+                  </Panel>
+
                   <Panel title="Dados do imóvel" icon={Home}>
                     <MetricRow
                       label="Tipo"
