@@ -41,6 +41,7 @@ import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
 import type {
   Agenciamento,
+  AgenciamentoFinalidade,
   AgenciamentoInput,
   AgenciamentoPeriodFilter,
   AgenciamentoStatusFilter,
