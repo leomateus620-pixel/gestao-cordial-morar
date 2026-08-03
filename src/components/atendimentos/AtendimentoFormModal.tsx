@@ -819,7 +819,17 @@ function FormSection({
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({
+  label,
+  error,
+  hint,
+  children,
+}: {
+  label: string;
+  error?: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="block">
       <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/52">
@@ -827,9 +837,11 @@ function Field({ label, error, children }: { label: string; error?: string; chil
         {error && <span className="normal-case tracking-normal text-destructive">{error}</span>}
       </span>
       <div className="mt-1.5">{children}</div>
+      {hint && <span className="mt-1 block text-[11px] text-foreground/50">{hint}</span>}
     </label>
   );
 }
+
 
 function TypedSelect<T extends string>({
   value,
