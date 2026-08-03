@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import {
   atendimentoFinalidadeOptions,
+  atendimentoFonteProspeccaoOptions,
   atendimentoOrigemOptions,
   atendimentoPrioridadeOptions,
   atendimentoStatusOptions,
@@ -154,6 +155,20 @@ export function AtendimentoFilters({
                 {option.label}
               </option>
             ))}
+          </Select>
+        </FilterShell>
+        <FilterShell>
+          <Select
+            value={filters.fonteProspeccao}
+            onChange={(value) => onFiltersChange({ ...filters, fonteProspeccao: value as never })}
+          >
+            <option value="todos">Fonte de prospecção</option>
+            {atendimentoFonteProspeccaoOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+            <option value="nao_informado">Não informado</option>
           </Select>
         </FilterShell>
         <FilterShell>
