@@ -491,25 +491,40 @@ function Page() {
           counts={trackCounts}
         />
 
-        {unclassifiedAgenciamentos.length > 0 && (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 sm:flex sm:justify-between">
-            <p className="min-w-0 text-sm font-semibold">
-              {unclassifiedAgenciamentos.length} agenciamento
-              {unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou
-              Aluguel.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 shrink-0 rounded-xl border-amber-500/30 bg-white/70 text-amber-900 shadow-none"
-              onClick={() =>
-                setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
-              }
-            >
-              {showingUnclassified ? "Voltar à trilha" : "Revisar agora"}
-            </Button>
-          </div>
-        )}
+        <div
+          className={cn(
+            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-4 py-3 sm:flex sm:justify-between",
+            unclassifiedAgenciamentos.length > 0
+              ? "border-amber-500/25 bg-amber-500/10 text-amber-900"
+              : "border-border/60 bg-white/60 text-foreground/70",
+          )}
+        >
+          <p className="min-w-0 text-sm font-semibold">
+            {unclassifiedAgenciamentos.length > 0
+              ? `${unclassifiedAgenciamentos.length} agenciamento${unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou Aluguel.`
+              : "Todos os agenciamentos estão classificados. Você pode revisar e trocar a classificação quando quiser."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              "h-9 shrink-0 rounded-xl bg-white/70 shadow-none",
+              unclassifiedAgenciamentos.length > 0
+                ? "border-amber-500/30 text-amber-900"
+                : "border-border/60",
+            )}
+            onClick={() =>
+              setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
+            }
+          >
+            {showingUnclassified
+              ? "Voltar à trilha"
+              : unclassifiedAgenciamentos.length > 0
+                ? "Revisar agora"
+                : "Ver sem classificação"}
+          </Button>
+        </div>
+
 
         <AgenciamentoBonusPanel
           track={track}
