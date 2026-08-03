@@ -449,7 +449,11 @@ export function applyAgenciamentoStatsToCorretores(
   });
 }
 
-export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: boolean) {
+export function validateAgenciamentoInput(
+  input: AgenciamentoInput,
+  canManage: boolean,
+  alreadyValidated = false,
+) {
   const errors: AgenciamentoValidationErrors = {};
 
   if (!input.tipoImovel) errors.tipoImovel = "Informe o tipo do imóvel.";
@@ -466,9 +470,12 @@ export function validateAgenciamentoInput(input: AgenciamentoInput, canManage: b
   if (!input.dataAgenciamento.trim()) errors.dataAgenciamento = "Informe a data.";
   if (!input.origem) errors.origem = "Informe a origem.";
   if (!input.status) errors.status = "Informe o status.";
-  if (input.checklist.validado && !canManage) {
+  // Only block when the user is *turning on* validation. A record that is
+  // already validated must stay editable (e.g. to reclassify Venda/Aluguel).
+  if (input.checklist.validado && !canManage && !alreadyValidated) {
     errors.permissaoValidacao = "Somente administradores podem validar o agenciamento.";
   }
+
 
   return errors;
 }
