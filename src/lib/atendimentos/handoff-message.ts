@@ -6,8 +6,8 @@ import {
   atendimentoProximoPassoLabel,
   atendimentoTipoImovelLabel,
   type Atendimento,
-} from "../../types/atendimento";
-import { brl } from "../format";
+} from "../../types/atendimento.ts";
+import { brl } from "../format.ts";
 
 function formatPhone(value?: string | null): string | null {
   const digits = value?.replace(/\D/g, "") ?? "";
