@@ -694,6 +694,7 @@ export type Database = {
           dormitorios: string | null
           email: string | null
           finalidade: string
+          fonte_prospeccao: string | null
           historico_inicial: string | null
           id: string
           imobiliaria: string
@@ -737,6 +738,7 @@ export type Database = {
           dormitorios?: string | null
           email?: string | null
           finalidade?: string
+          fonte_prospeccao?: string | null
           historico_inicial?: string | null
           id?: string
           imobiliaria: string
@@ -780,6 +782,7 @@ export type Database = {
           dormitorios?: string | null
           email?: string | null
           finalidade?: string
+          fonte_prospeccao?: string | null
           historico_inicial?: string | null
           id?: string
           imobiliaria?: string
