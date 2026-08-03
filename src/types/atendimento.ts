@@ -190,6 +190,9 @@ export interface Atendimento {
   email?: string;
   contatoPreferencial: ContatoPreferencialAtendimento;
   origem: OrigemLeadAtendimento;
+  /** Fonte de prospecção: lead da imobiliária ou cliente particular do corretor. */
+  fonteProspeccao?: FonteProspeccao;
+
   imobiliaria: ImobiliariaAtendimento;
   corretorId?: string;
   corretorNome?: string;
