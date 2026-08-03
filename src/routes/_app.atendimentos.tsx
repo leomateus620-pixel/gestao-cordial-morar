@@ -711,7 +711,10 @@ function Page() {
           onSubmit={saveEditedAtendimento}
           initialValue={editAtendimento}
           brokerOptions={brokers}
+          canDelete={canDeleteAttendance(session, editAtendimento)}
+          onDelete={deleteEditedAtendimento}
         />
+
       ) : null}
     </div>
   );
