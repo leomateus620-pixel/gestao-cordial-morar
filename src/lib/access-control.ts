@@ -54,6 +54,19 @@ export function canManageAttendanceTerminalState(session: SessionLike): boolean 
   );
 }
 
+/**
+ * Exclusão definitiva de um atendimento. Espelha a policy RLS de DELETE:
+ * administradores ou o usuário que criou o registro.
+ */
+export function canDeleteAttendance(
+  session: (SessionLike & { id?: string }) | null | undefined,
+  attendance: { criadoPorId?: string } | null | undefined,
+): boolean {
+  if (!session || !attendance) return false;
+  if (isAdminUser(session)) return true;
+  return Boolean(attendance.criadoPorId && attendance.criadoPorId === session.id);
+}
+
 export function getAllowedModulesForProfile(profile: UserProfile | undefined): AppModule[] {
   if (!profile) return [];
   return roleDefinitions[profile]?.modules ?? [];
