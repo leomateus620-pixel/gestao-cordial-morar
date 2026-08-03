@@ -655,6 +655,8 @@ function Page() {
         onEdit={openEdit}
         onValidate={handleValidate}
         onDelete={requestDelete}
+        onReclassify={handleReclassify}
+        isReclassifying={reclassifying}
       />
 
       <AlertDialog
