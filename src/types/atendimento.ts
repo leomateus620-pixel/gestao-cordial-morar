@@ -392,3 +392,15 @@ export const atendimentoProximoPassoLabel = (value?: ProximoPassoAtendimento) =>
   value ? optionLabel(atendimentoProximoPassoOptions, value) : "A definir";
 export const atendimentoDormitoriosLabel = (value?: DormitoriosAtendimento) =>
   value ? optionLabel(atendimentoDormitoriosOptions, value) : "Não informado";
+export const atendimentoFonteProspeccaoLabel = (value?: FonteProspeccao | null) =>
+  value
+    ? (atendimentoFonteProspeccaoOptions.find((option) => option.value === value)?.label ?? value)
+    : "Não informado";
+
+/** Normaliza qualquer valor vindo do banco/legado para a fonte de prospecção. */
+export function normalizeFonteProspeccao(value?: string | null): FonteProspeccao | undefined {
+  return value === "lead_imobiliaria" || value === "cliente_particular_corretor"
+    ? value
+    : undefined;
+}
+
