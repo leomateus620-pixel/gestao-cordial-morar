@@ -85,13 +85,17 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
 
   const bonusesQuery = useQuery<AgenciamentoBonus[]>({
     queryKey: ["agenciamento-bonuses"],
-    queryFn: () => listBonusesFn(),
+    queryFn: () => listBonusesFn({ data: { includeCancelled: true } }),
     enabled,
     staleTime: 30_000,
   });
 
   const rawAgenciamentos = useMemo(() => query.data ?? [], [query.data]);
-  const bonuses = useMemo(() => bonusesQuery.data ?? [], [bonusesQuery.data]);
+  const allBonuses = useMemo(() => bonusesQuery.data ?? [], [bonusesQuery.data]);
+  const bonuses = useMemo(
+    () => allBonuses.filter((bonus) => bonus.status !== "cancelada"),
+    [allBonuses],
+  );
 
   const invalidate = useCallback(() => {
     return Promise.all([
