@@ -113,14 +113,20 @@ export const deleteAgenciamento = createServerFn({ method: "POST" })
 
 export const listAgenciamentoBonuses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+  .inputValidator((data?: { includeCancelled?: boolean }) => data ?? {})
+  .handler(async ({ data, context }) => {
+    let query = context.supabase
       .from("agenciamento_bonuses")
       .select("*")
-      .neq("status", "cancelada")
       .order("achieved_at", { ascending: false });
+
+    if (!data.includeCancelled) {
+      query = query.neq("status", "cancelada");
+    }
+
+    const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => rowToBonus(row as unknown as AgenciamentoBonusDbRow));
+    return (rows ?? []).map((row) => rowToBonus(row as unknown as AgenciamentoBonusDbRow));
   });
 
 export const updateAgenciamentoBonusStatus = createServerFn({ method: "POST" })
