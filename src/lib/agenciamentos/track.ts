@@ -144,3 +144,44 @@ export function getBonusPeriodLabel(bonus: AgenciamentoBonus) {
 export function filterBonusesByTrack(bonuses: AgenciamentoBonus[], track: AgenciamentoTrack) {
   return bonuses.filter((bonus) => bonus.categoria === track);
 }
+
+export type BonusStatusSummary = {
+  total: number;
+  pendentes: number;
+  validadas: number;
+  pagas: number;
+  canceladas: number;
+};
+
+/** Bonificações aprovadas ou pagas contam como validadas; canceladas ficam fora dos totais. */
+export function summarizeBonuses(bonuses: AgenciamentoBonus[]): BonusStatusSummary {
+  const pendentes = bonuses.filter((bonus) => bonus.status === "pendente").length;
+  const aprovadas = bonuses.filter((bonus) => bonus.status === "aprovada").length;
+  const pagas = bonuses.filter((bonus) => bonus.status === "paga").length;
+  const canceladas = bonuses.filter((bonus) => bonus.status === "cancelada").length;
+  return {
+    total: pendentes + aprovadas + pagas,
+    pendentes,
+    validadas: aprovadas + pagas,
+    pagas,
+    canceladas,
+  };
+}
+
+/** Transições de status permitidas ao administrador para uma bonificação. */
+export function getAllowedBonusTransitions(
+  status: AgenciamentoBonus["status"],
+): Array<AgenciamentoBonus["status"]> {
+  switch (status) {
+    case "pendente":
+      return ["aprovada", "paga", "cancelada"];
+    case "aprovada":
+      return ["paga", "cancelada"];
+    case "paga":
+      return ["aprovada", "cancelada"];
+    case "cancelada":
+      return ["pendente"];
+    default:
+      return [];
+  }
+}
