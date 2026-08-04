@@ -43,6 +43,7 @@ import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
 import type {
   Agenciamento,
+  AgenciamentoBonus,
   AgenciamentoBonusStatus,
   AgenciamentoFinalidade,
   AgenciamentoInput,
@@ -202,25 +203,6 @@ function Page() {
 
 
 
-  const handleBonusStatusChange = useCallback(
-    async (bonus: Agenciamento extends never ? never : { id: string }, status: AgenciamentoBonusStatus) => {
-      try {
-        await updateBonusStatus(bonus.id, status);
-        showFeedback(`Bonificação atualizada para ${getBonusStatusLabel(status)}.`);
-        return true;
-      } catch (caughtError) {
-        showFeedback(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Não foi possível atualizar a bonificação.",
-          "error",
-        );
-        return false;
-      }
-    },
-    [showFeedback, updateBonusStatus],
-  );
-
   const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
     if (filters.status === "aguardando_validacao") return "pendentes";
     if (filters.status === "validado") return "validados";
@@ -301,6 +283,25 @@ function Page() {
     setFeedback({ message, tone });
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(null), 4200);
   }, []);
+
+  const handleBonusStatusChange = useCallback(
+    async (bonus: AgenciamentoBonus, status: AgenciamentoBonusStatus) => {
+      try {
+        await updateBonusStatus(bonus.id, status);
+        showFeedback(`Bonificação atualizada para ${getBonusStatusLabel(status)}.`);
+        return true;
+      } catch (caughtError) {
+        showFeedback(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Não foi possível atualizar a bonificação.",
+          "error",
+        );
+        return false;
+      }
+    },
+    [showFeedback, updateBonusStatus],
+  );
 
   const handleSubmit = useCallback(
     async (input: AgenciamentoInput): Promise<boolean> => {
