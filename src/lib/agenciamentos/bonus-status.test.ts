@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getAllowedBonusTransitions, summarizeBonuses } from "./track";
 import type { AgenciamentoBonus } from "@/types/agenciamento";
 
-function bonus(status: AgenciamentoBonus["status"], id = status): AgenciamentoBonus {
+function bonus(status: AgenciamentoBonus["status"], id: string = status): AgenciamentoBonus {
   return {
     id,
     corretorId: "c1",
