@@ -190,15 +190,15 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     [bonuses, canManage, session?.id],
   );
 
+  const visibleBonusRegistry = useMemo(
+    () => (canManage ? allBonuses : allBonuses.filter((bonus) => bonus.corretorId === session?.id)),
+    [allBonuses, canManage, session?.id],
+  );
+
   const updateBonusStatus = useCallback(
     async (id: string, status: AgenciamentoBonus["status"]) => {
-      try {
-        await bonusStatusMutation.mutateAsync({ id, status });
-        return true;
-      } catch (error) {
-        console.error("[agenciamentos] bonus status update failed", error);
-        return false;
-      }
+      await bonusStatusMutation.mutateAsync({ id, status });
+      return true;
     },
     [bonusStatusMutation],
   );
