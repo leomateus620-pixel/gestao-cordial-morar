@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoBonusPanel";
+import { AgenciamentoBonusRegistryDrawer } from "@/components/agenciamentos/AgenciamentoBonusRegistryDrawer";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
@@ -24,6 +25,7 @@ import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import {
   computeBonusProgress,
   filterBonusesByTrack,
+  getBonusStatusLabel,
   type AgenciamentoTrack,
 } from "@/lib/agenciamentos/track";
 import {
@@ -41,6 +43,7 @@ import { useAgenciamentos } from "@/hooks/useAgenciamentos";
 import { canEditAgenciamento, getAgenciamentoPeriodLabel } from "@/services/agenciamentos";
 import type {
   Agenciamento,
+  AgenciamentoBonusStatus,
   AgenciamentoFinalidade,
   AgenciamentoInput,
   AgenciamentoPeriodFilter,
@@ -97,6 +100,10 @@ function Page() {
     visibleAgenciamentos,
     unclassifiedAgenciamentos,
     bonuses,
+    bonusRegistry,
+    updateBonusStatus,
+    isUpdatingBonusStatus,
+    canValidateBonuses,
     summary,
     createAgenciamento,
     updateAgenciamento,
@@ -121,6 +128,7 @@ function Page() {
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [bonusRegistryOpen, setBonusRegistryOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const feedbackTimerRef = useRef<number | null>(null);
   const currentUserBroker = useMemo(
@@ -185,7 +193,33 @@ function Page() {
       : scoped.filter((bonus) => bonus.corretorId === filters.corretorId);
   }, [bonuses, filters.corretorId, track]);
 
+  const trackBonusRegistry = useMemo(() => {
+    const scoped = filterBonusesByTrack(bonusRegistry, track);
+    return filters.corretorId === "todos"
+      ? scoped
+      : scoped.filter((bonus) => bonus.corretorId === filters.corretorId);
+  }, [bonusRegistry, filters.corretorId, track]);
 
+
+
+  const handleBonusStatusChange = useCallback(
+    async (bonus: Agenciamento extends never ? never : { id: string }, status: AgenciamentoBonusStatus) => {
+      try {
+        await updateBonusStatus(bonus.id, status);
+        showFeedback(`Bonificação atualizada para ${getBonusStatusLabel(status)}.`);
+        return true;
+      } catch (caughtError) {
+        showFeedback(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Não foi possível atualizar a bonificação.",
+          "error",
+        );
+        return false;
+      }
+    },
+    [showFeedback, updateBonusStatus],
+  );
 
   const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
     if (filters.status === "aguardando_validacao") return "pendentes";
@@ -531,6 +565,17 @@ function Page() {
           progress={bonusProgress}
           bonuses={trackBonuses}
           showBrokerName={canManage && filters.corretorId === "todos"}
+          onOpenRegistry={() => setBonusRegistryOpen(true)}
+        />
+
+        <AgenciamentoBonusRegistryDrawer
+          open={bonusRegistryOpen}
+          onOpenChange={setBonusRegistryOpen}
+          track={track}
+          bonuses={trackBonusRegistry}
+          canValidate={canValidateBonuses}
+          isUpdating={isUpdatingBonusStatus}
+          onUpdateStatus={handleBonusStatusChange}
         />
 
 
