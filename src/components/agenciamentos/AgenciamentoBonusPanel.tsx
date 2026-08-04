@@ -91,9 +91,23 @@ export function AgenciamentoBonusPanel({
       </div>
 
       <div className="mt-4 border-t border-foreground/8 pt-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/45">
-          Histórico de bonificações
-        </h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/45">
+            Histórico de bonificações
+          </h3>
+          {onOpenRegistry && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 rounded-lg bg-white/70 text-xs"
+              onClick={onOpenRegistry}
+            >
+              Ver todas
+            </Button>
+          )}
+        </div>
+
         {bonuses.length === 0 ? (
           <p className="mt-2 text-xs text-foreground/55">
             Nenhuma bonificação registrada nesta trilha até o momento.
