@@ -5,9 +5,11 @@ import {
   SALES_BONUS_SIGNS,
   getBonusPeriodLabel,
   getBonusStatusLabel,
+  summarizeBonuses,
   type AgenciamentoTrack,
   type BonusProgress,
 } from "@/lib/agenciamentos/track";
+import { Button } from "@/components/ui/button";
 import type { AgenciamentoBonus } from "@/types/agenciamento";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,7 @@ type Props = {
   progress: BonusProgress;
   bonuses: AgenciamentoBonus[];
   showBrokerName: boolean;
+  onOpenRegistry?: () => void;
 };
 
 const statusTone: Record<AgenciamentoBonus["status"], string> = {
@@ -25,8 +28,15 @@ const statusTone: Record<AgenciamentoBonus["status"], string> = {
   cancelada: "bg-slate-200 text-slate-600",
 };
 
-export function AgenciamentoBonusPanel({ track, progress, bonuses, showBrokerName }: Props) {
+export function AgenciamentoBonusPanel({
+  track,
+  progress,
+  bonuses,
+  showBrokerName,
+  onOpenRegistry,
+}: Props) {
   const isSales = track === "venda";
+  const registry = summarizeBonuses(bonuses);
   const goalText = isSales
     ? `${SALES_BONUS_LISTINGS} captações + ${SALES_BONUS_SIGNS} placas no mês`
     : `${RENTAL_BONUS_LISTINGS} captações acumuladas`;
@@ -47,9 +57,11 @@ export function AgenciamentoBonusPanel({ track, progress, bonuses, showBrokerNam
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#174d61]/10 px-3 py-1 text-xs font-bold text-[#174d61]">
           <Trophy aria-hidden="true" className="size-3.5" />
-          {progress.earned} conquistada{progress.earned === 1 ? "" : "s"}
+          {registry.validadas} validada{registry.validadas === 1 ? "" : "s"}
+          {registry.pendentes > 0 ? ` · ${registry.pendentes} pendente${registry.pendentes === 1 ? "" : "s"}` : ""}
         </span>
       </div>
+
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs font-semibold text-foreground/60">
@@ -79,9 +91,23 @@ export function AgenciamentoBonusPanel({ track, progress, bonuses, showBrokerNam
       </div>
 
       <div className="mt-4 border-t border-foreground/8 pt-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/45">
-          Histórico de bonificações
-        </h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground/45">
+            Histórico de bonificações
+          </h3>
+          {onOpenRegistry && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 rounded-lg bg-white/70 text-xs"
+              onClick={onOpenRegistry}
+            >
+              Ver todas
+            </Button>
+          )}
+        </div>
+
         {bonuses.length === 0 ? (
           <p className="mt-2 text-xs text-foreground/55">
             Nenhuma bonificação registrada nesta trilha até o momento.
