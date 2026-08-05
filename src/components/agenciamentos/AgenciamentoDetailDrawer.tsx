@@ -9,6 +9,7 @@ import {
   Home,
   MapPinned,
   Pencil,
+  ShieldX,
   Tags,
   Trash2,
   type LucideIcon,
@@ -66,6 +67,8 @@ type AgenciamentoDetailDrawerProps = {
   onOpenChange: (open: boolean) => void;
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
+  canReject?: boolean;
+  onReject?: (agenciamento: Agenciamento) => void;
   onDelete?: (agenciamento: Agenciamento) => void;
   onReclassify?: (
     agenciamento: Agenciamento,
@@ -100,6 +103,8 @@ export function AgenciamentoDetailDrawer({
   onOpenChange,
   onEdit,
   onValidate,
+  canReject = false,
+  onReject,
   onDelete,
   onReclassify,
   isReclassifying,
@@ -123,6 +128,18 @@ export function AgenciamentoDetailDrawer({
       >
         {agenciamento && (
           <>
+            {agenciamento.status === "reprovado" && agenciamento.reprovadoMotivo && (
+              <div className="mx-5 mt-5 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm leading-relaxed text-destructive sm:mx-6">
+                <ShieldX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider">
+                    Agenciamento reprovado
+                    {agenciamento.reprovadoPorNome ? ` por ${agenciamento.reprovadoPorNome}` : ""}
+                  </p>
+                  <p className="mt-1 text-sm">{agenciamento.reprovadoMotivo}</p>
+                </div>
+              </div>
+            )}
             <SheetHeader className="border-b border-white/55 px-5 pb-4 pt-6 text-left sm:px-6">
               <div className="flex items-start gap-3 pr-8">
                 <span className="grid size-13 shrink-0 place-items-center rounded-2xl bg-primary text-white shadow-[0_16px_34px_-22px_rgba(30,100,125,0.85)]">
@@ -363,6 +380,17 @@ export function AgenciamentoDetailDrawer({
                 >
                   <Pencil className="size-4" />
                   Editar
+                </Button>
+              )}
+              {canReject && onReject && agenciamento.status !== "reprovado" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-2xl border-destructive/30 bg-white/[0.66] text-destructive hover:bg-destructive/10"
+                  onClick={() => onReject(agenciamento)}
+                >
+                  <ShieldX className="size-4" />
+                  Reprovar
                 </Button>
               )}
               {canManage && !validated && (

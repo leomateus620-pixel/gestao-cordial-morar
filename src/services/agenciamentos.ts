@@ -52,6 +52,7 @@ const statusLabels: Record<AgenciamentoStatus, string> = {
   pendente_site: "Pendente site",
   aguardando_validacao: "Aguardando validação",
   validado: "Validado",
+  reprovado: "Reprovado",
   cancelado: "Cancelado",
 };
 
@@ -63,6 +64,7 @@ const statusTone: Record<AgenciamentoStatus, "neutral" | "warning" | "success" |
   pendente_site: "warning",
   aguardando_validacao: "warning",
   validado: "success",
+  reprovado: "danger",
   cancelado: "danger",
 };
 

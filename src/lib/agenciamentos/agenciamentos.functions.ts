@@ -64,6 +64,22 @@ export const updateAgenciamento = createServerFn({ method: "POST" })
     const canManage = canManageAgenciamentos(roles);
     const patch = patchToPayload(data.patch, canManage);
 
+    const { data: currentRow } = await context.supabase
+      .from("agenciamentos")
+      .select("status")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if ((currentRow as { status?: string } | null)?.status === "reprovado") {
+      patch.reprovado_motivo = null;
+      patch.reprovado_por_id = null;
+      patch.reprovado_por_nome = null;
+      patch.reprovado_em = null;
+      if (patch.status === undefined || patch.status === "reprovado") {
+        patch.status = "em_andamento";
+      }
+    }
+
     const { data: updated, error } = await context.supabase
       .from("agenciamentos")
       .update(patch as never)
@@ -91,6 +107,44 @@ export const validateAgenciamentoFn = createServerFn({ method: "POST" })
         validado_por_id: context.userId,
         validado_por_nome: data.validadoPorNome?.trim() || null,
         validado_em: new Date().toISOString(),
+        reprovado_motivo: null,
+        reprovado_por_id: null,
+        reprovado_por_nome: null,
+        reprovado_em: null,
+      } as never)
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return rowToAgenciamento(updated as unknown as AgenciamentoDbRow);
+  });
+
+export const rejectAgenciamentoFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; motivo: string; reprovadoPorNome?: string }) => {
+    const motivo = (data.motivo ?? "").trim();
+    if (motivo.length < 3) throw new Error("Descreva o motivo da reprovação (mínimo 3 caracteres).");
+    if (motivo.length > 500) throw new Error("O motivo deve ter no máximo 500 caracteres.");
+    return { ...data, motivo };
+  })
+  .handler(async ({ data, context }) => {
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (!roles.includes("admin")) {
+      throw new Error("Somente administradores podem reprovar agenciamentos.");
+    }
+
+    const { data: updated, error } = await context.supabase
+      .from("agenciamentos")
+      .update({
+        validado: false,
+        status: "reprovado",
+        validado_por_id: null,
+        validado_por_nome: null,
+        validado_em: null,
+        reprovado_motivo: data.motivo,
+        reprovado_por_id: context.userId,
+        reprovado_por_nome: data.reprovadoPorNome?.trim() || null,
+        reprovado_em: new Date().toISOString(),
       } as never)
       .eq("id", data.id)
       .select("*")

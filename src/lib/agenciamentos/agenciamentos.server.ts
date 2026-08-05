@@ -51,6 +51,10 @@ export type AgenciamentoDbRow = {
   validado_por_id: string | null;
   validado_por_nome: string | null;
   validado_em: string | null;
+  reprovado_motivo?: string | null;
+  reprovado_por_id?: string | null;
+  reprovado_por_nome?: string | null;
+  reprovado_em?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -115,6 +119,10 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
     validadoPorId: orUndef(row.validado_por_id),
     validadoPorNome: orUndef(row.validado_por_nome),
     validadoEm: orUndef(row.validado_em),
+    reprovadoMotivo: orUndef(row.reprovado_motivo ?? null),
+    reprovadoPorId: orUndef(row.reprovado_por_id ?? null),
+    reprovadoPorNome: orUndef(row.reprovado_por_nome ?? null),
+    reprovadoEm: orUndef(row.reprovado_em ?? null),
     criadoEm: row.created_at,
     atualizadoEm: row.updated_at,
   };

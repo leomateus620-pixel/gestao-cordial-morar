@@ -16,6 +16,7 @@ import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
+import { AgenciamentoRejectDialog } from "@/components/agenciamentos/AgenciamentoRejectDialog";
 import { AgenciamentoTrackSelector } from "@/components/agenciamentos/AgenciamentoTrackSelector";
 import {
   AgenciamentoSummaryCards,
@@ -91,6 +92,9 @@ function Page() {
     canCreate,
     canManage,
     isAdmin,
+    rejectAgenciamento,
+    canRejectAgenciamentos,
+    isRejecting,
     currentBroker,
     effectiveBrokerId,
     corretores,
@@ -128,6 +132,7 @@ function Page() {
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
+  const [pendingReject, setPendingReject] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [bonusRegistryOpen, setBonusRegistryOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -421,6 +426,35 @@ function Page() {
     [showFeedback, validateAgenciamento],
   );
 
+  const rejectedAgenciamentos = useMemo(
+    () => visibleAgenciamentos.filter((item) => item.status === "reprovado"),
+    [visibleAgenciamentos],
+  );
+
+  const requestReject = useCallback((agenciamento: Agenciamento) => {
+    setPendingReject(agenciamento);
+  }, []);
+
+  const confirmReject = useCallback(
+    async (motivo: string) => {
+      if (!pendingReject) return;
+      try {
+        await rejectAgenciamento(pendingReject.id, motivo);
+        showFeedback("Agenciamento reprovado. O corretor foi informado do motivo.", "success");
+        setPendingReject(null);
+        setSelectedAgenciamento(null);
+      } catch (caughtError) {
+        showFeedback(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Não foi possível reprovar o agenciamento.",
+          "error",
+        );
+      }
+    },
+    [pendingReject, rejectAgenciamento, showFeedback],
+  );
+
   const requestDelete = useCallback((agenciamento: Agenciamento) => {
     setPendingDelete(agenciamento);
   }, []);
@@ -561,6 +595,24 @@ function Page() {
         </div>
 
 
+        {rejectedAgenciamentos.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-destructive sm:flex sm:justify-between">
+            <p className="min-w-0 text-sm font-semibold">
+              {rejectedAgenciamentos.length === 1
+                ? "1 agenciamento foi reprovado pela gestão. Veja o motivo e corrija."
+                : `${rejectedAgenciamentos.length} agenciamentos foram reprovados pela gestão. Veja os motivos e corrija.`}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 rounded-xl border-destructive/30 bg-white/70 text-destructive shadow-none hover:bg-destructive/10"
+              onClick={() => setFilters({ status: "reprovado" })}
+            >
+              Ver reprovados
+            </Button>
+          </div>
+        )}
+
         <AgenciamentoBonusPanel
           track={track}
           progress={bonusProgress}
@@ -673,6 +725,8 @@ function Page() {
                   onView={setSelectedAgenciamento}
                   onEdit={openEdit}
                   onValidate={handleValidate}
+                  canReject={canRejectAgenciamentos}
+                  onReject={requestReject}
                   onDelete={requestDelete}
                 />
               ))}
@@ -715,9 +769,21 @@ function Page() {
         }}
         onEdit={openEdit}
         onValidate={handleValidate}
+        canReject={canRejectAgenciamentos}
+        onReject={requestReject}
         onDelete={requestDelete}
         onReclassify={handleReclassify}
         isReclassifying={reclassifying}
+      />
+
+      <AgenciamentoRejectDialog
+        agenciamento={pendingReject}
+        open={pendingReject !== null}
+        isSubmitting={isRejecting}
+        onOpenChange={(open) => {
+          if (!open) setPendingReject(null);
+        }}
+        onConfirm={confirmReject}
       />
 
       <AlertDialog
