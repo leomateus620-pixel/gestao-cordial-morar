@@ -169,7 +169,6 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "contratos",
       "financeiro",
       "relatorios",
-      "documentos",
       "integracoes",
     ],
     permissions: [
@@ -179,8 +178,6 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "financeiro:read",
       "financeiro:write",
       "relatorios:read",
-      "documentos:read",
-      "documentos:write",
       "integracoes:read",
       "integracoes:manage",
     ],
