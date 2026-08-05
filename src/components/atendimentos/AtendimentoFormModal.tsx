@@ -154,8 +154,12 @@ export function AtendimentoFormModal({
   const sortedBrokerOptions = brokerOptions
     .filter((broker) => brokerCanServeAgency(broker, form.imobiliaria))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-    .map((broker) => ({ id: broker.id, label: broker.nome }))
+    .map((broker) => ({
+      id: broker.id,
+      label: currentUser?.id === broker.id ? `${broker.nome} (você)` : broker.nome,
+    }))
     .concat({ id: "a_definir", label: "A definir" });
+
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
