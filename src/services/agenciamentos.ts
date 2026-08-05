@@ -204,6 +204,8 @@ export function normalizeAgenciamento(input: LegacyAgenciamento): Agenciamento {
     finalidade:
       input.finalidade === "venda" || input.finalidade === "aluguel" ? input.finalidade : undefined,
     descricaoImovel: safeString(input.descricaoImovel),
+    codigoMorar: safeString(input.codigoMorar),
+    codigoCordial: safeString(input.codigoCordial),
     proprietarioNome: safeString(input.proprietarioNome, "Proprietário não informado"),
     proprietarioTelefone: formatPhoneBR(safeString(input.proprietarioTelefone)),
     proprietarioContatoPreferencial: input.proprietarioContatoPreferencial ?? "whatsapp",
@@ -318,6 +320,8 @@ export function filterAgenciamentos(
         !query ||
         [
           item.endereco,
+          item.codigoMorar,
+          item.codigoCordial,
           item.bairro,
           item.proprietarioNome,
           item.proprietarioTelefone,

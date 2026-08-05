@@ -82,6 +82,8 @@ type FormState = {
   imobiliaria: AgenciamentoImobiliaria;
   finalidade: AgenciamentoFinalidade;
   descricaoImovel: string;
+  codigoMorar: string;
+  codigoCordial: string;
   proprietarioNome: string;
   proprietarioTelefone: string;
   proprietarioContatoPreferencial: AgenciamentoContatoPreferencial;
@@ -196,6 +198,8 @@ function initialForm(agenciamento: Agenciamento | null | undefined, currentBroke
     imobiliaria: agenciamento?.imobiliaria ?? currentBroker?.imobiliaria ?? "cordial",
     finalidade: agenciamento?.finalidade ?? defaultTrack,
     descricaoImovel: agenciamento?.descricaoImovel ?? "",
+    codigoMorar: agenciamento?.codigoMorar ?? "",
+    codigoCordial: agenciamento?.codigoCordial ?? "",
     proprietarioNome: agenciamento?.proprietarioNome ?? "",
     proprietarioTelefone: agenciamento?.proprietarioTelefone ?? "",
     proprietarioContatoPreferencial: agenciamento?.proprietarioContatoPreferencial ?? "whatsapp",
@@ -314,6 +318,8 @@ export function AgenciamentoFormModal({
       imobiliaria: form.imobiliaria,
       finalidade: form.finalidade,
       descricaoImovel: form.descricaoImovel.trim(),
+      codigoMorar: form.codigoMorar.trim(),
+      codigoCordial: form.codigoCordial.trim(),
       proprietarioNome: form.proprietarioNome.trim(),
       proprietarioTelefone: formatPhoneBR(form.proprietarioTelefone),
       proprietarioContatoPreferencial: form.proprietarioContatoPreferencial,
