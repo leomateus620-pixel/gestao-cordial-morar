@@ -127,10 +127,21 @@ export function AgenciamentoDetailDrawer({
                   <Home className="size-6" />
                 </span>
                 <div className="min-w-0 flex-1">
+                  {(agenciamento.codigoMorar || agenciamento.codigoCordial) && (
+                    <p className="mb-1 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                      {[
+                        agenciamento.codigoMorar && `Morar ${agenciamento.codigoMorar}`,
+                        agenciamento.codigoCordial && `Cordial ${agenciamento.codigoCordial}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
                   <SheetTitle className="truncate text-xl font-black tracking-tight">
                     {getAgenciamentoTipoLabel(agenciamento.tipoImovel)} -{" "}
                     {agenciamento.bairro || agenciamento.endereco}
                   </SheetTitle>
+
                   <SheetDescription className="mt-1 text-xs">
                     {agenciamento.endereco} -{" "}
                     {getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)} -{" "}
@@ -217,6 +228,8 @@ export function AgenciamentoDetailDrawer({
                       label="Tipo"
                       value={getAgenciamentoTipoLabel(agenciamento.tipoImovel)}
                     />
+                    <MetricRow label="Código Morar" value={agenciamento.codigoMorar || "-"} />
+                    <MetricRow label="Código Cordial" value={agenciamento.codigoCordial || "-"} />
                     <MetricRow label="Endereço" value={agenciamento.endereco} />
                     <MetricRow label="Bairro/regiao" value={agenciamento.bairro || "-"} />
                     <MetricRow label="Cidade" value={agenciamento.cidade || "-"} />

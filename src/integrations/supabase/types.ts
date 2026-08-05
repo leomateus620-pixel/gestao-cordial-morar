@@ -64,6 +64,8 @@ export type Database = {
           bairro: string | null
           cadastrado_site: boolean
           cidade: string | null
+          codigo_cordial: string | null
+          codigo_morar: string | null
           corretor_id: string
           corretor_nome: string
           created_at: string
@@ -99,6 +101,8 @@ export type Database = {
           bairro?: string | null
           cadastrado_site?: boolean
           cidade?: string | null
+          codigo_cordial?: string | null
+          codigo_morar?: string | null
           corretor_id: string
           corretor_nome: string
           created_at?: string
@@ -134,6 +138,8 @@ export type Database = {
           bairro?: string | null
           cadastrado_site?: boolean
           cidade?: string | null
+          codigo_cordial?: string | null
+          codigo_morar?: string | null
           corretor_id?: string
           corretor_nome?: string
           created_at?: string

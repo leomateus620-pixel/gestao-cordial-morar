@@ -21,7 +21,10 @@ export type AgenciamentoDbRow = {
   endereco: string;
   bairro: string | null;
   cidade: string | null;
+  codigo_morar?: string | null;
+  codigo_cordial?: string | null;
   descricao_imovel: string | null;
+
   proprietario_nome: string;
   proprietario_telefone: string;
   proprietario_contato_preferencial: string | null;
@@ -69,7 +72,10 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
     endereco: row.endereco,
     bairro: orUndef(row.bairro),
     cidade: orUndef(row.cidade),
+    codigoMorar: orUndef(row.codigo_morar ?? null),
+    codigoCordial: orUndef(row.codigo_cordial ?? null),
     imobiliaria: row.imobiliaria as AgenciamentoImobiliaria,
+
     finalidade:
       row.finalidade === "venda" || row.finalidade === "aluguel"
         ? (row.finalidade as AgenciamentoFinalidade)
@@ -164,7 +170,10 @@ export function inputToPayload(
     endereco: input.endereco.trim(),
     bairro: orNull(input.bairro),
     cidade: orNull(input.cidade),
+    codigo_morar: orNull(input.codigoMorar),
+    codigo_cordial: orNull(input.codigoCordial),
     descricao_imovel: orNull(input.descricaoImovel),
+
     proprietario_nome: input.proprietarioNome.trim(),
     proprietario_telefone: input.proprietarioTelefone.trim(),
     proprietario_contato_preferencial: orNull(input.proprietarioContatoPreferencial),
@@ -200,6 +209,9 @@ export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage
   if (patchInput.endereco !== undefined) patch.endereco = patchInput.endereco.trim();
   if (patchInput.bairro !== undefined) patch.bairro = orNull(patchInput.bairro);
   if (patchInput.cidade !== undefined) patch.cidade = orNull(patchInput.cidade);
+  if (patchInput.codigoMorar !== undefined) patch.codigo_morar = orNull(patchInput.codigoMorar);
+  if (patchInput.codigoCordial !== undefined) patch.codigo_cordial = orNull(patchInput.codigoCordial);
+
   if (patchInput.descricaoImovel !== undefined) {
     patch.descricao_imovel = orNull(patchInput.descricaoImovel);
   }

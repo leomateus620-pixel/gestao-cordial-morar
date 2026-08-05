@@ -141,11 +141,19 @@ export async function runGlobalSearch(
       supabase
         .from("agenciamentos")
         .select(
-          "id, endereco, bairro, cidade, proprietario_nome, proprietario_telefone, corretor_nome, status, finalidade, tipo_imovel, updated_at",
+          "id, endereco, bairro, cidade, codigo_morar, codigo_cordial, proprietario_nome, proprietario_telefone, corretor_nome, status, finalidade, tipo_imovel, updated_at",
         )
         .or(
           ilikeOr(
-            ["endereco", "bairro", "proprietario_nome", "proprietario_telefone", "corretor_nome"],
+            [
+              "endereco",
+              "bairro",
+              "codigo_morar",
+              "codigo_cordial",
+              "proprietario_nome",
+              "proprietario_telefone",
+              "corretor_nome",
+            ],
             term,
           ),
         )
@@ -157,7 +165,15 @@ export async function runGlobalSearch(
             (row: any): BuscaResultado => ({
               id: row.id,
               categoria: "agenciamento",
-              titulo: row.endereco,
+              titulo: joinParts([
+                row.codigo_morar && `Morar ${row.codigo_morar}`,
+                row.codigo_cordial && `Cordial ${row.codigo_cordial}`,
+              ])
+                ? `${joinParts([
+                    row.codigo_morar && `Morar ${row.codigo_morar}`,
+                    row.codigo_cordial && `Cordial ${row.codigo_cordial}`,
+                  ])} · ${row.endereco}`
+                : row.endereco,
               subtitulo: joinParts([
                 row.proprietario_nome && `Proprietário: ${row.proprietario_nome}`,
                 row.corretor_nome && `Corretor: ${row.corretor_nome}`,
@@ -169,6 +185,7 @@ export async function runGlobalSearch(
             }),
           );
         }),
+
     );
   }
 
@@ -667,6 +684,8 @@ async function agenciamentoTimeline(supabase: Db, id: string): Promise<BuscaTime
     status: row.status,
     rota: "/agenciamentos",
     campos: [
+      { label: "Código Morar", valor: row.codigo_morar ?? "—" },
+      { label: "Código Cordial", valor: row.codigo_cordial ?? "—" },
       { label: "Classificação", valor: row.finalidade ?? "Sem classificação" },
       { label: "Corretor", valor: row.corretor_nome ?? "—" },
       { label: "Proprietário", valor: row.proprietario_nome ?? "—" },

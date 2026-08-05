@@ -82,6 +82,8 @@ type FormState = {
   imobiliaria: AgenciamentoImobiliaria;
   finalidade: AgenciamentoFinalidade;
   descricaoImovel: string;
+  codigoMorar: string;
+  codigoCordial: string;
   proprietarioNome: string;
   proprietarioTelefone: string;
   proprietarioContatoPreferencial: AgenciamentoContatoPreferencial;
@@ -196,6 +198,8 @@ function initialForm(agenciamento: Agenciamento | null | undefined, currentBroke
     imobiliaria: agenciamento?.imobiliaria ?? currentBroker?.imobiliaria ?? "cordial",
     finalidade: agenciamento?.finalidade ?? defaultTrack,
     descricaoImovel: agenciamento?.descricaoImovel ?? "",
+    codigoMorar: agenciamento?.codigoMorar ?? "",
+    codigoCordial: agenciamento?.codigoCordial ?? "",
     proprietarioNome: agenciamento?.proprietarioNome ?? "",
     proprietarioTelefone: agenciamento?.proprietarioTelefone ?? "",
     proprietarioContatoPreferencial: agenciamento?.proprietarioContatoPreferencial ?? "whatsapp",
@@ -314,6 +318,8 @@ export function AgenciamentoFormModal({
       imobiliaria: form.imobiliaria,
       finalidade: form.finalidade,
       descricaoImovel: form.descricaoImovel.trim(),
+      codigoMorar: form.codigoMorar.trim(),
+      codigoCordial: form.codigoCordial.trim(),
       proprietarioNome: form.proprietarioNome.trim(),
       proprietarioTelefone: formatPhoneBR(form.proprietarioTelefone),
       proprietarioContatoPreferencial: form.proprietarioContatoPreferencial,
@@ -597,6 +603,15 @@ function PropertyStep({ form, errors, update }: { form: FormState; errors: Agenc
   return (
     <StepSection icon={Building2} title="Dados do imóvel" description="Comece pelas informações que identificam a captação.">
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="ag-codigo-morar" label="Código Morar" helper="Opcional — usado para localizar o imóvel na busca.">
+          <input id="ag-codigo-morar" value={form.codigoMorar} onChange={(event) => update("codigoMorar", event.target.value)} className={controlClass()} placeholder="Ex.: MR-1234" maxLength={40} autoComplete="off" />
+        </Field>
+        <Field id="ag-codigo-cordial" label="Código Cordial" helper="Opcional — usado para localizar o imóvel na busca.">
+          <input id="ag-codigo-cordial" value={form.codigoCordial} onChange={(event) => update("codigoCordial", event.target.value)} className={controlClass()} placeholder="Ex.: CD-5678" maxLength={40} autoComplete="off" />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+
         <Field id="ag-tipo-imovel" label="Tipo de imóvel" required error={errors.tipoImovel}>
           <Select value={form.tipoImovel} onValueChange={(value) => update("tipoImovel", value as AgenciamentoTipoImovel)}>
             <SelectTrigger id="ag-tipo-imovel" aria-required="true" aria-invalid={Boolean(errors.tipoImovel)} aria-describedby={descriptionIds("ag-tipo-imovel", errors.tipoImovel)} className={controlClass(errors.tipoImovel, true)}><SelectValue /></SelectTrigger>
@@ -711,6 +726,9 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
         <div><h3 id="ag-review-title" className="text-base font-extrabold tracking-tight">Revise antes de salvar</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Volte às etapas anteriores se algum dado precisar de ajuste.</p></div>
         <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           <ReviewRow icon={Building2} label="Imóvel" value={`${getAgenciamentoTipoLabel(form.tipoImovel)} · ${form.endereco || "Endereço pendente"}`} />
+          {(form.codigoMorar.trim() || form.codigoCordial.trim()) && (
+            <ReviewRow icon={Building2} label="Códigos" value={[form.codigoMorar.trim() && `Morar ${form.codigoMorar.trim()}`, form.codigoCordial.trim() && `Cordial ${form.codigoCordial.trim()}`].filter(Boolean).join(" · ")} />
+          )}
           <ReviewRow icon={UserRound} label="Proprietário" value={`${form.proprietarioNome || "Nome pendente"} · ${form.proprietarioTelefone || "Telefone pendente"}`} />
           <ReviewRow icon={CalendarDays} label="Responsabilidade" value={`${form.corretorNome || "Corretor pendente"} · ${form.dataAgenciamento || "Data pendente"}`} />
           <ReviewRow icon={BadgeCheck} label="Situação" value={`${getAgenciamentoStatusLabel(form.status)} · ${checklistProgress}% do checklist`} />

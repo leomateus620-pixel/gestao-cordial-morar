@@ -106,6 +106,21 @@ function AgenciamentoCardComponent({
         </div>
 
 
+        {(agenciamento.codigoMorar || agenciamento.codigoCordial) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {agenciamento.codigoMorar && (
+              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
+                Morar {agenciamento.codigoMorar}
+              </span>
+            )}
+            {agenciamento.codigoCordial && (
+              <span className="rounded-md bg-foreground/8 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70">
+                Cordial {agenciamento.codigoCordial}
+              </span>
+            )}
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => onView(agenciamento)}
@@ -113,6 +128,7 @@ function AgenciamentoCardComponent({
         >
           {getAgenciamentoTipoLabel(agenciamento.tipoImovel)} — {agenciamento.endereco}
         </button>
+
 
         <div className="mt-1.5 flex min-w-0 items-start gap-1.5 text-xs text-foreground/70">
           <MapPin aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-primary/75" />
