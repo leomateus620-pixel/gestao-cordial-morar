@@ -91,6 +91,10 @@ export type Database = {
           proprietario_nome: string
           proprietario_observacoes: string | null
           proprietario_telefone: string
+          reprovado_em: string | null
+          reprovado_motivo: string | null
+          reprovado_por_id: string | null
+          reprovado_por_nome: string | null
           site_url: string | null
           status: string
           tipo_imovel: string
@@ -132,6 +136,10 @@ export type Database = {
           proprietario_nome: string
           proprietario_observacoes?: string | null
           proprietario_telefone: string
+          reprovado_em?: string | null
+          reprovado_motivo?: string | null
+          reprovado_por_id?: string | null
+          reprovado_por_nome?: string | null
           site_url?: string | null
           status?: string
           tipo_imovel: string
@@ -173,6 +181,10 @@ export type Database = {
           proprietario_nome?: string
           proprietario_observacoes?: string | null
           proprietario_telefone?: string
+          reprovado_em?: string | null
+          reprovado_motivo?: string | null
+          reprovado_por_id?: string | null
+          reprovado_por_nome?: string | null
           site_url?: string | null
           status?: string
           tipo_imovel?: string
