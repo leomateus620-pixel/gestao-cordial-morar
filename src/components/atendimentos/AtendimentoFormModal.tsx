@@ -284,7 +284,7 @@ export function AtendimentoFormModal({
       fonteProspeccao: form.fonteProspeccao || undefined,
       imobiliaria: form.imobiliaria,
       corretorId: optional(form.corretorId),
-      corretorNome: form.corretorId === "a_definir" ? undefined : broker?.label,
+      corretorNome: form.corretorId === "a_definir" ? undefined : broker?.nome,
       finalidade: form.finalidade,
       tipoImovel: form.tipoImovel,
       dormitorios: form.dormitorios,
