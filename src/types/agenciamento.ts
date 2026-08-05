@@ -64,6 +64,9 @@ export type Agenciamento = {
   endereco: string;
   bairro?: string;
   cidade?: string;
+  codigoMorar?: string;
+  codigoCordial?: string;
+
   imobiliaria: AgenciamentoImobiliaria;
   finalidade?: AgenciamentoFinalidade;
   descricaoImovel?: string;
