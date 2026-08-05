@@ -35,6 +35,10 @@ export type AgenciamentoDbRow = {
   origem: string;
   status: string;
   fotos_realizadas: boolean;
+  fotos_horizontal?: boolean | null;
+  fotos_vertical?: boolean | null;
+  cadastrado_morar?: boolean | null;
+  cadastrado_cordial?: boolean | null;
   fotos_drive: boolean;
   placa_instalada: boolean;
   cadastrado_site: boolean;
@@ -94,10 +98,12 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
     origem: row.origem as AgenciamentoOrigem,
     status: row.status as AgenciamentoStatus,
     checklist: {
-      fotosHorizontal: row.fotos_realizadas,
+      fotosHorizontal: Boolean(row.fotos_horizontal ?? row.fotos_realizadas),
+      fotosVertical: Boolean(row.fotos_vertical ?? row.fotos_realizadas),
       fotosDrive: row.fotos_drive,
       placaInstalada: row.placa_instalada,
-      cadastradoMorar: row.cadastrado_site,
+      cadastradoMorar: Boolean(row.cadastrado_morar ?? row.cadastrado_site),
+      cadastradoCordial: Boolean(row.cadastrado_cordial ?? row.cadastrado_site),
       videoRealizado: row.video_realizado,
       validado: row.validado,
     },
@@ -183,10 +189,14 @@ export function inputToPayload(
     data_agenciamento: input.dataAgenciamento.slice(0, 10),
     origem: input.origem,
     status: canManage && checklist.validado ? "validado" : input.status,
-    fotos_realizadas: Boolean(checklist.fotosHorizontal),
+    fotos_realizadas: Boolean(checklist.fotosHorizontal) && Boolean(checklist.fotosVertical),
+    fotos_horizontal: Boolean(checklist.fotosHorizontal),
+    fotos_vertical: Boolean(checklist.fotosVertical),
     fotos_drive: Boolean(checklist.fotosDrive),
     placa_instalada: Boolean(checklist.placaInstalada),
-    cadastrado_site: Boolean(checklist.cadastradoMorar),
+    cadastrado_site: Boolean(checklist.cadastradoMorar) && Boolean(checklist.cadastradoCordial),
+    cadastrado_morar: Boolean(checklist.cadastradoMorar),
+    cadastrado_cordial: Boolean(checklist.cadastradoCordial),
     video_realizado: Boolean(checklist.videoRealizado),
     validado: canManage ? Boolean(checklist.validado) : false,
     drive_folder_url: orNull(input.driveFolderUrl),
@@ -244,14 +254,26 @@ export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage
   if (patchInput.checklist) {
     const checklist = patchInput.checklist;
     if (checklist.fotosHorizontal !== undefined) {
-      patch.fotos_realizadas = Boolean(checklist.fotosHorizontal);
+      patch.fotos_horizontal = Boolean(checklist.fotosHorizontal);
+    }
+    if (checklist.fotosVertical !== undefined) {
+      patch.fotos_vertical = Boolean(checklist.fotosVertical);
+    }
+    if (checklist.fotosHorizontal !== undefined || checklist.fotosVertical !== undefined) {
+      patch.fotos_realizadas = Boolean(checklist.fotosHorizontal) && Boolean(checklist.fotosVertical);
     }
     if (checklist.fotosDrive !== undefined) patch.fotos_drive = Boolean(checklist.fotosDrive);
     if (checklist.placaInstalada !== undefined) {
       patch.placa_instalada = Boolean(checklist.placaInstalada);
     }
     if (checklist.cadastradoMorar !== undefined) {
-      patch.cadastrado_site = Boolean(checklist.cadastradoMorar);
+      patch.cadastrado_morar = Boolean(checklist.cadastradoMorar);
+    }
+    if (checklist.cadastradoCordial !== undefined) {
+      patch.cadastrado_cordial = Boolean(checklist.cadastradoCordial);
+    }
+    if (checklist.cadastradoMorar !== undefined || checklist.cadastradoCordial !== undefined) {
+      patch.cadastrado_site = Boolean(checklist.cadastradoMorar) && Boolean(checklist.cadastradoCordial);
     }
     if (checklist.videoRealizado !== undefined) patch.video_realizado = Boolean(checklist.videoRealizado);
     if (canManage && checklist.validado !== undefined) patch.validado = Boolean(checklist.validado);
