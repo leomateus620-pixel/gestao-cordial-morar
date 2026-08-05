@@ -75,6 +75,28 @@ const ATTENDANCE_SAFE_COLUMNS =
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const asUuid = (v?: string | null) => (v && UUID_RE.test(v) ? v : null);
 const orNull = (v?: string | null) => (v && String(v).trim() ? String(v).trim() : null);
+/** "a_definir" (opção "A definir" do formulário) significa "sem corretor". */
+const normalizeBrokerId = (v?: string | null) => {
+  const value = orNull(v);
+  return !value || value === "a_definir" ? null : value;
+};
+
+/** Traduz erros do banco (gatilhos/RLS) em mensagens claras para o usuário. */
+function friendlyAttendanceError(error: { code?: string; message?: string }): string {
+  const message = error.message ?? "";
+  if (message.includes("only management can assign"))
+    return "Somente administração ou secretaria pode alterar o corretor responsável deste atendimento.";
+  if (message.includes("actor is outside the attendance agency scope"))
+    return "Você não tem acesso à imobiliária deste atendimento.";
+  if (message.includes("broker is outside the attendance agency scope"))
+    return "O corretor selecionado não atende a imobiliária escolhida.";
+  if (message.includes("target is not an active broker"))
+    return "O usuário selecionado não é um corretor ativo.";
+  if (error.code === "42501" || message.toLowerCase().includes("row-level security"))
+    return "Você não tem permissão para editar este atendimento.";
+  return message || "Não foi possível salvar as alterações.";
+}
+
 const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
 const orUndef = <T>(v: T | null | undefined): T | undefined =>
   v === null || v === undefined ? undefined : v;
@@ -456,7 +478,7 @@ export const updateAttendance = createServerFn({ method: "POST" })
     if (p.proximoRetorno !== undefined)
       patch.proximo_retorno = p.proximoRetorno ? new Date(p.proximoRetorno).toISOString() : null;
     if (p.proximoPasso !== undefined) patch.proximo_passo = orNull(p.proximoPasso);
-    if (p.corretorId !== undefined) patch.corretor_id = orNull(p.corretorId);
+    if (p.corretorId !== undefined) patch.corretor_id = normalizeBrokerId(p.corretorId);
     if (p.corretorNome !== undefined) patch.corretor_nome = orNull(p.corretorNome);
     if (p.historicoInicial !== undefined) patch.historico_inicial = orNull(p.historicoInicial);
 
@@ -480,7 +502,44 @@ export const updateAttendance = createServerFn({ method: "POST" })
     if (p.interesseDescricao !== undefined)
       patch.interesse_descricao = orNull(p.interesseDescricao);
 
+    // Remove corretor/imobiliária do patch quando não mudaram: o gatilho de
+    // atribuição do banco só permite reatribuição por admin/secretaria e
+    // dispara mesmo em reenvio do mesmo valor.
+    const { data: currentRow } = await context.supabase
+      .from("attendances")
+      .select("corretor_id, imobiliaria, corretor_nome")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (currentRow) {
+      const current = currentRow as unknown as {
+        corretor_id: string | null;
+        imobiliaria: string | null;
+        corretor_nome: string | null;
+      };
+      if ("corretor_id" in patch && (patch.corretor_id ?? null) === (current.corretor_id ?? null)) {
+        delete patch.corretor_id;
+        if ((patch.corretor_nome ?? null) === (current.corretor_nome ?? null))
+          delete patch.corretor_nome;
+      }
+      if ("imobiliaria" in patch && patch.imobiliaria === current.imobiliaria) {
+        delete patch.imobiliaria;
+      }
+    }
+
+    if (Object.keys(patch).length === 0) {
+      const { data: unchanged, error: unchangedError } = await context.supabase
+        .from("attendances")
+        .select(ATTENDANCE_SAFE_COLUMNS)
+        .eq("id", data.id)
+        .single();
+      if (unchangedError) throw new Error(friendlyAttendanceError(unchangedError));
+      return rowToAtendimento(unchanged as unknown as DbRow);
+    }
+
+
+
     let { data: updated, error } = await context.supabase
+
       .from("attendances")
       .update(patch as never)
       .eq("id", data.id)
@@ -507,7 +566,8 @@ export const updateAttendance = createServerFn({ method: "POST" })
       updated = legacyResult.data;
       error = legacyResult.error;
     }
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyAttendanceError(error));
+
     return rowToAtendimento(updated as unknown as DbRow);
   });
 
