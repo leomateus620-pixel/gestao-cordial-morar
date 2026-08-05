@@ -45,6 +45,7 @@ const statusOptions: AgenciamentoStatusFilter[] = [
   "pendentes",
   "aguardando_validacao",
   "validado",
+  "reprovado",
   "cancelado",
 ];
 

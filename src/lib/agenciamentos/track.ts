@@ -35,6 +35,7 @@ export function isCountableAgenciamento(item: Agenciamento) {
   const c = item.checklist;
   return (
     item.status !== "cancelado" &&
+    item.status !== "reprovado" &&
     c.fotosHorizontal &&
     c.fotosVertical &&
     c.cadastradoMorar &&
