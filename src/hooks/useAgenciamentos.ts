@@ -19,6 +19,7 @@ import {
   updateAgenciamento as updateAgenciamentoFn,
   updateAgenciamentoBonusStatus,
   validateAgenciamentoFn,
+  rejectAgenciamentoFn,
 } from "@/lib/agenciamentos/agenciamentos.functions";
 import { getUnclassifiedAgenciamentos } from "@/lib/agenciamentos/track";
 import { useSession } from "@/lib/auth-mock";
@@ -71,6 +72,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   const createFn = useServerFn(createAgenciamentoFn);
   const updateFn = useServerFn(updateAgenciamentoFn);
   const validateFn = useServerFn(validateAgenciamentoFn);
+  const rejectFn = useServerFn(rejectAgenciamentoFn);
   const removeFn = useServerFn(deleteAgenciamentoFn);
   const listBonusesFn = useServerFn(listAgenciamentoBonuses);
   const updateBonusFn = useServerFn(updateAgenciamentoBonusStatus);
@@ -122,6 +124,11 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
   });
   const validateMutation = useMutation({
     mutationFn: (vars: { id: string; validadoPorNome?: string }) => validateFn({ data: vars }),
+    onSuccess: invalidate,
+  });
+  const rejectMutation = useMutation({
+    mutationFn: (vars: { id: string; motivo: string; reprovadoPorNome?: string }) =>
+      rejectFn({ data: vars }),
     onSuccess: invalidate,
   });
   const deleteMutation = useMutation({
@@ -326,6 +333,17 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     [canManage, session, validateMutation],
   );
 
+  const reject = useCallback(
+    async (id: string, motivo: string) => {
+      if (!session || session.perfil !== "admin_owner") {
+        throw new Error("Somente administradores podem reprovar agenciamentos.");
+      }
+      await rejectMutation.mutateAsync({ id, motivo, reprovadoPorNome: session.nome });
+      return true;
+    },
+    [rejectMutation, session],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       if (!session) return false;
@@ -370,6 +388,9 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
     createAgenciamento: create,
     updateAgenciamento: update,
     validateAgenciamento: validate,
+    rejectAgenciamento: reject,
+    canRejectAgenciamentos: session?.perfil === "admin_owner",
+    isRejecting: rejectMutation.isPending,
     deleteAgenciamento: remove,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
@@ -380,6 +401,7 @@ export function useAgenciamentos(options: UseAgenciamentosOptions = {}) {
       createMutation.isPending ||
       updateMutation.isPending ||
       validateMutation.isPending ||
+      rejectMutation.isPending ||
       deleteMutation.isPending,
   };
 }
