@@ -238,11 +238,12 @@ export const moduleItems: ModuleItem[] = [
   },
   {
     to: "/documentos",
-    label: "Documentos",
-    desc: "Arquivos e certidões",
+    label: "Documentos internos",
+    shortLabel: "Documentos",
+    desc: "Arquivos internos da imobiliária",
     icon: FolderArchive,
     module: "documentos",
-    sidebar: { section: "gestao", order: 60 },
+    sidebar: { section: "gestao", order: 60, desc: "Arquivos internos" },
   },
   {
     to: "/integracoes",
