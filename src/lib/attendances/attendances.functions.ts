@@ -75,6 +75,28 @@ const ATTENDANCE_SAFE_COLUMNS =
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const asUuid = (v?: string | null) => (v && UUID_RE.test(v) ? v : null);
 const orNull = (v?: string | null) => (v && String(v).trim() ? String(v).trim() : null);
+/** "a_definir" (opção "A definir" do formulário) significa "sem corretor". */
+const normalizeBrokerId = (v?: string | null) => {
+  const value = orNull(v);
+  return !value || value === "a_definir" ? null : value;
+};
+
+/** Traduz erros do banco (gatilhos/RLS) em mensagens claras para o usuário. */
+function friendlyAttendanceError(error: { code?: string; message?: string }): string {
+  const message = error.message ?? "";
+  if (message.includes("only management can assign"))
+    return "Somente administração ou secretaria pode alterar o corretor responsável deste atendimento.";
+  if (message.includes("actor is outside the attendance agency scope"))
+    return "Você não tem acesso à imobiliária deste atendimento.";
+  if (message.includes("broker is outside the attendance agency scope"))
+    return "O corretor selecionado não atende a imobiliária escolhida.";
+  if (message.includes("target is not an active broker"))
+    return "O usuário selecionado não é um corretor ativo.";
+  if (error.code === "42501" || message.toLowerCase().includes("row-level security"))
+    return "Você não tem permissão para editar este atendimento.";
+  return message || "Não foi possível salvar as alterações.";
+}
+
 const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
 const orUndef = <T>(v: T | null | undefined): T | undefined =>
   v === null || v === undefined ? undefined : v;
