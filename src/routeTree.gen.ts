@@ -30,6 +30,7 @@ import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
 import { Route as AppContratosRouteImport } from './routes/_app.contratos'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
+import { Route as AppBuscaRouteImport } from './routes/_app.busca'
 import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
 import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
 import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
@@ -152,6 +153,11 @@ const AppClientesRoute = AppClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBuscaRoute = AppBuscaRouteImport.update({
+  id: '/busca',
+  path: '/busca',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAtendimentosRoute = AppAtendimentosRouteImport.update({
   id: '/atendimentos',
   path: '/atendimentos',
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
+  '/busca': typeof AppBuscaRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contratos': typeof AppContratosRouteWithChildren
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
+  '/busca': typeof AppBuscaRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/configuracoes': typeof AppConfiguracoesRoute
   '/contratos': typeof AppContratosRouteWithChildren
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
   '/_app/alugueis': typeof AppAlugueisRoute
   '/_app/atendimentos': typeof AppAtendimentosRoute
+  '/_app/busca': typeof AppBuscaRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
   '/_app/configuracoes': typeof AppConfiguracoesRoute
   '/_app/contratos': typeof AppContratosRouteWithChildren
@@ -375,6 +384,7 @@ export interface FileRouteTypes {
     | '/agenciamentos'
     | '/alugueis'
     | '/atendimentos'
+    | '/busca'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/agenciamentos'
     | '/alugueis'
     | '/atendimentos'
+    | '/busca'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '/_app/agenciamentos'
     | '/_app/alugueis'
     | '/_app/atendimentos'
+    | '/_app/busca'
     | '/_app/clientes'
     | '/_app/configuracoes'
     | '/_app/contratos'
@@ -653,6 +665,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/busca': {
+      id: '/_app/busca'
+      path: '/busca'
+      fullPath: '/busca'
+      preLoaderRoute: typeof AppBuscaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/atendimentos': {
       id: '/_app/atendimentos'
       path: '/atendimentos'
@@ -815,6 +834,7 @@ interface AppRouteChildren {
   AppAgenciamentosRoute: typeof AppAgenciamentosRoute
   AppAlugueisRoute: typeof AppAlugueisRoute
   AppAtendimentosRoute: typeof AppAtendimentosRoute
+  AppBuscaRoute: typeof AppBuscaRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
   AppContratosRoute: typeof AppContratosRouteWithChildren
@@ -838,6 +858,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgenciamentosRoute: AppAgenciamentosRoute,
   AppAlugueisRoute: AppAlugueisRoute,
   AppAtendimentosRoute: AppAtendimentosRoute,
+  AppBuscaRoute: AppBuscaRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
   AppContratosRoute: AppContratosRouteWithChildren,
@@ -881,13 +902,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

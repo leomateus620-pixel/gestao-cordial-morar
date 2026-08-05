@@ -1,7 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { z } from "zod";
 import { Loader2, Search, SearchX } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { SectionHeader } from "@/components/section-header";
@@ -16,12 +14,10 @@ import {
 } from "@/types/busca";
 import { cn } from "@/lib/utils";
 
-const searchSchema = z.object({
-  q: fallback(z.string(), "").default(""),
-});
-
 export const Route = createFileRoute("/_app/busca")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (search: Record<string, unknown>): { q: string } => ({
+    q: typeof search["q"] === "string" ? (search["q"] as string) : "",
+  }),
   head: () => ({
     meta: [
       { title: "Busca global — Gestão Cordial" },
@@ -71,7 +67,6 @@ function BuscaPage() {
   return (
     <div className="space-y-6 pt-2">
       <SectionHeader
-        eyebrow="Busca"
         title="Busca global do sistema"
         description="Encontre qualquer nome, contrato, aluguel, venda ou agenciamento e veja o histórico completo do registro."
       />
