@@ -303,7 +303,7 @@ function buildAgenciamentosArea(
       highlight(
         "ag-site",
         "No site",
-        countBy(current.agenciamentos, (item) => item.checklist.cadastradoSite),
+        countBy(current.agenciamentos, (item) => item.checklist.cadastradoMorar),
       ),
       highlight(
         "ag-placa",

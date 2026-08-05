@@ -19,10 +19,10 @@ function makeAgenciamento(overrides: Partial<Agenciamento> = {}): Agenciamento {
     origem: "indicacao",
     status: "novo",
     checklist: {
-      fotosRealizadas: false,
+      fotosHorizontal: false,
       fotosDrive: false,
       placaInstalada: false,
-      cadastradoSite: false,
+      cadastradoMorar: false,
       videoRealizado: false,
       validado: false,
     },

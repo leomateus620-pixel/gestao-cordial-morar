@@ -94,10 +94,10 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
     origem: row.origem as AgenciamentoOrigem,
     status: row.status as AgenciamentoStatus,
     checklist: {
-      fotosRealizadas: row.fotos_realizadas,
+      fotosHorizontal: row.fotos_realizadas,
       fotosDrive: row.fotos_drive,
       placaInstalada: row.placa_instalada,
-      cadastradoSite: row.cadastrado_site,
+      cadastradoMorar: row.cadastrado_site,
       videoRealizado: row.video_realizado,
       validado: row.validado,
     },
@@ -183,10 +183,10 @@ export function inputToPayload(
     data_agenciamento: input.dataAgenciamento.slice(0, 10),
     origem: input.origem,
     status: canManage && checklist.validado ? "validado" : input.status,
-    fotos_realizadas: Boolean(checklist.fotosRealizadas),
+    fotos_realizadas: Boolean(checklist.fotosHorizontal),
     fotos_drive: Boolean(checklist.fotosDrive),
     placa_instalada: Boolean(checklist.placaInstalada),
-    cadastrado_site: Boolean(checklist.cadastradoSite),
+    cadastrado_site: Boolean(checklist.cadastradoMorar),
     video_realizado: Boolean(checklist.videoRealizado),
     validado: canManage ? Boolean(checklist.validado) : false,
     drive_folder_url: orNull(input.driveFolderUrl),
@@ -243,15 +243,15 @@ export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage
   }
   if (patchInput.checklist) {
     const checklist = patchInput.checklist;
-    if (checklist.fotosRealizadas !== undefined) {
-      patch.fotos_realizadas = Boolean(checklist.fotosRealizadas);
+    if (checklist.fotosHorizontal !== undefined) {
+      patch.fotos_realizadas = Boolean(checklist.fotosHorizontal);
     }
     if (checklist.fotosDrive !== undefined) patch.fotos_drive = Boolean(checklist.fotosDrive);
     if (checklist.placaInstalada !== undefined) {
       patch.placa_instalada = Boolean(checklist.placaInstalada);
     }
-    if (checklist.cadastradoSite !== undefined) {
-      patch.cadastrado_site = Boolean(checklist.cadastradoSite);
+    if (checklist.cadastradoMorar !== undefined) {
+      patch.cadastrado_site = Boolean(checklist.cadastradoMorar);
     }
     if (checklist.videoRealizado !== undefined) patch.video_realizado = Boolean(checklist.videoRealizado);
     if (canManage && checklist.validado !== undefined) patch.validado = Boolean(checklist.validado);

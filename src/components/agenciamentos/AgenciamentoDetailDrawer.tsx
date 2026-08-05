@@ -79,10 +79,10 @@ const checklistRows: Array<{
   label: string;
   icon: LucideIcon;
 }> = [
-  { key: "fotosRealizadas", label: "Fotos realizadas", icon: Camera },
+  { key: "fotosHorizontal", label: "Fotos realizadas", icon: Camera },
   { key: "fotosDrive", label: "Fotos enviadas ao Drive", icon: HardDrive },
   { key: "placaInstalada", label: "Placa instalada", icon: MapPinned },
-  { key: "cadastradoSite", label: "Imóvel cadastrado no site", icon: ClipboardCheck },
+  { key: "cadastradoMorar", label: "Imóvel cadastrado no site", icon: ClipboardCheck },
   { key: "videoRealizado", label: "Vídeo realizado", icon: Video },
   { key: "validado", label: "Agenciamento validado", icon: BadgeCheck },
 ];
