@@ -24,9 +24,11 @@ export type AgenciamentoValidationErrors = Partial<
 
 const DEFAULT_CHECKLIST: AgenciamentoChecklist = {
   fotosHorizontal: false,
+  fotosVertical: false,
   fotosDrive: false,
   placaInstalada: false,
   cadastradoMorar: false,
+  cadastradoCordial: false,
   videoRealizado: false,
   validado: false,
 };
@@ -125,9 +127,11 @@ function safeImobiliaria(value: unknown): AgenciamentoImobiliaria {
 function normalizeChecklist(input?: Partial<AgenciamentoChecklist>): AgenciamentoChecklist {
   return {
     fotosHorizontal: Boolean(input?.fotosHorizontal),
+    fotosVertical: Boolean(input?.fotosVertical),
     fotosDrive: Boolean(input?.fotosDrive),
     placaInstalada: Boolean(input?.placaInstalada),
     cadastradoMorar: Boolean(input?.cadastradoMorar),
+    cadastradoCordial: Boolean(input?.cadastradoCordial),
     videoRealizado: Boolean(input?.videoRealizado),
     validado: Boolean(input?.validado),
   };

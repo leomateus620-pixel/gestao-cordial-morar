@@ -79,10 +79,12 @@ const checklistRows: Array<{
   label: string;
   icon: LucideIcon;
 }> = [
-  { key: "fotosHorizontal", label: "Fotos realizadas", icon: Camera },
+  { key: "fotosHorizontal", label: "Fotos realizadas (horizontal)", icon: Camera },
+  { key: "fotosVertical", label: "Fotos realizadas (vertical)", icon: Camera },
   { key: "fotosDrive", label: "Fotos enviadas ao Drive", icon: HardDrive },
   { key: "placaInstalada", label: "Placa instalada", icon: MapPinned },
-  { key: "cadastradoMorar", label: "Imóvel cadastrado no site", icon: ClipboardCheck },
+  { key: "cadastradoMorar", label: "Imóvel cadastrado Morar", icon: ClipboardCheck },
+  { key: "cadastradoCordial", label: "Imóvel cadastrado Cordial", icon: ClipboardCheck },
   { key: "videoRealizado", label: "Vídeo realizado", icon: Video },
   { key: "validado", label: "Agenciamento validado", icon: BadgeCheck },
 ];

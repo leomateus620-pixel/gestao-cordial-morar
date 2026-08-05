@@ -169,10 +169,12 @@ const imobiliariaOptions: Array<{ value: AgenciamentoImobiliaria; label: string 
 ];
 
 const checklistItems: Array<{ key: Exclude<keyof AgenciamentoChecklist, "validado">; label: string; helper: string; icon: LucideIcon }> = [
-  { key: "fotosHorizontal", label: "Fotos realizadas", helper: "A sessão de fotos do imóvel foi concluída.", icon: Camera },
+  { key: "fotosHorizontal", label: "Fotos realizadas (horizontal)", helper: "Fotos no formato horizontal concluídas.", icon: Camera },
+  { key: "fotosVertical", label: "Fotos realizadas (vertical)", helper: "Fotos no formato vertical concluídas.", icon: Camera },
   { key: "fotosDrive", label: "Fotos enviadas ao Drive", helper: "Os arquivos estão disponíveis para a equipe.", icon: HardDrive },
   { key: "placaInstalada", label: "Placa instalada", helper: "O imóvel já está sinalizado no local.", icon: Signpost },
-  { key: "cadastradoMorar", label: "Imóvel cadastrado no site", helper: "O anúncio foi publicado na carteira digital.", icon: Globe2 },
+  { key: "cadastradoMorar", label: "Imóvel cadastrado Morar", helper: "Anúncio publicado no site da Morar.", icon: Globe2 },
+  { key: "cadastradoCordial", label: "Imóvel cadastrado Cordial", helper: "Anúncio publicado no site da Cordial.", icon: Globe2 },
   { key: "videoRealizado", label: "Vídeo realizado", helper: "O material em vídeo está pronto para uso.", icon: Video },
 ];
 
@@ -211,9 +213,11 @@ function initialForm(agenciamento: Agenciamento | null | undefined, currentBroke
     status: agenciamento?.status ?? "novo",
     checklist: {
       fotosHorizontal: agenciamento?.checklist.fotosHorizontal ?? false,
+      fotosVertical: agenciamento?.checklist.fotosVertical ?? false,
       fotosDrive: agenciamento?.checklist.fotosDrive ?? false,
       placaInstalada: agenciamento?.checklist.placaInstalada ?? false,
       cadastradoMorar: agenciamento?.checklist.cadastradoMorar ?? false,
+      cadastradoCordial: agenciamento?.checklist.cadastradoCordial ?? false,
       videoRealizado: agenciamento?.checklist.videoRealizado ?? false,
       validado: agenciamento?.checklist.validado ?? false,
     },
