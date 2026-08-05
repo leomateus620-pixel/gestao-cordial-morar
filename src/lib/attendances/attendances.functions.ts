@@ -456,7 +456,7 @@ export const updateAttendance = createServerFn({ method: "POST" })
     if (p.proximoRetorno !== undefined)
       patch.proximo_retorno = p.proximoRetorno ? new Date(p.proximoRetorno).toISOString() : null;
     if (p.proximoPasso !== undefined) patch.proximo_passo = orNull(p.proximoPasso);
-    if (p.corretorId !== undefined) patch.corretor_id = orNull(p.corretorId);
+    if (p.corretorId !== undefined) patch.corretor_id = normalizeBrokerId(p.corretorId);
     if (p.corretorNome !== undefined) patch.corretor_nome = orNull(p.corretorNome);
     if (p.historicoInicial !== undefined) patch.historico_inicial = orNull(p.historicoInicial);
 
