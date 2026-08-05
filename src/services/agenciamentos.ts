@@ -88,9 +88,11 @@ const origemLabels: Record<AgenciamentoOrigem, string> = {
 
 const checklistKeys: Array<keyof AgenciamentoChecklist> = [
   "fotosHorizontal",
+  "fotosVertical",
   "fotosDrive",
   "placaInstalada",
   "cadastradoMorar",
+  "cadastradoCordial",
   "videoRealizado",
   "validado",
 ];
@@ -289,10 +291,10 @@ function matchesChecklist(item: Agenciamento, checklist: AgenciamentoChecklistFi
   if (checklist === "todos") return true;
   if (checklist === "com_placa") return item.checklist.placaInstalada;
   if (checklist === "sem_placa") return !item.checklist.placaInstalada;
-  if (checklist === "com_fotos") return item.checklist.fotosHorizontal;
-  if (checklist === "sem_fotos") return !item.checklist.fotosHorizontal;
-  if (checklist === "no_site") return item.checklist.cadastradoMorar;
-  if (checklist === "fora_site") return !item.checklist.cadastradoMorar;
+  if (checklist === "com_fotos") return item.checklist.fotosHorizontal && item.checklist.fotosVertical;
+  if (checklist === "sem_fotos") return !(item.checklist.fotosHorizontal && item.checklist.fotosVertical);
+  if (checklist === "no_site") return item.checklist.cadastradoMorar && item.checklist.cadastradoCordial;
+  if (checklist === "fora_site") return !(item.checklist.cadastradoMorar && item.checklist.cadastradoCordial);
   if (checklist === "com_drive") return item.checklist.fotosDrive;
   if (checklist === "sem_drive") return !item.checklist.fotosDrive;
   return true;
@@ -366,7 +368,9 @@ export function calculateAgenciamentosSummary(agenciamentos: Agenciamento[]): Ag
       .length,
     fotosDrive: agenciamentos.filter((item) => item.checklist.fotosDrive).length,
     placasInstaladas: agenciamentos.filter((item) => item.checklist.placaInstalada).length,
-    cadastradosSite: agenciamentos.filter((item) => item.checklist.cadastradoMorar).length,
+    cadastradosSite: agenciamentos.filter(
+      (item) => item.checklist.cadastradoMorar && item.checklist.cadastradoCordial,
+    ).length,
     validados: agenciamentos.filter((item) => item.checklist.validado || item.status === "validado")
       .length,
     checklistCompleto: agenciamentos.filter(
@@ -398,7 +402,7 @@ export function rankAgenciamentosByCorretor(
     current.total += 1;
     current.comPlaca += item.checklist.placaInstalada ? 1 : 0;
     current.fotosDrive += item.checklist.fotosDrive ? 1 : 0;
-    current.noSite += item.checklist.cadastradoMorar ? 1 : 0;
+    current.noSite += item.checklist.cadastradoMorar && item.checklist.cadastradoCordial ? 1 : 0;
     current.validados += item.checklist.validado || item.status === "validado" ? 1 : 0;
     current.percentualChecklist += getChecklistCompletionPercent(item.checklist);
     map.set(item.corretorId, current);

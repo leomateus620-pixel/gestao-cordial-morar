@@ -32,7 +32,14 @@ export function getTrackLabel(track: AgenciamentoTrack) {
 }
 
 export function isCountableAgenciamento(item: Agenciamento) {
-  return item.status !== "cancelado";
+  const c = item.checklist;
+  return (
+    item.status !== "cancelado" &&
+    c.fotosHorizontal &&
+    c.fotosVertical &&
+    c.cadastradoMorar &&
+    c.cadastradoCordial
+  );
 }
 
 export function matchesTrack(item: Agenciamento, track: AgenciamentoTrack) {
