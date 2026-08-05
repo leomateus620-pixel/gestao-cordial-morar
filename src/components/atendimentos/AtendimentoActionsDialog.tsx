@@ -139,6 +139,7 @@ function FormBody({
   brokerOptions: ScopedBrokerOption[];
 }) {
   // Local state per-kind
+  const currentUser = useSession();
   const [corretorId, setCorretorId] = useState(
     atendimento.corretorId && atendimento.corretorId !== "a_definir" ? atendimento.corretorId : "",
   );
@@ -158,7 +159,11 @@ function FormBody({
   const sortedBrokerOptions = [...brokerOptions]
     .filter((broker) => brokerCanServeAgency(broker, atendimento.imobiliaria))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-    .map((broker) => ({ id: broker.id, label: broker.nome }));
+    .map((broker) => ({
+      id: broker.id,
+      label: currentUser?.id === broker.id ? `${broker.nome} (você)` : broker.nome,
+      nome: broker.nome,
+    }));
 
   useEffect(() => {
     setError(null);
@@ -175,7 +180,7 @@ function FormBody({
         await onSubmit({
           kind,
           corretorId,
-          corretorNome: option?.label ?? corretorId,
+          corretorNome: option?.nome ?? corretorId,
         });
       } else if (kind === "criar-visita") {
         if (!data) throw new Error("Informe a data.");
