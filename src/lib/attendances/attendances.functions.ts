@@ -502,7 +502,32 @@ export const updateAttendance = createServerFn({ method: "POST" })
     if (p.interesseDescricao !== undefined)
       patch.interesse_descricao = orNull(p.interesseDescricao);
 
+    // Remove corretor/imobiliária do patch quando não mudaram: o gatilho de
+    // atribuição do banco só permite reatribuição por admin/secretaria e
+    // dispara mesmo em reenvio do mesmo valor.
+    const { data: currentRow } = await context.supabase
+      .from("attendances")
+      .select("corretor_id, imobiliaria, corretor_nome")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (currentRow) {
+      const current = currentRow as unknown as {
+        corretor_id: string | null;
+        imobiliaria: string | null;
+        corretor_nome: string | null;
+      };
+      if ("corretor_id" in patch && (patch.corretor_id ?? null) === (current.corretor_id ?? null)) {
+        delete patch.corretor_id;
+        if ((patch.corretor_nome ?? null) === (current.corretor_nome ?? null))
+          delete patch.corretor_nome;
+      }
+      if ("imobiliaria" in patch && patch.imobiliaria === current.imobiliaria) {
+        delete patch.imobiliaria;
+      }
+    }
+
     let { data: updated, error } = await context.supabase
+
       .from("attendances")
       .update(patch as never)
       .eq("id", data.id)
