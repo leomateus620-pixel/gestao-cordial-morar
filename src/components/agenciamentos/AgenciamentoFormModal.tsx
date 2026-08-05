@@ -603,6 +603,15 @@ function PropertyStep({ form, errors, update }: { form: FormState; errors: Agenc
   return (
     <StepSection icon={Building2} title="Dados do imóvel" description="Comece pelas informações que identificam a captação.">
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="ag-codigo-morar" label="Código Morar" helper="Opcional — usado para localizar o imóvel na busca.">
+          <input id="ag-codigo-morar" value={form.codigoMorar} onChange={(event) => update("codigoMorar", event.target.value)} className={controlClass()} placeholder="Ex.: MR-1234" maxLength={40} autoComplete="off" />
+        </Field>
+        <Field id="ag-codigo-cordial" label="Código Cordial" helper="Opcional — usado para localizar o imóvel na busca.">
+          <input id="ag-codigo-cordial" value={form.codigoCordial} onChange={(event) => update("codigoCordial", event.target.value)} className={controlClass()} placeholder="Ex.: CD-5678" maxLength={40} autoComplete="off" />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+
         <Field id="ag-tipo-imovel" label="Tipo de imóvel" required error={errors.tipoImovel}>
           <Select value={form.tipoImovel} onValueChange={(value) => update("tipoImovel", value as AgenciamentoTipoImovel)}>
             <SelectTrigger id="ag-tipo-imovel" aria-required="true" aria-invalid={Boolean(errors.tipoImovel)} aria-describedby={descriptionIds("ag-tipo-imovel", errors.tipoImovel)} className={controlClass(errors.tipoImovel, true)}><SelectValue /></SelectTrigger>
