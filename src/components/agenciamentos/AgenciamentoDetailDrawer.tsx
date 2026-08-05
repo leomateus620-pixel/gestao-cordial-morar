@@ -66,6 +66,8 @@ type AgenciamentoDetailDrawerProps = {
   onOpenChange: (open: boolean) => void;
   onEdit: (agenciamento: Agenciamento) => void;
   onValidate: (agenciamento: Agenciamento) => void;
+  canReject?: boolean;
+  onReject?: (agenciamento: Agenciamento) => void;
   onDelete?: (agenciamento: Agenciamento) => void;
   onReclassify?: (
     agenciamento: Agenciamento,
@@ -363,6 +365,17 @@ export function AgenciamentoDetailDrawer({
                 >
                   <Pencil className="size-4" />
                   Editar
+                </Button>
+              )}
+              {canReject && onReject && agenciamento.status !== "reprovado" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-2xl border-destructive/30 bg-white/[0.66] text-destructive hover:bg-destructive/10"
+                  onClick={() => onReject(agenciamento)}
+                >
+                  <ShieldX className="size-4" />
+                  Reprovar
                 </Button>
               )}
               {canManage && !validated && (
