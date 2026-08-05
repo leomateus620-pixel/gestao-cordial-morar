@@ -554,7 +554,8 @@ export const updateAttendance = createServerFn({ method: "POST" })
       updated = legacyResult.data;
       error = legacyResult.error;
     }
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyAttendanceError(error));
+
     return rowToAtendimento(updated as unknown as DbRow);
   });
 
