@@ -684,6 +684,8 @@ async function agenciamentoTimeline(supabase: Db, id: string): Promise<BuscaTime
     status: row.status,
     rota: "/agenciamentos",
     campos: [
+      { label: "Código Morar", valor: row.codigo_morar ?? "—" },
+      { label: "Código Cordial", valor: row.codigo_cordial ?? "—" },
       { label: "Classificação", valor: row.finalidade ?? "Sem classificação" },
       { label: "Corretor", valor: row.corretor_nome ?? "—" },
       { label: "Proprietário", valor: row.proprietario_nome ?? "—" },
