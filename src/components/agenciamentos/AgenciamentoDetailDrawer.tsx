@@ -9,6 +9,7 @@ import {
   Home,
   MapPinned,
   Pencil,
+  ShieldX,
   Tags,
   Trash2,
   type LucideIcon,
@@ -102,6 +103,8 @@ export function AgenciamentoDetailDrawer({
   onOpenChange,
   onEdit,
   onValidate,
+  canReject = false,
+  onReject,
   onDelete,
   onReclassify,
   isReclassifying,
@@ -125,6 +128,7 @@ export function AgenciamentoDetailDrawer({
       >
         {agenciamento && (
           <>
+            {agenciamento.status === "reprovado" && agenciamento.reprovadoMotivo ? null : null}
             <SheetHeader className="border-b border-white/55 px-5 pb-4 pt-6 text-left sm:px-6">
               <div className="flex items-start gap-3 pr-8">
                 <span className="grid size-13 shrink-0 place-items-center rounded-2xl bg-primary text-white shadow-[0_16px_34px_-22px_rgba(30,100,125,0.85)]">
