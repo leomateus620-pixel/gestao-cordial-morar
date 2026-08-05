@@ -132,6 +132,7 @@ function Page() {
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
+  const [pendingReject, setPendingReject] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [bonusRegistryOpen, setBonusRegistryOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
