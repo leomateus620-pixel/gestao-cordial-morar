@@ -50,10 +50,12 @@ export type AgenciamentoOrigem =
 export type AgenciamentoContatoPreferencial = "whatsapp" | "ligacao" | "email";
 
 export type AgenciamentoChecklist = {
-  fotosRealizadas: boolean;
+  fotosHorizontal: boolean;
+  fotosVertical: boolean;
   fotosDrive: boolean;
   placaInstalada: boolean;
-  cadastradoSite: boolean;
+  cadastradoMorar: boolean;
+  cadastradoCordial: boolean;
   videoRealizado: boolean;
   validado: boolean;
 };
