@@ -16,6 +16,7 @@ import {
 import { useAuthReady, useHasAuthSession, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
+import { GlobalSearchBar } from "./busca/GlobalSearchBar";
 import { getPrimaryItemsForProfile, isModuleItemActive } from "./shared/module-menu";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
 import { NotificationCenter } from "./notifications/NotificationCenter";
@@ -52,6 +53,7 @@ export function AppShell() {
   const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+  const canSearch = Boolean(session?.modules?.includes("busca"));
   const sessionModules = useMemo(
     () => (session ? Array.from(new Set(session.modules)) : []),
     [session],
@@ -245,6 +247,7 @@ export function AppShell() {
               </Link>
             </div>
           </div>
+          {canSearch ? <GlobalSearchBar /> : null}
           <AgencySwitcher />
         </header>
 
@@ -273,6 +276,7 @@ export function AppShell() {
             </div>
 
             <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+              {canSearch ? <GlobalSearchBar className="w-full max-w-md" /> : null}
               <div className="w-full max-w-xs">
                 <AgencySwitcher />
               </div>

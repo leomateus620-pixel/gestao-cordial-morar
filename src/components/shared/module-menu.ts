@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   Megaphone,
+  Search,
   Settings,
   Star,
   UserCog,
@@ -244,6 +245,15 @@ export const moduleItems: ModuleItem[] = [
     icon: FolderArchive,
     module: "documentos",
     sidebar: { section: "gestao", order: 60, desc: "Arquivos internos" },
+  },
+  {
+    to: "/busca",
+    label: "Busca",
+    shortLabel: "Busca",
+    desc: "Busca global com histórico",
+    icon: Search,
+    module: "busca",
+    sidebar: { section: "sistema", order: 5, desc: "Pesquisa em todos os módulos" },
   },
   {
     to: "/integracoes",
