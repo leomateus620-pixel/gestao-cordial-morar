@@ -128,7 +128,18 @@ export function AgenciamentoDetailDrawer({
       >
         {agenciamento && (
           <>
-            {agenciamento.status === "reprovado" && agenciamento.reprovadoMotivo ? null : null}
+            {agenciamento.status === "reprovado" && agenciamento.reprovadoMotivo && (
+              <div className="mx-5 mt-5 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm leading-relaxed text-destructive sm:mx-6">
+                <ShieldX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider">
+                    Agenciamento reprovado
+                    {agenciamento.reprovadoPorNome ? ` por ${agenciamento.reprovadoPorNome}` : ""}
+                  </p>
+                  <p className="mt-1 text-sm">{agenciamento.reprovadoMotivo}</p>
+                </div>
+              </div>
+            )}
             <SheetHeader className="border-b border-white/55 px-5 pb-4 pt-6 text-left sm:px-6">
               <div className="flex items-start gap-3 pr-8">
                 <span className="grid size-13 shrink-0 place-items-center rounded-2xl bg-primary text-white shadow-[0_16px_34px_-22px_rgba(30,100,125,0.85)]">
