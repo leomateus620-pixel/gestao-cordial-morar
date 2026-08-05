@@ -426,6 +426,11 @@ function Page() {
     [showFeedback, validateAgenciamento],
   );
 
+  const rejectedAgenciamentos = useMemo(
+    () => visibleAgenciamentos.filter((item) => item.status === "reprovado"),
+    [visibleAgenciamentos],
+  );
+
   const requestReject = useCallback((agenciamento: Agenciamento) => {
     setPendingReject(agenciamento);
   }, []);
@@ -589,6 +594,24 @@ function Page() {
           </Button>
         </div>
 
+
+        {rejectedAgenciamentos.length > 0 && (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-destructive sm:flex sm:justify-between">
+            <p className="min-w-0 text-sm font-semibold">
+              {rejectedAgenciamentos.length === 1
+                ? "1 agenciamento foi reprovado pela gestão. Veja o motivo e corrija."
+                : `${rejectedAgenciamentos.length} agenciamentos foram reprovados pela gestão. Veja os motivos e corrija.`}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 rounded-xl border-destructive/30 bg-white/70 text-destructive shadow-none hover:bg-destructive/10"
+              onClick={() => setFilters({ status: "reprovado" })}
+            >
+              Ver reprovados
+            </Button>
+          </div>
+        )}
 
         <AgenciamentoBonusPanel
           track={track}
