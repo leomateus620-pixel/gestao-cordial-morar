@@ -32,6 +32,15 @@ export function canManageAttendanceAssignments(session: SessionLike): boolean {
 }
 
 /**
+ * Autovínculo: o corretor pode assumir um atendimento para si mesmo,
+ * mas nunca atribuir a outro corretor (isso segue restrito à administração).
+ */
+export function canSelfAssignAttendance(session: SessionLike): boolean {
+  return session?.perfil === "corretor";
+}
+
+
+/**
  * Operational response-time metrics are intentionally narrower than financial
  * insights. Brokers and finance roles must never receive first-open timing.
  */
