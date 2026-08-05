@@ -526,6 +526,18 @@ export const updateAttendance = createServerFn({ method: "POST" })
       }
     }
 
+    if (Object.keys(patch).length === 0) {
+      const { data: unchanged, error: unchangedError } = await context.supabase
+        .from("attendances")
+        .select(ATTENDANCE_SAFE_COLUMNS)
+        .eq("id", data.id)
+        .single();
+      if (unchangedError) throw new Error(friendlyAttendanceError(unchangedError));
+      return rowToAtendimento(unchanged as unknown as DbRow);
+    }
+
+
+
     let { data: updated, error } = await context.supabase
 
       .from("attendances")
