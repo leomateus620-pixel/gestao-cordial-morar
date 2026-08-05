@@ -726,6 +726,9 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
         <div><h3 id="ag-review-title" className="text-base font-extrabold tracking-tight">Revise antes de salvar</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Volte às etapas anteriores se algum dado precisar de ajuste.</p></div>
         <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           <ReviewRow icon={Building2} label="Imóvel" value={`${getAgenciamentoTipoLabel(form.tipoImovel)} · ${form.endereco || "Endereço pendente"}`} />
+          {(form.codigoMorar.trim() || form.codigoCordial.trim()) && (
+            <ReviewRow icon={Building2} label="Códigos" value={[form.codigoMorar.trim() && `Morar ${form.codigoMorar.trim()}`, form.codigoCordial.trim() && `Cordial ${form.codigoCordial.trim()}`].filter(Boolean).join(" · ")} />
+          )}
           <ReviewRow icon={UserRound} label="Proprietário" value={`${form.proprietarioNome || "Nome pendente"} · ${form.proprietarioTelefone || "Telefone pendente"}`} />
           <ReviewRow icon={CalendarDays} label="Responsabilidade" value={`${form.corretorNome || "Corretor pendente"} · ${form.dataAgenciamento || "Data pendente"}`} />
           <ReviewRow icon={BadgeCheck} label="Situação" value={`${getAgenciamentoStatusLabel(form.status)} · ${checklistProgress}% do checklist`} />
