@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { brokerCanServeAgency, type ScopedBrokerOption } from "@/lib/attendances/broker-scope";
+import { useSession } from "@/lib/auth-mock";
 import {
   atendimentoProximoPassoOptions,
   type Atendimento,
