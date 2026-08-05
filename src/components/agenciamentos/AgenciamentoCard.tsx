@@ -44,10 +44,12 @@ const operationalItems: Array<{
   pendingLabel: string;
   icon: LucideIcon;
 }> = [
-  { key: "fotosRealizadas", pendingLabel: "Realizar fotos", icon: Camera },
+  { key: "fotosHorizontal", pendingLabel: "Fotos horizontal", icon: Camera },
+  { key: "fotosVertical", pendingLabel: "Fotos vertical", icon: Camera },
   { key: "fotosDrive", pendingLabel: "Enviar ao Drive", icon: HardDrive },
   { key: "placaInstalada", pendingLabel: "Instalar placa", icon: Signpost },
-  { key: "cadastradoSite", pendingLabel: "Publicar no site", icon: ClipboardCheck },
+  { key: "cadastradoMorar", pendingLabel: "Cadastrar Morar", icon: ClipboardCheck },
+  { key: "cadastradoCordial", pendingLabel: "Cadastrar Cordial", icon: ClipboardCheck },
   { key: "videoRealizado", pendingLabel: "Gravar vídeo", icon: Video },
   { key: "validado", pendingLabel: "Validar cadastro", icon: BadgeCheck },
 ];

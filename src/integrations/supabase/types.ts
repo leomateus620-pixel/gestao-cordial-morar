@@ -62,6 +62,8 @@ export type Database = {
       agenciamentos: {
         Row: {
           bairro: string | null
+          cadastrado_cordial: boolean
+          cadastrado_morar: boolean
           cadastrado_site: boolean
           cidade: string | null
           codigo_cordial: string | null
@@ -77,7 +79,9 @@ export type Database = {
           endereco: string
           finalidade: string | null
           fotos_drive: boolean
+          fotos_horizontal: boolean
           fotos_realizadas: boolean
+          fotos_vertical: boolean
           id: string
           imobiliaria: string
           observacoes_internas: string | null
@@ -99,6 +103,8 @@ export type Database = {
         }
         Insert: {
           bairro?: string | null
+          cadastrado_cordial?: boolean
+          cadastrado_morar?: boolean
           cadastrado_site?: boolean
           cidade?: string | null
           codigo_cordial?: string | null
@@ -114,7 +120,9 @@ export type Database = {
           endereco: string
           finalidade?: string | null
           fotos_drive?: boolean
+          fotos_horizontal?: boolean
           fotos_realizadas?: boolean
+          fotos_vertical?: boolean
           id?: string
           imobiliaria: string
           observacoes_internas?: string | null
@@ -136,6 +144,8 @@ export type Database = {
         }
         Update: {
           bairro?: string | null
+          cadastrado_cordial?: boolean
+          cadastrado_morar?: boolean
           cadastrado_site?: boolean
           cidade?: string | null
           codigo_cordial?: string | null
@@ -151,7 +161,9 @@ export type Database = {
           endereco?: string
           finalidade?: string | null
           fotos_drive?: boolean
+          fotos_horizontal?: boolean
           fotos_realizadas?: boolean
+          fotos_vertical?: boolean
           id?: string
           imobiliaria?: string
           observacoes_internas?: string | null

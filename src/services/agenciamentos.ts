@@ -23,10 +23,12 @@ export type AgenciamentoValidationErrors = Partial<
 >;
 
 const DEFAULT_CHECKLIST: AgenciamentoChecklist = {
-  fotosRealizadas: false,
+  fotosHorizontal: false,
+  fotosVertical: false,
   fotosDrive: false,
   placaInstalada: false,
-  cadastradoSite: false,
+  cadastradoMorar: false,
+  cadastradoCordial: false,
   videoRealizado: false,
   validado: false,
 };
@@ -85,10 +87,12 @@ const origemLabels: Record<AgenciamentoOrigem, string> = {
 };
 
 const checklistKeys: Array<keyof AgenciamentoChecklist> = [
-  "fotosRealizadas",
+  "fotosHorizontal",
+  "fotosVertical",
   "fotosDrive",
   "placaInstalada",
-  "cadastradoSite",
+  "cadastradoMorar",
+  "cadastradoCordial",
   "videoRealizado",
   "validado",
 ];
@@ -124,10 +128,12 @@ function safeImobiliaria(value: unknown): AgenciamentoImobiliaria {
 
 function normalizeChecklist(input?: Partial<AgenciamentoChecklist>): AgenciamentoChecklist {
   return {
-    fotosRealizadas: Boolean(input?.fotosRealizadas),
+    fotosHorizontal: Boolean(input?.fotosHorizontal),
+    fotosVertical: Boolean(input?.fotosVertical),
     fotosDrive: Boolean(input?.fotosDrive),
     placaInstalada: Boolean(input?.placaInstalada),
-    cadastradoSite: Boolean(input?.cadastradoSite),
+    cadastradoMorar: Boolean(input?.cadastradoMorar),
+    cadastradoCordial: Boolean(input?.cadastradoCordial),
     videoRealizado: Boolean(input?.videoRealizado),
     validado: Boolean(input?.validado),
   };
@@ -285,10 +291,10 @@ function matchesChecklist(item: Agenciamento, checklist: AgenciamentoChecklistFi
   if (checklist === "todos") return true;
   if (checklist === "com_placa") return item.checklist.placaInstalada;
   if (checklist === "sem_placa") return !item.checklist.placaInstalada;
-  if (checklist === "com_fotos") return item.checklist.fotosRealizadas;
-  if (checklist === "sem_fotos") return !item.checklist.fotosRealizadas;
-  if (checklist === "no_site") return item.checklist.cadastradoSite;
-  if (checklist === "fora_site") return !item.checklist.cadastradoSite;
+  if (checklist === "com_fotos") return item.checklist.fotosHorizontal && item.checklist.fotosVertical;
+  if (checklist === "sem_fotos") return !(item.checklist.fotosHorizontal && item.checklist.fotosVertical);
+  if (checklist === "no_site") return item.checklist.cadastradoMorar && item.checklist.cadastradoCordial;
+  if (checklist === "fora_site") return !(item.checklist.cadastradoMorar && item.checklist.cadastradoCordial);
   if (checklist === "com_drive") return item.checklist.fotosDrive;
   if (checklist === "sem_drive") return !item.checklist.fotosDrive;
   return true;
@@ -362,7 +368,9 @@ export function calculateAgenciamentosSummary(agenciamentos: Agenciamento[]): Ag
       .length,
     fotosDrive: agenciamentos.filter((item) => item.checklist.fotosDrive).length,
     placasInstaladas: agenciamentos.filter((item) => item.checklist.placaInstalada).length,
-    cadastradosSite: agenciamentos.filter((item) => item.checklist.cadastradoSite).length,
+    cadastradosSite: agenciamentos.filter(
+      (item) => item.checklist.cadastradoMorar && item.checklist.cadastradoCordial,
+    ).length,
     validados: agenciamentos.filter((item) => item.checklist.validado || item.status === "validado")
       .length,
     checklistCompleto: agenciamentos.filter(
@@ -394,7 +402,7 @@ export function rankAgenciamentosByCorretor(
     current.total += 1;
     current.comPlaca += item.checklist.placaInstalada ? 1 : 0;
     current.fotosDrive += item.checklist.fotosDrive ? 1 : 0;
-    current.noSite += item.checklist.cadastradoSite ? 1 : 0;
+    current.noSite += item.checklist.cadastradoMorar && item.checklist.cadastradoCordial ? 1 : 0;
     current.validados += item.checklist.validado || item.status === "validado" ? 1 : 0;
     current.percentualChecklist += getChecklistCompletionPercent(item.checklist);
     map.set(item.corretorId, current);
