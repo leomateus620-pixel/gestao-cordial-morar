@@ -31,6 +31,7 @@ import { useSession } from "@/lib/auth-mock";
 import {
   canDeleteAttendance,
   canManageAttendanceAssignments,
+  canSelfAssignAttendance,
   canManageAttendanceTerminalState,
   canSeeAttendanceHandoffMessage,
   canSeeFinancialInsights,
@@ -79,7 +80,8 @@ export const Route = createFileRoute("/_app/atendimentos")({
 function Page() {
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
-  const canAssignBroker = canManageAttendanceAssignments(session);
+  const canAssignBroker =
+    canManageAttendanceAssignments(session) || canSelfAssignAttendance(session);
   const canManageTerminalState = canManageAttendanceTerminalState(session);
   const {
     id: highlightId,
