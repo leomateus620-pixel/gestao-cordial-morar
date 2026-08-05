@@ -154,8 +154,12 @@ export function AtendimentoFormModal({
   const sortedBrokerOptions = brokerOptions
     .filter((broker) => brokerCanServeAgency(broker, form.imobiliaria))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-    .map((broker) => ({ id: broker.id, label: broker.nome }))
+    .map((broker) => ({
+      id: broker.id,
+      label: currentUser?.id === broker.id ? `${broker.nome} (você)` : broker.nome,
+    }))
     .concat({ id: "a_definir", label: "A definir" });
+
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -268,7 +272,7 @@ export function AtendimentoFormModal({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    const broker = sortedBrokerOptions.find((item) => item.id === form.corretorId);
+    const broker = brokerOptions.find((item) => item.id === form.corretorId);
     const selectedProperty = imoveis.find((item) => item.id === form.imovelId);
     const input: AtendimentoCreateInput = {
       clienteId: optional(form.clienteId),
@@ -280,7 +284,7 @@ export function AtendimentoFormModal({
       fonteProspeccao: form.fonteProspeccao || undefined,
       imobiliaria: form.imobiliaria,
       corretorId: optional(form.corretorId),
-      corretorNome: form.corretorId === "a_definir" ? undefined : broker?.label,
+      corretorNome: form.corretorId === "a_definir" ? undefined : broker?.nome,
       finalidade: form.finalidade,
       tipoImovel: form.tipoImovel,
       dormitorios: form.dormitorios,
