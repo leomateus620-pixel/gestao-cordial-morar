@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canDeleteAttendance } from "./access-control.ts";
+import { canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
 
 const admin = { id: "u-admin", perfil: "admin_owner" as const, modules: [] };
 const corretor = { id: "u-corretor", perfil: "corretor" as const, modules: [] };
