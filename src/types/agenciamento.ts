@@ -6,6 +6,7 @@ export type AgenciamentoStatus =
   | "pendente_site"
   | "aguardando_validacao"
   | "validado"
+  | "reprovado"
   | "cancelado";
 
 export type AgenciamentoImobiliaria = "cordial" | "morar" | "ambas";
@@ -95,6 +96,10 @@ export type Agenciamento = {
   validadoPorId?: string;
   validadoPorNome?: string;
   validadoEm?: string;
+  reprovadoMotivo?: string;
+  reprovadoPorId?: string;
+  reprovadoPorNome?: string;
+  reprovadoEm?: string;
 
   criadoEm: string;
   atualizadoEm: string;
@@ -122,6 +127,7 @@ export type AgenciamentoStatusFilter =
   | "pendentes"
   | "aguardando_validacao"
   | "validado"
+  | "reprovado"
   | "cancelado";
 
 export type AgenciamentoChecklistFilter =
@@ -215,5 +221,6 @@ export const agenciamentoStatusOptions: Array<{
   { value: "pendente_site", label: "Pendente site" },
   { value: "aguardando_validacao", label: "Aguardando validação" },
   { value: "validado", label: "Validado" },
+  { value: "reprovado", label: "Reprovado" },
   { value: "cancelado", label: "Cancelado" },
 ];
