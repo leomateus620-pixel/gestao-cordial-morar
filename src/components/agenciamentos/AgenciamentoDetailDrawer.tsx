@@ -228,6 +228,8 @@ export function AgenciamentoDetailDrawer({
                       label="Tipo"
                       value={getAgenciamentoTipoLabel(agenciamento.tipoImovel)}
                     />
+                    <MetricRow label="Código Morar" value={agenciamento.codigoMorar || "-"} />
+                    <MetricRow label="Código Cordial" value={agenciamento.codigoCordial || "-"} />
                     <MetricRow label="Endereço" value={agenciamento.endereco} />
                     <MetricRow label="Bairro/regiao" value={agenciamento.bairro || "-"} />
                     <MetricRow label="Cidade" value={agenciamento.cidade || "-"} />
