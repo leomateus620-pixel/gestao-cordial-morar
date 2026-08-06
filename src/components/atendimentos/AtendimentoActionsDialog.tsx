@@ -226,6 +226,13 @@ function FormBody({
               </option>
             ))}
           </select>
+          {hiddenBrokersCount > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {hiddenBrokersCount === 1
+                ? "1 corretor não atende esta imobiliária e ficou fora da lista."
+                : `${hiddenBrokersCount} corretores não atendem esta imobiliária e ficaram fora da lista.`}
+            </p>
+          )}
         </Field>
       )}
 
