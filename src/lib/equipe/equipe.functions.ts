@@ -220,7 +220,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
 
     const brokerProfiles = new Map(
       (profilesResult.data ?? [])
-        .filter((profile) => profile.role === "corretor")
+        .filter((profile) => profile.role === "corretor" || profile.role === "admin")
         .map((profile) => [profile.id, profile]),
     );
     const roster: CorretorRosterRecord[] = (assignableResult.data ?? [])
