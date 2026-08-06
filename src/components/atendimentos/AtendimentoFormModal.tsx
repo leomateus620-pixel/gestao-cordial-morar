@@ -151,8 +151,11 @@ export function AtendimentoFormModal({
   const imoveis = useApp((state) => state.imoveis);
   const currentUser = useSession();
   const [form, setForm] = useState<FormState>(() => formFromAtendimento(initialValue));
-  const sortedBrokerOptions = brokerOptions
-    .filter((broker) => brokerCanServeAgency(broker, form.imobiliaria))
+  const eligibleBrokers = brokerOptions.filter((broker) =>
+    brokerCanServeAgency(broker, form.imobiliaria),
+  );
+  const hiddenBrokersCount = brokerOptions.length - eligibleBrokers.length;
+  const sortedBrokerOptions = eligibleBrokers
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((broker) => ({
       id: broker.id,
