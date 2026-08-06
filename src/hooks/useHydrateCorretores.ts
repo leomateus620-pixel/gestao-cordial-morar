@@ -38,7 +38,11 @@ export function useHydrateCorretores() {
 
   useEffect(() => {
     if (!query.data) return;
-    const onlyCorretores = query.data.filter((profile) => profile.role === "corretor");
+    // Admins também atuam como corretores na prática: mantê-los na lista para
+    // que possam ser vinculados nos cadastros (agenciamentos, agenda, vendas...).
+    const onlyCorretores = query.data.filter(
+      (profile) => profile.role === "corretor" || profile.role === "admin",
+    );
     const corretores = normalizeCorretores(onlyCorretores.map(toCorretor));
     useApp.setState({ corretores });
   }, [query.data]);
