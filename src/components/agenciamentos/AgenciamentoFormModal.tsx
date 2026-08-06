@@ -717,6 +717,30 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
         <div className="grid gap-2">
           {checklistItems.map((item) => <ChecklistButton key={item.key} checked={form.checklist[item.key]} icon={item.icon} label={item.label} helper={item.helper} onClick={() => updateChecklist(item.key, !form.checklist[item.key])} />)}
         </div>
+        <div className="rounded-xl border-2 border-primary/25 bg-primary/[0.06] px-3.5 py-3.5">
+          <div className="flex items-start gap-2.5">
+            <ClipboardCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <label htmlFor="ag-descricao-checklist" className="block text-sm font-extrabold text-foreground">
+                Descrição do agenciamento
+              </label>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                Registre o que ainda falta, combinados com o proprietário e detalhes de fotos, placa e publicação.
+              </p>
+              <textarea
+                id="ag-descricao-checklist"
+                value={form.observacoesInternas}
+                onChange={(event) => update("observacoesInternas", event.target.value)}
+                className={cn(controlClass(), "mt-2.5 h-auto min-h-28 resize-y bg-background py-3")}
+                placeholder="Ex.: fotos verticais agendadas para sexta; proprietário pediu contato só à tarde; placa aguardando autorização do condomínio."
+                maxLength={800}
+              />
+              <p className="mt-1 text-right text-[10px] font-semibold tabular-nums text-muted-foreground">
+                {form.observacoesInternas.length}/800
+              </p>
+            </div>
+          </div>
+        </div>
         <div className={cn("rounded-xl border px-3.5 py-3 transition-colors duration-150", form.checklist.validado ? "border-primary/25 bg-primary/10" : "border-border bg-card")}>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
             <div className="flex min-w-0 items-start gap-3"><LockKeyhole aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><span className="min-w-0"><span className="flex flex-wrap items-center gap-2 text-sm font-bold text-foreground">Agenciamento validado<span className="rounded-full border border-border bg-background px-2 py-0.5 text-[9px] font-extrabold text-muted-foreground">Somente administrador</span></span><span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">Confirma a conferência administrativa antes da publicação final.</span></span></div>
@@ -736,16 +760,19 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
           <ReviewRow icon={UserRound} label="Proprietário" value={`${form.proprietarioNome || "Nome pendente"} · ${form.proprietarioTelefone || "Telefone pendente"}`} />
           <ReviewRow icon={CalendarDays} label="Responsabilidade" value={`${form.corretorNome || "Corretor pendente"} · ${form.dataAgenciamento || "Data pendente"}`} />
           <ReviewRow icon={BadgeCheck} label="Situação" value={`${getAgenciamentoStatusLabel(form.status)} · ${checklistProgress}% do checklist`} />
+          {form.observacoesInternas.trim() && (
+            <ReviewRow icon={ClipboardCheck} label="Descrição" value={form.observacoesInternas.trim().slice(0, 160) + (form.observacoesInternas.trim().length > 160 ? "…" : "")} />
+          )}
         </div>
       </section>
 
       <Collapsible open={referencesOpen} onOpenChange={setReferencesOpen}>
         <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <CollapsibleTrigger asChild><button type="button" className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"><span className="flex min-w-0 items-center gap-2.5"><Link2 className="size-4 shrink-0 text-primary" /><span><span className="block text-sm font-bold">Links e observações complementares</span><span className="mt-0.5 block text-[11px] text-muted-foreground">Campos opcionais</span></span></span><ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none", referencesOpen && "rotate-180")} /></button></CollapsibleTrigger>
+          <CollapsibleTrigger asChild><button type="button" className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"><span className="flex min-w-0 items-center gap-2.5"><Link2 className="size-4 shrink-0 text-primary" /><span><span className="block text-sm font-bold">Links complementares</span><span className="mt-0.5 block text-[11px] text-muted-foreground">Campos opcionais</span></span></span><ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none", referencesOpen && "rotate-180")} /></button></CollapsibleTrigger>
           <CollapsibleContent className="border-t border-border px-3.5 py-4 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none"><div className="space-y-4">
             <Field id="ag-drive-url" label="Pasta do Drive"><input id="ag-drive-url" type="url" inputMode="url" value={form.driveFolderUrl} onChange={(event) => update("driveFolderUrl", event.target.value)} className={controlClass()} placeholder="https://drive.google.com/..." autoComplete="url" /></Field>
             <Field id="ag-site-url" label="Imóvel no site"><input id="ag-site-url" type="url" inputMode="url" value={form.siteUrl} onChange={(event) => update("siteUrl", event.target.value)} className={controlClass()} placeholder="https://..." autoComplete="url" /></Field>
-            <Field id="ag-observacoes-internas" label="Observações internas"><textarea id="ag-observacoes-internas" value={form.observacoesInternas} onChange={(event) => update("observacoesInternas", event.target.value)} className={cn(controlClass(), "h-auto min-h-24 resize-y py-3")} placeholder="Informações úteis apenas para a equipe." maxLength={800} /></Field>
+            
           </div></CollapsibleContent>
         </div>
       </Collapsible>

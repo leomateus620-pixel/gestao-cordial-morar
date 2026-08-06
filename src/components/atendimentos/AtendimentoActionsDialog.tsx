@@ -157,8 +157,11 @@ function FormBody({
   const [motivoLivre, setMotivoLivre] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sortedBrokerOptions = [...brokerOptions]
-    .filter((broker) => brokerCanServeAgency(broker, atendimento.imobiliaria))
+  const eligibleBrokers = brokerOptions.filter((broker) =>
+    brokerCanServeAgency(broker, atendimento.imobiliaria),
+  );
+  const hiddenBrokersCount = brokerOptions.length - eligibleBrokers.length;
+  const sortedBrokerOptions = [...eligibleBrokers]
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((broker) => ({
       id: broker.id,
@@ -223,6 +226,13 @@ function FormBody({
               </option>
             ))}
           </select>
+          {hiddenBrokersCount > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {hiddenBrokersCount === 1
+                ? "1 corretor não atende esta imobiliária e ficou fora da lista."
+                : `${hiddenBrokersCount} corretores não atendem esta imobiliária e ficaram fora da lista.`}
+            </p>
+          )}
         </Field>
       )}
 

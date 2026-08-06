@@ -151,8 +151,11 @@ export function AtendimentoFormModal({
   const imoveis = useApp((state) => state.imoveis);
   const currentUser = useSession();
   const [form, setForm] = useState<FormState>(() => formFromAtendimento(initialValue));
-  const sortedBrokerOptions = brokerOptions
-    .filter((broker) => brokerCanServeAgency(broker, form.imobiliaria))
+  const eligibleBrokers = brokerOptions.filter((broker) =>
+    brokerCanServeAgency(broker, form.imobiliaria),
+  );
+  const hiddenBrokersCount = brokerOptions.length - eligibleBrokers.length;
+  const sortedBrokerOptions = eligibleBrokers
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((broker) => ({
       id: broker.id,
@@ -663,6 +666,13 @@ export function AtendimentoFormModal({
                       </option>
                     ))}
                   </select>
+                  {hiddenBrokersCount > 0 && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {hiddenBrokersCount === 1
+                        ? "1 corretor não atende esta imobiliária e ficou fora da lista."
+                        : `${hiddenBrokersCount} corretores não atendem esta imobiliária e ficaram fora da lista.`}
+                    </p>
+                  )}
                   {form.corretorId !== "a_definir" &&
                     currentUser &&
                     form.corretorId !== currentUser.id && (
