@@ -760,6 +760,9 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
           <ReviewRow icon={UserRound} label="Proprietário" value={`${form.proprietarioNome || "Nome pendente"} · ${form.proprietarioTelefone || "Telefone pendente"}`} />
           <ReviewRow icon={CalendarDays} label="Responsabilidade" value={`${form.corretorNome || "Corretor pendente"} · ${form.dataAgenciamento || "Data pendente"}`} />
           <ReviewRow icon={BadgeCheck} label="Situação" value={`${getAgenciamentoStatusLabel(form.status)} · ${checklistProgress}% do checklist`} />
+          {form.observacoesInternas.trim() && (
+            <ReviewRow icon={ClipboardCheck} label="Descrição" value={form.observacoesInternas.trim().slice(0, 160) + (form.observacoesInternas.trim().length > 160 ? "…" : "")} />
+          )}
         </div>
       </section>
 
