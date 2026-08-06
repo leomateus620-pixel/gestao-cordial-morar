@@ -772,7 +772,7 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
           <CollapsibleContent className="border-t border-border px-3.5 py-4 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none"><div className="space-y-4">
             <Field id="ag-drive-url" label="Pasta do Drive"><input id="ag-drive-url" type="url" inputMode="url" value={form.driveFolderUrl} onChange={(event) => update("driveFolderUrl", event.target.value)} className={controlClass()} placeholder="https://drive.google.com/..." autoComplete="url" /></Field>
             <Field id="ag-site-url" label="Imóvel no site"><input id="ag-site-url" type="url" inputMode="url" value={form.siteUrl} onChange={(event) => update("siteUrl", event.target.value)} className={controlClass()} placeholder="https://..." autoComplete="url" /></Field>
-            <Field id="ag-observacoes-internas" label="Observações internas"><textarea id="ag-observacoes-internas" value={form.observacoesInternas} onChange={(event) => update("observacoesInternas", event.target.value)} className={cn(controlClass(), "h-auto min-h-24 resize-y py-3")} placeholder="Informações úteis apenas para a equipe." maxLength={800} /></Field>
+            
           </div></CollapsibleContent>
         </div>
       </Collapsible>
