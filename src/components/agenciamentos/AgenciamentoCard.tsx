@@ -178,7 +178,7 @@ function AgenciamentoCardComponent({
         </div>
       </div>
 
-      <div className="min-w-0 rounded-xl border border-foreground/8 bg-[#f7f4f0] px-3.5 py-3">
+      <div className="min-w-0 self-start rounded-xl border border-foreground/8 bg-[#f7f4f0] px-3.5 py-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/45">
           Responsabilidade
         </p>
