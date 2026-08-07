@@ -189,13 +189,6 @@ function Dashboard() {
     ],
     [
       {
-        label: "Contratos ativos",
-        value: String(contratosAtivos).padStart(2, "0"),
-        detail: "assinados",
-        tone: "primary",
-        icon: <FileText className="size-4" />,
-      },
-      {
         label: "Imóveis em negociação",
         value: String(imoveisNegociacao).padStart(2, "0"),
         detail: "reservas + propostas",
@@ -209,16 +202,6 @@ function Dashboard() {
         icon: <TrendingUp className="size-4" />,
       },
       {
-        label: "Valores previstos",
-        value: brl(valoresPrevistos, { compact: true }),
-        detail: "aluguéis + comissões",
-        tone: "primary",
-        accent: "up",
-        icon: <Wallet className="size-4" />,
-      },
-    ],
-    [
-      {
         label: "Cobranças em aberto",
         value: brl(cobrancasAbertas, { compact: true }),
         detail: "pendentes",
@@ -231,19 +214,6 @@ function Dashboard() {
         accent: "down",
         tone: "danger" as MetricTone,
         icon: <ArrowDownRight className="size-4" />,
-      },
-      {
-        label: "Vendas em andamento",
-        value: String(vendasEmAndamento).padStart(2, "0"),
-        detail: "propostas e assinaturas",
-        icon: <BadgeDollarSign className="size-4" />,
-      },
-      {
-        label: "Aluguéis fechados",
-        value: String(alugueisFechados).padStart(2, "0"),
-        detail: "contratos ativos",
-        accent: "up",
-        icon: <FileText className="size-4" />,
       },
     ],
   ];
