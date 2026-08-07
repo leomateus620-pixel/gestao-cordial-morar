@@ -593,17 +593,8 @@ function Page() {
               {showingUnclassified ? "Voltar à trilha" : "Revisar agora"}
             </Button>
           </div>
-        ) : (
-          <div className="flex justify-end px-0.5">
-            <button
-              type="button"
-              onClick={() => setFilters({ finalidade: "sem_classificacao" })}
-              className="text-[11px] font-semibold text-foreground/45 underline-offset-4 transition-colors hover:text-primary hover:underline"
-            >
-              Ver sem classificação
-            </button>
-          </div>
-        )}
+        ) : null}
+
 
 
 
