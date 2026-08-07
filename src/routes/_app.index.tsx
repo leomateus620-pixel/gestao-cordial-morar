@@ -251,7 +251,7 @@ function Dashboard() {
             {isAdminOwner && (
               <HeroStat
                 label="Previsão entrada"
-                value={brl(dashboardPrevisaoFinanceira.total, { compact: true })}
+                value={brl(dashboardPrevisaoFinanceira[0]?.receita ?? 0, { compact: true })}
                 accent
               />
             )}
