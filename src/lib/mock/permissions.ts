@@ -67,7 +67,6 @@ const allModules: AppModule[] = [
   "vendas",
   "agenda",
   "corretores",
-  "contratos",
   "financeiro",
   "relatorios",
   "marketing",
