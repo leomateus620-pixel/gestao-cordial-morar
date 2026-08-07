@@ -1,4 +1,4 @@
-import type { Cliente, Contrato, Corretor, Imovel, Venda } from "@/lib/mock/data";
+import type { Cliente, Corretor, Imovel, Venda } from "@/lib/mock/data";
 import type {
   SaleDocumentStatus,
   SalePaymentMethod,
@@ -12,7 +12,6 @@ import type {
 type SaleRelations = {
   vendas: Venda[];
   imoveis: Imovel[];
-  contratos: Contrato[];
   clientes: Cliente[];
   corretores: Corretor[];
 };
