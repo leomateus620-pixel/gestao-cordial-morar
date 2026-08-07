@@ -62,7 +62,6 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
   ]);
   assert.deepEqual(sidebarPaths("financeiro_admin"), [
     "/",
-    "/contratos",
     "/financeiro",
     "/relatorios",
     "/documentos",
