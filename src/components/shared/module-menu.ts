@@ -184,18 +184,6 @@ export const moduleItems: ModuleItem[] = [
     sidebar: { section: "relacionamento", order: 30 },
   },
   {
-    to: "/contratos",
-    label: "Contratos",
-    desc: "Vendas e aluguéis",
-    icon: FileText,
-    module: "contratos",
-    sidebar: {
-      section: "relacionamento",
-      order: 40,
-      desc: "Vendas e locações",
-    },
-  },
-  {
     to: "/corretores",
     label: "Corretores",
     desc: "Equipe e performance",
