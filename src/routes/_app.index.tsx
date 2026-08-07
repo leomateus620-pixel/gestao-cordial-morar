@@ -140,28 +140,18 @@ function Dashboard() {
   const novosClientes = clientes.filter((c) => c.criadoEm.startsWith(mesAtual)).length;
   const clientesAluguel = clientes.filter((c) => c.tipo === "Locatário").length;
   const clientesCompra = clientes.filter((c) => c.tipo === "Comprador").length;
-  const contratosAtivos = contratos.filter((c) => c.status === "Ativo").length;
   const imoveisNegociacao =
     imoveis.filter((i) => i.status === "Reservado").length +
     atendimentos.filter((a) => a.status === "proposta_enviada").length;
   const visitasAgendadas = agenda.filter(
     (a) => a.tipo === "Visita" && new Date(a.data) >= new Date("2026-06-12T00:00:00"),
   ).length;
-  const valoresPrevistos = contratos
-    .filter((c) => c.status !== "Encerrado")
-    .reduce((sum, c) => sum + (c.tipo === "Aluguel" ? c.valor : c.valor * 0.05), 0);
   const cobrancasAbertas = lancamentos
     .filter((l) => l.status === "Pendente")
     .reduce((sum, l) => sum + l.valor, 0);
   const inadimplencia = lancamentos
     .filter((l) => l.status === "Atrasado")
     .reduce((sum, l) => sum + l.valor, 0);
-  const vendasEmAndamento =
-    contratos.filter((c) => c.tipo === "Venda" && c.status === "Pendente assinatura").length +
-    atendimentos.filter((a) => a.status === "proposta_enviada").length;
-  const alugueisFechados = contratos.filter(
-    (c) => c.tipo === "Aluguel" && c.status === "Ativo",
-  ).length;
   const atendPendentes = atendimentos.filter(
     (a) => a.status !== "fechado" && a.status !== "perdido",
   ).length;
