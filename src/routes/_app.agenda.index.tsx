@@ -175,12 +175,9 @@ function AgendaPage() {
 
   return (
     <div className="space-y-4">
-      <section className="space-y-2">
-        <SectionHeader title="Conexões da sua conta" />
-        <GoogleCalendarCard />
-      </section>
+      <GoogleCalendarCard variant="inline" />
 
-      <AgendaViewSwitcher />
+      <AgendaViewSwitcher activeCount={filteredEvents.length} />
 
       <AgendaCreateCard
         onClick={openCreate}
@@ -195,7 +192,12 @@ function AgendaPage() {
         clients={clientOptions}
       />
 
-      <AgendaSummaryCards variant="geral" stats={stats as never} />
+      <AgendaSummaryCards
+        variant="geral"
+        stats={stats as never}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3 px-1">
