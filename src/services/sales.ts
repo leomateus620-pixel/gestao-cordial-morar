@@ -137,7 +137,6 @@ export function buildSaleRecords({
   return vendas.map((venda) => {
     const imovel = findById(imoveis, venda.imovelId);
     const cliente = findById(clientes, venda.clienteId);
-    const corretor = findById(corretores, venda.responsibleAgentId);
     const saleDate = venda.saleDate || venda.previsaoEscritura || fallbackDate();
     const saleStatus = inferSaleStatus(venda);
     const documentStatus = inferDocumentStatus(venda);
