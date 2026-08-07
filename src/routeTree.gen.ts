@@ -36,7 +36,6 @@ import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamento
 import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
-import { Route as AppContratosContratoIdRouteImport } from './routes/_app.contratos.$contratoId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
 import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -182,11 +181,6 @@ const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
   path: '/$imovelId',
   getParentRoute: () => AppImoveisRoute,
 } as any)
-const AppContratosContratoIdRoute = AppContratosContratoIdRouteImport.update({
-  id: '/contratos/$contratoId',
-  path: '/contratos/$contratoId',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -272,7 +266,6 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda/': typeof AppAgendaIndexRoute
@@ -311,7 +304,6 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda': typeof AppAgendaIndexRoute
@@ -352,7 +344,6 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/_app/contratos/$contratoId': typeof AppContratosContratoIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
@@ -393,7 +384,6 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
-    | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/agenda/'
@@ -432,7 +422,6 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
-    | '/contratos/$contratoId'
     | '/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/agenda'
@@ -472,7 +461,6 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/agenda/fotos'
     | '/_app/clientes/$clienteId'
-    | '/_app/contratos/$contratoId'
     | '/_app/imoveis/$imovelId'
     | '/lovable/email/suppression'
     | '/_app/agenda/'
@@ -695,13 +683,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisImovelIdRouteImport
       parentRoute: typeof AppImoveisRoute
     }
-    '/_app/contratos/$contratoId': {
-      id: '/_app/contratos/$contratoId'
-      path: '/contratos/$contratoId'
-      fullPath: '/contratos/$contratoId'
-      preLoaderRoute: typeof AppContratosContratoIdRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/clientes/$clienteId': {
       id: '/_app/clientes/$clienteId'
       path: '/$clienteId'
@@ -819,7 +800,6 @@ interface AppRouteChildren {
   AppVendasRoute: typeof AppVendasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAgendaFotosRoute: typeof AppAgendaFotosRoute
-  AppContratosContratoIdRoute: typeof AppContratosContratoIdRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
 }
 
@@ -843,7 +823,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppVendasRoute: AppVendasRoute,
   AppIndexRoute: AppIndexRoute,
   AppAgendaFotosRoute: AppAgendaFotosRoute,
-  AppContratosContratoIdRoute: AppContratosContratoIdRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
 }
 
