@@ -95,8 +95,6 @@ const allPermissions: Permission[] = [
   "agenda:write",
   "corretores:read",
   "corretores:manage",
-  "contratos:read",
-  "contratos:write",
   "financeiro:read",
   "financeiro:write",
   "relatorios:read",
