@@ -1,7 +1,7 @@
 export type BuscaCategoria =
   | "atendimento"
   | "cliente"
-  | "contrato"
+  | "aluguel"
   | "venda"
   | "agenciamento"
   | "imovel"
@@ -47,7 +47,7 @@ export type BuscaTimeline = {
 export const buscaCategoriaLabels: Record<BuscaCategoria, string> = {
   atendimento: "Atendimentos",
   cliente: "Clientes",
-  contrato: "Aluguéis e contratos",
+  aluguel: "Aluguéis",
   venda: "Vendas",
   agenciamento: "Agenciamentos",
   imovel: "Imóveis de locação",
@@ -57,7 +57,7 @@ export const buscaCategoriaLabels: Record<BuscaCategoria, string> = {
 export const buscaCategoriaOrdem: BuscaCategoria[] = [
   "atendimento",
   "cliente",
-  "contrato",
+  "aluguel",
   "venda",
   "agenciamento",
   "imovel",
