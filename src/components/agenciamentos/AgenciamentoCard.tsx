@@ -196,13 +196,13 @@ function AgenciamentoCardComponent({
             >
               {agenciamento.corretorNome || "Sem responsável"}
             </span>
-            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-foreground/55">
-              <CalendarDays aria-hidden="true" className="size-3 text-foreground/45" />
-              Captado em{" "}
+            <span className="mt-0.5 flex flex-nowrap items-center gap-1 whitespace-nowrap text-[11px] font-medium text-foreground/55">
+              <CalendarDays aria-hidden="true" className="size-3 shrink-0 text-foreground/45" />
               <span className="font-bold text-foreground/75">
                 {shortDate(agenciamento.dataAgenciamento)}
               </span>
             </span>
+
           </span>
         </div>
       </div>
