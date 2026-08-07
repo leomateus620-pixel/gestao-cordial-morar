@@ -131,24 +131,20 @@ export function createVendaRecord(input: SaleRecordInput, options?: UpsertOption
 export function buildSaleRecords({
   vendas,
   imoveis,
-  contratos,
   clientes,
   corretores,
 }: SaleRelations): SaleRecord[] {
   return vendas.map((venda) => {
-    const contrato = findById(contratos, venda.contratoId);
-    const imovel = findById(imoveis, venda.imovelId || contrato?.imovelId);
-    const cliente = findById(clientes, venda.clienteId || contrato?.clienteId);
-    const corretor = findById(corretores, contrato?.corretorId);
-    const saleDate =
-      venda.saleDate || contrato?.inicio || venda.previsaoEscritura || fallbackDate();
-    const saleStatus = inferSaleStatus(venda, contrato);
-    const documentStatus = inferDocumentStatus(venda, contrato);
-    const contractFileName = venda.contractFileName || contrato?.documentos?.[0];
+    const imovel = findById(imoveis, venda.imovelId);
+    const cliente = findById(clientes, venda.clienteId);
+    const corretor = findById(corretores, venda.responsibleAgentId);
+    const saleDate = venda.saleDate || venda.previsaoEscritura || fallbackDate();
+    const saleStatus = inferSaleStatus(venda);
+    const documentStatus = inferDocumentStatus(venda);
 
     return {
       id: venda.id,
-      propertyId: venda.imovelId || contrato?.imovelId || undefined,
+      propertyId: venda.imovelId || undefined,
       propertyName: venda.propertyName || imovel?.titulo || "Imóvel não identificado",
       propertyAddress: venda.propertyAddress || imovel?.endereco || "Endereço não informado",
       propertyNeighborhood: venda.propertyNeighborhood || imovel?.bairro,
@@ -177,7 +173,7 @@ export function buildSaleRecords({
       commissionPercentage: venda.commissionPercentage ?? venda.comissaoPercentual,
       responsibleAgent: venda.responsibleAgent || corretor?.nome,
       contractFileUrl: venda.contractFileUrl,
-      contractFileName,
+      contractFileName: venda.contractFileName,
       supportingDocumentFileName: venda.supportingDocumentFileName,
       documentStatus,
       notes: venda.notes,
