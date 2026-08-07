@@ -56,7 +56,6 @@ type State = {
   imoveis: Imovel[];
   corretores: Corretor[];
   atendimentos: Atendimento[];
-  contratos: Contrato[];
   agenda: Compromisso[];
   agendaEvents: AgendaEvent[];
   lancamentos: Lancamento[];
