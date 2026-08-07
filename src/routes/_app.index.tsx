@@ -240,8 +240,8 @@ function Dashboard() {
               Olá, {session?.nome ?? "bem-vindo"} 👋
             </h1>
             <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-white/65 sm:text-[13px]">
-              Acompanhe atendimentos, imóveis, contratos e performance das duas imobiliárias em um
-              só lugar.
+              Acompanhe atendimentos, imóveis, vendas, aluguéis e performance das duas imobiliárias
+              em um só lugar.
             </p>
           </div>
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">

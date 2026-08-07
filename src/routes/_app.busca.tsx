@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/busca")({
       {
         name: "description",
         content:
-          "Pesquise clientes, atendimentos, contratos, vendas e agenciamentos e veja o histórico completo de cada registro.",
+          "Pesquise clientes, atendimentos, aluguéis, vendas e agenciamentos e veja o histórico completo de cada registro.",
       },
       { property: "og:title", content: "Busca global — Gestão Cordial" },
       {

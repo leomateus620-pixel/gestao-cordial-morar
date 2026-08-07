@@ -93,6 +93,6 @@ test("matches active routes without allowing sibling-prefix collisions", () => {
   assert.equal(isModuleItemActive("/", { to: "/", exact: true }), true);
   assert.equal(isModuleItemActive("/agenda/fotos", { to: "/agenda", exact: true }), false);
   assert.equal(isModuleItemActive("/agenda/fotos", { to: "/agenda/fotos" }), true);
-  assert.equal(isModuleItemActive("/contratos/abc", { to: "/contratos" }), true);
+  assert.equal(isModuleItemActive("/alugueis/abc", { to: "/alugueis" }), true);
   assert.equal(isModuleItemActive("/imoveis-destaque", { to: "/imoveis" }), false);
 });
