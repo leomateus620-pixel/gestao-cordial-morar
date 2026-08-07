@@ -129,7 +129,7 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
               <DropdownMenuItem
                 onSelect={() => disconnectMut.mutate()}
                 disabled={disconnectMut.isPending}
-                variant="destructive"
+                className="text-destructive focus:text-destructive"
               >
                 <Unlink2 className="size-3.5" />
                 Desconectar
