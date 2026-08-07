@@ -92,7 +92,7 @@ function AgenciamentoCardComponent({
     agenciamento.status === "reprovado" ? agenciamento.reprovadoMotivo : undefined;
 
   return (
-    <article className="group relative grid min-w-0 gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-within:border-primary/25 motion-reduce:transition-none sm:px-6 md:grid-cols-2 xl:grid-cols-[minmax(0,1.45fr)_minmax(10rem,0.66fr)_minmax(12rem,0.78fr)_auto] xl:items-center">
+    <article className="group relative grid min-w-0 gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-within:border-primary/25 motion-reduce:transition-none sm:px-6 lg:grid-cols-2 2xl:grid-cols-[minmax(18rem,1.6fr)_minmax(11rem,0.7fr)_minmax(12rem,0.8fr)_auto] 2xl:items-center">
       {rejectionReason && (
         <div className="col-span-full flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs leading-relaxed text-destructive">
           <ShieldX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -252,7 +252,7 @@ function AgenciamentoCardComponent({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 md:col-span-2 xl:col-span-1 xl:justify-end">
+      <div className="flex flex-wrap items-center gap-1.5 lg:col-span-2 2xl:col-span-1 2xl:justify-end">
         <Button
           type="button"
           size="sm"
