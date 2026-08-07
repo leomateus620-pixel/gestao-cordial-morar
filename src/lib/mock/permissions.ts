@@ -10,7 +10,6 @@ export type AppModule =
   | "vendas"
   | "agenda"
   | "corretores"
-  | "contratos"
   | "financeiro"
   | "relatorios"
   | "marketing"
