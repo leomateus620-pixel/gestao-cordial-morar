@@ -14,7 +14,10 @@ import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoB
 import { AgenciamentoBonusRegistryDrawer } from "@/components/agenciamentos/AgenciamentoBonusRegistryDrawer";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
-import { AgenciamentoFilters } from "@/components/agenciamentos/AgenciamentoFilters";
+import {
+  AgenciamentoFilters,
+  AgenciamentoSearchField,
+} from "@/components/agenciamentos/AgenciamentoFilters";
 import { AgenciamentoFormModal } from "@/components/agenciamentos/AgenciamentoFormModal";
 import { AgenciamentoRejectDialog } from "@/components/agenciamentos/AgenciamentoRejectDialog";
 import { AgenciamentoTrackSelector } from "@/components/agenciamentos/AgenciamentoTrackSelector";
@@ -208,22 +211,30 @@ function Page() {
 
 
 
+  const [summaryKey, setSummaryKey] = useState<AgenciamentoSummaryKey | null>(null);
+
+  // A seleção volta a "nenhuma" quando o usuário mexe nos filtros pelo painel.
   const activeSummaryKey = useMemo<AgenciamentoSummaryKey | null>(() => {
-    if (filters.status === "aguardando_validacao") return "pendentes";
-    if (filters.status === "validado") return "validados";
-    if (filters.checklist === "sem_fotos") return "fotos";
-    if (filters.checklist === "sem_placa") return "placas";
-    if (filters.checklist === "fora_site") return "site";
-    if (filters.status === "todos" && filters.checklist === "todos") return "total";
-    return null;
-  }, [filters.status, filters.checklist]);
+    if (!summaryKey) return null;
+    const matches: Record<AgenciamentoSummaryKey, boolean> = {
+      total: filters.status === "todos" && filters.checklist === "todos",
+      pendentes: filters.status === "aguardando_validacao",
+      validados: filters.status === "validado",
+      fotos: filters.checklist === "sem_fotos",
+      placas: filters.checklist === "sem_placa",
+      site: filters.checklist === "fora_site",
+    };
+    return matches[summaryKey] ? summaryKey : null;
+  }, [filters.checklist, filters.status, summaryKey]);
 
   const handleSummarySelect = useCallback(
     (key: AgenciamentoSummaryKey) => {
       const isActive = activeSummaryKey === key;
       if (isActive) {
+        setSummaryKey(null);
         setFilters({ status: "todos", checklist: "todos" });
       } else {
+        setSummaryKey(key);
         switch (key) {
           case "total":
             setFilters({ status: "todos", checklist: "todos" });
@@ -251,6 +262,7 @@ function Page() {
     },
     [activeSummaryKey, setFilters],
   );
+
 
   useEffect(
     () => () => {
@@ -500,22 +512,24 @@ function Page() {
   return (
     <>
       <div className="space-y-4 pb-1">
-        <section className="animate-in fade-in slide-in-from-bottom-2 group/header relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/70 shadow-[0_24px_64px_-46px_rgba(23,27,33,0.48)] backdrop-blur-md duration-300 motion-reduce:animate-none">
+        <section className="animate-in fade-in slide-in-from-bottom-2 group/header relative overflow-hidden rounded-2xl border border-foreground/8 bg-white/85 shadow-[0_20px_56px_-46px_rgba(23,27,33,0.5)] backdrop-blur-sm duration-300 motion-reduce:animate-none">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(23,77,97,0.18),transparent_65%)] transition-transform duration-700 ease-out group-hover/header:scale-110 motion-reduce:transition-none"
+            className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-[radial-gradient(circle_at_center,rgba(23,77,97,0.16),transparent_65%)] transition-transform duration-700 ease-out group-hover/header:scale-110 motion-reduce:transition-none"
           />
-          <div className="relative flex flex-col gap-4 px-5 py-5 sm:px-7 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#174d61]/10 text-[#174d61] ring-1 ring-inset ring-[#174d61]/15">
-                <ClipboardCheck aria-hidden="true" className="size-6" />
-              </div>
+          <div className="relative flex flex-col gap-4 px-5 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#174d61] text-white shadow-[0_10px_24px_-14px_rgba(23,77,97,0.9)]">
+                <BuildingIcon />
+              </span>
               <div className="min-w-0">
-                <h1 className="truncate text-2xl font-extrabold tracking-[-0.03em] text-foreground sm:text-[1.75rem]">
+                <h1 className="truncate text-2xl font-extrabold tracking-[-0.035em] text-foreground">
                   Agenciamentos
                 </h1>
-                <p className="mt-0.5 max-w-2xl text-sm leading-relaxed text-foreground/62">
-                  Acompanhe imóveis captados, responsáveis e etapas de validação.
+                <p className="mt-0.5 text-xs font-semibold text-foreground/50">
+                  <span className="tabular-nums text-foreground/75">{summary.total}</span>{" "}
+                  {summary.total === 1 ? "captação" : "captações"} ·{" "}
+                  {periodLabel.toLowerCase()}
                 </p>
               </div>
             </div>
@@ -525,13 +539,14 @@ function Page() {
               onClick={openCreate}
               disabled={!canCreate}
               title={!canCreate ? "Seu perfil não permite cadastrar agenciamentos" : undefined}
-              className="group/cta h-12 w-full shrink-0 rounded-2xl bg-[#174d61] px-5 text-sm font-bold text-white shadow-[0_18px_38px_-20px_rgba(23,77,97,0.95)] transition-[background-color,box-shadow,transform] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-0.5 hover:bg-[#1e647d] hover:shadow-[0_22px_44px_-18px_rgba(23,77,97,0.95)] active:translate-y-0 active:scale-[0.985] motion-reduce:transition-none sm:w-auto"
+              className="group/cta h-11 w-full shrink-0 rounded-xl bg-[#174d61] px-5 text-sm font-bold text-white shadow-[0_16px_34px_-20px_rgba(23,77,97,0.95)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1e647d] active:translate-y-0 active:scale-[0.985] motion-reduce:transition-none sm:w-auto"
             >
               <Plus className="size-4 transition-transform duration-200 ease-out group-hover/cta:rotate-90 motion-reduce:transition-none" />
               Cadastrar agenciamento
             </Button>
           </div>
         </section>
+
 
         <div aria-live="polite" aria-atomic="true">
           {feedback && (
@@ -560,39 +575,36 @@ function Page() {
           counts={trackCounts}
         />
 
-        <div
-          className={cn(
-            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-4 py-3 sm:flex sm:justify-between",
-            unclassifiedAgenciamentos.length > 0
-              ? "border-amber-500/25 bg-amber-500/10 text-amber-900"
-              : "border-border/60 bg-white/60 text-foreground/70",
-          )}
-        >
-          <p className="min-w-0 text-sm font-semibold">
-            {unclassifiedAgenciamentos.length > 0
-              ? `${unclassifiedAgenciamentos.length} agenciamento${unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou Aluguel.`
-              : "Todos os agenciamentos estão classificados. Você pode revisar e trocar a classificação quando quiser."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className={cn(
-              "h-9 shrink-0 rounded-xl bg-white/70 shadow-none",
-              unclassifiedAgenciamentos.length > 0
-                ? "border-amber-500/30 text-amber-900"
-                : "border-border/60",
-            )}
-            onClick={() =>
-              setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
-            }
-          >
-            {showingUnclassified
-              ? "Voltar à trilha"
-              : unclassifiedAgenciamentos.length > 0
-                ? "Revisar agora"
-                : "Ver sem classificação"}
-          </Button>
-        </div>
+        {unclassifiedAgenciamentos.length > 0 || showingUnclassified ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-amber-900 sm:flex sm:justify-between">
+            <p className="min-w-0 text-sm font-semibold">
+              {showingUnclassified
+                ? "Exibindo apenas agenciamentos sem classificação."
+                : `${unclassifiedAgenciamentos.length} agenciamento${unclassifiedAgenciamentos.length === 1 ? "" : "s"} sem classificação de Venda ou Aluguel.`}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 rounded-xl border-amber-500/30 bg-white/70 text-amber-900 shadow-none"
+              onClick={() =>
+                setFilters({ finalidade: showingUnclassified ? track : "sem_classificacao" })
+              }
+            >
+              {showingUnclassified ? "Voltar à trilha" : "Revisar agora"}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-end px-0.5">
+            <button
+              type="button"
+              onClick={() => setFilters({ finalidade: "sem_classificacao" })}
+              className="text-[11px] font-semibold text-foreground/45 underline-offset-4 transition-colors hover:text-primary hover:underline"
+            >
+              Ver sem classificação
+            </button>
+          </div>
+        )}
+
 
 
         {rejectedAgenciamentos.length > 0 && (
@@ -645,26 +657,13 @@ function Page() {
           />
         </div>
 
-        <div
-          className="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
-          style={{ animationDelay: "80ms", animationFillMode: "both" }}
-        >
-          <AgenciamentoFilters
-            filters={filters}
-            corretores={corretores}
-            isAdmin={isAdmin}
-            onFiltersChange={setFilters}
-            onReset={resetFilters}
-          />
-        </div>
-
         <section
           ref={listRef}
           aria-labelledby="agenciamentos-list-title"
           className="min-w-0 scroll-mt-4"
         >
-          <div className="mb-2.5 flex items-end justify-between gap-3 px-0.5">
-            <div>
+          <div className="mb-3 flex flex-col gap-3 px-0.5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
               <h2 id="agenciamentos-list-title" className="text-base font-extrabold tracking-tight">
                 Imóveis captados
               </h2>
@@ -672,18 +671,25 @@ function Page() {
                 {isLoading
                   ? "Carregando registros..."
                   : `${agenciamentos.length} ${agenciamentos.length === 1 ? "registro encontrado" : "registros encontrados"}`}
+                {isFetching && !isLoading ? " · atualizando" : ""}
               </p>
             </div>
-            {isFetching && !isLoading && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground/48">
-                <Loader2
-                  aria-hidden="true"
-                  className="size-3.5 animate-spin motion-reduce:animate-none"
-                />
-                Atualizando
-              </span>
-            )}
+            <div className="flex min-w-0 flex-col items-stretch gap-2 lg:flex-row lg:items-start lg:justify-end">
+              <AgenciamentoSearchField
+                value={filters.busca}
+                onChange={(busca) => setFilters({ busca })}
+                className="w-full lg:w-72"
+              />
+              <AgenciamentoFilters
+                filters={filters}
+                corretores={corretores}
+                isAdmin={isAdmin}
+                onFiltersChange={setFilters}
+                onReset={resetFilters}
+              />
+            </div>
           </div>
+
 
           {isLoading && <AgenciamentoListSkeleton />}
 
@@ -929,3 +935,23 @@ function AgenciamentoListSkeleton() {
     </div>
   );
 }
+
+function BuildingIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5"
+    >
+      <path d="M3 20V9.6a1 1 0 0 1 .4-.8l7-5.2a1 1 0 0 1 1.2 0l7 5.2a1 1 0 0 1 .4.8V20" />
+      <path d="M2 20h20" />
+      <path d="M9.5 12.6 11 14l3.2-3.4" />
+    </svg>
+  );
+}
+

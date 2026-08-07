@@ -57,6 +57,13 @@ const operationalItems: Array<{
   { key: "validado", pendingLabel: "Validar cadastro", icon: BadgeCheck },
 ];
 
+function getInitials(name: string): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "--";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function AgenciamentoCardComponent({
   agenciamento,
   canManage,
@@ -171,24 +178,35 @@ function AgenciamentoCardComponent({
         </div>
       </div>
 
-      <div className="min-w-0 space-y-2 md:rounded-xl md:border md:border-foreground/8 md:bg-[#f7f4f0] md:px-3.5 md:py-3 xl:border-0 xl:bg-transparent xl:p-0">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-foreground/55">
+      <div className="min-w-0 rounded-xl border border-foreground/8 bg-[#f7f4f0] px-3.5 py-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/45">
           Responsabilidade
         </p>
-        <div className="flex min-w-0 items-center gap-2 text-xs">
-          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-[#174d61]" />
+        <div className="mt-2 flex min-w-0 items-center gap-2.5">
           <span
-            className="truncate font-semibold text-foreground/90"
-            title={agenciamento.corretorNome}
+            aria-hidden="true"
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-[#174d61] text-[11px] font-extrabold tracking-wide text-white"
           >
-            {agenciamento.corretorNome}
+            {getInitials(agenciamento.corretorNome)}
+          </span>
+          <span className="min-w-0">
+            <span
+              className="block truncate text-sm font-extrabold leading-tight tracking-tight text-foreground"
+              title={agenciamento.corretorNome}
+            >
+              {agenciamento.corretorNome || "Sem responsável"}
+            </span>
+            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-foreground/55">
+              <CalendarDays aria-hidden="true" className="size-3 text-foreground/45" />
+              Captado em{" "}
+              <span className="font-bold text-foreground/75">
+                {shortDate(agenciamento.dataAgenciamento)}
+              </span>
+            </span>
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-foreground/65">
-          <CalendarDays aria-hidden="true" className="size-3.5 text-foreground/50" />
-          <span>{shortDate(agenciamento.dataAgenciamento)}</span>
-        </div>
       </div>
+
 
       <div className="min-w-0">
         <div className="flex items-center justify-between gap-3">

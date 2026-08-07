@@ -369,6 +369,9 @@ export function calculateAgenciamentosSummary(agenciamentos: Agenciamento[]): Ag
     pendentesValidacao: agenciamentos.filter((item) => item.status === "aguardando_validacao")
       .length,
     fotosDrive: agenciamentos.filter((item) => item.checklist.fotosDrive).length,
+    fotosCompletas: agenciamentos.filter(
+      (item) => item.checklist.fotosHorizontal && item.checklist.fotosVertical,
+    ).length,
     placasInstaladas: agenciamentos.filter((item) => item.checklist.placaInstalada).length,
     cadastradosSite: agenciamentos.filter(
       (item) => item.checklist.cadastradoMorar && item.checklist.cadastradoCordial,

@@ -157,6 +157,7 @@ export type AgenciamentoSummary = {
   mes: number;
   pendentesValidacao: number;
   fotosDrive: number;
+  fotosCompletas: number;
   placasInstaladas: number;
   cadastradosSite: number;
   validados: number;
