@@ -282,7 +282,10 @@ function AgenciamentoCardComponent({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 lg:col-span-2 2xl:col-span-1 2xl:justify-end">
+      <div
+        onClick={(event) => event.stopPropagation()}
+        className="flex flex-wrap items-center gap-1.5 lg:col-span-2 2xl:col-span-1 2xl:justify-end"
+      >
         <Button
           type="button"
           size="sm"
