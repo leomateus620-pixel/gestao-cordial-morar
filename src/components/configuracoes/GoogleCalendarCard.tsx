@@ -2,18 +2,33 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Unlink2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+  MoreHorizontal,
+  RefreshCw,
+  Unlink2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   startGoogleOAuth,
   getMyGoogleConnection,
   disconnectGoogleCalendar,
 } from "@/lib/google-calendar/google-calendar.functions";
 import googleCalendarLogo from "@/assets/google-calendar.svg";
+import { cn } from "@/lib/utils";
 
 const QK = ["google-calendar", "connection"] as const;
 
-export function GoogleCalendarCard() {
+export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "inline" }) {
   const qc = useQueryClient();
   const search = useSearch({ strict: false }) as { google?: string; detail?: string };
 
@@ -54,6 +69,91 @@ export function GoogleCalendarCard() {
 
 
   const conn = connection.data;
+
+  if (variant === "inline") {
+    const hasError = Boolean(conn?.last_error);
+    return (
+      <div
+        className={cn(
+          "glass-panel flex items-center gap-2.5 rounded-full py-1.5 pl-2 pr-1.5",
+          hasError && "border border-destructive/25 bg-destructive/5",
+        )}
+      >
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5">
+          <img src={googleCalendarLogo} alt="" className="size-4" />
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {connection.isLoading ? (
+            <span className="truncate text-[11px] text-foreground/55">Google Agenda…</span>
+          ) : conn ? (
+            <>
+              <span className="truncate text-[11.5px] font-semibold text-foreground/80">
+                {conn.google_email}
+              </span>
+              {hasError ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/12 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-destructive">
+                  <AlertTriangle className="size-3" /> Erro
+                </span>
+              ) : (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600/12 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-emerald-800">
+                  <CheckCircle2 className="size-3" /> Conectada
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="truncate text-[11.5px] text-foreground/60">
+              Google Agenda não conectada
+            </span>
+          )}
+        </div>
+
+        {conn ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Opções da conexão Google Agenda"
+                className="grid size-7 shrink-0 place-items-center rounded-full text-foreground/55 transition hover:bg-white/70 hover:text-foreground"
+              >
+                <MoreHorizontal className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                onSelect={() => connectMut.mutate()}
+                disabled={connectMut.isPending}
+              >
+                <RefreshCw className="size-3.5" />
+                {hasError ? "Reconectar agora" : "Reconectar / trocar conta"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => disconnectMut.mutate()}
+                disabled={disconnectMut.isPending}
+                className="text-destructive focus:text-destructive"
+              >
+                <Unlink2 className="size-3.5" />
+                Desconectar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            size="sm"
+            className="h-7 shrink-0 rounded-full px-3 text-[11px]"
+            onClick={() => connectMut.mutate()}
+            disabled={connectMut.isPending || connection.isLoading}
+          >
+            {connectMut.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <ExternalLink className="size-3" />
+            )}
+            Conectar
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="glass-panel rounded-3xl p-4">
