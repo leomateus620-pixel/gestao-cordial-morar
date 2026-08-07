@@ -249,7 +249,7 @@ export async function runGlobalSearch(
     );
   }
 
-  if (wants("contrato")) {
+  if (wants("aluguel")) {
     tasks.push(
       supabase
         .from("rental_contracts")
@@ -278,7 +278,7 @@ export async function runGlobalSearch(
             .map(
               (row: any): BuscaResultado => ({
                 id: row.id,
-                categoria: "contrato",
+                categoria: "aluguel",
                 titulo: row.rental_properties?.apelido ?? "Contrato de locação",
                 subtitulo: joinParts([
                   row.rental_tenants?.nome && `Inquilino: ${row.rental_tenants.nome}`,
@@ -290,7 +290,7 @@ export async function runGlobalSearch(
                 ]),
                 status: row.status,
                 data: row.updated_at,
-                rota: "/contratos",
+                rota: "/alugueis",
               }),
             );
         }),
@@ -343,8 +343,8 @@ export async function buildRecordTimeline(
       return clienteTimeline(supabase, id);
     case "venda":
       return vendaTimeline(supabase, id);
-    case "contrato":
-      return contratoTimeline(supabase, id);
+    case "aluguel":
+      return aluguelTimeline(supabase, id);
     case "agenciamento":
       return agenciamentoTimeline(supabase, id);
     case "imovel":
