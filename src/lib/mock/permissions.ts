@@ -160,19 +160,16 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
   financeiro_admin: {
     profile: "financeiro_admin",
     label: "Financeiro/Administrativo",
-    description: "Contratos, cobranças, comissões, relatórios e integração contábil mockada.",
+    description: "Cobranças, comissões, relatórios e integração contábil mockada.",
     modules: [
       "dashboard",
       "clientes",
-      "contratos",
       "financeiro",
       "relatorios",
       "integracoes",
     ],
     permissions: [
       "clientes:read",
-      "contratos:read",
-      "contratos:write",
       "financeiro:read",
       "financeiro:write",
       "relatorios:read",
