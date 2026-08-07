@@ -269,10 +269,10 @@ function Dashboard() {
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
           <FinancialSummaryCard
-            receita={valoresPrevistos}
+            receita={dashboardPrevisaoFinanceira[0]?.receita ?? 0}
             cobrancas={cobrancasAbertas}
             inadimplencia={inadimplencia}
-            contratos={contratosAtivos}
+            contratos={imoveisNegociacao}
           />
           <ComparativoCard />
         </section>
