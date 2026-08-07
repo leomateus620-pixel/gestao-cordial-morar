@@ -181,13 +181,9 @@ function AgenciamentoCardComponent({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => onView(agenciamento)}
-          className="mt-2.5 block max-w-full text-left text-base font-extrabold leading-snug tracking-tight text-foreground underline-offset-4 transition-colors duration-150 ease-out hover:text-primary hover:underline focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
-        >
+        <h3 className="mt-2.5 max-w-full pr-6 text-base font-extrabold leading-snug tracking-tight text-foreground transition-colors duration-150 ease-out group-hover:text-primary motion-reduce:transition-none">
           {getAgenciamentoTipoLabel(agenciamento.tipoImovel)} — {agenciamento.endereco}
-        </button>
+        </h3>
 
 
         <div className="mt-1.5 flex min-w-0 items-start gap-1.5 text-xs text-foreground/70">
