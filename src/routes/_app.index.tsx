@@ -247,11 +247,11 @@ function Dashboard() {
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
             <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
-            <HeroStat label="Contratos ativos" value={String(contratosAtivos).padStart(2, "0")} />
+            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
             {isAdminOwner && (
               <HeroStat
                 label="Previsão entrada"
-                value={brl(valoresPrevistos, { compact: true })}
+                value={brl(dashboardPrevisaoFinanceira.total, { compact: true })}
                 accent
               />
             )}
