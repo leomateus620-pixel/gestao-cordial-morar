@@ -57,6 +57,13 @@ const operationalItems: Array<{
   { key: "validado", pendingLabel: "Validar cadastro", icon: BadgeCheck },
 ];
 
+function getInitials(name: string): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "--";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function AgenciamentoCardComponent({
   agenciamento,
   canManage,
@@ -85,7 +92,7 @@ function AgenciamentoCardComponent({
     agenciamento.status === "reprovado" ? agenciamento.reprovadoMotivo : undefined;
 
   return (
-    <article className="group relative grid min-w-0 gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-within:border-primary/25 motion-reduce:transition-none sm:px-6 md:grid-cols-2 xl:grid-cols-[minmax(0,1.45fr)_minmax(10rem,0.66fr)_minmax(12rem,0.78fr)_auto] xl:items-center">
+    <article className="group relative grid min-w-0 gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-foreground/10 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-within:border-primary/25 motion-reduce:transition-none sm:px-6 lg:grid-cols-2 2xl:grid-cols-[minmax(18rem,1.6fr)_minmax(11rem,0.7fr)_minmax(12rem,0.8fr)_auto] 2xl:items-center">
       {rejectionReason && (
         <div className="col-span-full flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs leading-relaxed text-destructive">
           <ShieldX aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
@@ -171,24 +178,35 @@ function AgenciamentoCardComponent({
         </div>
       </div>
 
-      <div className="min-w-0 space-y-2 md:rounded-xl md:border md:border-foreground/8 md:bg-[#f7f4f0] md:px-3.5 md:py-3 xl:border-0 xl:bg-transparent xl:p-0">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-foreground/55">
+      <div className="min-w-0 self-start rounded-xl border border-foreground/8 bg-[#f7f4f0] px-3.5 py-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/45">
           Responsabilidade
         </p>
-        <div className="flex min-w-0 items-center gap-2 text-xs">
-          <UserRound aria-hidden="true" className="size-3.5 shrink-0 text-[#174d61]" />
+        <div className="mt-2 flex min-w-0 items-center gap-2.5">
           <span
-            className="truncate font-semibold text-foreground/90"
-            title={agenciamento.corretorNome}
+            aria-hidden="true"
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-[#174d61] text-[11px] font-extrabold tracking-wide text-white"
           >
-            {agenciamento.corretorNome}
+            {getInitials(agenciamento.corretorNome)}
+          </span>
+          <span className="min-w-0">
+            <span
+              className="block truncate text-sm font-extrabold leading-tight tracking-tight text-foreground"
+              title={agenciamento.corretorNome}
+            >
+              {agenciamento.corretorNome || "Sem responsável"}
+            </span>
+            <span className="mt-0.5 flex flex-nowrap items-center gap-1 whitespace-nowrap text-[11px] font-medium text-foreground/55">
+              <CalendarDays aria-hidden="true" className="size-3 shrink-0 text-foreground/45" />
+              <span className="font-bold text-foreground/75">
+                {shortDate(agenciamento.dataAgenciamento)}
+              </span>
+            </span>
+
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-foreground/65">
-          <CalendarDays aria-hidden="true" className="size-3.5 text-foreground/50" />
-          <span>{shortDate(agenciamento.dataAgenciamento)}</span>
-        </div>
       </div>
+
 
       <div className="min-w-0">
         <div className="flex items-center justify-between gap-3">
@@ -234,7 +252,7 @@ function AgenciamentoCardComponent({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 md:col-span-2 xl:col-span-1 xl:justify-end">
+      <div className="flex flex-wrap items-center gap-1.5 lg:col-span-2 2xl:col-span-1 2xl:justify-end">
         <Button
           type="button"
           size="sm"

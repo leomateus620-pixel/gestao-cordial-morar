@@ -1,5 +1,5 @@
-import { Building2, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,15 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getAgenciamentoPeriodLabel, getAgenciamentoStatusLabel } from "@/services/agenciamentos";
 import type {
   AgenciamentoChecklistFilter,
@@ -61,263 +62,26 @@ const checklistOptions: Array<{ value: AgenciamentoChecklistFilter; label: strin
   { value: "sem_drive", label: "Sem arquivos no Drive" },
 ];
 
+const agencyOptions = [
+  { value: "todas", label: "Todas" },
+  { value: "cordial", label: "Cordial" },
+  { value: "morar", label: "Morar" },
+] as const;
+
 const controlClassName =
-  "h-10 rounded-lg border-foreground/10 bg-[#f7f4f0] text-foreground shadow-none focus:ring-2 focus:ring-primary/20";
-const microLabelClassName =
-  "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-foreground/45";
+  "h-10 rounded-xl border-foreground/10 bg-[#f7f4f0] text-foreground shadow-none focus:ring-2 focus:ring-primary/20";
 
-export function AgenciamentoFilters({
-  filters,
-  corretores,
-  isAdmin,
-  onFiltersChange,
-  onReset,
-}: AgenciamentoFiltersProps) {
-  const activeCount = getActiveFilterCount(filters, isAdmin);
-
-  return (
-    <section
-      aria-labelledby="agenciamentos-filters-title"
-      className="rounded-[1.75rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_44px_-36px_rgba(23,27,33,0.35)] backdrop-blur-md sm:p-6"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <SlidersHorizontal aria-hidden="true" className="size-4 text-foreground/45" />
-          <h2 id="agenciamentos-filters-title" className="text-sm font-semibold tracking-tight text-foreground/80">
-            Filtros operacionais
-          </h2>
-          {activeCount > 0 && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-              {activeCount} {activeCount === 1 ? "ativo" : "ativos"}
-            </span>
-          )}
-        </div>
-
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-8 shrink-0 rounded-lg px-2 text-xs font-medium text-foreground/45 transition-colors duration-150 hover:bg-transparent hover:text-primary disabled:opacity-35"
-          onClick={onReset}
-          disabled={activeCount === 0}
-        >
-          <RotateCcw className="size-3.5" />
-          <span className="hidden sm:inline">Limpar filtros</span>
-          <span className="sm:hidden">Limpar</span>
-        </Button>
-      </div>
-
-      <div className="mt-3 lg:hidden">
-        <SearchField
-          value={filters.busca}
-          onChange={(busca) => onFiltersChange({ busca })}
-          onClear={() => onFiltersChange({ busca: "" })}
-        />
-
-        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-          <Select
-            value={filters.periodo}
-            onValueChange={(periodo) =>
-              onFiltersChange({ periodo: periodo as AgenciamentoPeriodFilter })
-            }
-          >
-            <SelectTrigger aria-label="Período" className={controlClassName}>
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              {periodOptions.map((periodo) => (
-                <SelectItem key={periodo} value={periodo}>
-                  {getAgenciamentoPeriodLabel(periodo)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 rounded-xl border-foreground/10 bg-white/78 px-3.5 text-sm font-bold text-primary shadow-none transition-[background-color,transform] duration-150 ease-out active:scale-[0.98]"
-                aria-label={`Abrir filtros avançados${
-                  activeCount > 0
-                    ? `, ${activeCount} ${activeCount === 1 ? "ativo" : "ativos"}`
-                    : ""
-                }`}
-              >
-                <SlidersHorizontal className="size-4" />
-                Filtros
-                {activeCount > 0 && (
-                  <span className="grid size-5 place-items-center rounded-full bg-primary text-[10px] text-white">
-                    {activeCount}
-                  </span>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              closeLabel="Fechar filtros"
-              className="flex max-h-[88dvh] flex-col rounded-t-[1.75rem] border-white/70 bg-[#f7f3ed] p-0 shadow-[0_-24px_70px_-36px_rgba(23,27,33,0.52)] data-[state=closed]:duration-200 data-[state=open]:duration-300 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none motion-reduce:transition-none [&>button]:right-5 [&>button]:top-5"
-            >
-              <SheetHeader className="border-b border-foreground/8 px-5 pb-4 pt-5 text-left">
-                <SheetTitle className="text-lg font-extrabold tracking-tight">
-                  Refinar agenciamentos
-                </SheetTitle>
-                <SheetDescription>
-                  Os filtros são aplicados imediatamente e permanecem ativos ao fechar.
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5">
-                <FilterLabel label="Imobiliária">
-                  <AgencyScope
-                    value={filters.imobiliaria}
-                    onChange={(imobiliaria) => onFiltersChange({ imobiliaria })}
-                  />
-                </FilterLabel>
-                <FilterLabel label="Status">
-                  <StatusSelect
-                    value={filters.status}
-                    onChange={(status) => onFiltersChange({ status })}
-                  />
-                </FilterLabel>
-                <FilterLabel label="Tipo de imóvel">
-                  <TypeSelect
-                    value={filters.tipoImovel}
-                    onChange={(tipoImovel) => onFiltersChange({ tipoImovel })}
-                  />
-                </FilterLabel>
-                <FilterLabel label="Condição do checklist">
-                  <ChecklistSelect
-                    value={filters.checklist}
-                    onChange={(checklist) => onFiltersChange({ checklist })}
-                  />
-                </FilterLabel>
-                {isAdmin && (
-                  <FilterLabel label="Corretor responsável">
-                    <BrokerSelect
-                      value={filters.corretorId}
-                      corretores={corretores}
-                      onChange={(corretorId) => onFiltersChange({ corretorId })}
-                    />
-                  </FilterLabel>
-                )}
-              </div>
-
-              <div
-                className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 border-t border-foreground/8 bg-white/75 px-5 py-3"
-                style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-11 rounded-xl px-3 text-foreground/60"
-                  onClick={onReset}
-                  disabled={activeCount === 0}
-                >
-                  <RotateCcw className="size-4" />
-                  Limpar
-                </Button>
-                <SheetClose asChild>
-                  <Button type="button" className="h-11 rounded-xl bg-[#174d61] text-white">
-                    Aplicar filtros
-                  </Button>
-                </SheetClose>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-
-      <div className="mt-6 hidden lg:block">
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 xl:col-span-5">
-            <span className={microLabelClassName}>Escopo da imobiliária</span>
-            <AgencyScope
-              value={filters.imobiliaria}
-              onChange={(imobiliaria) => onFiltersChange({ imobiliaria })}
-            />
-          </div>
-          <div className="col-span-12 xl:col-span-7">
-            <span className={microLabelClassName}>Busca</span>
-            <SearchField
-              value={filters.busca}
-              onChange={(busca) => onFiltersChange({ busca })}
-              onClear={() => onFiltersChange({ busca: "" })}
-            />
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-foreground/8 pt-5 md:grid-cols-5">
-          <div>
-            <span className={microLabelClassName}>Período</span>
-            <Select
-              value={filters.periodo}
-              onValueChange={(periodo) =>
-                onFiltersChange({ periodo: periodo as AgenciamentoPeriodFilter })
-              }
-            >
-              <SelectTrigger aria-label="Período" className={controlClassName}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {periodOptions.map((periodo) => (
-                  <SelectItem key={periodo} value={periodo}>
-                    {getAgenciamentoPeriodLabel(periodo)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <span className={microLabelClassName}>Status</span>
-            <StatusSelect
-              value={filters.status}
-              onChange={(status) => onFiltersChange({ status })}
-            />
-          </div>
-          <div>
-            <span className={microLabelClassName}>Tipo de imóvel</span>
-            <TypeSelect
-              value={filters.tipoImovel}
-              onChange={(tipoImovel) => onFiltersChange({ tipoImovel })}
-            />
-          </div>
-          <div>
-            <span className={microLabelClassName}>Checklist</span>
-            <ChecklistSelect
-              value={filters.checklist}
-              onChange={(checklist) => onFiltersChange({ checklist })}
-            />
-          </div>
-          {isAdmin ? (
-            <div>
-              <span className={microLabelClassName}>Responsável</span>
-              <BrokerSelect
-                value={filters.corretorId}
-                corretores={corretores}
-                onChange={(corretorId) => onFiltersChange({ corretorId })}
-              />
-            </div>
-          ) : (
-            <div className="hidden md:block" />
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SearchField({
+export function AgenciamentoSearchField({
   value,
   onChange,
-  onClear,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
-  onClear: () => void;
+  className?: string;
 }) {
   return (
-    <label className="relative block min-w-0">
+    <label className={cn("relative block min-w-0", className)}>
       <span className="sr-only">Buscar agenciamentos</span>
       <Search
         aria-hidden="true"
@@ -327,15 +91,15 @@ function SearchField({
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Endereço, proprietário ou corretor"
-        className="h-11 w-full rounded-xl border border-foreground/10 bg-white/78 pl-10 pr-10 text-sm text-foreground outline-none transition-[border-color,box-shadow,background-color] duration-150 ease-out placeholder:text-foreground/40 focus:border-primary/45 focus:bg-white focus:ring-2 focus:ring-primary/15"
+        placeholder="Endereço, código, proprietário ou corretor"
+        className="h-11 w-full rounded-xl border border-foreground/10 bg-white pl-10 pr-10 text-sm text-foreground outline-none transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-foreground/40 focus:border-primary/45 focus:ring-2 focus:ring-primary/15"
       />
       {value && (
         <button
           type="button"
-          onClick={onClear}
+          onClick={() => onChange("")}
           aria-label="Limpar busca"
-          className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-foreground/45 transition-[color,background-color,transform] duration-150 ease-out hover:bg-foreground/5 hover:text-foreground active:scale-95"
+          className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-foreground/45 transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground"
         >
           <X className="size-4" />
         </button>
@@ -344,137 +108,260 @@ function SearchField({
   );
 }
 
-function AgencyScope({
-  value,
-  onChange,
-}: {
-  value: AgenciamentoFiltersState["imobiliaria"];
-  onChange: (value: AgenciamentoFiltersState["imobiliaria"]) => void;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label="Escopo da imobiliária"
-      className="grid grid-cols-3 rounded-xl border border-foreground/9 bg-[#ece7df] p-1"
+export function AgenciamentoFilters({
+  filters,
+  corretores,
+  isAdmin,
+  onFiltersChange,
+  onReset,
+}: AgenciamentoFiltersProps) {
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+  const activeCount = getActiveFilterCount(filters, isAdmin);
+  const chips = buildChips(filters, corretores, isAdmin);
+
+  const trigger = (
+    <Button
+      type="button"
+      variant="outline"
+      aria-label={`Abrir filtros${activeCount > 0 ? `, ${activeCount} ativos` : ""}`}
+      className={cn(
+        "h-11 shrink-0 rounded-xl border-foreground/10 bg-white px-4 text-sm font-bold shadow-none transition-[border-color,background-color,transform] duration-150 ease-out hover:border-foreground/20 active:scale-[0.98]",
+        activeCount > 0 ? "border-primary/45 text-primary" : "text-foreground/75",
+      )}
     >
-      {[
-        { value: "todas", label: "Todas" },
-        { value: "cordial", label: "Cordial" },
-        { value: "morar", label: "Morar" },
-      ].map((item) => (
-        <button
-          key={item.value}
-          type="button"
-          aria-pressed={value === item.value}
-          onClick={() => onChange(item.value as AgenciamentoFiltersState["imobiliaria"])}
-          className={cn(
-            "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-bold transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.98]",
-            value === item.value
-              ? "bg-white text-primary shadow-[0_5px_14px_-10px_rgba(23,77,97,0.8)]"
-              : "text-foreground/54 hover:text-foreground",
-          )}
+      <SlidersHorizontal className="size-4" />
+      Filtros
+      {activeCount > 0 && (
+        <span className="grid size-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+          {activeCount}
+        </span>
+      )}
+    </Button>
+  );
+
+  const panel = (
+    <div className="space-y-4">
+      <FilterLabel label="Imobiliária">
+        <div
+          role="group"
+          aria-label="Escopo da imobiliária"
+          className="grid grid-cols-3 rounded-xl border border-foreground/9 bg-[#ece7df] p-1"
         >
-          <Building2 aria-hidden="true" className="size-3.5" />
-          {item.label}
-        </button>
-      ))}
+          {agencyOptions.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-pressed={filters.imobiliaria === item.value}
+              onClick={() => onFiltersChange({ imobiliaria: item.value })}
+              className={cn(
+                "inline-flex min-h-9 items-center justify-center rounded-lg px-2.5 text-xs font-bold transition-all duration-150 ease-out active:scale-[0.98]",
+                filters.imobiliaria === item.value
+                  ? "bg-white text-primary shadow-[0_5px_14px_-10px_rgba(23,77,97,0.8)]"
+                  : "text-foreground/54 hover:text-foreground",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </FilterLabel>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FilterLabel label="Período">
+          <Select
+            value={filters.periodo}
+            onValueChange={(periodo) =>
+              onFiltersChange({ periodo: periodo as AgenciamentoPeriodFilter })
+            }
+          >
+            <SelectTrigger aria-label="Período" className={controlClassName}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {periodOptions.map((periodo) => (
+                <SelectItem key={periodo} value={periodo}>
+                  {getAgenciamentoPeriodLabel(periodo)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterLabel>
+
+        <FilterLabel label="Status">
+          <Select
+            value={filters.status}
+            onValueChange={(status) =>
+              onFiltersChange({ status: status as AgenciamentoStatusFilter })
+            }
+          >
+            <SelectTrigger aria-label="Status" className={controlClassName}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {getAgenciamentoStatusLabel(status)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterLabel>
+
+        <FilterLabel label="Tipo de imóvel">
+          <Select
+            value={filters.tipoImovel}
+            onValueChange={(tipoImovel) =>
+              onFiltersChange({ tipoImovel: tipoImovel as "todos" | AgenciamentoTipoImovel })
+            }
+          >
+            <SelectTrigger aria-label="Tipo de imóvel" className={controlClassName}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tipos</SelectItem>
+              {agenciamentoTipoOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterLabel>
+
+        <FilterLabel label="Checklist">
+          <Select
+            value={filters.checklist}
+            onValueChange={(checklist) =>
+              onFiltersChange({ checklist: checklist as AgenciamentoChecklistFilter })
+            }
+          >
+            <SelectTrigger aria-label="Condição do checklist" className={controlClassName}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {checklistOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterLabel>
+
+        {isAdmin && (
+          <FilterLabel label="Responsável" className="sm:col-span-2">
+            <Select
+              value={filters.corretorId}
+              onValueChange={(corretorId) => onFiltersChange({ corretorId })}
+            >
+              <SelectTrigger aria-label="Corretor responsável" className={controlClassName}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os corretores</SelectItem>
+                {corretores.map((corretor) => (
+                  <SelectItem key={corretor.id} value={corretor.id}>
+                    {corretor.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterLabel>
+        )}
+      </div>
     </div>
   );
-}
 
-function StatusSelect({
-  value,
-  onChange,
-}: {
-  value: AgenciamentoStatusFilter;
-  onChange: (value: AgenciamentoStatusFilter) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={(next) => onChange(next as AgenciamentoStatusFilter)}>
-      <SelectTrigger aria-label="Status" className={controlClassName}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {statusOptions.map((status) => (
-          <SelectItem key={status} value={status}>
-            {getAgenciamentoStatusLabel(status)}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+  const footer = (closeButton: ReactNode) => (
+    <div className="mt-4 flex items-center justify-between gap-2 border-t border-foreground/8 pt-3">
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-10 rounded-xl px-3 text-xs font-semibold text-foreground/60 hover:text-primary disabled:opacity-35"
+        onClick={onReset}
+        disabled={activeCount === 0}
+      >
+        <RotateCcw className="size-3.5" />
+        Limpar filtros
+      </Button>
+      {closeButton}
+    </div>
   );
-}
 
-function TypeSelect({
-  value,
-  onChange,
-}: {
-  value: "todos" | AgenciamentoTipoImovel;
-  onChange: (value: "todos" | AgenciamentoTipoImovel) => void;
-}) {
   return (
-    <Select value={value} onValueChange={(next) => onChange(next as typeof value)}>
-      <SelectTrigger aria-label="Tipo de imóvel" className={controlClassName}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="todos">Todos os tipos</SelectItem>
-        {agenciamentoTipoOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex items-center gap-2">
+        {isMobile ? (
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>{trigger}</SheetTrigger>
+            <SheetContent
+              side="bottom"
+              closeLabel="Fechar filtros"
+              className="flex max-h-[88dvh] flex-col rounded-t-[1.75rem] border-white/70 bg-[#f7f3ed] px-5 pb-5 pt-5"
+            >
+              <SheetHeader className="text-left">
+                <SheetTitle className="text-lg font-extrabold tracking-tight">
+                  Refinar agenciamentos
+                </SheetTitle>
+              </SheetHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4">{panel}</div>
+              {footer(
+                <SheetClose asChild>
+                  <Button type="button" className="h-10 rounded-xl bg-[#174d61] px-5 text-white">
+                    Aplicar
+                  </Button>
+                </SheetClose>,
+              )}
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-[min(30rem,calc(100vw-2rem))] rounded-2xl border-foreground/10 bg-white p-4 shadow-[0_28px_64px_-40px_rgba(23,27,33,0.55)]"
+            >
+              {panel}
+              {footer(
+                <Button
+                  type="button"
+                  className="h-10 rounded-xl bg-[#174d61] px-5 text-white"
+                  onClick={() => setOpen(false)}
+                >
+                  Aplicar
+                </Button>,
+              )}
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
 
-function ChecklistSelect({
-  value,
-  onChange,
-}: {
-  value: AgenciamentoChecklistFilter;
-  onChange: (value: AgenciamentoChecklistFilter) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={(next) => onChange(next as AgenciamentoChecklistFilter)}>
-      <SelectTrigger aria-label="Condição do checklist" className={controlClassName}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {checklistOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function BrokerSelect({
-  value,
-  corretores,
-  onChange,
-}: {
-  value: string;
-  corretores: Corretor[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label="Corretor responsável" className={controlClassName}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="todos">Todos os corretores</SelectItem>
-        {corretores.map((corretor) => (
-          <SelectItem key={corretor.id} value={corretor.id}>
-            {corretor.nome}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => onFiltersChange(chip.clear)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/8 py-1 pl-2.5 pr-2 text-[11px] font-bold text-primary transition-colors duration-150 hover:bg-primary/15"
+            >
+              <span className="text-primary/60">{chip.group}</span>
+              {chip.label}
+              <X aria-hidden="true" className="size-3" />
+              <span className="sr-only">Remover filtro</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-full px-2 py-1 text-[11px] font-semibold text-foreground/45 transition-colors hover:text-primary"
+          >
+            Limpar tudo
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -489,10 +376,80 @@ function FilterLabel({
 }) {
   return (
     <div className={className}>
-      <span className="mb-1.5 block text-[11px] font-semibold text-foreground/64">{label}</span>
+      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/45">
+        {label}
+      </span>
       {children}
     </div>
   );
+}
+
+type Chip = {
+  key: string;
+  group: string;
+  label: string;
+  clear: Partial<AgenciamentoFiltersState>;
+};
+
+function buildChips(
+  filters: AgenciamentoFiltersState,
+  corretores: Corretor[],
+  isAdmin: boolean,
+): Chip[] {
+  const chips: Chip[] = [];
+  if (filters.imobiliaria !== "todas") {
+    chips.push({
+      key: "imobiliaria",
+      group: "Imobiliária",
+      label: filters.imobiliaria === "morar" ? "Morar" : "Cordial",
+      clear: { imobiliaria: "todas" },
+    });
+  }
+  if (filters.periodo !== "todos") {
+    chips.push({
+      key: "periodo",
+      group: "Período",
+      label: getAgenciamentoPeriodLabel(filters.periodo),
+      clear: { periodo: "todos" },
+    });
+  }
+  if (filters.status !== "todos") {
+    chips.push({
+      key: "status",
+      group: "Status",
+      label: getAgenciamentoStatusLabel(filters.status),
+      clear: { status: "todos" },
+    });
+  }
+  if (filters.tipoImovel !== "todos") {
+    chips.push({
+      key: "tipo",
+      group: "Tipo",
+      label:
+        agenciamentoTipoOptions.find((option) => option.value === filters.tipoImovel)?.label ??
+        filters.tipoImovel,
+      clear: { tipoImovel: "todos" },
+    });
+  }
+  if (filters.checklist !== "todos") {
+    chips.push({
+      key: "checklist",
+      group: "Checklist",
+      label:
+        checklistOptions.find((option) => option.value === filters.checklist)?.label ??
+        filters.checklist,
+      clear: { checklist: "todos" },
+    });
+  }
+  if (isAdmin && filters.corretorId !== "todos") {
+    chips.push({
+      key: "corretor",
+      group: "Responsável",
+      label: corretores.find((item) => item.id === filters.corretorId)?.nome ?? "Corretor",
+      clear: { corretorId: "todos" },
+    });
+  }
+  return chips;
 }
 
 function getActiveFilterCount(filters: AgenciamentoFiltersState, isAdmin: boolean) {
@@ -503,6 +460,5 @@ function getActiveFilterCount(filters: AgenciamentoFiltersState, isAdmin: boolea
     filters.tipoImovel !== "todos",
     filters.checklist !== "todos",
     isAdmin && filters.corretorId !== "todos",
-    Boolean(filters.busca.trim()),
   ].filter(Boolean).length;
 }

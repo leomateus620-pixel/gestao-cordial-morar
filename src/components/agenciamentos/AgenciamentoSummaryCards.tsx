@@ -1,12 +1,3 @@
-import {
-  BadgeCheck,
-  CameraOff,
-  ClipboardClock,
-  Globe2,
-  HousePlus,
-  Signpost,
-  type LucideIcon,
-} from "lucide-react";
 import type { AgenciamentoSummary } from "@/types/agenciamento";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +21,8 @@ type Metric = {
   key: AgenciamentoSummaryKey;
   label: string;
   value: number;
-  detail: string;
-  icon: LucideIcon;
-  tone: "primary" | "warning" | "neutral" | "success";
+  hint: string;
+  tone: "primary" | "warning" | "success";
 };
 
 export function AgenciamentoSummaryCards({
@@ -42,82 +32,62 @@ export function AgenciamentoSummaryCards({
   activeKey,
   onSelect,
 }: AgenciamentoSummaryCardsProps) {
-  const pendingPhotos = Math.max(summary.total - summary.fotosDrive, 0);
+  const pendingPhotos = Math.max(summary.total - summary.fotosCompletas, 0);
   const pendingSigns = Math.max(summary.total - summary.placasInstaladas, 0);
   const outsideSite = Math.max(summary.total - summary.cadastradosSite, 0);
 
   const metrics: Metric[] = [
     {
       key: "total",
-      label: variant === "admin" ? "Agenciamentos no período" : "Meus agenciamentos",
+      label: variant === "admin" ? "Agenciamentos" : "Meus agenciamentos",
       value: summary.total,
-      detail: periodLabel,
-      icon: HousePlus,
+      hint: periodLabel,
       tone: "primary",
     },
     {
       key: "pendentes",
       label: "Pendentes de validação",
       value: summary.pendentesValidacao,
-      detail: "aguardando conferência",
-      icon: ClipboardClock,
+      hint: "aguardando conferência",
       tone: "warning",
     },
     {
       key: "fotos",
       label: "Fotos pendentes",
       value: pendingPhotos,
-      detail: "ainda sem envio ao Drive",
-      icon: CameraOff,
-      tone: pendingPhotos > 0 ? "warning" : "neutral",
+      hint: "sem horizontal ou vertical",
+      tone: "warning",
     },
     {
       key: "placas",
       label: "Placas pendentes",
       value: pendingSigns,
-      detail: "imóveis sem sinalização",
-      icon: Signpost,
-      tone: pendingSigns > 0 ? "warning" : "neutral",
+      hint: "imóveis sem sinalização",
+      tone: "warning",
     },
     {
       key: "site",
-      label: "Imóveis fora do site",
+      label: "Fora do site",
       value: outsideSite,
-      detail: "publicação a concluir",
-      icon: Globe2,
-      tone: outsideSite > 0 ? "warning" : "neutral",
+      hint: "cadastro a concluir",
+      tone: "warning",
     },
     {
       key: "validados",
-      label: "Agenciamentos validados",
+      label: "Validados",
       value: summary.validados,
-      detail: `${summary.percentualChecklistMedio}% de checklist médio`,
-      icon: BadgeCheck,
+      hint: `${summary.percentualChecklistMedio}% de checklist médio`,
       tone: "success",
     },
   ];
 
   return (
-    <section aria-labelledby="agenciamentos-summary-title">
-      <div className="mb-1.5 flex items-center justify-between gap-3 px-0.5">
-        <div>
-          <h2 id="agenciamentos-summary-title" className="text-sm font-bold tracking-tight">
-            Resumo operacional
-          </h2>
-          <p className="mt-0.5 text-xs text-foreground/58">
-            Toque em um card para filtrar a lista abaixo.
-          </p>
-        </div>
-        <span className="hidden text-xs font-semibold text-foreground/52 sm:inline">
-          {periodLabel}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
+    <section aria-label="Resumo operacional">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
         {metrics.map((metric) => {
-          const Icon = metric.icon;
           const isActive = activeKey === metric.key;
           const isPrimary = metric.tone === "primary";
+          const isResolved = metric.tone === "warning" && metric.value === 0;
           return (
             <button
               key={metric.key}
@@ -126,50 +96,55 @@ export function AgenciamentoSummaryCards({
               aria-pressed={isActive}
               aria-label={`Filtrar por ${metric.label}`}
               className={cn(
-                "group relative min-w-0 overflow-hidden rounded-[1.25rem] border px-3.5 py-3 text-left shadow-[0_14px_36px_-30px_rgba(23,27,33,0.36)] transition-all duration-200 sm:px-4",
-                "hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-26px_rgba(23,27,33,0.44)] active:translate-y-0 active:scale-[0.99]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "group relative min-w-0 overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition-all duration-200",
+                "hover:-translate-y-0.5 hover:border-foreground/16 active:translate-y-0 active:scale-[0.99]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 isPrimary
                   ? "border-[#245f70] bg-[#174d61] text-white"
-                  : "border-white/72 bg-white/68 text-foreground backdrop-blur-lg",
+                  : "border-foreground/8 bg-white text-foreground",
+                isResolved && !isActive && "opacity-60 hover:opacity-100",
                 isActive &&
                   (isPrimary
                     ? "ring-2 ring-cyan-200/80 ring-offset-2 ring-offset-background"
-                    : "border-primary/60 bg-white ring-2 ring-primary/50 ring-offset-2 ring-offset-background"),
+                    : "border-primary/50 ring-2 ring-primary/40 ring-offset-2 ring-offset-background"),
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <p
-                  className={cn(
-                    "max-w-[9.5rem] text-xs font-semibold leading-snug",
-                    isPrimary ? "text-white/82" : "text-foreground/68",
-                  )}
-                >
-                  {metric.label}
-                </p>
-                <Icon
-                  aria-hidden="true"
-                  className={cn(
-                    "size-[1.15rem] shrink-0 transition-transform duration-200 group-hover:scale-110",
-                    metric.tone === "primary" && "text-cyan-100",
-                    metric.tone === "warning" && "text-[var(--system-accent-dark)]",
-                    metric.tone === "neutral" && "text-primary/72",
-                    metric.tone === "success" && "text-emerald-700",
-                  )}
-                  strokeWidth={2}
-                />
-              </div>
-              <p className="mt-2.5 text-2xl font-extrabold leading-none tracking-[-0.035em] tabular-nums sm:text-[1.7rem]">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "absolute left-0 top-0 h-full w-[3px] transition-opacity duration-200",
+                  isPrimary && "bg-cyan-200/70",
+                  metric.tone === "warning" &&
+                    (metric.value > 0 ? "bg-[var(--system-accent)]" : "bg-foreground/15"),
+                  metric.tone === "success" && "bg-emerald-500",
+                  isActive ? "opacity-100" : "opacity-45 group-hover:opacity-90",
+                )}
+              />
+              <p
+                className={cn(
+                  "truncate text-[11px] font-bold uppercase tracking-[0.06em]",
+                  isPrimary ? "text-white/75" : "text-foreground/55",
+                )}
+                title={metric.label}
+              >
+                {metric.label}
+              </p>
+              <p className="mt-1.5 text-[1.65rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums">
                 {metric.value}
               </p>
               <p
                 className={cn(
-                  "mt-2 truncate text-[11px] leading-tight",
-                  isPrimary ? "text-white/58" : "text-foreground/52",
+                  "mt-2 truncate text-[11px] font-medium leading-tight",
+                  isActive
+                    ? isPrimary
+                      ? "text-cyan-100"
+                      : "text-primary"
+                    : isPrimary
+                      ? "text-white/55"
+                      : "text-foreground/48",
                 )}
-                title={metric.detail}
               >
-                {isActive ? "Filtro ativo · toque novamente para limpar" : metric.detail}
+                {isActive ? "Filtro ativo · tocar para limpar" : metric.hint}
               </p>
             </button>
           );
