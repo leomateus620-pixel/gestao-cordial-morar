@@ -170,7 +170,7 @@ export function buildSaleRecords({
           ? (venda.valorVenda * venda.comissaoPercentual) / 100
           : undefined),
       commissionPercentage: venda.commissionPercentage ?? venda.comissaoPercentual,
-      responsibleAgent: venda.responsibleAgent || corretor?.nome,
+      responsibleAgent: venda.responsibleAgent,
       contractFileUrl: venda.contractFileUrl,
       contractFileName: venda.contractFileName,
       supportingDocumentFileName: venda.supportingDocumentFileName,
