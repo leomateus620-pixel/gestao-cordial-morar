@@ -32,6 +32,7 @@ test("derives a flat, ordered admin sidebar from the canonical module registry",
     "/pesquisa-satisfacao",
     "/marketing",
     "/documentos",
+    "/busca",
     "/integracoes",
     "/configuracoes",
   ]);
@@ -64,7 +65,6 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
     "/",
     "/financeiro",
     "/relatorios",
-    "/documentos",
     "/integracoes",
   ]);
 });
