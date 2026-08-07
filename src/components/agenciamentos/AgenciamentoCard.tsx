@@ -1,5 +1,6 @@
-import { memo } from "react";
+import { memo, type KeyboardEvent, type MouseEvent } from "react";
 import {
+  ArrowUpRight,
   BadgeCheck,
   CalendarDays,
   Camera,
