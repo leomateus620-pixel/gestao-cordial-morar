@@ -558,7 +558,7 @@ async function vendaTimeline(supabase: Db, id: string): Promise<BuscaTimeline> {
   };
 }
 
-async function contratoTimeline(supabase: Db, id: string): Promise<BuscaTimeline> {
+async function aluguelTimeline(supabase: Db, id: string): Promise<BuscaTimeline> {
   const row = await single(
     supabase,
     "rental_contracts",
@@ -602,7 +602,7 @@ async function contratoTimeline(supabase: Db, id: string): Promise<BuscaTimeline
   }
 
   return {
-    categoria: "contrato",
+    categoria: "aluguel",
     id,
     titulo: row.rental_properties?.apelido ?? "Contrato de locação",
     subtitulo: joinParts([
@@ -610,7 +610,7 @@ async function contratoTimeline(supabase: Db, id: string): Promise<BuscaTimeline
       row.rental_properties?.logradouro,
     ]),
     status: row.status,
-    rota: "/contratos",
+    rota: "/alugueis",
     campos: [
       { label: "Valor mensal", valor: formatBuscaCurrency(row.valor_mensal) },
       { label: "Comissão mensal", valor: formatBuscaCurrency(row.comissao_mensal) },
