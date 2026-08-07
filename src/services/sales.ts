@@ -40,23 +40,19 @@ function asSalePaymentMethod(value?: string): SalePaymentMethod {
   return value && legacyPaymentMap[value] ? legacyPaymentMap[value] : "Financiamento";
 }
 
-function inferSaleStatus(venda: Venda, contrato?: Contrato): SaleStatus {
+function inferSaleStatus(venda: Venda): SaleStatus {
   if (venda.saleStatus) return venda.saleStatus;
   if (venda.etapa === "Perdida") return "cancelada";
-  if (venda.etapa === "Concluída" || contrato?.status === "Ativo") return "concluida";
-  if (venda.etapa === "Assinatura" || contrato?.status === "Pendente assinatura") {
-    return "aguardando_assinatura";
-  }
+  if (venda.etapa === "Concluída") return "concluida";
+  if (venda.etapa === "Assinatura") return "aguardando_assinatura";
   return "em_analise";
 }
 
-function inferDocumentStatus(venda: Venda, contrato?: Contrato): SaleDocumentStatus {
+function inferDocumentStatus(venda: Venda): SaleDocumentStatus {
   if (venda.documentStatus) return venda.documentStatus;
   if (venda.saleStatus === "cancelada" || venda.etapa === "Perdida") return "cancelado";
-  if (venda.contractFileName || contrato?.documentos?.length) return "contrato_anexado";
-  if (contrato?.status === "Pendente assinatura" || venda.etapa === "Assinatura") {
-    return "aguardando_assinatura";
-  }
+  if (venda.contractFileName) return "contrato_anexado";
+  if (venda.etapa === "Assinatura") return "aguardando_assinatura";
   if (venda.etapa === "Documentação" || venda.etapa === "Registro") return "em_analise";
   return "contrato_pendente";
 }
