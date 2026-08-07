@@ -27,7 +27,6 @@ import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
 import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
 import { Route as AppDocumentosRouteImport } from './routes/_app.documentos'
 import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
-import { Route as AppContratosRouteImport } from './routes/_app.contratos'
 import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
 import { Route as AppClientesRouteImport } from './routes/_app.clientes'
 import { Route as AppBuscaRouteImport } from './routes/_app.busca'
@@ -138,11 +137,6 @@ const AppCorretoresRoute = AppCorretoresRouteImport.update({
   path: '/corretores',
   getParentRoute: () => AppRoute,
 } as any)
-const AppContratosRoute = AppContratosRouteImport.update({
-  id: '/contratos',
-  path: '/contratos',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
@@ -189,9 +183,9 @@ const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
   getParentRoute: () => AppImoveisRoute,
 } as any)
 const AppContratosContratoIdRoute = AppContratosContratoIdRouteImport.update({
-  id: '/$contratoId',
-  path: '/$contratoId',
-  getParentRoute: () => AppContratosRoute,
+  id: '/contratos/$contratoId',
+  path: '/contratos/$contratoId',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   id: '/$clienteId',
@@ -263,7 +257,6 @@ export interface FileRoutesByFullPath {
   '/busca': typeof AppBuscaRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/configuracoes': typeof AppConfiguracoesRoute
-  '/contratos': typeof AppContratosRouteWithChildren
   '/corretores': typeof AppCorretoresRoute
   '/documentos': typeof AppDocumentosRoute
   '/financeiro': typeof AppFinanceiroRoute
@@ -302,7 +295,6 @@ export interface FileRoutesByTo {
   '/busca': typeof AppBuscaRoute
   '/clientes': typeof AppClientesRouteWithChildren
   '/configuracoes': typeof AppConfiguracoesRoute
-  '/contratos': typeof AppContratosRouteWithChildren
   '/corretores': typeof AppCorretoresRoute
   '/documentos': typeof AppDocumentosRoute
   '/financeiro': typeof AppFinanceiroRoute
@@ -344,7 +336,6 @@ export interface FileRoutesById {
   '/_app/busca': typeof AppBuscaRoute
   '/_app/clientes': typeof AppClientesRouteWithChildren
   '/_app/configuracoes': typeof AppConfiguracoesRoute
-  '/_app/contratos': typeof AppContratosRouteWithChildren
   '/_app/corretores': typeof AppCorretoresRoute
   '/_app/documentos': typeof AppDocumentosRoute
   '/_app/financeiro': typeof AppFinanceiroRoute
@@ -387,7 +378,6 @@ export interface FileRouteTypes {
     | '/busca'
     | '/clientes'
     | '/configuracoes'
-    | '/contratos'
     | '/corretores'
     | '/documentos'
     | '/financeiro'
@@ -426,7 +416,6 @@ export interface FileRouteTypes {
     | '/busca'
     | '/clientes'
     | '/configuracoes'
-    | '/contratos'
     | '/corretores'
     | '/documentos'
     | '/financeiro'
@@ -467,7 +456,6 @@ export interface FileRouteTypes {
     | '/_app/busca'
     | '/_app/clientes'
     | '/_app/configuracoes'
-    | '/_app/contratos'
     | '/_app/corretores'
     | '/_app/documentos'
     | '/_app/financeiro'
@@ -644,13 +632,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCorretoresRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/contratos': {
-      id: '/_app/contratos'
-      path: '/contratos'
-      fullPath: '/contratos'
-      preLoaderRoute: typeof AppContratosRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/configuracoes': {
       id: '/_app/configuracoes'
       path: '/configuracoes'
@@ -716,10 +697,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/contratos/$contratoId': {
       id: '/_app/contratos/$contratoId'
-      path: '/$contratoId'
+      path: '/contratos/$contratoId'
       fullPath: '/contratos/$contratoId'
       preLoaderRoute: typeof AppContratosContratoIdRouteImport
-      parentRoute: typeof AppContratosRoute
+      parentRoute: typeof AppRoute
     }
     '/_app/clientes/$clienteId': {
       id: '/_app/clientes/$clienteId'
@@ -806,18 +787,6 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
   AppClientesRouteChildren,
 )
 
-interface AppContratosRouteChildren {
-  AppContratosContratoIdRoute: typeof AppContratosContratoIdRoute
-}
-
-const AppContratosRouteChildren: AppContratosRouteChildren = {
-  AppContratosContratoIdRoute: AppContratosContratoIdRoute,
-}
-
-const AppContratosRouteWithChildren = AppContratosRoute._addFileChildren(
-  AppContratosRouteChildren,
-)
-
 interface AppImoveisRouteChildren {
   AppImoveisImovelIdRoute: typeof AppImoveisImovelIdRoute
 }
@@ -837,7 +806,6 @@ interface AppRouteChildren {
   AppBuscaRoute: typeof AppBuscaRoute
   AppClientesRoute: typeof AppClientesRouteWithChildren
   AppConfiguracoesRoute: typeof AppConfiguracoesRoute
-  AppContratosRoute: typeof AppContratosRouteWithChildren
   AppCorretoresRoute: typeof AppCorretoresRoute
   AppDocumentosRoute: typeof AppDocumentosRoute
   AppFinanceiroRoute: typeof AppFinanceiroRoute
@@ -851,6 +819,7 @@ interface AppRouteChildren {
   AppVendasRoute: typeof AppVendasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAgendaFotosRoute: typeof AppAgendaFotosRoute
+  AppContratosContratoIdRoute: typeof AppContratosContratoIdRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
 }
 
@@ -861,7 +830,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppBuscaRoute: AppBuscaRoute,
   AppClientesRoute: AppClientesRouteWithChildren,
   AppConfiguracoesRoute: AppConfiguracoesRoute,
-  AppContratosRoute: AppContratosRouteWithChildren,
   AppCorretoresRoute: AppCorretoresRoute,
   AppDocumentosRoute: AppDocumentosRoute,
   AppFinanceiroRoute: AppFinanceiroRoute,
@@ -875,6 +843,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppVendasRoute: AppVendasRoute,
   AppIndexRoute: AppIndexRoute,
   AppAgendaFotosRoute: AppAgendaFotosRoute,
+  AppContratosContratoIdRoute: AppContratosContratoIdRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
 }
 
@@ -902,13 +871,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
