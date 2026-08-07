@@ -107,7 +107,6 @@ export const useApp = create<State>()(
       imoveis: imoveisSeed,
       corretores: [],
       atendimentos: normalizedAtendimentosSeed,
-      contratos: contratosSeed,
       agenda: agendaSeed,
       agendaEvents: normalizedAgendaSeed,
       lancamentos: lancamentosSeed,
