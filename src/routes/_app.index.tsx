@@ -106,7 +106,6 @@ function Dashboard() {
     agency,
     rawAtendimentos,
     rawImoveis,
-    rawContratos,
     rawAgenda,
     rawLancamentos,
     rawClientes,
@@ -115,7 +114,6 @@ function Dashboard() {
       agency: s.agency,
       rawAtendimentos: s.atendimentos,
       rawImoveis: s.imoveis,
-      rawContratos: s.contratos,
       rawAgenda: s.agenda,
       rawLancamentos: s.lancamentos,
       rawClientes: s.clientes,
@@ -133,7 +131,6 @@ function Dashboard() {
       : items.filter((item) => item.imobiliaria === agency || item.imobiliaria === "ambas");
   const atendimentos = filterByAgency(rawAtendimentos);
   const imoveis = filterByAgency(rawImoveis);
-  const contratos = filterByAgency(rawContratos);
   const agenda = filterByAgency(rawAgenda);
   const lancamentos = filterByAgency(rawLancamentos);
   const clientes = filterByAgency(rawClientes);
@@ -143,28 +140,18 @@ function Dashboard() {
   const novosClientes = clientes.filter((c) => c.criadoEm.startsWith(mesAtual)).length;
   const clientesAluguel = clientes.filter((c) => c.tipo === "Locatário").length;
   const clientesCompra = clientes.filter((c) => c.tipo === "Comprador").length;
-  const contratosAtivos = contratos.filter((c) => c.status === "Ativo").length;
   const imoveisNegociacao =
     imoveis.filter((i) => i.status === "Reservado").length +
     atendimentos.filter((a) => a.status === "proposta_enviada").length;
   const visitasAgendadas = agenda.filter(
     (a) => a.tipo === "Visita" && new Date(a.data) >= new Date("2026-06-12T00:00:00"),
   ).length;
-  const valoresPrevistos = contratos
-    .filter((c) => c.status !== "Encerrado")
-    .reduce((sum, c) => sum + (c.tipo === "Aluguel" ? c.valor : c.valor * 0.05), 0);
   const cobrancasAbertas = lancamentos
     .filter((l) => l.status === "Pendente")
     .reduce((sum, l) => sum + l.valor, 0);
   const inadimplencia = lancamentos
     .filter((l) => l.status === "Atrasado")
     .reduce((sum, l) => sum + l.valor, 0);
-  const vendasEmAndamento =
-    contratos.filter((c) => c.tipo === "Venda" && c.status === "Pendente assinatura").length +
-    atendimentos.filter((a) => a.status === "proposta_enviada").length;
-  const alugueisFechados = contratos.filter(
-    (c) => c.tipo === "Aluguel" && c.status === "Ativo",
-  ).length;
   const atendPendentes = atendimentos.filter(
     (a) => a.status !== "fechado" && a.status !== "perdido",
   ).length;
@@ -202,13 +189,6 @@ function Dashboard() {
     ],
     [
       {
-        label: "Contratos ativos",
-        value: String(contratosAtivos).padStart(2, "0"),
-        detail: "assinados",
-        tone: "primary",
-        icon: <FileText className="size-4" />,
-      },
-      {
         label: "Imóveis em negociação",
         value: String(imoveisNegociacao).padStart(2, "0"),
         detail: "reservas + propostas",
@@ -222,16 +202,6 @@ function Dashboard() {
         icon: <TrendingUp className="size-4" />,
       },
       {
-        label: "Valores previstos",
-        value: brl(valoresPrevistos, { compact: true }),
-        detail: "aluguéis + comissões",
-        tone: "primary",
-        accent: "up",
-        icon: <Wallet className="size-4" />,
-      },
-    ],
-    [
-      {
         label: "Cobranças em aberto",
         value: brl(cobrancasAbertas, { compact: true }),
         detail: "pendentes",
@@ -244,19 +214,6 @@ function Dashboard() {
         accent: "down",
         tone: "danger" as MetricTone,
         icon: <ArrowDownRight className="size-4" />,
-      },
-      {
-        label: "Vendas em andamento",
-        value: String(vendasEmAndamento).padStart(2, "0"),
-        detail: "propostas e assinaturas",
-        icon: <BadgeDollarSign className="size-4" />,
-      },
-      {
-        label: "Aluguéis fechados",
-        value: String(alugueisFechados).padStart(2, "0"),
-        detail: "contratos ativos",
-        accent: "up",
-        icon: <FileText className="size-4" />,
       },
     ],
   ];
@@ -283,18 +240,18 @@ function Dashboard() {
               Olá, {session?.nome ?? "bem-vindo"} 👋
             </h1>
             <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-white/65 sm:text-[13px]">
-              Acompanhe atendimentos, imóveis, contratos e performance das duas imobiliárias em um
-              só lugar.
+              Acompanhe atendimentos, imóveis, vendas, aluguéis e performance das duas imobiliárias
+              em um só lugar.
             </p>
           </div>
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
             <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
-            <HeroStat label="Contratos ativos" value={String(contratosAtivos).padStart(2, "0")} />
+            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
             {isAdminOwner && (
               <HeroStat
                 label="Previsão entrada"
-                value={brl(valoresPrevistos, { compact: true })}
+                value={brl(dashboardPrevisaoFinanceira[0]?.receita ?? 0, { compact: true })}
                 accent
               />
             )}
@@ -312,10 +269,10 @@ function Dashboard() {
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
           <FinancialSummaryCard
-            receita={valoresPrevistos}
+            receita={dashboardPrevisaoFinanceira[0]?.receita ?? 0}
             cobrancas={cobrancasAbertas}
             inadimplencia={inadimplencia}
-            contratos={contratosAtivos}
+            contratos={imoveisNegociacao}
           />
           <ComparativoCard />
         </section>

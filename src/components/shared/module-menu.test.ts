@@ -26,13 +26,13 @@ test("derives a flat, ordered admin sidebar from the canonical module registry",
     "/atendimentos",
     "/alugueis",
     "/vendas",
-    "/contratos",
     "/corretores",
     "/financeiro",
     "/relatorios",
     "/pesquisa-satisfacao",
     "/marketing",
     "/documentos",
+    "/busca",
     "/integracoes",
     "/configuracoes",
   ]);
@@ -63,10 +63,8 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
   ]);
   assert.deepEqual(sidebarPaths("financeiro_admin"), [
     "/",
-    "/contratos",
     "/financeiro",
     "/relatorios",
-    "/documentos",
     "/integracoes",
   ]);
 });
@@ -95,6 +93,6 @@ test("matches active routes without allowing sibling-prefix collisions", () => {
   assert.equal(isModuleItemActive("/", { to: "/", exact: true }), true);
   assert.equal(isModuleItemActive("/agenda/fotos", { to: "/agenda", exact: true }), false);
   assert.equal(isModuleItemActive("/agenda/fotos", { to: "/agenda/fotos" }), true);
-  assert.equal(isModuleItemActive("/contratos/abc", { to: "/contratos" }), true);
+  assert.equal(isModuleItemActive("/alugueis/abc", { to: "/alugueis" }), true);
   assert.equal(isModuleItemActive("/imoveis-destaque", { to: "/imoveis" }), false);
 });

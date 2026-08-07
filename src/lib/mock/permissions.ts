@@ -10,7 +10,6 @@ export type AppModule =
   | "vendas"
   | "agenda"
   | "corretores"
-  | "contratos"
   | "financeiro"
   | "relatorios"
   | "marketing"
@@ -38,8 +37,6 @@ export type Permission =
   | "agenda:write"
   | "corretores:read"
   | "corretores:manage"
-  | "contratos:read"
-  | "contratos:write"
   | "financeiro:read"
   | "financeiro:write"
   | "relatorios:read"
@@ -70,7 +67,6 @@ const allModules: AppModule[] = [
   "vendas",
   "agenda",
   "corretores",
-  "contratos",
   "financeiro",
   "relatorios",
   "marketing",
@@ -99,8 +95,6 @@ const allPermissions: Permission[] = [
   "agenda:write",
   "corretores:read",
   "corretores:manage",
-  "contratos:read",
-  "contratos:write",
   "financeiro:read",
   "financeiro:write",
   "relatorios:read",
@@ -166,19 +160,16 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
   financeiro_admin: {
     profile: "financeiro_admin",
     label: "Financeiro/Administrativo",
-    description: "Contratos, cobranças, comissões, relatórios e integração contábil mockada.",
+    description: "Cobranças, comissões, relatórios e integração contábil mockada.",
     modules: [
       "dashboard",
       "clientes",
-      "contratos",
       "financeiro",
       "relatorios",
       "integracoes",
     ],
     permissions: [
       "clientes:read",
-      "contratos:read",
-      "contratos:write",
       "financeiro:read",
       "financeiro:write",
       "relatorios:read",

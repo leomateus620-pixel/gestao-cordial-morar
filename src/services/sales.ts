@@ -1,4 +1,4 @@
-import type { Cliente, Contrato, Corretor, Imovel, Venda } from "@/lib/mock/data";
+import type { Cliente, Corretor, Imovel, Venda } from "@/lib/mock/data";
 import type {
   SaleDocumentStatus,
   SalePaymentMethod,
@@ -12,7 +12,6 @@ import type {
 type SaleRelations = {
   vendas: Venda[];
   imoveis: Imovel[];
-  contratos: Contrato[];
   clientes: Cliente[];
   corretores: Corretor[];
 };
@@ -41,23 +40,19 @@ function asSalePaymentMethod(value?: string): SalePaymentMethod {
   return value && legacyPaymentMap[value] ? legacyPaymentMap[value] : "Financiamento";
 }
 
-function inferSaleStatus(venda: Venda, contrato?: Contrato): SaleStatus {
+function inferSaleStatus(venda: Venda): SaleStatus {
   if (venda.saleStatus) return venda.saleStatus;
   if (venda.etapa === "Perdida") return "cancelada";
-  if (venda.etapa === "Concluída" || contrato?.status === "Ativo") return "concluida";
-  if (venda.etapa === "Assinatura" || contrato?.status === "Pendente assinatura") {
-    return "aguardando_assinatura";
-  }
+  if (venda.etapa === "Concluída") return "concluida";
+  if (venda.etapa === "Assinatura") return "aguardando_assinatura";
   return "em_analise";
 }
 
-function inferDocumentStatus(venda: Venda, contrato?: Contrato): SaleDocumentStatus {
+function inferDocumentStatus(venda: Venda): SaleDocumentStatus {
   if (venda.documentStatus) return venda.documentStatus;
   if (venda.saleStatus === "cancelada" || venda.etapa === "Perdida") return "cancelado";
-  if (venda.contractFileName || contrato?.documentos?.length) return "contrato_anexado";
-  if (contrato?.status === "Pendente assinatura" || venda.etapa === "Assinatura") {
-    return "aguardando_assinatura";
-  }
+  if (venda.contractFileName) return "contrato_anexado";
+  if (venda.etapa === "Assinatura") return "aguardando_assinatura";
   if (venda.etapa === "Documentação" || venda.etapa === "Registro") return "em_analise";
   return "contrato_pendente";
 }
@@ -136,24 +131,19 @@ export function createVendaRecord(input: SaleRecordInput, options?: UpsertOption
 export function buildSaleRecords({
   vendas,
   imoveis,
-  contratos,
   clientes,
   corretores,
 }: SaleRelations): SaleRecord[] {
   return vendas.map((venda) => {
-    const contrato = findById(contratos, venda.contratoId);
-    const imovel = findById(imoveis, venda.imovelId || contrato?.imovelId);
-    const cliente = findById(clientes, venda.clienteId || contrato?.clienteId);
-    const corretor = findById(corretores, contrato?.corretorId);
-    const saleDate =
-      venda.saleDate || contrato?.inicio || venda.previsaoEscritura || fallbackDate();
-    const saleStatus = inferSaleStatus(venda, contrato);
-    const documentStatus = inferDocumentStatus(venda, contrato);
-    const contractFileName = venda.contractFileName || contrato?.documentos?.[0];
+    const imovel = findById(imoveis, venda.imovelId);
+    const cliente = findById(clientes, venda.clienteId);
+    const saleDate = venda.saleDate || venda.previsaoEscritura || fallbackDate();
+    const saleStatus = inferSaleStatus(venda);
+    const documentStatus = inferDocumentStatus(venda);
 
     return {
       id: venda.id,
-      propertyId: venda.imovelId || contrato?.imovelId || undefined,
+      propertyId: venda.imovelId || undefined,
       propertyName: venda.propertyName || imovel?.titulo || "Imóvel não identificado",
       propertyAddress: venda.propertyAddress || imovel?.endereco || "Endereço não informado",
       propertyNeighborhood: venda.propertyNeighborhood || imovel?.bairro,
@@ -180,9 +170,9 @@ export function buildSaleRecords({
           ? (venda.valorVenda * venda.comissaoPercentual) / 100
           : undefined),
       commissionPercentage: venda.commissionPercentage ?? venda.comissaoPercentual,
-      responsibleAgent: venda.responsibleAgent || corretor?.nome,
+      responsibleAgent: venda.responsibleAgent,
       contractFileUrl: venda.contractFileUrl,
-      contractFileName,
+      contractFileName: venda.contractFileName,
       supportingDocumentFileName: venda.supportingDocumentFileName,
       documentStatus,
       notes: venda.notes,

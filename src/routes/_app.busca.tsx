@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_app/busca")({
       {
         name: "description",
         content:
-          "Pesquise clientes, atendimentos, contratos, vendas e agenciamentos e veja o histórico completo de cada registro.",
+          "Pesquise clientes, atendimentos, aluguéis, vendas e agenciamentos e veja o histórico completo de cada registro.",
       },
       { property: "og:title", content: "Busca global — Gestão Cordial" },
       {
@@ -161,8 +161,8 @@ function EmptyHint() {
       </div>
       <p className="mt-4 text-sm font-semibold">Comece digitando ao menos 2 caracteres</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-foreground/55">
-        A busca percorre atendimentos, clientes, contratos de locação, vendas, agenciamentos,
-        imóveis e inquilinos — e abre o histórico completo do registro escolhido.
+        A busca percorre atendimentos, clientes, aluguéis, vendas, agenciamentos, imóveis e
+        inquilinos — e abre o histórico completo do registro escolhido.
       </p>
     </div>
   );

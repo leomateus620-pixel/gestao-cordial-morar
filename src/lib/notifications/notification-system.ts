@@ -47,7 +47,7 @@ export type NotificationDestination = {
     | "/agenda"
     | "/vendas"
     | "/agenciamentos"
-    | "/contratos"
+    | "/alugueis"
     | "/documentos"
     | "/configuracoes";
   search: Record<string, string>;
@@ -170,7 +170,7 @@ function safePathFromLink(link: string | null): NotificationDestination["path"] 
       "/agenda",
       "/vendas",
       "/agenciamentos",
-      "/contratos",
+      "/alugueis",
       "/documentos",
       "/configuracoes",
     ];

@@ -7,7 +7,6 @@ import {
   campanhasMarketingSeed,
   clientesSeed,
   configuracoesSeed,
-  contratosSeed,
   corretoresSeed,
   documentosSeed,
   imoveisSeed,
@@ -24,7 +23,6 @@ import {
   type Cliente,
   type Compromisso,
   type ConfiguracaoOperacional,
-  type Contrato,
   type Corretor,
   type DocumentoOperacional,
   type Imovel,
@@ -58,7 +56,6 @@ type State = {
   imoveis: Imovel[];
   corretores: Corretor[];
   atendimentos: Atendimento[];
-  contratos: Contrato[];
   agenda: Compromisso[];
   agendaEvents: AgendaEvent[];
   lancamentos: Lancamento[];
@@ -110,7 +107,6 @@ export const useApp = create<State>()(
       imoveis: imoveisSeed,
       corretores: [],
       atendimentos: normalizedAtendimentosSeed,
-      contratos: contratosSeed,
       agenda: agendaSeed,
       agendaEvents: normalizedAgendaSeed,
       lancamentos: lancamentosSeed,

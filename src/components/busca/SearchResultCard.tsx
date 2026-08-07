@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 export const categoriaIcons: Record<BuscaCategoria, LucideIcon> = {
   atendimento: Inbox,
   cliente: Users,
-  contrato: FileText,
+  aluguel: KeyRound,
   venda: BadgeDollarSign,
   agenciamento: HousePlus,
   imovel: Building2,
