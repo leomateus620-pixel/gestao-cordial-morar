@@ -93,17 +93,6 @@ function Page() {
           </div>
         ))}
       </Section>
-      <Section title="Contratos" icon={FileText}>
-        {contratos.map((c) => (
-          <Row
-            key={c.id}
-            title={c.numero}
-            meta={`${c.tipo} · ${brl(c.valor)}`}
-            to="/contratos/$contratoId"
-            params={{ contratoId: c.id }}
-          />
-        ))}
-      </Section>
       <Section title="Documentos" icon={FileText}>
         {(imovel.documentos && imovel.documentos.length > 0
           ? imovel.documentos.map((d) => ({ id: d.id, nome: d.nome }))
