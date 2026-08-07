@@ -131,7 +131,6 @@ function Dashboard() {
       : items.filter((item) => item.imobiliaria === agency || item.imobiliaria === "ambas");
   const atendimentos = filterByAgency(rawAtendimentos);
   const imoveis = filterByAgency(rawImoveis);
-  const contratos = filterByAgency(rawContratos);
   const agenda = filterByAgency(rawAgenda);
   const lancamentos = filterByAgency(rawLancamentos);
   const clientes = filterByAgency(rawClientes);
