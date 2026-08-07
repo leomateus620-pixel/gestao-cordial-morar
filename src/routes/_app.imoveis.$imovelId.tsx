@@ -13,7 +13,6 @@ function Page() {
   const clientes = useApp((s) => s.clientes);
   const atendimentos = useApp((s) => s.atendimentos.filter((a) => a.imovelId === imovelId));
   const visitas = useApp((s) => s.agenda.filter((a) => a.imovelId === imovelId));
-  const contratos = useApp((s) => s.contratos.filter((c) => c.imovelId === imovelId));
   if (!imovel)
     return (
       <p className="glass-panel rounded-2xl p-6 text-center text-sm text-foreground/55">
