@@ -1,8 +1,30 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { FormSheet, Field, inputCls, submitCls } from "./form-shell";
-import { useApp } from "@/store/app-store";
-import type { AgencyId, Imovel, ImovelDocumento } from "@/lib/mock/data";
-import fallback from "@/assets/properties/apto-jardins.jpg";
+import { useCreateImovel } from "@/hooks/useImoveis";
+import type { PropertyCarteira, PropertyOperacao } from "@/types/property";
+
+const tipos = [
+  "Casa",
+  "Apartamento",
+  "Terreno",
+  "Comercial",
+  "Sala Comercial",
+  "Chácara",
+  "Sítio / Chácara",
+  "Área",
+  "Área Rural",
+  "Galpão",
+  "Sobrado",
+  "Prédio",
+];
+
+function toNumber(v: string): number | null {
+  const t = v.trim();
+  if (!t) return null;
+  const n = Number(t.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
 
 export function NovoImovelSheet({
   open,
@@ -11,214 +33,171 @@ export function NovoImovelSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
-  const addImovel = useApp((s) => s.addImovel);
-  const [titulo, setTitulo] = useState("");
-  const [endereco, setEndereco] = useState("");
+  const createImovel = useCreateImovel();
+  const [tipo, setTipo] = useState("Casa");
+  const [operacao, setOperacao] = useState<PropertyOperacao>("venda");
+  const [carteira, setCarteira] = useState<PropertyCarteira>("cordial");
+  const [codigo, setCodigo] = useState("");
+  const [localizacao, setLocalizacao] = useState("");
   const [bairro, setBairro] = useState("");
-  const [cidade, setCidade] = useState("São Paulo");
-  const [tipo, setTipo] = useState<Imovel["tipo"]>("Apartamento");
-  const [finalidade, setFinalidade] = useState<Imovel["finalidade"]>("Venda");
-  const [valor, setValor] = useState(0);
-  const [quartos, setQuartos] = useState(2);
-  const [area, setArea] = useState(80);
-  const [suites, setSuites] = useState(1);
-  const [vagas, setVagas] = useState(1);
-  const [condominio, setCondominio] = useState(0);
-  const [iptu, setIptu] = useState(0);
-  const [descricao, setDescricao] = useState("");
-  const [documentos, setDocumentos] = useState("Matrícula atualizada, IPTU");
-  const [imobiliaria, setImobiliaria] = useState<AgencyId>("cordial");
+  const [cidade, setCidade] = useState("");
+  const [uf, setUf] = useState("SP");
+  const [valor, setValor] = useState("");
+  const [dormitorios, setDormitorios] = useState("");
+  const [suites, setSuites] = useState("");
+  const [banheiros, setBanheiros] = useState("");
+  const [vagas, setVagas] = useState("");
+  const [area, setArea] = useState("");
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!titulo.trim()) return;
-    addImovel({
-      titulo,
-      endereco,
-      bairro,
-      cidade,
-      tipo,
-      finalidade,
-      valor,
-      quartos,
-      area,
-      status: "Disponível",
-      imobiliaria,
-      foto: fallback,
-      fotos: [fallback],
-      suites,
-      vagas,
-      condominio,
-      iptu,
-      descricao,
-      documentos: documentos
-        .split(",")
-        .map((d) => d.trim())
-        .filter(Boolean)
-        .map<ImovelDocumento>((nome, idx) => ({
-          id: `doc-${Date.now()}-${idx}`,
-          nome,
-          status: "Recebido",
-        })),
-    });
-    onOpenChange(false);
-    setTitulo("");
-    setEndereco("");
+  function reset() {
+    setCodigo("");
+    setLocalizacao("");
     setBairro("");
-    setValor(0);
-    setDescricao("");
+    setCidade("");
+    setValor("");
+    setDormitorios("");
+    setSuites("");
+    setBanheiros("");
+    setVagas("");
+    setArea("");
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await createImovel.mutateAsync({
+        carteira,
+        operacao,
+        tipo,
+        localizacaoExibida: localizacao.trim() || null,
+        bairro: bairro.trim() || null,
+        cidade: cidade.trim() || null,
+        uf: uf.trim() || null,
+        valor: toNumber(valor),
+        dormitorios: toNumber(dormitorios),
+        suites: toNumber(suites),
+        banheiros: toNumber(banheiros),
+        vagas: toNumber(vagas),
+        areaPrincipal: toNumber(area),
+        codigo: codigo.trim() || null,
+      });
+      toast.success("Imóvel cadastrado no catálogo.");
+      onOpenChange(false);
+      reset();
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Não foi possível salvar o imóvel.");
+    }
   }
 
   return (
     <FormSheet open={open} onOpenChange={onOpenChange} title="Novo imóvel">
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Título">
-          <input
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            className={inputCls}
-            required
-          />
-        </Field>
-        <Field label="Endereço">
-          <input
-            value={endereco}
-            onChange={(e) => setEndereco(e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Bairro">
-            <input
-              value={bairro}
-              onChange={(e) => setBairro(e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Cidade">
-            <input
-              value={cidade}
-              onChange={(e) => setCidade(e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-        </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Tipo">
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value as Imovel["tipo"])}
-              className={inputCls}
-            >
-              {(["Apartamento", "Casa", "Cobertura", "Loft", "Terreno"] as const).map((t) => (
+            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={inputCls}>
+              {tipos.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Finalidade">
+          <Field label="Operação">
             <select
-              value={finalidade}
-              onChange={(e) => setFinalidade(e.target.value as Imovel["finalidade"])}
+              value={operacao}
+              onChange={(e) => setOperacao(e.target.value as PropertyOperacao)}
               className={inputCls}
             >
-              <option value="Venda">Venda</option>
-              <option value="Aluguel">Aluguel</option>
+              <option value="venda">Venda</option>
+              <option value="aluguel">Aluguel</option>
             </select>
           </Field>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Valor (R$)">
-            <input
-              type="number"
-              value={valor || ""}
-              onChange={(e) => setValor(Number(e.target.value))}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Carteira">
+            <select
+              value={carteira}
+              onChange={(e) => setCarteira(e.target.value as PropertyCarteira)}
               className={inputCls}
-            />
+            >
+              <option value="cordial">Cordial</option>
+              <option value="morar">Morar</option>
+            </select>
           </Field>
-          <Field label="Quartos">
-            <input
-              type="number"
-              value={quartos}
-              onChange={(e) => setQuartos(Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Área (m²)">
-            <input
-              type="number"
-              value={area}
-              onChange={(e) => setArea(Number(e.target.value))}
-              className={inputCls}
-            />
+          <Field label="Código">
+            <input value={codigo} onChange={(e) => setCodigo(e.target.value)} className={inputCls} />
           </Field>
         </div>
+        <Field label="Localização exibida">
+          <input
+            value={localizacao}
+            onChange={(e) => setLocalizacao(e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Bairro">
+            <input value={bairro} onChange={(e) => setBairro(e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Cidade">
+            <input value={cidade} onChange={(e) => setCidade(e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="UF">
+            <input value={uf} onChange={(e) => setUf(e.target.value)} className={inputCls} maxLength={2} />
+          </Field>
+        </div>
+        <Field label="Valor (R$) — deixe vazio para “Consulte”">
+          <input
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+            inputMode="decimal"
+            className={inputCls}
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
+          <Field label="Dormitórios">
+            <input
+              value={dormitorios}
+              onChange={(e) => setDormitorios(e.target.value)}
+              inputMode="numeric"
+              className={inputCls}
+            />
+          </Field>
           <Field label="Suítes">
             <input
-              type="number"
               value={suites}
-              onChange={(e) => setSuites(Number(e.target.value))}
+              onChange={(e) => setSuites(e.target.value)}
+              inputMode="numeric"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Banheiros">
+            <input
+              value={banheiros}
+              onChange={(e) => setBanheiros(e.target.value)}
+              inputMode="numeric"
               className={inputCls}
             />
           </Field>
           <Field label="Vagas">
             <input
-              type="number"
               value={vagas}
-              onChange={(e) => setVagas(Number(e.target.value))}
+              onChange={(e) => setVagas(e.target.value)}
+              inputMode="numeric"
               className={inputCls}
             />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Condomínio (R$)">
-            <input
-              type="number"
-              value={condominio || ""}
-              onChange={(e) => setCondominio(Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="IPTU (R$)">
-            <input
-              type="number"
-              value={iptu || ""}
-              onChange={(e) => setIptu(Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-        </div>
-        <Field label="Documentos mockados">
+        <Field label="Área principal (m²)">
           <input
-            value={documentos}
-            onChange={(e) => setDocumentos(e.target.value)}
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            inputMode="decimal"
             className={inputCls}
-            placeholder="Matrícula, IPTU, fotos..."
           />
         </Field>
-        <Field label="Descrição comercial">
-          <textarea
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            rows={3}
-            className={inputCls}
-            placeholder="Diferenciais, mobiliário e regras de negociação..."
-          />
-        </Field>
-        <Field label="Imobiliária">
-          <select
-            value={imobiliaria}
-            onChange={(e) => setImobiliaria(e.target.value as AgencyId)}
-            className={inputCls}
-          >
-            <option value="cordial">Cordial Imóveis</option>
-            <option value="morar">Morar Imóveis</option>
-          </select>
-        </Field>
-        <button type="submit" className={submitCls}>
-          Cadastrar imóvel
+        <button type="submit" disabled={createImovel.isPending} className={submitCls}>
+          {createImovel.isPending ? "Salvando…" : "Salvar imóvel"}
         </button>
       </form>
     </FormSheet>
