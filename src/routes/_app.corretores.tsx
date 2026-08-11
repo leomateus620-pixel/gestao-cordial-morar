@@ -268,22 +268,33 @@ function Page() {
           aria-label="Corretores no recorte atual"
           className="scroll-mt-24"
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold tracking-tight">Visão por corretor</h2>
-              <p className="text-xs text-foreground/58">
+          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold tracking-tight">Visão por corretor</h2>
+              <p className="truncate text-xs text-foreground/55">
                 {isLoading
-                  ? "Carregando vínculos operacionais…"
+                  ? "Carregando vínculos…"
                   : `${corretores.length} corretor${corretores.length === 1 ? "" : "es"} no recorte`}
               </p>
             </div>
-            {isFetching && !isLoading && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-                Atualizando
-              </span>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {isFetching && !isLoading && (
+                <Loader2
+                  className="size-3.5 animate-spin text-primary motion-reduce:animate-none"
+                  aria-label="Atualizando"
+                />
+              )}
+              <CorretoresFilters
+                filters={filters}
+                corretores={agencyCorretores}
+                onFiltersChange={setFilters}
+                onReset={resetFilters}
+                isLoading={isLoading}
+                activeAgencyLabel={agencyLabel}
+              />
+            </div>
           </div>
+
 
           {isLoading ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-hidden>
