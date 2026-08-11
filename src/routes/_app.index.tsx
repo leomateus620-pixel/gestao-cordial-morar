@@ -19,6 +19,9 @@ import { useState } from "react";
 
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
+import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCards";
+import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
@@ -82,18 +85,6 @@ const contextColors: Record<string, string> = {
 /*  Tipos                                                                       */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-type MetricTone = "default" | "primary" | "success" | "danger";
-type MetricAccent = "up" | "down" | "neutral";
-
-type MetricCardData = {
-  label: string;
-  value: string;
-  detail?: string;
-  tone?: MetricTone;
-  accent?: MetricAccent;
-  icon?: ReactNode;
-};
-
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Componente principal                                                        */
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -102,21 +93,12 @@ function Dashboard() {
   const [open, setOpen] = useState(false);
   const session = useSession();
   const isAdminOwner = session?.perfil === "admin_owner";
-  const {
-    agency,
-    rawAtendimentos,
-    rawImoveis,
-    rawAgenda,
-    rawLancamentos,
-    rawClientes,
-  } = useApp(
+  const { agency, rawAtendimentos, rawImoveis, rawLancamentos } = useApp(
     useShallow((s) => ({
       agency: s.agency,
       rawAtendimentos: s.atendimentos,
       rawImoveis: s.imoveis,
-      rawAgenda: s.agenda,
       rawLancamentos: s.lancamentos,
-      rawClientes: s.clientes,
     })),
   );
   const { dashboardSummary: equipeSummary, dashboardRanking: equipeRanking } = useCorretores({
@@ -125,98 +107,26 @@ function Dashboard() {
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
   const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
+  const metrics = useDashboardMetrics();
   const filterByAgency = <T extends { imobiliaria: "cordial" | "morar" | "ambas" }>(items: T[]) =>
     agency === "todas"
       ? items
       : items.filter((item) => item.imobiliaria === agency || item.imobiliaria === "ambas");
   const atendimentos = filterByAgency(rawAtendimentos);
   const imoveis = filterByAgency(rawImoveis);
-  const agenda = filterByAgency(rawAgenda);
   const lancamentos = filterByAgency(rawLancamentos);
-  const clientes = filterByAgency(rawClientes);
 
-  const mesAtual = "2026-06";
-  const atendimentosMes = atendimentos.filter((a) => a.criadoEm.startsWith(mesAtual)).length;
-  const novosClientes = clientes.filter((c) => c.criadoEm.startsWith(mesAtual)).length;
-  const clientesAluguel = clientes.filter((c) => c.tipo === "Locatário").length;
-  const clientesCompra = clientes.filter((c) => c.tipo === "Comprador").length;
   const imoveisNegociacao =
     imoveis.filter((i) => i.status === "Reservado").length +
     atendimentos.filter((a) => a.status === "proposta_enviada").length;
-  const visitasAgendadas = agenda.filter(
-    (a) => a.tipo === "Visita" && new Date(a.data) >= new Date("2026-06-12T00:00:00"),
-  ).length;
+  const visitasAgendadas = metrics.visitasAgendadas;
   const cobrancasAbertas = lancamentos
     .filter((l) => l.status === "Pendente")
     .reduce((sum, l) => sum + l.valor, 0);
   const inadimplencia = lancamentos
     .filter((l) => l.status === "Atrasado")
     .reduce((sum, l) => sum + l.valor, 0);
-  const atendPendentes = atendimentos.filter(
-    (a) => a.status !== "fechado" && a.status !== "perdido",
-  ).length;
-
-  /* Grupos de métricas para o carrossel mobile */
-  const metricGroups: MetricCardData[][] = [
-    [
-      {
-        label: "Atendimentos do mês",
-        value: String(atendimentosMes).padStart(2, "0"),
-        detail: "+18% vs. maio",
-        tone: "primary",
-        accent: "up",
-        icon: <TrendingUp className="size-4" />,
-      },
-      {
-        label: "Novos clientes",
-        value: String(novosClientes).padStart(2, "0"),
-        detail: "cadastros em junho",
-        accent: "up",
-        icon: <ArrowUpRight className="size-4" />,
-      },
-      {
-        label: "Buscando aluguel",
-        value: String(clientesAluguel).padStart(2, "0"),
-        detail: "locatários ativos",
-        icon: <Building2 className="size-4" />,
-      },
-      {
-        label: "Buscando compra",
-        value: String(clientesCompra).padStart(2, "0"),
-        detail: "compradores ativos",
-        icon: <BadgeDollarSign className="size-4" />,
-      },
-    ],
-    [
-      {
-        label: "Imóveis em negociação",
-        value: String(imoveisNegociacao).padStart(2, "0"),
-        detail: "reservas + propostas",
-        accent: "up",
-        icon: <Building2 className="size-4" />,
-      },
-      {
-        label: "Visitas agendadas",
-        value: String(visitasAgendadas).padStart(2, "0"),
-        detail: "próximos dias",
-        icon: <TrendingUp className="size-4" />,
-      },
-      {
-        label: "Cobranças em aberto",
-        value: brl(cobrancasAbertas, { compact: true }),
-        detail: "pendentes",
-        icon: <Wallet className="size-4" />,
-      },
-      {
-        label: "Inadimplência",
-        value: brl(inadimplencia, { compact: true }),
-        detail: "atrasados",
-        accent: "down",
-        tone: "danger" as MetricTone,
-        icon: <ArrowDownRight className="size-4" />,
-      },
-    ],
-  ];
+  const atendPendentes = metrics.buscandoCompra + metrics.buscandoAluguel;
 
   return (
     <>
@@ -246,8 +156,11 @@ function Dashboard() {
           </div>
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
-            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
-            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
+            <HeroStat label="Atend. ativos" value={String(atendPendentes).padStart(2, "0")} />
+            <HeroStat
+              label="Atend. do mês"
+              value={String(metrics.atendimentosMes).padStart(2, "0")}
+            />
             {isAdminOwner && (
               <HeroStat
                 label="Previsão entrada"
@@ -259,8 +172,8 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ── Métricas — carrossel horizontal com scroll-snap ─────────────── */}
-      {isAdminOwner && <MetricsCarousel groups={metricGroups} />}
+      {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
+      <DashboardMetricCards />
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
       {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
@@ -350,7 +263,10 @@ function Dashboard() {
             heightClassName="h-60 lg:h-72"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
+              <AreaChart
+                data={dashboardPrevisaoFinanceira}
+                margin={{ left: -14, right: 12, top: 8 }}
+              >
                 <defs>
                   <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
@@ -420,7 +336,6 @@ function Dashboard() {
 
       {isAdminOwner && <RealEstateSitePreviewSection />}
 
-      
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
     </>
   );
@@ -434,14 +349,34 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
   const shortcuts =
     profile === "secretaria"
       ? [
-          { to: "/atendimentos", label: "Atendimentos", desc: "Fila e novos leads", icon: Handshake },
+          {
+            to: "/atendimentos",
+            label: "Atendimentos",
+            desc: "Fila e novos leads",
+            icon: Handshake,
+          },
           { to: "/clientes", label: "Clientes", desc: "Cadastro e histórico", icon: Users },
-          { to: "/marketing", label: "Marketing", desc: "Campanhas em andamento", icon: TrendingUp },
+          {
+            to: "/marketing",
+            label: "Marketing",
+            desc: "Campanhas em andamento",
+            icon: TrendingUp,
+          },
         ]
       : [
-          { to: "/atendimentos", label: "Atendimentos", desc: "Sua carteira comercial", icon: Handshake },
+          {
+            to: "/atendimentos",
+            label: "Atendimentos",
+            desc: "Sua carteira comercial",
+            icon: Handshake,
+          },
           { to: "/clientes", label: "Clientes", desc: "Cadastros e contatos", icon: Users },
-          { to: "/agenciamentos", label: "Agenciamentos", desc: "Captações e checklist", icon: ClipboardCheck },
+          {
+            to: "/agenciamentos",
+            label: "Agenciamentos",
+            desc: "Captações e checklist",
+            icon: ClipboardCheck,
+          },
         ];
 
   return (
@@ -472,143 +407,6 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  Carrossel de métricas                                                       */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-function MetricsCarousel({ groups }: { groups: MetricCardData[][] }) {
-  const [activeGroup, setActiveGroup] = useState(0);
-  const allCards = groups.flat();
-
-  return (
-    <section className="mb-5">
-      {/* Desktop: grid fixo */}
-      <div className="hidden gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-4">
-        {allCards.map((card) => (
-          <MetricCard key={card.label} {...card} />
-        ))}
-      </div>
-
-      {/* Mobile: carrossel com scroll-snap por grupo */}
-      <div className="sm:hidden">
-        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory overflow-x-auto scroll-px-4 px-4 pb-2">
-          {groups.map((group, gi) => (
-            <div
-              key={gi}
-              className="mr-3 grid w-[calc(100vw-2rem)] max-w-full flex-none snap-start grid-cols-2 gap-2.5 last:mr-0"
-            >
-              {group.map((card) => (
-                <MetricCard key={card.label} {...card} />
-              ))}
-            </div>
-          ))}
-        </div>
-        {/* Indicadores de página */}
-        <div className="mt-2 flex justify-center gap-1.5">
-          {groups.map((_, i) => (
-            <span
-              key={i}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
-                i === activeGroup ? "w-5 bg-primary" : "w-1.5 bg-foreground/20",
-              )}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-/*  MetricCard — liquid glass sutil com profundidade 3D                        */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-const toneValueClass: Record<MetricTone, string> = {
-  default: "text-foreground",
-  primary: "text-primary",
-  success: "text-[color:var(--success)]",
-  danger: "text-[color:var(--danger)]",
-};
-
-function MetricCard({
-  label,
-  value,
-  detail,
-  tone = "default",
-  accent = "neutral",
-  icon,
-}: MetricCardData) {
-  const TrendIcon = accent === "up" ? ArrowUpRight : accent === "down" ? ArrowDownRight : null;
-
-  return (
-    <article
-      className="group relative min-w-0 overflow-hidden rounded-2xl p-3 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg sm:p-4"
-      style={{
-        background:
-          "linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.52) 100%)",
-        backdropFilter: "blur(18px) saturate(145%)",
-        border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow:
-          "0 8px 24px -8px rgba(23,27,33,0.1), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(23,27,33,0.04)",
-      }}
-    >
-      {/* Brilho sutil no topo */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)",
-        }}
-      />
-
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground/50 leading-tight">
-          {label}
-        </p>
-        {icon && (
-          <span
-            className={cn(
-              "grid size-7 shrink-0 place-items-center rounded-xl transition-colors",
-              tone === "primary"
-                ? "bg-primary/12 text-primary"
-                : tone === "danger"
-                  ? "bg-destructive/12 text-destructive"
-                  : "bg-foreground/6 text-foreground/50",
-            )}
-          >
-            {icon}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-2 flex items-end justify-between gap-2">
-        <span
-          className={cn(
-            "truncate text-xl font-bold leading-none tracking-tight sm:text-2xl",
-            toneValueClass[tone],
-          )}
-        >
-          {value}
-        </span>
-        {TrendIcon && (
-          <span
-            className={cn(
-              "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-              accent === "up"
-                ? "bg-emerald-500/12 text-emerald-700"
-                : "bg-destructive/12 text-destructive",
-            )}
-          >
-            <TrendIcon className="size-3" />
-          </span>
-        )}
-      </div>
-
-      {detail && (
-        <p className="mt-2 truncate text-[10px] text-foreground/45 leading-tight">{detail}</p>
-      )}
-    </article>
-  );
-}
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  FinancialSummaryCard — compacto e premium                                  */
