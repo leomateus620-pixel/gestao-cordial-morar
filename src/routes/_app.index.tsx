@@ -119,14 +119,12 @@ function Dashboard() {
   const imoveisNegociacao =
     imoveis.filter((i) => i.status === "Reservado").length +
     atendimentos.filter((a) => a.status === "proposta_enviada").length;
-  const visitasAgendadas = metrics.visitasAgendadas;
   const cobrancasAbertas = lancamentos
     .filter((l) => l.status === "Pendente")
     .reduce((sum, l) => sum + l.valor, 0);
   const inadimplencia = lancamentos
     .filter((l) => l.status === "Atrasado")
     .reduce((sum, l) => sum + l.valor, 0);
-  const atendPendentes = metrics.buscandoCompra + metrics.buscandoAluguel;
 
   return (
     <>
@@ -153,21 +151,6 @@ function Dashboard() {
               Acompanhe atendimentos, imóveis, vendas, aluguéis e performance das duas imobiliárias
               em um só lugar.
             </p>
-          </div>
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
-            <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
-            <HeroStat label="Atend. ativos" value={String(atendPendentes).padStart(2, "0")} />
-            <HeroStat
-              label="Atend. do mês"
-              value={String(metrics.atendimentosMes).padStart(2, "0")}
-            />
-            {isAdminOwner && (
-              <HeroStat
-                label="Previsão entrada"
-                value={brl(dashboardPrevisaoFinanceira[0]?.receita ?? 0, { compact: true })}
-                accent
-              />
-            )}
           </div>
         </div>
       </section>
@@ -1044,27 +1027,3 @@ function ChartCard({
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
-/*  HeroStat                                                                    */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-function HeroStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div
-      className="rounded-2xl px-3 py-2.5 transition-all hover:scale-[1.02]"
-      style={{
-        background: accent ? "rgba(240,168,109,0.2)" : "rgba(255,255,255,0.09)",
-        border: "1px solid rgba(255,255,255,0.14)",
-        boxShadow: accent ? "0 4px 16px -8px rgba(240,168,109,0.3)" : "none",
-      }}
-    >
-      <p
-        className="text-[9px] font-semibold uppercase tracking-wider"
-        style={{ color: accent ? "#f0a86d" : "rgba(255,255,255,0.55)" }}
-      >
-        {label}
-      </p>
-      <p className="mt-1 font-mono text-base font-bold text-white">{value}</p>
-    </div>
-  );
-}
