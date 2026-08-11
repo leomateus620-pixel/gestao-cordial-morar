@@ -115,7 +115,7 @@ export function CorretoresSummaryCards({
   return (
     <section
       aria-label="Indicadores operacionais dos corretores"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6"
     >
       {cards.map((card) => (
         <SummaryCardButton
@@ -141,7 +141,7 @@ function SummaryCardButton({
   const Icon = card.icon;
   const disabled = isLoading || card.unavailable;
   const value = card.unavailable ? "—" : card.value;
-  const detail = card.unavailable ? "Fonte temporariamente indisponível" : card.detail;
+  const detail = card.unavailable ? "Fonte indisponível" : card.detail;
 
   return (
     <button
@@ -150,59 +150,44 @@ function SummaryCardButton({
       disabled={disabled}
       aria-label={`${card.label}: ${isLoading ? "carregando" : `${value}. ${detail}`}`}
       className={cn(
-        "group min-w-0 rounded-2xl border border-border/55 bg-card/88 p-4 text-left shadow-[0_14px_34px_-26px_rgba(23,27,33,0.38)] transition-[border-color,background-color,box-shadow,transform] duration-200",
-        "enabled:hover:-translate-y-0.5 enabled:hover:border-primary/25 enabled:hover:bg-card enabled:hover:shadow-[0_18px_38px_-26px_rgba(30,100,125,0.4)]",
+        "group min-w-0 rounded-xl border border-border/50 bg-card/85 px-3 py-2.5 text-left transition-[border-color,background-color,transform] duration-200",
+        "enabled:hover:-translate-y-0.5 enabled:hover:border-primary/25 enabled:hover:bg-card",
         "enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-primary enabled:focus-visible:ring-offset-2",
-        "enabled:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70",
-        card.tone === "primary" && "border-primary/15 bg-primary/[0.055]",
-        card.tone === "success" && "border-emerald-700/10 bg-emerald-600/[0.045]",
-        card.tone === "money" && "border-orange-700/10 bg-orange-500/[0.055]",
+        "disabled:cursor-not-allowed disabled:opacity-70",
+        card.tone === "primary" && "border-primary/15 bg-primary/[0.05]",
+        card.tone === "success" && "border-emerald-700/10 bg-emerald-600/[0.04]",
+        card.tone === "money" && "border-orange-700/10 bg-orange-500/[0.05]",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/55">
-            {card.label}
-          </p>
-          {isLoading ? (
-            <span
-              aria-hidden
-              className="mt-3 block h-7 w-24 animate-pulse rounded-lg bg-foreground/10 motion-reduce:animate-none"
-            />
-          ) : (
-            <p className="mt-2 truncate font-mono text-2xl font-bold leading-none tracking-tight text-foreground sm:text-[1.7rem]">
-              {value}
-            </p>
-          )}
-        </div>
-
-        <span
+      <div className="flex min-w-0 items-center gap-2">
+        <Icon
           className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-xl bg-background/75 text-primary ring-1 ring-foreground/5",
+            "size-3.5 shrink-0 text-primary",
             card.tone === "money" && "text-orange-700",
             card.tone === "success" && "text-emerald-700",
           )}
-        >
-          <Icon className="size-4" aria-hidden />
-        </span>
+          aria-hidden
+        />
+        <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/55">
+          {card.label}
+        </p>
       </div>
 
-      <div className="mt-3 flex min-w-0 items-center justify-between gap-3">
-        {isLoading ? (
-          <span
-            aria-hidden
-            className="block h-3 w-36 max-w-full animate-pulse rounded bg-foreground/10 motion-reduce:animate-none"
-          />
-        ) : (
-          <p className="min-w-0 truncate text-xs font-medium text-foreground/58">{detail}</p>
-        )}
-        {!disabled && (
-          <ArrowUpRight
-            className="size-4 shrink-0 text-foreground/35 transition-colors group-hover:text-primary"
-            aria-hidden
-          />
-        )}
-      </div>
+      {isLoading ? (
+        <span
+          aria-hidden
+          className="mt-2 block h-5 w-16 animate-pulse rounded bg-foreground/10 motion-reduce:animate-none"
+        />
+      ) : (
+        <p className="mt-1.5 truncate font-mono text-xl font-bold leading-none tracking-tight text-foreground">
+          {value}
+        </p>
+      )}
+
+      <p className="mt-1.5 min-w-0 truncate text-[11px] font-medium text-foreground/55">
+        {isLoading ? "\u00a0" : detail}
+      </p>
     </button>
   );
 }
+
