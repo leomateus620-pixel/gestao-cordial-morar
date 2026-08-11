@@ -1,5 +1,4 @@
 import {
-  ArrowUpRight,
   BadgeDollarSign,
   ClipboardCheck,
   Handshake,
@@ -8,6 +7,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CorretoresSummary, CorretorSourceStatus } from "@/types/corretor";
