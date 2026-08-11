@@ -115,7 +115,7 @@ export function CorretoresSummaryCards({
   return (
     <section
       aria-label="Indicadores operacionais dos corretores"
-      className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6"
+      className="grid grid-cols-2 gap-2 md:grid-cols-3 2xl:grid-cols-6"
     >
       {cards.map((card) => (
         <SummaryCardButton
