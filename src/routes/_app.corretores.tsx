@@ -15,6 +15,8 @@ import {
   type CorretoresKpiTarget,
 } from "@/components/corretores/CorretoresSummaryCards";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { useCorretores } from "@/hooks/useCorretores";
 import { useSession } from "@/lib/auth-mock";
