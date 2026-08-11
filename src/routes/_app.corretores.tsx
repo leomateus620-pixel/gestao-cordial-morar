@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Loader2, LockKeyhole, RefreshCw, UserCog } from "lucide-react";
+import { AlertCircle, Info, Loader2, LockKeyhole, RefreshCw, UserCog } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { CorretorCard } from "@/components/corretores/CorretorCard";
