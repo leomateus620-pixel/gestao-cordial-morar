@@ -1531,6 +1531,7 @@ export type Database = {
           email: string
           id: string
           iniciais: string | null
+          is_internal: boolean
           nome: string
           updated_at: string
         }
@@ -1540,6 +1541,7 @@ export type Database = {
           email: string
           id: string
           iniciais?: string | null
+          is_internal?: boolean
           nome: string
           updated_at?: string
         }
@@ -1549,6 +1551,7 @@ export type Database = {
           email?: string
           id?: string
           iniciais?: string | null
+          is_internal?: boolean
           nome?: string
           updated_at?: string
         }
