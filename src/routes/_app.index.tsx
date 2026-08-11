@@ -104,21 +104,12 @@ function Dashboard() {
   const [open, setOpen] = useState(false);
   const session = useSession();
   const isAdminOwner = session?.perfil === "admin_owner";
-  const {
-    agency,
-    rawAtendimentos,
-    rawImoveis,
-    rawAgenda,
-    rawLancamentos,
-    rawClientes,
-  } = useApp(
+  const { agency, rawAtendimentos, rawImoveis, rawLancamentos } = useApp(
     useShallow((s) => ({
       agency: s.agency,
       rawAtendimentos: s.atendimentos,
       rawImoveis: s.imoveis,
-      rawAgenda: s.agenda,
       rawLancamentos: s.lancamentos,
-      rawClientes: s.clientes,
     })),
   );
   const { dashboardSummary: equipeSummary, dashboardRanking: equipeRanking } = useCorretores({
@@ -127,36 +118,27 @@ function Dashboard() {
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
   const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
+  const metrics = useDashboardMetrics();
   const filterByAgency = <T extends { imobiliaria: "cordial" | "morar" | "ambas" }>(items: T[]) =>
     agency === "todas"
       ? items
       : items.filter((item) => item.imobiliaria === agency || item.imobiliaria === "ambas");
   const atendimentos = filterByAgency(rawAtendimentos);
   const imoveis = filterByAgency(rawImoveis);
-  const agenda = filterByAgency(rawAgenda);
   const lancamentos = filterByAgency(rawLancamentos);
-  const clientes = filterByAgency(rawClientes);
 
-  const mesAtual = "2026-06";
-  const atendimentosMes = atendimentos.filter((a) => a.criadoEm.startsWith(mesAtual)).length;
-  const novosClientes = clientes.filter((c) => c.criadoEm.startsWith(mesAtual)).length;
-  const clientesAluguel = clientes.filter((c) => c.tipo === "Locatário").length;
-  const clientesCompra = clientes.filter((c) => c.tipo === "Comprador").length;
   const imoveisNegociacao =
     imoveis.filter((i) => i.status === "Reservado").length +
     atendimentos.filter((a) => a.status === "proposta_enviada").length;
-  const visitasAgendadas = agenda.filter(
-    (a) => a.tipo === "Visita" && new Date(a.data) >= new Date("2026-06-12T00:00:00"),
-  ).length;
+  const visitasAgendadas = metrics.visitasAgendadas;
   const cobrancasAbertas = lancamentos
     .filter((l) => l.status === "Pendente")
     .reduce((sum, l) => sum + l.valor, 0);
   const inadimplencia = lancamentos
     .filter((l) => l.status === "Atrasado")
     .reduce((sum, l) => sum + l.valor, 0);
-  const atendPendentes = atendimentos.filter(
-    (a) => a.status !== "fechado" && a.status !== "perdido",
-  ).length;
+  const atendPendentes = metrics.buscandoCompra + metrics.buscandoAluguel;
+
 
 
   return (
