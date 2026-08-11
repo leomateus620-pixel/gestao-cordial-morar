@@ -1557,6 +1557,105 @@ export type Database = {
         }
         Relationships: []
       }
+      properties: {
+        Row: {
+          area_construida: number | null
+          area_principal: number | null
+          area_terreno: number | null
+          area_tipo: string | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          carteira: string
+          cidade: string | null
+          codigo: string | null
+          created_at: string
+          dormitorios: number | null
+          id: string
+          localizacao_exibida: string | null
+          operacao: string
+          source: string
+          source_catalog_page: number | null
+          source_catalog_url: string | null
+          source_import_batch: string | null
+          source_property_id: string
+          source_property_url: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          updated_at: string
+          vagas: number | null
+          valor: number | null
+          valor_exibido: string | null
+          valor_modo: string
+        }
+        Insert: {
+          area_construida?: number | null
+          area_principal?: number | null
+          area_terreno?: number | null
+          area_tipo?: string | null
+          area_total?: number | null
+          area_util?: number | null
+          bairro?: string | null
+          banheiros?: number | null
+          carteira?: string
+          cidade?: string | null
+          codigo?: string | null
+          created_at?: string
+          dormitorios?: number | null
+          id?: string
+          localizacao_exibida?: string | null
+          operacao?: string
+          source?: string
+          source_catalog_page?: number | null
+          source_catalog_url?: string | null
+          source_import_batch?: string | null
+          source_property_id: string
+          source_property_url?: string | null
+          suites?: number | null
+          tipo?: string | null
+          uf?: string | null
+          updated_at?: string
+          vagas?: number | null
+          valor?: number | null
+          valor_exibido?: string | null
+          valor_modo?: string
+        }
+        Update: {
+          area_construida?: number | null
+          area_principal?: number | null
+          area_terreno?: number | null
+          area_tipo?: string | null
+          area_total?: number | null
+          area_util?: number | null
+          bairro?: string | null
+          banheiros?: number | null
+          carteira?: string
+          cidade?: string | null
+          codigo?: string | null
+          created_at?: string
+          dormitorios?: number | null
+          id?: string
+          localizacao_exibida?: string | null
+          operacao?: string
+          source?: string
+          source_catalog_page?: number | null
+          source_catalog_url?: string | null
+          source_import_batch?: string | null
+          source_property_id?: string
+          source_property_url?: string | null
+          suites?: number | null
+          tipo?: string | null
+          uf?: string | null
+          updated_at?: string
+          vagas?: number | null
+          valor?: number | null
+          valor_exibido?: string | null
+          valor_modo?: string
+        }
+        Relationships: []
+      }
       real_estate_sales: {
         Row: {
           area_m2: number | null
