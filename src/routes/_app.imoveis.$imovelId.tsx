@@ -1,25 +1,45 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Bed, CalendarDays, FileText, Maximize2, UsersRound } from "lucide-react";
-import { StatusBadge } from "@/components/status-badge";
-import { useApp } from "@/store/app-store";
+import { ArrowLeft, Bath, Bed, Car, ExternalLink, ImageOff, MapPin, Maximize2 } from "lucide-react";
 import { brl } from "@/lib/format";
-import { atendimentoStatusLabel } from "@/types/atendimento";
+import { useImovel } from "@/hooks/useImoveis";
+import { formatArea, propertyLocalidade, NAO_INFORMADO } from "@/types/property";
 
-export const Route = createFileRoute("/_app/imoveis/$imovelId")({ component: Page });
+export const Route = createFileRoute("/_app/imoveis/$imovelId")({
+  head: () => ({
+    meta: [
+      { title: "Detalhe do imóvel — Gestão Cordial" },
+      { name: "description", content: "Ficha completa do imóvel no catálogo Cordial / Morar." },
+    ],
+  }),
+  component: Page,
+});
 
 function Page() {
   const { imovelId } = Route.useParams();
-  const imovel = useApp((s) => s.imoveis.find((i) => i.id === imovelId));
-  const clientes = useApp((s) => s.clientes);
-  const atendimentos = useApp((s) => s.atendimentos.filter((a) => a.imovelId === imovelId));
-  const visitas = useApp((s) => s.agenda.filter((a) => a.imovelId === imovelId));
-  if (!imovel)
+  const { data: imovel, isPending, isError, error } = useImovel(imovelId);
+
+  if (isPending) {
+    return <div className="h-64 animate-pulse rounded-3xl bg-white/45" />;
+  }
+
+  if (isError) {
+    return (
+      <p className="glass-panel rounded-2xl p-6 text-center text-sm text-foreground/55">
+        {(error as Error)?.message ?? "Erro ao carregar o imóvel."}
+      </p>
+    );
+  }
+
+  if (!imovel) {
     return (
       <p className="glass-panel rounded-2xl p-6 text-center text-sm text-foreground/55">
         Imóvel não encontrado.
       </p>
     );
-  const fotos = imovel.fotos?.length ? imovel.fotos : [imovel.foto, imovel.foto, imovel.foto];
+  }
+
+  const localidade = propertyLocalidade(imovel);
+
   return (
     <div className="space-y-4">
       <Link
@@ -28,147 +48,129 @@ function Page() {
       >
         <ArrowLeft className="size-4" /> Imóveis
       </Link>
+
       <section className="glass-panel overflow-hidden rounded-3xl">
-        <img src={fotos[0]} alt={imovel.titulo} className="aspect-[16/9] w-full object-cover" />
-        <div className="grid grid-cols-3 gap-1 p-1">
-          {fotos.slice(0, 3).map((f, idx) => (
-            <img
-              key={idx}
-              src={f}
-              alt="Foto do imóvel"
-              className="aspect-[4/3] rounded-2xl object-cover"
-            />
-          ))}
+        <div className="grid aspect-[16/7] w-full place-items-center bg-foreground/[0.05] text-foreground/30">
+          <div className="flex flex-col items-center gap-2">
+            <ImageOff className="size-7" />
+            <span className="text-[11px]">Imagem não disponível no catálogo</span>
+          </div>
         </div>
         <div className="p-4">
-          <StatusBadge status={imovel.status} />
-          <h2 className="mt-2 text-2xl font-bold">{imovel.titulo}</h2>
-          <p className="text-sm text-foreground/55">
-            {imovel.endereco} · {imovel.bairro}, {imovel.cidade}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+              {imovel.operacao === "venda" ? "Venda" : "Aluguel"}
+            </span>
+            <span className="rounded-full bg-foreground/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+              Carteira {imovel.carteira}
+            </span>
+            {imovel.codigo && (
+              <span className="rounded-full bg-foreground/8 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-foreground/60">
+                Cód. {imovel.codigo}
+              </span>
+            )}
+          </div>
+          <h1 className="mt-2 text-2xl font-bold">{imovel.tipo ?? "Imóvel"}</h1>
+          <p className="mt-1 flex items-start gap-1 text-sm text-foreground/55">
+            <MapPin className="mt-1 size-3.5 shrink-0" />
+            {imovel.localizacaoExibida ?? localidade ?? NAO_INFORMADO}
           </p>
           <p className="mt-3 font-mono text-xl font-bold text-primary">
-            {brl(imovel.valor)}
-            {imovel.finalidade === "Aluguel" && (
-              <span className="text-xs text-foreground/55">/mês</span>
+            {imovel.valorModo === "consulte" || imovel.valor === null ? (
+              <span className="text-base">Consulte</span>
+            ) : (
+              <>
+                {brl(imovel.valor)}
+                {imovel.operacao === "aluguel" && (
+                  <span className="text-xs text-foreground/55">/mês</span>
+                )}
+              </>
             )}
           </p>
+          {imovel.valorExibido && imovel.valorModo === "consulte" && (
+            <p className="mt-1 text-[11px] italic text-foreground/45">
+              Valor não informado no catálogo ({imovel.valorExibido})
+            </p>
+          )}
         </div>
       </section>
-      <Grid title="Dados do imóvel" icon={Maximize2}>
-        <Metric icon={Bed} label="Quartos" value={`${imovel.quartos}`} />
-        <Metric label="Área" value={`${imovel.area} m²`} />
-        <Metric label="Suítes" value={`${imovel.suites ?? 1}`} />
-        <Metric label="Vagas" value={`${imovel.vagas ?? 2}`} />
-        <Metric label="Condomínio" value={brl(imovel.condominio ?? 1200)} />
-        <Metric label="IPTU" value={brl(imovel.iptu ?? 420)} />
-      </Grid>
-      <Section title="Clientes interessados" icon={UsersRound}>
-        {atendimentos.map((a) => {
-          const clientName = clientes.find((c) => c.id === a.clienteId)?.nome ?? a.clienteNome;
-          return a.clienteId ? (
-            <Row
-              key={a.id}
-              title={clientName}
-              meta={atendimentoStatusLabel(a.status)}
-              to="/clientes/$clienteId"
-              params={{ clienteId: a.clienteId }}
-            />
-          ) : (
-            <div key={a.id} className="rounded-2xl bg-white/45 p-3 text-sm font-semibold">
-              {clientName}
-              <span className="block text-xs font-normal text-foreground/55">
-                Pré-atendimento · {atendimentoStatusLabel(a.status)}
-              </span>
-            </div>
-          );
-        })}
-      </Section>
-      <Section title="Visitas" icon={CalendarDays}>
-        {visitas.map((v) => (
-          <div key={v.id} className="rounded-2xl bg-white/45 p-3 text-sm font-semibold">
-            {v.titulo}
-            <span className="block text-xs font-normal text-foreground/55">
-              {new Date(v.data).toLocaleString("pt-BR")}
-            </span>
-          </div>
-        ))}
-      </Section>
-      <Section title="Documentos" icon={FileText}>
-        {(imovel.documentos && imovel.documentos.length > 0
-          ? imovel.documentos.map((d) => ({ id: d.id, nome: d.nome }))
-          : [
-              { id: "fallback-1", nome: "Matrícula atualizada" },
-              { id: "fallback-2", nome: "IPTU" },
-              { id: "fallback-3", nome: "Laudo de vistoria" },
-              { id: "fallback-4", nome: "Fotos profissionais" },
-            ]
-        ).map((d) => (
-          <div key={d.id} className="rounded-2xl bg-white/45 p-3 text-sm font-semibold">
-            {d.nome}
-          </div>
-        ))}
-      </Section>
+
+      <section className="glass-panel rounded-3xl p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
+          <Maximize2 className="size-4 text-primary" />
+          Dados do imóvel
+        </h2>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <Metric icon={Bed} label="Dormitórios" value={imovel.dormitorios} />
+          <Metric label="Suítes" value={imovel.suites} />
+          <Metric icon={Bath} label="Banheiros" value={imovel.banheiros} />
+          <Metric icon={Car} label="Vagas" value={imovel.vagas} />
+          <Metric
+            label={imovel.areaTipo ? `Área (${imovel.areaTipo})` : "Área principal"}
+            value={formatArea(imovel.areaPrincipal)}
+          />
+          <Metric label="Área total" value={formatArea(imovel.areaTotal)} />
+          <Metric label="Área útil" value={formatArea(imovel.areaUtil)} />
+          <Metric label="Área construída" value={formatArea(imovel.areaConstruida)} />
+          <Metric label="Área do terreno" value={formatArea(imovel.areaTerreno)} />
+        </div>
+      </section>
+
+      <section className="glass-panel rounded-3xl p-4">
+        <h2 className="mb-3 text-sm font-bold">Localização</h2>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <Metric label="Bairro" value={imovel.bairro} />
+          <Metric label="Cidade" value={imovel.cidade} />
+          <Metric label="UF" value={imovel.uf} />
+        </div>
+      </section>
+
+      <section className="glass-panel rounded-3xl p-4">
+        <h2 className="mb-3 text-sm font-bold">Origem do registro</h2>
+        <div className="space-y-2 text-[12px] text-foreground/60">
+          <p>
+            Fonte: <span className="font-semibold text-foreground/80">{imovel.source}</span>
+            {imovel.sourceCatalogPage ? ` · página ${imovel.sourceCatalogPage} do catálogo` : ""}
+          </p>
+          <p className="font-mono text-[11px]">ID de origem: {imovel.sourcePropertyId}</p>
+          {imovel.sourcePropertyUrl && (
+            <a
+              href={imovel.sourcePropertyUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary"
+            >
+              Abrir anúncio original
+              <ExternalLink className="size-3" />
+            </a>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
-function Grid({
-  title,
+
+function Metric({
+  label,
+  value,
   icon: Icon,
-  children,
 }: {
-  title: string;
-  icon: typeof Maximize2;
-  children: React.ReactNode;
+  label: string;
+  value: string | number | null | undefined;
+  icon?: typeof Bed;
 }) {
-  return (
-    <section className="glass-panel rounded-3xl p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-bold">
-        <Icon className="size-4 text-primary" />
-        {title}
-      </h3>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">{children}</div>
-    </section>
-  );
-}
-function Section({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title: string;
-  icon: typeof FileText;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="glass-panel rounded-3xl p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-bold">
-        <Icon className="size-4 text-primary" />
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
-function Metric({ label, value, icon: Icon }: { label: string; value: string; icon?: typeof Bed }) {
+  const has = value !== null && value !== undefined && value !== "";
   return (
     <div className="rounded-2xl bg-white/45 p-3">
       <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-foreground/45">
         {Icon && <Icon className="size-3" />}
         {label}
       </p>
-      <p className="font-semibold">{value}</p>
+      {has ? (
+        <p className="font-semibold">{value}</p>
+      ) : (
+        <p className="text-[11px] italic text-foreground/35">{NAO_INFORMADO}</p>
+      )}
     </div>
-  );
-}
-function Row(props: { title: string; meta: string; to: string; params: Record<string, string> }) {
-  return (
-    <Link
-      to={props.to as never}
-      params={props.params as never}
-      className="block rounded-2xl bg-white/45 p-3 text-sm font-semibold"
-    >
-      {props.title}
-      <span className="block text-xs font-normal text-foreground/55">{props.meta}</span>
-    </Link>
   );
 }
