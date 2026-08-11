@@ -20,6 +20,7 @@ import { useState } from "react";
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCards";
+import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
@@ -169,8 +170,11 @@ function Dashboard() {
           </div>
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:gap-3">
             <HeroStat label="Visitas hoje" value={String(visitasAgendadas).padStart(2, "0")} />
-            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
-            <HeroStat label="Atend. pendentes" value={String(atendPendentes).padStart(2, "0")} />
+            <HeroStat label="Atend. ativos" value={String(atendPendentes).padStart(2, "0")} />
+            <HeroStat
+              label="Atend. do mês"
+              value={String(metrics.atendimentosMes).padStart(2, "0")}
+            />
             {isAdminOwner && (
               <HeroStat
                 label="Previsão entrada"
