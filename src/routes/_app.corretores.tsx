@@ -384,15 +384,16 @@ function Page() {
 function HeroPill({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div
-      className="min-w-0 rounded-xl px-3 py-2 ring-1 ring-white/15"
+      className="min-w-0 rounded-lg px-2 py-1 ring-1 ring-white/15"
       style={{
         background: accent ? "rgba(240,168,109,0.18)" : "rgba(255,255,255,0.09)",
       }}
     >
-      <p className="truncate text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">
+      <p className="truncate text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">
         {label}
       </p>
-      <p className="mt-1 truncate font-mono text-base font-black text-white">{value}</p>
+      <p className="mt-0.5 truncate font-mono text-sm font-black text-white">{value}</p>
     </div>
+
   );
 }
