@@ -76,7 +76,30 @@ function Page() {
         .map(([source]) => SOURCE_LABELS[source]),
     [sourceStatus],
   );
+  const notices = useMemo(() => {
+    const list: string[] = [];
+    if (!isError && unavailableSources.length > 0) {
+      list.push(
+        `Dados parciais: ${unavailableSources.join(", ")} não responderam. As métricas dependentes aparecem como indisponíveis.`,
+      );
+    }
+    if (!isError && (unattributed.sales > 0 || unattributed.rentals > 0)) {
+      const parts = [
+        unattributed.sales > 0
+          ? `${unattributed.sales} venda${unattributed.sales === 1 ? "" : "s"}`
+          : null,
+        unattributed.rentals > 0
+          ? `${unattributed.rentals} ${unattributed.rentals === 1 ? "aluguel" : "aluguéis"}`
+          : null,
+      ].filter(Boolean);
+      list.push(
+        `Atribuição preservada: ${parts.join(" e ")} sem UUID de corretor ficaram fora dos indicadores individuais.`,
+      );
+    }
+    return list;
+  }, [isError, unattributed.rentals, unattributed.sales, unavailableSources]);
   const canAccess =
+
     session?.perfil === "admin_owner" && hasPermission(session.perfil, "corretores:read");
   const contractsReady = sourceStatus.vendas === "ready" && sourceStatus.alugueis === "ready";
   const conversionReady = sourceStatus.atendimentos === "ready";
