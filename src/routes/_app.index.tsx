@@ -85,7 +85,6 @@ const contextColors: Record<string, string> = {
 /*  Tipos                                                                       */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Componente principal                                                        */
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -128,8 +127,6 @@ function Dashboard() {
     .filter((l) => l.status === "Atrasado")
     .reduce((sum, l) => sum + l.valor, 0);
   const atendPendentes = metrics.buscandoCompra + metrics.buscandoAluguel;
-
-
 
   return (
     <>
@@ -177,7 +174,6 @@ function Dashboard() {
 
       {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
       <DashboardMetricCards />
-
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
       {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
@@ -267,7 +263,10 @@ function Dashboard() {
             heightClassName="h-60 lg:h-72"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dashboardPrevisaoFinanceira} margin={{ left: -14, right: 12, top: 8 }}>
+              <AreaChart
+                data={dashboardPrevisaoFinanceira}
+                margin={{ left: -14, right: 12, top: 8 }}
+              >
                 <defs>
                   <linearGradient id="gradReceita" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={chartCordial} stopOpacity={0.38} />
@@ -337,7 +336,6 @@ function Dashboard() {
 
       {isAdminOwner && <RealEstateSitePreviewSection />}
 
-      
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
     </>
   );
@@ -351,14 +349,34 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
   const shortcuts =
     profile === "secretaria"
       ? [
-          { to: "/atendimentos", label: "Atendimentos", desc: "Fila e novos leads", icon: Handshake },
+          {
+            to: "/atendimentos",
+            label: "Atendimentos",
+            desc: "Fila e novos leads",
+            icon: Handshake,
+          },
           { to: "/clientes", label: "Clientes", desc: "Cadastro e histórico", icon: Users },
-          { to: "/marketing", label: "Marketing", desc: "Campanhas em andamento", icon: TrendingUp },
+          {
+            to: "/marketing",
+            label: "Marketing",
+            desc: "Campanhas em andamento",
+            icon: TrendingUp,
+          },
         ]
       : [
-          { to: "/atendimentos", label: "Atendimentos", desc: "Sua carteira comercial", icon: Handshake },
+          {
+            to: "/atendimentos",
+            label: "Atendimentos",
+            desc: "Sua carteira comercial",
+            icon: Handshake,
+          },
           { to: "/clientes", label: "Clientes", desc: "Cadastros e contatos", icon: Users },
-          { to: "/agenciamentos", label: "Agenciamentos", desc: "Captações e checklist", icon: ClipboardCheck },
+          {
+            to: "/agenciamentos",
+            label: "Agenciamentos",
+            desc: "Captações e checklist",
+            icon: ClipboardCheck,
+          },
         ];
 
   return (
@@ -389,7 +407,6 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  FinancialSummaryCard — compacto e premium                                  */
