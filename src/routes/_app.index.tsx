@@ -85,17 +85,6 @@ const contextColors: Record<string, string> = {
 /*  Tipos                                                                       */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-type MetricTone = "default" | "primary" | "success" | "danger";
-type MetricAccent = "up" | "down" | "neutral";
-
-type MetricCardData = {
-  label: string;
-  value: string;
-  detail?: string;
-  tone?: MetricTone;
-  accent?: MetricAccent;
-  icon?: ReactNode;
-};
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Componente principal                                                        */
