@@ -239,37 +239,6 @@ function Page() {
           </section>
         )}
 
-        {!isError && unavailableSources.length > 0 && (
-          <section
-            role="status"
-            className="rounded-2xl border border-amber-300/70 bg-amber-50/85 px-4 py-3 text-sm text-amber-950"
-          >
-            <span className="font-semibold">Dados parciais:</span> {unavailableSources.join(", ")}{" "}
-            não responderam. As métricas dependentes aparecem como indisponíveis.
-          </section>
-        )}
-
-        {!isError && (unattributed.sales > 0 || unattributed.rentals > 0) && (
-          <section
-            role="status"
-            className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm text-sky-950"
-          >
-            <span className="font-semibold">Atribuição preservada:</span>{" "}
-            {[
-              unattributed.sales > 0
-                ? `${unattributed.sales} venda${unattributed.sales === 1 ? "" : "s"}`
-                : null,
-              unattributed.rentals > 0
-                ? `${unattributed.rentals} ${unattributed.rentals === 1 ? "aluguel" : "aluguéis"}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" e ")}{" "}
-            sem UUID de corretor ficaram fora dos indicadores individuais. Nomes em texto livre não
-            são usados como vínculo.
-          </section>
-        )}
-
         <CorretoresSummaryCards
           summary={summary}
           sourceStatus={sourceStatus}
@@ -278,14 +247,6 @@ function Page() {
           onNavigate={handleKpiNavigation}
         />
 
-        <CorretoresFilters
-          filters={filters}
-          corretores={agencyCorretores}
-          onFiltersChange={setFilters}
-          onReset={resetFilters}
-          isLoading={isLoading}
-          activeAgencyLabel={agencyLabel}
-        />
 
         <CorretoresRanking
           ranking={ranking}
