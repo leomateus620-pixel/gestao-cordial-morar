@@ -176,20 +176,34 @@ function Page() {
   return (
     <>
       <div className="space-y-4 pb-3 sm:space-y-5">
-        <section className="relative overflow-hidden rounded-[1.6rem] bg-[#17566b] p-5 text-white shadow-[0_18px_46px_-30px_rgba(18,50,61,0.72)] sm:p-6">
-          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 ring-1 ring-white/15">
-                <UserCog className="size-3.5" aria-hidden />
-                Inteligência operacional
-              </div>
-              <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Corretores</h1>
-              <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/75">
-                Indicadores rastreáveis de atendimentos, agenda, agenciamentos, negócios e resposta
-                da equipe.
-              </p>
+        <section className="relative overflow-hidden rounded-2xl bg-[#17566b] px-4 py-3.5 text-white sm:px-5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <UserCog className="size-4 shrink-0 text-white/70" aria-hidden />
+              <h1 className="truncate text-lg font-black tracking-tight sm:text-xl">Corretores</h1>
+              <span className="hidden truncate text-xs text-white/60 sm:inline">{agencyLabel}</span>
+              {notices.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Observações sobre os dados"
+                      className="grid size-6 shrink-0 place-items-center rounded-full bg-white/10 text-white/75 ring-1 ring-white/15 transition-colors hover:bg-white/20"
+                    >
+                      <Info className="size-3.5" aria-hidden />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-80 rounded-2xl text-sm">
+                    <ul className="space-y-2 text-foreground/75">
+                      {notices.map((notice) => (
+                        <li key={notice}>{notice}</li>
+                      ))}
+                    </ul>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:w-fit" aria-label="Resumo do período">
+            <div className="flex shrink-0 gap-1.5" aria-label="Resumo do período">
               <HeroPill
                 label="Ativos"
                 value={isLoading || isError ? "—" : String(summary.ativos).padStart(2, "0")}
@@ -212,6 +226,7 @@ function Page() {
             </div>
           </div>
         </section>
+
 
         {isError && (
           <section
