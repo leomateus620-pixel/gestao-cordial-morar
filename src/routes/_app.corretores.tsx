@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Loader2, LockKeyhole, RefreshCw, UserCog } from "lucide-react";
+import { AlertCircle, Info, Loader2, LockKeyhole, RefreshCw, UserCog } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { CorretorCard } from "@/components/corretores/CorretorCard";
@@ -15,6 +15,8 @@ import {
   type CorretoresKpiTarget,
 } from "@/components/corretores/CorretoresSummaryCards";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { EmptyState } from "@/components/shared/empty-state";
 import { useCorretores } from "@/hooks/useCorretores";
 import { useSession } from "@/lib/auth-mock";
@@ -74,7 +76,30 @@ function Page() {
         .map(([source]) => SOURCE_LABELS[source]),
     [sourceStatus],
   );
+  const notices = useMemo(() => {
+    const list: string[] = [];
+    if (!isError && unavailableSources.length > 0) {
+      list.push(
+        `Dados parciais: ${unavailableSources.join(", ")} não responderam. As métricas dependentes aparecem como indisponíveis.`,
+      );
+    }
+    if (!isError && (unattributed.sales > 0 || unattributed.rentals > 0)) {
+      const parts = [
+        unattributed.sales > 0
+          ? `${unattributed.sales} venda${unattributed.sales === 1 ? "" : "s"}`
+          : null,
+        unattributed.rentals > 0
+          ? `${unattributed.rentals} ${unattributed.rentals === 1 ? "aluguel" : "aluguéis"}`
+          : null,
+      ].filter(Boolean);
+      list.push(
+        `Atribuição preservada: ${parts.join(" e ")} sem UUID de corretor ficaram fora dos indicadores individuais.`,
+      );
+    }
+    return list;
+  }, [isError, unattributed.rentals, unattributed.sales, unavailableSources]);
   const canAccess =
+
     session?.perfil === "admin_owner" && hasPermission(session.perfil, "corretores:read");
   const contractsReady = sourceStatus.vendas === "ready" && sourceStatus.alugueis === "ready";
   const conversionReady = sourceStatus.atendimentos === "ready";
@@ -176,20 +201,34 @@ function Page() {
   return (
     <>
       <div className="space-y-4 pb-3 sm:space-y-5">
-        <section className="relative overflow-hidden rounded-[1.6rem] bg-[#17566b] p-5 text-white shadow-[0_18px_46px_-30px_rgba(18,50,61,0.72)] sm:p-6">
-          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 ring-1 ring-white/15">
-                <UserCog className="size-3.5" aria-hidden />
-                Inteligência operacional
-              </div>
-              <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Corretores</h1>
-              <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/75">
-                Indicadores rastreáveis de atendimentos, agenda, agenciamentos, negócios e resposta
-                da equipe.
-              </p>
+        <section className="relative overflow-hidden rounded-2xl bg-[#17566b] px-4 py-3.5 text-white sm:px-5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <UserCog className="size-4 shrink-0 text-white/70" aria-hidden />
+              <h1 className="truncate text-lg font-black tracking-tight sm:text-xl">Corretores</h1>
+              <span className="hidden truncate text-xs text-white/60 sm:inline">{agencyLabel}</span>
+              {notices.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Observações sobre os dados"
+                      className="grid size-6 shrink-0 place-items-center rounded-full bg-white/10 text-white/75 ring-1 ring-white/15 transition-colors hover:bg-white/20"
+                    >
+                      <Info className="size-3.5" aria-hidden />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-80 rounded-2xl text-sm">
+                    <ul className="space-y-2 text-foreground/75">
+                      {notices.map((notice) => (
+                        <li key={notice}>{notice}</li>
+                      ))}
+                    </ul>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:w-fit" aria-label="Resumo do período">
+            <div className="flex shrink-0 gap-1.5" aria-label="Resumo do período">
               <HeroPill
                 label="Ativos"
                 value={isLoading || isError ? "—" : String(summary.ativos).padStart(2, "0")}
@@ -212,6 +251,7 @@ function Page() {
             </div>
           </div>
         </section>
+
 
         {isError && (
           <section
@@ -239,37 +279,6 @@ function Page() {
           </section>
         )}
 
-        {!isError && unavailableSources.length > 0 && (
-          <section
-            role="status"
-            className="rounded-2xl border border-amber-300/70 bg-amber-50/85 px-4 py-3 text-sm text-amber-950"
-          >
-            <span className="font-semibold">Dados parciais:</span> {unavailableSources.join(", ")}{" "}
-            não responderam. As métricas dependentes aparecem como indisponíveis.
-          </section>
-        )}
-
-        {!isError && (unattributed.sales > 0 || unattributed.rentals > 0) && (
-          <section
-            role="status"
-            className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-sm text-sky-950"
-          >
-            <span className="font-semibold">Atribuição preservada:</span>{" "}
-            {[
-              unattributed.sales > 0
-                ? `${unattributed.sales} venda${unattributed.sales === 1 ? "" : "s"}`
-                : null,
-              unattributed.rentals > 0
-                ? `${unattributed.rentals} ${unattributed.rentals === 1 ? "aluguel" : "aluguéis"}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" e ")}{" "}
-            sem UUID de corretor ficaram fora dos indicadores individuais. Nomes em texto livre não
-            são usados como vínculo.
-          </section>
-        )}
-
         <CorretoresSummaryCards
           summary={summary}
           sourceStatus={sourceStatus}
@@ -278,14 +287,6 @@ function Page() {
           onNavigate={handleKpiNavigation}
         />
 
-        <CorretoresFilters
-          filters={filters}
-          corretores={agencyCorretores}
-          onFiltersChange={setFilters}
-          onReset={resetFilters}
-          isLoading={isLoading}
-          activeAgencyLabel={agencyLabel}
-        />
 
         <CorretoresRanking
           ranking={ranking}
@@ -307,22 +308,33 @@ function Page() {
           aria-label="Corretores no recorte atual"
           className="scroll-mt-24"
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold tracking-tight">Visão por corretor</h2>
-              <p className="text-xs text-foreground/58">
+          <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold tracking-tight">Visão por corretor</h2>
+              <p className="truncate text-xs text-foreground/55">
                 {isLoading
-                  ? "Carregando vínculos operacionais…"
+                  ? "Carregando vínculos…"
                   : `${corretores.length} corretor${corretores.length === 1 ? "" : "es"} no recorte`}
               </p>
             </div>
-            {isFetching && !isLoading && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
-                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-                Atualizando
-              </span>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {isFetching && !isLoading && (
+                <Loader2
+                  className="size-3.5 animate-spin text-primary motion-reduce:animate-none"
+                  aria-label="Atualizando"
+                />
+              )}
+              <CorretoresFilters
+                filters={filters}
+                corretores={agencyCorretores}
+                onFiltersChange={setFilters}
+                onReset={resetFilters}
+                isLoading={isLoading}
+                activeAgencyLabel={agencyLabel}
+              />
+            </div>
           </div>
+
 
           {isLoading ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-hidden>
@@ -372,15 +384,16 @@ function Page() {
 function HeroPill({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div
-      className="min-w-0 rounded-xl px-3 py-2 ring-1 ring-white/15"
+      className="min-w-0 rounded-lg px-2 py-1 ring-1 ring-white/15"
       style={{
         background: accent ? "rgba(240,168,109,0.18)" : "rgba(255,255,255,0.09)",
       }}
     >
-      <p className="truncate text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">
+      <p className="truncate text-[9px] font-bold uppercase tracking-[0.12em] text-white/55">
         {label}
       </p>
-      <p className="mt-1 truncate font-mono text-base font-black text-white">{value}</p>
+      <p className="mt-0.5 truncate font-mono text-sm font-black text-white">{value}</p>
     </div>
+
   );
 }
