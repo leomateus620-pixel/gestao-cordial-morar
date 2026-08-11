@@ -198,8 +198,9 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* ── Métricas — carrossel horizontal com scroll-snap ─────────────── */}
-      {isAdminOwner && <MetricsCarousel groups={metricGroups} />}
+      {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
+      <DashboardMetricCards />
+
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
       {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
