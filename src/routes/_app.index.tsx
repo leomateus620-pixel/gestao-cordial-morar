@@ -156,67 +156,6 @@ function Dashboard() {
     (a) => a.status !== "fechado" && a.status !== "perdido",
   ).length;
 
-  /* Grupos de métricas para o carrossel mobile */
-  const metricGroups: MetricCardData[][] = [
-    [
-      {
-        label: "Atendimentos do mês",
-        value: String(atendimentosMes).padStart(2, "0"),
-        detail: "+18% vs. maio",
-        tone: "primary",
-        accent: "up",
-        icon: <TrendingUp className="size-4" />,
-      },
-      {
-        label: "Novos clientes",
-        value: String(novosClientes).padStart(2, "0"),
-        detail: "cadastros em junho",
-        accent: "up",
-        icon: <ArrowUpRight className="size-4" />,
-      },
-      {
-        label: "Buscando aluguel",
-        value: String(clientesAluguel).padStart(2, "0"),
-        detail: "locatários ativos",
-        icon: <Building2 className="size-4" />,
-      },
-      {
-        label: "Buscando compra",
-        value: String(clientesCompra).padStart(2, "0"),
-        detail: "compradores ativos",
-        icon: <BadgeDollarSign className="size-4" />,
-      },
-    ],
-    [
-      {
-        label: "Imóveis em negociação",
-        value: String(imoveisNegociacao).padStart(2, "0"),
-        detail: "reservas + propostas",
-        accent: "up",
-        icon: <Building2 className="size-4" />,
-      },
-      {
-        label: "Visitas agendadas",
-        value: String(visitasAgendadas).padStart(2, "0"),
-        detail: "próximos dias",
-        icon: <TrendingUp className="size-4" />,
-      },
-      {
-        label: "Cobranças em aberto",
-        value: brl(cobrancasAbertas, { compact: true }),
-        detail: "pendentes",
-        icon: <Wallet className="size-4" />,
-      },
-      {
-        label: "Inadimplência",
-        value: brl(inadimplencia, { compact: true }),
-        detail: "atrasados",
-        accent: "down",
-        tone: "danger" as MetricTone,
-        icon: <ArrowDownRight className="size-4" />,
-      },
-    ],
-  ];
 
   return (
     <>
