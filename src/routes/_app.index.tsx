@@ -19,6 +19,8 @@ import { useState } from "react";
 
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
+import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCards";
+
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
