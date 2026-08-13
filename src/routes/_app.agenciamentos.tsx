@@ -16,7 +16,9 @@ import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoB
 import { AgenciamentoBonusRegistryDrawer } from "@/components/agenciamentos/AgenciamentoBonusRegistryDrawer";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
+import { AgenciamentoPrintReport } from "@/components/agenciamentos/AgenciamentoPrintReport";
 import {
+
   AgenciamentoFilters,
   AgenciamentoSearchField,
 } from "@/components/agenciamentos/AgenciamentoFilters";
