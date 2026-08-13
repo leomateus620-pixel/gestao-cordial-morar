@@ -512,6 +512,17 @@ function Page() {
   const periodLabel = getAgenciamentoPeriodLabel(filters.periodo);
   const hasRecords = visibleAgenciamentos.length > 0;
   const hasFilteredResults = agenciamentos.length > 0;
+  const printCorretorNome =
+    corretores.find((corretor) => corretor.id === filters.corretorId)?.nome ??
+    agenciamentos[0]?.corretorNome ??
+    "";
+  const canPrintReport = isAdmin && filters.corretorId !== "todos";
+  const trackLabel = showingUnclassified
+    ? "Sem classificação"
+    : track === "aluguel"
+      ? "Aluguel"
+      : "Venda";
+
 
   return (
     <>
