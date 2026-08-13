@@ -2880,7 +2880,18 @@ html,
   html,
   body {
     background: #fff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
+
+  body:has(#agenciamento-print-report)::before,
+  body:has(#agenciamento-print-report)::after {
+    display: none !important;
+    content: none !important;
+  }
+
 
   body:has(#agenciamento-print-report) > *:not(#agenciamento-print-report) {
     display: none !important;
