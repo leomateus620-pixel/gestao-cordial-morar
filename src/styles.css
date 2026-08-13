@@ -2882,23 +2882,20 @@ html,
     background: #fff !important;
   }
 
-  body * {
-    visibility: hidden !important;
-    box-shadow: none !important;
-  }
-
-  #agenciamento-print-report,
-  #agenciamento-print-report * {
-    visibility: visible !important;
+  body:has(#agenciamento-print-report) > *:not(#agenciamento-print-report) {
+    display: none !important;
   }
 
   #agenciamento-print-report {
-    position: absolute;
-    top: 0;
-    left: 0;
+    display: block !important;
+    position: static;
     width: 100%;
     color: #111;
     font-size: 10.5pt;
+  }
+
+  #agenciamento-print-report * {
+    box-shadow: none !important;
   }
 
   .print-report-header {

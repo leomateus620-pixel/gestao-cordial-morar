@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   formatPhoneBR,
   getAgenciamentoImobiliariaLabel,
@@ -44,6 +46,9 @@ export function AgenciamentoPrintReport({
   corretorNome: string;
   trackLabel: string;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const generatedAt = new Date().toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -68,7 +73,9 @@ export function AgenciamentoPrintReport({
     extraFilters.push(`Busca: "${filters.busca.trim()}"`);
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div id={AGENCIAMENTO_PRINT_ID} className="hidden print:block" aria-hidden="true">
       <header className="print-report-header">
         <h1>Relação de imóveis captados</h1>
@@ -165,7 +172,8 @@ export function AgenciamentoPrintReport({
         Gestão Cordial · Relatório de agenciamentos · {corretorNome} ·{" "}
         {getAgenciamentoPeriodLabel(filters.periodo)}
       </footer>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
