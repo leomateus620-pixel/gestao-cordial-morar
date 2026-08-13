@@ -6,6 +6,8 @@ import {
   Loader2,
   LockKeyhole,
   Plus,
+  Printer,
+
   RefreshCw,
   SearchX,
 } from "lucide-react";
@@ -14,7 +16,9 @@ import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoB
 import { AgenciamentoBonusRegistryDrawer } from "@/components/agenciamentos/AgenciamentoBonusRegistryDrawer";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
+import { AgenciamentoPrintReport } from "@/components/agenciamentos/AgenciamentoPrintReport";
 import {
+
   AgenciamentoFilters,
   AgenciamentoSearchField,
 } from "@/components/agenciamentos/AgenciamentoFilters";
@@ -508,6 +512,17 @@ function Page() {
   const periodLabel = getAgenciamentoPeriodLabel(filters.periodo);
   const hasRecords = visibleAgenciamentos.length > 0;
   const hasFilteredResults = agenciamentos.length > 0;
+  const printCorretorNome =
+    corretores.find((corretor) => corretor.id === filters.corretorId)?.nome ??
+    agenciamentos[0]?.corretorNome ??
+    "";
+  const canPrintReport = isAdmin && filters.corretorId !== "todos";
+  const trackLabel = showingUnclassified
+    ? "Sem classificação"
+    : track === "aluguel"
+      ? "Aluguel"
+      : "Venda";
+
 
   return (
     <>
@@ -678,8 +693,33 @@ function Page() {
                 onFiltersChange={setFilters}
                 onReset={resetFilters}
               />
+              {canPrintReport && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.print()}
+                  disabled={agenciamentos.length === 0}
+                  aria-label={`Imprimir relatório de ${printCorretorNome}`}
+                  className="h-11 shrink-0 rounded-xl border-foreground/10 bg-white px-4 text-sm font-bold text-foreground/75 shadow-none transition-[border-color,background-color,transform] duration-150 ease-out hover:border-foreground/20 active:scale-[0.98] disabled:opacity-50"
+                >
+                  <Printer className="size-4" />
+                  Imprimir / PDF
+                </Button>
+              )}
             </div>
+
           </div>
+
+          {canPrintReport && (
+            <AgenciamentoPrintReport
+              agenciamentos={agenciamentos}
+              filters={filters}
+              corretorNome={printCorretorNome}
+              trackLabel={trackLabel}
+            />
+          )}
+
+
 
 
           {isLoading && <AgenciamentoListSkeleton />}
