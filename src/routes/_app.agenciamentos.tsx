@@ -6,6 +6,8 @@ import {
   Loader2,
   LockKeyhole,
   Plus,
+  Printer,
+
   RefreshCw,
   SearchX,
 } from "lucide-react";
