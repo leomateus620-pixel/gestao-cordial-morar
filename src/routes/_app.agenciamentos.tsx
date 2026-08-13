@@ -710,6 +710,17 @@ function Page() {
 
           </div>
 
+          {canPrintReport && (
+            <AgenciamentoPrintReport
+              agenciamentos={agenciamentos}
+              filters={filters}
+              corretorNome={printCorretorNome}
+              trackLabel={trackLabel}
+            />
+          )}
+
+
+
 
           {isLoading && <AgenciamentoListSkeleton />}
 
