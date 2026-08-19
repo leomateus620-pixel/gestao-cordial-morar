@@ -43,7 +43,8 @@ async function assertProviderScope(
 
 async function kickWorker() {
   try {
-    const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"];
+    const secret =
+      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
