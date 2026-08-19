@@ -131,6 +131,10 @@ function Page() {
         </div>
       </section>
 
+      <PropertyPublishPanel propertyId={imovel.id} canPublish={canPublish} isAdmin={isAdmin} />
+
+
+
       <section className="glass-panel rounded-3xl p-4">
         <h2 className="mb-3 text-sm font-bold">Origem do registro</h2>
         <div className="space-y-2 text-[12px] text-foreground/60">
