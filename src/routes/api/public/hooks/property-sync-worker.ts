@@ -10,15 +10,18 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-worker")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"];
-        if (!secret) {
-          return Response.json({ error: "Worker secret not configured" }, { status: 503 });
+        const accepted = [
+          process.env["PROPERTY_SYNC_WORKER_SECRET"],
+          process.env["SUPABASE_PUBLISHABLE_KEY"],
+        ].filter((value): value is string => Boolean(value));
+        if (!accepted.length) {
+          return Response.json({ error: "Worker credentials not configured" }, { status: 503 });
         }
         const provided =
           request.headers.get("apikey") ??
           request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
           "";
-        if (provided !== secret) {
+        if (!accepted.includes(provided)) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
