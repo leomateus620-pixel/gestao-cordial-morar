@@ -42,6 +42,7 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
+import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
@@ -215,6 +216,12 @@ const ApiPublicHooksSalePaymentRemindersRoute =
     path: '/api/public/hooks/sale-payment-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksPropertySyncWorkerRoute =
+  ApiPublicHooksPropertySyncWorkerRouteImport.update({
+    id: '/api/public/hooks/property-sync-worker',
+    path: '/api/public/hooks/property-sync-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksGoogleCalendarSyncRoute =
   ApiPublicHooksGoogleCalendarSyncRouteImport.update({
     id: '/api/public/hooks/google-calendar-sync',
@@ -273,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -351,6 +360,7 @@ export interface FileRoutesById {
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -468,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -486,6 +499,7 @@ export interface RootRouteChildren {
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
+  ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -725,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/property-sync-worker': {
+      id: '/api/public/hooks/property-sync-worker'
+      path: '/api/public/hooks/property-sync-worker'
+      fullPath: '/api/public/hooks/property-sync-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertySyncWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/google-calendar-sync': {
       id: '/api/public/hooks/google-calendar-sync'
       path: '/api/public/hooks/google-calendar-sync'
@@ -841,6 +862,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
+  ApiPublicHooksPropertySyncWorkerRoute: ApiPublicHooksPropertySyncWorkerRoute,
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
