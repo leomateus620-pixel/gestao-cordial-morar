@@ -1559,22 +1559,88 @@ export type Database = {
       }
       properties: {
         Row: {
+          aceita_financiamento: boolean | null
+          acomodacoes: number | null
+          ano_construcao: string | null
           area_construida: number | null
+          area_construida_unidade: string | null
           area_principal: number | null
+          area_privativa: number | null
+          area_privativa_unidade: string | null
           area_terreno: number | null
+          area_terreno_unidade: string | null
           area_tipo: string | null
           area_total: number | null
+          area_total_unidade: string | null
           area_util: number | null
+          autorizacao: boolean | null
+          averbada: boolean | null
           bairro: string | null
           banheiros: number | null
+          caracteristicas: string[]
           carteira: string
+          cep: string | null
           cidade: string | null
           codigo: string | null
+          com_placa: boolean | null
+          complemento: string | null
+          corretor_id: string | null
+          corretor_nome: string | null
           created_at: string
+          created_by: string | null
+          descricao_empreendimento: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          disparar_periodico: boolean | null
+          disponibilidade: string | null
+          disponibilizar_exportacao: boolean | null
           dormitorios: number | null
+          em_condominio: boolean | null
+          entrega_previsao_empreendimento: string | null
+          escriturada: boolean | null
+          estagio_empreendimento: string | null
+          exclusividade: boolean | null
+          exibir_corretor: boolean | null
+          exibir_endereco_portal_personalizado: string[] | null
+          exibir_endereco_site: string | null
+          exibir_endereco_site_personalizado: string[] | null
+          exibir_imovel: boolean
+          finalidade: Database["public"]["Enums"]["property_finalidade"] | null
           id: string
+          inicio_previsao_empreendimento: string | null
+          is_draft: boolean
+          local_chave: string | null
           localizacao_exibida: string | null
+          logradouro: string | null
+          mapa: string | null
+          mobiliado: string | null
+          nome_condominio: string | null
+          nome_empreendimento: string | null
+          numero: string | null
+          numero_andar: string | null
+          numero_torre: string | null
+          observacao_imovel: string | null
           operacao: string
+          origem_captacao: string | null
+          outras_informacoes: string | null
+          pavimento: string | null
+          permuta: boolean | null
+          ponto_referencia: string | null
+          pontos_fortes: string | null
+          portais_convencional: boolean | null
+          portais_destaque: boolean | null
+          portais_super_destaque: boolean | null
+          portais_super_destaque2: boolean | null
+          proprietario_email: string | null
+          proprietario_nome: string | null
+          proprietario_telefone: string | null
+          referencia: string | null
+          regiao: string | null
+          revision: number
+          salas: number | null
+          seo_descricao: string | null
+          seo_titulo: string | null
+          seo_url: string | null
           source: string
           source_catalog_page: number | null
           source_catalog_url: string | null
@@ -1582,31 +1648,117 @@ export type Database = {
           source_property_id: string
           source_property_url: string | null
           suites: number | null
+          super_destaque_inicial: boolean | null
+          tarja_imagem: string | null
+          terreno_direita: number | null
+          terreno_direita_unidade: string | null
+          terreno_esquerda: number | null
+          terreno_esquerda_unidade: string | null
+          terreno_frente: number | null
+          terreno_frente_unidade: string | null
+          terreno_fundo: number | null
+          terreno_fundo_unidade: string | null
           tipo: string | null
+          torre_unica: boolean | null
+          tour_virtual: string | null
+          tratar_empreendimento: boolean | null
           uf: string | null
+          unidade: string | null
           updated_at: string
           vagas: number | null
           valor: number | null
+          valor_condominio: number | null
           valor_exibido: string | null
+          valor_iptu: number | null
           valor_modo: string
+          valor_observacao: string | null
+          valor_taxas: number | null
+          video: string | null
+          zona: string | null
         }
         Insert: {
+          aceita_financiamento?: boolean | null
+          acomodacoes?: number | null
+          ano_construcao?: string | null
           area_construida?: number | null
+          area_construida_unidade?: string | null
           area_principal?: number | null
+          area_privativa?: number | null
+          area_privativa_unidade?: string | null
           area_terreno?: number | null
+          area_terreno_unidade?: string | null
           area_tipo?: string | null
           area_total?: number | null
+          area_total_unidade?: string | null
           area_util?: number | null
+          autorizacao?: boolean | null
+          averbada?: boolean | null
           bairro?: string | null
           banheiros?: number | null
+          caracteristicas?: string[]
           carteira?: string
+          cep?: string | null
           cidade?: string | null
           codigo?: string | null
+          com_placa?: boolean | null
+          complemento?: string | null
+          corretor_id?: string | null
+          corretor_nome?: string | null
           created_at?: string
+          created_by?: string | null
+          descricao_empreendimento?: string | null
+          descricao_imovel?: string | null
+          destaque_inicial?: boolean | null
+          disparar_periodico?: boolean | null
+          disponibilidade?: string | null
+          disponibilizar_exportacao?: boolean | null
           dormitorios?: number | null
+          em_condominio?: boolean | null
+          entrega_previsao_empreendimento?: string | null
+          escriturada?: boolean | null
+          estagio_empreendimento?: string | null
+          exclusividade?: boolean | null
+          exibir_corretor?: boolean | null
+          exibir_endereco_portal_personalizado?: string[] | null
+          exibir_endereco_site?: string | null
+          exibir_endereco_site_personalizado?: string[] | null
+          exibir_imovel?: boolean
+          finalidade?: Database["public"]["Enums"]["property_finalidade"] | null
           id?: string
+          inicio_previsao_empreendimento?: string | null
+          is_draft?: boolean
+          local_chave?: string | null
           localizacao_exibida?: string | null
+          logradouro?: string | null
+          mapa?: string | null
+          mobiliado?: string | null
+          nome_condominio?: string | null
+          nome_empreendimento?: string | null
+          numero?: string | null
+          numero_andar?: string | null
+          numero_torre?: string | null
+          observacao_imovel?: string | null
           operacao?: string
+          origem_captacao?: string | null
+          outras_informacoes?: string | null
+          pavimento?: string | null
+          permuta?: boolean | null
+          ponto_referencia?: string | null
+          pontos_fortes?: string | null
+          portais_convencional?: boolean | null
+          portais_destaque?: boolean | null
+          portais_super_destaque?: boolean | null
+          portais_super_destaque2?: boolean | null
+          proprietario_email?: string | null
+          proprietario_nome?: string | null
+          proprietario_telefone?: string | null
+          referencia?: string | null
+          regiao?: string | null
+          revision?: number
+          salas?: number | null
+          seo_descricao?: string | null
+          seo_titulo?: string | null
+          seo_url?: string | null
           source?: string
           source_catalog_page?: number | null
           source_catalog_url?: string | null
@@ -1614,31 +1766,117 @@ export type Database = {
           source_property_id: string
           source_property_url?: string | null
           suites?: number | null
+          super_destaque_inicial?: boolean | null
+          tarja_imagem?: string | null
+          terreno_direita?: number | null
+          terreno_direita_unidade?: string | null
+          terreno_esquerda?: number | null
+          terreno_esquerda_unidade?: string | null
+          terreno_frente?: number | null
+          terreno_frente_unidade?: string | null
+          terreno_fundo?: number | null
+          terreno_fundo_unidade?: string | null
           tipo?: string | null
+          torre_unica?: boolean | null
+          tour_virtual?: string | null
+          tratar_empreendimento?: boolean | null
           uf?: string | null
+          unidade?: string | null
           updated_at?: string
           vagas?: number | null
           valor?: number | null
+          valor_condominio?: number | null
           valor_exibido?: string | null
+          valor_iptu?: number | null
           valor_modo?: string
+          valor_observacao?: string | null
+          valor_taxas?: number | null
+          video?: string | null
+          zona?: string | null
         }
         Update: {
+          aceita_financiamento?: boolean | null
+          acomodacoes?: number | null
+          ano_construcao?: string | null
           area_construida?: number | null
+          area_construida_unidade?: string | null
           area_principal?: number | null
+          area_privativa?: number | null
+          area_privativa_unidade?: string | null
           area_terreno?: number | null
+          area_terreno_unidade?: string | null
           area_tipo?: string | null
           area_total?: number | null
+          area_total_unidade?: string | null
           area_util?: number | null
+          autorizacao?: boolean | null
+          averbada?: boolean | null
           bairro?: string | null
           banheiros?: number | null
+          caracteristicas?: string[]
           carteira?: string
+          cep?: string | null
           cidade?: string | null
           codigo?: string | null
+          com_placa?: boolean | null
+          complemento?: string | null
+          corretor_id?: string | null
+          corretor_nome?: string | null
           created_at?: string
+          created_by?: string | null
+          descricao_empreendimento?: string | null
+          descricao_imovel?: string | null
+          destaque_inicial?: boolean | null
+          disparar_periodico?: boolean | null
+          disponibilidade?: string | null
+          disponibilizar_exportacao?: boolean | null
           dormitorios?: number | null
+          em_condominio?: boolean | null
+          entrega_previsao_empreendimento?: string | null
+          escriturada?: boolean | null
+          estagio_empreendimento?: string | null
+          exclusividade?: boolean | null
+          exibir_corretor?: boolean | null
+          exibir_endereco_portal_personalizado?: string[] | null
+          exibir_endereco_site?: string | null
+          exibir_endereco_site_personalizado?: string[] | null
+          exibir_imovel?: boolean
+          finalidade?: Database["public"]["Enums"]["property_finalidade"] | null
           id?: string
+          inicio_previsao_empreendimento?: string | null
+          is_draft?: boolean
+          local_chave?: string | null
           localizacao_exibida?: string | null
+          logradouro?: string | null
+          mapa?: string | null
+          mobiliado?: string | null
+          nome_condominio?: string | null
+          nome_empreendimento?: string | null
+          numero?: string | null
+          numero_andar?: string | null
+          numero_torre?: string | null
+          observacao_imovel?: string | null
           operacao?: string
+          origem_captacao?: string | null
+          outras_informacoes?: string | null
+          pavimento?: string | null
+          permuta?: boolean | null
+          ponto_referencia?: string | null
+          pontos_fortes?: string | null
+          portais_convencional?: boolean | null
+          portais_destaque?: boolean | null
+          portais_super_destaque?: boolean | null
+          portais_super_destaque2?: boolean | null
+          proprietario_email?: string | null
+          proprietario_nome?: string | null
+          proprietario_telefone?: string | null
+          referencia?: string | null
+          regiao?: string | null
+          revision?: number
+          salas?: number | null
+          seo_descricao?: string | null
+          seo_titulo?: string | null
+          seo_url?: string | null
           source?: string
           source_catalog_page?: number | null
           source_catalog_url?: string | null
@@ -1646,13 +1884,416 @@ export type Database = {
           source_property_id?: string
           source_property_url?: string | null
           suites?: number | null
+          super_destaque_inicial?: boolean | null
+          tarja_imagem?: string | null
+          terreno_direita?: number | null
+          terreno_direita_unidade?: string | null
+          terreno_esquerda?: number | null
+          terreno_esquerda_unidade?: string | null
+          terreno_frente?: number | null
+          terreno_frente_unidade?: string | null
+          terreno_fundo?: number | null
+          terreno_fundo_unidade?: string | null
           tipo?: string | null
+          torre_unica?: boolean | null
+          tour_virtual?: string | null
+          tratar_empreendimento?: boolean | null
           uf?: string | null
+          unidade?: string | null
           updated_at?: string
           vagas?: number | null
           valor?: number | null
+          valor_condominio?: number | null
           valor_exibido?: string | null
+          valor_iptu?: number | null
           valor_modo?: string
+          valor_observacao?: string | null
+          valor_taxas?: number | null
+          video?: string | null
+          zona?: string | null
+        }
+        Relationships: []
+      }
+      property_image_provider_publications: {
+        Row: {
+          content_hash: string | null
+          created_at: string
+          external_image_id: string | null
+          id: string
+          image_id: string
+          is_cover: boolean
+          last_error_message: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_id: string
+          remote_url: string | null
+          status: string
+          synced_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string
+          external_image_id?: string | null
+          id?: string
+          image_id: string
+          is_cover?: boolean
+          last_error_message?: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_id: string
+          remote_url?: string | null
+          status?: string
+          synced_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string
+          external_image_id?: string | null
+          id?: string
+          image_id?: string
+          is_cover?: boolean
+          last_error_message?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          publication_id?: string
+          remote_url?: string | null
+          status?: string
+          synced_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_provider_publications_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_provider_publications_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "property_provider_publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_images: {
+        Row: {
+          content_hash: string | null
+          created_at: string
+          file_name: string
+          id: string
+          is_cover: boolean
+          mime_type: string | null
+          position: number
+          property_id: string
+          size_bytes: number | null
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_hash?: string | null
+          created_at?: string
+          file_name: string
+          id?: string
+          is_cover?: boolean
+          mime_type?: string | null
+          position?: number
+          property_id: string
+          size_bytes?: number | null
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_hash?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          is_cover?: boolean
+          mime_type?: string | null
+          position?: number
+          property_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_provider_publications: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          external_property_id: string | null
+          external_public_url: string | null
+          external_reference: string
+          id: string
+          last_error_category: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          last_payload_hash: string | null
+          last_synced_at: string | null
+          last_synced_revision: number | null
+          last_verified_at: string | null
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          status: Database["public"]["Enums"]["property_publication_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          external_property_id?: string | null
+          external_public_url?: string | null
+          external_reference: string
+          id?: string
+          last_error_category?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_payload_hash?: string | null
+          last_synced_at?: string | null
+          last_synced_revision?: number | null
+          last_verified_at?: string | null
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          status?: Database["public"]["Enums"]["property_publication_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          external_property_id?: string | null
+          external_public_url?: string | null
+          external_reference?: string
+          id?: string
+          last_error_category?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_payload_hash?: string | null
+          last_synced_at?: string | null
+          last_synced_revision?: number | null
+          last_verified_at?: string | null
+          property_id?: string
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          status?: Database["public"]["Enums"]["property_publication_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_provider_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sync_attempts: {
+        Row: {
+          attempt_number: number
+          correlation_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_category: string | null
+          error_message: string | null
+          http_status: number | null
+          id: string
+          job_id: string
+          ok: boolean
+          step: string | null
+        }
+        Insert: {
+          attempt_number: number
+          correlation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_category?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          job_id: string
+          ok?: boolean
+          step?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          correlation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_category?: string | null
+          error_message?: string | null
+          http_status?: number | null
+          id?: string
+          job_id?: string
+          ok?: boolean
+          step?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sync_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "property_sync_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_sync_jobs: {
+        Row: {
+          action: Database["public"]["Enums"]["property_sync_action"]
+          attempts: number
+          correlation_id: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          last_error_category: string | null
+          last_error_message: string | null
+          last_http_status: number | null
+          lock_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          next_run_at: string
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          requested_by: string | null
+          requested_revision: number
+          status: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["property_sync_action"]
+          attempts?: number
+          correlation_id?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          last_error_category?: string | null
+          last_error_message?: string | null
+          last_http_status?: number | null
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          next_run_at?: string
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          requested_by?: string | null
+          requested_revision?: number
+          status?: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at?: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["property_sync_action"]
+          attempts?: number
+          correlation_id?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          last_error_category?: string | null
+          last_error_message?: string | null
+          last_http_status?: number | null
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          next_run_at?: string
+          property_id?: string
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          requested_by?: string | null
+          requested_revision?: number
+          status?: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_sync_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_catalog_items: {
+        Row: {
+          external_code: string
+          group_name: string | null
+          id: string
+          kind: string
+          label: string
+          normalized_label: string
+          payload: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          synced_at: string
+        }
+        Insert: {
+          external_code: string
+          group_name?: string | null
+          id?: string
+          kind: string
+          label: string
+          normalized_label: string
+          payload?: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          synced_at?: string
+        }
+        Update: {
+          external_code?: string
+          group_name?: string | null
+          id?: string
+          kind?: string
+          label?: string
+          normalized_label?: string
+          payload?: Json
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      provider_value_maps: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          domain: string
+          external_code: string
+          id: string
+          local_key: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          updated_at: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          domain: string
+          external_code: string
+          id?: string
+          local_key: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          updated_at?: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          domain?: string
+          external_code?: string
+          id?: string
+          local_key?: string
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2815,6 +3456,37 @@ export type Database = {
         }
         Returns: number
       }
+      property_sync_claim_jobs: {
+        Args: { _lease_seconds?: number; _limit?: number; _worker: string }
+        Returns: {
+          action: Database["public"]["Enums"]["property_sync_action"]
+          attempts: number
+          correlation_id: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          last_error_category: string | null
+          last_error_message: string | null
+          last_http_status: number | null
+          lock_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          next_run_at: string
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          requested_by: string | null
+          requested_revision: number
+          status: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "property_sync_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -2857,6 +3529,7 @@ export type Database = {
         | "opened"
         | "superseded"
         | "cancelled"
+      imobi_provider: "cordial" | "morar"
       pipeline_stage:
         | "primeiro_contato"
         | "apresentando_solucao"
@@ -2866,6 +3539,29 @@ export type Database = {
         | "perdido"
         | "arquivado"
         | "em_espera"
+      property_finalidade: "venda" | "locacao" | "temporada"
+      property_publication_status:
+        | "draft"
+        | "pending"
+        | "syncing"
+        | "published"
+        | "partial"
+        | "error"
+        | "out_of_sync"
+        | "unpublished"
+      property_sync_action:
+        | "publish"
+        | "update"
+        | "unpublish"
+        | "delete"
+        | "reconcile"
+      property_sync_job_status:
+        | "pending"
+        | "processing"
+        | "retry"
+        | "succeeded"
+        | "failed"
+        | "cancelled"
       rental_brand: "cordial" | "morar" | "ambas"
       rental_contract_status:
         | "ativo"
@@ -3056,6 +3752,7 @@ export const Constants = {
         "superseded",
         "cancelled",
       ],
+      imobi_provider: ["cordial", "morar"],
       pipeline_stage: [
         "primeiro_contato",
         "apresentando_solucao",
@@ -3065,6 +3762,32 @@ export const Constants = {
         "perdido",
         "arquivado",
         "em_espera",
+      ],
+      property_finalidade: ["venda", "locacao", "temporada"],
+      property_publication_status: [
+        "draft",
+        "pending",
+        "syncing",
+        "published",
+        "partial",
+        "error",
+        "out_of_sync",
+        "unpublished",
+      ],
+      property_sync_action: [
+        "publish",
+        "update",
+        "unpublish",
+        "delete",
+        "reconcile",
+      ],
+      property_sync_job_status: [
+        "pending",
+        "processing",
+        "retry",
+        "succeeded",
+        "failed",
+        "cancelled",
       ],
       rental_brand: ["cordial", "morar", "ambas"],
       rental_contract_status: [
