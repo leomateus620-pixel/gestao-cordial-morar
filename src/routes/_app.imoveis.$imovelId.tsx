@@ -19,6 +19,9 @@ export const Route = createFileRoute("/_app/imoveis/$imovelId")({
 
 function Page() {
   const { imovelId } = Route.useParams();
+  const session = useSession();
+  const isAdmin = isAdminUser(session);
+  const canPublish = isAdmin || session?.perfil === "corretor" || session?.perfil === "secretaria";
   const { data: imovel, isPending, isError, error } = useImovel(imovelId);
 
   if (isPending) {
