@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Bath, Bed, Car, ExternalLink, ImageOff, MapPin, Maximize2 } from "lucide-react";
 import { brl } from "@/lib/format";
 import { useImovel } from "@/hooks/useImoveis";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
+import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
 import { formatArea, propertyLocalidade, NAO_INFORMADO } from "@/types/property";
 
 export const Route = createFileRoute("/_app/imoveis/$imovelId")({
@@ -16,6 +19,9 @@ export const Route = createFileRoute("/_app/imoveis/$imovelId")({
 
 function Page() {
   const { imovelId } = Route.useParams();
+  const session = useSession();
+  const isAdmin = isAdminUser(session);
+  const canPublish = isAdmin || session?.perfil === "corretor" || session?.perfil === "secretaria";
   const { data: imovel, isPending, isError, error } = useImovel(imovelId);
 
   if (isPending) {
@@ -124,6 +130,10 @@ function Page() {
           <Metric label="UF" value={imovel.uf} />
         </div>
       </section>
+
+      <PropertyPublishPanel propertyId={imovel.id} canPublish={canPublish} isAdmin={isAdmin} />
+
+
 
       <section className="glass-panel rounded-3xl p-4">
         <h2 className="mb-3 text-sm font-bold">Origem do registro</h2>

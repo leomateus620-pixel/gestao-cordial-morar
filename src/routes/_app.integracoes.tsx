@@ -7,6 +7,9 @@ import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
 
 import { useApp, useFiltered } from "@/store/app-store";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
+import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
@@ -26,6 +29,7 @@ function GuardedPage() {
 
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todas");
+  const isAdmin = isAdminUser(useSession());
   const integracoes = useFiltered(useApp((s) => s.integracoes));
   const list = integracoes.filter((i) => filter === "Todas" || i.status === filter);
   const conectadas = integracoes.filter((i) => i.status === "Conectada").length;
@@ -37,6 +41,8 @@ function Page() {
 
   return (
     <>
+      <ProvidersHealthCard enabled={isAdmin} />
+
       <section className="mb-5 grid grid-cols-3 gap-3">
 
 
