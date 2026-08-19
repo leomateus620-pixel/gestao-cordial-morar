@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Bath, Bed, Car, ExternalLink, ImageOff, MapPin, Maximize2 } from "lucide-react";
 import { brl } from "@/lib/format";
 import { useImovel } from "@/hooks/useImoveis";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
+import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
 import { formatArea, propertyLocalidade, NAO_INFORMADO } from "@/types/property";
 
 export const Route = createFileRoute("/_app/imoveis/$imovelId")({
