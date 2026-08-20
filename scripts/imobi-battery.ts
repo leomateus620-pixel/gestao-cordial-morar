@@ -136,6 +136,23 @@ async function run() {
   if (step === "unpublish" || step === "all") {
     console.log("unpublish:", await processJob(admin, job(propertyId, "unpublish")));
   }
+  if (step === "concurrency") {
+    const { runSyncWorker } = await import("@/lib/imobibrasil/sync.server");
+    await admin.from("property_sync_jobs").insert({
+      property_id: propertyId,
+      provider,
+      action: "reconcile",
+      requested_revision: 99,
+      status: "pending",
+      next_run_at: new Date().toISOString(),
+    });
+    const [a, b] = await Promise.all([
+      runSyncWorker(admin, { limit: 5, workerId: "qa-a" }),
+      runSyncWorker(admin, { limit: 5, workerId: "qa-b" }),
+    ]);
+    console.log("worker A:", JSON.stringify(a));
+    console.log("worker B:", JSON.stringify(b));
+  }
   if (step === "cleanup") {
     console.log("delete remoto:", await processJob(admin, job(propertyId, "delete")));
     await admin.from("property_provider_publications").delete().eq("property_id", propertyId);
