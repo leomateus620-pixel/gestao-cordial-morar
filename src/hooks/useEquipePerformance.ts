@@ -21,7 +21,7 @@ const EMPTY: EquipePerformanceResult = {
   periodoFim: new Date().toISOString(),
   generatedAt: new Date().toISOString(),
   rows: [],
-  unattributed: { sales: 0, rentals: 0 },
+  unattributed: { sales: 0, rentals: 0, attendances: 0 },
   sourceStatus: {
     atendimentos: "ready",
     agenda: "ready",
