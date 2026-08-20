@@ -124,6 +124,14 @@ export type CorretorResponseRecord = {
   pendingCount: number;
 };
 
+export type CorretorBonusRecord = {
+  id: string;
+  brokerId: string | null;
+  status: string;
+  categoria: string;
+  periodoRef: string | null;
+};
+
 export type CorretoresOperationalSources = {
   roster: CorretorRosterRecord[];
   attendances: CorretorAttendanceRecord[];
@@ -135,6 +143,7 @@ export type CorretoresOperationalSources = {
   commissionInstallments: CorretorCommissionInstallmentRecord[];
   rentals: CorretorRentalRecord[];
   responses: CorretorResponseRecord[];
+  bonuses?: CorretorBonusRecord[];
 };
 
 export type CorretorPeriodRange = {
@@ -157,6 +166,7 @@ const READY_SOURCES: CorretorSourceStatus = {
   vendas: "ready",
   alugueis: "ready",
   respostas: "ready",
+  bonificacoes: "ready",
 };
 
 const sortAccessors: Record<CorretorSortKey, (corretor: Corretor) => number> = {
@@ -166,6 +176,7 @@ const sortAccessors: Record<CorretorSortKey, (corretor: Corretor) => number> = {
   comissao: (corretor) =>
     corretor.comissaoPrevistaDisponivel ? corretor.comissaoPrevista : Number.NEGATIVE_INFINITY,
   agenciamentos: (corretor) => corretor.agenciamentosFeitos,
+  bonificacoes: (corretor) => corretor.bonificacoesTotal,
 };
 
 function asNumber(value: unknown, fallback = 0) {
@@ -339,6 +350,9 @@ function createEmptyCorretor(profile: CorretorRosterRecord): Corretor {
     agenciamentosNoSite: 0,
     agenciamentosValidados: 0,
     agenciamentosChecklistPercent: 0,
+    bonificacoesTotal: 0,
+    bonificacoesPagas: 0,
+    bonificacoesPendentes: 0,
     comissaoPrevista: 0,
     comissaoPaga: 0,
     comissaoMes: 0,
@@ -404,6 +418,9 @@ export function normalizeCorretor(input: LegacyCorretor): Corretor {
     agenciamentosNoSite: asNumber(input.agenciamentosNoSite),
     agenciamentosValidados: asNumber(input.agenciamentosValidados),
     agenciamentosChecklistPercent: asNumber(input.agenciamentosChecklistPercent),
+    bonificacoesTotal: asNumber(input.bonificacoesTotal),
+    bonificacoesPagas: asNumber(input.bonificacoesPagas),
+    bonificacoesPendentes: asNumber(input.bonificacoesPendentes),
     comissaoPrevista: asNumber(input.comissaoPrevista),
     comissaoPaga: paidCommission,
     comissaoMes: asNumber(input.comissaoMes),
@@ -654,6 +671,16 @@ export function buildCorretoresOperationalModel({
         : 0;
   }
 
+  for (const bonus of sources.bonuses ?? []) {
+    if (!bonus.brokerId) continue;
+    const corretor = byId.get(bonus.brokerId);
+    if (!corretor) continue;
+    if (bonus.status === "cancelada") continue;
+    corretor.bonificacoesTotal += 1;
+    if (bonus.status === "paga") corretor.bonificacoesPagas += 1;
+    else corretor.bonificacoesPendentes += 1;
+  }
+
   const installmentsBySale = new Map<string, CorretorCommissionInstallmentRecord[]>();
   let unattributedSales = 0;
   let unattributedRentals = 0;
@@ -839,6 +866,7 @@ export function getCorretorSortLabel(sort: CorretorSortKey) {
     atendimentos: "Atendimentos recebidos",
     comissao: "Comissão prevista",
     agenciamentos: "Agenciamentos",
+    bonificacoes: "Bonificações conquistadas",
   };
   return labels[sort];
 }
@@ -926,6 +954,9 @@ export function calculateCorretoresSummary(corretores: Corretor[]): CorretoresSu
     agendaProximos: 0,
     agenciamentosFeitos: 0,
     agenciamentosChecklistPercent: 0,
+    bonificacoesTotal: 0,
+    bonificacoesPagas: 0,
+    bonificacoesPendentes: 0,
     comissaoPrevista: 0,
     comissaoPrevistaDisponivel: true,
     comissaoPaga: 0,
@@ -949,6 +980,9 @@ export function calculateCorretoresSummary(corretores: Corretor[]): CorretoresSu
     summary.alugueisFechados += corretor.alugueisFechados;
     summary.agendaProximos += corretor.agendaProximos;
     summary.agenciamentosFeitos += corretor.agenciamentosFeitos;
+    summary.bonificacoesTotal += corretor.bonificacoesTotal;
+    summary.bonificacoesPagas += corretor.bonificacoesPagas;
+    summary.bonificacoesPendentes += corretor.bonificacoesPendentes;
     summary.comissaoPrevista += corretor.comissaoPrevista;
     if (!corretor.comissaoPrevistaDisponivel) summary.comissaoPrevistaDisponivel = false;
     if (corretor.comissaoPagaDisponivel && corretor.comissaoPaga != null) {
