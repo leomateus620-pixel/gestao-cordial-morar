@@ -788,6 +788,7 @@ export function buildCorretoresOperationalModel({
     corretor.respostaMaisLentaSegundos = asNullableNumber(metric.slowestSeconds);
     corretor.respostasMedidas = asNumber(metric.completedCount);
     corretor.respostasPendentes = asNumber(metric.pendingCount);
+    corretor.respostasForaDoPrazo = asNumber(metric.lateCount);
   }
 
   for (const corretor of rows) {
