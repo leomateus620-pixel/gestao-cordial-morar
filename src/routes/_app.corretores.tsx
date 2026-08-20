@@ -109,8 +109,8 @@ function Page() {
       ? sourceStatus.atendimentos === "error"
       : filters.ordenacao === "agenciamentos"
         ? sourceStatus.agenciamentos === "error"
-        : filters.ordenacao === "comissao"
-          ? sourceStatus.vendas === "error"
+        : filters.ordenacao === "bonificacoes"
+          ? sourceStatus.bonificacoes === "error"
           : !contractsReady;
 
   const handleSelect = useCallback((corretor: Corretor) => {
@@ -166,10 +166,10 @@ function Page() {
         } as never);
         return;
       }
-      if (target === "comissoes") {
+      if (target === "sem-corretor") {
         void navigate({
-          to: "/vendas",
-          search: destinationSearch(undefined, "todos"),
+          to: "/atendimentos",
+          search: destinationSearch("nao_atribuidos", "todos"),
         } as never);
         return;
       }
