@@ -31,13 +31,15 @@ const LABEL_KEYS = [
   "descricao",
   "descricaoTipoImovel",
   "descricaoCaracteristica",
+  "nomeCaracteristica",
+  "nomeTipoImovel",
   "nome",
   "nomeCidade",
   "cidade",
   "titulo",
   "label",
 ];
-const GROUP_KEYS = ["grupo", "categoria", "estado", "uf", "sigla", "grupoCaracteristica"];
+const GROUP_KEYS = ["nomeGrupo", "grupo", "categoria", "estado", "uf", "sigla", "siglaEstado", "grupoCaracteristica"];
 
 function pickString(record: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
