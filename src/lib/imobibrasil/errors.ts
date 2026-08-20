@@ -117,6 +117,36 @@ export function categoryForHttpStatus(status: number): ImobiErrorCategory {
   return "unknown";
 }
 
+/**
+ * A ImobiBrasil devolve três mensagens diferentes de autenticação e cada uma
+ * exige uma ação distinta. Sem essa tradução, o painel mostrava sempre
+ * "Token inválido" e a causa real ficava invisível para o operador.
+ */
+export function explainProviderMessage(message: string, status: number | null): string {
+  const normalized = message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (normalized.includes("token invalido")) {
+    return `${message} O token não existe na base da ImobiBrasil: gere um novo no painel desta conta (com o pacote de API ativo).`;
+  }
+  if (normalized.includes("nao tem permissao")) {
+    return `${message} O token é reconhecido, mas pertence a outra conta ou não tem o pacote de API liberado para este site.`;
+  }
+  if (normalized.includes("informe o token")) {
+    return `${message} O cabeçalho "token" não chegou ao provedor.`;
+  }
+  if (normalized.includes("url invalida")) {
+    return `${message} Endpoint inexistente nesta versão da API.`;
+  }
+  if (status === 401 || status === 403) {
+    return `${message} Verifique o token e o pacote de API desta conta.`;
+  }
+  return message;
+}
+
+
 export function toImobiError(error: unknown): ImobiApiError {
   if (error instanceof ImobiApiError) return error;
   if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
