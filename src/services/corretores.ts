@@ -956,6 +956,8 @@ export function calculateCorretoresSummary(corretores: Corretor[]): CorretoresSu
     visitasRealizadas: 0,
     propostasFeitas: 0,
     contratosFechados: 0,
+    contratosDeAtendimento: 0,
+    respostasForaDoPrazo: 0,
     vendasFechadas: 0,
     alugueisFechados: 0,
     agendaProximos: 0,
