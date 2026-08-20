@@ -6,7 +6,7 @@
  *  - campos vazios são omitidos (nunca `null`, `""` ou `0` implícito);
  *  - decimais de área viajam como string com vírgula (`140,80`);
  *  - dinheiro viaja em reais inteiros, sem centavos implícitos;
- *  - booleanos viajam como `sim` / `não` (com acento) nos campos JSON;
+ *  - booleanos viajam como `sim` / `nao` (sem acento) nos campos JSON — validado contra a API real;
  *  - `exibirEnderecoSite` usa exatamente `Personalizado` (P maiúsculo);
  *  - `tipoareaConstruida` mantém o `a` minúsculo do contrato;
  *  - `descricaoTipoImovel` só existe na criação.
@@ -135,10 +135,10 @@ export function toFinalidade(property: LocalPropertyForSync): ImobiFinalidade {
   return property.operacao === "aluguel" ? "locacao" : "venda";
 }
 
-/** `sim` / `não` (com acento) — formato dos campos JSON do contrato. */
-export function boolToSimNao(value: boolean | null | undefined): "sim" | "não" | undefined {
+/** `sim` / `nao` — formato aceito pela API (o valor com acento é recusado). */
+export function boolToSimNao(value: boolean | null | undefined): "sim" | "nao" | undefined {
   if (value === null || value === undefined) return undefined;
-  return value ? "sim" : "não";
+  return value ? "sim" : "nao";
 }
 
 /** `sim` / `nao` (sem acento) — exclusivo do multipart de imagem. */

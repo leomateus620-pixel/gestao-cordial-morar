@@ -77,17 +77,18 @@ async function findRemoteByReference(
     : ((response.data as Record<string, unknown>)?.["resultSet"] ??
         (response.data as Record<string, unknown>)?.["data"] ??
         []);
-  const list = Array.isArray(items) ? items : [];
+  const list = Array.isArray(items) ? items : Array.isArray((items as Record<string, unknown>)?.["data"]) ? ((items as Record<string, unknown>)["data"] as unknown[]) : [];
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const record = item as Record<string, unknown>;
-    const remoteRef = String(record["referencia"] ?? "").trim();
+    const remoteRef = String(record["referenciaImovel"] ?? record["referencia"] ?? "").trim();
     if (remoteRef && remoteRef.toUpperCase() !== reference.toUpperCase()) continue;
     const id = extractExternalId(record);
     if (id) return id;
   }
   return null;
 }
+
 
 async function verifyRemote(provider: ImobiProvider, externalId: string, correlationId: string) {
   const response = await imobiRequest(provider, `/imovel/dados/${encodeURIComponent(externalId)}`, {
@@ -367,12 +368,12 @@ export async function processJob(admin: Admin, job: SyncJob) {
 
   // Verificação remota obrigatória antes de marcar como publicado.
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
+  const remoteSet = (remote?.["resultSet"] as Record<string, unknown> | undefined) ?? remote ?? {};
   const remoteReference = String(
-    (remote?.["referencia"] ??
-      (remote?.["resultSet"] as Record<string, unknown> | undefined)?.["referencia"] ??
-      "") as string,
+    (remoteSet["referenciaImovel"] ?? remoteSet["referencia"] ?? remote?.["referencia"] ?? "") as string,
   ).trim();
   const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
+
   const finalStatus = verified && media.failed === 0 ? "published" : "partial";
 
   await admin

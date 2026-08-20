@@ -37,9 +37,9 @@ test("dinheiro em reais inteiros e Consulte nunca vira zero", () => {
   assert.equal(payload["valorImovel"], undefined);
 });
 
-test("booleanos usam sim/não com acento no JSON e sim/nao na imagem", () => {
+test("booleanos usam sim/nao no JSON e sim/nao na imagem", () => {
   assert.equal(boolToSimNao(true), "sim");
-  assert.equal(boolToSimNao(false), "não");
+  assert.equal(boolToSimNao(false), "nao");
   assert.equal(boolToSimNao(null), undefined);
   assert.equal(boolToImageSimNao(true), "sim");
   assert.equal(boolToImageSimNao(false), "nao");

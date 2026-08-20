@@ -31,13 +31,15 @@ const LABEL_KEYS = [
   "descricao",
   "descricaoTipoImovel",
   "descricaoCaracteristica",
+  "nomeCaracteristica",
+  "nomeTipoImovel",
   "nome",
   "nomeCidade",
   "cidade",
   "titulo",
   "label",
 ];
-const GROUP_KEYS = ["grupo", "categoria", "estado", "uf", "sigla", "grupoCaracteristica"];
+const GROUP_KEYS = ["nomeGrupo", "grupo", "categoria", "estado", "uf", "sigla", "siglaEstado", "grupoCaracteristica"];
 
 function pickString(record: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
@@ -115,6 +117,39 @@ export async function fetchAccountStatus(provider: ImobiProvider) {
   }
 }
 
+/** A listagem do provedor é paginada (20 por página); percorremos todas as páginas. */
+async function fetchCatalogPages(
+  provider: ImobiProvider,
+  endpoint: string,
+  maxPages: number,
+): Promise<CatalogItem[]> {
+  const collected: CatalogItem[] = [];
+  const seen = new Set<string>();
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= Math.min(totalPages, maxPages)) {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    const response = await imobiRequest(provider, `${endpoint}${separator}page=${page}`, { method: "GET" });
+    const envelope = (response.data as Record<string, unknown>)?.["resultSet"] as
+      | Record<string, unknown>
+      | undefined;
+    const reported = Number(envelope?.["total_pages"] ?? 1);
+    if (Number.isFinite(reported) && reported > 0) totalPages = reported;
+
+    const items = mapCatalogItems(response.data);
+    if (!items.length) break;
+    for (const item of items) {
+      if (seen.has(item.externalCode)) continue;
+      seen.add(item.externalCode);
+      collected.push(item);
+    }
+    page += 1;
+  }
+
+  return collected;
+}
+
 export async function refreshProviderCatalogs(
   admin: SupabaseClient,
   provider: ImobiProvider,
@@ -122,8 +157,9 @@ export async function refreshProviderCatalogs(
 ) {
   const summary: Record<string, number> = {};
   for (const kind of kinds) {
-    const response = await imobiRequest(provider, CATALOG_ENDPOINTS[kind], { method: "GET" });
-    const items = mapCatalogItems(response.data);
+    // Cidades: o cadastro nacional tem ~5.6 mil itens; a operação é no RS.
+    const endpoint = kind === "city" ? `${CATALOG_ENDPOINTS[kind]}?estado=RS` : CATALOG_ENDPOINTS[kind];
+    const items = await fetchCatalogPages(provider, endpoint, kind === "city" ? 40 : 30);
     summary[kind] = items.length;
     if (!items.length) continue;
     const rows = items.map((item) => ({
@@ -145,6 +181,7 @@ export async function refreshProviderCatalogs(
   }
   return summary;
 }
+
 
 export type CodeResolution = {
   codes: ResolvedProviderCodes;
