@@ -132,6 +132,8 @@ export type CorretoresSummary = {
   visitasRealizadas: number;
   propostasFeitas: number;
   contratosFechados: number;
+  contratosDeAtendimento: number;
+  respostasForaDoPrazo: number;
   vendasFechadas: number;
   alugueisFechados: number;
   agendaProximos: number;
