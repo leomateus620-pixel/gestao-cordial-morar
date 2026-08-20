@@ -250,7 +250,7 @@ export function TeamPerformanceCard({
             />
           </div>
 
-          <div className="mt-4 flex flex-col items-start gap-2 xl:flex-row xl:items-center xl:justify-between">
+          <div className="mt-4 flex flex-col items-start gap-2">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/45">
               <Award className="size-3.5 text-[var(--system-accent-dark)]" aria-hidden />
               Ranking
