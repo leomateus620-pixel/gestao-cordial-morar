@@ -28,10 +28,6 @@ function clampPercentage(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function availableMoney(value: number | null, available: boolean) {
-  return available && value != null ? brl(value, { compact: true }) : "—";
-}
-
 function CorretorCardComponent({ corretor, sourceStatus, onSelect }: CorretorCardProps) {
   const checklist = clampPercentage(corretor.agenciamentosChecklistPercent);
   const attendanceReady = sourceStatus.atendimentos === "ready";
