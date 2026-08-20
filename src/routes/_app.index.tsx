@@ -28,10 +28,7 @@ import { useEquipePerformance } from "@/hooks/useEquipePerformance";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
-import {
-  dashboardComparativoCordialMorar,
-  dashboardPrevisaoFinanceira,
-} from "@/lib/mock/data";
+import { dashboardComparativoCordialMorar, dashboardPrevisaoFinanceira } from "@/lib/mock/data";
 import { NovoAtendimentoSheet } from "@/components/sheets/novo-atendimento";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth-mock";
