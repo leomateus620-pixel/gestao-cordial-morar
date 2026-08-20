@@ -95,22 +95,53 @@ export function useRentalVsSale(options: {
     }
 
     const dayCount = Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1;
-    const groupByMonth = period === "ano" || dayCount > 62;
+    const granularity: "dia" | "semana" | "mes" =
+      period === "ano" || dayCount > 120 ? "mes" : dayCount > 16 ? "semana" : "dia";
+
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const bucketKey = (date: Date) => {
+      if (granularity === "mes") return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+      if (granularity === "dia") {
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      }
+      const offset = Math.floor((startOfDay(date).getTime() - rangeStart.getTime()) / 86_400_000);
+      return `w${Math.floor(offset / 7)}`;
+    };
 
     const buckets = new Map<string, RentalVsSalePoint>();
-    if (groupByMonth) {
+    if (granularity === "mes") {
       const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
       while (cursor <= rangeEnd) {
-        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
-        buckets.set(key, { key, label: MONTHS[cursor.getMonth()]!, aluguel: 0, venda: 0 });
+        buckets.set(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`, {
+          key: `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`,
+          label: MONTHS[cursor.getMonth()]!,
+          aluguel: 0,
+          venda: 0,
+        });
         cursor.setMonth(cursor.getMonth() + 1);
+      }
+    } else if (granularity === "dia") {
+      const cursor = new Date(rangeStart);
+      while (cursor <= rangeEnd) {
+        const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`;
+        buckets.set(key, { key, label: `${pad(cursor.getDate())}/${pad(cursor.getMonth() + 1)}`, aluguel: 0, venda: 0 });
+        cursor.setDate(cursor.getDate() + 1);
       }
     } else {
       const cursor = new Date(rangeStart);
+      let index = 0;
       while (cursor <= rangeEnd) {
-        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-        buckets.set(key, { key, label: String(cursor.getDate()), aluguel: 0, venda: 0 });
-        cursor.setDate(cursor.getDate() + 1);
+        const end = new Date(cursor);
+        end.setDate(end.getDate() + 6);
+        const last = end > rangeEnd ? rangeEnd : end;
+        buckets.set(`w${index}`, {
+          key: `w${index}`,
+          label: `${pad(cursor.getDate())}–${pad(last.getDate())}`,
+          aluguel: 0,
+          venda: 0,
+        });
+        cursor.setDate(cursor.getDate() + 7);
+        index += 1;
       }
     }
 
@@ -129,11 +160,9 @@ export function useRentalVsSale(options: {
       const isVenda = matchesTrack(item, "venda");
       if (!isAluguel && !isVenda) continue;
 
-      const key = groupByMonth
-        ? `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`
-        : `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`;
-      const bucket = buckets.get(key);
+      const bucket = buckets.get(bucketKey(created));
       if (!bucket) continue;
+
 
       if (isAluguel) {
         bucket.aluguel += 1;
