@@ -3350,6 +3350,7 @@ export type Database = {
           broker_nome: string
           completed_count: number
           fastest_seconds: number
+          late_count: number
           median_seconds: number
           pending_count: number
           slowest_seconds: number
