@@ -136,6 +136,24 @@ async function run() {
   if (step === "unpublish" || step === "all") {
     console.log("unpublish:", await processJob(admin, job(propertyId, "unpublish")));
   }
+  if (step === "failure") {
+    const { runSyncWorker } = await import("@/lib/imobibrasil/sync.server");
+    await admin.from("property_sync_jobs").insert({
+      property_id: propertyId,
+      provider,
+      action: "publish",
+      requested_revision: 98,
+      status: "pending",
+      next_run_at: new Date().toISOString(),
+    });
+    console.log("worker:", JSON.stringify(await runSyncWorker(admin, { limit: 3, workerId: "qa-fail" })));
+    const { data } = await admin
+      .from("property_sync_jobs")
+      .select("provider, status, attempts, last_error_category, last_error_message, next_run_at")
+      .eq("property_id", propertyId)
+      .eq("requested_revision", 98);
+    console.log("job:", JSON.stringify(data));
+  }
   if (step === "concurrency") {
     const { runSyncWorker } = await import("@/lib/imobibrasil/sync.server");
     await admin.from("property_sync_jobs").insert({
