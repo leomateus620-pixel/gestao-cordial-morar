@@ -208,12 +208,7 @@ export function TeamPerformanceCard({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        <Chips
-          value={periodo}
-          options={PERIODOS}
-          onChange={onPeriodoChange}
-          ariaLabel="Período"
-        />
+        <Chips value={periodo} options={PERIODOS} onChange={onPeriodoChange} ariaLabel="Período" />
         <Chips value={agency} options={AGENCIES} onChange={setAgency} ariaLabel="Imobiliária" />
       </div>
 

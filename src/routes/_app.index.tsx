@@ -939,4 +939,3 @@ function ChartCard({
     </section>
   );
 }
-
