@@ -456,12 +456,14 @@ export function buildCorretoresOperationalModel({
   sources,
   sourceStatus = READY_SOURCES,
   now = new Date(),
+  unattributedAttendances = 0,
 }: {
   periodo: CorretorPeriodFilter;
   agency: AgencyFilter;
   sources: CorretoresOperationalSources;
   sourceStatus?: CorretorSourceStatus;
   now?: Date;
+  unattributedAttendances?: number;
 }): CorretoresOperationalResult {
   const range = getCorretorPeriodRange(periodo, now);
   const today = getCorretorPeriodRange("ultimos_30", now);
