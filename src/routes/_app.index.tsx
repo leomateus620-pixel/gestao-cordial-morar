@@ -199,45 +199,13 @@ function Dashboard() {
 
           <LeadOriginCard />
 
-          <ChartCard title="Aluguel x venda" subtitle="Negócios por mês">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={dashboardAluguelVenda}
-                barCategoryGap={10}
-                margin={{ left: -20, right: 8, top: 8 }}
-              >
-                <defs>
-                  <linearGradient id="gradVenda" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={chartCordial} stopOpacity={1} />
-                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.7} />
-                  </linearGradient>
-                  <linearGradient id="gradAluguel" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={chartMorar} stopOpacity={1} />
-                    <stop offset="100%" stopColor={chartMorar} stopOpacity={0.7} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke={gridStroke} vertical={false} />
-                <XAxis dataKey="mes" tickLine={false} axisLine={false} tick={axisTick} />
-                <YAxis hide />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                <Bar
-                  dataKey="venda"
-                  fill="url(#gradVenda)"
-                  radius={[6, 6, 0, 0]}
-                  name="Venda"
-                  animationDuration={900}
-                />
-                <Bar
-                  dataKey="aluguel"
-                  fill="url(#gradAluguel)"
-                  radius={[6, 6, 0, 0]}
-                  name="Aluguel"
-                  animationDuration={1100}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+          <FinancialSummaryCard
+            receita={dashboardPrevisaoFinanceira[0]?.receita ?? 0}
+            cobrancas={cobrancasAbertas}
+            inadimplencia={inadimplencia}
+            contratos={imoveisNegociacao}
+          />
+
 
           <ChartCard
             title="Previsão financeira mensal"
