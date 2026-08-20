@@ -48,6 +48,7 @@ type ResponseRpcRow = {
   slowest_seconds: number | null;
   completed_count: number;
   pending_count: number;
+  late_count?: number | null;
 };
 
 function normalizeInput(data: EquipeInput | undefined): {
