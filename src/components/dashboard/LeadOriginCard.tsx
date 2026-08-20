@@ -307,7 +307,7 @@ export function LeadOriginCard({ className }: { className?: string }) {
             Sem leads no filtro selecionado.
           </p>
         ) : (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:items-center">
+          <div className="@container grid gap-5 @[34rem]:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] @[34rem]:items-center">
             <div className="relative mx-auto h-52 w-full max-w-[15rem]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart accessibilityLayer>
