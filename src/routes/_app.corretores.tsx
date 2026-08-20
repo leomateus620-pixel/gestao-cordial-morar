@@ -43,6 +43,7 @@ const SOURCE_LABELS: Record<CorretorSourceKey, string> = {
   vendas: "Vendas e comissões",
   alugueis: "Aluguéis",
   respostas: "Tempo de resposta",
+  bonificacoes: "Bonificações",
 };
 
 function Page() {

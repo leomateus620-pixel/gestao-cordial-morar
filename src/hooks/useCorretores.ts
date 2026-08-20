@@ -29,6 +29,7 @@ const EMPTY_SOURCE_STATUS: CorretorSourceStatus = {
   vendas: "ready",
   alugueis: "ready",
   respostas: "ready",
+  bonificacoes: "ready",
 };
 
 export function useCorretores(options: UseCorretoresOptions = {}) {

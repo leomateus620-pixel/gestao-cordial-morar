@@ -29,6 +29,7 @@ const EMPTY: EquipePerformanceResult = {
     vendas: "ready",
     alugueis: "ready",
     respostas: "ready",
+    bonificacoes: "ready",
   },
 };
 

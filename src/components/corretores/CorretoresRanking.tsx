@@ -127,6 +127,7 @@ function criterionUnit(criterion: CorretorSortKey) {
     atendimentos: "recebidos",
     comissao: "prevista",
     agenciamentos: "agenciamentos",
+    bonificacoes: "bonificações",
   };
   return units[criterion];
 }

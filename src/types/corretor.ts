@@ -13,7 +13,8 @@ export type CorretorSortKey =
   | "contratos"
   | "atendimentos"
   | "comissao"
-  | "agenciamentos";
+  | "agenciamentos"
+  | "bonificacoes";
 
 export type CorretorFiltersState = {
   periodo: CorretorPeriodFilter;
@@ -47,7 +48,8 @@ export type CorretorSourceKey =
   | "agenciamentos"
   | "vendas"
   | "alugueis"
-  | "respostas";
+  | "respostas"
+  | "bonificacoes";
 
 export type CorretorSourceStatus = Record<CorretorSourceKey, "ready" | "error">;
 
@@ -85,6 +87,10 @@ export type Corretor = {
   agenciamentosNoSite: number;
   agenciamentosValidados: number;
   agenciamentosChecklistPercent: number;
+
+  bonificacoesTotal: number;
+  bonificacoesPagas: number;
+  bonificacoesPendentes: number;
 
   comissaoPrevista: number;
   comissaoPaga: number | null;
@@ -130,6 +136,9 @@ export type CorretoresSummary = {
   agendaProximos: number;
   agenciamentosFeitos: number;
   agenciamentosChecklistPercent: number;
+  bonificacoesTotal: number;
+  bonificacoesPagas: number;
+  bonificacoesPendentes: number;
   comissaoPrevista: number;
   comissaoPrevistaDisponivel: boolean;
   comissaoPaga: number | null;

@@ -8,6 +8,7 @@ import {
   type CorretorAssignmentRecord,
   type CorretorAttendanceHistoryRecord,
   type CorretorAttendanceRecord,
+  type CorretorBonusRecord,
   type CorretorCommissionInstallmentRecord,
   type CorretorListingRecord,
   type CorretorRentalRecord,
@@ -73,6 +74,7 @@ function sourceStatus(): CorretorSourceStatus {
     vendas: "ready",
     alugueis: "ready",
     respostas: "ready",
+    bonificacoes: "ready",
   };
 }
 
@@ -187,6 +189,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
           commissionInstallments: [],
           rentals: [],
           responses: [],
+          bonuses: [],
         },
         now,
       });
@@ -251,6 +254,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
           commissionInstallments: [],
           rentals: [],
           responses: [],
+          bonuses: [],
         },
         now,
       });
@@ -320,6 +324,12 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
       )
       .in("brand", scopeAgencies);
 
+    const bonusesQuery = context.supabase
+      .from("agenciamento_bonuses")
+      .select("id,corretor_id,status,categoria,periodo_ref")
+      .in("corretor_id", brokerIds)
+      .or(`periodo_ref.is.null,and(periodo_ref.gte.${startDate},periodo_ref.lt.${endDate})`);
+
     const responseAgencies = imobiliaria === "todas" ? [null] : ([imobiliaria, "ambas"] as const);
     const responsePromise = Promise.all(
       responseAgencies.map((agency) =>
@@ -346,6 +356,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
       salesQuery as unknown as PromiseLike<QueryResult<unknown>>,
       rentalsQuery as unknown as PromiseLike<QueryResult<unknown>>,
       responsePromise,
+      bonusesQuery as unknown as PromiseLike<QueryResult<unknown>>,
     ]);
 
     const attendancesRaw = resultData(firstStage[0], "atendimentos");
@@ -356,6 +367,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
     const salesRaw = resultData(firstStage[5], "vendas");
     const rentalsRaw = resultData(firstStage[6], "alugueis");
     const responsesRaw = resultData(firstStage[7], "respostas");
+    const bonusesRaw = resultData(firstStage[8], "bonificacoes");
     const statuses = sourceStatus();
     if (attendancesRaw.failed || assignmentsRaw.failed || historyRaw.failed) {
       statuses.atendimentos = "error";
@@ -365,6 +377,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
     if (salesRaw.failed) statuses.vendas = "error";
     if (rentalsRaw.failed) statuses.alugueis = "error";
     if (responsesRaw.failed) statuses.respostas = "error";
+    if (bonusesRaw.failed) statuses.bonificacoes = "error";
 
     const mappedAttendances: CorretorAttendanceRecord[] = attendancesRaw.rows.map((value) => {
       const row = value as {
@@ -602,6 +615,22 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
         } satisfies CorretorRentalRecord;
       }),
       responses: mergeResponseRows(responsesRaw.rows as ResponseRpcRow[][]),
+      bonuses: bonusesRaw.rows.map((value) => {
+        const row = value as {
+          id: string;
+          corretor_id: string | null;
+          status: string;
+          categoria: string;
+          periodo_ref: string | null;
+        };
+        return {
+          id: row.id,
+          brokerId: row.corretor_id,
+          status: row.status,
+          categoria: row.categoria,
+          periodoRef: row.periodo_ref,
+        } satisfies CorretorBonusRecord;
+      }),
     };
 
     try {
