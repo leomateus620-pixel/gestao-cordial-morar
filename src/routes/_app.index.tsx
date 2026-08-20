@@ -24,6 +24,7 @@ import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
+import { TeamPerformanceCard } from "@/components/dashboard/TeamPerformanceCard";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
 import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
 import { useApp } from "@/store/app-store";
@@ -176,7 +177,14 @@ function Dashboard() {
 
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.86fr)_minmax(0,1.05fr)]">
-          <TeamPerformanceCard summary={equipeSummary} ranking={equipeRanking.slice(0, 3)} />
+          <TeamPerformanceCard
+            data={equipePerformance.data}
+            periodo={equipePerformance.periodo}
+            onPeriodoChange={equipePerformance.setPeriodo}
+            isLoading={equipePerformance.isLoading}
+            isFetching={equipePerformance.isFetching}
+            isError={equipePerformance.isError}
+          />
           <AgenciamentosTeamCard summary={agenciamentosSummary} ranking={agenciamentosRanking} />
 
           <TeamPerformanceChart
@@ -394,97 +402,6 @@ function OperationalShortcuts({ profile }: { profile: string | undefined }) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  FinancialSummaryCard — compacto e premium                                  */
 /* ─────────────────────────────────────────────────────────────────────────── */
-
-function TeamPerformanceCard({
-  summary,
-  ranking,
-}: {
-  summary: CorretoresSummary;
-  ranking: Corretor[];
-}) {
-  return (
-    <section
-      className="rounded-3xl p-5"
-      style={{
-        background:
-          "linear-gradient(160deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.56) 100%)",
-        backdropFilter: "blur(20px) saturate(145%)",
-        border: "1px solid rgba(255,255,255,0.64)",
-        boxShadow: "0 18px 48px -16px rgba(23,27,33,0.14), inset 0 1px 0 rgba(255,255,255,0.86)",
-      }}
-    >
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/70">
-            Performance da equipe
-          </p>
-          <h2 className="mt-0.5 text-base font-semibold tracking-tight">Corretores no período</h2>
-        </div>
-        <Link
-          to="/corretores"
-          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-bold text-white shadow-[0_12px_26px_-16px_rgba(30,100,125,0.8)] transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
-        >
-          Ver corretores
-          <ArrowRight className="size-3.5" />
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <TeamMetric
-          icon={Handshake}
-          label="Contratos"
-          value={String(summary.contratosFechados).padStart(2, "0")}
-        />
-        <TeamMetric
-          icon={BadgeDollarSign}
-          label="Prevista"
-          value={brl(summary.comissaoPrevista, { compact: true })}
-          accent
-        />
-        <TeamMetric icon={Percent} label="Conversão" value={`${summary.taxaMediaConversao}%`} />
-        <TeamMetric
-          icon={ClipboardCheck}
-          label="Agenc."
-          value={String(summary.agenciamentosFeitos).padStart(2, "0")}
-        />
-      </div>
-
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/45">
-          <Award className="size-3.5 text-[var(--system-accent-dark)]" />
-          Top 3 corretores
-        </div>
-        {ranking.map((corretor, index) => (
-          <Link
-            key={corretor.id}
-            to="/corretores"
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-white/[0.56] px-3 py-2.5 ring-1 ring-white/60 transition-all hover:bg-white/[0.76]"
-          >
-            <span
-              className={cn(
-                "grid size-7 place-items-center rounded-full font-mono text-[11px] font-black",
-                index === 0
-                  ? "bg-[rgba(217,120,45,0.14)] text-[var(--system-accent-dark)]"
-                  : "bg-primary/10 text-primary",
-              )}
-            >
-              {index + 1}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">{corretor.nome}</span>
-              <span className="block truncate text-[10px] text-foreground/48">
-                {corretor.contratosFechados} contratos · {corretor.taxaConversao}% conversão
-              </span>
-            </span>
-            <span className="font-mono text-xs font-black text-primary">
-              {brl(corretor.comissaoPrevista, { compact: true })}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function AgenciamentosTeamCard({
   summary,
