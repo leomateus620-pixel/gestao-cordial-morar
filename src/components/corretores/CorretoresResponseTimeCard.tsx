@@ -50,8 +50,8 @@ export function CorretoresResponseTimeCard({
             Início dos atendimentos
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-foreground/58">
-            Mediana entre a atribuição e o primeiro acesso persistido pelo corretor. A mediana
-            evita a distorção causada por casos isolados muito demorados.
+            Mediana entre a atribuição e o primeiro acesso persistido pelo corretor. A mediana evita
+            a distorção causada por casos isolados muito demorados.
           </p>
         </div>
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
