@@ -283,6 +283,7 @@ function Page() {
           sourceStatus={sourceStatus}
           isLoading={isLoading}
           isError={isError}
+          unassignedAttendances={unattributed.attendances}
           onNavigate={handleKpiNavigation}
         />
 
