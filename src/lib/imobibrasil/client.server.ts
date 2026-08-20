@@ -151,12 +151,14 @@ export async function imobiRequest<T = unknown>(
       if (!response.ok) {
         const category = categoryForHttpStatus(response.status);
         log(false, category);
+        const providerMessage =
+          extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`;
         const error = new ImobiApiError({
-          message:
-            extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`,
+          message: explainProviderMessage(providerMessage, response.status),
           category,
           httpStatus: response.status,
         });
+
         if (error.retryable && attempt < maxAttempts) {
           lastError = error;
           await delay(backoffMs(attempt));
