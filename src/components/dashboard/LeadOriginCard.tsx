@@ -244,7 +244,7 @@ export function LeadOriginCard({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        "relative w-full min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-white/70 p-4 shadow-[0_24px_60px_-32px_rgba(23,27,33,0.28)] backdrop-blur-xl sm:p-5",
+        "@container relative w-full min-w-0 overflow-hidden rounded-3xl border border-white/70 bg-white/70 p-4 shadow-[0_24px_60px_-32px_rgba(23,27,33,0.28)] backdrop-blur-xl sm:p-5",
         className,
       )}
     >
@@ -307,7 +307,7 @@ export function LeadOriginCard({ className }: { className?: string }) {
             Sem leads no filtro selecionado.
           </p>
         ) : (
-          <div className="@container grid gap-5 @[34rem]:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] @[34rem]:items-center">
+          <div className="grid gap-5 @[34rem]:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] @[34rem]:items-center">
             <div className="relative mx-auto h-52 w-full max-w-[15rem]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart accessibilityLayer>
