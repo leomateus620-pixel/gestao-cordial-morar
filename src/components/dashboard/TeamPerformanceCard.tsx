@@ -121,7 +121,7 @@ function Metric({
           )}
           aria-hidden
         />
-        <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground/50">
+        <span className="text-[9.5px] font-semibold uppercase leading-tight tracking-[0.1em] text-foreground/50">
           {label}
         </span>
       </div>
@@ -244,13 +244,13 @@ export function TeamPerformanceCard({
             />
             <Metric
               icon={ClipboardCheck}
-              label="Agenciamentos"
+              label="Agenc."
               value={String(summary.agenciamentosFeitos).padStart(2, "0")}
               helper={`${summary.agenciamentosChecklistPercent}% de checklist`}
             />
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-2">
+          <div className="mt-4 flex flex-col items-start gap-2 xl:flex-row xl:items-center xl:justify-between">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/45">
               <Award className="size-3.5 text-[var(--system-accent-dark)]" aria-hidden />
               Ranking
