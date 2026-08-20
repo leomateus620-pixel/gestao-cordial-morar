@@ -60,7 +60,7 @@ async function ensureTestProperty() {
       vagas: 1,
       area_total: 120,
       area_principal: 90,
-      descricao: "Imóvel de teste automatizado da integração. Não publicar.",
+      descricao_imovel: "Imóvel de teste automatizado da integração. Não publicar.",
       source: "qa_integration",
       source_property_id: "QA-IMOBI-TEST",
       is_draft: true,
@@ -94,7 +94,7 @@ async function run() {
   if (step === "update" || step === "all") {
     await admin
       .from("properties")
-      .update({ valor: 379000, dormitorios: 3, descricao: "Descrição atualizada pelo teste." })
+      .update({ valor: 379000, dormitorios: 3, descricao_imovel: "Descrição atualizada pelo teste." })
       .eq("id", propertyId);
     console.log("update:", await processJob(admin, job(propertyId, "update")));
   }
