@@ -122,6 +122,7 @@ export type CorretorResponseRecord = {
   slowestSeconds: number | null;
   completedCount: number;
   pendingCount: number;
+  lateCount?: number;
 };
 
 export type CorretorBonusRecord = {
