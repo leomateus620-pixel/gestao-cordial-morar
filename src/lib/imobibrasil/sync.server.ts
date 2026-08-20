@@ -368,12 +368,12 @@ export async function processJob(admin: Admin, job: SyncJob) {
 
   // Verificação remota obrigatória antes de marcar como publicado.
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
+  const remoteSet = (remote?.["resultSet"] as Record<string, unknown> | undefined) ?? remote ?? {};
   const remoteReference = String(
-    (remote?.["referencia"] ??
-      (remote?.["resultSet"] as Record<string, unknown> | undefined)?.["referencia"] ??
-      "") as string,
+    (remoteSet["referenciaImovel"] ?? remoteSet["referencia"] ?? remote?.["referencia"] ?? "") as string,
   ).trim();
   const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
+
   const finalStatus = verified && media.failed === 0 ? "published" : "partial";
 
   await admin
