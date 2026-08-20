@@ -523,6 +523,125 @@ export function CorretorDetailDrawer({
                         value={rentalsReady ? corretor.alugueisEncerrados : "—"}
                       />
                     </Panel>
+                  </TabsContent>
+
+                  <TabsContent value="agenciamentos" className="mt-4 space-y-3">
+                    <Panel
+                      title="Carteira de agenciamentos"
+                      icon={ClipboardCheck}
+                      action={onNavigate ? () => handleNavigate("/agenciamentos") : undefined}
+                    >
+                      <div className="rounded-2xl bg-primary/[0.055] p-4">
+                        <div className="flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                              Checklist concluído
+                            </p>
+                            <p className="mt-1 font-mono text-2xl font-black text-primary">
+                              {listingsReady ? `${checklist}%` : "—"}
+                            </p>
+                          </div>
+                          <p className="text-sm font-semibold text-muted-foreground">
+                            {listingsReady ? corretor.agenciamentosFeitos : "—"} registros
+                          </p>
+                        </div>
+                        <div
+                          role="progressbar"
+                          aria-label={`Checklist de agenciamentos de ${corretor.nome}`}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={listingsReady ? checklist : undefined}
+                          aria-valuetext={
+                            listingsReady ? `${checklist}% concluído` : "Indisponível"
+                          }
+                          className="mt-3 h-2 overflow-hidden rounded-full bg-background"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="block h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
+                            style={{ width: listingsReady ? `${checklist}%` : "0%" }}
+                          />
+                        </div>
+                      </div>
+
+                      <MetricRow
+                        label="Ativos"
+                        value={listingsReady ? corretor.agenciamentosAtivos : "—"}
+                      />
+                      <MetricRow
+                        label="Concluídos"
+                        value={listingsReady ? corretor.agenciamentosConcluidos : "—"}
+                      />
+                      <MetricRow
+                        label="Ações pendentes"
+                        value={listingsReady ? corretor.agenciamentosAcoesPendentes : "—"}
+                      />
+                      <ChecklistRow
+                        label="Com placa"
+                        done={listingsReady ? corretor.agenciamentosComPlaca : "—"}
+                        total={listingsReady ? corretor.agenciamentosFeitos : "—"}
+                      />
+                      <ChecklistRow
+                        label="Com fotos"
+                        done={listingsReady ? corretor.agenciamentosComFotos : "—"}
+                        total={listingsReady ? corretor.agenciamentosFeitos : "—"}
+                      />
+                      <ChecklistRow
+                        label="No site"
+                        done={listingsReady ? corretor.agenciamentosNoSite : "—"}
+                        total={listingsReady ? corretor.agenciamentosFeitos : "—"}
+                      />
+                      <ChecklistRow
+                        label="Validados"
+                        done={listingsReady ? corretor.agenciamentosValidados : "—"}
+                        total={listingsReady ? corretor.agenciamentosFeitos : "—"}
+                      />
+                    </Panel>
+                  </TabsContent>
+
+                  <TabsContent value="negocios" className="mt-4 space-y-3">
+                    <Panel
+                      title="Vendas"
+                      icon={Handshake}
+                      action={onNavigate ? () => handleNavigate("/vendas") : undefined}
+                    >
+                      <MetricRow
+                        label="Vendas registradas"
+                        value={salesReady ? corretor.vendasRegistradas : "—"}
+                      />
+                      <MetricRow
+                        label="Vendas fechadas"
+                        value={salesReady ? corretor.vendasFechadas : "—"}
+                        strong
+                      />
+                      <MetricRow
+                        label="Valor atribuído"
+                        value={salesReady ? brl(corretor.valorVendas, { compact: true }) : "—"}
+                      />
+                      <MetricRow
+                        label="Ticket médio"
+                        value={salesReady ? brl(corretor.ticketMedio, { compact: true }) : "—"}
+                      />
+                    </Panel>
+
+                    <Panel
+                      title="Aluguéis"
+                      icon={Home}
+                      action={onNavigate ? () => handleNavigate("/alugueis") : undefined}
+                    >
+                      <MetricRow
+                        label="Contratos atribuídos"
+                        value={rentalsReady ? corretor.alugueisAtribuidos : "—"}
+                      />
+                      <MetricRow
+                        label="Contratos ativos"
+                        value={rentalsReady ? corretor.alugueisAtivos : "—"}
+                      />
+                      <MetricRow
+                        label="Contratos encerrados"
+                        value={rentalsReady ? corretor.alugueisEncerrados : "—"}
+                      />
+                    </Panel>
 
                     <Panel title="Comissões" icon={BadgeDollarSign}>
                       <FinanceRow

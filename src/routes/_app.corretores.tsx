@@ -100,7 +100,6 @@ function Page() {
     return list;
   }, [isError, unattributed.rentals, unattributed.sales, unavailableSources]);
   const canAccess =
-
     session?.perfil === "admin_owner" && hasPermission(session.perfil, "corretores:read");
   const contractsReady = sourceStatus.vendas === "ready" && sourceStatus.alugueis === "ready";
   const conversionReady = sourceStatus.atendimentos === "ready";
@@ -109,8 +108,8 @@ function Page() {
       ? sourceStatus.atendimentos === "error"
       : filters.ordenacao === "agenciamentos"
         ? sourceStatus.agenciamentos === "error"
-        : filters.ordenacao === "comissao"
-          ? sourceStatus.vendas === "error"
+        : filters.ordenacao === "bonificacoes"
+          ? sourceStatus.bonificacoes === "error"
           : !contractsReady;
 
   const handleSelect = useCallback((corretor: Corretor) => {
@@ -166,10 +165,10 @@ function Page() {
         } as never);
         return;
       }
-      if (target === "comissoes") {
+      if (target === "sem-corretor") {
         void navigate({
-          to: "/vendas",
-          search: destinationSearch(undefined, "todos"),
+          to: "/atendimentos",
+          search: destinationSearch("nao_atribuidos", "todos"),
         } as never);
         return;
       }
@@ -253,7 +252,6 @@ function Page() {
           </div>
         </section>
 
-
         {isError && (
           <section
             role="alert"
@@ -285,9 +283,9 @@ function Page() {
           sourceStatus={sourceStatus}
           isLoading={isLoading}
           isError={isError}
+          unassignedAttendances={unattributed.attendances}
           onNavigate={handleKpiNavigation}
         />
-
 
         <CorretoresRanking
           ranking={ranking}
@@ -335,7 +333,6 @@ function Page() {
               />
             </div>
           </div>
-
 
           {isLoading ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-hidden>
@@ -395,6 +392,5 @@ function HeroPill({ label, value, accent }: { label: string; value: string; acce
       </p>
       <p className="mt-0.5 truncate font-mono text-sm font-black text-white">{value}</p>
     </div>
-
   );
 }

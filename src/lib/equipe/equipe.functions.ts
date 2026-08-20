@@ -48,6 +48,7 @@ type ResponseRpcRow = {
   slowest_seconds: number | null;
   completed_count: number;
   pending_count: number;
+  late_count?: number | null;
 };
 
 function normalizeInput(data: EquipeInput | undefined): {
@@ -98,6 +99,7 @@ function mergeResponseRows(groups: ResponseRpcRow[][]): CorretorResponseRecord[]
     {
       completed: number;
       pending: number;
+      late: number;
       weightedSeconds: number;
       fastest: number | null;
       slowest: number | null;
@@ -108,9 +110,11 @@ function mergeResponseRows(groups: ResponseRpcRow[][]): CorretorResponseRecord[]
     for (const row of group) {
       const completed = Number(row.completed_count) || 0;
       const pending = Number(row.pending_count) || 0;
+      const late = Number(row.late_count ?? 0) || 0;
       const current = merged.get(row.broker_id) ?? {
         completed: 0,
         pending: 0,
+        late: 0,
         weightedSeconds: 0,
         fastest: null,
         slowest: null,
@@ -118,6 +122,7 @@ function mergeResponseRows(groups: ResponseRpcRow[][]): CorretorResponseRecord[]
       };
       current.completed += completed;
       current.pending += pending;
+      current.late += late;
       if (row.avg_seconds != null && completed > 0) {
         current.weightedSeconds += Number(row.avg_seconds) * completed;
       }
@@ -127,13 +132,13 @@ function mergeResponseRows(groups: ResponseRpcRow[][]): CorretorResponseRecord[]
             ? row.fastest_seconds
             : Math.min(current.fastest, row.fastest_seconds);
       }
+      if (row.median_seconds != null) current.medians.push(Number(row.median_seconds));
       if (row.slowest_seconds != null && row.slowest_seconds >= 0) {
         current.slowest =
           current.slowest == null
             ? row.slowest_seconds
             : Math.max(current.slowest, row.slowest_seconds);
       }
-      if (row.median_seconds != null) current.medians.push(Number(row.median_seconds));
       merged.set(row.broker_id, current);
     }
   }
@@ -141,11 +146,17 @@ function mergeResponseRows(groups: ResponseRpcRow[][]): CorretorResponseRecord[]
     brokerId,
     averageSeconds:
       value.completed > 0 ? Math.max(0, value.weightedSeconds / value.completed) : null,
-    medianSeconds: value.medians.length === 1 && groups.length === 1 ? value.medians[0] : null,
+    medianSeconds:
+      value.medians.length === 0
+        ? null
+        : value.medians.length === 1
+          ? value.medians[0]
+          : value.medians.reduce((total, item) => total + item, 0) / value.medians.length,
     fastestSeconds: value.fastest,
     slowestSeconds: value.slowest,
     completedCount: value.completed,
     pendingCount: value.pending,
+    lateCount: value.late,
   }));
 }
 
@@ -268,6 +279,15 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
       .from("attendances")
       .select("id,corretor_id,cliente_nome,status,pipeline_stage,imobiliaria,created_at,updated_at")
       .in("corretor_id", brokerIds)
+      .in("imobiliaria", scopeAgencies)
+      .or(
+        `and(created_at.gte.${startIso},created_at.lt.${endIso}),and(updated_at.gte.${startIso},updated_at.lt.${endIso})`,
+      );
+
+    const unassignedAttendancesQuery = context.supabase
+      .from("attendances")
+      .select("id", { count: "exact", head: true })
+      .is("corretor_id", null)
       .in("imobiliaria", scopeAgencies)
       .or(
         `and(created_at.gte.${startIso},created_at.lt.${endIso}),and(updated_at.gte.${startIso},updated_at.lt.${endIso})`,
@@ -633,6 +653,14 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
       }),
     };
 
+    let unattributedAttendances = 0;
+    try {
+      const unassigned = (await unassignedAttendancesQuery) as unknown as { count: number | null };
+      unattributedAttendances = Number(unassigned?.count ?? 0) || 0;
+    } catch {
+      unattributedAttendances = 0;
+    }
+
     try {
       return buildCorretoresOperationalModel({
         periodo,
@@ -640,6 +668,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
         sources,
         sourceStatus: statuses,
         now,
+        unattributedAttendances,
       });
     } catch (error) {
       console.error(

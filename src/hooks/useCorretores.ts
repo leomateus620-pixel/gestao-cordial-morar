@@ -136,7 +136,7 @@ export function useCorretores(options: UseCorretoresOptions = {}) {
     dashboardSummary,
     dashboardRanking,
     dashboardChart,
-    unattributed: query.data?.unattributed ?? { sales: 0, rentals: 0 },
+    unattributed: query.data?.unattributed ?? { sales: 0, rentals: 0, attendances: 0 },
     sourceStatus: query.data?.sourceStatus ?? EMPTY_SOURCE_STATUS,
     periodoInicio: query.data?.periodoInicio,
     periodoFim: query.data?.periodoFim,

@@ -122,6 +122,7 @@ export type CorretorResponseRecord = {
   slowestSeconds: number | null;
   completedCount: number;
   pendingCount: number;
+  lateCount?: number;
 };
 
 export type CorretorBonusRecord = {
@@ -173,8 +174,6 @@ const sortAccessors: Record<CorretorSortKey, (corretor: Corretor) => number> = {
   conversao: (corretor) => corretor.taxaConversao,
   contratos: (corretor) => corretor.contratosFechados,
   atendimentos: (corretor) => corretor.atendimentosRecebidos,
-  comissao: (corretor) =>
-    corretor.comissaoPrevistaDisponivel ? corretor.comissaoPrevista : Number.NEGATIVE_INFINITY,
   agenciamentos: (corretor) => corretor.agenciamentosFeitos,
   bonificacoes: (corretor) => corretor.bonificacoesTotal,
 };
@@ -371,6 +370,7 @@ function createEmptyCorretor(profile: CorretorRosterRecord): Corretor {
     respostaMaisLentaSegundos: null,
     respostasMedidas: 0,
     respostasPendentes: 0,
+    respostasForaDoPrazo: 0,
     atividadesRecentes: [],
   };
 }
@@ -439,6 +439,7 @@ export function normalizeCorretor(input: LegacyCorretor): Corretor {
     respostaMaisLentaSegundos: asNullableNumber(input.respostaMaisLentaSegundos),
     respostasMedidas: asNumber(input.respostasMedidas),
     respostasPendentes: asNumber(input.respostasPendentes),
+    respostasForaDoPrazo: asNumber(input.respostasForaDoPrazo),
     atividadesRecentes: input.atividadesRecentes ?? [],
   };
 }
@@ -453,12 +454,14 @@ export function buildCorretoresOperationalModel({
   sources,
   sourceStatus = READY_SOURCES,
   now = new Date(),
+  unattributedAttendances = 0,
 }: {
   periodo: CorretorPeriodFilter;
   agency: AgencyFilter;
   sources: CorretoresOperationalSources;
   sourceStatus?: CorretorSourceStatus;
   now?: Date;
+  unattributedAttendances?: number;
 }): CorretoresOperationalResult {
   const range = getCorretorPeriodRange(periodo, now);
   const today = getCorretorPeriodRange("ultimos_30", now);
@@ -783,6 +786,7 @@ export function buildCorretoresOperationalModel({
     corretor.respostaMaisLentaSegundos = asNullableNumber(metric.slowestSeconds);
     corretor.respostasMedidas = asNumber(metric.completedCount);
     corretor.respostasPendentes = asNumber(metric.pendingCount);
+    corretor.respostasForaDoPrazo = asNumber(metric.lateCount);
   }
 
   for (const corretor of rows) {
@@ -830,6 +834,7 @@ export function buildCorretoresOperationalModel({
     unattributed: {
       sales: unattributedSales,
       rentals: unattributedRentals,
+      attendances: Math.max(0, unattributedAttendances),
     },
   };
 }
@@ -864,7 +869,6 @@ export function getCorretorSortLabel(sort: CorretorSortKey) {
     conversao: "Conversão de atendimentos",
     contratos: "Contratos fechados",
     atendimentos: "Atendimentos recebidos",
-    comissao: "Comissão prevista",
     agenciamentos: "Agenciamentos",
     bonificacoes: "Bonificações conquistadas",
   };
@@ -949,6 +953,8 @@ export function calculateCorretoresSummary(corretores: Corretor[]): CorretoresSu
     visitasRealizadas: 0,
     propostasFeitas: 0,
     contratosFechados: 0,
+    contratosDeAtendimento: 0,
+    respostasForaDoPrazo: 0,
     vendasFechadas: 0,
     alugueisFechados: 0,
     agendaProximos: 0,
@@ -976,6 +982,8 @@ export function calculateCorretoresSummary(corretores: Corretor[]): CorretoresSu
     summary.visitasRealizadas += corretor.visitasRealizadas;
     summary.propostasFeitas += corretor.propostasFeitas;
     summary.contratosFechados += corretor.contratosFechados;
+    summary.contratosDeAtendimento += corretor.contratosDeAtendimento;
+    summary.respostasForaDoPrazo += corretor.respostasForaDoPrazo;
     summary.vendasFechadas += corretor.vendasFechadas;
     summary.alugueisFechados += corretor.alugueisFechados;
     summary.agendaProximos += corretor.agendaProximos;

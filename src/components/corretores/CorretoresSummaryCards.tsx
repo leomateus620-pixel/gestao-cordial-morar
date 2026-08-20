@@ -1,14 +1,13 @@
 import {
-  BadgeDollarSign,
   ClipboardCheck,
   Handshake,
   Percent,
   UserCheck,
+  UserX,
   Users,
   type LucideIcon,
 } from "lucide-react";
 
-import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CorretoresSummary, CorretorSourceStatus } from "@/types/corretor";
 
@@ -17,7 +16,7 @@ export type CorretoresKpiTarget =
   | "atendimentos"
   | "contratos"
   | "conversao"
-  | "comissoes"
+  | "sem-corretor"
   | "agenciamentos";
 
 type CorretoresSummaryCardsProps = {
@@ -25,6 +24,7 @@ type CorretoresSummaryCardsProps = {
   sourceStatus: CorretorSourceStatus;
   isLoading: boolean;
   isError: boolean;
+  unassignedAttendances?: number;
   onNavigate: (target: CorretoresKpiTarget) => void;
 };
 
@@ -33,7 +33,7 @@ type SummaryCard = {
   value: string;
   detail: string;
   icon: LucideIcon;
-  tone: "primary" | "base" | "success" | "money";
+  tone: "primary" | "base" | "success" | "warning";
   target: CorretoresKpiTarget;
   unavailable: boolean;
 };
@@ -43,13 +43,10 @@ export function CorretoresSummaryCards({
   sourceStatus,
   isLoading,
   isError,
+  unassignedAttendances = 0,
   onNavigate,
 }: CorretoresSummaryCardsProps) {
   const attendanceUnavailable = isError || sourceStatus.atendimentos === "error";
-  const contractsUnavailable =
-    isError || sourceStatus.vendas === "error" || sourceStatus.alugueis === "error";
-  const commissionUnavailable =
-    isError || sourceStatus.vendas === "error" || !summary.comissaoPrevistaDisponivel;
   const listingsUnavailable = isError || sourceStatus.agenciamentos === "error";
 
   const cards: SummaryCard[] = [
@@ -72,13 +69,13 @@ export function CorretoresSummaryCards({
       unavailable: attendanceUnavailable,
     },
     {
-      label: "Contratos fechados",
-      value: String(summary.contratosFechados),
+      label: "Fechamentos",
+      value: String(summary.contratosDeAtendimento),
       detail: `${summary.vendasFechadas} vendas · ${summary.alugueisFechados} aluguéis`,
       icon: Handshake,
       tone: "success",
       target: "contratos",
-      unavailable: contractsUnavailable,
+      unavailable: attendanceUnavailable,
     },
     {
       label: "Conversão média",
@@ -90,16 +87,13 @@ export function CorretoresSummaryCards({
       unavailable: attendanceUnavailable,
     },
     {
-      label: "Comissão prevista",
-      value: brl(summary.comissaoPrevista, { compact: true }),
-      detail:
-        summary.comissaoPaga == null
-          ? "Comissão paga indisponível"
-          : `${brl(summary.comissaoPaga, { compact: true })} pagos`,
-      icon: BadgeDollarSign,
-      tone: "money",
-      target: "comissoes",
-      unavailable: commissionUnavailable,
+      label: "Sem corretor",
+      value: String(unassignedAttendances),
+      detail: "Atendimentos sem responsável no período",
+      icon: UserX,
+      tone: "warning",
+      target: "sem-corretor",
+      unavailable: attendanceUnavailable,
     },
     {
       label: "Agenciamentos",
@@ -156,14 +150,14 @@ function SummaryCardButton({
         "disabled:cursor-not-allowed disabled:opacity-70",
         card.tone === "primary" && "border-primary/15 bg-primary/[0.05]",
         card.tone === "success" && "border-emerald-700/10 bg-emerald-600/[0.04]",
-        card.tone === "money" && "border-orange-700/10 bg-orange-500/[0.05]",
+        card.tone === "warning" && "border-amber-600/15 bg-amber-500/[0.06]",
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
         <Icon
           className={cn(
             "size-3.5 shrink-0 text-primary",
-            card.tone === "money" && "text-orange-700",
+            card.tone === "warning" && "text-amber-700",
             card.tone === "success" && "text-emerald-700",
           )}
           aria-hidden
@@ -190,4 +184,3 @@ function SummaryCardButton({
     </button>
   );
 }
-

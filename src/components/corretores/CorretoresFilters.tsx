@@ -37,7 +37,7 @@ const sortOptions: Array<{ value: CorretorSortKey; label: string }> = [
   { value: "conversao", label: "Conversão de atendimentos" },
   { value: "contratos", label: "Contratos fechados" },
   { value: "atendimentos", label: "Atendimentos recebidos" },
-  { value: "comissao", label: "Comissão prevista" },
+  { value: "bonificacoes", label: "Bonificações" },
   { value: "agenciamentos", label: "Agenciamentos" },
 ];
 
@@ -202,7 +202,9 @@ function FilterFields({
         <Select
           value={filters.ordenacao}
           disabled={isLoading}
-          onValueChange={(ordenacao) => onFiltersChange({ ordenacao: ordenacao as CorretorSortKey })}
+          onValueChange={(ordenacao) =>
+            onFiltersChange({ ordenacao: ordenacao as CorretorSortKey })
+          }
         >
           <SelectTrigger
             id="corretores-ranking"

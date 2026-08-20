@@ -12,7 +12,6 @@ export type CorretorSortKey =
   | "conversao"
   | "contratos"
   | "atendimentos"
-  | "comissao"
   | "agenciamentos"
   | "bonificacoes";
 
@@ -114,6 +113,7 @@ export type Corretor = {
   respostaMaisLentaSegundos: number | null;
   respostasMedidas: number;
   respostasPendentes: number;
+  respostasForaDoPrazo: number;
 
   rankingPosicao?: number;
   performanceTrend?: CorretorPerformanceTrend;
@@ -131,6 +131,8 @@ export type CorretoresSummary = {
   visitasRealizadas: number;
   propostasFeitas: number;
   contratosFechados: number;
+  contratosDeAtendimento: number;
+  respostasForaDoPrazo: number;
   vendasFechadas: number;
   alugueisFechados: number;
   agendaProximos: number;
@@ -158,6 +160,7 @@ export type CorretoresOperationalResult = {
   unattributed: {
     sales: number;
     rentals: number;
+    attendances: number;
   };
 };
 
