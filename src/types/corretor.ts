@@ -161,6 +161,7 @@ export type CorretoresOperationalResult = {
   unattributed: {
     sales: number;
     rentals: number;
+    attendances: number;
   };
 };
 
