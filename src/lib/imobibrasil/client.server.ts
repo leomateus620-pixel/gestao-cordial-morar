@@ -36,7 +36,9 @@ export type ImobiResponse<T = unknown> = {
 
 function providerToken(provider: ImobiProvider): string {
   const { tokenSecret } = providerConfig(provider);
-  const token = process.env[tokenSecret];
+  // Tokens colados do painel costumam trazer espaços/quebras de linha; o header
+  // HTTP não aceita esses caracteres e a API responde 401 sem explicar o motivo.
+  const token = process.env[tokenSecret]?.replace(/\s+/g, "");
   if (!token) {
     throw new ImobiApiError({
       message: `Token do provedor não configurado (${tokenSecret}).`,
