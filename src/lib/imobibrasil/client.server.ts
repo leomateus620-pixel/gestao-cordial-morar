@@ -8,10 +8,12 @@
 import {
   ImobiApiError,
   categoryForHttpStatus,
+  explainProviderMessage,
   extractProviderMessage,
   sanitizeMessage,
   toImobiError,
 } from "./errors";
+
 import { providerConfig, type ImobiProvider } from "./providers";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -149,12 +151,14 @@ export async function imobiRequest<T = unknown>(
       if (!response.ok) {
         const category = categoryForHttpStatus(response.status);
         log(false, category);
+        const providerMessage =
+          extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`;
         const error = new ImobiApiError({
-          message:
-            extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`,
+          message: explainProviderMessage(providerMessage, response.status),
           category,
           httpStatus: response.status,
         });
+
         if (error.retryable && attempt < maxAttempts) {
           lastError = error;
           await delay(backoffMs(attempt));
@@ -178,7 +182,10 @@ export async function imobiRequest<T = unknown>(
       if (parsed && typeof parsed === "object" && (parsed as Record<string, unknown>).status === false) {
         log(false, "business");
         throw new ImobiApiError({
-          message: extractProviderMessage(parsed, rawText) ?? "O provedor recusou a operação.",
+          message: explainProviderMessage(
+            extractProviderMessage(parsed, rawText) ?? "O provedor recusou a operação.",
+            response.status,
+          ),
           category: "business",
           httpStatus: response.status,
         });
