@@ -113,7 +113,7 @@ function CorretorCardComponent({ corretor, sourceStatus, onSelect }: CorretorCar
         />
         <MainMetric
           label="Fechados"
-          value={salesReady && rentalsReady ? corretor.contratosFechados : "—"}
+          value={attendanceReady ? corretor.contratosDeAtendimento : "—"}
           accent
         />
         <MainMetric
@@ -124,20 +124,16 @@ function CorretorCardComponent({ corretor, sourceStatus, onSelect }: CorretorCar
 
       <div className="mt-2 grid grid-cols-2 gap-2">
         <MoneyMetric
-          label="Comissão prevista"
+          label="Mediana de resposta"
           value={
-            salesReady
-              ? availableMoney(corretor.comissaoPrevista, corretor.comissaoPrevistaDisponivel)
+            responsesReady && corretor.medianaRespostaSegundos != null
+              ? formatElapsedSeconds(Math.round(corretor.medianaRespostaSegundos))
               : "—"
           }
         />
         <MoneyMetric
-          label="Comissão paga"
-          value={
-            salesReady
-              ? availableMoney(corretor.comissaoPaga, corretor.comissaoPagaDisponivel)
-              : "—"
-          }
+          label="Fora do prazo (72h)"
+          value={responsesReady ? String(corretor.respostasForaDoPrazo) : "—"}
           muted
         />
       </div>
