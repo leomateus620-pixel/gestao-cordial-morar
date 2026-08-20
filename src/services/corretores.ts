@@ -372,6 +372,7 @@ function createEmptyCorretor(profile: CorretorRosterRecord): Corretor {
     respostaMaisLentaSegundos: null,
     respostasMedidas: 0,
     respostasPendentes: 0,
+    respostasForaDoPrazo: 0,
     atividadesRecentes: [],
   };
 }
