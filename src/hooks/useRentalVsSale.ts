@@ -124,7 +124,12 @@ export function useRentalVsSale(options: {
       const cursor = new Date(rangeStart);
       while (cursor <= rangeEnd) {
         const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`;
-        buckets.set(key, { key, label: `${pad(cursor.getDate())}/${pad(cursor.getMonth() + 1)}`, aluguel: 0, venda: 0 });
+        buckets.set(key, {
+          key,
+          label: `${pad(cursor.getDate())}/${pad(cursor.getMonth() + 1)}`,
+          aluguel: 0,
+          venda: 0,
+        });
         cursor.setDate(cursor.getDate() + 1);
       }
     } else {
@@ -162,7 +167,6 @@ export function useRentalVsSale(options: {
 
       const bucket = buckets.get(bucketKey(created));
       if (!bucket) continue;
-
 
       if (isAluguel) {
         bucket.aluguel += 1;

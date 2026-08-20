@@ -176,7 +176,7 @@ export function RentalVsSaleCard({ className }: { className?: string }) {
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Stat label="Aluguel" value={result.aluguel} color={ALUGUEL} />
         <Stat label="Venda" value={result.venda} color={VENDA} />
-        <Stat label="Participação" value={`${share}%`} hint="aluguel" color="rgba(42,48,56,0.35)" />
+        <Stat label="% Aluguel" value={`${share}%`} hint="do período" color="rgba(42,48,56,0.35)" />
       </div>
 
       <div className="mt-4">
@@ -211,12 +211,12 @@ export function RentalVsSaleCard({ className }: { className?: string }) {
                   tick={{ fontSize: 10, fill: "rgba(42,48,56,0.45)", fontWeight: 700 }}
                 />
                 <Tooltip cursor={{ fill: "rgba(42,48,56,0.04)" }} content={<CompactTooltip />} />
-                <Bar dataKey="aluguel" name="Aluguel" radius={[4, 4, 0, 0]} maxBarSize={18}>
+                <Bar dataKey="aluguel" name="Aluguel" radius={[4, 4, 0, 0]} maxBarSize={26}>
                   {result.points.map((point) => (
                     <Cell key={point.key} fill={ALUGUEL} />
                   ))}
                 </Bar>
-                <Bar dataKey="venda" name="Venda" radius={[4, 4, 0, 0]} maxBarSize={18}>
+                <Bar dataKey="venda" name="Venda" radius={[4, 4, 0, 0]} maxBarSize={26}>
                   {result.points.map((point) => (
                     <Cell key={point.key} fill={VENDA} />
                   ))}
