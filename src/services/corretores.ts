@@ -985,6 +985,8 @@ export function calculateCorretoresSummary(corretores: Corretor[]): CorretoresSu
     summary.visitasRealizadas += corretor.visitasRealizadas;
     summary.propostasFeitas += corretor.propostasFeitas;
     summary.contratosFechados += corretor.contratosFechados;
+    summary.contratosDeAtendimento += corretor.contratosDeAtendimento;
+    summary.respostasForaDoPrazo += corretor.respostasForaDoPrazo;
     summary.vendasFechadas += corretor.vendasFechadas;
     summary.alugueisFechados += corretor.alugueisFechados;
     summary.agendaProximos += corretor.agendaProximos;
