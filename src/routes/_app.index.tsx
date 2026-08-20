@@ -2,8 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -31,7 +29,6 @@ import { RealEstateSitePreviewSection } from "@/components/real-estate-site-prev
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
 import {
-  dashboardAluguelVenda,
   dashboardComparativoCordialMorar,
   dashboardPrevisaoFinanceira,
 } from "@/lib/mock/data";
