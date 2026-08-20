@@ -187,7 +187,7 @@ export function TeamPerformanceChart({
               accessibilityLayer
               data={chartData}
               layout="vertical"
-              margin={{ left: 0, right: 30, top: 4, bottom: 4 }}
+              margin={{ left: 0, right: 44, top: 4, bottom: 4 }}
               barCategoryGap={visibleKeys.length === 1 ? "42%" : "30%"}
               barGap={3}
             >
@@ -258,7 +258,7 @@ export function TeamPerformanceChart({
         )}
       </div>
 
-      <div className="no-scrollbar relative z-10 mt-2 flex items-center gap-4 overflow-x-auto pl-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/45">
+      <div className="relative z-10 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 pl-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/45">
         {METRIC_KEYS.map((key) => (
           <span
             key={key}
