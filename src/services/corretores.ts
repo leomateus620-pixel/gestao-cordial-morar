@@ -441,6 +441,7 @@ export function normalizeCorretor(input: LegacyCorretor): Corretor {
     respostaMaisLentaSegundos: asNullableNumber(input.respostaMaisLentaSegundos),
     respostasMedidas: asNumber(input.respostasMedidas),
     respostasPendentes: asNumber(input.respostasPendentes),
+    respostasForaDoPrazo: asNumber(input.respostasForaDoPrazo),
     atividadesRecentes: input.atividadesRecentes ?? [],
   };
 }
