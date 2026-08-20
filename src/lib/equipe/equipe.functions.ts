@@ -654,6 +654,14 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
       }),
     };
 
+    let unattributedAttendances = 0;
+    try {
+      const unassigned = (await unassignedAttendancesQuery) as unknown as { count: number | null };
+      unattributedAttendances = Number(unassigned?.count ?? 0) || 0;
+    } catch {
+      unattributedAttendances = 0;
+    }
+
     try {
       return buildCorretoresOperationalModel({
         periodo,
@@ -661,6 +669,7 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
         sources,
         sourceStatus: statuses,
         now,
+        unattributedAttendances,
       });
     } catch (error) {
       console.error(
