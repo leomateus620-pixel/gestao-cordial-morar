@@ -109,7 +109,8 @@ async function run() {
       const up = await admin.storage.from("property-images").upload(path, bytes, { contentType: "image/jpeg", upsert: true });
       if (up.error) throw new Error(up.error.message);
       const hash = String(bytes.length);
-      await admin.from("property_images").upsert(
+      await admin.from("property_images").delete().eq("property_id", propertyId).eq("storage_path", path);
+      await admin.from("property_images").insert(
         {
           property_id: propertyId,
           storage_path: path,
@@ -120,7 +121,6 @@ async function run() {
           is_cover: file.cover,
           position: file.position,
         },
-        { onConflict: "property_id,storage_path" },
       );
     }
     console.log("imagens:", await processJob(admin, job(propertyId, "update")));
