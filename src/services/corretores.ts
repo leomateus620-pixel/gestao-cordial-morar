@@ -174,8 +174,6 @@ const sortAccessors: Record<CorretorSortKey, (corretor: Corretor) => number> = {
   conversao: (corretor) => corretor.taxaConversao,
   contratos: (corretor) => corretor.contratosFechados,
   atendimentos: (corretor) => corretor.atendimentosRecebidos,
-  comissao: (corretor) =>
-    corretor.comissaoPrevistaDisponivel ? corretor.comissaoPrevista : Number.NEGATIVE_INFINITY,
   agenciamentos: (corretor) => corretor.agenciamentosFeitos,
   bonificacoes: (corretor) => corretor.bonificacoesTotal,
 };
@@ -871,7 +869,6 @@ export function getCorretorSortLabel(sort: CorretorSortKey) {
     conversao: "Conversão de atendimentos",
     contratos: "Contratos fechados",
     atendimentos: "Atendimentos recebidos",
-    comissao: "Comissão prevista",
     agenciamentos: "Agenciamentos",
     bonificacoes: "Bonificações conquistadas",
   };

@@ -23,8 +23,7 @@ export function CorretoresRanking({
     .filter(
       (corretor) =>
         corretor.rankingPosicao != null &&
-        getCorretorSortValue(corretor, criterion) > 0 &&
-        (criterion !== "comissao" || corretor.comissaoPrevistaDisponivel),
+        getCorretorSortValue(corretor, criterion) > 0,
     )
     .slice(0, 5);
   const criterionLabel = getCorretorSortLabel(criterion);
@@ -116,7 +115,6 @@ export function CorretoresRanking({
 function formatRankingValue(corretor: Corretor, criterion: CorretorSortKey) {
   const value = getCorretorSortValue(corretor, criterion);
   if (criterion === "conversao") return `${value}%`;
-  if (criterion === "comissao") return brl(value, { compact: true });
   return String(value);
 }
 
@@ -125,7 +123,6 @@ function criterionUnit(criterion: CorretorSortKey) {
     conversao: "conversão",
     contratos: "contratos",
     atendimentos: "recebidos",
-    comissao: "prevista",
     agenciamentos: "agenciamentos",
     bonificacoes: "bonificações",
   };
@@ -142,10 +139,8 @@ function buildSupportingMetric(corretor: Corretor, criterion: CorretorSortKey) {
   if (criterion === "atendimentos") {
     return `${corretor.atendimentosEmAndamento} em andamento · ${corretor.atendimentosConcluidos} concluídos`;
   }
-  if (criterion === "comissao") {
-    return corretor.comissaoPagaDisponivel && corretor.comissaoPaga != null
-      ? `${brl(corretor.comissaoPaga, { compact: true })} pagos`
-      : "Valor pago indisponível";
+  if (criterion === "bonificacoes") {
+    return `${corretor.bonificacoesPagas} pagas · ${corretor.bonificacoesPendentes} pendentes`;
   }
   return `${corretor.agenciamentosChecklistPercent}% do checklist concluído`;
 }

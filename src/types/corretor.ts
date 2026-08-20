@@ -12,7 +12,6 @@ export type CorretorSortKey =
   | "conversao"
   | "contratos"
   | "atendimentos"
-  | "comissao"
   | "agenciamentos"
   | "bonificacoes";
 

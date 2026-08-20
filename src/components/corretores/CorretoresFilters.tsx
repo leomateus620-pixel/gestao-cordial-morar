@@ -37,7 +37,7 @@ const sortOptions: Array<{ value: CorretorSortKey; label: string }> = [
   { value: "conversao", label: "Conversão de atendimentos" },
   { value: "contratos", label: "Contratos fechados" },
   { value: "atendimentos", label: "Atendimentos recebidos" },
-  { value: "comissao", label: "Comissão prevista" },
+  { value: "bonificacoes", label: "Bonificações" },
   { value: "agenciamentos", label: "Agenciamentos" },
 ];
 
