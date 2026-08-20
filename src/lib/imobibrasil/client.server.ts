@@ -8,10 +8,12 @@
 import {
   ImobiApiError,
   categoryForHttpStatus,
+  explainProviderMessage,
   extractProviderMessage,
   sanitizeMessage,
   toImobiError,
 } from "./errors";
+
 import { providerConfig, type ImobiProvider } from "./providers";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
