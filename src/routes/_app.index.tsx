@@ -38,7 +38,6 @@ import { NovoAtendimentoSheet } from "@/components/sheets/novo-atendimento";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth-mock";
 import { useAgenciamentos } from "@/hooks/useAgenciamentos";
-import { useCorretores } from "@/hooks/useCorretores";
 import {
   axisTick,
   chartCordial,
@@ -102,9 +101,6 @@ function Dashboard() {
       rawLancamentos: s.lancamentos,
     })),
   );
-  const { dashboardSummary: equipeSummary, dashboardRanking: equipeRanking } = useCorretores({
-    skipDashboard: !isAdminOwner,
-  });
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
   const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
