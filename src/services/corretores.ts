@@ -836,6 +836,7 @@ export function buildCorretoresOperationalModel({
     unattributed: {
       sales: unattributedSales,
       rentals: unattributedRentals,
+      attendances: Math.max(0, unattributedAttendances),
     },
   };
 }
