@@ -77,17 +77,18 @@ async function findRemoteByReference(
     : ((response.data as Record<string, unknown>)?.["resultSet"] ??
         (response.data as Record<string, unknown>)?.["data"] ??
         []);
-  const list = Array.isArray(items) ? items : [];
+  const list = Array.isArray(items) ? items : Array.isArray((items as Record<string, unknown>)?.["data"]) ? ((items as Record<string, unknown>)["data"] as unknown[]) : [];
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const record = item as Record<string, unknown>;
-    const remoteRef = String(record["referencia"] ?? "").trim();
+    const remoteRef = String(record["referenciaImovel"] ?? record["referencia"] ?? "").trim();
     if (remoteRef && remoteRef.toUpperCase() !== reference.toUpperCase()) continue;
     const id = extractExternalId(record);
     if (id) return id;
   }
   return null;
 }
+
 
 async function verifyRemote(provider: ImobiProvider, externalId: string, correlationId: string) {
   const response = await imobiRequest(provider, `/imovel/dados/${encodeURIComponent(externalId)}`, {
