@@ -2,21 +2,26 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
   CalendarRange,
   LineChart as LineChartIcon,
-  Loader2,
-  Sparkles,
-  TrendingUp,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart as RechartsLineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
 import { listAttendances } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
@@ -64,20 +69,19 @@ const SERIES: Array<{
     key: "cordial",
     label: "Cordial",
     color: chartCordial,
-    description: "Linha sólida azul",
+    description: "Área azul",
   },
   {
     key: "morar",
     label: "Morar",
     color: chartMorar,
-    description: "Linha sólida cobre",
+    description: "Área cobre",
   },
   {
     key: "total",
     label: "Total",
     color: chartSystem,
-    description: "Linha destacada consolidada",
-    dashed: true,
+    description: "Linha consolidada",
   },
 ];
 
@@ -100,6 +104,7 @@ const EMPTY_ATTENDANCES: Atendimento[] = [];
 
 export function AttendanceEvolutionCard({ className }: { className?: string }) {
   const session = useSession();
+  const isMobile = useIsMobile();
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
   const [customStart, setCustomStart] = useState(() => toDateInputValue(startOfYear(new Date())));
   const [customEnd, setCustomEnd] = useState(() => toDateInputValue(new Date()));
@@ -139,6 +144,9 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
   const summary = useMemo(() => buildSummary(chartData, previousTotal), [chartData, previousTotal]);
   const hasAnyAttendance = attendances.length > 0;
   const hasFilteredData = summary.total > 0;
+  const filtersDirty =
+    periodMode !== "month" || SERIES.some((series) => !visibleSeries[series.key]);
+  const rangeLabel = formatRangeShort(periodRange);
 
   function toggleSeries(key: SeriesKey) {
     setVisibleSeries((current) => {
@@ -148,6 +156,19 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
     });
   }
 
+  const filterPanel = (
+    <FilterPanel
+      periodMode={periodMode}
+      customStart={customStart}
+      customEnd={customEnd}
+      visibleSeries={visibleSeries}
+      onPeriodModeChange={setPeriodMode}
+      onCustomStartChange={setCustomStart}
+      onCustomEndChange={setCustomEnd}
+      onToggleSeries={toggleSeries}
+    />
+  );
+
   if (attendancesQuery.isLoading) {
     return <AttendanceEvolutionSkeleton className={className} />;
   }
@@ -155,7 +176,7 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        "relative w-full min-w-0 rounded-3xl p-3 shadow-[0_24px_70px_-28px_rgba(23,27,33,0.28)] sm:p-5 xl:col-span-2",
+        "relative w-full min-w-0 rounded-3xl p-3 shadow-[0_24px_70px_-30px_rgba(23,27,33,0.24)] sm:p-5 xl:col-span-2",
         className,
       )}
       style={{
@@ -165,69 +186,70 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
         border: "1px solid rgba(255,255,255,0.68)",
       }}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-5 top-0 h-px"
-        style={{
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.92), transparent)",
-        }}
-      />
-
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/58 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary shadow-[0_10px_24px_-20px_rgba(30,100,125,0.7)]">
-            <Sparkles className="size-3 text-[var(--system-accent-dark)]" />
-            Evolução comercial
-          </div>
-          <h3 className="mt-3 max-w-[36rem] text-[1.35rem] font-black leading-tight tracking-tight text-foreground sm:text-2xl">
-            Evolução mensal de atendimentos
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0 border-l-[3px] border-primary pl-3">
+          <h3 className="text-[1.3rem] font-black leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[1.6rem]">
+            Evolução de atendimentos
           </h3>
-          <p className="mt-1.5 max-w-[42rem] text-sm leading-relaxed text-foreground/58">
-            Compare o crescimento da Cordial, Morar e total consolidado no período selecionado.
+          <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/45">
+            {periodLabel} · {rangeLabel}
           </p>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            <SummaryPill
-              label="Total do período"
-              value={String(summary.total)}
-              detail={periodLabel}
-            />
-            <SummaryPill
-              label="Maior pico"
-              value={String(summary.peakValue)}
-              detail={summary.peakLabel}
-            />
-            <SummaryPill
-              label="Melhor imobiliária"
-              value={summary.bestAgency}
-              detail={summary.bestAgencyDetail}
-              color={summary.bestAgencyColor}
-            />
-            {summary.growthLabel && (
-              <SummaryPill
-                label="Período anterior"
-                value={summary.growthLabel}
-                detail="comparação real"
-                trend={summary.growthTone}
-              />
-            )}
-          </div>
         </div>
 
-        <PeriodFilterCard
-          periodMode={periodMode}
-          periodLabel={periodLabel}
-          customStart={customStart}
-          customEnd={customEnd}
-          onPeriodModeChange={setPeriodMode}
-          onCustomStartChange={setCustomStart}
-          onCustomEndChange={setCustomEnd}
-          isFetching={attendancesQuery.isFetching}
+        {isMobile ? (
+          <Sheet>
+            <SheetTrigger asChild>
+              <FilterIconButton active={filtersDirty} />
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              className="rounded-t-[1.75rem] border-white/60 bg-background/95 p-5 backdrop-blur-2xl"
+            >
+              <SheetHeader className="mb-4 text-left">
+                <SheetTitle className="text-base font-black">Filtros do gráfico</SheetTitle>
+              </SheetHeader>
+              {filterPanel}
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <Popover>
+            <PopoverTrigger asChild>
+              <FilterIconButton active={filtersDirty} />
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-[19rem] rounded-2xl border-white/70 bg-white/95 p-4 backdrop-blur-2xl"
+            >
+              {filterPanel}
+            </PopoverContent>
+          </Popover>
+        )}
+      </header>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <SummaryStat label="Total no período" value={String(summary.total)} detail="atendimentos" />
+        <SummaryStat
+          label="Pico"
+          value={String(summary.peakValue)}
+          detail={summary.peakLabel}
+          color={chartSystem}
+        />
+        <SummaryStat
+          label="Imobiliária líder"
+          value={summary.bestAgency}
+          detail={summary.bestAgencyDetail}
+          color={summary.bestAgencyColor}
+        />
+        <SummaryStat
+          label="Vs. anterior"
+          value={summary.growthLabel ?? "—"}
+          detail={summary.growthLabel ? `${previousTotal} antes` : "sem base"}
+          trend={summary.growthTone}
         />
       </div>
 
-      <div className="mt-5 min-w-0 rounded-[1.35rem] border border-white/70 bg-white/40 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-3">
-        <div className="relative h-[20rem] min-w-0 sm:h-[22rem] lg:h-[25rem]">
+      <div className="mt-4 min-w-0">
+        <div className="relative h-[17rem] min-w-0 sm:h-[20rem] lg:h-[23rem]">
           {attendancesQuery.isError ? (
             <ChartState
               icon={<AlertTriangle className="size-5" />}
@@ -249,14 +271,22 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
             />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <RechartsLineChart
+              <ComposedChart
                 data={chartData}
-                margin={{ left: -8, right: 14, top: 18, bottom: 6 }}
+                margin={{ left: -14, right: 12, top: 16, bottom: 4 }}
                 onMouseLeave={() => setHoveredSeries(null)}
               >
                 <defs>
+                  <linearGradient id="attendance-fill-cordial" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartCordial} stopOpacity={0.46} />
+                    <stop offset="100%" stopColor={chartCordial} stopOpacity={0.04} />
+                  </linearGradient>
+                  <linearGradient id="attendance-fill-morar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartMorar} stopOpacity={0.42} />
+                    <stop offset="100%" stopColor={chartMorar} stopOpacity={0.04} />
+                  </linearGradient>
                   <filter id="attendance-line-glow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="6" stdDeviation="5" floodOpacity="0.16" />
+                    <feDropShadow dx="0" dy="6" stdDeviation="5" floodOpacity="0.18" />
                   </filter>
                 </defs>
                 <CartesianGrid stroke={gridStroke} strokeDasharray="4 8" vertical={false} />
@@ -264,151 +294,224 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
                   dataKey="label"
                   axisLine={false}
                   tickLine={false}
-                  tickMargin={12}
-                  minTickGap={18}
-                  tick={{ fontSize: 11, fill: "rgba(42,48,56,0.58)", fontWeight: 700 }}
+                  tickMargin={10}
+                  minTickGap={isMobile ? 34 : 22}
+                  tick={{ fontSize: 10, fill: "rgba(42,48,56,0.5)", fontWeight: 700 }}
                 />
                 <YAxis
                   allowDecimals={false}
                   axisLine={false}
                   tickLine={false}
-                  width={34}
-                  tickMargin={8}
-                  tick={{ fontSize: 11, fill: "rgba(42,48,56,0.54)", fontWeight: 700 }}
+                  width={32}
+                  tickCount={4}
+                  tickMargin={6}
+                  tick={{ fontSize: 10, fill: "rgba(42,48,56,0.42)", fontWeight: 700 }}
                 />
                 <Tooltip
                   content={<AttendanceTooltip />}
                   cursor={{
-                    stroke: "rgba(30,100,125,0.18)",
+                    stroke: "rgba(30,100,125,0.28)",
                     strokeWidth: 1.5,
-                    strokeDasharray: "5 5",
                   }}
                   allowEscapeViewBox={{ x: false, y: true }}
                   wrapperStyle={{ outline: "none", zIndex: 20 }}
                 />
-                {SERIES.map((series) =>
-                  visibleSeries[series.key] ? (
-                    <Line
-                      key={series.key}
-                      type="monotone"
-                      dataKey={series.key}
-                      name={series.label}
-                      stroke={series.color}
-                      strokeWidth={series.key === "total" ? 3.25 : 2.65}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeDasharray={series.dashed ? "7 5" : undefined}
-                      strokeOpacity={getSeriesOpacity(series.key, hoveredSeries)}
-                      filter={series.key === "total" ? "url(#attendance-line-glow)" : undefined}
-                      dot={{
-                        r: 2.35,
-                        strokeWidth: 1.5,
-                        stroke: "rgba(255,255,255,0.92)",
-                        fill: series.color,
-                        fillOpacity: 0.82,
-                      }}
-                      activeDot={{
-                        r: series.key === "total" ? 7 : 6,
-                        strokeWidth: 3,
-                        stroke: "rgba(255,255,255,0.95)",
-                        fill: series.color,
-                      }}
-                      animationDuration={
-                        prefersReducedMotion ? 0 : series.key === "total" ? 900 : 780
-                      }
-                      animationEasing="ease-out"
-                      onMouseEnter={() => setHoveredSeries(series.key)}
-                    />
-                  ) : null,
+                {visibleSeries.cordial && (
+                  <Area
+                    type="monotone"
+                    dataKey="cordial"
+                    name="Cordial"
+                    stroke={chartCordial}
+                    strokeWidth={2.4}
+                    fill="url(#attendance-fill-cordial)"
+                    strokeOpacity={getSeriesOpacity("cordial", hoveredSeries)}
+                    fillOpacity={hoveredSeries && hoveredSeries !== "cordial" ? 0.25 : 1}
+                    activeDot={{
+                      r: 5.5,
+                      strokeWidth: 3,
+                      stroke: "rgba(255,255,255,0.95)",
+                      fill: chartCordial,
+                    }}
+                    dot={false}
+                    animationDuration={prefersReducedMotion ? 0 : 760}
+                    onMouseEnter={() => setHoveredSeries("cordial")}
+                  />
                 )}
-              </RechartsLineChart>
+                {visibleSeries.morar && (
+                  <Area
+                    type="monotone"
+                    dataKey="morar"
+                    name="Morar"
+                    stroke={chartMorar}
+                    strokeWidth={2.4}
+                    fill="url(#attendance-fill-morar)"
+                    strokeOpacity={getSeriesOpacity("morar", hoveredSeries)}
+                    fillOpacity={hoveredSeries && hoveredSeries !== "morar" ? 0.25 : 1}
+                    activeDot={{
+                      r: 5.5,
+                      strokeWidth: 3,
+                      stroke: "rgba(255,255,255,0.95)",
+                      fill: chartMorar,
+                    }}
+                    dot={false}
+                    animationDuration={prefersReducedMotion ? 0 : 760}
+                    onMouseEnter={() => setHoveredSeries("morar")}
+                  />
+                )}
+                {visibleSeries.total && (
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name="Total"
+                    stroke={chartSystem}
+                    strokeWidth={3.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeOpacity={getSeriesOpacity("total", hoveredSeries)}
+                    filter="url(#attendance-line-glow)"
+                    dot={false}
+                    activeDot={{
+                      r: 7,
+                      strokeWidth: 3,
+                      stroke: "rgba(255,255,255,0.95)",
+                      fill: chartSystem,
+                    }}
+                    animationDuration={prefersReducedMotion ? 0 : 900}
+                    animationEasing="ease-out"
+                    onMouseEnter={() => setHoveredSeries("total")}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        <LegendChips
-          visibleSeries={visibleSeries}
-          hoveredSeries={hoveredSeries}
-          onHover={setHoveredSeries}
-          onToggle={toggleSeries}
-        />
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 pl-1">
+          {SERIES.filter((series) => visibleSeries[series.key]).map((series) => (
+            <span
+              key={series.key}
+              className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-foreground/45"
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-4 rounded-full"
+                style={{ background: series.color }}
+              />
+              {series.label}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-function PeriodFilterCard({
+function FilterIconButton({ active, ...props }: { active: boolean } & Record<string, unknown>) {
+  return (
+    <button
+      type="button"
+      {...props}
+      aria-label="Filtros do gráfico"
+      className="relative grid size-10 shrink-0 place-items-center rounded-2xl border border-white/70 bg-white/70 text-foreground/65 shadow-[0_14px_30px_-24px_rgba(23,27,33,0.4)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+    >
+      <SlidersHorizontal className="size-4" />
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-primary ring-2 ring-white"
+        />
+      )}
+    </button>
+  );
+}
+
+function FilterPanel({
   periodMode,
-  periodLabel,
   customStart,
   customEnd,
+  visibleSeries,
   onPeriodModeChange,
   onCustomStartChange,
   onCustomEndChange,
-  isFetching,
+  onToggleSeries,
 }: {
   periodMode: PeriodMode;
-  periodLabel: string;
   customStart: string;
   customEnd: string;
+  visibleSeries: Record<SeriesKey, boolean>;
   onPeriodModeChange: (value: PeriodMode) => void;
   onCustomStartChange: (value: string) => void;
   onCustomEndChange: (value: string) => void;
-  isFetching: boolean;
+  onToggleSeries: (value: SeriesKey) => void;
 }) {
   return (
-    <div className="w-full shrink-0 rounded-2xl border border-white/70 bg-white/58 p-2.5 shadow-[0_18px_36px_-26px_rgba(23,27,33,0.28)] lg:w-[21rem]">
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-foreground/42">
-            Período dos dados
-          </p>
-          <p className="mt-0.5 truncate text-sm font-bold text-foreground">{periodLabel}</p>
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-foreground/42">
+          Período
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {PERIOD_OPTIONS.map((option) => {
+            const active = periodMode === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onPeriodModeChange(option.key)}
+                className={cn(
+                  "min-h-9 rounded-xl px-2 text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+                  active
+                    ? "bg-primary text-white"
+                    : "bg-foreground/[0.05] text-foreground/60 hover:text-primary",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
-        <span
-          className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-2xl text-primary transition-transform duration-200 motion-reduce:transition-none",
-            isFetching ? "bg-primary/12" : "bg-[rgba(30,100,125,0.09)] hover:scale-105",
-          )}
-          aria-hidden="true"
-        >
-          {isFetching ? (
-            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <CalendarRange className="size-4" />
-          )}
-        </span>
-      </div>
-
-      <div className="mt-3 flex gap-1.5 overflow-x-auto pb-0.5">
-        {PERIOD_OPTIONS.map((option) => {
-          const active = periodMode === option.key;
-          return (
-            <button
-              key={option.key}
-              type="button"
-              className={cn(
-                "min-h-9 shrink-0 rounded-full px-3 text-xs font-black transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none",
-                active
-                  ? "bg-primary text-white shadow-[0_12px_24px_-16px_rgba(30,100,125,0.95)]"
-                  : "bg-white/62 text-foreground/58 ring-1 ring-foreground/8 hover:-translate-y-0.5 hover:text-primary",
-              )}
-              aria-pressed={active}
-              onClick={() => onPeriodModeChange(option.key)}
-            >
-              <span className="hidden sm:inline">{option.label}</span>
-              <span className="sm:hidden">{option.shortLabel}</span>
-            </button>
-          );
-        })}
       </div>
 
       {periodMode === "custom" && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <DateInput label="Início" value={customStart} onChange={onCustomStartChange} />
           <DateInput label="Final" value={customEnd} onChange={onCustomEndChange} />
         </div>
       )}
+
+      <div>
+        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-foreground/42">
+          Séries
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {SERIES.map((series) => {
+            const active = visibleSeries[series.key];
+            return (
+              <button
+                key={series.key}
+                type="button"
+                aria-pressed={active}
+                aria-label={`${series.label}: ${active ? "visível" : "oculta"}. ${series.description}`}
+                onClick={() => onToggleSeries(series.key)}
+                className={cn(
+                  "inline-flex min-h-9 items-center gap-2 rounded-xl border px-3 text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+                  active
+                    ? "border-foreground/10 bg-white text-foreground"
+                    : "border-transparent bg-foreground/[0.05] text-foreground/38",
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-1.5 w-4 rounded-full"
+                  style={{ background: active ? series.color : "rgba(42,48,56,0.2)" }}
+                />
+                {series.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -437,7 +540,7 @@ function DateInput({
   );
 }
 
-function SummaryPill({
+function SummaryStat({
   label,
   value,
   detail,
@@ -450,21 +553,30 @@ function SummaryPill({
   color?: string;
   trend?: "up" | "down" | "flat";
 }) {
+  const TrendIcon = trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : ArrowRight;
   const trendClass =
-    trend === "up" ? "text-emerald-700" : trend === "down" ? "text-destructive" : "text-foreground";
+    trend === "up"
+      ? "text-emerald-700"
+      : trend === "down"
+        ? "text-destructive"
+        : "text-foreground";
 
   return (
-    <div className="min-w-0 rounded-2xl border border-white/72 bg-white/48 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.68)]">
-      <p className="truncate text-[9px] font-black uppercase tracking-[0.15em] text-foreground/40">
+    <div className="min-w-0 rounded-2xl bg-white/55 px-3 py-2.5 ring-1 ring-white/70">
+      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-foreground/40">
         {label}
       </p>
       <p
-        className={cn("mt-1 truncate text-base font-black leading-none", trendClass)}
-        style={color ? { color } : undefined}
+        className={cn(
+          "mt-1 flex items-center gap-1 truncate text-lg font-black leading-none tabular-nums",
+          trend ? trendClass : "text-foreground",
+        )}
+        style={color && !trend ? { color } : undefined}
       >
+        {trend && <TrendIcon className="size-4 shrink-0" aria-hidden="true" />}
         {value}
       </p>
-      <p className="mt-1 truncate text-[10px] font-medium text-foreground/46">{detail}</p>
+      <p className="mt-1 truncate text-[10px] font-semibold text-foreground/45">{detail}</p>
     </div>
   );
 }
@@ -482,7 +594,7 @@ function AttendanceTooltip({
   if (!point) return null;
 
   return (
-    <div className="min-w-[13.5rem] rounded-2xl border border-white/74 bg-white/96 p-3 text-xs shadow-[0_22px_50px_-20px_rgba(23,27,33,0.34)] backdrop-blur-xl">
+    <div className="min-w-[12rem] rounded-2xl border border-white/74 bg-white/97 p-3 text-xs shadow-[0_22px_50px_-20px_rgba(23,27,33,0.34)] backdrop-blur-xl">
       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary/62">
         {point.tooltipLabel}
       </p>
@@ -493,38 +605,21 @@ function AttendanceTooltip({
             label={series.label}
             value={point[series.key] ?? 0}
             color={series.color}
-            dashed={series.dashed}
           />
         ))}
-      </div>
-      <div className="mt-3 rounded-xl bg-[rgba(30,100,125,0.07)] px-2.5 py-2 text-[11px] font-semibold leading-snug text-primary">
-        {point.insight}
       </div>
     </div>
   );
 }
 
-function TooltipRow({
-  label,
-  value,
-  color,
-  dashed,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  dashed?: boolean;
-}) {
+function TooltipRow({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="flex items-center justify-between gap-5">
       <span className="flex min-w-0 items-center gap-2 text-foreground/64">
         <span
           aria-hidden="true"
-          className={cn("h-1.5 w-5 shrink-0 rounded-full", dashed && "border-t border-dashed")}
-          style={{
-            background: dashed ? "transparent" : color,
-            borderColor: color,
-          }}
+          className="h-1.5 w-5 shrink-0 rounded-full"
+          style={{ background: color }}
         />
         {label}
       </span>
@@ -533,54 +628,12 @@ function TooltipRow({
   );
 }
 
-function LegendChips({
-  visibleSeries,
-  hoveredSeries,
-  onHover,
-  onToggle,
-}: {
-  visibleSeries: Record<SeriesKey, boolean>;
-  hoveredSeries: SeriesKey | null;
-  onHover: (value: SeriesKey | null) => void;
-  onToggle: (value: SeriesKey) => void;
-}) {
-  return (
-    <div className="mt-3 flex min-w-0 gap-2 overflow-x-auto pb-1">
-      {SERIES.map((series) => {
-        const active = visibleSeries[series.key];
-        const dimmed = hoveredSeries && hoveredSeries !== series.key;
-        return (
-          <button
-            key={series.key}
-            type="button"
-            className={cn(
-              "group inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-black transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none",
-              active
-                ? "border-white/72 bg-white/70 text-foreground shadow-[0_12px_26px_-22px_rgba(23,27,33,0.38)]"
-                : "border-foreground/8 bg-white/28 text-foreground/38",
-              dimmed && "opacity-45",
-            )}
-            aria-pressed={active}
-            aria-label={`${series.label}: ${active ? "visível" : "oculta"}. ${series.description}`}
-            onClick={() => onToggle(series.key)}
-            onMouseEnter={() => onHover(series.key)}
-            onMouseLeave={() => onHover(null)}
-          >
-            <span
-              className={cn("h-1.5 w-6 rounded-full", series.dashed && "border-t border-dashed")}
-              style={{
-                background: series.dashed ? "transparent" : series.color,
-                borderColor: series.color,
-              }}
-              aria-hidden="true"
-            />
-            {series.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+function formatRangeShort(range: DateRange) {
+  const fmt = (date: Date) =>
+    date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return `${fmt(range.start)} – ${fmt(range.end)}`;
 }
+
 
 function ChartState({
   icon,
