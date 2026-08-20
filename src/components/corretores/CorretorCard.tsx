@@ -43,8 +43,8 @@ function CorretorCardComponent({ corretor, sourceStatus, onSelect }: CorretorCar
   const hasUnavailableSource = Object.values(sourceStatus).some((status) => status === "error");
   const responseTime = !responseReady
     ? "Indisponível"
-    : corretor.mediaRespostaSegundos != null && corretor.respostasMedidas > 0
-      ? formatElapsedSeconds(Math.round(corretor.mediaRespostaSegundos))
+    : corretor.medianaRespostaSegundos != null && corretor.respostasMedidas > 0
+      ? formatElapsedSeconds(Math.round(corretor.medianaRespostaSegundos))
       : "Sem amostra";
 
   return (
@@ -126,14 +126,14 @@ function CorretorCardComponent({ corretor, sourceStatus, onSelect }: CorretorCar
         <MoneyMetric
           label="Mediana de resposta"
           value={
-            responsesReady && corretor.medianaRespostaSegundos != null
+            responseReady && corretor.medianaRespostaSegundos != null
               ? formatElapsedSeconds(Math.round(corretor.medianaRespostaSegundos))
               : "—"
           }
         />
         <MoneyMetric
           label="Fora do prazo (72h)"
-          value={responsesReady ? String(corretor.respostasForaDoPrazo) : "—"}
+          value={responseReady ? String(corretor.respostasForaDoPrazo) : "—"}
           muted
         />
       </div>
