@@ -150,14 +150,14 @@ function SummaryCardButton({
         "disabled:cursor-not-allowed disabled:opacity-70",
         card.tone === "primary" && "border-primary/15 bg-primary/[0.05]",
         card.tone === "success" && "border-emerald-700/10 bg-emerald-600/[0.04]",
-        card.tone === "money" && "border-orange-700/10 bg-orange-500/[0.05]",
+        card.tone === "warning" && "border-amber-600/15 bg-amber-500/[0.06]",
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
         <Icon
           className={cn(
             "size-3.5 shrink-0 text-primary",
-            card.tone === "money" && "text-orange-700",
+            card.tone === "warning" && "text-amber-700",
             card.tone === "success" && "text-emerald-700",
           )}
           aria-hidden
