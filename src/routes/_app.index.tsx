@@ -167,7 +167,6 @@ function Dashboard() {
         </section>
       )}
 
-
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.86fr)_minmax(0,1.05fr)]">
           <TeamPerformanceCard
@@ -206,7 +205,6 @@ function Dashboard() {
             inadimplencia={inadimplencia}
             contratos={imoveisNegociacao}
           />
-
 
           <ChartCard
             title="Previsão financeira mensal"

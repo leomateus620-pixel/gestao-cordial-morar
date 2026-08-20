@@ -94,8 +94,7 @@ export function useRentalVsSale(options: {
       rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     }
 
-    const dayCount =
-      Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1;
+    const dayCount = Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1;
     const groupByMonth = period === "ano" || dayCount > 62;
 
     const buckets = new Map<string, RentalVsSalePoint>();

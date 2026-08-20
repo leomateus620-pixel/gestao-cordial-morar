@@ -176,12 +176,7 @@ export function RentalVsSaleCard({ className }: { className?: string }) {
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Stat label="Aluguel" value={result.aluguel} color={ALUGUEL} />
         <Stat label="Venda" value={result.venda} color={VENDA} />
-        <Stat
-          label="Participação"
-          value={`${share}%`}
-          hint="aluguel"
-          color="rgba(42,48,56,0.35)"
-        />
+        <Stat label="Participação" value={`${share}%`} hint="aluguel" color="rgba(42,48,56,0.35)" />
       </div>
 
       <div className="mt-4">
@@ -215,10 +210,7 @@ export function RentalVsSaleCard({ className }: { className?: string }) {
                   minTickGap={12}
                   tick={{ fontSize: 10, fill: "rgba(42,48,56,0.45)", fontWeight: 700 }}
                 />
-                <Tooltip
-                  cursor={{ fill: "rgba(42,48,56,0.04)" }}
-                  content={<CompactTooltip />}
-                />
+                <Tooltip cursor={{ fill: "rgba(42,48,56,0.04)" }} content={<CompactTooltip />} />
                 <Bar dataKey="aluguel" name="Aluguel" radius={[4, 4, 0, 0]} maxBarSize={18}>
                   {result.points.map((point) => (
                     <Cell key={point.key} fill={ALUGUEL} />
@@ -263,9 +255,7 @@ function Stat({
       <p className="mt-1 text-[1.6rem] font-black leading-none tracking-[-0.03em] tabular-nums text-foreground">
         {typeof value === "number" ? String(value).padStart(2, "0") : value}
       </p>
-      {hint ? (
-        <p className="mt-0.5 text-[10px] font-semibold text-foreground/40">{hint}</p>
-      ) : null}
+      {hint ? <p className="mt-0.5 text-[10px] font-semibold text-foreground/40">{hint}</p> : null}
     </div>
   );
 }
