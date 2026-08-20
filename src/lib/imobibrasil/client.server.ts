@@ -182,7 +182,10 @@ export async function imobiRequest<T = unknown>(
       if (parsed && typeof parsed === "object" && (parsed as Record<string, unknown>).status === false) {
         log(false, "business");
         throw new ImobiApiError({
-          message: extractProviderMessage(parsed, rawText) ?? "O provedor recusou a operação.",
+          message: explainProviderMessage(
+            extractProviderMessage(parsed, rawText) ?? "O provedor recusou a operação.",
+            response.status,
+          ),
           category: "business",
           httpStatus: response.status,
         });
