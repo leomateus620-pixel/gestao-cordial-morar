@@ -158,18 +158,14 @@ function Dashboard() {
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
       {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}
 
-      {/* ── Resumo financeiro + Comparativo ─────────────────────────────── */}
+      {/* ── Aluguel x venda (atendimentos) + Comparativo ────────────────── */}
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
-          <FinancialSummaryCard
-            receita={dashboardPrevisaoFinanceira[0]?.receita ?? 0}
-            cobrancas={cobrancasAbertas}
-            inadimplencia={inadimplencia}
-            contratos={imoveisNegociacao}
-          />
+          <RentalVsSaleCard />
           <ComparativoCard />
         </section>
       )}
+
 
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.86fr)_minmax(0,1.05fr)]">
