@@ -196,7 +196,7 @@ function initialForm(agenciamento: Agenciamento | null | undefined, currentBroke
     tipoImovel: agenciamento?.tipoImovel ?? "casa",
     endereco: agenciamento?.endereco ?? "",
     bairro: agenciamento?.bairro ?? "",
-    cidade: agenciamento?.cidade ?? "Porto Alegre",
+    cidade: agenciamento?.cidade ?? "Santa Rosa",
     imobiliaria: agenciamento?.imobiliaria ?? currentBroker?.imobiliaria ?? "cordial",
     finalidade: agenciamento?.finalidade ?? defaultTrack,
     descricaoImovel: agenciamento?.descricaoImovel ?? "",
@@ -640,7 +640,7 @@ function PropertyStep({ form, errors, update }: { form: FormState; errors: Agenc
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="ag-bairro" label="Bairro ou região"><input id="ag-bairro" value={form.bairro} onChange={(event) => update("bairro", event.target.value)} className={controlClass()} placeholder="Centro" autoComplete="address-level3" /></Field>
-        <Field id="ag-cidade" label="Cidade"><input id="ag-cidade" value={form.cidade} onChange={(event) => update("cidade", event.target.value)} className={controlClass()} placeholder="Porto Alegre" autoComplete="address-level2" /></Field>
+        <Field id="ag-cidade" label="Cidade"><input id="ag-cidade" value={form.cidade} onChange={(event) => update("cidade", event.target.value)} className={controlClass()} placeholder="Santa Rosa" autoComplete="address-level2" /></Field>
       </div>
       <Field id="ag-descricao" label="Descrição curta" helper="Use um resumo objetivo para a equipe reconhecer o imóvel.">
         <textarea id="ag-descricao" value={form.descricaoImovel} onChange={(event) => update("descricaoImovel", event.target.value)} className={cn(controlClass(), "h-auto min-h-24 resize-y py-3")} placeholder="Ex.: apartamento de 2 dormitórios, posição solar norte..." maxLength={400} aria-describedby="ag-descricao-helper" />
