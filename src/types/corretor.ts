@@ -114,6 +114,7 @@ export type Corretor = {
   respostaMaisLentaSegundos: number | null;
   respostasMedidas: number;
   respostasPendentes: number;
+  respostasForaDoPrazo: number;
 
   rankingPosicao?: number;
   performanceTrend?: CorretorPerformanceTrend;
