@@ -273,7 +273,7 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
-                margin={{ left: -14, right: 12, top: 16, bottom: 4 }}
+                margin={{ left: -6, right: 12, top: 16, bottom: 4 }}
                 onMouseLeave={() => setHoveredSeries(null)}
               >
                 <defs>
@@ -302,7 +302,7 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
                   allowDecimals={false}
                   axisLine={false}
                   tickLine={false}
-                  width={32}
+                  width={34}
                   tickCount={4}
                   tickMargin={6}
                   tick={{ fontSize: 10, fill: "rgba(42,48,56,0.42)", fontWeight: 700 }}
