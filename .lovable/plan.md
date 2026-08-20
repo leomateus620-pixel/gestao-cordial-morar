@@ -30,3 +30,7 @@ Refazer o bloco de performance da equipe na visão geral: dados reais por corret
 - `src/types/corretor.ts` e `src/services/corretores.ts`: novos campos no tipo `Corretor` / `CorretoresSummary`, normalização e nova chave de ordenação `bonificacoes` em `rankCorretores`.
 - `src/routes/_app.index.tsx`: extrair `TeamPerformanceCard` para `src/components/dashboard/TeamPerformanceCard.tsx`, alimentado por `useEquipePerformance` (mesmo período do gráfico) com estado local de imobiliária e ordenação.
 - Sem migração de banco: a tabela `agenciamento_bonuses` já existe com os dados reais.
+
+## Correção pendente (build)
+
+- `src/lib/imobibrasil/serializers.test.ts` importa `vitest`, que não está instalado (o projeto roda testes com `node --test`). Na execução do plano, converto esse arquivo para o mesmo padrão `node:test` / `node:assert` dos demais testes e o incluo no script `test`, resolvendo o erro de build TS2307.
