@@ -98,6 +98,37 @@ async function run() {
       .eq("id", propertyId);
     console.log("update:", await processJob(admin, job(propertyId, "update")));
   }
+  if (step === "images" || step === "all") {
+    const files: Array<{ name: string; cover: boolean; position: number }> = [
+      { name: "qa-capa.jpg", cover: true, position: 0 },
+      { name: "qa-segunda.jpg", cover: false, position: 1 },
+    ];
+    for (const file of files) {
+      const bytes = new Uint8Array(await (await fetch(`https://picsum.photos/seed/${file.position}/800/600`)).arrayBuffer());
+      const path = `${propertyId}/${file.name}`;
+      const up = await admin.storage.from("property-images").upload(path, bytes, { contentType: "image/jpeg", upsert: true });
+      if (up.error) throw new Error(up.error.message);
+      const hash = String(bytes.length);
+      await admin.from("property_images").upsert(
+        {
+          property_id: propertyId,
+          storage_path: path,
+          file_name: file.name,
+          mime_type: "image/jpeg",
+          size_bytes: bytes.length,
+          content_hash: hash,
+          is_cover: file.cover,
+          position: file.position,
+        },
+        { onConflict: "property_id,storage_path" },
+      );
+    }
+    console.log("imagens:", await processJob(admin, job(propertyId, "update")));
+    const { data: rows } = await admin
+      .from("property_image_provider_publications")
+      .select("external_image_id, is_cover, status, last_error_message");
+    console.log("imagens publicadas:", rows);
+  }
   if (step === "reconcile" || step === "all") {
     const row = await publicationRow(propertyId);
     console.log("reconcile:", await reconcilePublication(admin, row as never, crypto.randomUUID()));
