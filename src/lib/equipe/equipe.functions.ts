@@ -293,7 +293,6 @@ export const getEquipePerformance = createServerFn({ method: "GET" })
         `and(created_at.gte.${startIso},created_at.lt.${endIso}),and(updated_at.gte.${startIso},updated_at.lt.${endIso})`,
       );
 
-
     const assignmentHistoryQuery = context.supabase
       .from("attendance_history")
       .select("id,attendance_id,event_type,new_value,created_at")

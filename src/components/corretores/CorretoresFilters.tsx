@@ -202,7 +202,9 @@ function FilterFields({
         <Select
           value={filters.ordenacao}
           disabled={isLoading}
-          onValueChange={(ordenacao) => onFiltersChange({ ordenacao: ordenacao as CorretorSortKey })}
+          onValueChange={(ordenacao) =>
+            onFiltersChange({ ordenacao: ordenacao as CorretorSortKey })
+          }
         >
           <SelectTrigger
             id="corretores-ranking"

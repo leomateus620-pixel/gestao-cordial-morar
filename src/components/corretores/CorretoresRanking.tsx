@@ -22,8 +22,7 @@ export function CorretoresRanking({
   const eligible = ranking
     .filter(
       (corretor) =>
-        corretor.rankingPosicao != null &&
-        getCorretorSortValue(corretor, criterion) > 0,
+        corretor.rankingPosicao != null && getCorretorSortValue(corretor, criterion) > 0,
     )
     .slice(0, 5);
   const criterionLabel = getCorretorSortLabel(criterion);

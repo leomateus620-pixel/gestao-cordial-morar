@@ -523,7 +523,6 @@ export function CorretorDetailDrawer({
                         value={rentalsReady ? corretor.alugueisEncerrados : "—"}
                       />
                     </Panel>
-
                   </TabsContent>
 
                   <TabsContent value="agenciamentos" className="mt-4 space-y-3">
