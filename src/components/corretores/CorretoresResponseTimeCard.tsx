@@ -19,19 +19,23 @@ export function CorretoresResponseTimeCard({
   const measured = corretores
     .filter(
       (corretor) =>
-        corretor.mediaRespostaSegundos != null &&
-        Number.isFinite(corretor.mediaRespostaSegundos) &&
-        corretor.mediaRespostaSegundos >= 0 &&
+        corretor.medianaRespostaSegundos != null &&
+        Number.isFinite(corretor.medianaRespostaSegundos) &&
+        corretor.medianaRespostaSegundos >= 0 &&
         corretor.respostasMedidas > 0,
     )
     .sort(
       (a, b) =>
-        (a.mediaRespostaSegundos ?? Number.POSITIVE_INFINITY) -
-        (b.mediaRespostaSegundos ?? Number.POSITIVE_INFINITY),
+        (a.medianaRespostaSegundos ?? Number.POSITIVE_INFINITY) -
+        (b.medianaRespostaSegundos ?? Number.POSITIVE_INFINITY),
     );
   const bestAverage = measured[0] ?? null;
   const totalPending = corretores.reduce(
     (total, corretor) => total + Math.max(0, corretor.respostasPendentes),
+    0,
+  );
+  const totalLate = corretores.reduce(
+    (total, corretor) => total + Math.max(0, corretor.respostasForaDoPrazo),
     0,
   );
 
@@ -46,8 +50,8 @@ export function CorretoresResponseTimeCard({
             Início dos atendimentos
           </h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-foreground/58">
-            Da atribuição ao primeiro acesso persistido pelo corretor, considerando apenas ciclos
-            com os dois horários válidos.
+            Mediana entre a atribuição e o primeiro acesso persistido pelo corretor. A mediana
+            evita a distorção causada por casos isolados muito demorados.
           </p>
         </div>
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -67,10 +71,10 @@ export function CorretoresResponseTimeCard({
 
       {!isLoading && !sourceError && measured.length === 0 && (
         <ResponseNotice
-          title="Dados insuficientes para calcular a média"
+          title="Dados insuficientes para calcular a mediana"
           description={
             totalPending > 0
-              ? `${totalPending} atendimento${totalPending === 1 ? "" : "s"} ainda aguardando abertura. A média aparecerá quando houver atribuição e primeira ação persistidas.`
+              ? `${totalPending} atendimento${totalPending === 1 ? "" : "s"} ainda aguardando abertura. A mediana aparecerá quando houver atribuição e primeira ação persistidas.`
               : "Nenhum atendimento deste recorte possui atribuição e primeira ação persistidas para o mesmo ciclo."
           }
         />
@@ -81,19 +85,19 @@ export function CorretoresResponseTimeCard({
           <div className="mb-3 grid gap-2 sm:grid-cols-2">
             <MiniStat
               icon={<Zap className="size-3.5 text-primary/75" aria-hidden />}
-              label="Melhor média"
+              label="Melhor mediana"
               name={bestAverage?.nome ?? "—"}
-              value={formatDuration(bestAverage?.mediaRespostaSegundos)}
+              value={formatDuration(bestAverage?.medianaRespostaSegundos)}
             />
             <MiniStat
               icon={<Clock3 className="size-3.5 text-primary/75" aria-hidden />}
-              label="Aguardando primeira ação"
-              name="Ciclos pendentes"
+              label="Pendentes / fora do prazo"
+              name={`${totalLate} acima de 72h`}
               value={String(totalPending)}
             />
           </div>
 
-          <ol className="space-y-2" aria-label="Média de resposta por corretor">
+          <ol className="space-y-2" aria-label="Mediana de resposta por corretor">
             {measured.slice(0, 6).map((corretor, index) => (
               <li
                 key={corretor.id}
@@ -116,14 +120,17 @@ export function CorretoresResponseTimeCard({
                           corretor.respostasPendentes === 1 ? "" : "s"
                         }`
                       : ""}
+                    {corretor.respostasForaDoPrazo > 0
+                      ? ` · ${corretor.respostasForaDoPrazo} acima de 72h`
+                      : ""}
                   </span>
                 </span>
                 <span className="text-right">
                   <span className="block font-mono text-sm font-bold text-primary">
-                    {formatDuration(corretor.mediaRespostaSegundos)}
+                    {formatDuration(corretor.medianaRespostaSegundos)}
                   </span>
                   <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-[0.12em] text-foreground/42">
-                    média
+                    mediana
                   </span>
                 </span>
               </li>
