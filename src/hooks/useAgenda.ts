@@ -133,6 +133,9 @@ export function useAgenda(
     filteredEvents,
     stats,
     isLoading: eventsQuery.isLoading,
+    /** True somente após uma carga concluída com sucesso. */
+    isReady: eventsQuery.isSuccess,
+    dataUpdatedAt: eventsQuery.dataUpdatedAt,
     isError: eventsQuery.isError,
     error: eventsQuery.error as Error | null,
     refetch: () => eventsQuery.refetch(),

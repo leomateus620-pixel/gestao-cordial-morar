@@ -119,6 +119,9 @@ export function useSales() {
     sales: salesQuery.data ?? [],
     kpis: kpisQuery.data,
     isLoading: salesQuery.isLoading,
+    /** True somente após uma carga concluída com sucesso. */
+    isReady: salesQuery.isSuccess,
+    dataUpdatedAt: salesQuery.dataUpdatedAt,
     isError: salesQuery.isError,
     error: salesQuery.error,
     isKpisLoading: kpisQuery.isLoading,
