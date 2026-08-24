@@ -127,9 +127,11 @@ function Page() {
   const defaultAgency: AgencyId = effectiveAgency === "todas" ? "cordial" : effectiveAgency;
 
   useEffect(() => {
-    if (!highlightedId || isLoading || isError) return;
+    if (!highlightedId || isError) return;
     const sale = sales.find((item) => item.id === highlightedId);
     if (!sale) {
+      // Só concluir "indisponível" depois de uma carga concluída com sucesso.
+      if (isLoading || !isReady) return;
       if (unavailableDeepLink.current !== highlightedId) {
         unavailableDeepLink.current = highlightedId;
         toast.error("Venda indisponível ou sem permissão para este usuário.");
@@ -139,7 +141,8 @@ function Page() {
     unavailableDeepLink.current = null;
     setSelectedSale(sale);
     setDetailsOpen(true);
-  }, [highlightedId, isError, isLoading, sales]);
+  }, [highlightedId, isError, isLoading, isReady, sales]);
+
 
   function openCreateForm() {
     setEditingSale(null);
