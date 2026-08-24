@@ -26,7 +26,7 @@ import { upsertAgendaEvent } from "@/lib/agenda/agenda.functions";
 import { buildNextStepAgendaEvent } from "@/lib/atendimentos/next-step-event";
 
 import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
-import { addAttendanceNote } from "@/lib/attendances/attendances.functions";
+import { addAttendanceNote, getAttendanceById } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import {
   canDeleteAttendance,
