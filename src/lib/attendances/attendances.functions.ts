@@ -337,6 +337,36 @@ function latestActions(rows: LastActionRow[]) {
   return result;
 }
 
+/**
+ * Busca pontual de um atendimento pelo id. Usada como rede de segurança quando
+ * um link (notificação/e-mail) aponta para um atendimento que não está na lista
+ * carregada em memória. Diferencia "sem permissão" de "não encontrado".
+ */
+export const getAttendanceById = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!asUuid(input?.id)) throw new Error("Identificador de atendimento inválido.");
+    return { id: input.id };
+  })
+  .handler(async ({ data, context }): Promise<
+    { status: "ok"; atendimento: Atendimento } | { status: "not_found" } | { status: "forbidden" }
+  > => {
+    const { data: row, error } = await context.supabase
+      .from("attendances")
+      .select(ATTENDANCE_SAFE_COLUMNS)
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) {
+      if (error.code === "42501" || error.message.toLowerCase().includes("row-level security")) {
+        return { status: "forbidden" };
+      }
+      throw new Error(error.message);
+    }
+    if (!row) return { status: "not_found" };
+    return { status: "ok", atendimento: rowToAtendimento(row as unknown as DbRow) };
+  });
+
+
 export const listAttendances = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

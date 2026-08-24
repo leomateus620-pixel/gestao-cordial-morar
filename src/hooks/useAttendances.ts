@@ -229,6 +229,9 @@ export function useAttendances(
     filteredAtendimentos,
     stats,
     isLoading: attendancesQuery.isLoading,
+    /** True somente após uma carga concluída com sucesso (evita falso "não encontrado"). */
+    isReady: attendancesQuery.isSuccess,
+    dataUpdatedAt: attendancesQuery.dataUpdatedAt,
     isError: attendancesQuery.isError,
     error: attendancesQuery.error as Error | null,
     refetch: () => attendancesQuery.refetch(),

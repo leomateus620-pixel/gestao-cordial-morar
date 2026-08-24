@@ -75,6 +75,7 @@ function AgendaPage() {
     deleteEvent,
     canEdit,
     isLoading,
+    isReady,
     isError,
     error,
     refetch,
@@ -88,9 +89,11 @@ function AgendaPage() {
   }, [corretorId, imobiliaria, periodo, status]);
 
   useEffect(() => {
-    if (!highlightedId || isLoading || isError) return;
+    if (!highlightedId || isError) return;
     const event = events.find((item) => item.id === highlightedId);
     if (!event) {
+      // Só concluir "indisponível" depois de uma carga concluída com sucesso.
+      if (isLoading || !isReady) return;
       if (unavailableDeepLink.current !== highlightedId) {
         unavailableDeepLink.current = highlightedId;
         setFeedback("Compromisso indisponível ou sem permissão para este usuário.");
@@ -100,7 +103,8 @@ function AgendaPage() {
     unavailableDeepLink.current = null;
     setSelected(event);
     setOpen(true);
-  }, [events, highlightedId, isError, isLoading]);
+  }, [events, highlightedId, isError, isLoading, isReady]);
+
 
   const people = useMemo(() => {
     const values = [
