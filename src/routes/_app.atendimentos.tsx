@@ -122,6 +122,8 @@ function Page() {
   const [selectedStage, setSelectedStage] = useState<PipelineStage>("primeiro_contato");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  /** Atendimento carregado sob demanda quando o link aponta para fora da lista. */
+  const [deepLinkAtendimento, setDeepLinkAtendimento] = useState<Atendimento | null>(null);
   const unavailableDeepLink = useRef<string | null>(null);
   const qc = useQueryClient();
   const {
@@ -158,22 +160,47 @@ function Page() {
     );
   }, [baseFilteredAtendimentos, clienteIdFilter]);
   const detailAtendimento = useMemo(
-    () => atendimentos.find((a) => a.id === detailId) ?? null,
-    [atendimentos, detailId],
+    () =>
+      atendimentos.find((a) => a.id === detailId) ??
+      (deepLinkAtendimento?.id === detailId ? deepLinkAtendimento : null),
+    [atendimentos, deepLinkAtendimento, detailId],
   );
   const editAtendimento = useMemo(
-    () => atendimentos.find((atendimento) => atendimento.id === editId) ?? null,
-    [atendimentos, editId],
+    () =>
+      atendimentos.find((atendimento) => atendimento.id === editId) ??
+      (deepLinkAtendimento?.id === editId ? deepLinkAtendimento : null),
+    [atendimentos, deepLinkAtendimento, editId],
   );
 
   useEffect(() => {
-    if (!highlightId || isLoading || isError) return;
-    const target = atendimentos.find((item) => item.id === highlightId);
+    if (!highlightId || isError) return;
+    const target =
+      atendimentos.find((item) => item.id === highlightId) ??
+      (deepLinkAtendimento?.id === highlightId ? deepLinkAtendimento : null);
     if (!target) {
-      if (unavailableDeepLink.current !== highlightId) {
-        unavailableDeepLink.current = highlightId;
-        toast.error("Atendimento indisponível ou sem permissão para este usuário.");
-      }
+      // Nunca concluir "não encontrado" antes de uma carga concluída com sucesso:
+      // a lista só começa a carregar depois que a sessão é reconhecida.
+      if (isLoading || !isReady) return;
+      // Rede de segurança: o atendimento pode estar fora do recorte carregado
+      // (filtro de imobiliária, cache antigo). Buscar o registro na nuvem.
+      if (unavailableDeepLink.current === highlightId) return;
+      unavailableDeepLink.current = highlightId;
+      void (async () => {
+        try {
+          const result = await getAttendanceById({ data: { id: highlightId } });
+          if (result.status === "ok") {
+            setDeepLinkAtendimento(result.atendimento);
+            return;
+          }
+          if (result.status === "forbidden") {
+            toast.error("Você não tem permissão para abrir este atendimento.");
+            return;
+          }
+          toast.error("Atendimento não encontrado. Ele pode ter sido excluído.");
+        } catch {
+          toast.error("Não foi possível abrir o atendimento agora. Tente novamente.");
+        }
+      })();
       return;
     }
     unavailableDeepLink.current = null;
@@ -199,10 +226,12 @@ function Page() {
     atendimentos,
     clienteIdFilter,
     corretorId,
+    deepLinkAtendimento,
     highlightId,
     imobiliaria,
     isError,
     isLoading,
+    isReady,
     navigate,
     periodo,
     status,
