@@ -75,6 +75,7 @@ function AgendaPage() {
     deleteEvent,
     canEdit,
     isLoading,
+    isReady,
     isError,
     error,
     refetch,
