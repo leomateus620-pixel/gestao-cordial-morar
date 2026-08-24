@@ -66,6 +66,7 @@ function Page() {
     sales,
     kpis,
     isLoading,
+    isReady,
     isError,
     error,
     isKpisLoading,
