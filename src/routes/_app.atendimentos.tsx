@@ -131,6 +131,7 @@ function Page() {
     brokers,
     stats,
     isLoading,
+    isReady,
     isError,
     error,
     refetch,
