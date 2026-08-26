@@ -543,9 +543,10 @@ function Page() {
                 </h1>
                 <p className="mt-0.5 text-xs font-semibold text-foreground/50">
                   <span className="tabular-nums text-foreground/75">{summary.total}</span>{" "}
-                  {summary.total === 1 ? "captação" : "captações"} ·{" "}
-                  {periodLabel.toLowerCase()}
+                  {summary.total === 1 ? "captação listada" : "captações listadas"} ·{" "}
+                  {periodLabel.toLowerCase()} · bonificação medida por ciclo
                 </p>
+
               </div>
             </div>
 
