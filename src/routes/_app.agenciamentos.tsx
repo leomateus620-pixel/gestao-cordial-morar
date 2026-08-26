@@ -638,7 +638,9 @@ function Page() {
           bonuses={trackBonuses}
           showBrokerName={canManage && filters.corretorId === "todos"}
           onOpenRegistry={() => setBonusRegistryOpen(true)}
+          onReviewPending={handleReviewBlocking}
         />
+
 
         <AgenciamentoBonusRegistryDrawer
           open={bonusRegistryOpen}
