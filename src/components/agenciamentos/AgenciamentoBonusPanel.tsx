@@ -1,8 +1,9 @@
-import { Award } from "lucide-react";
+import { Award, AlertTriangle } from "lucide-react";
 import {
   RENTAL_BONUS_LISTINGS,
   SALES_BONUS_LISTINGS,
   SALES_BONUS_SIGNS,
+  describeBlockingChecklist,
   getBonusPeriodLabel,
   getBonusStatusLabel,
   summarizeBonuses,
@@ -19,6 +20,7 @@ type Props = {
   bonuses: AgenciamentoBonus[];
   showBrokerName: boolean;
   onOpenRegistry?: () => void;
+  onReviewPending?: () => void;
 };
 
 const statusTone: Record<AgenciamentoBonus["status"], string> = {
@@ -34,12 +36,18 @@ export function AgenciamentoBonusPanel({
   bonuses,
   showBrokerName,
   onOpenRegistry,
+  onReviewPending,
 }: Props) {
   const isSales = track === "venda";
   const registry = summarizeBonuses(bonuses);
   const goalText = isSales
     ? `${SALES_BONUS_LISTINGS} captações + ${SALES_BONUS_SIGNS} placas`
     : `${RENTAL_BONUS_LISTINGS} captações acumuladas`;
+  const blockingText = describeBlockingChecklist(progress.blocking);
+  const cycleScopeLabel = isSales ? "no mês" : "acumulados";
+  const progressLine = isSales
+    ? `Bonificação nº ${progress.nextLevel} de ${progress.cycleLabel}: faltam ${progress.listingsRemaining} captação(ões) válida(s) (${progress.listings}/${progress.listingsTarget}) e ${progress.signsRemaining} placa(s) (${progress.signs}/${progress.signsTarget})`
+    : `Bonificação nº ${progress.nextLevel} (acumulada): faltam ${progress.listingsRemaining} captação(ões) válida(s) (${progress.listings}/${progress.listingsTarget})`;
 
   return (
     <section
@@ -87,13 +95,42 @@ export function AgenciamentoBonusPanel({
               style={{ width: `${Math.min(progress.percent, 100)}%` }}
             />
           </div>
-          <p className="mt-1.5 truncate text-[11px] font-medium text-foreground/52">
-            {isSales
-              ? `Faltam ${progress.listingsRemaining} captação(ões) e ${progress.signsRemaining} placa(s) · atual ${progress.listings}/${progress.signs}`
-              : `Faltam ${progress.listingsRemaining} captação(ões) · atual ${progress.listings}`}
-          </p>
+          <p className="mt-1.5 text-[11px] font-medium text-foreground/52">{progressLine}</p>
         </div>
       </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <CycleStat label={`Agenciamentos ${cycleScopeLabel}`} value={progress.cycleTotal} />
+        <CycleStat label="Válidos p/ bonificação" value={progress.listings} />
+        {isSales && <CycleStat label="Com placa" value={progress.signs} />}
+        <CycleStat
+          label="Fora da conta"
+          value={progress.blocking.blocked}
+          tone={progress.blocking.blocked > 0 ? "warning" : "muted"}
+        />
+      </div>
+
+      {progress.blocking.blocked > 0 && (
+        <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/8 px-3 py-2.5">
+          <AlertTriangle aria-hidden="true" className="size-4 shrink-0 text-amber-700" />
+          <p className="min-w-0 text-[11px] font-medium leading-snug text-amber-900">
+            {progress.blocking.blocked} agenciamento(s) não contam por checklist incompleto
+            {blockingText ? ` · ${blockingText}` : ""}
+          </p>
+          {onReviewPending && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 rounded-lg border-amber-500/30 bg-white/70 px-2.5 text-xs font-semibold text-amber-900 shadow-none hover:bg-amber-500/10"
+              onClick={onReviewPending}
+            >
+              Revisar
+            </Button>
+          )}
+        </div>
+      )}
+
 
       <div className="mt-4 border-t border-foreground/8 pt-3">
         <div className="flex items-center justify-between gap-3">
@@ -171,5 +208,44 @@ function BonusStat({
         {label}
       </span>
     </span>
+  );
+}
+
+function CycleStat({
+  label,
+  value,
+  tone = "muted",
+}: {
+  label: string;
+  value: number;
+  tone?: "muted" | "warning";
+}) {
+  return (
+    <div
+      className={cn(
+        "min-w-0 rounded-xl border px-3 py-2",
+        tone === "warning"
+          ? "border-amber-500/25 bg-amber-500/8"
+          : "border-foreground/8 bg-foreground/[0.02]",
+      )}
+    >
+      <p
+        className={cn(
+          "truncate text-[10px] font-bold uppercase tracking-[0.06em]",
+          tone === "warning" ? "text-amber-800/80" : "text-foreground/45",
+        )}
+        title={label}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1 text-lg font-extrabold leading-none tabular-nums",
+          tone === "warning" ? "text-amber-800" : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
