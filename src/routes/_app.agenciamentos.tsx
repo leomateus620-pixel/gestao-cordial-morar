@@ -199,6 +199,19 @@ function Page() {
     [bonusScopeAgenciamentos, track],
   );
 
+  // "Revisar" no painel de bonificação leva à pendência de checklist mais comum.
+  const handleReviewBlocking = useCallback(() => {
+    const blocking = bonusProgress.blocking;
+    const fotos = Math.max(blocking.fotosHorizontal, blocking.fotosVertical);
+    const cadastro = Math.max(blocking.cadastradoMorar, blocking.cadastradoCordial);
+    setFilters({
+      status: "todos",
+      checklist: fotos >= cadastro ? "sem_fotos" : "fora_site",
+    });
+    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [bonusProgress.blocking, setFilters]);
+
+
   const trackBonuses = useMemo(() => {
     const scoped = filterBonusesByTrack(bonuses, track);
     return filters.corretorId === "todos"
