@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computeBonusProgress, summarizeBlockingChecklist } from "./track";
+import { computeBonusProgress, summarizeBlockingChecklist } from "./track.ts";
 import type { Agenciamento, AgenciamentoChecklist } from "@/types/agenciamento";
 
 const reference = new Date("2026-08-15T12:00:00.000Z");

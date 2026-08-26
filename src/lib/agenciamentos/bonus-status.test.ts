@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getAllowedBonusTransitions, summarizeBonuses } from "./track";
+import { getAllowedBonusTransitions, summarizeBonuses } from "./track.ts";
 import type { AgenciamentoBonus } from "@/types/agenciamento";
 
 function bonus(status: AgenciamentoBonus["status"], id: string = status): AgenciamentoBonus {
