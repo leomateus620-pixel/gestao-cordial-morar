@@ -210,3 +210,42 @@ function BonusStat({
     </span>
   );
 }
+
+function CycleStat({
+  label,
+  value,
+  tone = "muted",
+}: {
+  label: string;
+  value: number;
+  tone?: "muted" | "warning";
+}) {
+  return (
+    <div
+      className={cn(
+        "min-w-0 rounded-xl border px-3 py-2",
+        tone === "warning"
+          ? "border-amber-500/25 bg-amber-500/8"
+          : "border-foreground/8 bg-foreground/[0.02]",
+      )}
+    >
+      <p
+        className={cn(
+          "truncate text-[10px] font-bold uppercase tracking-[0.06em]",
+          tone === "warning" ? "text-amber-800/80" : "text-foreground/45",
+        )}
+        title={label}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1 text-lg font-extrabold leading-none tabular-nums",
+          tone === "warning" ? "text-amber-800" : "text-foreground",
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
