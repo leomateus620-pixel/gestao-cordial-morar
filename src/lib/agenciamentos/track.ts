@@ -63,14 +63,59 @@ export function isSameMonth(dateIso: string, reference: Date) {
   );
 }
 
+export type BlockingChecklistSummary = {
+  /** Agenciamentos ativos do ciclo que ainda não contam para bonificação. */
+  blocked: number;
+  fotosHorizontal: number;
+  fotosVertical: number;
+  cadastradoMorar: number;
+  cadastradoCordial: number;
+};
+
+/** Conta quantos itens de checklist impedem cada agenciamento de contar na bonificação. */
+export function summarizeBlockingChecklist(items: Agenciamento[]): BlockingChecklistSummary {
+  const active = items.filter(
+    (item) => item.status !== "cancelado" && item.status !== "reprovado",
+  );
+  const blockedItems = active.filter((item) => !isCountableAgenciamento(item));
+  return {
+    blocked: blockedItems.length,
+    fotosHorizontal: blockedItems.filter((item) => !item.checklist.fotosHorizontal).length,
+    fotosVertical: blockedItems.filter((item) => !item.checklist.fotosVertical).length,
+    cadastradoMorar: blockedItems.filter((item) => !item.checklist.cadastradoMorar).length,
+    cadastradoCordial: blockedItems.filter((item) => !item.checklist.cadastradoCordial).length,
+  };
+}
+
+/** Texto curto com os motivos mais comuns de exclusão ("6 sem fotos verticais..."). */
+export function describeBlockingChecklist(summary: BlockingChecklistSummary) {
+  const parts: string[] = [];
+  if (summary.fotosHorizontal > 0) parts.push(`${summary.fotosHorizontal} sem fotos horizontais`);
+  if (summary.fotosVertical > 0) parts.push(`${summary.fotosVertical} sem fotos verticais`);
+  if (summary.cadastradoMorar > 0) parts.push(`${summary.cadastradoMorar} sem cadastro Morar`);
+  if (summary.cadastradoCordial > 0)
+    parts.push(`${summary.cadastradoCordial} sem cadastro Cordial`);
+  return parts.join(" · ");
+}
+
 export type BonusProgress = {
   track: AgenciamentoTrack;
   /** Captações válidas consideradas no ciclo atual. */
   listings: number;
   /** Placas instaladas consideradas no ciclo (apenas Venda). */
   signs: number;
+  /** Total de agenciamentos ativos do ciclo (válidos + bloqueados). */
+  cycleTotal: number;
+  /** Detalhe dos agenciamentos que não contam por checklist incompleto. */
+  blocking: BlockingChecklistSummary;
   /** Bonificações já conquistadas no ciclo atual. */
   earned: number;
+  /** Número da próxima bonificação do ciclo. */
+  nextLevel: number;
+  /** Meta de captações da próxima bonificação. */
+  listingsTarget: number;
+  /** Meta de placas da próxima bonificação (apenas Venda). */
+  signsTarget: number;
   /** Progresso 0-100 rumo à próxima bonificação. */
   percent: number;
   /** Captações que ainda faltam para a próxima bonificação. */
@@ -85,19 +130,24 @@ export function computeBonusProgress(
   track: AgenciamentoTrack,
   reference = new Date(),
 ): BonusProgress {
-  const countable = items.filter(
-    (item) => isCountableAgenciamento(item) && matchesTrack(item, track),
-  );
+  const trackItems = items.filter((item) => matchesTrack(item, track));
 
   if (track === "aluguel") {
-    const listings = countable.length;
+    const cycleItems = trackItems;
+    const blocking = summarizeBlockingChecklist(cycleItems);
+    const listings = cycleItems.filter(isCountableAgenciamento).length;
     const earned = Math.floor(listings / RENTAL_BONUS_LISTINGS);
     const progressed = listings % RENTAL_BONUS_LISTINGS;
     return {
       track,
       listings,
       signs: 0,
+      cycleTotal: listings + blocking.blocked,
+      blocking,
       earned,
+      nextLevel: earned + 1,
+      listingsTarget: (earned + 1) * RENTAL_BONUS_LISTINGS,
+      signsTarget: 0,
       percent: Math.round((progressed / RENTAL_BONUS_LISTINGS) * 100),
       listingsRemaining: RENTAL_BONUS_LISTINGS - progressed,
       signsRemaining: 0,
@@ -105,7 +155,9 @@ export function computeBonusProgress(
     };
   }
 
-  const monthly = countable.filter((item) => isSameMonth(item.dataAgenciamento, reference));
+  const cycleItems = trackItems.filter((item) => isSameMonth(item.dataAgenciamento, reference));
+  const blocking = summarizeBlockingChecklist(cycleItems);
+  const monthly = cycleItems.filter(isCountableAgenciamento);
   const listings = monthly.length;
   const signs = monthly.filter((item) => item.checklist.placaInstalada).length;
   const earned = Math.min(
@@ -124,13 +176,19 @@ export function computeBonusProgress(
     track,
     listings,
     signs,
+    cycleTotal: listings + blocking.blocked,
+    blocking,
     earned,
+    nextLevel: earned + 1,
+    listingsTarget,
+    signsTarget,
     percent,
     listingsRemaining,
     signsRemaining,
     cycleLabel: reference.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
   };
 }
+
 
 export function getBonusStatusLabel(status: AgenciamentoBonus["status"]) {
   const labels: Record<AgenciamentoBonus["status"], string> = {
