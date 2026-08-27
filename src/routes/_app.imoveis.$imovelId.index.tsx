@@ -11,6 +11,7 @@ import {
   Ruler,
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
 import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -124,13 +125,20 @@ function DetalhePage() {
             {imovel.localizacaoExibida ?? localidade ?? NAO_INFORMADO}
           </p>
         </div>
-        <Link
-          to="/imoveis/$imovelId/editar"
-          params={{ imovelId }}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md shadow-primary/25"
-        >
-          <Pencil className="size-3.5" /> Editar
-        </Link>
+        <span className="ml-auto flex items-center gap-2">
+          {imovel.publications
+            .filter((p) => p.status === "published" && p.publicUrl)
+            .map((p) => (
+              <CopyPublicLinkIcon key={p.provider} provider={p.provider} url={p.publicUrl} />
+            ))}
+          <Link
+            to="/imoveis/$imovelId/editar"
+            params={{ imovelId }}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md shadow-primary/25"
+          >
+            <Pencil className="size-3.5" /> Editar
+          </Link>
+        </span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
