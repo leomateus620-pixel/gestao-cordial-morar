@@ -114,6 +114,11 @@ export function normalizeKey(value: string | null | undefined): string {
     .trim();
 }
 
+const COMBINING: Record<string, string> = {
+  acute: "\u0301", grave: "\u0300", circ: "\u0302", tilde: "\u0303",
+  uml: "\u0308", cedil: "\u0327", ring: "\u030A",
+};
+
 const HTML_ENTITIES: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
 };
@@ -126,6 +131,11 @@ export function decodeHtml(value: string | null): string | null {
     .replace(/<[^>]+>/g, "")
     .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(
+      /&([a-zA-Z])(acute|grave|circ|tilde|uml|cedil|ring);/g,
+      (_, letter: string, accent: string) =>
+        (letter + (COMBINING[accent] ?? "")).normalize("NFC"),
+    )
     .replace(/&([a-z]+);/gi, (match, name: string) => HTML_ENTITIES[name.toLowerCase()] ?? match)
     .replace(/\r/g, "")
     .replace(/\n{3,}/g, "\n\n")
