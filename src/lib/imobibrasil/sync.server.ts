@@ -235,7 +235,25 @@ async function loadProperty(admin: Admin, propertyId: string) {
   };
 }
 
-async function ensurePublication(admin: Admin, propertyId: string, provider: ImobiProvider) {
+/**
+ * Código externo exclusivo do provedor.
+ * Nunca há fallback silencioso do código de uma imobiliária para a outra.
+ */
+export function providerExternalCode(
+  property: Record<string, unknown> | null | undefined,
+  provider: ImobiProvider,
+): string | null {
+  const raw = property?.[provider === "cordial" ? "codigo_cordial" : "codigo_morar"];
+  const code = typeof raw === "string" ? raw.trim() : "";
+  return code ? code : null;
+}
+
+async function ensurePublication(
+  admin: Admin,
+  propertyId: string,
+  provider: ImobiProvider,
+  providerCode: string | null,
+) {
   const { data } = await admin
     .from("property_provider_publications")
     .select("*")
@@ -248,7 +266,7 @@ async function ensurePublication(admin: Admin, propertyId: string, provider: Imo
     .insert({
       property_id: propertyId,
       provider,
-      external_reference: buildExternalReference(propertyId),
+      external_reference: providerCode ?? buildExternalReference(propertyId),
       status: "pending",
     })
     .select("*")
@@ -259,8 +277,17 @@ async function ensurePublication(admin: Admin, propertyId: string, provider: Imo
 
 export async function processJob(admin: Admin, job: SyncJob) {
   const property = await loadProperty(admin, job.property_id);
-  const publication = await ensurePublication(admin, job.property_id, job.provider);
-  const reference = publication.external_reference ?? buildExternalReference(job.property_id);
+  const providerCode = providerExternalCode(property as Record<string, unknown>, job.provider);
+  const publication = await ensurePublication(admin, job.property_id, job.provider, providerCode);
+  // Enquanto o imóvel não existe no site, a referência acompanha o código do provedor.
+  let reference = publication.external_reference ?? buildExternalReference(job.property_id);
+  if (providerCode && !publication.external_property_id && reference !== providerCode) {
+    reference = providerCode;
+    await admin
+      .from("property_provider_publications")
+      .update({ external_reference: providerCode })
+      .eq("id", publication.id);
+  }
 
   if (!hasProviderToken(job.provider)) {
     throw new ImobiApiError({
