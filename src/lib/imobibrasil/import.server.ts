@@ -598,13 +598,25 @@ export async function runImportWorker(
     }
   }
 
-  const { count: remaining } = await admin
-    .from("property_import_jobs")
-    .select("id", { count: "exact", head: true })
-    .in("status", ["pending", "retry"])
-    .lte("next_run_at", new Date().toISOString());
+  // "remaining" precisa refletir apenas o que o claim consegue pegar (runs ativas e jobs vencidos),
+  // senão jobs órfãos de runs concluídas fazem o worker se reencadear infinitamente sem processar nada.
+  const { data: activeRuns } = await admin
+    .from("property_import_runs")
+    .select("id")
+    .in("status", ["queued", "running"]);
+  const activeIds = (activeRuns ?? []).map((run) => run.id);
+  let remaining = 0;
+  if (activeIds.length) {
+    const { count } = await admin
+      .from("property_import_jobs")
+      .select("id", { count: "exact", head: true })
+      .in("run_id", activeIds)
+      .in("status", ["pending", "retry"])
+      .lte("next_run_at", new Date().toISOString());
+    remaining = count ?? 0;
+  }
 
-  return { workerId, processed: jobs.length, remaining: remaining ?? 0, results };
+  return { workerId, processed: jobs.length, remaining, results };
 }
 
 // --------------------------------------------------- resolução de conflitos
