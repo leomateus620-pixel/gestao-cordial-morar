@@ -8,7 +8,9 @@ import {
   listPropertyImages,
   registerPropertyImage,
   reorderPropertyImages,
+  retryPropertyImageWatermark,
   setPropertyImageCover,
+  setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
 import type { PropertyImage } from "@/types/property";
 
@@ -30,6 +32,9 @@ export function usePropertyImages(propertyId: string | undefined) {
     queryKey: ["property-images", propertyId],
     queryFn: () => list({ data: { propertyId: propertyId as string } }),
     enabled: !!propertyId,
+    // Enquanto houver foto em processamento, acompanhamos a marca sendo aplicada.
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((image) => image.processingStatus === "pending") ? 4000 : false,
   });
 }
 
@@ -40,6 +45,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
   const removeFn = useServerFn(deletePropertyImage);
+  const retryFn = useServerFn(retryPropertyImageWatermark);
+  const targetsFn = useServerFn(setPropertyPublishTargets);
   const [progress, setProgress] = useState<UploadProgress[]>([]);
 
   const invalidate = useCallback(() => {
@@ -108,5 +115,25 @@ export function usePropertyMedia(propertyId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  return { upload, setCover, reorder, remove, progress, clearProgress: () => setProgress([]) };
+  const retryWatermark = useMutation({
+    mutationFn: (imageId?: string) =>
+      retryFn({ data: { propertyId: propertyId as string, ...(imageId ? { imageId } : {}) } }),
+    onSuccess: invalidate,
+  });
+
+  const updateTargets = useMutation({
+    mutationFn: (targets: string[]) => targetsFn({ data: { propertyId: propertyId as string, targets } }),
+    onSuccess: invalidate,
+  });
+
+  return {
+    upload,
+    setCover,
+    reorder,
+    remove,
+    retryWatermark,
+    updateTargets,
+    progress,
+    clearProgress: () => setProgress([]),
+  };
 }

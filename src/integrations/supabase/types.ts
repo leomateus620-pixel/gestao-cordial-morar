@@ -1636,6 +1636,7 @@ export type Database = {
           proprietario_email: string | null
           proprietario_nome: string | null
           proprietario_telefone: string | null
+          publish_targets: string[]
           referencia: string | null
           regiao: string | null
           removal_state: string | null
@@ -1757,6 +1758,7 @@ export type Database = {
           proprietario_email?: string | null
           proprietario_nome?: string | null
           proprietario_telefone?: string | null
+          publish_targets?: string[]
           referencia?: string | null
           regiao?: string | null
           removal_state?: string | null
@@ -1878,6 +1880,7 @@ export type Database = {
           proprietario_email?: string | null
           proprietario_nome?: string | null
           proprietario_telefone?: string | null
+          publish_targets?: string[]
           referencia?: string | null
           regiao?: string | null
           removal_state?: string | null
@@ -1922,6 +1925,77 @@ export type Database = {
           zona?: string | null
         }
         Relationships: []
+      }
+      property_image_jobs: {
+        Row: {
+          attempts: number
+          correlation_id: string | null
+          created_at: string
+          destination_hash: string
+          id: string
+          image_id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          lease_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          property_id: string
+          run_after: string
+          status: string
+          updated_at: string
+          watermark_variant: string
+          watermark_version: string
+        }
+        Insert: {
+          attempts?: number
+          correlation_id?: string | null
+          created_at?: string
+          destination_hash: string
+          id?: string
+          image_id: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          lease_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          property_id: string
+          run_after?: string
+          status?: string
+          updated_at?: string
+          watermark_variant: string
+          watermark_version: string
+        }
+        Update: {
+          attempts?: number
+          correlation_id?: string | null
+          created_at?: string
+          destination_hash?: string
+          id?: string
+          image_id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          lease_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          property_id?: string
+          run_after?: string
+          status?: string
+          updated_at?: string
+          watermark_variant?: string
+          watermark_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_jobs_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       property_image_provider_publications: {
         Row: {
@@ -1991,54 +2065,90 @@ export type Database = {
           alt_text: string | null
           content_hash: string | null
           created_at: string
+          destination_hash: string | null
           file_name: string
           height: number | null
           id: string
           is_cover: boolean
           mime_type: string | null
+          original_checksum: string | null
+          original_storage_path: string | null
           position: number
+          processed_at: string | null
+          processed_checksum: string | null
+          processed_storage_path: string | null
+          processing_error_code: string | null
+          processing_error_message: string | null
+          processing_status: string
           property_id: string
           size_bytes: number | null
           storage_path: string
+          thumbnail_storage_path: string | null
           updated_at: string
           upload_status: string
           uploaded_by: string | null
+          watermark_variant: string | null
+          watermark_version: string | null
           width: number | null
         }
         Insert: {
           alt_text?: string | null
           content_hash?: string | null
           created_at?: string
+          destination_hash?: string | null
           file_name: string
           height?: number | null
           id?: string
           is_cover?: boolean
           mime_type?: string | null
+          original_checksum?: string | null
+          original_storage_path?: string | null
           position?: number
+          processed_at?: string | null
+          processed_checksum?: string | null
+          processed_storage_path?: string | null
+          processing_error_code?: string | null
+          processing_error_message?: string | null
+          processing_status?: string
           property_id: string
           size_bytes?: number | null
           storage_path: string
+          thumbnail_storage_path?: string | null
           updated_at?: string
           upload_status?: string
           uploaded_by?: string | null
+          watermark_variant?: string | null
+          watermark_version?: string | null
           width?: number | null
         }
         Update: {
           alt_text?: string | null
           content_hash?: string | null
           created_at?: string
+          destination_hash?: string | null
           file_name?: string
           height?: number | null
           id?: string
           is_cover?: boolean
           mime_type?: string | null
+          original_checksum?: string | null
+          original_storage_path?: string | null
           position?: number
+          processed_at?: string | null
+          processed_checksum?: string | null
+          processed_storage_path?: string | null
+          processing_error_code?: string | null
+          processing_error_message?: string | null
+          processing_status?: string
           property_id?: string
           size_bytes?: number | null
           storage_path?: string
+          thumbnail_storage_path?: string | null
           updated_at?: string
           upload_status?: string
           uploaded_by?: string | null
+          watermark_variant?: string | null
+          watermark_version?: string | null
           width?: number | null
         }
         Relationships: [
@@ -4206,6 +4316,35 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      property_image_claim_jobs: {
+        Args: { _lease_seconds?: number; _limit?: number; _worker: string }
+        Returns: {
+          attempts: number
+          correlation_id: string | null
+          created_at: string
+          destination_hash: string
+          id: string
+          image_id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          lease_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          property_id: string
+          run_after: string
+          status: string
+          updated_at: string
+          watermark_variant: string
+          watermark_version: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "property_image_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       property_import_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }

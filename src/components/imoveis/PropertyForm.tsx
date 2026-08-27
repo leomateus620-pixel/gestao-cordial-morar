@@ -641,7 +641,12 @@ export function PropertyForm({
               </Field>
             </div>
             <div className="rounded-2xl bg-white/50 p-3">
-              <PropertyPhotosStep propertyId={propertyId} onRequestSave={onRequestSave} />
+              <PropertyPhotosStep
+                propertyId={propertyId}
+                destinos={destinos ?? []}
+                onRequestSave={onRequestSave}
+              />
+
             </div>
 
             <div className="rounded-2xl bg-foreground/[0.04] p-3 text-[12px] text-foreground/60">

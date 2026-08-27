@@ -134,12 +134,17 @@ async function syncCharacteristics(
 async function syncImages(admin: Admin, job: SyncJob, publicationId: string, externalId: string) {
   const { data: images } = await admin
     .from("property_images")
-    .select("id, storage_path, file_name, mime_type, content_hash, is_cover, position")
+    .select(
+      "id, storage_path, processed_storage_path, processed_checksum, file_name, mime_type, content_hash, is_cover, position, processing_status",
+    )
     .eq("property_id", job.property_id)
     .order("is_cover", { ascending: false })
     .order("position", { ascending: true });
 
-  const list = images ?? [];
+  // Só publicamos fotos com marca-d'água aplicada (ou o acervo legado já publicado).
+  const list = (images ?? []).filter(
+    (image) => image.processed_storage_path || image.processing_status === "legacy",
+  );
   if (!list.length) return { sent: 0, failed: 0 };
 
   const { data: published } = await admin
@@ -148,9 +153,11 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     .eq("publication_id", publicationId);
   const publishedIndex = new Map((published ?? []).map((row) => [row.image_id, row]));
 
+  const deliveredHash = (image: (typeof list)[number]) => image.processed_checksum ?? image.content_hash;
+
   const pending = list.filter((image) => {
     const existing = publishedIndex.get(image.id);
-    return !existing || existing.status !== "synced" || existing.content_hash !== image.content_hash;
+    return !existing || existing.status !== "synced" || existing.content_hash !== deliveredHash(image);
   });
 
   let sent = 0;
@@ -161,7 +168,8 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     await Promise.all(
       batch.map(async (image) => {
         try {
-          const download = await admin.storage.from("property-images").download(image.storage_path);
+          const deliveryPath = image.processed_storage_path ?? image.storage_path;
+          const download = await admin.storage.from("property-images").download(deliveryPath);
           if (download.error || !download.data) throw new Error("Falha ao ler a imagem no armazenamento.");
           const form = new FormData();
           form.append("imagem", download.data, image.file_name);
@@ -183,7 +191,7 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
               publication_id: publicationId,
               provider: job.provider,
               external_image_id: extractExternalId(response.data),
-              content_hash: image.content_hash,
+              content_hash: deliveredHash(image),
               is_cover: Boolean(image.is_cover),
               status: "synced",
               last_error_message: null,
@@ -200,7 +208,7 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
               image_id: image.id,
               publication_id: publicationId,
               provider: job.provider,
-              content_hash: image.content_hash,
+              content_hash: deliveredHash(image),
               is_cover: Boolean(image.is_cover),
               status: "error",
               last_error_message: normalized.message,

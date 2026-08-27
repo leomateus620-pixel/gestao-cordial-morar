@@ -1,17 +1,21 @@
-import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ImagePlus, Loader2, Star, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, ImagePlus, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ACCEPTED_IMAGE_TYPES, usePropertyImages, usePropertyMedia } from "@/hooks/usePropertyMedia";
+import { variantForTargets, watermarkLabel } from "@/lib/imoveis/watermark-config";
 
 /**
  * Etapa 6 — fotos. O upload só existe com imóvel salvo, porque cada arquivo
  * precisa de uma pasta própria no Storage e de um registro correspondente.
+ * Toda foto recebe a marca da imobiliária no backend antes de ir para os sites.
  */
 export function PropertyPhotosStep({
   propertyId,
+  destinos = [],
   onRequestSave,
 }: {
   propertyId?: string | null;
+  destinos?: string[];
   onRequestSave?: () => Promise<string | null>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,6 +23,21 @@ export function PropertyPhotosStep({
   const images = usePropertyImages(propertyId ?? undefined);
   const media = usePropertyMedia(propertyId ?? undefined);
   const rows = images.data ?? [];
+  const marcaAtual = watermarkLabel(variantForTargets(destinos));
+  const pendentes = rows.filter((image) => image.processingStatus === "pending").length;
+  const falhas = rows.filter((image) => image.processingStatus === "failed").length;
+  const prontas = rows.length - pendentes - falhas;
+
+  // Trocar o destino regenera as marcas a partir do original.
+  const targetsKey = [...destinos].sort().join(",");
+  const lastTargets = useRef<string | null>(null);
+  useEffect(() => {
+    if (!propertyId) return;
+    if (lastTargets.current === targetsKey) return;
+    lastTargets.current = targetsKey;
+    media.updateTargets.mutate(targetsKey ? targetsKey.split(",") : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, targetsKey]);
 
   async function pickFiles() {
     if (!propertyId && onRequestSave) {
@@ -51,7 +70,7 @@ export function PropertyPhotosStep({
         <div>
           <p className="text-sm font-semibold">Fotos do imóvel</p>
           <p className="text-[11px] text-foreground/55">
-            A primeira foto é a capa. A ordem definida aqui é a ordem enviada aos sites.
+            A primeira foto é a capa. Todas recebem a marca {marcaAtual} antes de ir para os sites.
           </p>
         </div>
         <button
@@ -113,6 +132,28 @@ export function PropertyPhotosStep({
         </p>
       )}
 
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-foreground/[0.04] px-3 py-2 text-[11px]">
+          <span className="font-medium text-foreground/70">
+            {pendentes > 0
+              ? `Atualizando marcas nas fotos… ${prontas} de ${rows.length} prontas.`
+              : `${prontas} de ${rows.length} fotos prontas com a marca ${marcaAtual}.`}
+            {falhas > 0 ? ` ${falhas} precisam de nova tentativa.` : ""}
+          </span>
+          {(falhas > 0 || pendentes > 0) && (
+            <button
+              type="button"
+              onClick={() => media.retryWatermark.mutate(undefined)}
+              disabled={media.retryWatermark.isPending}
+              className="inline-flex items-center gap-1 font-semibold text-primary disabled:opacity-50"
+            >
+              <RefreshCw className={`size-3 ${media.retryWatermark.isPending ? "animate-spin" : ""}`} />
+              Tentar novamente todas
+            </button>
+          )}
+        </div>
+      )}
+
       {images.isPending && propertyId && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -134,6 +175,26 @@ export function PropertyPhotosStep({
               {image.isCover && (
                 <span className="absolute left-1.5 top-1.5 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground">
                   Capa
+                </span>
+              )}
+              {image.processingStatus === "pending" && (
+                <span className="absolute inset-0 flex items-center justify-center gap-1 bg-foreground/45 text-[10px] font-bold text-white">
+                  <Loader2 className="size-3 animate-spin" /> Aplicando marca
+                </span>
+              )}
+              {image.processingStatus === "failed" && (
+                <button
+                  type="button"
+                  onClick={() => media.retryWatermark.mutate(image.id)}
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-rose-900/60 px-2 text-[10px] font-bold text-white"
+                >
+                  <RefreshCw className="size-3.5" />
+                  Marca não aplicada — tentar de novo
+                </button>
+              )}
+              {image.processingStatus === "ready" && image.watermarkLabel && (
+                <span className="absolute right-1.5 top-1.5 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-semibold text-foreground/70">
+                  {image.watermarkLabel}
                 </span>
               )}
               <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 rounded-full bg-white/85 px-1.5 py-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
