@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Bath, Bed, Car, ImageOff, Maximize2, MapPin, Pencil } from "lucide-react";
 import { brl } from "@/lib/format";
+import { CopyPublicLinkButton } from "./CopyPublicLinkButton";
+
 import {
   formatArea,
   propertyLocalidade,
