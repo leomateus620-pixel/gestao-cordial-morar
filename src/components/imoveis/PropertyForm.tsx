@@ -4,6 +4,12 @@ import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import { PropertyPhotosStep } from "./PropertyPhotosStep";
+import { PublishTargetSelector } from "./PublishTargetSelector";
+import {
+  ProviderCodeFields,
+  type ProviderCodeState,
+  type ProviderCodes,
+} from "./ProviderCodeFields";
 
 
 export const TIPOS = [
@@ -200,7 +206,7 @@ export function PropertyForm({
   onDestinosChange?: (providers: PropertyCarteira[]) => void;
   propertyId?: string | null;
   onRequestSave?: () => Promise<string | null>;
-  onCodeReserved?: (reservationId: string) => void;
+  onCodeReserved?: (reservationId: string, provider: PropertyCarteira) => void;
   onValuesChange?: (values: PropertyFormValues) => void;
   /** Bairros já usados nos imóveis publicados nos sites Cordial/Morar. */
   bairros?: string[];
