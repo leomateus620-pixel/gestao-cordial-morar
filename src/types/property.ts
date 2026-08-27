@@ -39,6 +39,21 @@ export type Property = {
   sourceCatalogUrl: string | null;
   sourceImportBatch: string | null;
   createdAt: string;
+  coverUrl: string | null;
+  publications: PropertyPublicationBadge[];
+  removalState: string | null;
+  archivedAt: string | null;
+};
+
+export const PUBLICATION_STATUS_LABEL: Record<string, string> = {
+  draft: "Rascunho",
+  pending: "Pendente",
+  syncing: "Sincronizando",
+  published: "Publicado",
+  partial: "Parcial",
+  error: "Erro",
+  out_of_sync: "Divergente",
+  unpublished: "Despublicado",
 };
 
 export const NAO_INFORMADO = "Não informado no catálogo";
