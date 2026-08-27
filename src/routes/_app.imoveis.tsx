@@ -3,11 +3,15 @@ import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { useApp } from "@/store/app-store";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
 import { Fab } from "@/components/fab";
 import { NovoImovelSheet } from "@/components/sheets/novo-imovel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PropertyCatalogCard } from "@/components/imoveis/PropertyCatalogCard";
+import { SiteSyncPanel } from "@/components/imoveis/SiteSyncPanel";
 import { useImoveisList } from "@/hooks/useImoveis";
+
 
 const filters = ["Todos", "Venda", "Aluguel"] as const;
 const PAGE_SIZE = 24;
