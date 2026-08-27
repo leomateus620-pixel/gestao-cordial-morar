@@ -7,7 +7,7 @@ export type PropertyPublicationBadge = {
   status: string;
   externalPropertyId: string | null;
   /** URL pública canônica confirmada pelo site — nunca montada localmente. */
-  publicUrl?: string | null;
+  publicUrl: string | null;
 };
 
 
