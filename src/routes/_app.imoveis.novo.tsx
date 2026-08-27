@@ -73,9 +73,11 @@ function NovoImovelPage() {
 
   async function handleSubmit(values: PropertyFormValues) {
     try {
-      const propertyId = draftId
-        ? (await update.mutateAsync({ id: draftId, ...values })).property.id
+      const existing = draftId;
+      const propertyId = existing
+        ? (await update.mutateAsync({ id: existing, ...values })).property.id
         : (await create.mutateAsync({ ...values })).id;
+
       await commitCodes(propertyId);
 
       if (publicar && destinos.length) {
