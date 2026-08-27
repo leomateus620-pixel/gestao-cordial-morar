@@ -32,6 +32,9 @@ export function usePropertyImages(propertyId: string | undefined) {
     queryKey: ["property-images", propertyId],
     queryFn: () => list({ data: { propertyId: propertyId as string } }),
     enabled: !!propertyId,
+    // Enquanto houver foto em processamento, acompanhamos a marca sendo aplicada.
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((image) => image.processingStatus === "pending") ? 4000 : false,
   });
 }
 
