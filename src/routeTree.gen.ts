@@ -36,6 +36,7 @@ import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamento
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
 import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
@@ -185,6 +186,11 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => AppImoveisRoute,
+} as any)
 const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
   id: '/$imovelId',
   path: '/$imovelId',
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
+  '/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
+  '/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
@@ -379,6 +387,7 @@ export interface FileRoutesById {
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
+  '/_app/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
@@ -423,6 +432,7 @@ export interface FileRouteTypes {
     | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
+    | '/imoveis/novo'
     | '/lovable/email/suppression'
     | '/agenda/'
     | '/imoveis/'
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
+    | '/imoveis/novo'
     | '/lovable/email/suppression'
     | '/agenda'
     | '/imoveis'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/_app/agenda/fotos'
     | '/_app/clientes/$clienteId'
     | '/_app/imoveis/$imovelId'
+    | '/_app/imoveis/novo'
     | '/lovable/email/suppression'
     | '/_app/agenda/'
     | '/_app/imoveis/'
@@ -735,6 +747,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/imoveis/novo': {
+      id: '/_app/imoveis/novo'
+      path: '/novo'
+      fullPath: '/imoveis/novo'
+      preLoaderRoute: typeof AppImoveisNovoRouteImport
+      parentRoute: typeof AppImoveisRoute
+    }
     '/_app/imoveis/$imovelId': {
       id: '/_app/imoveis/$imovelId'
       path: '/$imovelId'
@@ -850,11 +869,13 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
 
 interface AppImoveisRouteChildren {
   AppImoveisImovelIdRoute: typeof AppImoveisImovelIdRoute
+  AppImoveisNovoRoute: typeof AppImoveisNovoRoute
   AppImoveisIndexRoute: typeof AppImoveisIndexRoute
 }
 
 const AppImoveisRouteChildren: AppImoveisRouteChildren = {
   AppImoveisImovelIdRoute: AppImoveisImovelIdRoute,
+  AppImoveisNovoRoute: AppImoveisNovoRoute,
   AppImoveisIndexRoute: AppImoveisIndexRoute,
 }
 
