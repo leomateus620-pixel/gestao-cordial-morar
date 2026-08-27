@@ -1,6 +1,72 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Property, PropertyPublicationBadge } from "@/types/property";
+import type {
+  Property,
+  PropertyDetail,
+  PropertyImage,
+  PropertyPublicationBadge,
+  PropertyWriteInput,
+} from "@/types/property";
+
+const WRITE_COLUMNS: Record<keyof PropertyWriteInput, string> = {
+  carteira: "carteira",
+  operacao: "operacao",
+  finalidade: "finalidade",
+  tipo: "tipo",
+  codigo: "codigo",
+  referencia: "referencia",
+  localizacaoExibida: "localizacao_exibida",
+  cep: "cep",
+  logradouro: "logradouro",
+  numero: "numero",
+  bairro: "bairro",
+  cidade: "cidade",
+  uf: "uf",
+  zona: "zona",
+  regiao: "regiao",
+  dormitorios: "dormitorios",
+  suites: "suites",
+  banheiros: "banheiros",
+  vagas: "vagas",
+  salas: "salas",
+  areaPrincipal: "area_principal",
+  areaTipo: "area_tipo",
+  areaTotal: "area_total",
+  areaUtil: "area_util",
+  areaConstruida: "area_construida",
+  areaTerreno: "area_terreno",
+  mobiliado: "mobiliado",
+  valor: "valor",
+  valorModo: "valor_modo",
+  valorIptu: "valor_iptu",
+  valorCondominio: "valor_condominio",
+  aceitaFinanciamento: "aceita_financiamento",
+  permuta: "permuta",
+  descricaoImovel: "descricao_imovel",
+  pontosFortes: "pontos_fortes",
+  exclusividade: "exclusividade",
+  autorizacao: "autorizacao",
+  escriturada: "escriturada",
+  averbada: "averbada",
+  comPlaca: "com_placa",
+  disponibilidade: "disponibilidade",
+  exibirImovel: "exibir_imovel",
+  destaqueInicial: "destaque_inicial",
+  proprietarioNome: "proprietario_nome",
+  origemCaptacao: "origem_captacao",
+  nomeEmpreendimento: "nome_empreendimento",
+  unidade: "unidade",
+};
+
+function toDbPayload(input: Partial<PropertyWriteInput>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  for (const [key, column] of Object.entries(WRITE_COLUMNS)) {
+    const value = (input as Record<string, unknown>)[key];
+    if (value !== undefined) payload[column] = value === "" ? null : value;
+  }
+  return payload;
+}
+
 
 type Row = Record<string, unknown>;
 
@@ -138,7 +204,27 @@ export const listImoveis = createServerFn({ method: "GET" })
 
     // Imóveis retirados saem da listagem comum, mas continuam no banco.
     query = query.is("archived_at", null);
-    if (data.carteira && data.carteira !== "todas") query = query.eq("carteira", data.carteira);
+    if (data.carteira && data.carteira !== "todas") {
+      // A aba de carteira reflete o vínculo real com o provedor
+      // (property_provider_publications); `carteira` é apenas metadado de origem
+      // e por isso não pode ser usada sozinha — era a causa dos chips trocados.
+      const [{ data: links }, { data: allIds }] = await Promise.all([
+        context.supabase.from("property_provider_publications").select("property_id, provider"),
+        context.supabase.from("properties").select("id, carteira").is("archived_at", null),
+      ]);
+      const linkedAny = new Set<string>();
+      const linkedProvider = new Set<string>();
+      for (const link of (links ?? []) as Array<{ property_id: string; provider: string }>) {
+        linkedAny.add(link.property_id);
+        if (link.provider === data.carteira) linkedProvider.add(link.property_id);
+      }
+      const allowed = new Set(linkedProvider);
+      for (const row of (allIds ?? []) as Array<{ id: string; carteira: string }>) {
+        if (!linkedAny.has(row.id) && row.carteira === data.carteira) allowed.add(row.id);
+      }
+      query = query.in("id", allowed.size ? Array.from(allowed) : ["00000000-0000-0000-0000-000000000000"]);
+    }
+
     if (data.operacao && data.operacao !== "todos") query = query.eq("operacao", data.operacao);
     if (data.tipo) query = query.eq("tipo", data.tipo);
     if (data.cidade) query = query.eq("cidade", data.cidade);
@@ -220,21 +306,113 @@ export const getImoveisFacets = createServerFn({ method: "GET" })
     };
   });
 
-export type CreateImovelInput = {
+function mapDetail(row: Record<string, any>, extras: {
+  coverUrl: string | null;
+  publications: PropertyPublicationBadge[];
+  images: PropertyImage[];
+}): PropertyDetail {
+  const base = mapRow(row as Row, { coverUrl: extras.coverUrl, publications: extras.publications });
+  const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return {
+    ...base,
+    finalidade: row.finalidade ?? null,
+    referencia: row.referencia ?? null,
+    cep: row.cep ?? null,
+    logradouro: row.logradouro ?? null,
+    numero: row.numero ?? null,
+    zona: row.zona ?? null,
+    regiao: row.regiao ?? null,
+    salas: row.salas ?? null,
+    mobiliado: row.mobiliado ?? null,
+    valorIptu: num(row.valor_iptu),
+    valorCondominio: num(row.valor_condominio),
+    aceitaFinanciamento: row.aceita_financiamento ?? null,
+    permuta: row.permuta ?? null,
+    descricaoImovel: row.descricao_imovel ?? null,
+    pontosFortes: row.pontos_fortes ?? null,
+    exclusividade: row.exclusividade ?? null,
+    autorizacao: row.autorizacao ?? null,
+    escriturada: row.escriturada ?? null,
+    averbada: row.averbada ?? null,
+    comPlaca: row.com_placa ?? null,
+    disponibilidade: row.disponibilidade ?? null,
+    exibirImovel: row.exibir_imovel ?? null,
+    destaqueInicial: row.destaque_inicial ?? null,
+    proprietarioNome: row.proprietario_nome ?? null,
+    origemCaptacao: row.origem_captacao ?? null,
+    nomeEmpreendimento: row.nome_empreendimento ?? null,
+    unidade: row.unidade ?? null,
+    revision: Number(row.revision ?? 1),
+    updatedAt: row.updated_at ?? null,
+    isDraft: row.is_draft ?? false,
+    images: extras.images,
+  };
+}
+
+/** Ficha completa: dados canônicos + galeria assinada + publicações, sem N+1. */
+export const getPropertyDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }): Promise<PropertyDetail | null> => {
+    const [{ data: row, error }, { data: imageRows }, { data: links }] = await Promise.all([
+      context.supabase.from("properties").select("*").eq("id", data.id).maybeSingle(),
+      context.supabase
+        .from("property_images")
+        .select("id, storage_path, is_cover, position")
+        .eq("property_id", data.id)
+        .order("is_cover", { ascending: false })
+        .order("position", { ascending: true }),
+      context.supabase
+        .from("property_provider_publications")
+        .select("provider, status, external_property_id")
+        .eq("property_id", data.id),
+    ]);
+    if (error) throw new Error(error.message);
+    if (!row) return null;
+
+    const rows = (imageRows ?? []) as Array<{
+      id: string;
+      storage_path: string;
+      is_cover: boolean;
+      position: number;
+    }>;
+    const images: PropertyImage[] = [];
+    if (rows.length) {
+      const { data: signed } = await context.supabase.storage
+        .from("property-images")
+        .createSignedUrls(rows.map((r) => r.storage_path), 3600);
+      const byPath = new Map(
+        ((signed ?? []) as Array<{ path?: string | null; signedUrl: string }>).map((s) => [
+          s.path ?? "",
+          s.signedUrl,
+        ]),
+      );
+      for (const r of rows) {
+        const url = byPath.get(r.storage_path);
+        if (url) images.push({ id: r.id, url, isCover: r.is_cover, position: r.position });
+      }
+    }
+
+    const publications = ((links ?? []) as Array<{
+      provider: PropertyPublicationBadge["provider"];
+      status: string;
+      external_property_id: string | null;
+    }>).map((link) => ({
+      provider: link.provider,
+      status: link.status,
+      externalPropertyId: link.external_property_id,
+    }));
+
+    return mapDetail(row as Record<string, any>, {
+      coverUrl: images[0]?.url ?? null,
+      publications,
+      images,
+    });
+  });
+
+export type CreateImovelInput = Partial<PropertyWriteInput> & {
   carteira: "cordial" | "morar";
   operacao: "venda" | "aluguel";
-  tipo?: string | null;
-  localizacaoExibida?: string | null;
-  bairro?: string | null;
-  cidade?: string | null;
-  uf?: string | null;
-  valor?: number | null;
-  dormitorios?: number | null;
-  suites?: number | null;
-  banheiros?: number | null;
-  vagas?: number | null;
-  areaPrincipal?: number | null;
-  codigo?: string | null;
 };
 
 export const createImovel = createServerFn({ method: "POST" })
@@ -242,21 +420,8 @@ export const createImovel = createServerFn({ method: "POST" })
   .inputValidator((data: CreateImovelInput) => data)
   .handler(async ({ data, context }): Promise<Property> => {
     const payload = {
-      carteira: data.carteira,
-      operacao: data.operacao,
-      tipo: data.tipo ?? null,
-      localizacao_exibida: data.localizacaoExibida ?? null,
-      bairro: data.bairro ?? null,
-      cidade: data.cidade ?? null,
-      uf: data.uf ?? null,
-      valor: data.valor ?? null,
-      valor_modo: data.valor === null || data.valor === undefined ? "consulte" : "fixo",
-      dormitorios: data.dormitorios ?? null,
-      suites: data.suites ?? null,
-      banheiros: data.banheiros ?? null,
-      vagas: data.vagas ?? null,
-      area_principal: data.areaPrincipal ?? null,
-      codigo: data.codigo ?? null,
+      ...toDbPayload(data),
+      valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
       source: "gestao_cordial",
       source_property_id: crypto.randomUUID(),
     };
@@ -268,3 +433,79 @@ export const createImovel = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return mapRow(row as Row);
   });
+
+export type UpdateImovelInput = { id: string } & Partial<PropertyWriteInput>;
+
+/**
+ * Salva a edição local, incrementa a revisão e enfileira `update` apenas para
+ * provedores já vinculados — nunca cria publicação nova a partir da edição.
+ */
+export const updateImovel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: UpdateImovelInput) => data)
+  .handler(async ({ data, context }): Promise<{ property: PropertyDetail | null; queued: string[] }> => {
+    const { id, ...rest } = data;
+    const payload = toDbPayload(rest);
+    if (!Object.keys(payload).length) throw new Error("Nada para salvar.");
+
+    const { data: current, error: readError } = await context.supabase
+      .from("properties")
+      .select("revision")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
+
+    const revision = Number((current as { revision?: number }).revision ?? 1) + 1;
+    const { data: row, error } = await context.supabase
+      .from("properties")
+      .update({ ...payload, revision, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { data: links } = await context.supabase
+      .from("property_provider_publications")
+      .select("provider, enabled, status, external_property_id")
+      .eq("property_id", id);
+
+    const targets = ((links ?? []) as Array<{
+      provider: string;
+      enabled: boolean;
+      external_property_id: string | null;
+    }>)
+      .filter((link) => link.enabled && link.external_property_id)
+      .map((link) => link.provider) as Array<"cordial" | "morar">;
+
+    if (targets.length) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("property_sync_jobs").upsert(
+        targets.map((provider) => ({
+          property_id: id,
+          provider,
+          action: "update" as const,
+          requested_revision: revision,
+          requested_by: context.userId,
+          status: "pending" as const,
+          next_run_at: new Date().toISOString(),
+        })),
+        { onConflict: "property_id,provider,action,requested_revision" },
+      );
+      await supabaseAdmin
+        .from("property_provider_publications")
+        .update({ status: "pending" })
+        .eq("property_id", id)
+        .in("provider", targets);
+    }
+
+    return {
+      property: mapDetail(row as Record<string, any>, {
+        coverUrl: null,
+        publications: [],
+        images: [],
+      }),
+      queued: targets,
+    };
+  });
+

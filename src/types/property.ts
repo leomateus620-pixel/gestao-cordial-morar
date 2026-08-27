@@ -45,6 +45,73 @@ export type Property = {
   archivedAt: string | null;
 };
 
+export type PropertyImage = {
+  id: string;
+  url: string;
+  isCover: boolean;
+  position: number;
+};
+
+/** Campos editáveis pelo formulário de cadastro/edição. */
+export type PropertyWriteInput = {
+  carteira: PropertyCarteira;
+  operacao: PropertyOperacao;
+  finalidade: string | null;
+  tipo: string | null;
+  codigo: string | null;
+  referencia: string | null;
+  localizacaoExibida: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  zona: string | null;
+  regiao: string | null;
+  dormitorios: number | null;
+  suites: number | null;
+  banheiros: number | null;
+  vagas: number | null;
+  salas: number | null;
+  areaPrincipal: number | null;
+  areaTipo: string | null;
+  areaTotal: number | null;
+  areaUtil: number | null;
+  areaConstruida: number | null;
+  areaTerreno: number | null;
+  mobiliado: boolean | null;
+  valor: number | null;
+  valorModo: PropertyValorModo;
+  valorIptu: number | null;
+  valorCondominio: number | null;
+  aceitaFinanciamento: boolean | null;
+  permuta: boolean | null;
+  descricaoImovel: string | null;
+  pontosFortes: string | null;
+  exclusividade: boolean | null;
+  autorizacao: boolean | null;
+  escriturada: boolean | null;
+  averbada: boolean | null;
+  comPlaca: boolean | null;
+  disponibilidade: string | null;
+  exibirImovel: boolean | null;
+  destaqueInicial: boolean | null;
+  proprietarioNome: string | null;
+  origemCaptacao: string | null;
+  nomeEmpreendimento: string | null;
+  unidade: string | null;
+};
+
+export type PropertyDetail = Property &
+  PropertyWriteInput & {
+    revision: number;
+    updatedAt: string | null;
+    isDraft: boolean;
+    images: PropertyImage[];
+  };
+
+
 export const PUBLICATION_STATUS_LABEL: Record<string, string> = {
   draft: "Rascunho",
   pending: "Pendente",
