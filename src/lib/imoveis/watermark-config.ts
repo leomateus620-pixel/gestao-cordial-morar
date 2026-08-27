@@ -56,9 +56,11 @@ export function variantForTargets(_targets?: readonly string[] | null): Watermar
 export function destinationHash(_targets?: readonly string[] | null): string {
   return `morar-cordial@${WATERMARK_VERSION}`;
 }
-
+/** Rótulo da marca aplicada em todas as fotos. */
+export const WATERMARK_COMBINED_LABEL = "Morar + Cordial";
 
 export function watermarkLabel(variant: WatermarkVariant): string {
+
   if (variant === "morar-cordial") return "Morar + Cordial";
   if (variant === "morar") return "Morar";
   return "Cordial";
