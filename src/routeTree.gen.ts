@@ -51,6 +51,7 @@ import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/a
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
+import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
@@ -272,6 +273,12 @@ const ApiPublicGoogleCalendarCallbackRoute =
     path: '/api/public/google-calendar/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppImoveisImovelIdEditarRoute =
+  AppImoveisImovelIdEditarRouteImport.update({
+    id: '/editar',
+    path: '/editar',
+    getParentRoute: () => AppImoveisImovelIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -299,11 +306,12 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
+  '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
+  '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
@@ -341,11 +349,12 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
+  '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
+  '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
@@ -386,11 +395,12 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRoute
+  '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/_app/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
+  '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/agenda/'
     | '/imoveis/'
+    | '/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
@@ -478,6 +489,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/agenda'
     | '/imoveis'
+    | '/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
@@ -522,6 +534,7 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/_app/agenda/'
     | '/_app/imoveis/'
+    | '/_app/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
@@ -852,6 +865,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicGoogleCalendarCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/imoveis/$imovelId/editar': {
+      id: '/_app/imoveis/$imovelId/editar'
+      path: '/editar'
+      fullPath: '/imoveis/$imovelId/editar'
+      preLoaderRoute: typeof AppImoveisImovelIdEditarRouteImport
+      parentRoute: typeof AppImoveisImovelIdRoute
+    }
   }
 }
 
@@ -867,14 +887,25 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
   AppClientesRouteChildren,
 )
 
+interface AppImoveisImovelIdRouteChildren {
+  AppImoveisImovelIdEditarRoute: typeof AppImoveisImovelIdEditarRoute
+}
+
+const AppImoveisImovelIdRouteChildren: AppImoveisImovelIdRouteChildren = {
+  AppImoveisImovelIdEditarRoute: AppImoveisImovelIdEditarRoute,
+}
+
+const AppImoveisImovelIdRouteWithChildren =
+  AppImoveisImovelIdRoute._addFileChildren(AppImoveisImovelIdRouteChildren)
+
 interface AppImoveisRouteChildren {
-  AppImoveisImovelIdRoute: typeof AppImoveisImovelIdRoute
+  AppImoveisImovelIdRoute: typeof AppImoveisImovelIdRouteWithChildren
   AppImoveisNovoRoute: typeof AppImoveisNovoRoute
   AppImoveisIndexRoute: typeof AppImoveisIndexRoute
 }
 
 const AppImoveisRouteChildren: AppImoveisRouteChildren = {
-  AppImoveisImovelIdRoute: AppImoveisImovelIdRoute,
+  AppImoveisImovelIdRoute: AppImoveisImovelIdRouteWithChildren,
   AppImoveisNovoRoute: AppImoveisNovoRoute,
   AppImoveisIndexRoute: AppImoveisIndexRoute,
 }
