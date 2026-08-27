@@ -113,5 +113,25 @@ export function usePropertyMedia(propertyId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  return { upload, setCover, reorder, remove, progress, clearProgress: () => setProgress([]) };
+  const retryWatermark = useMutation({
+    mutationFn: (imageId?: string) =>
+      retryFn({ data: { propertyId: propertyId as string, ...(imageId ? { imageId } : {}) } }),
+    onSuccess: invalidate,
+  });
+
+  const updateTargets = useMutation({
+    mutationFn: (targets: string[]) => targetsFn({ data: { propertyId: propertyId as string, targets } }),
+    onSuccess: invalidate,
+  });
+
+  return {
+    upload,
+    setCover,
+    reorder,
+    remove,
+    retryWatermark,
+    updateTargets,
+    progress,
+    clearProgress: () => setProgress([]),
+  };
 }
