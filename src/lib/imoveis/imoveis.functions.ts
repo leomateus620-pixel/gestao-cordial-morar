@@ -204,7 +204,27 @@ export const listImoveis = createServerFn({ method: "GET" })
 
     // Imóveis retirados saem da listagem comum, mas continuam no banco.
     query = query.is("archived_at", null);
-    if (data.carteira && data.carteira !== "todas") query = query.eq("carteira", data.carteira);
+    if (data.carteira && data.carteira !== "todas") {
+      // A aba de carteira reflete o vínculo real com o provedor
+      // (property_provider_publications); `carteira` é apenas metadado de origem
+      // e por isso não pode ser usada sozinha — era a causa dos chips trocados.
+      const [{ data: links }, { data: allIds }] = await Promise.all([
+        context.supabase.from("property_provider_publications").select("property_id, provider"),
+        context.supabase.from("properties").select("id, carteira").is("archived_at", null),
+      ]);
+      const linkedAny = new Set<string>();
+      const linkedProvider = new Set<string>();
+      for (const link of (links ?? []) as Array<{ property_id: string; provider: string }>) {
+        linkedAny.add(link.property_id);
+        if (link.provider === data.carteira) linkedProvider.add(link.property_id);
+      }
+      const allowed = new Set(linkedProvider);
+      for (const row of (allIds ?? []) as Array<{ id: string; carteira: string }>) {
+        if (!linkedAny.has(row.id) && row.carteira === data.carteira) allowed.add(row.id);
+      }
+      query = query.in("id", allowed.size ? Array.from(allowed) : ["00000000-0000-0000-0000-000000000000"]);
+    }
+
     if (data.operacao && data.operacao !== "todos") query = query.eq("operacao", data.operacao);
     if (data.tipo) query = query.eq("tipo", data.tipo);
     if (data.cidade) query = query.eq("cidade", data.cidade);
