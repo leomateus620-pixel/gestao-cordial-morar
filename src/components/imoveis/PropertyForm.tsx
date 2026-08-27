@@ -299,13 +299,28 @@ export function PropertyForm({
                   <option value="morar">Morar</option>
                 </select>
               </Field>
-              <Field label="Código interno">
-                <input
-                  value={values.codigo ?? ""}
-                  onChange={(e) => set("codigo", e.target.value)}
-                  className={inputCls}
-                />
+              <Field
+                label="Código interno"
+                hint={codeHint ?? "Gere o próximo código livre da carteira selecionada."}
+              >
+                <div className="flex gap-2">
+                  <input
+                    value={values.codigo ?? ""}
+                    onChange={(e) => set("codigo", e.target.value)}
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={reserveCode}
+                    disabled={codes.reserve.isPending}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground disabled:opacity-50"
+                  >
+                    {codes.reserve.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                    Gerar
+                  </button>
+                </div>
               </Field>
+
               <Field label="Referência">
                 <input
                   value={values.referencia ?? ""}
