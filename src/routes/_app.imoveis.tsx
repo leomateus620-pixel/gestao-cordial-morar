@@ -44,6 +44,7 @@ function Page() {
   const [debounced, setDebounced] = useState("");
   const [page, setPage] = useState(0);
   const agency = useApp((s) => s.agency);
+  const isAdmin = isAdminUser(useSession());
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 300);
@@ -73,6 +74,8 @@ function Page() {
 
   return (
     <>
+      <SiteSyncPanel isAdmin={isAdmin} />
+
       <div className="mb-3 flex items-center gap-2 rounded-2xl bg-white/60 px-3 py-2 backdrop-blur">
         <Search className="size-4 shrink-0 text-foreground/40" />
         <input
