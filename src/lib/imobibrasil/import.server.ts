@@ -605,3 +605,102 @@ export async function runImportWorker(
 
   return { workerId, processed: jobs.length, remaining: remaining ?? 0, results };
 }
+
+// --------------------------------------------------- resolução de conflitos
+
+export type ConflictResolution = "link_only" | "update_local" | "create_separate" | "ignore";
+
+/**
+ * Aplica a decisão do administrador sobre um candidato ambíguo/provável.
+ * `link_only` nunca toca no cadastro local; `update_local` só sobrescreve
+ * porque foi uma escolha explícita do administrador.
+ */
+export async function commitCandidate(
+  admin: Admin,
+  candidateId: string,
+  resolution: ConflictResolution,
+  actorId: string,
+) {
+  const { data: candidate, error } = await admin
+    .from("property_import_candidates")
+    .select("*")
+    .eq("id", candidateId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!candidate) throw new Error("Candidato de importação não encontrado.");
+
+  const now = new Date().toISOString();
+  const provider = candidate.provider as ImobiProvider;
+  const externalId = candidate.external_property_id as string;
+  const remote = candidate.normalized as unknown as NormalizedProperty;
+
+  if (resolution === "ignore") {
+    await admin
+      .from("property_import_candidates")
+      .update({ status: "ignored", resolution, resolved_by: actorId, resolved_at: now })
+      .eq("id", candidateId);
+    return { status: "ignored" as const };
+  }
+
+  const row = toPropertyRow(remote);
+  let propertyId = candidate.match_property_id as string | null;
+
+  if (resolution === "create_separate" || !propertyId) {
+    const { data: created, error: insertError } = await admin
+      .from("properties")
+      .insert({
+        ...row,
+        source: `${provider}_api`,
+        source_property_id: externalId,
+        source_import_batch: candidate.run_id,
+        is_draft: false,
+      })
+      .select("id")
+      .single();
+    if (insertError) throw new Error(insertError.message);
+    propertyId = created.id as string;
+  } else if (resolution === "update_local") {
+    const { error: updateError } = await admin
+      .from("properties")
+      .update({ ...row, source_property_id: externalId })
+      .eq("id", propertyId);
+    if (updateError) throw new Error(updateError.message);
+  } else {
+    // link_only: apenas garante o código externo, sem alterar o conteúdo local.
+    await admin.from("properties").update({ source_property_id: externalId }).eq("id", propertyId);
+  }
+
+  const publicationId = await upsertPublication(admin, {
+    propertyId: propertyId!,
+    provider,
+    externalId,
+    externalReference: (candidate.external_reference as string | null) ?? null,
+    remoteHash: (candidate.remote_hash as string | null) ?? "",
+    runId: candidate.run_id as string,
+  });
+
+  const remoteImages = await fetchPropertyImages(provider, externalId).catch(() => []);
+  for (const image of normalizeRemoteImages(remoteImages)) {
+    await enqueueJob(admin, {
+      runId: candidate.run_id as string,
+      provider,
+      type: "download_image",
+      idempotencyKey: `image:${externalId}:${image.externalImageId ?? image.url}`,
+      externalPropertyId: externalId,
+      payload: { ...image, propertyId, publicationId },
+    });
+  }
+
+  await admin
+    .from("property_import_candidates")
+    .update({
+      status: "committed",
+      resolution,
+      resolved_by: actorId,
+      resolved_at: now,
+      match_property_id: propertyId,
+    })
+    .eq("id", candidateId);
+
+  return { status: "committed" as const, propertyId };
+}
