@@ -101,6 +101,8 @@ export type PropertyWriteInput = {
   exibirImovel: boolean | null;
   destaqueInicial: boolean | null;
   proprietarioNome: string | null;
+  proprietarioTelefone: string | null;
+  proprietarioEmail: string | null;
   origemCaptacao: string | null;
   nomeEmpreendimento: string | null;
   unidade: string | null;
