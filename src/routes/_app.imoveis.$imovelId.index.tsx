@@ -240,6 +240,8 @@ function DetalhePage() {
           <Section title="Documentação e captação">
             <div className="grid grid-cols-2 gap-2">
               <Info label="Proprietário" value={imovel.proprietarioNome} />
+              <Info label="Telefone do proprietário" value={imovel.proprietarioTelefone} />
+              <Info label="E-mail do proprietário" value={imovel.proprietarioEmail} />
               <Info label="Origem da captação" value={imovel.origemCaptacao} />
               <Info label="Exclusividade" value={imovel.exclusividade ? "Sim" : "Não"} />
               <Info label="Autorização" value={imovel.autorizacao ? "Sim" : "Não"} />

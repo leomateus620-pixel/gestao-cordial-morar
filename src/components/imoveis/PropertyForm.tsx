@@ -249,6 +249,11 @@ export function PropertyForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
+        if (values.proprietarioEmail && !isValidEmail(values.proprietarioEmail)) {
+          toast.error("Informe um e-mail válido para o proprietário.");
+          setStep(0);
+          return;
+        }
         onSubmit(values);
       }}
       className="space-y-5"
