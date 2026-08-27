@@ -87,6 +87,7 @@ export type Database = {
           observacoes_internas: string | null
           origem: string
           placa_instalada: boolean
+          property_id: string | null
           proprietario_contato_preferencial: string | null
           proprietario_nome: string
           proprietario_observacoes: string | null
@@ -96,6 +97,8 @@ export type Database = {
           reprovado_por_id: string | null
           reprovado_por_nome: string | null
           site_url: string | null
+          source: string
+          source_operation_key: string | null
           status: string
           tipo_imovel: string
           updated_at: string
@@ -132,6 +135,7 @@ export type Database = {
           observacoes_internas?: string | null
           origem?: string
           placa_instalada?: boolean
+          property_id?: string | null
           proprietario_contato_preferencial?: string | null
           proprietario_nome: string
           proprietario_observacoes?: string | null
@@ -141,6 +145,8 @@ export type Database = {
           reprovado_por_id?: string | null
           reprovado_por_nome?: string | null
           site_url?: string | null
+          source?: string
+          source_operation_key?: string | null
           status?: string
           tipo_imovel: string
           updated_at?: string
@@ -177,6 +183,7 @@ export type Database = {
           observacoes_internas?: string | null
           origem?: string
           placa_instalada?: boolean
+          property_id?: string | null
           proprietario_contato_preferencial?: string | null
           proprietario_nome?: string
           proprietario_observacoes?: string | null
@@ -186,6 +193,8 @@ export type Database = {
           reprovado_por_id?: string | null
           reprovado_por_nome?: string | null
           site_url?: string | null
+          source?: string
+          source_operation_key?: string | null
           status?: string
           tipo_imovel?: string
           updated_at?: string
@@ -195,7 +204,22 @@ export type Database = {
           validado_por_nome?: string | null
           video_realizado?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agenciamentos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenciamentos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agenda_event_checklist: {
         Row: {

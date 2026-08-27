@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.agenciamentos_sync_provider_checklist() FROM PUBLIC, anon, authenticated;

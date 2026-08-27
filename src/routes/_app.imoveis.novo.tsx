@@ -9,6 +9,15 @@ import {
   type PropertyFormValues,
 } from "@/components/imoveis/PropertyForm";
 import { useCreateImovel, useImoveisFacets, useUpdateImovel } from "@/hooks/useImoveis";
+import { useFinalizePropertyAgency } from "@/hooks/usePropertyAgency";
+import { usePropertyImages } from "@/hooks/usePropertyMedia";
+import {
+  PropertyAgencyStep,
+  emptyAgencyStepState,
+  type AgencyStepState,
+} from "@/components/imoveis/PropertyAgencyStep";
+import { useSession } from "@/lib/auth-mock";
+import { canAccessModule } from "@/lib/access-control";
 import { useEnqueuePropertySync } from "@/hooks/usePropertySync";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import type { PropertyCarteira } from "@/types/property";
@@ -41,10 +50,18 @@ function NovoImovelPage() {
   const facets = useImoveisFacets();
   const enqueue = useEnqueuePropertySync();
   const codes = usePropertyCodeReservation();
+  const session = useSession();
+  const finalizeAgency = useFinalizePropertyAgency();
+  const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
+  const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
   const [publicar, setPublicar] = useState(false);
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
   const [draftId, setDraftId] = useState<string | null>(null);
+  const images = usePropertyImages(draftId ?? undefined);
+  const fotosProntas = (images.data ?? []).filter(
+    (image) => image.processingStatus === "ready" || image.processingStatus === "legacy",
+  ).length;
   const update = useUpdateImovel(draftId ?? undefined);
   const reservationIds = useRef<string[]>([]);
   const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
@@ -81,6 +98,23 @@ function NovoImovelPage() {
 
 
       await commitCodes(propertyId);
+
+      if (agency.enabled && canRegisterAgency) {
+        try {
+          await finalizeAgency.mutateAsync({
+            propertyId,
+            finalidade: agency.finalidade,
+            providers: destinos.length ? destinos : [values.carteira],
+            checklist: agency.checklist,
+            descricao: agency.descricao,
+          });
+          toast.success("Agenciamento registrado e vinculado ao imóvel.");
+        } catch (err) {
+          toast.warning(
+            `Imóvel salvo, mas o agenciamento não foi registrado: ${(err as Error)?.message ?? "erro desconhecido"}`,
+          );
+        }
+      }
 
       if (publicar && destinos.length) {
         try {
@@ -121,7 +155,22 @@ function NovoImovelPage() {
       <PropertyForm
         initial={emptyPropertyValues()}
         submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
-        pending={create.isPending || update.isPending || enqueue.isPending}
+        pending={create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending}
+        extraStep={{
+          label: "Agenciamento",
+          render: ({ values, goToStep }) => (
+            <PropertyAgencyStep
+              values={values}
+              destinos={destinos.length ? destinos : [values.carteira]}
+              state={agency}
+              onChange={setAgency}
+              onEditStep={goToStep}
+              canRegister={canRegisterAgency}
+              corretorNome={session?.nome ?? "Você"}
+              fotosProntas={fotosProntas}
+            />
+          ),
+        }}
         destinos={destinos}
         onDestinosChange={setDestinos}
         propertyId={draftId}
