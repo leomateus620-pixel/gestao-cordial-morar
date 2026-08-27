@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useRef } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
@@ -9,7 +10,8 @@ import {
 } from "@/components/imoveis/PropertyForm";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useImoveisFacets, usePropertyDetail, useUpdateImovel } from "@/hooks/useImoveis";
-import type { PropertyDetail } from "@/types/property";
+import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
+import type { PropertyCarteira, PropertyDetail } from "@/types/property";
 
 export const Route = createFileRoute("/_app/imoveis/$imovelId/editar")({
   head: () => ({
@@ -50,6 +52,8 @@ function EditarImovelPage() {
   const query = usePropertyDetail(imovelId);
   const update = useUpdateImovel(imovelId);
   const facets = useImoveisFacets();
+  const codes = usePropertyCodeReservation();
+  const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
 
   if (query.isPending) {
     return (
@@ -69,10 +73,26 @@ function EditarImovelPage() {
   }
 
   const detail = query.data;
+  /** Sites já vinculados: a edição mantém o código e o ID externo de cada um. */
+  const vinculados = Array.from(
+    new Set<PropertyCarteira>([
+      ...detail.publications.map((p) => p.provider),
+      ...(detail.codigoCordial ? (["cordial"] as PropertyCarteira[]) : []),
+      ...(detail.codigoMorar ? (["morar"] as PropertyCarteira[]) : []),
+    ]),
+  );
 
   async function handleSubmit(values: PropertyFormValues) {
     try {
       const result = await update.mutateAsync({ id: imovelId, ...values });
+      const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
+      if (ids.length) {
+        try {
+          await codes.commit.mutateAsync({ propertyId: imovelId, reservationIds: ids });
+        } catch {
+          // A reserva expira sozinha; não travamos o salvamento por isso.
+        }
+      }
       toast.success(
         result.queued.length
           ? "Alterações salvas · sincronização pendente nos sites vinculados."
@@ -98,7 +118,8 @@ function EditarImovelPage() {
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold">
             Editar {detail.tipo ?? "imóvel"}
-            {detail.codigo ? ` · Cód. ${detail.codigo}` : ""}
+            {detail.codigoCordial ? ` · Cordial ${detail.codigoCordial}` : ""}
+            {detail.codigoMorar ? ` · Morar ${detail.codigoMorar}` : ""}
           </h1>
           <p className="text-[12px] text-foreground/55">
             Ao salvar, as alterações são enfileiradas apenas para os sites já vinculados a este imóvel.
@@ -111,6 +132,10 @@ function EditarImovelPage() {
         submitLabel="Salvar alterações"
         pending={update.isPending}
         showDestinos={false}
+        destinos={vinculados}
+        onCodeReserved={(reservationId, provider) => {
+          reservationIds.current = { ...reservationIds.current, [provider]: reservationId };
+        }}
         propertyId={imovelId}
         bairros={facets.data?.bairros ?? []}
 
