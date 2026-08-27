@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
+import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
+import { PropertyPhotosStep } from "./PropertyPhotosStep";
+
 
 export const TIPOS = [
   "Casa",
