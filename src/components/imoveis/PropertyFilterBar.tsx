@@ -238,6 +238,12 @@ export function PropertyFilterBar({
           {loading && <Loader2 className="size-4 animate-spin text-foreground/35" />}
         </div>
 
+        <PriceRangeFilter
+          valorMin={filters.valorMin}
+          valorMax={filters.valorMax}
+          onChange={(patch) => onChange({ ...patch, page: 0 })}
+        />
+
         <Popover>
           <PopoverTrigger asChild>
             <button className="glass-panel inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold">
