@@ -6,8 +6,9 @@
  * Nenhuma regra fuzzy pode sobrescrever dados locais: no máximo ela sugere.
  */
 
-import { normalizeKey, type NormalizedProperty } from "./import-normalizers";
+import { normalizeKey, type NormalizedProperty } from "./import-normalizers.ts";
 import type { ImobiProvider } from "./providers";
+
 
 export type LocalCandidate = {
   id: string;
