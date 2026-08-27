@@ -87,11 +87,11 @@ export function PublishTargetSelector({
                 className={
                   "grid size-5 shrink-0 place-items-center rounded-full border transition-all duration-200 " +
                   (active
-                    ? "scale-100 border-transparent bg-current text-white opacity-100"
+                    ? "scale-100 border-transparent bg-current opacity-100"
                     : "scale-90 border-foreground/20 opacity-60")
                 }
               >
-                {active ? <Check className="size-3 text-white" /> : null}
+                {active ? <Check className="size-3 text-white [color:white]" /> : null}
               </span>
             </button>
           );
