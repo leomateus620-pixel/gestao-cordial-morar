@@ -4,11 +4,14 @@ import {
   createImovel,
   getImovel,
   getImoveisFacets,
+  getPropertyDetail,
   listImoveis,
+  updateImovel,
   type CreateImovelInput,
   type ListImoveisInput,
+  type UpdateImovelInput,
 } from "@/lib/imoveis/imoveis.functions";
-import type { Property } from "@/types/property";
+import type { Property, PropertyDetail } from "@/types/property";
 
 export function useImoveisList(filters: ListImoveisInput) {
   const list = useServerFn(listImoveis);
@@ -30,6 +33,16 @@ export function useImovel(id: string | undefined) {
   });
 }
 
+export function usePropertyDetail(id: string | undefined) {
+  const get = useServerFn(getPropertyDetail);
+  return useQuery<PropertyDetail | null>({
+    queryKey: ["imovel-detalhe", id],
+    queryFn: () => get({ data: { id: id as string } }),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
 export function useImoveisFacets() {
   const facets = useServerFn(getImoveisFacets);
   return useQuery({
@@ -47,6 +60,20 @@ export function useCreateImovel() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["imoveis"] });
       qc.invalidateQueries({ queryKey: ["imoveis-facets"] });
+    },
+  });
+}
+
+export function useUpdateImovel(id?: string) {
+  const qc = useQueryClient();
+  const update = useServerFn(updateImovel);
+  return useMutation({
+    mutationFn: (input: UpdateImovelInput) => update({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["imovel-detalhe", id] });
+      qc.invalidateQueries({ queryKey: ["imovel", id] });
+      qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      qc.invalidateQueries({ queryKey: ["imoveis"] });
     },
   });
 }
