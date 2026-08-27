@@ -103,10 +103,17 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
 
     // Destinos escolhidos definem a marca aplicada nas fotos.
-    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+    const { enqueueImageJobs, runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
     if (action === "publish" || action === "update") {
       await supabaseAdmin.from("properties").update({ publish_targets: providers }).eq("id", property.id);
-      await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
+      const queued = await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
+      if (queued.enqueued) {
+        try {
+          await runImageWorker(supabaseAdmin, { limit: 6 });
+        } catch {
+          // a fila persistente garante o reprocessamento
+        }
+      }
     }
 
     for (const provider of providers) {
