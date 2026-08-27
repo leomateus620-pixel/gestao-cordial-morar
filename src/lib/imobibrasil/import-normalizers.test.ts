@@ -143,3 +143,43 @@ test("dedupe cria novo quando não há correspondência segura", () => {
   const other = normalizeRemoteProperty("cordial", "111", { referenciaImovel: "777", cidade: "Ijuí" });
   assert.equal(matchProperty("cordial", other, [base]).status, "new");
 });
+
+test("normaliza o formato real da API (área aninhada, valorEsperado, HTML)", () => {
+  const normalized = normalizeRemoteProperty("cordial", "4332939", {
+    codigoImovel: 4332939,
+    referenciaImovel: 1339,
+    finalidadeImovel: "Venda",
+    descricaoTipoImovel: "Sítio",
+    valorEsperado: 420000,
+    valorIPTU: 0,
+    exibirImovel: true,
+    descricaoImovel: "Casa &amp; s&iacute;tio<br />com piscina",
+    endereco: { cidade: "Três de Maio", estado: "RS", logradouro: "BR 472", bairro: null },
+    area: {
+      privativa: { valor: null, tipo: null },
+      terreno: { valor: "9.000,00", tipo: "m²" },
+      construida: { valor: "130,00", tipo: "m²" },
+    },
+    caracteristicas: [{ nomeGrupo: "Infraestrutura", nomeCaracteristica: "Piscina" }],
+  });
+  assert.equal(normalized.operacao, "venda");
+  assert.equal(normalized.tipo, "Sítio");
+  assert.equal(normalized.valor, 420000);
+  assert.equal(normalized.areaTerreno, 9000);
+  assert.equal(normalized.areaConstruida, 130);
+  assert.equal(normalized.areaPrincipal, 130);
+  assert.equal(normalized.areaTipo, "construida");
+  assert.equal(normalized.cidade, "Três de Maio");
+  assert.equal(normalized.uf, "RS");
+  assert.equal(normalized.codigo, "1339");
+  assert.equal(normalized.descricao, "Casa & sítio\ncom piscina");
+  assert.deepEqual(normalized.caracteristicas, ["Piscina"]);
+});
+
+test("valores nulos não viram zero nem texto inventado", () => {
+  const normalized = normalizeRemoteProperty("morar", "1", { finalidadeImovel: "Locação" });
+  assert.equal(normalized.valor, null);
+  assert.equal(normalized.areaPrincipal, null);
+  assert.equal(normalized.cidade, null);
+  assert.equal(normalized.operacao, "aluguel");
+});
