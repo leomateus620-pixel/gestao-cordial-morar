@@ -177,6 +177,26 @@ export function PropertyPhotosStep({
                   Capa
                 </span>
               )}
+              {image.processingStatus === "pending" && (
+                <span className="absolute inset-0 flex items-center justify-center gap-1 bg-foreground/45 text-[10px] font-bold text-white">
+                  <Loader2 className="size-3 animate-spin" /> Aplicando marca
+                </span>
+              )}
+              {image.processingStatus === "failed" && (
+                <button
+                  type="button"
+                  onClick={() => media.retryWatermark.mutate(image.id)}
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-rose-900/60 px-2 text-[10px] font-bold text-white"
+                >
+                  <RefreshCw className="size-3.5" />
+                  Marca não aplicada — tentar de novo
+                </button>
+              )}
+              {image.processingStatus === "ready" && image.watermarkLabel && (
+                <span className="absolute right-1.5 top-1.5 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-semibold text-foreground/70">
+                  {image.watermarkLabel}
+                </span>
+              )}
               <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 rounded-full bg-white/85 px-1.5 py-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                 <button type="button" onClick={() => move(index, -1)} aria-label="Mover para trás">
                   <ArrowLeft className="size-3.5 text-foreground/60" />
