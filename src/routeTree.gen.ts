@@ -40,6 +40,7 @@ import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
 import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
+import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -207,6 +208,11 @@ const AppAgendaFotosRoute = AppAgendaFotosRouteImport.update({
   path: '/agenda/fotos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppImoveisImovelIdIndexRoute = AppImoveisImovelIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppImoveisImovelIdRoute,
+} as any)
 const LovableEmailTransactionalSendRoute =
   LovableEmailTransactionalSendRouteImport.update({
     id: '/lovable/email/transactional/send',
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/imoveis/$imovelId/': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -349,7 +356,6 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
-  '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/agenda': typeof AppAgendaIndexRoute
@@ -366,6 +372,7 @@ export interface FileRoutesByTo {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/imoveis/$imovelId': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -412,6 +419,7 @@ export interface FileRoutesById {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/_app/imoveis/$imovelId/': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -458,6 +466,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/imoveis/$imovelId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -484,7 +493,6 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
-    | '/imoveis/$imovelId'
     | '/imoveis/novo'
     | '/lovable/email/suppression'
     | '/agenda'
@@ -501,6 +509,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/imoveis/$imovelId'
   id:
     | '__root__'
     | '/_app'
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/_app/imoveis/$imovelId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -788,6 +798,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaFotosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/imoveis/$imovelId/': {
+      id: '/_app/imoveis/$imovelId/'
+      path: '/'
+      fullPath: '/imoveis/$imovelId/'
+      preLoaderRoute: typeof AppImoveisImovelIdIndexRouteImport
+      parentRoute: typeof AppImoveisImovelIdRoute
+    }
     '/lovable/email/transactional/send': {
       id: '/lovable/email/transactional/send'
       path: '/lovable/email/transactional/send'
@@ -889,10 +906,12 @@ const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
 
 interface AppImoveisImovelIdRouteChildren {
   AppImoveisImovelIdEditarRoute: typeof AppImoveisImovelIdEditarRoute
+  AppImoveisImovelIdIndexRoute: typeof AppImoveisImovelIdIndexRoute
 }
 
 const AppImoveisImovelIdRouteChildren: AppImoveisImovelIdRouteChildren = {
   AppImoveisImovelIdEditarRoute: AppImoveisImovelIdEditarRoute,
+  AppImoveisImovelIdIndexRoute: AppImoveisImovelIdIndexRoute,
 }
 
 const AppImoveisImovelIdRouteWithChildren =
