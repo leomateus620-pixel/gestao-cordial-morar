@@ -1,6 +1,72 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Property, PropertyPublicationBadge } from "@/types/property";
+import type {
+  Property,
+  PropertyDetail,
+  PropertyImage,
+  PropertyPublicationBadge,
+  PropertyWriteInput,
+} from "@/types/property";
+
+const WRITE_COLUMNS: Record<keyof PropertyWriteInput, string> = {
+  carteira: "carteira",
+  operacao: "operacao",
+  finalidade: "finalidade",
+  tipo: "tipo",
+  codigo: "codigo",
+  referencia: "referencia",
+  localizacaoExibida: "localizacao_exibida",
+  cep: "cep",
+  logradouro: "logradouro",
+  numero: "numero",
+  bairro: "bairro",
+  cidade: "cidade",
+  uf: "uf",
+  zona: "zona",
+  regiao: "regiao",
+  dormitorios: "dormitorios",
+  suites: "suites",
+  banheiros: "banheiros",
+  vagas: "vagas",
+  salas: "salas",
+  areaPrincipal: "area_principal",
+  areaTipo: "area_tipo",
+  areaTotal: "area_total",
+  areaUtil: "area_util",
+  areaConstruida: "area_construida",
+  areaTerreno: "area_terreno",
+  mobiliado: "mobiliado",
+  valor: "valor",
+  valorModo: "valor_modo",
+  valorIptu: "valor_iptu",
+  valorCondominio: "valor_condominio",
+  aceitaFinanciamento: "aceita_financiamento",
+  permuta: "permuta",
+  descricaoImovel: "descricao_imovel",
+  pontosFortes: "pontos_fortes",
+  exclusividade: "exclusividade",
+  autorizacao: "autorizacao",
+  escriturada: "escriturada",
+  averbada: "averbada",
+  comPlaca: "com_placa",
+  disponibilidade: "disponibilidade",
+  exibirImovel: "exibir_imovel",
+  destaqueInicial: "destaque_inicial",
+  proprietarioNome: "proprietario_nome",
+  origemCaptacao: "origem_captacao",
+  nomeEmpreendimento: "nome_empreendimento",
+  unidade: "unidade",
+};
+
+function toDbPayload(input: Partial<PropertyWriteInput>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  for (const [key, column] of Object.entries(WRITE_COLUMNS)) {
+    const value = (input as Record<string, unknown>)[key];
+    if (value !== undefined) payload[column] = value === "" ? null : value;
+  }
+  return payload;
+}
+
 
 type Row = Record<string, unknown>;
 
