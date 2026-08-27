@@ -371,7 +371,10 @@ export function PropertyForm({
                   <option value="aluguel">Aluguel</option>
                 </select>
               </Field>
-              <Field label="Carteira de origem">
+              <Field
+                label="Carteira de origem"
+                hint="Origem interna da captação. Não define o código de publicação."
+              >
                 <select
                   value={values.carteira}
                   onChange={(e) => set("carteira", e.target.value as PropertyCarteira)}
@@ -381,27 +384,18 @@ export function PropertyForm({
                   <option value="morar">Morar</option>
                 </select>
               </Field>
-              <Field
-                label="Código interno"
-                hint={codeHint ?? "Gere o próximo código livre da carteira selecionada."}
-              >
-                <div className="flex gap-2">
-                  <input
-                    value={values.codigo ?? ""}
-                    onChange={(e) => set("codigo", e.target.value)}
-                    className={inputCls}
-                  />
-                  <button
-                    type="button"
-                    onClick={reserveCode}
-                    disabled={codes.reserve.isPending}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground disabled:opacity-50"
-                  >
-                    {codes.reserve.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                    Gerar
-                  </button>
-                </div>
-              </Field>
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-foreground/50">
+                  Códigos de publicação
+                </span>
+                <ProviderCodeFields
+                  providers={activeTargets}
+                  codes={providerCodes}
+                  onManualChange={manualCode}
+                  onGenerate={reserveCode}
+                />
+              </div>
+
 
               <Field label="Referência">
                 <input
