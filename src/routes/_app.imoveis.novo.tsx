@@ -75,8 +75,9 @@ function NovoImovelPage() {
     try {
       const existing = draftId;
       const propertyId = existing
-        ? (await update.mutateAsync({ id: existing, ...values })).property.id
+        ? ((await update.mutateAsync({ id: existing, ...values })).property?.id ?? existing)
         : (await create.mutateAsync({ ...values })).id;
+
 
       await commitCodes(propertyId);
 
