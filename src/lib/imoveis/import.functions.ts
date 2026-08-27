@@ -241,10 +241,10 @@ export const listImportConflicts = createServerFn({ method: "GET" })
     const ids = Array.from(
       new Set((rows ?? []).map((row) => row.match_property_id).filter((id): id is string => !!id)),
     );
-    const locals = new Map<string, Record<string, unknown>>();
+    const locals = new Map<string, Record<string, JsonValue>>();
     if (ids.length) {
       const { data: properties } = await supabaseAdmin.from("properties").select("*").in("id", ids);
-      for (const property of properties ?? []) locals.set(property.id, property);
+      for (const property of properties ?? []) locals.set(property.id, property as unknown as Record<string, JsonValue>);
     }
 
     return (rows ?? []).map((row) => ({
@@ -255,7 +255,7 @@ export const listImportConflicts = createServerFn({ method: "GET" })
       status: row.status,
       matchReason: row.match_reason,
       matchConfidence: row.match_confidence,
-      remote: (row.normalized ?? {}) as Record<string, unknown>,
+      remote: (row.normalized ?? {}) as unknown as Record<string, JsonValue>,
       local: row.match_property_id ? (locals.get(row.match_property_id) ?? null) : null,
     }));
   });
