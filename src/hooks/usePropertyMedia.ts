@@ -8,7 +8,9 @@ import {
   listPropertyImages,
   registerPropertyImage,
   reorderPropertyImages,
+  retryPropertyImageWatermark,
   setPropertyImageCover,
+  setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
 import type { PropertyImage } from "@/types/property";
 
