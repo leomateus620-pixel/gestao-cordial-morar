@@ -22,6 +22,8 @@ export const TIPOS = [
 ];
 
 const UF_PADRAO = "RS";
+/** A operação é concentrada em Santa Rosa / RS: o cadastro já abre preenchido. */
+const CIDADE_PADRAO = "Santa Rosa";
 
 export const inputCls =
   "w-full rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-sm outline-none transition focus:border-primary/50 focus:bg-white";
@@ -92,7 +94,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     logradouro: null,
     numero: null,
     bairro: null,
-    cidade: null,
+    cidade: CIDADE_PADRAO,
     uf: UF_PADRAO,
     zona: null,
     regiao: null,
@@ -125,6 +127,8 @@ export function emptyPropertyValues(): PropertyFormValues {
     exibirImovel: true,
     destaqueInicial: false,
     proprietarioNome: null,
+    proprietarioTelefone: null,
+    proprietarioEmail: null,
     origemCaptacao: null,
     nomeEmpreendimento: null,
     unidade: null,
