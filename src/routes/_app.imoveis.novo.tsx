@@ -8,7 +8,7 @@ import {
   emptyPropertyValues,
   type PropertyFormValues,
 } from "@/components/imoveis/PropertyForm";
-import { useCreateImovel, useUpdateImovel } from "@/hooks/useImoveis";
+import { useCreateImovel, useImoveisFacets, useUpdateImovel } from "@/hooks/useImoveis";
 import { useEnqueuePropertySync } from "@/hooks/usePropertySync";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import type { PropertyCarteira } from "@/types/property";
@@ -38,6 +38,7 @@ export const Route = createFileRoute("/_app/imoveis/novo")({
 function NovoImovelPage() {
   const navigate = useNavigate();
   const create = useCreateImovel();
+  const facets = useImoveisFacets();
   const enqueue = useEnqueuePropertySync();
   const codes = usePropertyCodeReservation();
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
@@ -131,6 +132,7 @@ function NovoImovelPage() {
         onCodeReserved={(reservationId) => {
           reservationIds.current = [...reservationIds.current, reservationId];
         }}
+        bairros={facets.data?.bairros ?? []}
         onCancel={() => navigate({ to: "/imoveis" })}
         onSubmit={handleSubmit}
       />

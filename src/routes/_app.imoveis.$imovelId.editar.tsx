@@ -8,7 +8,7 @@ import {
   type PropertyFormValues,
 } from "@/components/imoveis/PropertyForm";
 import { EmptyState } from "@/components/shared/empty-state";
-import { usePropertyDetail, useUpdateImovel } from "@/hooks/useImoveis";
+import { useImoveisFacets, usePropertyDetail, useUpdateImovel } from "@/hooks/useImoveis";
 import type { PropertyDetail } from "@/types/property";
 
 export const Route = createFileRoute("/_app/imoveis/$imovelId/editar")({
@@ -49,6 +49,7 @@ function EditarImovelPage() {
   const navigate = useNavigate();
   const query = usePropertyDetail(imovelId);
   const update = useUpdateImovel(imovelId);
+  const facets = useImoveisFacets();
 
   if (query.isPending) {
     return (
@@ -111,6 +112,7 @@ function EditarImovelPage() {
         pending={update.isPending}
         showDestinos={false}
         propertyId={imovelId}
+        bairros={facets.data?.bairros ?? []}
 
         onCancel={() => navigate({ to: "/imoveis/$imovelId", params: { imovelId } })}
         onSubmit={handleSubmit}

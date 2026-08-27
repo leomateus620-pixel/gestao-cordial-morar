@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
@@ -22,6 +22,25 @@ export const TIPOS = [
 ];
 
 const UF_PADRAO = "RS";
+/** A operação é concentrada em Santa Rosa / RS: o cadastro já abre preenchido. */
+const CIDADE_PADRAO = "Santa Rosa";
+
+export function maskPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  const split = digits.length > 10 ? 7 : 6;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, split)}-${digits.slice(split)}`;
+}
+
+export function maskCep(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+}
+
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
+}
 
 export const inputCls =
   "w-full rounded-2xl border border-white/60 bg-white/70 px-3 py-2 text-sm outline-none transition focus:border-primary/50 focus:bg-white";
@@ -92,7 +111,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     logradouro: null,
     numero: null,
     bairro: null,
-    cidade: null,
+    cidade: CIDADE_PADRAO,
     uf: UF_PADRAO,
     zona: null,
     regiao: null,
@@ -125,6 +144,8 @@ export function emptyPropertyValues(): PropertyFormValues {
     exibirImovel: true,
     destaqueInicial: false,
     proprietarioNome: null,
+    proprietarioTelefone: null,
+    proprietarioEmail: null,
     origemCaptacao: null,
     nomeEmpreendimento: null,
     unidade: null,
@@ -164,6 +185,7 @@ export function PropertyForm({
   onRequestSave,
   onCodeReserved,
   onValuesChange,
+  bairros,
 }: {
   initial: PropertyFormValues;
   submitLabel: string;
@@ -177,9 +199,18 @@ export function PropertyForm({
   onRequestSave?: () => Promise<string | null>;
   onCodeReserved?: (reservationId: string) => void;
   onValuesChange?: (values: PropertyFormValues) => void;
+  /** Bairros já usados nos imóveis publicados nos sites Cordial/Morar. */
+  bairros?: string[];
 }) {
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
+  const bairroListId = useId();
+  const bairroOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of bairros ?? []) if (item?.trim()) set.add(item.trim());
+    if (values.bairro?.trim()) set.add(values.bairro.trim());
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [bairros, values.bairro]);
   const codes = usePropertyCodeReservation();
   const [codeHint, setCodeHint] = useState<string | null>(null);
 
@@ -218,6 +249,11 @@ export function PropertyForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) return;
+        if (values.proprietarioEmail && !isValidEmail(values.proprietarioEmail)) {
+          toast.error("Informe um e-mail válido para o proprietário.");
+          setStep(0);
+          return;
+        }
         onSubmit(values);
       }}
       className="space-y-5"
@@ -344,6 +380,31 @@ export function PropertyForm({
                   className={inputCls}
                 />
               </Field>
+              <Field label="Telefone do proprietário" hint="Uso interno: não é publicado nos sites.">
+                <input
+                  inputMode="tel"
+                  value={values.proprietarioTelefone ?? ""}
+                  onChange={(e) => set("proprietarioTelefone", maskPhone(e.target.value))}
+                  placeholder="(55) 99999-9999"
+                  className={inputCls}
+                />
+              </Field>
+              <Field
+                label="E-mail do proprietário"
+                hint={
+                  values.proprietarioEmail && !isValidEmail(values.proprietarioEmail)
+                    ? "E-mail inválido."
+                    : "Uso interno: não é publicado nos sites."
+                }
+              >
+                <input
+                  type="email"
+                  value={values.proprietarioEmail ?? ""}
+                  onChange={(e) => set("proprietarioEmail", e.target.value)}
+                  placeholder="proprietario@email.com"
+                  className={inputCls}
+                />
+              </Field>
             </div>
           </>
         )}
@@ -357,9 +418,6 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="CEP">
-              <input value={values.cep ?? ""} onChange={(e) => set("cep", e.target.value)} className={inputCls} />
-            </Field>
             <Field label="Logradouro">
               <input
                 value={values.logradouro ?? ""}
@@ -370,8 +428,19 @@ export function PropertyForm({
             <Field label="Número">
               <input value={values.numero ?? ""} onChange={(e) => set("numero", e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Bairro">
-              <input value={values.bairro ?? ""} onChange={(e) => set("bairro", e.target.value)} className={inputCls} />
+            <Field label="Bairro" hint="Escolha um bairro já usado nos sites ou digite um novo.">
+              <input
+                list={bairroListId}
+                value={values.bairro ?? ""}
+                onChange={(e) => set("bairro", e.target.value)}
+                placeholder="Selecione ou digite"
+                className={inputCls}
+              />
+              <datalist id={bairroListId}>
+                {bairroOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
             </Field>
             <Field label="Cidade">
               <input value={values.cidade ?? ""} onChange={(e) => set("cidade", e.target.value)} className={inputCls} />
@@ -384,8 +453,14 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Zona / região">
-              <input value={values.zona ?? ""} onChange={(e) => set("zona", e.target.value)} className={inputCls} />
+            <Field label="CEP">
+              <input
+                inputMode="numeric"
+                value={values.cep ?? ""}
+                onChange={(e) => set("cep", maskCep(e.target.value))}
+                placeholder="98900-000"
+                className={inputCls}
+              />
             </Field>
           </div>
         )}
