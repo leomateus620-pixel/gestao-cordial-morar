@@ -1,10 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Property } from "@/types/property";
+import type { Property, PropertyPublicationBadge } from "@/types/property";
 
 type Row = Record<string, unknown>;
 
-function mapRow(row: Row): Property {
+function mapRow(
+  row: Row,
+  extras: { coverUrl?: string | null; publications?: PropertyPublicationBadge[] } = {},
+): Property {
   const r = row as Record<string, any>;
   return {
     id: r.id,
@@ -37,12 +40,77 @@ function mapRow(row: Row): Property {
     sourceCatalogUrl: r.source_catalog_url ?? null,
     sourceImportBatch: r.source_import_batch ?? null,
     createdAt: r.created_at,
+    coverUrl: extras.coverUrl ?? null,
+    publications: extras.publications ?? [],
+    removalState: r.removal_state ?? null,
+    archivedAt: r.archived_at ?? null,
   };
+}
+
+/**
+ * Capa e selos de publicação de um lote de imóveis.
+ * As imagens ficam em bucket privado: a URL é assinada a cada listagem.
+ */
+async function loadListingExtras(
+  supabase: {
+    from: (table: string) => any;
+    storage: { from: (bucket: string) => { createSignedUrls: (paths: string[], expires: number) => Promise<{ data: Array<{ path?: string | null; signedUrl: string }> | null }> } };
+  },
+  ids: string[],
+) {
+  const covers = new Map<string, string>();
+  const publications = new Map<string, PropertyPublicationBadge[]>();
+  if (!ids.length) return { covers, publications };
+
+  const [{ data: images }, { data: links }] = await Promise.all([
+    supabase
+      .from("property_images")
+      .select("property_id, storage_path, is_cover, position")
+      .in("property_id", ids)
+      .order("is_cover", { ascending: false })
+      .order("position", { ascending: true }),
+    supabase
+      .from("property_provider_publications")
+      .select("property_id, provider, status, external_property_id")
+      .in("property_id", ids),
+  ]);
+
+  const pathByProperty = new Map<string, string>();
+  for (const image of (images ?? []) as Array<{ property_id: string; storage_path: string }>) {
+    if (!pathByProperty.has(image.property_id)) pathByProperty.set(image.property_id, image.storage_path);
+  }
+  const paths = Array.from(pathByProperty.values());
+  if (paths.length) {
+    const { data: signed } = await supabase.storage.from("property-images").createSignedUrls(paths, 3600);
+    const signedByPath = new Map((signed ?? []).map((item) => [item.path ?? "", item.signedUrl]));
+    for (const [propertyId, path] of pathByProperty) {
+      const url = signedByPath.get(path);
+      if (url) covers.set(propertyId, url);
+    }
+  }
+
+  for (const link of (links ?? []) as Array<{
+    property_id: string;
+    provider: PropertyPublicationBadge["provider"];
+    status: string;
+    external_property_id: string | null;
+  }>) {
+    const list = publications.get(link.property_id) ?? [];
+    list.push({
+      provider: link.provider,
+      status: link.status,
+      externalPropertyId: link.external_property_id,
+    });
+    publications.set(link.property_id, list);
+  }
+
+  return { covers, publications };
 }
 
 function escapeLike(value: string) {
   return value.replace(/[%,()]/g, " ").trim();
 }
+
 
 export type ListImoveisInput = {
   carteira?: "todas" | "cordial" | "morar";
@@ -68,6 +136,8 @@ export const listImoveis = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true })
       .order("id", { ascending: true });
 
+    // Imóveis retirados saem da listagem comum, mas continuam no banco.
+    query = query.is("archived_at", null);
     if (data.carteira && data.carteira !== "todas") query = query.eq("carteira", data.carteira);
     if (data.operacao && data.operacao !== "todos") query = query.eq("operacao", data.operacao);
     if (data.tipo) query = query.eq("tipo", data.tipo);
@@ -80,6 +150,7 @@ export const listImoveis = createServerFn({ method: "GET" })
       query = query.or(
         [
           `codigo.ilike.${like}`,
+          `referencia.ilike.${like}`,
           `source_property_id.ilike.${like}`,
           `tipo.ilike.${like}`,
           `localizacao_exibida.ilike.${like}`,
@@ -93,8 +164,20 @@ export const listImoveis = createServerFn({ method: "GET" })
     const { data: rows, count, error } = await query.range(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
 
+    const list = (rows ?? []) as Row[];
+    const { covers, publications } = await loadListingExtras(
+      context.supabase as never,
+      list.map((row) => String((row as Record<string, unknown>)["id"])),
+    );
+
     return {
-      items: ((rows ?? []) as Row[]).map(mapRow),
+      items: list.map((row) => {
+        const id = String((row as Record<string, unknown>)["id"]);
+        return mapRow(row, {
+          coverUrl: covers.get(id) ?? null,
+          publications: publications.get(id) ?? [],
+        });
+      }),
       total: count ?? 0,
       page,
       pageSize,
@@ -111,8 +194,14 @@ export const getImovel = createServerFn({ method: "GET" })
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return row ? mapRow(row as Row) : null;
+    if (!row) return null;
+    const { covers, publications } = await loadListingExtras(context.supabase as never, [data.id]);
+    return mapRow(row as Row, {
+      coverUrl: covers.get(data.id) ?? null,
+      publications: publications.get(data.id) ?? [],
+    });
   });
+
 
 export const getImoveisFacets = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
