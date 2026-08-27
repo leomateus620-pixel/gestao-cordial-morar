@@ -214,8 +214,9 @@ export type ImportConflictView = {
   status: string;
   matchReason: string | null;
   matchConfidence: number | null;
-  remote: Record<string, unknown>;
-  local: Record<string, unknown> | null;
+  remote: Record<string, JsonValue>;
+  local: Record<string, JsonValue> | null;
+
 };
 
 export const listImportConflicts = createServerFn({ method: "GET" })
