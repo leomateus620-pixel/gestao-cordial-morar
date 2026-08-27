@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import test from "node:test";
 import {
   DEFAULT_FILTERS,
   activeChips,
@@ -6,41 +7,43 @@ import {
   parseCatalogSearch,
   serializeCatalogSearch,
   toListInput,
-} from "./filters";
+} from "./filters.ts";
 
-describe("filtros do catálogo de imóveis", () => {
-  it("ignora valores inválidos vindos da URL", () => {
-    const parsed = parseCatalogSearch({
-      carteira: "invalida",
-      operacao: 42,
-      valorMin: "abc",
-      page: -5,
-      sort: "aleatorio",
-    });
-    expect(parsed.carteira).toBe("todas");
-    expect(parsed.operacao).toBe("todos");
-    expect(parsed.valorMin).toBeNull();
-    expect(parsed.page).toBe(0);
-    expect(parsed.sort).toBe("recentes");
+test("ignora valores inválidos vindos da URL", () => {
+  const parsed = parseCatalogSearch({
+    carteira: "invalida",
+    operacao: 42,
+    valorMin: "abc",
+    page: -5,
+    sort: "aleatorio",
   });
+  assert.equal(parsed.carteira, "todas");
+  assert.equal(parsed.operacao, "todos");
+  assert.equal(parsed.valorMin, null);
+  assert.equal(parsed.page, 0);
+  assert.equal(parsed.sort, "recentes");
+});
 
-  it("mantém apenas o que difere do padrão na URL", () => {
-    expect(serializeCatalogSearch(DEFAULT_FILTERS)).toEqual({});
-    expect(
-      serializeCatalogSearch({ ...DEFAULT_FILTERS, q: "praia", dormitoriosMin: 3, page: 2 }),
-    ).toEqual({ q: "praia", dormitoriosMin: 3, page: 2 });
-  });
+test("mantém apenas o que difere do padrão na URL", () => {
+  assert.deepEqual(serializeCatalogSearch(DEFAULT_FILTERS), {});
+  assert.deepEqual(
+    serializeCatalogSearch({ ...DEFAULT_FILTERS, q: "praia", dormitoriosMin: 3, page: 2 }),
+    { q: "praia", dormitoriosMin: 3, page: 2 },
+  );
+});
 
-  it("converte para a entrada da listagem sem strings vazias", () => {
-    const input = toListInput({ ...DEFAULT_FILTERS, q: "  1024  ", cidade: "" }, 24);
-    expect(input.search).toBe("1024");
-    expect(input.cidade).toBeNull();
-    expect(input.pageSize).toBe(24);
-  });
+test("converte para a entrada da listagem sem strings vazias", () => {
+  const input = toListInput({ ...DEFAULT_FILTERS, q: "  1024  ", cidade: "" }, 24);
+  assert.equal(input.search, "1024");
+  assert.equal(input.cidade, null);
+  assert.equal(input.pageSize, 24);
+});
 
-  it("resume os filtros ativos em etiquetas removíveis", () => {
-    const chips = activeChips({ ...DEFAULT_FILTERS, operacao: "venda", vagasMin: 2 });
-    expect(chips.map((c) => c.key)).toEqual(["operacao", "vagasMin"]);
-    expect(countActiveAdvanced({ ...DEFAULT_FILTERS, operacao: "venda", vagasMin: 2 })).toBe(1);
-  });
+test("resume os filtros ativos em etiquetas removíveis", () => {
+  const chips = activeChips({ ...DEFAULT_FILTERS, operacao: "venda", vagasMin: 2 });
+  assert.deepEqual(
+    chips.map((c) => c.key),
+    ["operacao", "vagasMin"],
+  );
+  assert.equal(countActiveAdvanced({ ...DEFAULT_FILTERS, operacao: "venda", vagasMin: 2 }), 1);
 });
