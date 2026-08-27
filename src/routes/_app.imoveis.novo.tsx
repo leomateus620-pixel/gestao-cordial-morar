@@ -38,6 +38,7 @@ export const Route = createFileRoute("/_app/imoveis/novo")({
 function NovoImovelPage() {
   const navigate = useNavigate();
   const create = useCreateImovel();
+  const facets = useImoveisFacets();
   const enqueue = useEnqueuePropertySync();
   const codes = usePropertyCodeReservation();
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);

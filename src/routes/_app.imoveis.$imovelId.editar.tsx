@@ -49,6 +49,7 @@ function EditarImovelPage() {
   const navigate = useNavigate();
   const query = usePropertyDetail(imovelId);
   const update = useUpdateImovel(imovelId);
+  const facets = useImoveisFacets();
 
   if (query.isPending) {
     return (
