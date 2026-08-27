@@ -19,6 +19,7 @@ import {
   type LocalPropertyForSync,
 } from "./serializers";
 import type { ImobiProvider } from "./providers";
+import { providerExternalCode } from "./provider-code";
 
 type Admin = SupabaseClient;
 
@@ -233,19 +234,6 @@ async function loadProperty(admin: Admin, propertyId: string) {
     caracteristicas?: string[] | null;
     revision?: number;
   };
-}
-
-/**
- * Código externo exclusivo do provedor.
- * Nunca há fallback silencioso do código de uma imobiliária para a outra.
- */
-export function providerExternalCode(
-  property: Record<string, unknown> | null | undefined,
-  provider: ImobiProvider,
-): string | null {
-  const raw = property?.[provider === "cordial" ? "codigo_cordial" : "codigo_morar"];
-  const code = typeof raw === "string" ? raw.trim() : "";
-  return code ? code : null;
 }
 
 async function ensurePublication(

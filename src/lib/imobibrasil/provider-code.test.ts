@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { providerExternalCode } from "./sync.server";
+import { providerExternalCode } from "./provider-code";
 
 test("cada provedor recebe exclusivamente o seu código", () => {
   const property = { codigo_cordial: "1234", codigo_morar: "9876" };
