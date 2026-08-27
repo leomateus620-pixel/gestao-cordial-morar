@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
+import { buildStablePublicUrl } from "@/lib/imobibrasil/public-url";
 import type {
   Property,
   PropertyDetail,
@@ -172,7 +173,8 @@ async function loadListingExtras(
       provider: link.provider,
       status: link.status,
       externalPropertyId: link.external_property_id,
-      publicUrl: link.external_public_url ?? null,
+      publicUrl:
+        link.external_public_url ?? buildStablePublicUrl(link.provider, link.external_property_id),
     });
     publications.set(link.property_id, list);
   }
@@ -467,7 +469,8 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
       provider: link.provider,
       status: link.status,
       externalPropertyId: link.external_property_id,
-      publicUrl: link.external_public_url ?? null,
+      publicUrl:
+        link.external_public_url ?? buildStablePublicUrl(link.provider, link.external_property_id),
     }));
 
 
