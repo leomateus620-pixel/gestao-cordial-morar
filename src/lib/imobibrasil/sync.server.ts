@@ -9,6 +9,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
 import { resolveProviderCodes } from "./catalogs.server";
+import { extractPublicUrl } from "./public-url";
+
 import {
   buildExternalReference,
   hashPayload,
