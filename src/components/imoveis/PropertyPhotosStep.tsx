@@ -70,7 +70,7 @@ export function PropertyPhotosStep({
         <div>
           <p className="text-sm font-semibold">Fotos do imóvel</p>
           <p className="text-[11px] text-foreground/55">
-            A primeira foto é a capa. A ordem definida aqui é a ordem enviada aos sites.
+            A primeira foto é a capa. Todas recebem a marca {marcaAtual} antes de ir para os sites.
           </p>
         </div>
         <button
