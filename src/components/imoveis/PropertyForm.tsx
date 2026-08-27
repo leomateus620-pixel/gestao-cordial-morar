@@ -239,9 +239,9 @@ export function PropertyForm({
     return base;
   });
   const activeTargets = useMemo<PropertyCarteira[]>(() => {
-    if (!showDestinos) return [values.carteira];
     const selected = destinos ?? [];
-    return selected.length ? selected : [];
+    if (selected.length) return selected;
+    return showDestinos ? [] : [values.carteira];
   }, [showDestinos, destinos, values.carteira]);
 
   useEffect(() => {

@@ -63,13 +63,15 @@ function NovoImovelPage() {
     (image) => image.processingStatus === "ready" || image.processingStatus === "legacy",
   ).length;
   const update = useUpdateImovel(draftId ?? undefined);
-  const reservationIds = useRef<string[]>([]);
+  /** Uma reserva ativa por provedor: retry/duplo clique substitui, nunca duplica. */
+  const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
   const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
 
   async function commitCodes(propertyId: string) {
-    if (!reservationIds.current.length) return;
+    const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
+    if (!ids.length) return;
     try {
-      await codes.commit.mutateAsync({ propertyId, reservationIds: reservationIds.current });
+      await codes.commit.mutateAsync({ propertyId, reservationIds: ids });
     } catch {
       // A reserva expira sozinha; não travamos o cadastro por isso.
     }
@@ -178,8 +180,8 @@ function NovoImovelPage() {
         onValuesChange={(values) => {
           latestValues.current = values;
         }}
-        onCodeReserved={(reservationId) => {
-          reservationIds.current = [...reservationIds.current, reservationId];
+        onCodeReserved={(reservationId, provider) => {
+          reservationIds.current = { ...reservationIds.current, [provider]: reservationId };
         }}
         bairros={facets.data?.bairros ?? []}
         onCancel={() => navigate({ to: "/imoveis" })}
