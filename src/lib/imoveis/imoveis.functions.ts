@@ -136,6 +136,8 @@ export const listImoveis = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true })
       .order("id", { ascending: true });
 
+    // Imóveis retirados saem da listagem comum, mas continuam no banco.
+    query = query.is("archived_at", null);
     if (data.carteira && data.carteira !== "todas") query = query.eq("carteira", data.carteira);
     if (data.operacao && data.operacao !== "todos") query = query.eq("operacao", data.operacao);
     if (data.tipo) query = query.eq("tipo", data.tipo);
@@ -148,6 +150,7 @@ export const listImoveis = createServerFn({ method: "GET" })
       query = query.or(
         [
           `codigo.ilike.${like}`,
+          `referencia.ilike.${like}`,
           `source_property_id.ilike.${like}`,
           `tipo.ilike.${like}`,
           `localizacao_exibida.ilike.${like}`,
@@ -161,8 +164,20 @@ export const listImoveis = createServerFn({ method: "GET" })
     const { data: rows, count, error } = await query.range(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
 
+    const list = (rows ?? []) as Row[];
+    const { covers, publications } = await loadListingExtras(
+      context.supabase as never,
+      list.map((row) => String((row as Record<string, unknown>)["id"])),
+    );
+
     return {
-      items: ((rows ?? []) as Row[]).map(mapRow),
+      items: list.map((row) => {
+        const id = String((row as Record<string, unknown>)["id"]);
+        return mapRow(row, {
+          coverUrl: covers.get(id) ?? null,
+          publications: publications.get(id) ?? [],
+        });
+      }),
       total: count ?? 0,
       page,
       pageSize,
@@ -179,8 +194,14 @@ export const getImovel = createServerFn({ method: "GET" })
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return row ? mapRow(row as Row) : null;
+    if (!row) return null;
+    const { covers, publications } = await loadListingExtras(context.supabase as never, [data.id]);
+    return mapRow(row as Row, {
+      coverUrl: covers.get(data.id) ?? null,
+      publications: publications.get(data.id) ?? [],
+    });
   });
+
 
 export const getImoveisFacets = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
