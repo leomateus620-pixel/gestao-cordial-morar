@@ -476,7 +476,7 @@ export const updateImovel = createServerFn({ method: "POST" })
       external_property_id: string | null;
     }>)
       .filter((link) => link.enabled && link.external_property_id)
-      .map((link) => link.provider);
+      .map((link) => link.provider) as Array<"cordial" | "morar">;
 
     if (targets.length) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
