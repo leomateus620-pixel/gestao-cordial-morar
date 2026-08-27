@@ -1988,9 +1988,11 @@ export type Database = {
       }
       property_images: {
         Row: {
+          alt_text: string | null
           content_hash: string | null
           created_at: string
           file_name: string
+          height: number | null
           id: string
           is_cover: boolean
           mime_type: string | null
@@ -1999,12 +2001,16 @@ export type Database = {
           size_bytes: number | null
           storage_path: string
           updated_at: string
+          upload_status: string
           uploaded_by: string | null
+          width: number | null
         }
         Insert: {
+          alt_text?: string | null
           content_hash?: string | null
           created_at?: string
           file_name: string
+          height?: number | null
           id?: string
           is_cover?: boolean
           mime_type?: string | null
@@ -2013,12 +2019,16 @@ export type Database = {
           size_bytes?: number | null
           storage_path: string
           updated_at?: string
+          upload_status?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Update: {
+          alt_text?: string | null
           content_hash?: string | null
           created_at?: string
           file_name?: string
+          height?: number | null
           id?: string
           is_cover?: boolean
           mime_type?: string | null
@@ -2027,7 +2037,9 @@ export type Database = {
           size_bytes?: number | null
           storage_path?: string
           updated_at?: string
+          upload_status?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Relationships: [
           {
@@ -2035,6 +2047,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -2109,6 +2128,13 @@ export type Database = {
             columns: ["match_property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_import_candidates_match_property_id_fkey"
+            columns: ["match_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
             referencedColumns: ["id"]
           },
           {
@@ -2378,6 +2404,13 @@ export type Database = {
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "property_provider_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
         ]
       }
       property_sync_attempts: {
@@ -2505,6 +2538,13 @@ export type Database = {
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "property_sync_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
         ]
       }
       provider_catalog_items: {
@@ -2542,6 +2582,63 @@ export type Database = {
           synced_at?: string
         }
         Relationships: []
+      }
+      provider_code_reservations: {
+        Row: {
+          code: string
+          committed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          property_id: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          reserved_at: string
+          reserved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          committed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          property_id?: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          reserved_at?: string
+          reserved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          committed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          property_id?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          reserved_at?: string
+          reserved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_code_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_code_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provider_value_maps: {
         Row: {
@@ -3586,7 +3683,378 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      properties_catalog: {
+        Row: {
+          aceita_financiamento: boolean | null
+          acomodacoes: number | null
+          ano_construcao: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          area_construida: number | null
+          area_construida_unidade: string | null
+          area_principal: number | null
+          area_privativa: number | null
+          area_privativa_unidade: string | null
+          area_terreno: number | null
+          area_terreno_unidade: string | null
+          area_tipo: string | null
+          area_total: number | null
+          area_total_unidade: string | null
+          area_util: number | null
+          autorizacao: boolean | null
+          averbada: boolean | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          carteira: string | null
+          cep: string | null
+          cidade: string | null
+          codigo: string | null
+          com_placa: boolean | null
+          complemento: string | null
+          corretor_id: string | null
+          corretor_nome: string | null
+          created_at: string | null
+          created_by: string | null
+          descricao_empreendimento: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          disparar_periodico: boolean | null
+          disponibilidade: string | null
+          disponibilizar_exportacao: boolean | null
+          dormitorios: number | null
+          em_condominio: boolean | null
+          entrega_previsao_empreendimento: string | null
+          escriturada: boolean | null
+          estagio_empreendimento: string | null
+          exclusividade: boolean | null
+          exibir_corretor: boolean | null
+          exibir_endereco_portal_personalizado: string[] | null
+          exibir_endereco_site: string | null
+          exibir_endereco_site_personalizado: string[] | null
+          exibir_imovel: boolean | null
+          finalidade: Database["public"]["Enums"]["property_finalidade"] | null
+          id: string | null
+          inicio_previsao_empreendimento: string | null
+          is_draft: boolean | null
+          local_chave: string | null
+          localizacao_exibida: string | null
+          logradouro: string | null
+          mapa: string | null
+          mobiliado: string | null
+          nome_condominio: string | null
+          nome_empreendimento: string | null
+          numero: string | null
+          numero_andar: string | null
+          numero_torre: string | null
+          observacao_imovel: string | null
+          operacao: string | null
+          origem_captacao: string | null
+          outras_informacoes: string | null
+          pavimento: string | null
+          permuta: boolean | null
+          ponto_referencia: string | null
+          pontos_fortes: string | null
+          portais_convencional: boolean | null
+          portais_destaque: boolean | null
+          portais_super_destaque: boolean | null
+          portais_super_destaque2: boolean | null
+          proprietario_email: string | null
+          proprietario_nome: string | null
+          proprietario_telefone: string | null
+          providers: string[] | null
+          publication_statuses: string[] | null
+          referencia: string | null
+          regiao: string | null
+          removal_state: string | null
+          revision: number | null
+          salas: number | null
+          seo_descricao: string | null
+          seo_titulo: string | null
+          seo_url: string | null
+          source: string | null
+          source_catalog_page: number | null
+          source_catalog_url: string | null
+          source_import_batch: string | null
+          source_property_id: string | null
+          source_property_url: string | null
+          suites: number | null
+          super_destaque_inicial: boolean | null
+          tarja_imagem: string | null
+          terreno_direita: number | null
+          terreno_direita_unidade: string | null
+          terreno_esquerda: number | null
+          terreno_esquerda_unidade: string | null
+          terreno_frente: number | null
+          terreno_frente_unidade: string | null
+          terreno_fundo: number | null
+          terreno_fundo_unidade: string | null
+          tipo: string | null
+          torre_unica: boolean | null
+          tour_virtual: string | null
+          tratar_empreendimento: boolean | null
+          uf: string | null
+          unidade: string | null
+          updated_at: string | null
+          vagas: number | null
+          valor: number | null
+          valor_condominio: number | null
+          valor_exibido: string | null
+          valor_iptu: number | null
+          valor_modo: string | null
+          valor_observacao: string | null
+          valor_taxas: number | null
+          video: string | null
+          zona: string | null
+        }
+        Insert: {
+          aceita_financiamento?: boolean | null
+          acomodacoes?: number | null
+          ano_construcao?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          area_construida?: number | null
+          area_construida_unidade?: string | null
+          area_principal?: number | null
+          area_privativa?: number | null
+          area_privativa_unidade?: string | null
+          area_terreno?: number | null
+          area_terreno_unidade?: string | null
+          area_tipo?: string | null
+          area_total?: number | null
+          area_total_unidade?: string | null
+          area_util?: number | null
+          autorizacao?: boolean | null
+          averbada?: boolean | null
+          bairro?: string | null
+          banheiros?: number | null
+          caracteristicas?: string[] | null
+          carteira?: string | null
+          cep?: string | null
+          cidade?: string | null
+          codigo?: string | null
+          com_placa?: boolean | null
+          complemento?: string | null
+          corretor_id?: string | null
+          corretor_nome?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao_empreendimento?: string | null
+          descricao_imovel?: string | null
+          destaque_inicial?: boolean | null
+          disparar_periodico?: boolean | null
+          disponibilidade?: string | null
+          disponibilizar_exportacao?: boolean | null
+          dormitorios?: number | null
+          em_condominio?: boolean | null
+          entrega_previsao_empreendimento?: string | null
+          escriturada?: boolean | null
+          estagio_empreendimento?: string | null
+          exclusividade?: boolean | null
+          exibir_corretor?: boolean | null
+          exibir_endereco_portal_personalizado?: string[] | null
+          exibir_endereco_site?: string | null
+          exibir_endereco_site_personalizado?: string[] | null
+          exibir_imovel?: boolean | null
+          finalidade?: Database["public"]["Enums"]["property_finalidade"] | null
+          id?: string | null
+          inicio_previsao_empreendimento?: string | null
+          is_draft?: boolean | null
+          local_chave?: string | null
+          localizacao_exibida?: string | null
+          logradouro?: string | null
+          mapa?: string | null
+          mobiliado?: string | null
+          nome_condominio?: string | null
+          nome_empreendimento?: string | null
+          numero?: string | null
+          numero_andar?: string | null
+          numero_torre?: string | null
+          observacao_imovel?: string | null
+          operacao?: string | null
+          origem_captacao?: string | null
+          outras_informacoes?: string | null
+          pavimento?: string | null
+          permuta?: boolean | null
+          ponto_referencia?: string | null
+          pontos_fortes?: string | null
+          portais_convencional?: boolean | null
+          portais_destaque?: boolean | null
+          portais_super_destaque?: boolean | null
+          portais_super_destaque2?: boolean | null
+          proprietario_email?: string | null
+          proprietario_nome?: string | null
+          proprietario_telefone?: string | null
+          providers?: never
+          publication_statuses?: never
+          referencia?: string | null
+          regiao?: string | null
+          removal_state?: string | null
+          revision?: number | null
+          salas?: number | null
+          seo_descricao?: string | null
+          seo_titulo?: string | null
+          seo_url?: string | null
+          source?: string | null
+          source_catalog_page?: number | null
+          source_catalog_url?: string | null
+          source_import_batch?: string | null
+          source_property_id?: string | null
+          source_property_url?: string | null
+          suites?: number | null
+          super_destaque_inicial?: boolean | null
+          tarja_imagem?: string | null
+          terreno_direita?: number | null
+          terreno_direita_unidade?: string | null
+          terreno_esquerda?: number | null
+          terreno_esquerda_unidade?: string | null
+          terreno_frente?: number | null
+          terreno_frente_unidade?: string | null
+          terreno_fundo?: number | null
+          terreno_fundo_unidade?: string | null
+          tipo?: string | null
+          torre_unica?: boolean | null
+          tour_virtual?: string | null
+          tratar_empreendimento?: boolean | null
+          uf?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          vagas?: number | null
+          valor?: number | null
+          valor_condominio?: number | null
+          valor_exibido?: string | null
+          valor_iptu?: number | null
+          valor_modo?: string | null
+          valor_observacao?: string | null
+          valor_taxas?: number | null
+          video?: string | null
+          zona?: string | null
+        }
+        Update: {
+          aceita_financiamento?: boolean | null
+          acomodacoes?: number | null
+          ano_construcao?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          area_construida?: number | null
+          area_construida_unidade?: string | null
+          area_principal?: number | null
+          area_privativa?: number | null
+          area_privativa_unidade?: string | null
+          area_terreno?: number | null
+          area_terreno_unidade?: string | null
+          area_tipo?: string | null
+          area_total?: number | null
+          area_total_unidade?: string | null
+          area_util?: number | null
+          autorizacao?: boolean | null
+          averbada?: boolean | null
+          bairro?: string | null
+          banheiros?: number | null
+          caracteristicas?: string[] | null
+          carteira?: string | null
+          cep?: string | null
+          cidade?: string | null
+          codigo?: string | null
+          com_placa?: boolean | null
+          complemento?: string | null
+          corretor_id?: string | null
+          corretor_nome?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao_empreendimento?: string | null
+          descricao_imovel?: string | null
+          destaque_inicial?: boolean | null
+          disparar_periodico?: boolean | null
+          disponibilidade?: string | null
+          disponibilizar_exportacao?: boolean | null
+          dormitorios?: number | null
+          em_condominio?: boolean | null
+          entrega_previsao_empreendimento?: string | null
+          escriturada?: boolean | null
+          estagio_empreendimento?: string | null
+          exclusividade?: boolean | null
+          exibir_corretor?: boolean | null
+          exibir_endereco_portal_personalizado?: string[] | null
+          exibir_endereco_site?: string | null
+          exibir_endereco_site_personalizado?: string[] | null
+          exibir_imovel?: boolean | null
+          finalidade?: Database["public"]["Enums"]["property_finalidade"] | null
+          id?: string | null
+          inicio_previsao_empreendimento?: string | null
+          is_draft?: boolean | null
+          local_chave?: string | null
+          localizacao_exibida?: string | null
+          logradouro?: string | null
+          mapa?: string | null
+          mobiliado?: string | null
+          nome_condominio?: string | null
+          nome_empreendimento?: string | null
+          numero?: string | null
+          numero_andar?: string | null
+          numero_torre?: string | null
+          observacao_imovel?: string | null
+          operacao?: string | null
+          origem_captacao?: string | null
+          outras_informacoes?: string | null
+          pavimento?: string | null
+          permuta?: boolean | null
+          ponto_referencia?: string | null
+          pontos_fortes?: string | null
+          portais_convencional?: boolean | null
+          portais_destaque?: boolean | null
+          portais_super_destaque?: boolean | null
+          portais_super_destaque2?: boolean | null
+          proprietario_email?: string | null
+          proprietario_nome?: string | null
+          proprietario_telefone?: string | null
+          providers?: never
+          publication_statuses?: never
+          referencia?: string | null
+          regiao?: string | null
+          removal_state?: string | null
+          revision?: number | null
+          salas?: number | null
+          seo_descricao?: string | null
+          seo_titulo?: string | null
+          seo_url?: string | null
+          source?: string | null
+          source_catalog_page?: number | null
+          source_catalog_url?: string | null
+          source_import_batch?: string | null
+          source_property_id?: string | null
+          source_property_url?: string | null
+          suites?: number | null
+          super_destaque_inicial?: boolean | null
+          tarja_imagem?: string | null
+          terreno_direita?: number | null
+          terreno_direita_unidade?: string | null
+          terreno_esquerda?: number | null
+          terreno_esquerda_unidade?: string | null
+          terreno_frente?: number | null
+          terreno_frente_unidade?: string | null
+          terreno_fundo?: number | null
+          terreno_fundo_unidade?: string | null
+          tipo?: string | null
+          torre_unica?: boolean | null
+          tour_virtual?: string | null
+          tratar_empreendimento?: boolean | null
+          uf?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          vagas?: number | null
+          valor?: number | null
+          valor_condominio?: number | null
+          valor_exibido?: string | null
+          valor_iptu?: number | null
+          valor_modo?: string | null
+          valor_observacao?: string | null
+          valor_taxas?: number | null
+          video?: string | null
+          zona?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
@@ -3810,6 +4278,21 @@ export type Database = {
           read_ct: number
         }[]
       }
+      release_expired_provider_codes: { Args: never; Returns: number }
+      reserve_provider_code: {
+        Args: {
+          _property_id?: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+          _ttl_minutes?: number
+        }
+        Returns: {
+          code: string
+          expires_at: string
+          reservation_id: string
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       submit_satisfaction_response: {
         Args: { _comentario: string; _rating: number; _token: string }
         Returns: Json

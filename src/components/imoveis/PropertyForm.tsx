@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
+import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
+import { PropertyPhotosStep } from "./PropertyPhotosStep";
+
 
 export const TIPOS = [
   "Casa",
@@ -156,6 +160,9 @@ export function PropertyForm({
   showDestinos = true,
   destinos,
   onDestinosChange,
+  propertyId,
+  onRequestSave,
+  onCodeReserved,
 }: {
   initial: PropertyFormValues;
   submitLabel: string;
@@ -165,15 +172,37 @@ export function PropertyForm({
   showDestinos?: boolean;
   destinos?: PropertyCarteira[];
   onDestinosChange?: (providers: PropertyCarteira[]) => void;
+  propertyId?: string | null;
+  onRequestSave?: () => Promise<string | null>;
+  onCodeReserved?: (reservationId: string) => void;
 }) {
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
+  const codes = usePropertyCodeReservation();
+  const [codeHint, setCodeHint] = useState<string | null>(null);
 
   function set<K extends keyof PropertyFormValues>(key: K, value: PropertyFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function reserveCode() {
+    try {
+      const reservation = await codes.reserve.mutateAsync(values.carteira);
+      set("codigo", reservation.code);
+      onCodeReserved?.(reservation.reservationId);
+      setCodeHint(
+        reservation.verified
+          ? `Código ${reservation.code} reservado e confirmado como livre no site.`
+          : `Código ${reservation.code} reservado. Não foi possível confirmar com o site agora.`,
+      );
+      toast.success(`Código ${reservation.code} reservado.`);
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Não foi possível gerar o código.");
+    }
+  }
+
   const canSubmit = useMemo(() => !!values.tipo && !pending, [values.tipo, pending]);
+
 
   return (
     <form
@@ -270,13 +299,28 @@ export function PropertyForm({
                   <option value="morar">Morar</option>
                 </select>
               </Field>
-              <Field label="Código interno">
-                <input
-                  value={values.codigo ?? ""}
-                  onChange={(e) => set("codigo", e.target.value)}
-                  className={inputCls}
-                />
+              <Field
+                label="Código interno"
+                hint={codeHint ?? "Gere o próximo código livre da carteira selecionada."}
+              >
+                <div className="flex gap-2">
+                  <input
+                    value={values.codigo ?? ""}
+                    onChange={(e) => set("codigo", e.target.value)}
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={reserveCode}
+                    disabled={codes.reserve.isPending}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground disabled:opacity-50"
+                  >
+                    {codes.reserve.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                    Gerar
+                  </button>
+                </div>
               </Field>
+
               <Field label="Referência">
                 <input
                   value={values.referencia ?? ""}
@@ -512,6 +556,10 @@ export function PropertyForm({
                 />
               </Field>
             </div>
+            <div className="rounded-2xl bg-white/50 p-3">
+              <PropertyPhotosStep propertyId={propertyId} onRequestSave={onRequestSave} />
+            </div>
+
             <div className="rounded-2xl bg-foreground/[0.04] p-3 text-[12px] text-foreground/60">
               <p className="font-semibold text-foreground/75">Revisão</p>
               <p className="mt-1">

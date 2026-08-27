@@ -137,7 +137,7 @@ async function loadListingExtras(
       .order("position", { ascending: true }),
     supabase
       .from("property_provider_publications")
-      .select("property_id, provider, status, external_property_id")
+      .select("property_id, provider, status, external_property_id, external_public_url")
       .in("property_id", ids),
   ]);
 
@@ -160,15 +160,18 @@ async function loadListingExtras(
     provider: PropertyPublicationBadge["provider"];
     status: string;
     external_property_id: string | null;
+    external_public_url: string | null;
   }>) {
     const list = publications.get(link.property_id) ?? [];
     list.push({
       provider: link.provider,
       status: link.status,
       externalPropertyId: link.external_property_id,
+      publicUrl: link.external_public_url ?? null,
     });
     publications.set(link.property_id, list);
   }
+
 
   return { covers, publications };
 }
@@ -178,13 +181,30 @@ function escapeLike(value: string) {
 }
 
 
+export type ImoveisSort =
+  | "recentes"
+  | "codigo"
+  | "preco_asc"
+  | "preco_desc"
+  | "area_desc";
+
 export type ListImoveisInput = {
-  carteira?: "todas" | "cordial" | "morar";
+  carteira?: "todas" | "cordial" | "morar" | "ambas";
   operacao?: "todos" | "venda" | "aluguel";
   tipo?: string | null;
   cidade?: string | null;
   bairro?: string | null;
   search?: string | null;
+  valorMin?: number | null;
+  valorMax?: number | null;
+  dormitoriosMin?: number | null;
+  suitesMin?: number | null;
+  banheirosMin?: number | null;
+  vagasMin?: number | null;
+  areaMin?: number | null;
+  areaMax?: number | null;
+  statusPublicacao?: string | null;
+  sort?: ImoveisSort;
   page?: number;
   pageSize?: number;
 };
@@ -196,39 +216,33 @@ export const listImoveis = createServerFn({ method: "GET" })
     const page = Math.max(0, data.page ?? 0);
     const pageSize = Math.min(100, Math.max(1, data.pageSize ?? 24));
 
+    // A view `properties_catalog` resolve, no banco, em quais sites o imóvel
+    // está publicado (ou a carteira de origem quando ainda não há vínculo).
     let query = context.supabase
-      .from("properties")
+      .from("properties_catalog")
       .select("*", { count: "exact" })
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true });
+      .is("archived_at", null);
 
-    // Imóveis retirados saem da listagem comum, mas continuam no banco.
-    query = query.is("archived_at", null);
-    if (data.carteira && data.carteira !== "todas") {
-      // A aba de carteira reflete o vínculo real com o provedor
-      // (property_provider_publications); `carteira` é apenas metadado de origem
-      // e por isso não pode ser usada sozinha — era a causa dos chips trocados.
-      const [{ data: links }, { data: allIds }] = await Promise.all([
-        context.supabase.from("property_provider_publications").select("property_id, provider"),
-        context.supabase.from("properties").select("id, carteira").is("archived_at", null),
-      ]);
-      const linkedAny = new Set<string>();
-      const linkedProvider = new Set<string>();
-      for (const link of (links ?? []) as Array<{ property_id: string; provider: string }>) {
-        linkedAny.add(link.property_id);
-        if (link.provider === data.carteira) linkedProvider.add(link.property_id);
-      }
-      const allowed = new Set(linkedProvider);
-      for (const row of (allIds ?? []) as Array<{ id: string; carteira: string }>) {
-        if (!linkedAny.has(row.id) && row.carteira === data.carteira) allowed.add(row.id);
-      }
-      query = query.in("id", allowed.size ? Array.from(allowed) : ["00000000-0000-0000-0000-000000000000"]);
+    if (data.carteira === "ambas") {
+      query = query.contains("providers", ["cordial"]).contains("providers", ["morar"]);
+    } else if (data.carteira && data.carteira !== "todas") {
+      query = query.contains("providers", [data.carteira]);
     }
 
     if (data.operacao && data.operacao !== "todos") query = query.eq("operacao", data.operacao);
     if (data.tipo) query = query.eq("tipo", data.tipo);
     if (data.cidade) query = query.eq("cidade", data.cidade);
     if (data.bairro) query = query.eq("bairro", data.bairro);
+    if (data.statusPublicacao) query = query.contains("publication_statuses", [data.statusPublicacao]);
+
+    if (typeof data.valorMin === "number") query = query.gte("valor", data.valorMin);
+    if (typeof data.valorMax === "number") query = query.lte("valor", data.valorMax);
+    if (typeof data.dormitoriosMin === "number") query = query.gte("dormitorios", data.dormitoriosMin);
+    if (typeof data.suitesMin === "number") query = query.gte("suites", data.suitesMin);
+    if (typeof data.banheirosMin === "number") query = query.gte("banheiros", data.banheirosMin);
+    if (typeof data.vagasMin === "number") query = query.gte("vagas", data.vagasMin);
+    if (typeof data.areaMin === "number") query = query.gte("area_principal", data.areaMin);
+    if (typeof data.areaMax === "number") query = query.lte("area_principal", data.areaMax);
 
     const term = data.search ? escapeLike(data.search) : "";
     if (term) {
@@ -240,11 +254,33 @@ export const listImoveis = createServerFn({ method: "GET" })
           `source_property_id.ilike.${like}`,
           `tipo.ilike.${like}`,
           `localizacao_exibida.ilike.${like}`,
+          `logradouro.ilike.${like}`,
           `bairro.ilike.${like}`,
           `cidade.ilike.${like}`,
         ].join(","),
       );
     }
+
+    switch (data.sort) {
+      case "codigo":
+        query = query.order("codigo", { ascending: true, nullsFirst: false });
+        break;
+      case "preco_asc":
+        query = query.order("valor", { ascending: true, nullsFirst: false });
+        break;
+      case "preco_desc":
+        query = query.order("valor", { ascending: false, nullsFirst: false });
+        break;
+      case "area_desc":
+        query = query.order("area_principal", { ascending: false, nullsFirst: false });
+        break;
+      case "recentes":
+        query = query.order("updated_at", { ascending: false, nullsFirst: false });
+        break;
+      default:
+        query = query.order("created_at", { ascending: true });
+    }
+    query = query.order("id", { ascending: true });
 
     const from = page * pageSize;
     const { data: rows, count, error } = await query.range(from, from + pageSize - 1);
@@ -269,6 +305,7 @@ export const listImoveis = createServerFn({ method: "GET" })
       pageSize,
     };
   });
+
 
 export const getImovel = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -364,7 +401,7 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
         .order("position", { ascending: true }),
       context.supabase
         .from("property_provider_publications")
-        .select("provider, status, external_property_id")
+        .select("provider, status, external_property_id, external_public_url")
         .eq("property_id", data.id),
     ]);
     if (error) throw new Error(error.message);
@@ -397,11 +434,14 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
       provider: PropertyPublicationBadge["provider"];
       status: string;
       external_property_id: string | null;
+      external_public_url: string | null;
     }>).map((link) => ({
       provider: link.provider,
       status: link.status,
       externalPropertyId: link.external_property_id,
+      publicUrl: link.external_public_url ?? null,
     }));
+
 
     return mapDetail(row as Record<string, any>, {
       coverUrl: images[0]?.url ?? null,

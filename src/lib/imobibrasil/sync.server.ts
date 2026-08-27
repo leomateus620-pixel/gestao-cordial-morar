@@ -9,6 +9,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
 import { resolveProviderCodes } from "./catalogs.server";
+import { extractPublicUrl } from "./public-url";
+
 import {
   buildExternalReference,
   hashPayload,
@@ -375,6 +377,7 @@ export async function processJob(admin: Admin, job: SyncJob) {
   const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
 
   const finalStatus = verified && media.failed === 0 ? "published" : "partial";
+  const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   await admin
     .from("property_provider_publications")
@@ -384,6 +387,7 @@ export async function processJob(admin: Admin, job: SyncJob) {
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
+      ...(publicUrl ? { external_public_url: publicUrl } : {}),
       last_error_category: finalStatus === "published" ? null : "media",
       last_error_message:
         finalStatus === "published"
@@ -416,10 +420,12 @@ export async function reconcilePublication(
 
   const remote = await verifyRemote(publication.provider, externalId, correlationId);
   const found = remote && Object.keys(remote).length > 0;
+  const publicUrl = extractPublicUrl(publication.provider, remote, externalId);
   await admin
     .from("property_provider_publications")
     .update({
       external_property_id: externalId,
+      ...(publicUrl ? { external_public_url: publicUrl } : {}),
       status: found ? "published" : "out_of_sync",
       last_verified_at: new Date().toISOString(),
       last_error_message: found ? null : "Divergência detectada na reconciliação.",

@@ -110,6 +110,8 @@ function EditarImovelPage() {
         submitLabel="Salvar alterações"
         pending={update.isPending}
         showDestinos={false}
+        propertyId={imovelId}
+
         onCancel={() => navigate({ to: "/imoveis/$imovelId", params: { imovelId } })}
         onSubmit={handleSubmit}
       />

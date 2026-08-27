@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
@@ -8,8 +8,9 @@ import {
   emptyPropertyValues,
   type PropertyFormValues,
 } from "@/components/imoveis/PropertyForm";
-import { useCreateImovel } from "@/hooks/useImoveis";
+import { useCreateImovel, useUpdateImovel } from "@/hooks/useImoveis";
 import { useEnqueuePropertySync } from "@/hooks/usePropertySync";
+import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import type { PropertyCarteira } from "@/types/property";
 
 export const Route = createFileRoute("/_app/imoveis/novo")({
@@ -38,15 +39,48 @@ function NovoImovelPage() {
   const navigate = useNavigate();
   const create = useCreateImovel();
   const enqueue = useEnqueuePropertySync();
+  const codes = usePropertyCodeReservation();
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
   const [publicar, setPublicar] = useState(false);
+  // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const update = useUpdateImovel(draftId ?? undefined);
+  const reservationIds = useRef<string[]>([]);
+  const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
+
+  async function commitCodes(propertyId: string) {
+    if (!reservationIds.current.length) return;
+    try {
+      await codes.commit.mutateAsync({ propertyId, reservationIds: reservationIds.current });
+    } catch {
+      // A reserva expira sozinha; não travamos o cadastro por isso.
+    }
+  }
+
+  async function ensureDraft(): Promise<string | null> {
+    if (draftId) return draftId;
+    try {
+      const property = await create.mutateAsync({ ...latestValues.current });
+      setDraftId(property.id);
+      await commitCodes(property.id);
+      toast.info("Rascunho salvo para receber as fotos.");
+      return property.id;
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Não foi possível salvar o rascunho.");
+      return null;
+    }
+  }
 
   async function handleSubmit(values: PropertyFormValues) {
     try {
-      const property = await create.mutateAsync({ ...values, carteira: values.carteira, operacao: values.operacao });
+      const propertyId = draftId
+        ? (await update.mutateAsync({ id: draftId, ...values })).property.id
+        : (await create.mutateAsync({ ...values })).id;
+      await commitCodes(propertyId);
+
       if (publicar && destinos.length) {
         try {
-          await enqueue.mutateAsync({ propertyId: property.id, providers: destinos, action: "publish" });
+          await enqueue.mutateAsync({ propertyId, providers: destinos, action: "publish" });
           toast.success("Imóvel cadastrado e enviado para publicação.");
         } catch (err) {
           toast.warning(
@@ -56,7 +90,7 @@ function NovoImovelPage() {
       } else {
         toast.success("Imóvel cadastrado no catálogo.");
       }
-      navigate({ to: "/imoveis/$imovelId", params: { imovelId: property.id } });
+      navigate({ to: "/imoveis/$imovelId", params: { imovelId: propertyId } });
     } catch (err) {
       toast.error((err as Error)?.message ?? "Não foi possível salvar o imóvel.");
     }
@@ -83,9 +117,17 @@ function NovoImovelPage() {
       <PropertyForm
         initial={emptyPropertyValues()}
         submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
-        pending={create.isPending || enqueue.isPending}
+        pending={create.isPending || update.isPending || enqueue.isPending}
         destinos={destinos}
         onDestinosChange={setDestinos}
+        propertyId={draftId}
+        onRequestSave={ensureDraft}
+        onValuesChange={(values) => {
+          latestValues.current = values;
+        }}
+        onCodeReserved={(reservationId) => {
+          reservationIds.current = [...reservationIds.current, reservationId];
+        }}
         onCancel={() => navigate({ to: "/imoveis" })}
         onSubmit={handleSubmit}
       />

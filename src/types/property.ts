@@ -6,7 +6,10 @@ export type PropertyPublicationBadge = {
   provider: PropertyCarteira;
   status: string;
   externalPropertyId: string | null;
+  /** URL pública canônica confirmada pelo site — nunca montada localmente. */
+  publicUrl: string | null;
 };
+
 
 export type Property = {
   id: string;
