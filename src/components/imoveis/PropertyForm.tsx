@@ -249,20 +249,46 @@ export function PropertyForm({
 
   }
 
-  async function reserveCode() {
+  function setProviderCode(provider: PropertyCarteira, patch: Partial<ProviderCodeState> | null) {
+    setProviderCodes((prev) => {
+      if (patch === null) {
+        const next = { ...prev };
+        delete next[provider];
+        return next;
+      }
+      const current = prev[provider] ?? { code: "", reservationId: null, status: "reserved" as const };
+      return { ...prev, [provider]: { ...current, ...patch } };
+    });
+  }
+
+  /** Reserva independente por imobiliária: falha em uma nunca afeta a outra. */
+  async function reserveCode(provider: PropertyCarteira) {
+    if (providerCodes[provider]?.status === "generating") return;
+    setProviderCode(provider, { status: "generating", message: "Consultando o próximo código livre…" });
     try {
-      const reservation = await codes.reserve.mutateAsync(values.carteira);
-      set("codigo", reservation.code);
-      onCodeReserved?.(reservation.reservationId);
-      setCodeHint(
-        reservation.verified
-          ? `Código ${reservation.code} reservado e confirmado como livre no site.`
-          : `Código ${reservation.code} reservado. Não foi possível confirmar com o site agora.`,
-      );
-      toast.success(`Código ${reservation.code} reservado.`);
+      const reservation = await codes.reserve.mutateAsync(provider);
+      setProviderCode(provider, {
+        code: reservation.code,
+        reservationId: reservation.reservationId,
+        status: "reserved",
+        message: reservation.verified
+          ? `Confirmado como livre no site.`
+          : `Reservado. Não foi possível confirmar com o site agora.`,
+      });
+      set(provider === "cordial" ? "codigoCordial" : "codigoMorar", reservation.code);
+      onCodeReserved?.(reservation.reservationId, provider);
+      toast.success(`Código ${reservation.code} reservado na ${provider === "cordial" ? "Cordial" : "Morar"}.`);
     } catch (err) {
-      toast.error((err as Error)?.message ?? "Não foi possível gerar o código.");
+      const message = (err as Error)?.message ?? "Não foi possível gerar o código.";
+      const conflict = /uso no site|já est/i.test(message);
+      setProviderCode(provider, { status: conflict ? "conflict" : "error", message });
+      toast.error(message);
     }
+  }
+
+  function manualCode(provider: PropertyCarteira, code: string) {
+    setProviderCode(provider, { code, reservationId: null, status: "reserved", message: "Código informado manualmente." });
+    set(provider === "cordial" ? "codigoCordial" : "codigoMorar", code || null);
   }
 
   const canSubmit = useMemo(() => !!values.tipo && !pending, [values.tipo, pending]);
