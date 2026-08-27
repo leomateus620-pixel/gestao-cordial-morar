@@ -156,6 +156,9 @@ export function PropertyForm({
   showDestinos = true,
   destinos,
   onDestinosChange,
+  propertyId,
+  onRequestSave,
+  onCodeReserved,
 }: {
   initial: PropertyFormValues;
   submitLabel: string;
@@ -165,15 +168,37 @@ export function PropertyForm({
   showDestinos?: boolean;
   destinos?: PropertyCarteira[];
   onDestinosChange?: (providers: PropertyCarteira[]) => void;
+  propertyId?: string | null;
+  onRequestSave?: () => Promise<string | null>;
+  onCodeReserved?: (reservationId: string) => void;
 }) {
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
+  const codes = usePropertyCodeReservation();
+  const [codeHint, setCodeHint] = useState<string | null>(null);
 
   function set<K extends keyof PropertyFormValues>(key: K, value: PropertyFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function reserveCode() {
+    try {
+      const reservation = await codes.reserve.mutateAsync(values.carteira);
+      set("codigo", reservation.code);
+      onCodeReserved?.(reservation.reservationId);
+      setCodeHint(
+        reservation.verified
+          ? `Código ${reservation.code} reservado e confirmado como livre no site.`
+          : `Código ${reservation.code} reservado. Não foi possível confirmar com o site agora.`,
+      );
+      toast.success(`Código ${reservation.code} reservado.`);
+    } catch (err) {
+      toast.error((err as Error)?.message ?? "Não foi possível gerar o código.");
+    }
+  }
+
   const canSubmit = useMemo(() => !!values.tipo && !pending, [values.tipo, pending]);
+
 
   return (
     <form
