@@ -137,7 +137,7 @@ async function loadListingExtras(
       .order("position", { ascending: true }),
     supabase
       .from("property_provider_publications")
-      .select("property_id, provider, status, external_property_id")
+      .select("property_id, provider, status, external_property_id, external_public_url")
       .in("property_id", ids),
   ]);
 
@@ -160,15 +160,18 @@ async function loadListingExtras(
     provider: PropertyPublicationBadge["provider"];
     status: string;
     external_property_id: string | null;
+    external_public_url: string | null;
   }>) {
     const list = publications.get(link.property_id) ?? [];
     list.push({
       provider: link.provider,
       status: link.status,
       externalPropertyId: link.external_property_id,
+      publicUrl: link.external_public_url ?? null,
     });
     publications.set(link.property_id, list);
   }
+
 
   return { covers, publications };
 }
