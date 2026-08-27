@@ -5,6 +5,8 @@ import { IMOBI_PROVIDER_KEYS, isImobiProvider, type ImobiProvider } from "@/lib/
 
 export type ImportMode = "dry_run" | "commit" | "incremental";
 export type ConflictResolution = "link_only" | "update_local" | "create_separate" | "ignore";
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 
 export type ImportRunView = {
   id: string;
