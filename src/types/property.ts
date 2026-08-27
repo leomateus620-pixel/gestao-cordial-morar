@@ -2,8 +2,15 @@ export type PropertyCarteira = "cordial" | "morar";
 export type PropertyOperacao = "venda" | "aluguel";
 export type PropertyValorModo = "fixo" | "consulte";
 
+export type PropertyPublicationBadge = {
+  provider: PropertyCarteira;
+  status: string;
+  externalPropertyId: string | null;
+};
+
 export type Property = {
   id: string;
+
   carteira: PropertyCarteira;
   operacao: PropertyOperacao;
   tipo: string | null;
