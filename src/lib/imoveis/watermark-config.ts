@@ -43,20 +43,24 @@ export function normalizeTargets(targets: readonly string[] | null | undefined):
   return (["cordial", "morar"] as PublishTarget[]).filter((t) => set.has(t));
 }
 
-/** Regra de negócio: destino do imóvel define a marca aplicada. */
-export function variantForTargets(targets: readonly string[] | null | undefined): WatermarkVariant {
-  const normalized = normalizeTargets(targets);
-  if (normalized.length >= 2) return "morar-cordial";
-  if (normalized[0] === "morar") return "morar";
-  return "cordial";
+/**
+ * Regra de negócio: a marca combinada Morar + Cordial é aplicada em todas as
+ * fotos, independentemente do site de destino. As variantes individuais ficam
+ * apenas para leitura de registros antigos.
+ */
+export function variantForTargets(_targets?: readonly string[] | null): WatermarkVariant {
+  return "morar-cordial";
 }
 
-/** Hash estável do destino + versão: muda quando a marca correta muda. */
-export function destinationHash(targets: readonly string[] | null | undefined): string {
-  return `${variantForTargets(targets)}@${WATERMARK_VERSION}`;
+/** Hash estável da marca: depende só da versão do template. */
+export function destinationHash(_targets?: readonly string[] | null): string {
+  return `morar-cordial@${WATERMARK_VERSION}`;
 }
+/** Rótulo da marca aplicada em todas as fotos. */
+export const WATERMARK_COMBINED_LABEL = "Morar + Cordial";
 
 export function watermarkLabel(variant: WatermarkVariant): string {
+
   if (variant === "morar-cordial") return "Morar + Cordial";
   if (variant === "morar") return "Morar";
   return "Cordial";
