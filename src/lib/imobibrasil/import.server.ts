@@ -88,7 +88,7 @@ async function bumpRun(admin: Admin, runId: string, deltas: Record<string, numbe
   if (!data) return;
   const patch: Record<string, number> = {};
   for (const key of keys) {
-    patch[key] = Number((data as Record<string, unknown>)[key] ?? 0) + (deltas[key] ?? 0);
+    patch[key] = Number((data as unknown as Record<string, unknown>)[key] ?? 0) + (deltas[key] ?? 0);
   }
   await admin.from("property_import_runs").update(patch).eq("id", runId);
 }
