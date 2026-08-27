@@ -84,6 +84,106 @@ function SelectField({
   );
 }
 
+const PRICE_PRESETS: Array<{ label: string; min: number | null; max: number | null }> = [
+  { label: "Até R$ 200 mil", min: null, max: 200_000 },
+  { label: "R$ 200 mil – 350 mil", min: 200_000, max: 350_000 },
+  { label: "R$ 350 mil – 500 mil", min: 350_000, max: 500_000 },
+  { label: "R$ 500 mil – 600 mil", min: 500_000, max: 600_000 },
+  { label: "R$ 600 mil – 800 mil", min: 600_000, max: 800_000 },
+  { label: "R$ 800 mil – 1 mi", min: 800_000, max: 1_000_000 },
+  { label: "Acima de R$ 1 mi", min: 1_000_000, max: null },
+];
+
+function formatBRL(value: number | null): string {
+  return value === null ? "" : `R$ ${value.toLocaleString("pt-BR")}`;
+}
+
+function parseBRL(raw: string): number | null {
+  const digits = raw.replace(/\D/g, "");
+  return digits ? Number(digits) : null;
+}
+
+/** Faixa de valor visível na barra: presets rápidos + digitação livre. */
+function PriceRangeFilter({
+  valorMin,
+  valorMax,
+  onChange,
+}: {
+  valorMin: number | null;
+  valorMax: number | null;
+  onChange: (patch: { valorMin: number | null; valorMax: number | null }) => void;
+}) {
+  const label =
+    valorMin === null && valorMax === null
+      ? "Valor"
+      : valorMin !== null && valorMax !== null
+        ? `${formatBRL(valorMin)} – ${formatBRL(valorMax)}`
+        : valorMin !== null
+          ? `A partir de ${formatBRL(valorMin)}`
+          : `Até ${formatBRL(valorMax)}`;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="glass-panel inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold">
+          {label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(92vw,22rem)] space-y-3 rounded-3xl p-4">
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/60">
+            Valor mínimo
+            <input
+              inputMode="numeric"
+              value={formatBRL(valorMin)}
+              placeholder="R$ 0"
+              onChange={(e) => onChange({ valorMin: parseBRL(e.target.value), valorMax })}
+              className="rounded-xl bg-white/70 px-3 py-2 text-sm font-medium text-foreground outline-none ring-1 ring-white/60 focus:ring-primary/40"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/60">
+            Valor máximo
+            <input
+              inputMode="numeric"
+              value={formatBRL(valorMax)}
+              placeholder="Sem limite"
+              onChange={(e) => onChange({ valorMin, valorMax: parseBRL(e.target.value) })}
+              className="rounded-xl bg-white/70 px-3 py-2 text-sm font-medium text-foreground outline-none ring-1 ring-white/60 focus:ring-primary/40"
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PRICE_PRESETS.map((preset) => {
+            const active = preset.min === valorMin && preset.max === valorMax;
+            return (
+              <button
+                key={preset.label}
+                onClick={() => onChange({ valorMin: preset.min, valorMax: preset.max })}
+                className={
+                  "rounded-full px-3 py-1.5 text-[11px] font-semibold transition " +
+                  (active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10")
+                }
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+        {(valorMin !== null || valorMax !== null) && (
+          <button
+            onClick={() => onChange({ valorMin: null, valorMax: null })}
+            className="text-xs font-semibold text-foreground/55"
+          >
+            Limpar faixa de valor
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function PropertyFilterBar({
   filters,
   facets,
