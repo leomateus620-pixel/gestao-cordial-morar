@@ -348,6 +348,31 @@ export function PropertyForm({
                   className={inputCls}
                 />
               </Field>
+              <Field label="Telefone do proprietário" hint="Uso interno: não é publicado nos sites.">
+                <input
+                  inputMode="tel"
+                  value={values.proprietarioTelefone ?? ""}
+                  onChange={(e) => set("proprietarioTelefone", maskPhone(e.target.value))}
+                  placeholder="(55) 99999-9999"
+                  className={inputCls}
+                />
+              </Field>
+              <Field
+                label="E-mail do proprietário"
+                hint={
+                  values.proprietarioEmail && !isValidEmail(values.proprietarioEmail)
+                    ? "E-mail inválido."
+                    : "Uso interno: não é publicado nos sites."
+                }
+              >
+                <input
+                  type="email"
+                  value={values.proprietarioEmail ?? ""}
+                  onChange={(e) => set("proprietarioEmail", e.target.value)}
+                  placeholder="proprietario@email.com"
+                  className={inputCls}
+                />
+              </Field>
             </div>
           </>
         )}
@@ -361,9 +386,6 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="CEP">
-              <input value={values.cep ?? ""} onChange={(e) => set("cep", e.target.value)} className={inputCls} />
-            </Field>
             <Field label="Logradouro">
               <input
                 value={values.logradouro ?? ""}
@@ -374,8 +396,19 @@ export function PropertyForm({
             <Field label="Número">
               <input value={values.numero ?? ""} onChange={(e) => set("numero", e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Bairro">
-              <input value={values.bairro ?? ""} onChange={(e) => set("bairro", e.target.value)} className={inputCls} />
+            <Field label="Bairro" hint="Escolha um bairro já usado nos sites ou digite um novo.">
+              <input
+                list={bairroListId}
+                value={values.bairro ?? ""}
+                onChange={(e) => set("bairro", e.target.value)}
+                placeholder="Selecione ou digite"
+                className={inputCls}
+              />
+              <datalist id={bairroListId}>
+                {bairroOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
             </Field>
             <Field label="Cidade">
               <input value={values.cidade ?? ""} onChange={(e) => set("cidade", e.target.value)} className={inputCls} />
@@ -388,8 +421,14 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Zona / região">
-              <input value={values.zona ?? ""} onChange={(e) => set("zona", e.target.value)} className={inputCls} />
+            <Field label="CEP">
+              <input
+                inputMode="numeric"
+                value={values.cep ?? ""}
+                onChange={(e) => set("cep", maskCep(e.target.value))}
+                placeholder="98900-000"
+                className={inputCls}
+              />
             </Field>
           </div>
         )}
