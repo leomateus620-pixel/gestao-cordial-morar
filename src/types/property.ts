@@ -68,7 +68,12 @@ export type PropertyWriteInput = {
   operacao: PropertyOperacao;
   finalidade: string | null;
   tipo: string | null;
+  /** Código legado/interno. Mantido apenas por compatibilidade. */
   codigo: string | null;
+  /** Código externo usado exclusivamente na publicação Cordial. */
+  codigoCordial: string | null;
+  /** Código externo usado exclusivamente na publicação Morar. */
+  codigoMorar: string | null;
   referencia: string | null;
   localizacaoExibida: string | null;
   cep: string | null;
