@@ -297,6 +297,85 @@
   border-left: 3px solid var(--morar-primary);
 }
 
+/* ---- Destino da publicação: identidade por imobiliária ---- */
+
+@utility brand-target {
+  min-height: 44px;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 180ms ease;
+
+  &:hover {
+    background: color-mix(in oklab, var(--foreground) 7%, transparent);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cordial-primary);
+    outline-offset: 2px;
+  }
+}
+
+@utility brand-target-cordial {
+  border-color: color-mix(in oklab, var(--cordial-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--cordial-primary) 9%, transparent);
+  box-shadow: 0 8px 20px -14px color-mix(in oklab, var(--cordial-primary) 80%, transparent);
+  color: var(--cordial-dark);
+
+  &:hover {
+    background: color-mix(in oklab, var(--cordial-primary) 13%, transparent);
+  }
+
+  &:focus-visible {
+    outline-color: var(--cordial-primary);
+  }
+}
+
+@utility brand-target-morar {
+  border-color: color-mix(in oklab, var(--morar-primary) 45%, transparent);
+  background: color-mix(in oklab, var(--morar-primary) 10%, transparent);
+  box-shadow: 0 8px 20px -14px color-mix(in oklab, var(--morar-primary) 80%, transparent);
+  color: var(--morar-dark);
+
+  &:hover {
+    background: color-mix(in oklab, var(--morar-primary) 14%, transparent);
+  }
+
+  &:focus-visible {
+    outline-color: var(--morar-primary);
+  }
+}
+
+@utility brand-target-combined {
+  background:
+    linear-gradient(
+      100deg,
+      color-mix(in oklab, var(--cordial-primary) 7%, transparent) 0%,
+      transparent 45%,
+      color-mix(in oklab, var(--morar-primary) 7%, transparent) 100%
+    );
+  border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+  border-radius: 1.5rem;
+}
+
+@utility brand-field-cordial {
+  border-color: color-mix(in oklab, var(--cordial-primary) 40%, transparent);
+  background: color-mix(in oklab, var(--cordial-primary) 6%, transparent);
+}
+
+@utility brand-field-morar {
+  border-color: color-mix(in oklab, var(--morar-primary) 40%, transparent);
+  background: color-mix(in oklab, var(--morar-primary) 6%, transparent);
+}
+
 @utility sidebar-glass {
   background: var(--app-sidebar-background);
   border: 1px solid var(--app-sidebar-border);

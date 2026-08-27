@@ -4,6 +4,12 @@ import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import { PropertyPhotosStep } from "./PropertyPhotosStep";
+import { PublishTargetSelector } from "./PublishTargetSelector";
+import {
+  ProviderCodeFields,
+  type ProviderCodeState,
+  type ProviderCodes,
+} from "./ProviderCodeFields";
 
 
 export const TIPOS = [
@@ -105,6 +111,8 @@ export function emptyPropertyValues(): PropertyFormValues {
     finalidade: null,
     tipo: "Casa",
     codigo: null,
+    codigoCordial: null,
+    codigoMorar: null,
     referencia: null,
     localizacaoExibida: null,
     cep: null,
@@ -198,7 +206,7 @@ export function PropertyForm({
   onDestinosChange?: (providers: PropertyCarteira[]) => void;
   propertyId?: string | null;
   onRequestSave?: () => Promise<string | null>;
-  onCodeReserved?: (reservationId: string) => void;
+  onCodeReserved?: (reservationId: string, provider: PropertyCarteira) => void;
   onValuesChange?: (values: PropertyFormValues) => void;
   /** Bairros já usados nos imóveis publicados nos sites Cordial/Morar. */
   bairros?: string[];
@@ -222,7 +230,19 @@ export function PropertyForm({
     [extraStep],
   );
   const codes = usePropertyCodeReservation();
-  const [codeHint, setCodeHint] = useState<string | null>(null);
+  const [providerCodes, setProviderCodes] = useState<ProviderCodes>(() => {
+    const base: ProviderCodes = {};
+    if (initial.codigoCordial)
+      base.cordial = { code: initial.codigoCordial, reservationId: null, status: "reserved" };
+    if (initial.codigoMorar)
+      base.morar = { code: initial.codigoMorar, reservationId: null, status: "reserved" };
+    return base;
+  });
+  const activeTargets = useMemo<PropertyCarteira[]>(() => {
+    const selected = destinos ?? [];
+    if (selected.length) return selected;
+    return showDestinos ? [] : [values.carteira];
+  }, [showDestinos, destinos, values.carteira]);
 
   useEffect(() => {
     onValuesChange?.(values);
@@ -235,20 +255,46 @@ export function PropertyForm({
 
   }
 
-  async function reserveCode() {
+  function setProviderCode(provider: PropertyCarteira, patch: Partial<ProviderCodeState> | null) {
+    setProviderCodes((prev) => {
+      if (patch === null) {
+        const next = { ...prev };
+        delete next[provider];
+        return next;
+      }
+      const current = prev[provider] ?? { code: "", reservationId: null, status: "reserved" as const };
+      return { ...prev, [provider]: { ...current, ...patch } };
+    });
+  }
+
+  /** Reserva independente por imobiliária: falha em uma nunca afeta a outra. */
+  async function reserveCode(provider: PropertyCarteira) {
+    if (providerCodes[provider]?.status === "generating") return;
+    setProviderCode(provider, { status: "generating", message: "Consultando o próximo código livre…" });
     try {
-      const reservation = await codes.reserve.mutateAsync(values.carteira);
-      set("codigo", reservation.code);
-      onCodeReserved?.(reservation.reservationId);
-      setCodeHint(
-        reservation.verified
-          ? `Código ${reservation.code} reservado e confirmado como livre no site.`
-          : `Código ${reservation.code} reservado. Não foi possível confirmar com o site agora.`,
-      );
-      toast.success(`Código ${reservation.code} reservado.`);
+      const reservation = await codes.reserve.mutateAsync(provider);
+      setProviderCode(provider, {
+        code: reservation.code,
+        reservationId: reservation.reservationId,
+        status: "reserved",
+        message: reservation.verified
+          ? `Confirmado como livre no site.`
+          : `Reservado. Não foi possível confirmar com o site agora.`,
+      });
+      set(provider === "cordial" ? "codigoCordial" : "codigoMorar", reservation.code);
+      onCodeReserved?.(reservation.reservationId, provider);
+      toast.success(`Código ${reservation.code} reservado na ${provider === "cordial" ? "Cordial" : "Morar"}.`);
     } catch (err) {
-      toast.error((err as Error)?.message ?? "Não foi possível gerar o código.");
+      const message = (err as Error)?.message ?? "Não foi possível gerar o código.";
+      const conflict = /uso no site|já est/i.test(message);
+      setProviderCode(provider, { status: conflict ? "conflict" : "error", message });
+      toast.error(message);
     }
+  }
+
+  function manualCode(provider: PropertyCarteira, code: string) {
+    setProviderCode(provider, { code, reservationId: null, status: "reserved", message: "Código informado manualmente." });
+    set(provider === "cordial" ? "codigoCordial" : "codigoMorar", code || null);
   }
 
   const canSubmit = useMemo(() => !!values.tipo && !pending, [values.tipo, pending]);
@@ -291,33 +337,14 @@ export function PropertyForm({
         {step === 0 && (
           <>
             {showDestinos && (
-              <Field label="Destino da publicação" hint="Escolha os sites onde este imóvel será anunciado.">
-                <div className="flex gap-2">
-                  {(["cordial", "morar"] as PropertyCarteira[]).map((provider) => {
-                    const active = (destinos ?? []).includes(provider);
-                    return (
-                      <button
-                        key={provider}
-                        type="button"
-                        onClick={() =>
-                          onDestinosChange?.(
-                            active
-                              ? (destinos ?? []).filter((p) => p !== provider)
-                              : [...(destinos ?? []), provider],
-                          )
-                        }
-                        className={
-                          "flex-1 rounded-2xl px-3 py-2 text-xs font-semibold transition " +
-                          (active
-                            ? "bg-primary/12 text-primary ring-1 ring-primary/30"
-                            : "bg-foreground/[0.04] text-foreground/55")
-                        }
-                      >
-                        {provider === "cordial" ? "Cordial Imóveis" : "Morar Imóveis"}
-                      </button>
-                    );
-                  })}
-                </div>
+              <Field
+                label="Destino da publicação"
+                hint="Escolha os sites onde este imóvel será anunciado."
+              >
+                <PublishTargetSelector
+                  value={destinos ?? []}
+                  onChange={(next) => onDestinosChange?.(next)}
+                />
               </Field>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
@@ -344,7 +371,10 @@ export function PropertyForm({
                   <option value="aluguel">Aluguel</option>
                 </select>
               </Field>
-              <Field label="Carteira de origem">
+              <Field
+                label="Carteira de origem"
+                hint="Origem interna da captação. Não define o código de publicação."
+              >
                 <select
                   value={values.carteira}
                   onChange={(e) => set("carteira", e.target.value as PropertyCarteira)}
@@ -354,27 +384,18 @@ export function PropertyForm({
                   <option value="morar">Morar</option>
                 </select>
               </Field>
-              <Field
-                label="Código interno"
-                hint={codeHint ?? "Gere o próximo código livre da carteira selecionada."}
-              >
-                <div className="flex gap-2">
-                  <input
-                    value={values.codigo ?? ""}
-                    onChange={(e) => set("codigo", e.target.value)}
-                    className={inputCls}
-                  />
-                  <button
-                    type="button"
-                    onClick={reserveCode}
-                    disabled={codes.reserve.isPending}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-primary px-3 py-2 text-[11px] font-bold text-primary-foreground disabled:opacity-50"
-                  >
-                    {codes.reserve.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                    Gerar
-                  </button>
-                </div>
-              </Field>
+              <div className="sm:col-span-2">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-foreground/50">
+                  Códigos de publicação
+                </span>
+                <ProviderCodeFields
+                  providers={activeTargets}
+                  codes={providerCodes}
+                  onManualChange={manualCode}
+                  onGenerate={reserveCode}
+                />
+              </div>
+
 
               <Field label="Referência">
                 <input

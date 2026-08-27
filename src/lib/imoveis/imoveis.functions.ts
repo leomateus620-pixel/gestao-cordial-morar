@@ -15,6 +15,8 @@ const WRITE_COLUMNS: Record<keyof PropertyWriteInput, string> = {
   finalidade: "finalidade",
   tipo: "tipo",
   codigo: "codigo",
+  codigoCordial: "codigo_cordial",
+  codigoMorar: "codigo_morar",
   referencia: "referencia",
   localizacaoExibida: "localizacao_exibida",
   cep: "cep",
@@ -253,6 +255,8 @@ export const listImoveis = createServerFn({ method: "GET" })
       query = query.or(
         [
           `codigo.ilike.${like}`,
+          `codigo_cordial.ilike.${like}`,
+          `codigo_morar.ilike.${like}`,
           `referencia.ilike.${like}`,
           `source_property_id.ilike.${like}`,
           `tipo.ilike.${like}`,
@@ -356,6 +360,8 @@ function mapDetail(row: Record<string, any>, extras: {
   return {
     ...base,
     finalidade: row.finalidade ?? null,
+    codigoCordial: row.codigo_cordial ?? null,
+    codigoMorar: row.codigo_morar ?? null,
     referencia: row.referencia ?? null,
     cep: row.cep ?? null,
     logradouro: row.logradouro ?? null,
