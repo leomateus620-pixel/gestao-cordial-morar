@@ -79,7 +79,11 @@ export function parseDecimal(value: unknown): number | null {
       : cleaned.replace(/,/g, "");
   } else if (hasComma) {
     normalized = cleaned.replace(/\./g, "").replace(",", ".");
+  } else if (hasDot && /^-?\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+    // "320.000" é separador de milhar, não decimal.
+    normalized = cleaned.replace(/\./g, "");
   }
+
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
