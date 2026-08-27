@@ -114,6 +114,25 @@ export function normalizeKey(value: string | null | undefined): string {
     .trim();
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+};
+
+/** A API devolve descrição em HTML com entidades — o cadastro guarda texto limpo. */
+export function decodeHtml(value: string | null): string | null {
+  if (!value) return null;
+  const decoded = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&([a-z]+);/gi, (match, name: string) => HTML_ENTITIES[name.toLowerCase()] ?? match)
+    .replace(/\r/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return decoded.length ? decoded : null;
+}
+
 export function normalizeFinalidade(value: unknown): "venda" | "locacao" | "temporada" {
   const raw = normalizeKey(text(value));
   if (raw.includes("tempor")) return "temporada";
@@ -157,7 +176,14 @@ export function extractCharacteristics(record: RemoteRecord): string[] {
     }
     if (typeof value === "object") {
       const record2 = value as RemoteRecord;
-      const label = pick(record2, ["descricao", "nome", "caracteristica", "label", "titulo"]);
+      const label = pick(record2, [
+        "nomeCaracteristica",
+        "descricao",
+        "nome",
+        "caracteristica",
+        "label",
+        "titulo",
+      ]);
       if (label) push(label);
       else for (const nested of Object.values(record2)) walk(nested);
       return;

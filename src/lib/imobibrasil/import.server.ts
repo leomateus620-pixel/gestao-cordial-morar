@@ -30,6 +30,7 @@ const ALLOWED_IMAGE_HOSTS = [
   "cordialimoveis.com",
   "imobiliariamorarimoveis.com.br",
   "imobibrasil.com.br",
+  "cdn-imobibrasil.com.br",
   "amazonaws.com",
   "cloudfront.net",
 ];
