@@ -337,33 +337,14 @@ export function PropertyForm({
         {step === 0 && (
           <>
             {showDestinos && (
-              <Field label="Destino da publicação" hint="Escolha os sites onde este imóvel será anunciado.">
-                <div className="flex gap-2">
-                  {(["cordial", "morar"] as PropertyCarteira[]).map((provider) => {
-                    const active = (destinos ?? []).includes(provider);
-                    return (
-                      <button
-                        key={provider}
-                        type="button"
-                        onClick={() =>
-                          onDestinosChange?.(
-                            active
-                              ? (destinos ?? []).filter((p) => p !== provider)
-                              : [...(destinos ?? []), provider],
-                          )
-                        }
-                        className={
-                          "flex-1 rounded-2xl px-3 py-2 text-xs font-semibold transition " +
-                          (active
-                            ? "bg-primary/12 text-primary ring-1 ring-primary/30"
-                            : "bg-foreground/[0.04] text-foreground/55")
-                        }
-                      >
-                        {provider === "cordial" ? "Cordial Imóveis" : "Morar Imóveis"}
-                      </button>
-                    );
-                  })}
-                </div>
+              <Field
+                label="Destino da publicação"
+                hint="Escolha os sites onde este imóvel será anunciado."
+              >
+                <PublishTargetSelector
+                  value={destinos ?? []}
+                  onChange={(next) => onDestinosChange?.(next)}
+                />
               </Field>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
