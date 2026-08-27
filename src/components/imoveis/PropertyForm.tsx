@@ -163,6 +163,7 @@ export function PropertyForm({
   propertyId,
   onRequestSave,
   onCodeReserved,
+  onValuesChange,
 }: {
   initial: PropertyFormValues;
   submitLabel: string;
@@ -175,14 +176,22 @@ export function PropertyForm({
   propertyId?: string | null;
   onRequestSave?: () => Promise<string | null>;
   onCodeReserved?: (reservationId: string) => void;
+  onValuesChange?: (values: PropertyFormValues) => void;
 }) {
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
   const codes = usePropertyCodeReservation();
   const [codeHint, setCodeHint] = useState<string | null>(null);
 
+  useEffect(() => {
+    onValuesChange?.(values);
+    // Só o conteúdo do formulário deve disparar o aviso ao pai.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values]);
+
   function set<K extends keyof PropertyFormValues>(key: K, value: PropertyFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
+
   }
 
   async function reserveCode() {
