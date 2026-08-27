@@ -9,6 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchPropertyDetail } from "./read.server";
 import { normalizeRemoteProperty } from "./import-normalizers";
+import { extractPublicUrl } from "./public-url";
 import { sha256 } from "./import.server";
 import { sanitizeMessage, toImobiError } from "./errors";
 import type { ImobiProvider } from "./providers";
@@ -22,7 +23,7 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
 
   const { data: publications, error } = await admin
     .from("property_provider_publications")
-    .select("id, property_id, provider, external_property_id, last_published_hash, remote_observed_hash")
+    .select("id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash")
     .not("external_property_id", "is", null)
     .eq("enabled", true)
     .order("last_verified_at", { ascending: true, nullsFirst: true })
@@ -61,6 +62,7 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
       );
       const baseline = publication.last_published_hash as string | null;
       const drifted = Boolean(baseline) && baseline !== remoteHash;
+      const publicUrl = extractPublicUrl(provider, detail, externalId);
 
       await admin
         .from("property_provider_publications")
@@ -68,6 +70,8 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
           remote_observed_hash: remoteHash,
           status: drifted ? "out_of_sync" : "published",
           last_verified_at: now,
+          // Preenche o link canônico apenas quando o site o devolveu; nunca apaga um link válido.
+          ...(publicUrl ? { external_public_url: publicUrl } : {}),
           last_error_category: drifted ? "drift" : null,
           last_error_message: drifted
             ? "O imóvel foi alterado no site fora do Gestão Cordial. Escolha reaplicar a versão do sistema ou importar a alteração."
