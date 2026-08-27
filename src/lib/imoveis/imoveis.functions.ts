@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
 import type {
   Property,
   PropertyDetail,
@@ -399,7 +400,9 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
       context.supabase.from("properties").select("*").eq("id", data.id).maybeSingle(),
       context.supabase
         .from("property_images")
-        .select("id, storage_path, is_cover, position")
+        .select(
+          "id, storage_path, processed_storage_path, is_cover, position, processing_status, processing_error_message, watermark_variant",
+        )
         .eq("property_id", data.id)
         .order("is_cover", { ascending: false })
         .order("position", { ascending: true }),
@@ -414,14 +417,18 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
     const rows = (imageRows ?? []) as Array<{
       id: string;
       storage_path: string;
+      processed_storage_path: string | null;
       is_cover: boolean;
       position: number;
+      processing_status: string | null;
+      processing_error_message: string | null;
+      watermark_variant: string | null;
     }>;
     const images: PropertyImage[] = [];
     if (rows.length) {
       const { data: signed } = await context.supabase.storage
         .from("property-images")
-        .createSignedUrls(rows.map((r) => r.storage_path), 3600);
+        .createSignedUrls(rows.map((r) => r.processed_storage_path ?? r.storage_path), 3600);
       const byPath = new Map(
         ((signed ?? []) as Array<{ path?: string | null; signedUrl: string }>).map((s) => [
           s.path ?? "",
@@ -429,8 +436,19 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
         ]),
       );
       for (const r of rows) {
-        const url = byPath.get(r.storage_path);
-        if (url) images.push({ id: r.id, url, isCover: r.is_cover, position: r.position });
+        const url = byPath.get(r.processed_storage_path ?? r.storage_path);
+        if (url)
+          images.push({
+            id: r.id,
+            url,
+            isCover: r.is_cover,
+            position: r.position,
+            processingStatus: (r.processing_status ?? "ready") as PropertyImage["processingStatus"],
+            watermarkLabel: r.watermark_variant
+              ? watermarkLabel(r.watermark_variant as WatermarkVariant)
+              : null,
+            processingError: r.processing_error_message,
+          });
       }
     }
 

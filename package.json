@@ -14,6 +14,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@cf-wasm/photon": "^0.4.0",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/email-js": "^0.0.4",
     "@lovable.dev/webhooks-js": "^0.0.1",

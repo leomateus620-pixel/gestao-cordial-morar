@@ -48,11 +48,18 @@ export type Property = {
   archivedAt: string | null;
 };
 
+export type PropertyImageProcessingStatus = "pending" | "ready" | "failed" | "legacy";
+
 export type PropertyImage = {
   id: string;
   url: string;
   isCover: boolean;
   position: number;
+  /** Estado da marca-d'água obrigatória aplicada no backend. */
+  processingStatus: PropertyImageProcessingStatus;
+  /** Marca aplicada (ex.: "Morar + Cordial"), quando já processada. */
+  watermarkLabel: string | null;
+  processingError: string | null;
 };
 
 /** Campos editáveis pelo formulário de cadastro/edição. */
