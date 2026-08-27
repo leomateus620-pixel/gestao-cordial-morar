@@ -1,20 +1,18 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import test from "node:test";
 import { providerExternalCode } from "./sync.server";
 
-describe("providerExternalCode", () => {
-  it("entrega a cada provedor exclusivamente o seu código", () => {
-    const property = { codigo_cordial: "1234", codigo_morar: "9876" };
-    expect(providerExternalCode(property, "cordial")).toBe("1234");
-    expect(providerExternalCode(property, "morar")).toBe("9876");
-  });
+test("cada provedor recebe exclusivamente o seu código", () => {
+  const property = { codigo_cordial: "1234", codigo_morar: "9876" };
+  assert.equal(providerExternalCode(property, "cordial"), "1234");
+  assert.equal(providerExternalCode(property, "morar"), "9876");
+});
 
-  it("nunca usa o código do outro provedor como fallback", () => {
-    const property = { codigo_cordial: "1234", codigo_morar: null };
-    expect(providerExternalCode(property, "morar")).toBeNull();
-  });
+test("nunca usa o código do outro provedor como fallback", () => {
+  assert.equal(providerExternalCode({ codigo_cordial: "1234", codigo_morar: null }, "morar"), null);
+});
 
-  it("ignora valores vazios", () => {
-    expect(providerExternalCode({ codigo_cordial: "   " }, "cordial")).toBeNull();
-    expect(providerExternalCode(null, "cordial")).toBeNull();
-  });
+test("ignora valores vazios ou ausentes", () => {
+  assert.equal(providerExternalCode({ codigo_cordial: "   " }, "cordial"), null);
+  assert.equal(providerExternalCode(null, "cordial"), null);
 });
