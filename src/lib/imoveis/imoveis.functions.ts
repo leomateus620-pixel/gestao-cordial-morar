@@ -401,7 +401,7 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
         .order("position", { ascending: true }),
       context.supabase
         .from("property_provider_publications")
-        .select("provider, status, external_property_id")
+        .select("provider, status, external_property_id, external_public_url")
         .eq("property_id", data.id),
     ]);
     if (error) throw new Error(error.message);
@@ -434,11 +434,14 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
       provider: PropertyPublicationBadge["provider"];
       status: string;
       external_property_id: string | null;
+      external_public_url: string | null;
     }>).map((link) => ({
       provider: link.provider,
       status: link.status,
       externalPropertyId: link.external_property_id,
+      publicUrl: link.external_public_url ?? null,
     }));
+
 
     return mapDetail(row as Record<string, any>, {
       coverUrl: images[0]?.url ?? null,
