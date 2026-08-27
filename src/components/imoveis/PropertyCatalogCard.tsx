@@ -92,12 +92,20 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
             {(property.publications.length > 0 || property.removalState) && (
               <div className="mt-1.5 flex flex-wrap items-center gap-1">
                 {property.publications.map((publication) => (
-                  <span
-                    key={publication.provider}
-                    className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${statusTone(publication.status)}`}
-                  >
-                    {PROVIDER_LABEL[publication.provider] ?? publication.provider} ·{" "}
-                    {PUBLICATION_STATUS_LABEL[publication.status] ?? publication.status}
+                  <span key={publication.provider} className="inline-flex items-center gap-1">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${statusTone(publication.status)}`}
+                    >
+                      {PROVIDER_LABEL[publication.provider] ?? publication.provider} ·{" "}
+                      {PUBLICATION_STATUS_LABEL[publication.status] ?? publication.status}
+                    </span>
+                    {publication.status === "published" && (
+                      <CopyPublicLinkButton
+                        provider={publication.provider}
+                        url={publication.publicUrl}
+                        compact
+                      />
+                    )}
                   </span>
                 ))}
                 {property.removalState === "pending_removal" && (
@@ -107,6 +115,7 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
                 )}
               </div>
             )}
+
 
             {property.localizacaoExibida ? (
               <p className="mt-1 flex items-start gap-1 text-[11px] leading-snug text-foreground/55">
