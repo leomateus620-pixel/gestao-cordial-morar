@@ -1562,6 +1562,8 @@ export type Database = {
           aceita_financiamento: boolean | null
           acomodacoes: number | null
           ano_construcao: string | null
+          archive_reason: string | null
+          archived_at: string | null
           area_construida: number | null
           area_construida_unidade: string | null
           area_principal: number | null
@@ -1636,6 +1638,7 @@ export type Database = {
           proprietario_telefone: string | null
           referencia: string | null
           regiao: string | null
+          removal_state: string | null
           revision: number
           salas: number | null
           seo_descricao: string | null
@@ -1680,6 +1683,8 @@ export type Database = {
           aceita_financiamento?: boolean | null
           acomodacoes?: number | null
           ano_construcao?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
           area_construida?: number | null
           area_construida_unidade?: string | null
           area_principal?: number | null
@@ -1754,6 +1759,7 @@ export type Database = {
           proprietario_telefone?: string | null
           referencia?: string | null
           regiao?: string | null
+          removal_state?: string | null
           revision?: number
           salas?: number | null
           seo_descricao?: string | null
@@ -1798,6 +1804,8 @@ export type Database = {
           aceita_financiamento?: boolean | null
           acomodacoes?: number | null
           ano_construcao?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
           area_construida?: number | null
           area_construida_unidade?: string | null
           area_principal?: number | null
@@ -1872,6 +1880,7 @@ export type Database = {
           proprietario_telefone?: string | null
           referencia?: string | null
           regiao?: string | null
+          removal_state?: string | null
           revision?: number
           salas?: number | null
           seo_descricao?: string | null
@@ -2030,65 +2039,338 @@ export type Database = {
           },
         ]
       }
+      property_import_candidates: {
+        Row: {
+          created_at: string
+          external_property_id: string
+          external_reference: string | null
+          id: string
+          images_count: number
+          last_error_message: string | null
+          match_confidence: number | null
+          match_property_id: string | null
+          match_reason: string | null
+          normalized: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          remote_hash: string | null
+          remote_payload: Json
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          run_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_property_id: string
+          external_reference?: string | null
+          id?: string
+          images_count?: number
+          last_error_message?: string | null
+          match_confidence?: number | null
+          match_property_id?: string | null
+          match_reason?: string | null
+          normalized?: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          remote_hash?: string | null
+          remote_payload?: Json
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_property_id?: string
+          external_reference?: string | null
+          id?: string
+          images_count?: number
+          last_error_message?: string | null
+          match_confidence?: number | null
+          match_property_id?: string | null
+          match_reason?: string | null
+          normalized?: Json
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          remote_hash?: string | null
+          remote_payload?: Json
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_import_candidates_match_property_id_fkey"
+            columns: ["match_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_import_candidates_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "property_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_import_jobs: {
+        Row: {
+          attempts: number
+          correlation_id: string
+          created_at: string
+          external_property_id: string | null
+          finished_at: string | null
+          id: string
+          idempotency_key: string
+          job_type: string
+          last_error_category: string | null
+          last_error_message: string | null
+          lock_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          next_run_at: string
+          page: number | null
+          payload: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          run_id: string
+          status: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          correlation_id?: string
+          created_at?: string
+          external_property_id?: string | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key: string
+          job_type: string
+          last_error_category?: string | null
+          last_error_message?: string | null
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          next_run_at?: string
+          page?: number | null
+          payload?: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          run_id: string
+          status?: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          correlation_id?: string
+          created_at?: string
+          external_property_id?: string | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string
+          job_type?: string
+          last_error_category?: string | null
+          last_error_message?: string | null
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          next_run_at?: string
+          page?: number | null
+          payload?: Json
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          run_id?: string
+          status?: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_import_jobs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "property_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_import_runs: {
+        Row: {
+          checkpoint: Json
+          created_at: string
+          finished_at: string | null
+          id: string
+          images_discovered: number
+          images_errored: number
+          images_imported: number
+          last_error_message: string | null
+          mode: string
+          pages_discovered: number
+          pages_processed: number
+          properties_ambiguous: number
+          properties_created: number
+          properties_discovered: number
+          properties_errored: number
+          properties_ignored: number
+          properties_linked: number
+          properties_updated: number
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          requested_by: string | null
+          started_at: string | null
+          status: string
+          summary: Json
+          updated_at: string
+        }
+        Insert: {
+          checkpoint?: Json
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          images_discovered?: number
+          images_errored?: number
+          images_imported?: number
+          last_error_message?: string | null
+          mode?: string
+          pages_discovered?: number
+          pages_processed?: number
+          properties_ambiguous?: number
+          properties_created?: number
+          properties_discovered?: number
+          properties_errored?: number
+          properties_ignored?: number
+          properties_linked?: number
+          properties_updated?: number
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          requested_by?: string | null
+          started_at?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Update: {
+          checkpoint?: Json
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          images_discovered?: number
+          images_errored?: number
+          images_imported?: number
+          last_error_message?: string | null
+          mode?: string
+          pages_discovered?: number
+          pages_processed?: number
+          properties_ambiguous?: number
+          properties_created?: number
+          properties_discovered?: number
+          properties_errored?: number
+          properties_ignored?: number
+          properties_linked?: number
+          properties_updated?: number
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          requested_by?: string | null
+          started_at?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       property_provider_publications: {
         Row: {
+          archived_at: string | null
+          baseline_at: string | null
           created_at: string
           enabled: boolean
           external_property_id: string | null
           external_public_url: string | null
           external_reference: string
           id: string
+          import_run_id: string | null
           last_error_category: string | null
           last_error_code: string | null
           last_error_message: string | null
+          last_imported_at: string | null
           last_payload_hash: string | null
+          last_published_hash: string | null
           last_synced_at: string | null
           last_synced_revision: number | null
           last_verified_at: string | null
+          local_desired_hash: string | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          remote_observed_hash: string | null
           status: Database["public"]["Enums"]["property_publication_status"]
+          system_managed: boolean
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          baseline_at?: string | null
           created_at?: string
           enabled?: boolean
           external_property_id?: string | null
           external_public_url?: string | null
           external_reference: string
           id?: string
+          import_run_id?: string | null
           last_error_category?: string | null
           last_error_code?: string | null
           last_error_message?: string | null
+          last_imported_at?: string | null
           last_payload_hash?: string | null
+          last_published_hash?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
+          local_desired_hash?: string | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
+          system_managed?: boolean
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          baseline_at?: string | null
           created_at?: string
           enabled?: boolean
           external_property_id?: string | null
           external_public_url?: string | null
           external_reference?: string
           id?: string
+          import_run_id?: string | null
           last_error_category?: string | null
           last_error_code?: string | null
           last_error_message?: string | null
+          last_imported_at?: string | null
           last_payload_hash?: string | null
+          last_published_hash?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
+          local_desired_hash?: string | null
           property_id?: string
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
+          system_managed?: boolean
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_provider_publications_import_run_id_fkey"
+            columns: ["import_run_id"]
+            isOneToOne: false
+            referencedRelation: "property_import_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_provider_publications_property_id_fkey"
             columns: ["property_id"]
@@ -3456,6 +3738,38 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      property_import_claim_jobs: {
+        Args: { _lease_seconds?: number; _limit?: number; _worker: string }
+        Returns: {
+          attempts: number
+          correlation_id: string
+          created_at: string
+          external_property_id: string | null
+          finished_at: string | null
+          id: string
+          idempotency_key: string
+          job_type: string
+          last_error_category: string | null
+          last_error_message: string | null
+          lock_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          next_run_at: string
+          page: number | null
+          payload: Json
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          run_id: string
+          status: Database["public"]["Enums"]["property_sync_job_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "property_import_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       property_sync_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
