@@ -10,19 +10,7 @@ import {
 
 const PROVIDER_LABEL: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
 
-/**
- * Copia o link público canônico devolvido pela API do site.
- * Sem link verificado não há botão ativo: nunca montamos URL "adivinhando" o slug.
- */
-export function CopyPublicLinkButton({
-  provider,
-  url,
-  compact = false,
-}: {
-  provider: string;
-  url: string | null;
-  compact?: boolean;
-}) {
+function useCopyPublicUrl(provider: string, url: string | null) {
   const [copied, setCopied] = useState(false);
   const label = PROVIDER_LABEL[provider] ?? provider;
 
@@ -39,6 +27,24 @@ export function CopyPublicLinkButton({
       toast.error("Não foi possível copiar o link.");
     }
   }
+
+  return { copied, label, copy };
+}
+
+/**
+ * Copia o link público canônico devolvido pela API do site.
+ * Sem link verificado não há botão ativo: nunca montamos URL "adivinhando" o slug.
+ */
+export function CopyPublicLinkButton({
+  provider,
+  url,
+  compact = false,
+}: {
+  provider: string;
+  url: string | null;
+  compact?: boolean;
+}) {
+  const { copied, label, copy } = useCopyPublicUrl(provider, url);
 
   if (!url) {
     return (
@@ -78,5 +84,51 @@ export function CopyPublicLinkButton({
         <ExternalLink className="size-3" />
       </a>
     </span>
+  );
+}
+
+/**
+ * Variante só-ícone para o cabeçalho da ficha: um círculo por site publicado.
+ * Sem URL verificada, não renderiza nada.
+ */
+export function CopyPublicLinkIcon({
+  provider,
+  url,
+}: {
+  provider: string;
+  url: string | null;
+}) {
+  const { copied, label, copy } = useCopyPublicUrl(provider, url);
+  if (!url) return null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={copy}
+            aria-label={`Copiar link ${label}`}
+            className="glass-panel inline-flex size-9 items-center justify-center rounded-full text-primary transition hover:scale-105 hover:text-primary"
+          >
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span className="flex items-center gap-2">
+            {copied ? `Link ${label} copiado` : `Copiar link ${label}`}
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Abrir anúncio ${label} em nova aba`}
+              className="inline-flex items-center gap-0.5 underline"
+            >
+              Abrir <ExternalLink className="size-3" />
+            </a>
+          </span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
