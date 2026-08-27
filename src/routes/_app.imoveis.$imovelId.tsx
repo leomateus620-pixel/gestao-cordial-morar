@@ -6,7 +6,6 @@ import {
   Car,
   ExternalLink,
   Loader2,
-  Maximize2,
   MapPin,
   Pencil,
   Ruler,
@@ -321,5 +320,3 @@ function Fact({
     </div>
   );
 }
-
-export { Maximize2 };
