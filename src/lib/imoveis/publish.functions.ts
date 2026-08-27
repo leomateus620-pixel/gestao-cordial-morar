@@ -82,8 +82,32 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     if (propertyError) throw new Error(propertyError.message);
     if (!property) throw new Error("Imóvel não encontrado.");
 
+    if (action === "publish" || action === "update") {
+      const { data: pendingImages } = await context.supabase
+        .from("property_images")
+        .select("id, file_name, processing_status")
+        .eq("property_id", property.id)
+        .in("processing_status", ["pending", "failed"]);
+      if (pendingImages?.length) {
+        const names = pendingImages
+          .slice(0, 3)
+          .map((image: { file_name: string }) => image.file_name)
+          .join(", ");
+        throw new Error(
+          `Aguardando a marca-d'água em ${pendingImages.length} foto(s): ${names}. Reprocesse ou remova antes de publicar.`,
+        );
+      }
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
+
+    // Destinos escolhidos definem a marca aplicada nas fotos.
+    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+    if (action === "publish" || action === "update") {
+      await supabaseAdmin.from("properties").update({ publish_targets: providers }).eq("id", property.id);
+      await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
+    }
 
     for (const provider of providers) {
       await supabaseAdmin.from("property_provider_publications").upsert(
