@@ -1,7 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Bath, Bed, Car, ImageOff, Maximize2, MapPin } from "lucide-react";
 import { brl } from "@/lib/format";
-import { formatArea, propertyLocalidade, type Property } from "@/types/property";
+import {
+  formatArea,
+  propertyLocalidade,
+  PUBLICATION_STATUS_LABEL,
+  type Property,
+} from "@/types/property";
 
 function Missing({ label }: { label: string }) {
   return (
@@ -9,6 +14,15 @@ function Missing({ label }: { label: string }) {
       {label}: não informado no catálogo
     </span>
   );
+}
+
+const PROVIDER_LABEL: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
+
+function statusTone(status: string) {
+  if (status === "published") return "bg-emerald-500/12 text-emerald-700";
+  if (status === "error" || status === "out_of_sync") return "bg-amber-500/15 text-amber-700";
+  if (status === "unpublished" || status === "draft") return "bg-foreground/[0.06] text-foreground/55";
+  return "bg-primary/10 text-primary";
 }
 
 export function PropertyCatalogCard({ property }: { property: Property }) {
@@ -38,14 +52,24 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
       }}
     >
       <div className="flex gap-3 p-3">
-        <div className="grid aspect-square w-20 shrink-0 place-items-center rounded-2xl bg-foreground/[0.05] text-foreground/30 sm:w-24">
-          <div className="flex flex-col items-center gap-1">
-            <ImageOff className="size-5" />
-            <span className="px-1 text-center text-[8px] leading-tight">
-              Imagem não disponível
-            </span>
+        {property.coverUrl ? (
+          <img
+            src={property.coverUrl}
+            alt={`Foto do imóvel ${property.codigo ?? ""} em ${property.cidade ?? "catálogo"}`}
+            loading="lazy"
+            className="aspect-square w-20 shrink-0 rounded-2xl object-cover sm:w-24"
+          />
+        ) : (
+          <div className="grid aspect-square w-20 shrink-0 place-items-center rounded-2xl bg-foreground/[0.05] text-foreground/30 sm:w-24">
+            <div className="flex flex-col items-center gap-1">
+              <ImageOff className="size-5" />
+              <span className="px-1 text-center text-[8px] leading-tight">
+                Imagem não disponível
+              </span>
+            </div>
           </div>
-        </div>
+        )}
+
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
