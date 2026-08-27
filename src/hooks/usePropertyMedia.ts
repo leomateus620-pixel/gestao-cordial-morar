@@ -45,6 +45,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
   const removeFn = useServerFn(deletePropertyImage);
+  const retryFn = useServerFn(retryPropertyImageWatermark);
+  const targetsFn = useServerFn(setPropertyPublishTargets);
   const [progress, setProgress] = useState<UploadProgress[]>([]);
 
   const invalidate = useCallback(() => {
