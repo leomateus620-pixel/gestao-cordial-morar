@@ -132,6 +132,28 @@ export function PropertyPhotosStep({
         </p>
       )}
 
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-foreground/[0.04] px-3 py-2 text-[11px]">
+          <span className="font-medium text-foreground/70">
+            {pendentes > 0
+              ? `Atualizando marcas nas fotos… ${prontas} de ${rows.length} prontas.`
+              : `${prontas} de ${rows.length} fotos prontas com a marca ${marcaAtual}.`}
+            {falhas > 0 ? ` ${falhas} precisam de nova tentativa.` : ""}
+          </span>
+          {(falhas > 0 || pendentes > 0) && (
+            <button
+              type="button"
+              onClick={() => media.retryWatermark.mutate(undefined)}
+              disabled={media.retryWatermark.isPending}
+              className="inline-flex items-center gap-1 font-semibold text-primary disabled:opacity-50"
+            >
+              <RefreshCw className={`size-3 ${media.retryWatermark.isPending ? "animate-spin" : ""}`} />
+              Tentar novamente todas
+            </button>
+          )}
+        </div>
+      )}
+
       {images.isPending && propertyId && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
