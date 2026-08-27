@@ -224,7 +224,19 @@ export function PropertyForm({
     [extraStep],
   );
   const codes = usePropertyCodeReservation();
-  const [codeHint, setCodeHint] = useState<string | null>(null);
+  const [providerCodes, setProviderCodes] = useState<ProviderCodes>(() => {
+    const base: ProviderCodes = {};
+    if (initial.codigoCordial)
+      base.cordial = { code: initial.codigoCordial, reservationId: null, status: "reserved" };
+    if (initial.codigoMorar)
+      base.morar = { code: initial.codigoMorar, reservationId: null, status: "reserved" };
+    return base;
+  });
+  const activeTargets = useMemo<PropertyCarteira[]>(() => {
+    if (!showDestinos) return [values.carteira];
+    const selected = destinos ?? [];
+    return selected.length ? selected : [];
+  }, [showDestinos, destinos, values.carteira]);
 
   useEffect(() => {
     onValuesChange?.(values);
