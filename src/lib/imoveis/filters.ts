@@ -146,8 +146,6 @@ export function activeChips(filters: CatalogFilters): ActiveChip[] {
 export function countActiveAdvanced(filters: CatalogFilters): number {
   const keys: Array<keyof CatalogFilters> = [
     "bairro",
-    "valorMin",
-    "valorMax",
     "dormitoriosMin",
     "suitesMin",
     "banheirosMin",
