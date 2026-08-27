@@ -1,17 +1,21 @@
-import { useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ImagePlus, Loader2, Star, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, ImagePlus, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ACCEPTED_IMAGE_TYPES, usePropertyImages, usePropertyMedia } from "@/hooks/usePropertyMedia";
+import { variantForTargets, watermarkLabel } from "@/lib/imoveis/watermark-config";
 
 /**
  * Etapa 6 — fotos. O upload só existe com imóvel salvo, porque cada arquivo
  * precisa de uma pasta própria no Storage e de um registro correspondente.
+ * Toda foto recebe a marca da imobiliária no backend antes de ir para os sites.
  */
 export function PropertyPhotosStep({
   propertyId,
+  destinos = [],
   onRequestSave,
 }: {
   propertyId?: string | null;
+  destinos?: string[];
   onRequestSave?: () => Promise<string | null>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,6 +23,21 @@ export function PropertyPhotosStep({
   const images = usePropertyImages(propertyId ?? undefined);
   const media = usePropertyMedia(propertyId ?? undefined);
   const rows = images.data ?? [];
+  const marcaAtual = watermarkLabel(variantForTargets(destinos));
+  const pendentes = rows.filter((image) => image.processingStatus === "pending").length;
+  const falhas = rows.filter((image) => image.processingStatus === "failed").length;
+  const prontas = rows.length - pendentes - falhas;
+
+  // Trocar o destino regenera as marcas a partir do original.
+  const targetsKey = [...destinos].sort().join(",");
+  const lastTargets = useRef<string | null>(null);
+  useEffect(() => {
+    if (!propertyId) return;
+    if (lastTargets.current === targetsKey) return;
+    lastTargets.current = targetsKey;
+    media.updateTargets.mutate(targetsKey ? targetsKey.split(",") : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, targetsKey]);
 
   async function pickFiles() {
     if (!propertyId && onRequestSave) {
