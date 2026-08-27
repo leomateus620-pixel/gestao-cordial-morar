@@ -121,7 +121,7 @@ export const getImportOverview = createServerFn({ method: "GET" })
       runs.push({
         id: run.id,
         provider,
-        mode: run.mode,
+        mode: run.mode as ImportMode,
         status: run.status,
         pagesDiscovered: run.pages_discovered,
         pagesProcessed: run.pages_processed,
