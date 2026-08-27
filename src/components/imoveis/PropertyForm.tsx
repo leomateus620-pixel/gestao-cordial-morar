@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
@@ -152,7 +152,7 @@ export function emptyPropertyValues(): PropertyFormValues {
   };
 }
 
-const STEPS = [
+const BASE_STEPS = [
   "Destino e identificação",
   "Localização",
   "Características e áreas",
@@ -186,6 +186,7 @@ export function PropertyForm({
   onCodeReserved,
   onValuesChange,
   bairros,
+  extraStep,
 }: {
   initial: PropertyFormValues;
   submitLabel: string;
@@ -201,6 +202,11 @@ export function PropertyForm({
   onValuesChange?: (values: PropertyFormValues) => void;
   /** Bairros já usados nos imóveis publicados nos sites Cordial/Morar. */
   bairros?: string[];
+  /** Etapa opcional adicional (ex.: Etapa 7 — Agenciamento) renderizada ao final. */
+  extraStep?: {
+    label: string;
+    render: (ctx: { values: PropertyFormValues; goToStep: (index: number) => void }) => ReactNode;
+  };
 }) {
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
@@ -211,6 +217,10 @@ export function PropertyForm({
     if (values.bairro?.trim()) set.add(values.bairro.trim());
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [bairros, values.bairro]);
+  const STEPS = useMemo(
+    () => (extraStep ? [...BASE_STEPS, extraStep.label] : BASE_STEPS),
+    [extraStep],
+  );
   const codes = usePropertyCodeReservation();
   const [codeHint, setCodeHint] = useState<string | null>(null);
 
@@ -658,6 +668,10 @@ export function PropertyForm({
             </div>
           </>
         )}
+
+        {extraStep && step === BASE_STEPS.length
+          ? extraStep.render({ values, goToStep: setStep })
+          : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
