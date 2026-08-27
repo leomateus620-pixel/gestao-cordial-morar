@@ -165,18 +165,6 @@ export function PropertyFilterBar({
                 onChange={(status) => setDraft((d) => ({ ...d, status }))}
               />
               <NumberField
-                label="Valor mínimo"
-                value={draft.valorMin}
-                placeholder="R$"
-                onChange={(valorMin) => setDraft((d) => ({ ...d, valorMin }))}
-              />
-              <NumberField
-                label="Valor máximo"
-                value={draft.valorMax}
-                placeholder="R$"
-                onChange={(valorMax) => setDraft((d) => ({ ...d, valorMax }))}
-              />
-              <NumberField
                 label="Dormitórios (mín.)"
                 value={draft.dormitoriosMin}
                 onChange={(dormitoriosMin) => setDraft((d) => ({ ...d, dormitoriosMin }))}
