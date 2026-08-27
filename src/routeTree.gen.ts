@@ -43,6 +43,7 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
 import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
+import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
 import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes/api/public/hooks/property-import-worker'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
@@ -223,6 +224,12 @@ const ApiPublicHooksPropertySyncWorkerRoute =
     path: '/api/public/hooks/property-sync-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksPropertySyncReconcileRoute =
+  ApiPublicHooksPropertySyncReconcileRouteImport.update({
+    id: '/api/public/hooks/property-sync-reconcile',
+    path: '/api/public/hooks/property-sync-reconcile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksPropertyImportWorkerRoute =
   ApiPublicHooksPropertyImportWorkerRouteImport.update({
     id: '/api/public/hooks/property-import-worker',
@@ -288,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
+  '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -328,6 +336,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
+  '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -370,6 +379,7 @@ export interface FileRoutesById {
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
+  '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/property-import-worker'
+    | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/property-import-worker'
+    | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
@@ -493,6 +505,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/property-import-worker'
+    | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
@@ -513,6 +526,7 @@ export interface RootRouteChildren {
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
   ApiPublicHooksPropertyImportWorkerRoute: typeof ApiPublicHooksPropertyImportWorkerRoute
+  ApiPublicHooksPropertySyncReconcileRoute: typeof ApiPublicHooksPropertySyncReconcileRoute
   ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -760,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPropertySyncWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/property-sync-reconcile': {
+      id: '/api/public/hooks/property-sync-reconcile'
+      path: '/api/public/hooks/property-sync-reconcile'
+      fullPath: '/api/public/hooks/property-sync-reconcile'
+      preLoaderRoute: typeof ApiPublicHooksPropertySyncReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/property-import-worker': {
       id: '/api/public/hooks/property-import-worker'
       path: '/api/public/hooks/property-import-worker'
@@ -885,6 +906,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
   ApiPublicHooksPropertyImportWorkerRoute:
     ApiPublicHooksPropertyImportWorkerRoute,
+  ApiPublicHooksPropertySyncReconcileRoute:
+    ApiPublicHooksPropertySyncReconcileRoute,
   ApiPublicHooksPropertySyncWorkerRoute: ApiPublicHooksPropertySyncWorkerRoute,
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,

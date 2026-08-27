@@ -114,6 +114,35 @@ export function normalizeKey(value: string | null | undefined): string {
     .trim();
 }
 
+const COMBINING: Record<string, string> = {
+  acute: "\u0301", grave: "\u0300", circ: "\u0302", tilde: "\u0303",
+  uml: "\u0308", cedil: "\u0327", ring: "\u030A",
+};
+
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+};
+
+/** A API devolve descrição em HTML com entidades — o cadastro guarda texto limpo. */
+export function decodeHtml(value: string | null): string | null {
+  if (!value) return null;
+  const decoded = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(
+      /&([a-zA-Z])(acute|grave|circ|tilde|uml|cedil|ring);/g,
+      (_, letter: string, accent: string) =>
+        (letter + (COMBINING[accent] ?? "")).normalize("NFC"),
+    )
+    .replace(/&([a-z]+);/gi, (match, name: string) => HTML_ENTITIES[name.toLowerCase()] ?? match)
+    .replace(/\r/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return decoded.length ? decoded : null;
+}
+
 export function normalizeFinalidade(value: unknown): "venda" | "locacao" | "temporada" {
   const raw = normalizeKey(text(value));
   if (raw.includes("tempor")) return "temporada";
@@ -157,7 +186,14 @@ export function extractCharacteristics(record: RemoteRecord): string[] {
     }
     if (typeof value === "object") {
       const record2 = value as RemoteRecord;
-      const label = pick(record2, ["descricao", "nome", "caracteristica", "label", "titulo"]);
+      const label = pick(record2, [
+        "nomeCaracteristica",
+        "descricao",
+        "nome",
+        "caracteristica",
+        "label",
+        "titulo",
+      ]);
       if (label) push(label);
       else for (const nested of Object.values(record2)) walk(nested);
       return;
@@ -174,11 +210,21 @@ export function normalizeRemoteProperty(
   raw: RemoteRecord,
 ): NormalizedProperty {
   const record = flattenAddress(raw);
-  const finalidade = normalizeFinalidade(pick(record, ["finalidade", "finalidadeImovel", "transacao"]));
-  const areaPrivativa = parseDecimal(pick(record, ["areaPrivativa", "area_privativa", "areaUtil"]));
-  const areaTotal = parseDecimal(pick(record, ["areaTotal", "area_total"]));
-  const areaTerreno = parseDecimal(pick(record, ["areaTerreno", "area_terreno"]));
-  const areaConstruida = parseDecimal(pick(record, ["areaConstruida", "area_construida"]));
+  const finalidade = normalizeFinalidade(pick(record, ["finalidadeImovel", "finalidade", "transacao"]));
+
+  // A API devolve as áreas em `area: { privativa: { valor, tipo }, ... }`.
+  const areaGroup = (raw["area"] ?? {}) as RemoteRecord;
+  const areaOf = (key: string) => {
+    const entry = areaGroup[key];
+    if (entry && typeof entry === "object") return parseDecimal((entry as RemoteRecord)["valor"]);
+    return null;
+  };
+  const areaPrivativa =
+    areaOf("privativa") ?? parseDecimal(pick(record, ["areaPrivativa", "area_privativa", "areaUtil"]));
+  const areaTotal = areaOf("total") ?? parseDecimal(pick(record, ["areaTotal", "area_total"]));
+  const areaTerreno = areaOf("terreno") ?? parseDecimal(pick(record, ["areaTerreno", "area_terreno"]));
+  const areaConstruida =
+    areaOf("construida") ?? parseDecimal(pick(record, ["areaConstruida", "area_construida"]));
   const areaPrincipal = areaPrivativa ?? areaTotal ?? areaConstruida ?? areaTerreno;
   const areaTipo =
     areaPrivativa !== null
@@ -201,7 +247,7 @@ export function normalizeRemoteProperty(
     carteira: provider,
     operacao: finalidade === "venda" ? "venda" : "aluguel",
     finalidade,
-    tipo: text(pick(record, ["tipoImovel", "tipo", "nomeTipo", "descricaoTipo"])),
+    tipo: text(pick(record, ["descricaoTipoImovel", "tipoImovel", "tipo", "nomeTipo", "descricaoTipo"])),
     cidade,
     uf: uf ? uf.slice(0, 2).toUpperCase() : null,
     bairro,
@@ -210,9 +256,11 @@ export function normalizeRemoteProperty(
     numero: text(pick(record, ["numero", "numeroImovel"])),
     complemento: text(pick(record, ["complemento"])),
     localizacaoExibida: [bairro, [cidade, uf].filter(Boolean).join(" / ")].filter(Boolean).join(" · ") || null,
-    valor: parseDecimal(pick(record, ["valorImovel", "valor", "valorVenda", "valorLocacao", "preco"])),
+    valor: parseDecimal(
+      pick(record, ["valorEsperado", "valorImovel", "valor", "valorVenda", "valorLocacao", "preco"]),
+    ),
     valorCondominio: parseDecimal(pick(record, ["valorCondominio", "condominio"])),
-    valorIptu: parseDecimal(pick(record, ["valorIptu", "iptu"])),
+    valorIptu: parseDecimal(pick(record, ["valorIPTU", "valorIptu", "iptu"])),
     dormitorios: parseInteger(pick(record, ["dormitorios", "quartos", "dormitorio"])),
     suites: parseInteger(pick(record, ["suites", "suite"])),
     banheiros: parseInteger(pick(record, ["banheiros", "banheiro", "wc"])),
@@ -226,13 +274,16 @@ export function normalizeRemoteProperty(
     areaConstruida,
     areaPrincipal,
     areaTipo,
-    descricao: text(pick(record, ["descricaoImovel", "descricao"])),
-    observacao: text(pick(record, ["observacaoImovel", "observacao", "obs"])),
-    pontosFortes: text(pick(record, ["pontosFortes", "pontoForte"])),
-    codigo: text(pick(record, ["codigoImovel", "codigo"])) ?? externalId,
-    exibirImovel: parseBool(pick(record, ["exibirImovel", "exibir", "situacao", "status"])),
+    descricao: decodeHtml(text(pick(record, ["descricaoImovel", "descricao"]))),
+    observacao: decodeHtml(text(pick(record, ["observacoesImovel", "observacaoImovel", "observacao"]))),
+    pontosFortes: decodeHtml(
+      text(pick(record, ["pontosFortesImovel", "pontosFortes", "outrasInformacoesImovel"])),
+    ),
+    codigo: text(pick(record, ["referenciaImovel", "codigo"])) ?? externalId,
+    exibirImovel: parseBool(pick(record, ["exibirImovel", "statusImovel", "exibir"])),
     caracteristicas: extractCharacteristics(record),
   };
+
 }
 
 /** Linha pronta para upsert em `properties`. */
