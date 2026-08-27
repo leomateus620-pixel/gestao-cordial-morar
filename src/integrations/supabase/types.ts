@@ -1988,9 +1988,11 @@ export type Database = {
       }
       property_images: {
         Row: {
+          alt_text: string | null
           content_hash: string | null
           created_at: string
           file_name: string
+          height: number | null
           id: string
           is_cover: boolean
           mime_type: string | null
@@ -1999,12 +2001,16 @@ export type Database = {
           size_bytes: number | null
           storage_path: string
           updated_at: string
+          upload_status: string
           uploaded_by: string | null
+          width: number | null
         }
         Insert: {
+          alt_text?: string | null
           content_hash?: string | null
           created_at?: string
           file_name: string
+          height?: number | null
           id?: string
           is_cover?: boolean
           mime_type?: string | null
@@ -2013,12 +2019,16 @@ export type Database = {
           size_bytes?: number | null
           storage_path: string
           updated_at?: string
+          upload_status?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Update: {
+          alt_text?: string | null
           content_hash?: string | null
           created_at?: string
           file_name?: string
+          height?: number | null
           id?: string
           is_cover?: boolean
           mime_type?: string | null
@@ -2027,7 +2037,9 @@ export type Database = {
           size_bytes?: number | null
           storage_path?: string
           updated_at?: string
+          upload_status?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Relationships: [
           {
@@ -2542,6 +2554,56 @@ export type Database = {
           synced_at?: string
         }
         Relationships: []
+      }
+      provider_code_reservations: {
+        Row: {
+          code: string
+          committed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          property_id: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          reserved_at: string
+          reserved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          committed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          property_id?: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          reserved_at?: string
+          reserved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          committed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          property_id?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          reserved_at?: string
+          reserved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_code_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provider_value_maps: {
         Row: {
@@ -3810,6 +3872,21 @@ export type Database = {
           read_ct: number
         }[]
       }
+      release_expired_provider_codes: { Args: never; Returns: number }
+      reserve_provider_code: {
+        Args: {
+          _property_id?: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+          _ttl_minutes?: number
+        }
+        Returns: {
+          code: string
+          expires_at: string
+          reservation_id: string
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       submit_satisfaction_response: {
         Args: { _comentario: string; _rating: number; _token: string }
         Returns: Json
