@@ -32,8 +32,8 @@ function useCopyPublicUrl(provider: string, url: string | null) {
 }
 
 /**
- * Copia o link público canônico devolvido pela API do site.
- * Sem link verificado não há botão ativo: nunca montamos URL "adivinhando" o slug.
+ * Copia o link público canônico ou a rota estável confirmada do anúncio.
+ * Sem identificador externo verificado não há botão ativo.
  */
 export function CopyPublicLinkButton({
   provider,
@@ -89,7 +89,7 @@ export function CopyPublicLinkButton({
 
 /**
  * Variante só-ícone para o cabeçalho da ficha: um círculo por site publicado.
- * Sem URL verificada, não renderiza nada.
+ * Sem URL resolvida, não renderiza nada.
  */
 export function CopyPublicLinkIcon({
   provider,

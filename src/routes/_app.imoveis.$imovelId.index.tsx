@@ -125,7 +125,7 @@ function DetalhePage() {
             {imovel.localizacaoExibida ?? localidade ?? NAO_INFORMADO}
           </p>
         </div>
-        <span className="ml-auto flex items-center gap-2">
+        <span className="ml-auto flex shrink-0 items-center gap-2">
           {imovel.publications
             .filter((p) => p.status === "published" && p.publicUrl)
             .map((p) => (

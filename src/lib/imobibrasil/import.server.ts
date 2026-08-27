@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { extractExternalId, hasProviderToken } from "./client.server";
 import { sanitizeMessage, toImobiError } from "./errors";
 import { fetchPropertyDetail, fetchPropertyImages, fetchPropertyPage } from "./read.server";
+import { buildStablePublicUrl } from "./public-url";
 import {
   normalizeRemoteImages,
   normalizeRemoteProperty,
@@ -275,6 +276,7 @@ async function upsertPublication(
         provider: input.provider,
         enabled: true,
         external_property_id: input.externalId,
+         external_public_url: buildStablePublicUrl(input.provider, input.externalId),
         external_reference: input.externalReference ?? buildExternalReference(input.propertyId),
         status: "published",
         remote_observed_hash: input.remoteHash,

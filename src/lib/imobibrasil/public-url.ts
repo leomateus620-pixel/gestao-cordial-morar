@@ -11,6 +11,11 @@ export const PROVIDER_PUBLIC_HOSTS: Record<ImobiProvider, string[]> = {
   morar: ["imobiliariamorarimoveis.com.br", "www.imobiliariamorarimoveis.com.br"],
 };
 
+const PROVIDER_PUBLIC_ORIGIN: Record<ImobiProvider, string> = {
+  cordial: "https://cordialimoveis.com",
+  morar: "https://imobiliariamorarimoveis.com.br",
+};
+
 const URL_KEYS = [
   "urlImovel",
   "url_imovel",
@@ -30,27 +35,44 @@ function pickCandidate(record: Record<string, unknown>): string | null {
   return null;
 }
 
-/** Retorna a URL canônica válida do provedor, ou `null` quando não houver. */
+/**
+ * Retorna a rota pública estável do anúncio quando existe um identificador
+ * externo confirmado pelo provedor.
+ */
+export function buildStablePublicUrl(
+  provider: ImobiProvider,
+  externalId?: string | null,
+): string | null {
+  const id = externalId?.trim();
+  if (!id || !/^\d+$/.test(id)) return null;
+  return `${PROVIDER_PUBLIC_ORIGIN[provider]}/imovel/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Prioriza a URL canônica devolvida pela API. Quando ela não é informada,
+ * usa a rota pública estável do provedor baseada no identificador externo.
+ */
 export function extractPublicUrl(
   provider: ImobiProvider,
   payload: unknown,
   externalId?: string | null,
 ): string | null {
-  if (!payload || typeof payload !== "object") return null;
+  const fallback = buildStablePublicUrl(provider, externalId);
+  if (!payload || typeof payload !== "object") return fallback;
   const root = payload as Record<string, unknown>;
   const nested = (root["resultSet"] ?? root["data"]) as Record<string, unknown> | undefined;
   const candidate =
     pickCandidate(root) ?? (nested && typeof nested === "object" ? pickCandidate(nested) : null);
-  if (!candidate) return null;
+  if (!candidate) return fallback;
 
   let url: URL;
   try {
     url = new URL(candidate.startsWith("http") ? candidate : `https://${candidate}`);
   } catch {
-    return null;
+    return fallback;
   }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-  if (!PROVIDER_PUBLIC_HOSTS[provider].includes(url.hostname.toLowerCase())) return null;
+  if (url.protocol !== "https:" && url.protocol !== "http:") return fallback;
+  if (!PROVIDER_PUBLIC_HOSTS[provider].includes(url.hostname.toLowerCase())) return fallback;
 
   url.protocol = "https:";
   const normalized = url.toString();
