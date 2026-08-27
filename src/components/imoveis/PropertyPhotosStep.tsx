@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ImagePlus, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ACCEPTED_IMAGE_TYPES, usePropertyImages, usePropertyMedia } from "@/hooks/usePropertyMedia";
-import { variantForTargets, watermarkLabel } from "@/lib/imoveis/watermark-config";
+import { WATERMARK_COMBINED_LABEL } from "@/lib/imoveis/watermark-config";
 
 /**
  * Etapa 6 — fotos. O upload só existe com imóvel salvo, porque cada arquivo
@@ -23,7 +23,7 @@ export function PropertyPhotosStep({
   const images = usePropertyImages(propertyId ?? undefined);
   const media = usePropertyMedia(propertyId ?? undefined);
   const rows = images.data ?? [];
-  const marcaAtual = watermarkLabel(variantForTargets(destinos));
+  const marcaAtual = WATERMARK_COMBINED_LABEL;
   const pendentes = rows.filter((image) => image.processingStatus === "pending").length;
   const falhas = rows.filter((image) => image.processingStatus === "failed").length;
   const prontas = rows.length - pendentes - falhas;
