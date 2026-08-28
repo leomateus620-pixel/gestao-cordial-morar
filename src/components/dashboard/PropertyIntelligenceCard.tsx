@@ -47,8 +47,7 @@ export function PropertyIntelligenceCard({ className }: { className?: string }) 
 
   const activeValuesTab: "venda" | "aluguel" =
     operation === "venda" ? "venda" : operation === "aluguel" ? "aluguel" : valuesTab;
-  const topItems =
-    activeValuesTab === "venda" ? data.topValues.sale : data.topValues.rental;
+  const topItems = activeValuesTab === "venda" ? data.topValues.sale : data.topValues.rental;
 
   const clearFilters = () => {
     setProvider("todos");
@@ -128,7 +127,9 @@ export function PropertyIntelligenceCard({ className }: { className?: string }) 
               Cordial × Morar
             </span>
           </div>
-          <h2 className="mt-1.5 text-base font-semibold tracking-tight">Inteligência dos imóveis</h2>
+          <h2 className="mt-1.5 text-base font-semibold tracking-tight">
+            Inteligência dos imóveis
+          </h2>
           <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-foreground/40">
             {providerLabel(provider)} · {summary.uniqueProperties}{" "}
             {summary.uniqueProperties === 1 ? "imóvel" : "imóveis"}
@@ -228,15 +229,12 @@ export function PropertyIntelligenceCard({ className }: { className?: string }) 
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <div className="min-w-0">
               <SubTitle>Bairros e loteamentos</SubTitle>
-              <PortfolioRegionChart
-                regions={regions}
-                provider={provider}
-                operation={operation}
-              />
+              <PortfolioRegionChart regions={regions} provider={provider} operation={operation} />
               {summary.missingRegion > 0 ? (
                 <p className="mt-2 text-[10px] font-semibold text-foreground/35">
                   {summary.missingRegion}{" "}
-                  {summary.missingRegion === 1 ? "imóvel sem bairro" : "imóveis sem bairro"} informado
+                  {summary.missingRegion === 1 ? "imóvel sem bairro" : "imóveis sem bairro"}{" "}
+                  informado
                 </p>
               ) : null}
             </div>

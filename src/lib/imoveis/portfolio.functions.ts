@@ -27,10 +27,10 @@ export const getPropertyPortfolioAnalytics = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data, context }): Promise<PortfolioAnalytics> => {
-    const { data: result, error } = await context.supabase.rpc(
-      "get_property_portfolio_analytics",
-      { _provider_filter: data.provider, _operation_filter: data.operation },
-    );
+    const { data: result, error } = await context.supabase.rpc("get_property_portfolio_analytics", {
+      _provider_filter: data.provider,
+      _operation_filter: data.operation,
+    });
 
     if (error) throw new Error(error.message);
     if (!result) return EMPTY_PORTFOLIO_ANALYTICS;
