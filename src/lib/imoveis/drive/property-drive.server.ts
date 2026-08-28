@@ -794,34 +794,90 @@ async function syncOneFile(
         .from(args.bucket)
         .createSignedUrl(args.path, 900);
       if (error || !signed?.signedUrl) throw new Error(error?.message ?? "Arquivo indisponível.");
-      const response = await fetch(signed.signedUrl);
-      if (!response.ok || !response.body)
-        throw new Error("Falha ao ler o arquivo do armazenamento.");
-      const total = Number(response.headers.get("content-length") ?? size);
+
+      // Sessão anterior ainda válida: retoma do último byte confirmado.
+      const savedSession =
+        link.resumable_session_url &&
+        link.resumable_expires_at &&
+        new Date(link.resumable_expires_at).getTime() > Date.now()
+          ? link.resumable_session_url
+          : null;
+
+      const head = await fetch(signed.signedUrl, { method: "HEAD" });
+      const total = Number(head.headers.get("content-length") ?? size);
       if (!total) throw new Error("Tamanho do arquivo desconhecido.");
-      // Substituição da mesma mídia: revisa o arquivo existente em vez de duplicar.
-      if (link.drive_file_id) {
-        try {
-          await driveFetch(
-            `${DRIVE_API}/files/${encodeURIComponent(link.drive_file_id)}?${ALL_DRIVES}`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ trashed: true }),
-            },
-          );
-        } catch {
-          // segue: o arquivo novo é a referência autoritativa
-        }
+
+      let sessionUrl = savedSession;
+      let offset = 0;
+      if (sessionUrl) {
+        const resumed = await resumeOffset(sessionUrl, total);
+        if (resumed === null) sessionUrl = null;
+        else if (resumed >= total) {
+          // Google já recebeu tudo: confirma pelo próprio status da sessão.
+          sessionUrl = null;
+        } else offset = resumed;
       }
-      uploaded = await uploadResumable({
-        parentId: args.folderId,
-        name: args.name,
-        mimeType: args.mimeType,
-        size: total,
-        stream: response.body as ReadableStream<Uint8Array>,
+
+      if (!sessionUrl) {
+        // Substituição da mesma mídia: revisa o arquivo existente em vez de duplicar.
+        if (link.drive_file_id) {
+          try {
+            await driveFetch(
+              `${DRIVE_API}/files/${encodeURIComponent(link.drive_file_id)}?${ALL_DRIVES}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ trashed: true }),
+              },
+            );
+          } catch {
+            // segue: o arquivo novo é a referência autoritativa
+          }
+        }
+        sessionUrl = await startResumableSession({
+          parentId: args.folderId,
+          name: args.name,
+          mimeType: args.mimeType,
+          size: total,
+        });
+        offset = 0;
+        await admin
+          .from("property_drive_files")
+          .update({
+            resumable_session_url: sessionUrl,
+            resumable_offset: 0,
+            // Sessões resumíveis do Drive valem cerca de uma semana.
+            resumable_expires_at: new Date(Date.now() + 6 * 24 * 3600 * 1000).toISOString(),
+          } as never)
+          .eq("id", link.id);
+      } else {
+        await admin
+          .from("property_drive_files")
+          .update({ resumable_offset: offset } as never)
+          .eq("id", link.id);
+      }
+
+      const rangeRes = await fetch(signed.signedUrl, {
+        headers: offset > 0 ? { Range: `bytes=${offset}-` } : {},
       });
+      if (!rangeRes.ok || !rangeRes.body) throw new Error("Falha ao ler o arquivo do armazenamento.");
+      uploaded = await putResumableChunk({
+        sessionUrl,
+        mimeType: args.mimeType,
+        offset,
+        total,
+        stream: rangeRes.body as ReadableStream<Uint8Array>,
+      });
+      await admin
+        .from("property_drive_files")
+        .update({
+          resumable_session_url: null,
+          resumable_offset: 0,
+          resumable_expires_at: null,
+        } as never)
+        .eq("id", link.id);
     } else {
+
       const bytes = await downloadBytes(admin, args.bucket, args.path);
       if (link.drive_file_id) {
         const res = await driveFetch(
