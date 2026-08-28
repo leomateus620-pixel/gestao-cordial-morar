@@ -52,8 +52,12 @@ export async function enqueueImageJobs(
     processing_status: string;
   }>;
 
-  const stale = rows.filter((row) => row.destination_hash !== hash || row.processing_status === "failed");
+  const failed = ["failed", "failed_retryable", "failed_permanent"];
+  const stale = rows.filter(
+    (row) => row.destination_hash !== hash || failed.includes(row.processing_status),
+  );
   if (!stale.length) return { enqueued: 0, variant, hash };
+
 
   const ids = stale.map((row) => row.id);
   // Jobs de destinos antigos deixam de valer.
@@ -108,6 +112,16 @@ function derivedPaths(propertyId: string, imageId: string, hash: string) {
   };
 }
 
+/** Erros que não adiantam repetir: o arquivo enviado é inválido. */
+const PERMANENT_CODES = [
+  "invalid_type",
+  "too_large",
+  "too_small",
+  "too_many_pixels",
+  "empty_file",
+  "decode_failed",
+];
+
 export async function processImageJob(admin: Admin, job: Job): Promise<void> {
   const { data: image } = await admin
     .from("property_images")
@@ -118,6 +132,11 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     await admin.from("property_image_jobs").update({ status: "cancelled" }).eq("id", job.id);
     return;
   }
+
+  await admin
+    .from("property_images")
+    .update({ processing_status: "processing", processing_started_at: new Date().toISOString() })
+    .eq("id", job.image_id);
 
   const originalPath: string = image.original_storage_path ?? image.storage_path;
   const download = await admin.storage.from(BUCKET).download(originalPath);
@@ -135,6 +154,13 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     .from(BUCKET)
     .upload(paths.thumbnail, result.thumbnail, { contentType: "image/jpeg", upsert: true });
 
+  // Integridade: só é "pronta" depois que o arquivo final volta legível do Storage.
+  const verify = await admin.storage.from(BUCKET).download(paths.processed);
+  if (verify.error || !verify.data)
+    throw new WatermarkError("verify_failed", "A foto marcada não pôde ser confirmada.");
+  const verifiedSize = (verify.data as Blob).size ?? 0;
+  if (!verifiedSize) throw new WatermarkError("verify_failed", "A foto marcada ficou vazia.");
+
   const { error } = await admin
     .from("property_images")
     .update({
@@ -149,6 +175,7 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
       processing_error_code: null,
       processing_error_message: null,
       processed_at: new Date().toISOString(),
+      processing_finished_at: new Date().toISOString(),
       width: result.width,
       height: result.height,
     })
@@ -161,9 +188,7 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
 async function failJob(admin: Admin, job: Job, error: unknown) {
   const code = error instanceof WatermarkError ? error.code : "unexpected";
   const message = (error as Error)?.message?.slice(0, 400) ?? "Falha ao aplicar a marca.";
-  const terminal =
-    job.attempts >= job.max_attempts ||
-    ["invalid_type", "too_large", "too_small", "too_many_pixels", "empty_file", "decode_failed"].includes(code);
+  const terminal = job.attempts >= job.max_attempts || PERMANENT_CODES.includes(code);
   const delaySeconds = Math.min(300, 2 ** job.attempts * 15);
 
   await admin
@@ -180,20 +205,23 @@ async function failJob(admin: Admin, job: Job, error: unknown) {
   await admin
     .from("property_images")
     .update({
-      processing_status: terminal ? "failed" : "pending",
+      processing_status: terminal ? "failed_permanent" : "failed_retryable",
       processing_error_code: code,
       processing_error_message: message,
+      processing_finished_at: new Date().toISOString(),
     })
     .eq("id", job.image_id);
 }
 
-/** Processa um lote limitado da fila. */
+/** Processa um lote limitado da fila. Lotes pequenos evitam estouro de tempo/memória. */
 export async function runImageWorker(
   admin: Admin,
   options: { limit?: number } = {},
 ): Promise<{ claimed: number; processed: number; failed: number; pending: number }> {
-  const limit = Math.min(6, Math.max(1, options.limit ?? 4));
+  const limit = Math.min(3, Math.max(1, options.limit ?? 2));
   const worker = `image-worker-${crypto.randomUUID().slice(0, 8)}`;
+  // Trabalhos travados (lease vencido) voltam para a fila antes de reivindicar.
+  await admin.rpc("property_image_reclaim_stale", { _max: 50 }).catch(() => undefined);
   const { data: jobs, error } = await admin.rpc("property_image_claim_jobs", {
     _worker: worker,
     _limit: limit,
@@ -220,3 +248,4 @@ export async function runImageWorker(
 
   return { claimed: (jobs ?? []).length, processed, failed, pending: count ?? 0 };
 }
+

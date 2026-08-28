@@ -44,6 +44,20 @@ function base64ToBytes(value: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * As três marcas ficam decodificadas em cache de módulo: a logo-base nunca é
+ * reconvertida a cada foto, só redimensionada para a geometria da imagem.
+ */
+const TEMPLATE_BYTES = new Map<WatermarkVariant, Uint8Array>();
+function templateBytes(variant: WatermarkVariant): Uint8Array {
+  const cached = TEMPLATE_BYTES.get(variant);
+  if (cached) return cached;
+  const bytes = base64ToBytes(TEMPLATES[variant]);
+  TEMPLATE_BYTES.set(variant, bytes);
+  return bytes;
+}
+
+
 /** Assinatura real do arquivo — não confiamos no MIME informado pelo navegador. */
 export function detectImageType(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {
   if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
@@ -178,7 +192,7 @@ export async function applyWatermark(
   if (Math.min(photo.get_width(), photo.get_height()) < WATERMARK_LIMITS.minEdgePx)
     throw new WatermarkError("too_small", "Foto pequena demais para publicação.");
 
-  const template = PhotonImage.new_from_byteslice(base64ToBytes(TEMPLATES[variant]));
+  const template = PhotonImage.new_from_byteslice(templateBytes(variant));
   const placement = computePlacement(
     photo.get_width(),
     photo.get_height(),

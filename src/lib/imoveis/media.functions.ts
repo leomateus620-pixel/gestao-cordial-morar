@@ -62,8 +62,12 @@ async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[
   return (data ?? []) as ImageRow[];
 }
 
-/** Aciona o worker de marca-d'água; a fila persistente é a garantia real. */
-async function kickImageWorker(limit = 4) {
+/**
+ * Aciona o worker de marca-d'água sem prender a resposta do upload: a chamada
+ * é disparada e abandonada em 1s — quem garante o resultado é a fila persistente
+ * (o worker se reencadeia e o pg_cron é a rede de segurança).
+ */
+async function kickImageWorker(limit = 2) {
   try {
     const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
     if (!secret) return;
@@ -74,11 +78,13 @@ async function kickImageWorker(limit = 4) {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: secret },
       body: JSON.stringify({ limit }),
+      signal: AbortSignal.timeout(1000),
     });
   } catch {
     // pg_cron reprocessa no próximo ciclo
   }
 }
+
 
 export const listPropertyImages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -145,21 +151,17 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { enqueueImageJobs, runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
+    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
     await enqueueImageJobs(supabaseAdmin, data.propertyId, inserted?.id ? { imageIds: [inserted.id] } : {});
-    // Processa já nesta requisição para a etapa 6 mostrar a foto marcada rápido;
-    // qualquer falha permanece na fila para o worker/pg_cron.
-    try {
-      await runImageWorker(supabaseAdmin, { limit: 2 });
-    } catch {
-      await kickImageWorker(2);
-    }
+    // A marca é aplicada pelo worker: o navegador não espera o processamento.
+    await kickImageWorker(2);
 
     return {
       images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
       duplicated: false,
     };
   });
+
 
 /** Persiste os destinos do imóvel e regenera as marcas quando eles mudam. */
 export const setPropertyPublishTargets = createServerFn({ method: "POST" })
@@ -190,11 +192,12 @@ export const retryPropertyImageWatermark = createServerFn({ method: "POST" })
   .inputValidator((data: { propertyId: string; imageId?: string }) => data)
   .handler(async ({ data, context }): Promise<PropertyImage[]> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { enqueueImageJobs, runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
+    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
     const rows = await listRows(context.supabase, data.propertyId);
+    const retryable = ["failed", "failed_retryable", "failed_permanent", "pending", "processing"];
     const ids = data.imageId
       ? [data.imageId]
-      : rows.filter((r) => r.processing_status === "failed" || r.processing_status === "pending").map((r) => r.id);
+      : rows.filter((r) => retryable.includes(r.processing_status)).map((r) => r.id);
     if (ids.length) {
       await supabaseAdmin
         .from("property_image_jobs")
@@ -203,15 +206,12 @@ export const retryPropertyImageWatermark = createServerFn({ method: "POST" })
         .in("status", ["pending", "processing", "retry", "failed"]);
       await supabaseAdmin
         .from("property_images")
-        .update({ destination_hash: null, processing_status: "pending" })
+        .update({ destination_hash: null, processing_status: "pending", processing_error_message: null })
         .in("id", ids);
       await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: ids });
-      try {
-        await runImageWorker(supabaseAdmin, { limit: 4 });
-      } catch {
-        await kickImageWorker(4);
-      }
+      await kickImageWorker(2);
     }
+
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
