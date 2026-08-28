@@ -47,6 +47,12 @@ export const Route = createFileRoute("/_app/imoveis/novo")({
   ),
 });
 
+const carteiraLabels: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
+
+function destinosLabel(destinos: PropertyCarteira[]) {
+  return destinos.map((d) => carteiraLabels[d] ?? d).join(" e ");
+}
+
 function NovoImovelPage() {
   const navigate = useNavigate();
   const create = useCreateImovel();
@@ -58,7 +64,8 @@ function NovoImovelPage() {
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
-  const [publicar, setPublicar] = useState(false);
+  /** Publicar é a ação padrão da última etapa: os destinos vêm da Etapa 1. */
+  const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
   const [draftId, setDraftId] = useState<string | null>(null);
   const images = usePropertyImages(draftId ?? undefined);
@@ -121,10 +128,10 @@ function NovoImovelPage() {
         }
       }
 
-      if (publicar && destinos.length) {
+      if (publicar) {
         try {
           await enqueue.mutateAsync({ propertyId, providers: destinos, action: "publish" });
-          toast.success("Imóvel cadastrado e enviado para publicação.");
+          toast.success(`Imóvel enviado para publicação: ${destinosLabel(destinos)}.`);
         } catch (err) {
           toast.warning(
             `Imóvel salvo, mas a publicação falhou: ${(err as Error)?.message ?? "erro desconhecido"}`,
@@ -166,7 +173,7 @@ function NovoImovelPage() {
 
       <PropertyForm
         initial={emptyPropertyValues()}
-        submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
+        submitLabel={publicar ? "Publicar imóvel" : "Salvar imóvel"}
         pending={
           create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending
         }
@@ -212,15 +219,6 @@ function NovoImovelPage() {
         onSubmit={handleSubmit}
       />
 
-      <label className="glass-panel flex items-center gap-2 rounded-2xl px-4 py-3 text-xs font-semibold text-foreground/70">
-        <input
-          type="checkbox"
-          checked={publicar}
-          onChange={(e) => setPublicar(e.target.checked)}
-          className="size-4 accent-[hsl(var(--primary))]"
-        />
-        Publicar nos sites selecionados logo após salvar
-      </label>
     </div>
   );
 }
