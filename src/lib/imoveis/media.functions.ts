@@ -151,21 +151,17 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { enqueueImageJobs, runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
+    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
     await enqueueImageJobs(supabaseAdmin, data.propertyId, inserted?.id ? { imageIds: [inserted.id] } : {});
-    // Processa já nesta requisição para a etapa 6 mostrar a foto marcada rápido;
-    // qualquer falha permanece na fila para o worker/pg_cron.
-    try {
-      await runImageWorker(supabaseAdmin, { limit: 2 });
-    } catch {
-      await kickImageWorker(2);
-    }
+    // A marca é aplicada pelo worker: o navegador não espera o processamento.
+    await kickImageWorker(2);
 
     return {
       images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
       duplicated: false,
     };
   });
+
 
 /** Persiste os destinos do imóvel e regenera as marcas quando eles mudam. */
 export const setPropertyPublishTargets = createServerFn({ method: "POST" })
