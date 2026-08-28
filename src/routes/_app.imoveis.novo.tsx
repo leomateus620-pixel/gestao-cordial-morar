@@ -122,10 +122,10 @@ function NovoImovelPage() {
         }
       }
 
-      if (publicar && destinos.length) {
+      if (publicar) {
         try {
           await enqueue.mutateAsync({ propertyId, providers: destinos, action: "publish" });
-          toast.success("Imóvel cadastrado e enviado para publicação.");
+          toast.success(`Imóvel enviado para publicação: ${destinosLabel(destinos)}.`);
         } catch (err) {
           toast.warning(
             `Imóvel salvo, mas a publicação falhou: ${(err as Error)?.message ?? "erro desconhecido"}`,
