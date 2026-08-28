@@ -250,14 +250,13 @@ async function uploadSimple(args: {
   return (await res.json()) as { id: string; name: string; size?: string };
 }
 
-/** Sessão resumível: obrigatória para vídeos e arquivos grandes. */
-async function uploadResumable(args: {
+/** Abre a sessão resumível (obrigatória para vídeos e arquivos grandes). */
+async function startResumableSession(args: {
   parentId: string;
   name: string;
   mimeType: string;
   size: number;
-  stream: ReadableStream<Uint8Array>;
-}) {
+}): Promise<string> {
   const start = await driveFetch(
     `${DRIVE_UPLOAD}/files?uploadType=resumable&${ALL_DRIVES}&fields=id,name,size`,
     {
@@ -272,16 +271,43 @@ async function uploadResumable(args: {
   );
   if (!start.ok)
     throw new Error(`Drive resumable init ${start.status}: ${(await start.text()).slice(0, 300)}`);
-  const sessionUrl = start.headers.get("location") ?? start.headers.get("x-guploader-uploadid");
-  if (!sessionUrl?.startsWith("http")) {
+  const sessionUrl = start.headers.get("location");
+  if (!sessionUrl?.startsWith("http"))
     throw new Error("Drive não devolveu a sessão de upload resumível.");
-  }
-  const put = await fetch(sessionUrl, {
+  return sessionUrl;
+}
+
+/**
+ * Pergunta ao Drive quantos bytes ele já recebeu nesta sessão.
+ * Devolve null quando a sessão não vale mais (recomeçar do zero).
+ */
+async function resumeOffset(sessionUrl: string, total: number): Promise<number | null> {
+  const res = await fetch(sessionUrl, {
+    method: "PUT",
+    headers: { "Content-Range": `bytes */${total}`, "Content-Length": "0" },
+  });
+  if (res.status === 200 || res.status === 201) return total;
+  if (res.status !== 308) return null;
+  const range = res.headers.get("range");
+  if (!range) return 0;
+  const end = Number(range.split("-")[1] ?? "");
+  return Number.isFinite(end) ? end + 1 : 0;
+}
+
+/** Envia o trecho pendente a partir do checkpoint. */
+async function putResumableChunk(args: {
+  sessionUrl: string;
+  mimeType: string;
+  offset: number;
+  total: number;
+  stream: ReadableStream<Uint8Array>;
+}) {
+  const put = await fetch(args.sessionUrl, {
     method: "PUT",
     headers: {
       "Content-Type": args.mimeType,
-      "Content-Length": String(args.size),
-      "Content-Range": `bytes 0-${Math.max(0, args.size - 1)}/${args.size}`,
+      "Content-Length": String(args.total - args.offset),
+      "Content-Range": `bytes ${args.offset}-${Math.max(args.offset, args.total - 1)}/${args.total}`,
     },
     body: args.stream as unknown as BodyInit,
     // @ts-expect-error duplex é exigido pelo runtime ao enviar stream
@@ -291,6 +317,7 @@ async function uploadResumable(args: {
     throw new Error(`Drive resumable put ${put.status}: ${(await put.text()).slice(0, 300)}`);
   return (await put.json()) as { id: string; name: string; size?: string };
 }
+
 
 // ============ Estrutura idempotente ============
 
