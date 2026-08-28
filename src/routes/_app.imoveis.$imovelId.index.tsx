@@ -9,9 +9,11 @@ import {
   MapPin,
   Pencil,
   Ruler,
+  Trash2,
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
+import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
 import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -138,6 +140,15 @@ function DetalhePage() {
           >
             <Pencil className="size-3.5" /> Editar
           </Link>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            aria-label="Excluir imóvel"
+            title="Excluir imóvel"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-destructive/25 bg-destructive/10 text-destructive transition hover:bg-destructive/20"
+          >
+            <Trash2 className="size-4" />
+          </button>
         </span>
       </div>
 
