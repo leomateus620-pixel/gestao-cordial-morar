@@ -897,15 +897,19 @@ export async function applyDriveChecklist(
   await admin.from("agenciamentos").update(patch as never).eq("id", agenciamento.id);
 
   if (agenciamento.corretor_id) {
-    await admin.from("notifications").insert({
-      user_id: agenciamento.corretor_id,
-      tipo: "agenciamento",
-      category: "agenciamentos",
-      titulo: "Fotos enviadas ao Drive",
-      mensagem: `As fotos do imóvel ${result.folderName} já estão organizadas na pasta compartilhada.`,
-      entity_type: "agenciamento",
-      entity_id: agenciamento.id,
-      dedup_key: `drive-photos:${propertyId}`,
-    } as never);
+    try {
+      await admin.from("notifications").insert({
+        user_id: agenciamento.corretor_id,
+        tipo: "agenciamento",
+        category: "agenciamentos",
+        titulo: "Fotos enviadas ao Drive",
+        mensagem: `As fotos do imóvel ${result.folderName} já estão organizadas na pasta compartilhada.`,
+        entity_type: "agenciamento",
+        entity_id: agenciamento.id,
+        dedup_key: `drive-photos:${propertyId}`,
+      } as never);
+    } catch {
+      // dedup_key já existente: nada a fazer
+    }
   }
 }
