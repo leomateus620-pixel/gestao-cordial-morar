@@ -11,7 +11,6 @@ import {
   type ProviderCodes,
 } from "./ProviderCodeFields";
 
-
 export const TIPOS = [
   "Casa",
   "Apartamento",
@@ -258,7 +257,6 @@ export function PropertyForm({
 
   function set<K extends keyof PropertyFormValues>(key: K, value: PropertyFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
-
   }
 
   function setProviderCode(provider: PropertyCarteira, patch: Partial<ProviderCodeState> | null) {
@@ -268,7 +266,11 @@ export function PropertyForm({
         delete next[provider];
         return next;
       }
-      const current = prev[provider] ?? { code: "", reservationId: null, status: "reserved" as const };
+      const current = prev[provider] ?? {
+        code: "",
+        reservationId: null,
+        status: "reserved" as const,
+      };
       return { ...prev, [provider]: { ...current, ...patch } };
     });
   }
@@ -276,7 +278,10 @@ export function PropertyForm({
   /** Reserva independente por imobiliária: falha em uma nunca afeta a outra. */
   async function reserveCode(provider: PropertyCarteira) {
     if (providerCodes[provider]?.status === "generating") return;
-    setProviderCode(provider, { status: "generating", message: "Consultando o próximo código livre…" });
+    setProviderCode(provider, {
+      status: "generating",
+      message: "Consultando o próximo código livre…",
+    });
     try {
       const reservation = await codes.reserve.mutateAsync(provider);
       setProviderCode(provider, {
@@ -289,7 +294,9 @@ export function PropertyForm({
       });
       set(provider === "cordial" ? "codigoCordial" : "codigoMorar", reservation.code);
       onCodeReserved?.(reservation.reservationId, provider);
-      toast.success(`Código ${reservation.code} reservado na ${provider === "cordial" ? "Cordial" : "Morar"}.`);
+      toast.success(
+        `Código ${reservation.code} reservado na ${provider === "cordial" ? "Cordial" : "Morar"}.`,
+      );
     } catch (err) {
       const message = (err as Error)?.message ?? "Não foi possível gerar o código.";
       const conflict = /uso no site|já est/i.test(message);
@@ -299,12 +306,16 @@ export function PropertyForm({
   }
 
   function manualCode(provider: PropertyCarteira, code: string) {
-    setProviderCode(provider, { code, reservationId: null, status: "reserved", message: "Código informado manualmente." });
+    setProviderCode(provider, {
+      code,
+      reservationId: null,
+      status: "reserved",
+      message: "Código informado manualmente.",
+    });
     set(provider === "cordial" ? "codigoCordial" : "codigoMorar", code || null);
   }
 
   const canSubmit = useMemo(() => !!values.tipo && !pending, [values.tipo, pending]);
-
 
   return (
     <form
@@ -402,7 +413,6 @@ export function PropertyForm({
                 />
               </div>
 
-
               <Field label="Referência">
                 <input
                   value={values.referencia ?? ""}
@@ -417,7 +427,10 @@ export function PropertyForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Telefone do proprietário" hint="Uso interno: não é publicado nos sites.">
+              <Field
+                label="Telefone do proprietário"
+                hint="Uso interno: não é publicado nos sites."
+              >
                 <input
                   inputMode="tel"
                   value={values.proprietarioTelefone ?? ""}
@@ -463,7 +476,11 @@ export function PropertyForm({
               />
             </Field>
             <Field label="Número">
-              <input value={values.numero ?? ""} onChange={(e) => set("numero", e.target.value)} className={inputCls} />
+              <input
+                value={values.numero ?? ""}
+                onChange={(e) => set("numero", e.target.value)}
+                className={inputCls}
+              />
             </Field>
             <Field label="Bairro" hint="Escolha um bairro já usado nos sites ou digite um novo.">
               <input
@@ -480,7 +497,11 @@ export function PropertyForm({
               </datalist>
             </Field>
             <Field label="Cidade">
-              <input value={values.cidade ?? ""} onChange={(e) => set("cidade", e.target.value)} className={inputCls} />
+              <input
+                value={values.cidade ?? ""}
+                onChange={(e) => set("cidade", e.target.value)}
+                className={inputCls}
+              />
             </Field>
             <Field label="UF">
               <input
@@ -564,7 +585,9 @@ export function PropertyForm({
             <Field label="Modo do valor">
               <select
                 value={values.valorModo}
-                onChange={(e) => set("valorModo", e.target.value as PropertyFormValues["valorModo"])}
+                onChange={(e) =>
+                  set("valorModo", e.target.value as PropertyFormValues["valorModo"])
+                }
                 className={inputCls}
               >
                 <option value="fixo">Valor exibido</option>
@@ -604,7 +627,11 @@ export function PropertyForm({
                 checked={!!values.aceitaFinanciamento}
                 onChange={(v) => set("aceitaFinanciamento", v)}
               />
-              <Toggle label="Aceita permuta" checked={!!values.permuta} onChange={(v) => set("permuta", v)} />
+              <Toggle
+                label="Aceita permuta"
+                checked={!!values.permuta}
+                onChange={(v) => set("permuta", v)}
+              />
             </div>
           </>
         )}
@@ -649,17 +676,41 @@ export function PropertyForm({
         {step === 5 && (
           <>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Toggle label="Exibir no site" checked={!!values.exibirImovel} onChange={(v) => set("exibirImovel", v)} />
+              <Toggle
+                label="Exibir no site"
+                checked={!!values.exibirImovel}
+                onChange={(v) => set("exibirImovel", v)}
+              />
               <Toggle
                 label="Destaque na home"
                 checked={!!values.destaqueInicial}
                 onChange={(v) => set("destaqueInicial", v)}
               />
-              <Toggle label="Exclusividade" checked={!!values.exclusividade} onChange={(v) => set("exclusividade", v)} />
-              <Toggle label="Autorização assinada" checked={!!values.autorizacao} onChange={(v) => set("autorizacao", v)} />
-              <Toggle label="Escriturada" checked={!!values.escriturada} onChange={(v) => set("escriturada", v)} />
-              <Toggle label="Averbada" checked={!!values.averbada} onChange={(v) => set("averbada", v)} />
-              <Toggle label="Com placa" checked={!!values.comPlaca} onChange={(v) => set("comPlaca", v)} />
+              <Toggle
+                label="Exclusividade"
+                checked={!!values.exclusividade}
+                onChange={(v) => set("exclusividade", v)}
+              />
+              <Toggle
+                label="Autorização assinada"
+                checked={!!values.autorizacao}
+                onChange={(v) => set("autorizacao", v)}
+              />
+              <Toggle
+                label="Escriturada"
+                checked={!!values.escriturada}
+                onChange={(v) => set("escriturada", v)}
+              />
+              <Toggle
+                label="Averbada"
+                checked={!!values.averbada}
+                onChange={(v) => set("averbada", v)}
+              />
+              <Toggle
+                label="Com placa"
+                checked={!!values.comPlaca}
+                onChange={(v) => set("comPlaca", v)}
+              />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Disponibilidade">
@@ -683,14 +734,14 @@ export function PropertyForm({
                 destinos={destinos ?? []}
                 onRequestSave={onRequestSave}
               />
-
             </div>
 
             <div className="rounded-2xl bg-foreground/[0.04] p-3 text-[12px] text-foreground/60">
               <p className="font-semibold text-foreground/75">Revisão</p>
               <p className="mt-1">
                 {values.tipo ?? "Imóvel"} · {values.operacao === "venda" ? "Venda" : "Aluguel"} ·{" "}
-                {[values.bairro, values.cidade, values.uf].filter(Boolean).join(" / ") || "Sem localização"}
+                {[values.bairro, values.cidade, values.uf].filter(Boolean).join(" / ") ||
+                  "Sem localização"}
               </p>
             </div>
           </>
