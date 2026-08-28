@@ -1019,20 +1019,27 @@ export async function runDriveWorker(
       const result = await syncPropertyDrive(admin, job.property_id);
       const stillPending =
         result.waitingWatermark ||
+        result.hasMore ||
         (["horizontal", "vertical", "video"] as DriveCategory[]).some(
           (c) => result.totals[c].pending > 0,
         );
       if (stillPending && job.attempts < job.max_attempts) {
-        // A marca-d'água ainda está rodando: espera, nunca sobe o original.
+        // hasMore = sobrou lote; waiting = a marca ainda está sendo aplicada.
+        // Em nenhum dos casos o original sem marca sobe ao Drive.
+        const delay = result.hasMore ? 2_000 : 20_000 * Math.max(1, job.attempts);
         await admin
           .from("property_drive_jobs")
           .update({
             status: "retry",
-            run_after: new Date(Date.now() + 20_000 * job.attempts).toISOString(),
+            run_after: new Date(Date.now() + delay).toISOString(),
             lease_expires_at: null,
+            // Continuar de onde parou é responsabilidade do próprio vínculo
+            // de cada arquivo (drive_file_id + checkpoint resumível).
+            cursor: { has_more: result.hasMore, at: new Date().toISOString() },
           } as never)
           .eq("id", job.id);
       } else {
+
         await admin
           .from("property_drive_jobs")
           .update({ status: "succeeded", lease_expires_at: null } as never)
