@@ -679,7 +679,13 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
       path: video.storage_path,
       mimeType,
       size: video.size_bytes ?? null,
+      budget,
     });
+    if (outcome === "deferred") {
+      hasMore = true;
+      counters.video.pending += 1;
+      continue;
+    }
     counters.video[outcome] += 1;
   }
 
@@ -695,8 +701,10 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
     totals: counters,
     photosComplete,
     waitingWatermark,
+    hasMore,
   };
 }
+
 
 /** Envia (ou confirma) um arquivo. Nunca reenvia o que já está confirmado. */
 async function syncOneFile(
