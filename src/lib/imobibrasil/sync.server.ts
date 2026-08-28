@@ -72,16 +72,24 @@ async function findRemoteByReference(
   reference: string,
   correlationId: string,
 ): Promise<string | null> {
-  const response = await imobiRequest(provider, `/imovel/lista?referencia=${encodeURIComponent(reference)}`, {
-    method: "GET",
-    correlationId,
-  });
+  const response = await imobiRequest(
+    provider,
+    `/imovel/lista?referencia=${encodeURIComponent(reference)}`,
+    {
+      method: "GET",
+      correlationId,
+    },
+  );
   const items = Array.isArray(response.data)
     ? response.data
     : ((response.data as Record<string, unknown>)?.["resultSet"] ??
-        (response.data as Record<string, unknown>)?.["data"] ??
-        []);
-  const list = Array.isArray(items) ? items : Array.isArray((items as Record<string, unknown>)?.["data"]) ? ((items as Record<string, unknown>)["data"] as unknown[]) : [];
+      (response.data as Record<string, unknown>)?.["data"] ??
+      []);
+  const list = Array.isArray(items)
+    ? items
+    : Array.isArray((items as Record<string, unknown>)?.["data"])
+      ? ((items as Record<string, unknown>)["data"] as unknown[])
+      : [];
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const record = item as Record<string, unknown>;
@@ -92,7 +100,6 @@ async function findRemoteByReference(
   }
   return null;
 }
-
 
 async function verifyRemote(provider: ImobiProvider, externalId: string, correlationId: string) {
   const response = await imobiRequest(provider, `/imovel/dados/${encodeURIComponent(externalId)}`, {
@@ -158,11 +165,14 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     .eq("publication_id", publicationId);
   const publishedIndex = new Map((published ?? []).map((row) => [row.image_id, row]));
 
-  const deliveredHash = (image: (typeof list)[number]) => image.processed_checksum ?? image.content_hash;
+  const deliveredHash = (image: (typeof list)[number]) =>
+    image.processed_checksum ?? image.content_hash;
 
   const pending = list.filter((image) => {
     const existing = publishedIndex.get(image.id);
-    return !existing || existing.status !== "synced" || existing.content_hash !== deliveredHash(image);
+    return (
+      !existing || existing.status !== "synced" || existing.content_hash !== deliveredHash(image)
+    );
   });
 
   let sent = 0;
@@ -175,7 +185,8 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
         try {
           const deliveryPath = image.processed_storage_path ?? image.storage_path;
           const download = await admin.storage.from("property-images").download(deliveryPath);
-          if (download.error || !download.data) throw new Error("Falha ao ler a imagem no armazenamento.");
+          if (download.error || !download.data)
+            throw new Error("Falha ao ler a imagem no armazenamento.");
           const form = new FormData();
           form.append("imagem", download.data, image.file_name);
           form.append("destaque", boolToImageSimNao(Boolean(image.is_cover)));
@@ -229,7 +240,11 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
 }
 
 async function loadProperty(admin: Admin, propertyId: string) {
-  const { data, error } = await admin.from("properties").select("*").eq("id", propertyId).maybeSingle();
+  const { data, error } = await admin
+    .from("properties")
+    .select("*")
+    .eq("id", propertyId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new ImobiApiError({ message: "Imóvel não encontrado.", category: "validation" });
   return data as unknown as LocalPropertyForSync & {
@@ -293,7 +308,10 @@ export async function processJob(admin: Admin, job: SyncJob) {
     .update({ status: "syncing", last_error_message: null })
     .eq("id", publication.id);
 
-  const resolution = await resolveProviderCodes(admin, job.provider, { ...property, referencia: reference });
+  const resolution = await resolveProviderCodes(admin, job.provider, {
+    ...property,
+    referencia: reference,
+  });
 
   if (job.action === "unpublish") {
     if (!publication.external_property_id) {
@@ -303,15 +321,23 @@ export async function processJob(admin: Admin, job: SyncJob) {
         .eq("id", publication.id);
       return { status: "unpublished" as const };
     }
-    const payload = serializeProperty({ ...property, referencia: reference, exibir_imovel: false }, resolution.codes, {
-      mode: "update",
-    });
-    await imobiRequest(job.provider, `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`, {
-      method: "POST",
-      json: payload,
-      extraHeaders: { codigoImovel: publication.external_property_id },
-      correlationId: job.correlation_id,
-    });
+    const payload = serializeProperty(
+      { ...property, referencia: reference, exibir_imovel: false },
+      resolution.codes,
+      {
+        mode: "update",
+      },
+    );
+    await imobiRequest(
+      job.provider,
+      `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
+      {
+        method: "POST",
+        json: payload,
+        extraHeaders: { codigoImovel: publication.external_property_id },
+        correlationId: job.correlation_id,
+      },
+    );
     await admin
       .from("property_provider_publications")
       .update({ status: "unpublished", enabled: false, last_synced_at: new Date().toISOString() })
@@ -321,11 +347,15 @@ export async function processJob(admin: Admin, job: SyncJob) {
 
   if (job.action === "delete") {
     if (publication.external_property_id) {
-      await imobiRequest(job.provider, `/imovel/excluir/${encodeURIComponent(publication.external_property_id)}`, {
-        method: "POST",
-        extraHeaders: { codigoImovel: publication.external_property_id },
-        correlationId: job.correlation_id,
-      });
+      await imobiRequest(
+        job.provider,
+        `/imovel/excluir/${encodeURIComponent(publication.external_property_id)}`,
+        {
+          method: "POST",
+          extraHeaders: { codigoImovel: publication.external_property_id },
+          correlationId: job.correlation_id,
+        },
+      );
     }
     await admin
       .from("property_provider_publications")
@@ -352,7 +382,9 @@ export async function processJob(admin: Admin, job: SyncJob) {
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
-  const payload = serializeProperty({ ...property, referencia: reference }, resolution.codes, { mode });
+  const payload = serializeProperty({ ...property, referencia: reference }, resolution.codes, {
+    mode,
+  });
   const payloadHash = hashPayload(payload);
 
   if (externalId) {
@@ -361,12 +393,16 @@ export async function processJob(admin: Admin, job: SyncJob) {
       publication.last_synced_revision === (property.revision ?? 1) &&
       publication.status === "published";
     if (!unchanged) {
-      const response = await imobiRequest(job.provider, `/imovel/alterar/${encodeURIComponent(externalId)}`, {
-        method: "POST",
-        json: payload,
-        extraHeaders: { codigoImovel: externalId },
-        correlationId: job.correlation_id,
-      });
+      const response = await imobiRequest(
+        job.provider,
+        `/imovel/alterar/${encodeURIComponent(externalId)}`,
+        {
+          method: "POST",
+          json: payload,
+          extraHeaders: { codigoImovel: externalId },
+          correlationId: job.correlation_id,
+        },
+      );
       await logAttempt(admin, job, { step: "update", ok: true, httpStatus: response.httpStatus });
     }
   } else {
@@ -377,7 +413,9 @@ export async function processJob(admin: Admin, job: SyncJob) {
       correlationId: job.correlation_id,
     });
     await logAttempt(admin, job, { step: "insert", ok: true, httpStatus: response.httpStatus });
-    externalId = extractExternalId(response.data) ?? (await findRemoteByReference(job.provider, reference, job.correlation_id));
+    externalId =
+      extractExternalId(response.data) ??
+      (await findRemoteByReference(job.provider, reference, job.correlation_id));
     if (!externalId) {
       throw new ImobiApiError({
         message: "O provedor não retornou o código do imóvel e a referência não foi localizada.",
@@ -399,7 +437,10 @@ export async function processJob(admin: Admin, job: SyncJob) {
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
   const remoteSet = (remote?.["resultSet"] as Record<string, unknown> | undefined) ?? remote ?? {};
   const remoteReference = String(
-    (remoteSet["referenciaImovel"] ?? remoteSet["referencia"] ?? remote?.["referencia"] ?? "") as string,
+    (remoteSet["referenciaImovel"] ??
+      remoteSet["referencia"] ??
+      remote?.["referencia"] ??
+      "") as string,
   ).trim();
   const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
 
@@ -430,17 +471,31 @@ export async function processJob(admin: Admin, job: SyncJob) {
 
 export async function reconcilePublication(
   admin: Admin,
-  publication: { id: string; provider: ImobiProvider; external_property_id: string | null; external_reference: string; last_payload_hash: string | null },
+  publication: {
+    id: string;
+    provider: ImobiProvider;
+    external_property_id: string | null;
+    external_reference: string;
+    last_payload_hash: string | null;
+  },
   correlationId: string,
 ) {
   const externalId =
     publication.external_property_id ??
-    (await findRemoteByReference(publication.provider, publication.external_reference, correlationId));
+    (await findRemoteByReference(
+      publication.provider,
+      publication.external_reference,
+      correlationId,
+    ));
 
   if (!externalId) {
     await admin
       .from("property_provider_publications")
-      .update({ status: "out_of_sync", last_verified_at: new Date().toISOString(), last_error_message: "Imóvel não localizado no provedor." })
+      .update({
+        status: "out_of_sync",
+        last_verified_at: new Date().toISOString(),
+        last_error_message: "Imóvel não localizado no provedor.",
+      })
       .eq("id", publication.id);
     return { status: "out_of_sync" as const };
   }
@@ -462,7 +517,10 @@ export async function reconcilePublication(
   return { status: found ? ("published" as const) : ("out_of_sync" as const), externalId };
 }
 
-export async function runSyncWorker(admin: Admin, options: { limit?: number; workerId?: string } = {}) {
+export async function runSyncWorker(
+  admin: Admin,
+  options: { limit?: number; workerId?: string } = {},
+) {
   const workerId = options.workerId ?? `worker-${crypto.randomUUID().slice(0, 8)}`;
   const { data: jobs, error } = await admin.rpc("property_sync_claim_jobs", {
     _worker: workerId,
@@ -490,7 +548,11 @@ export async function runSyncWorker(admin: Admin, options: { limit?: number; wor
           last_error_message: null,
         })
         .eq("id", job.id);
-      await logAttempt(admin, job, { step: job.action, ok: true, durationMs: Date.now() - started });
+      await logAttempt(admin, job, {
+        step: job.action,
+        ok: true,
+        durationMs: Date.now() - started,
+      });
       results.push({ jobId: job.id, provider: job.provider, ...outcome });
     } catch (error) {
       const normalized = toImobiError(error);

@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { IMOBI_PROVIDER_KEYS, isImobiProvider, type ImobiProvider } from "@/lib/imobibrasil/providers";
+import {
+  IMOBI_PROVIDER_KEYS,
+  isImobiProvider,
+  type ImobiProvider,
+} from "@/lib/imobibrasil/providers";
 import { IMAGE_PROCESSING_BLOCKING_STATUSES } from "@/lib/imoveis/image-status";
 
 export type SyncAction = "publish" | "update" | "unpublish" | "delete" | "reconcile";
@@ -27,13 +31,23 @@ function sanitizeProviders(input: unknown): ImobiProvider[] {
 
 /** Escopo do usuário: admin publica em ambos; demais apenas nas carteiras vinculadas. */
 async function assertProviderScope(
-  supabase: { rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => Promise<{ data: unknown }>; from: (t: "user_agencies") => { select: (c: string) => { eq: (c: string, v: string) => Promise<{ data: Array<{ agency: string }> | null }> } } },
+  supabase: {
+    rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => Promise<{ data: unknown }>;
+    from: (t: "user_agencies") => {
+      select: (c: string) => {
+        eq: (c: string, v: string) => Promise<{ data: Array<{ agency: string }> | null }>;
+      };
+    };
+  },
   userId: string,
   providers: ImobiProvider[],
 ): Promise<{ isAdmin: boolean }> {
   const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (isAdmin === true) return { isAdmin: true };
-  const { data: agencies } = await supabase.from("user_agencies").select("agency").eq("user_id", userId);
+  const { data: agencies } = await supabase
+    .from("user_agencies")
+    .select("agency")
+    .eq("user_id", userId);
   const allowed = new Set((agencies ?? []).map((row) => row.agency));
   const denied = providers.filter((provider) => !allowed.has(provider) && !allowed.has("ambas"));
   if (denied.length) {
@@ -104,9 +118,13 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
 
     // Destinos escolhidos definem a marca aplicada nas fotos.
-    const { enqueueImageJobs, runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
+    const { enqueueImageJobs, runImageWorker } =
+      await import("@/lib/imoveis/image-pipeline.server");
     if (action === "publish" || action === "update") {
-      await supabaseAdmin.from("properties").update({ publish_targets: providers }).eq("id", property.id);
+      await supabaseAdmin
+        .from("properties")
+        .update({ publish_targets: providers })
+        .eq("id", property.id);
       const queued = await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
       if (queued.enqueued) {
         try {
@@ -240,7 +258,9 @@ export const getProvidersHealth = createServerFn({ method: "GET" })
     if (isAdmin !== true) throw new Error("Acesso restrito a administradores.");
 
     const { fetchAccountStatus } = await import("@/lib/imobibrasil/catalogs.server");
-    const accounts = await Promise.all(IMOBI_PROVIDER_KEYS.map((provider) => fetchAccountStatus(provider)));
+    const accounts = await Promise.all(
+      IMOBI_PROVIDER_KEYS.map((provider) => fetchAccountStatus(provider)),
+    );
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ count: pending }, { count: failed }, { data: recent }] = await Promise.all([
@@ -248,10 +268,15 @@ export const getProvidersHealth = createServerFn({ method: "GET" })
         .from("property_sync_jobs")
         .select("id", { count: "exact", head: true })
         .in("status", ["pending", "processing", "retry"]),
-      supabaseAdmin.from("property_sync_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
       supabaseAdmin
         .from("property_sync_jobs")
-        .select("id, property_id, provider, action, status, attempts, last_error_message, updated_at")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed"),
+      supabaseAdmin
+        .from("property_sync_jobs")
+        .select(
+          "id, property_id, provider, action, status, attempts, last_error_message, updated_at",
+        )
         .order("updated_at", { ascending: false })
         .limit(10),
     ]);
@@ -282,7 +307,9 @@ export const refreshProviderCatalogs = createServerFn({ method: "POST" })
 /** Catálogos em cache para alimentar os selects do formulário. */
 export const listProviderCatalog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { provider: string; kind: "city" | "property_type" | "characteristic" }) => data)
+  .inputValidator(
+    (data: { provider: string; kind: "city" | "property_type" | "characteristic" }) => data,
+  )
   .handler(async ({ data, context }) => {
     if (!isImobiProvider(data.provider)) throw new Error("Provedor inválido.");
     const { data: rows, error } = await context.supabase

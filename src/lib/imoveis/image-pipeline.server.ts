@@ -36,7 +36,9 @@ export async function enqueueImageJobs(
   propertyId: string,
   options: { imageIds?: string[]; targets?: readonly string[] } = {},
 ): Promise<{ enqueued: number; variant: WatermarkVariant; hash: string }> {
-  const targets = options.targets ? normalizeTargets(options.targets) : await propertyTargets(admin, propertyId);
+  const targets = options.targets
+    ? normalizeTargets(options.targets)
+    : await propertyTargets(admin, propertyId);
   const variant = variantForTargets(targets);
   const hash = destinationHash(targets);
 
@@ -59,7 +61,6 @@ export async function enqueueImageJobs(
   );
   if (!stale.length) return { enqueued: 0, variant, hash };
 
-
   const ids = stale.map((row) => row.id);
   // Jobs de destinos antigos deixam de valer.
   await admin
@@ -71,7 +72,11 @@ export async function enqueueImageJobs(
 
   await admin
     .from("property_images")
-    .update({ processing_status: "pending", processing_error_code: null, processing_error_message: null })
+    .update({
+      processing_status: "pending",
+      processing_error_code: null,
+      processing_error_message: null,
+    })
     .in("id", ids);
 
   const { error } = await admin.from("property_image_jobs").upsert(
@@ -141,7 +146,9 @@ const PERMANENT_CODES = [
 export async function processImageJob(admin: Admin, job: Job): Promise<void> {
   const { data: image, error: imageError } = await admin
     .from("property_images")
-    .select("id, property_id, storage_path, original_storage_path, destination_hash, processed_checksum")
+    .select(
+      "id, property_id, storage_path, original_storage_path, destination_hash, processed_checksum",
+    )
     .eq("id", job.image_id)
     .maybeSingle();
   if (imageError) throw new WatermarkError("image_read_failed", imageError.message);
@@ -162,7 +169,8 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
 
   const originalPath: string = image.original_storage_path ?? image.storage_path;
   const download = await admin.storage.from(BUCKET).download(originalPath);
-  if (download.error || !download.data) throw new WatermarkError("download_failed", "Foto original indisponível.");
+  if (download.error || !download.data)
+    throw new WatermarkError("download_failed", "Foto original indisponível.");
 
   const bytes = new Uint8Array(await download.data.arrayBuffer());
   const result = await applyWatermark(bytes, job.watermark_variant);
@@ -175,7 +183,8 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
   const thumbnailUpload = await admin.storage
     .from(BUCKET)
     .upload(paths.thumbnail, result.thumbnail, { contentType: "image/jpeg", upsert: true });
-  if (thumbnailUpload.error) throw new WatermarkError("upload_failed", thumbnailUpload.error.message);
+  if (thumbnailUpload.error)
+    throw new WatermarkError("upload_failed", thumbnailUpload.error.message);
 
   // Integridade: só é "pronta" depois que o arquivo final volta legível do Storage.
   const verify = await admin.storage.from(BUCKET).download(paths.processed);
@@ -205,7 +214,10 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     .eq("id", job.image_id);
   if (error) throw new WatermarkError("persist_failed", error.message);
 
-  await admin.from("property_image_jobs").update({ status: "succeeded", lease_expires_at: null }).eq("id", job.id);
+  await admin
+    .from("property_image_jobs")
+    .update({ status: "succeeded", lease_expires_at: null })
+    .eq("id", job.id);
 }
 
 async function failJob(admin: Admin, job: Job, error: unknown) {
@@ -275,4 +287,3 @@ export async function runImageWorker(
 
   return { claimed: (jobs ?? []).length, processed, failed, pending: count ?? 0 };
 }
-

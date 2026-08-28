@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ImagePlus, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { ACCEPTED_IMAGE_TYPES, usePropertyImages, usePropertyMedia } from "@/hooks/usePropertyMedia";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  usePropertyImages,
+  usePropertyMedia,
+} from "@/hooks/usePropertyMedia";
 import { WATERMARK_COMBINED_LABEL } from "@/lib/imoveis/watermark-config";
 
 /**
@@ -30,10 +34,10 @@ export function PropertyPhotosStep({
   const falhas = rows.filter((image) => image.processingStatus.startsWith("failed")).length;
   const prontas = rows.length - pendentes - falhas;
   const enviando = media.progress.filter(
-    (item) => item.status === "preparando" || item.status === "enviando" || item.status === "processando",
+    (item) =>
+      item.status === "preparando" || item.status === "enviando" || item.status === "processando",
   ).length;
   const totalLote = media.progress.length;
-
 
   // Trocar o destino regenera as marcas a partir do original.
   const targetsKey = [...destinos].sort().join(",");
@@ -115,7 +119,11 @@ export function PropertyPhotosStep({
                 ? `Enviando ${totalLote - enviando + 1} de ${totalLote}…`
                 : `${totalLote} ${totalLote === 1 ? "foto enviada" : "fotos enviadas"} neste lote`}
             </span>
-            <button type="button" onClick={media.clearProgress} className="font-semibold text-primary">
+            <button
+              type="button"
+              onClick={media.clearProgress}
+              className="font-semibold text-primary"
+            >
               Limpar
             </button>
           </div>
@@ -136,7 +144,9 @@ export function PropertyPhotosStep({
                       }`}
                       style={{
                         width:
-                          item.status === "pronta" || item.status === "duplicada" || item.status === "retomada"
+                          item.status === "pronta" ||
+                          item.status === "duplicada" ||
+                          item.status === "retomada"
                             ? "100%"
                             : `${Math.max(6, item.progress)}%`,
                       }}
@@ -180,7 +190,6 @@ export function PropertyPhotosStep({
         </div>
       )}
 
-
       {!propertyId && (
         <p className="rounded-2xl bg-amber-500/10 p-3 text-[11px] font-medium text-amber-700">
           Salvamos um rascunho automaticamente ao adicionar a primeira foto.
@@ -202,7 +211,9 @@ export function PropertyPhotosStep({
               disabled={media.retryWatermark.isPending}
               className="inline-flex items-center gap-1 font-semibold text-primary disabled:opacity-50"
             >
-              <RefreshCw className={`size-3 ${media.retryWatermark.isPending ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`size-3 ${media.retryWatermark.isPending ? "animate-spin" : ""}`}
+              />
               Tentar novamente todas
             </button>
           )}
@@ -220,7 +231,10 @@ export function PropertyPhotosStep({
       {rows.length > 0 && (
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {rows.map((image, index) => (
-            <li key={image.id} className="group relative overflow-hidden rounded-2xl bg-foreground/[0.05]">
+            <li
+              key={image.id}
+              className="group relative overflow-hidden rounded-2xl bg-foreground/[0.05]"
+            >
               <img
                 src={image.url}
                 alt={`Foto ${index + 1} do imóvel`}
@@ -232,7 +246,8 @@ export function PropertyPhotosStep({
                   Capa
                 </span>
               )}
-              {(image.processingStatus === "pending" || image.processingStatus === "processing") && (
+              {(image.processingStatus === "pending" ||
+                image.processingStatus === "processing") && (
                 <span className="absolute inset-0 flex items-center justify-center gap-1 bg-foreground/45 text-[10px] font-bold text-white">
                   <Loader2 className="size-3 animate-spin" />
                   {image.processingStatus === "processing" ? "Aplicando marca" : "Na fila"}
@@ -263,7 +278,9 @@ export function PropertyPhotosStep({
                   onClick={() => media.setCover.mutate(image.id)}
                   aria-label="Definir como capa"
                 >
-                  <Star className={`size-3.5 ${image.isCover ? "text-primary" : "text-foreground/60"}`} />
+                  <Star
+                    className={`size-3.5 ${image.isCover ? "text-primary" : "text-foreground/60"}`}
+                  />
                 </button>
                 <button
                   type="button"
