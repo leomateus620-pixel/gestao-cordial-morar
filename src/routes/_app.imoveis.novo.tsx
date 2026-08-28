@@ -213,15 +213,6 @@ function NovoImovelPage() {
         onSubmit={handleSubmit}
       />
 
-      <label className="glass-panel flex items-center gap-2 rounded-2xl px-4 py-3 text-xs font-semibold text-foreground/70">
-        <input
-          type="checkbox"
-          checked={publicar}
-          onChange={(e) => setPublicar(e.target.checked)}
-          className="size-4 accent-[hsl(var(--primary))]"
-        />
-        Publicar nos sites selecionados logo após salvar
-      </label>
     </div>
   );
 }
