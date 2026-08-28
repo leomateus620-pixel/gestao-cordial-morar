@@ -221,7 +221,11 @@ export async function runImageWorker(
   const limit = Math.min(3, Math.max(1, options.limit ?? 2));
   const worker = `image-worker-${crypto.randomUUID().slice(0, 8)}`;
   // Trabalhos travados (lease vencido) voltam para a fila antes de reivindicar.
-  await admin.rpc("property_image_reclaim_stale", { _max: 50 }).catch(() => undefined);
+  try {
+    await admin.rpc("property_image_reclaim_stale", { _max: 50 });
+  } catch {
+    // recuperação é oportunista; o lote segue normalmente
+  }
   const { data: jobs, error } = await admin.rpc("property_image_claim_jobs", {
     _worker: worker,
     _limit: limit,
