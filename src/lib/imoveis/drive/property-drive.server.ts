@@ -643,9 +643,16 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
       path: sourcePath,
       mimeType: "image/jpeg",
       size: image.size_bytes ?? null,
+      budget,
     });
+    if (outcome === "deferred") {
+      hasMore = true;
+      counters[category].pending += 1;
+      continue;
+    }
     counters[category][outcome] += 1;
   }
+
 
   // -------- Vídeos --------
   for (const video of videos) {
