@@ -98,7 +98,13 @@ export async function validateRootFolder(folderId: string): Promise<RootValidati
     };
   }
   if (res.status === 404) {
-    return { status: "not_found", folderId, name: null, url: null, message: "Pasta não encontrada." };
+    return {
+      status: "not_found",
+      folderId,
+      name: null,
+      url: null,
+      message: "Pasta não encontrada.",
+    };
   }
   if (res.status === 401 || res.status === 403) {
     return {
@@ -110,7 +116,13 @@ export async function validateRootFolder(folderId: string): Promise<RootValidati
     };
   }
   if (!res.ok) {
-    return { status: "disconnected", folderId, name: null, url: null, message: "Falha ao validar a pasta." };
+    return {
+      status: "disconnected",
+      folderId,
+      name: null,
+      url: null,
+      message: "Falha ao validar a pasta.",
+    };
   }
   const body = (await res.json()) as {
     id: string;
@@ -121,7 +133,13 @@ export async function validateRootFolder(folderId: string): Promise<RootValidati
     capabilities?: { canAddChildren?: boolean };
   };
   if (body.mimeType !== "application/vnd.google-apps.folder" || body.trashed) {
-    return { status: "not_found", folderId, name: null, url: null, message: "O link não aponta para uma pasta ativa." };
+    return {
+      status: "not_found",
+      folderId,
+      name: null,
+      url: null,
+      message: "O link não aponta para uma pasta ativa.",
+    };
   }
   if (body.capabilities?.canAddChildren === false) {
     return {
@@ -149,7 +167,11 @@ async function createFolder(name: string, parentId: string) {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
+      body: JSON.stringify({
+        name,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [parentId],
+      }),
     },
   );
 }
@@ -171,11 +193,14 @@ async function getFileMeta(fileId: string) {
 }
 
 async function renameFile(fileId: string, name: string) {
-  await driveFetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}?${ALL_DRIVES}&fields=id,name`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
+  await driveFetch(
+    `${DRIVE_API}/files/${encodeURIComponent(fileId)}?${ALL_DRIVES}&fields=id,name`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    },
+  );
 }
 
 async function moveFile(fileId: string, newParentId: string, oldParentId?: string | null) {
@@ -245,7 +270,8 @@ async function uploadResumable(args: {
       body: JSON.stringify({ name: args.name, parents: [args.parentId] }),
     },
   );
-  if (!start.ok) throw new Error(`Drive resumable init ${start.status}: ${(await start.text()).slice(0, 300)}`);
+  if (!start.ok)
+    throw new Error(`Drive resumable init ${start.status}: ${(await start.text()).slice(0, 300)}`);
   const sessionUrl = start.headers.get("location") ?? start.headers.get("x-guploader-uploadid");
   if (!sessionUrl?.startsWith("http")) {
     throw new Error("Drive não devolveu a sessão de upload resumível.");
@@ -261,7 +287,8 @@ async function uploadResumable(args: {
     // @ts-expect-error duplex é exigido pelo runtime ao enviar stream
     duplex: "half",
   });
-  if (!put.ok) throw new Error(`Drive resumable put ${put.status}: ${(await put.text()).slice(0, 300)}`);
+  if (!put.ok)
+    throw new Error(`Drive resumable put ${put.status}: ${(await put.text()).slice(0, 300)}`);
   return (await put.json()) as { id: string; name: string; size?: string };
 }
 
@@ -350,12 +377,15 @@ export async function ensurePropertyDriveStructure(
 
   if (!row) {
     // Constraint UNIQUE(property_id) garante uma linha só sob concorrência.
-    await admin
-      .from("property_drive_folders")
-      .upsert(
-        { property_id: propertyId, root_folder_id: root.id, folder_name: folderName, status: "pending" } as never,
-        { onConflict: "property_id" },
-      );
+    await admin.from("property_drive_folders").upsert(
+      {
+        property_id: propertyId,
+        root_folder_id: root.id,
+        folder_name: folderName,
+        status: "pending",
+      } as never,
+      { onConflict: "property_id" },
+    );
     const { data: created } = await admin
       .from("property_drive_folders")
       .select("*")
@@ -398,7 +428,10 @@ export async function ensurePropertyDriveStructure(
       .eq("property_id", propertyId);
   }
 
-  const columns: Record<DriveCategory, "horizontal_folder_id" | "vertical_folder_id" | "videos_folder_id"> = {
+  const columns: Record<
+    DriveCategory,
+    "horizontal_folder_id" | "vertical_folder_id" | "videos_folder_id"
+  > = {
     horizontal: "horizontal_folder_id",
     vertical: "vertical_folder_id",
     video: "videos_folder_id",
@@ -427,12 +460,17 @@ export async function ensurePropertyDriveStructure(
 
   await admin
     .from("property_drive_folders")
-    .update({ status: "ready", verified_at: new Date().toISOString(), last_error_message: null } as never)
+    .update({
+      status: "ready",
+      verified_at: new Date().toISOString(),
+      last_error_message: null,
+    } as never)
     .eq("property_id", propertyId);
 
   return {
     propertyFolderId,
-    propertyFolderUrl: propertyFolderUrl ?? `https://drive.google.com/drive/folders/${propertyFolderId}`,
+    propertyFolderUrl:
+      propertyFolderUrl ?? `https://drive.google.com/drive/folders/${propertyFolderId}`,
     folderName,
     folders,
   };
@@ -523,7 +561,10 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
   const byVideo = new Map(links.filter((l) => l.video_id).map((l) => [l.video_id as string, l]));
 
   let waitingWatermark = false;
-  const counters: Record<DriveCategory, { total: number; synced: number; pending: number; failed: number }> = {
+  const counters: Record<
+    DriveCategory,
+    { total: number; synced: number; pending: number; failed: number }
+  > = {
     horizontal: { total: 0, synced: 0, pending: 0, failed: 0 },
     vertical: { total: 0, synced: 0, pending: 0, failed: 0 },
     video: { total: 0, synced: 0, pending: 0, failed: 0 },
@@ -544,7 +585,9 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
 
     // A versão que vai ao Drive é sempre a processada com marca.
     const ready = image.processing_status === "ready" || image.processing_status === "legacy";
-    const sourcePath = image.processed_storage_path ?? (image.processing_status === "legacy" ? image.storage_path : null);
+    const sourcePath =
+      image.processed_storage_path ??
+      (image.processing_status === "legacy" ? image.storage_path : null);
     if (!ready || !sourcePath) {
       waitingWatermark = true;
       counters[category].pending += 1;
@@ -664,12 +707,17 @@ async function syncOneFile(
   if (link.sync_status === "failed_permanent") return "failed";
 
   // Já confirmado: só corrige nome/pasta/categoria quando o cadastro mudou.
-  if (link.drive_file_id && link.sync_status === "synced" && link.source_checksum === args.checksum) {
+  if (
+    link.drive_file_id &&
+    link.sync_status === "synced" &&
+    link.source_checksum === args.checksum
+  ) {
     const meta = await getFileMeta(link.drive_file_id);
     if (meta && !meta.trashed) {
       if (meta.name !== args.name) await renameFile(link.drive_file_id, args.name);
       const parent = meta.parents?.[0];
-      if (parent && parent !== args.folderId) await moveFile(link.drive_file_id, args.folderId, parent);
+      if (parent && parent !== args.folderId)
+        await moveFile(link.drive_file_id, args.folderId, parent);
       if (meta.name !== args.name || link.category !== args.category) {
         await admin
           .from("property_drive_files")
@@ -694,17 +742,21 @@ async function syncOneFile(
         .createSignedUrl(args.path, 900);
       if (error || !signed?.signedUrl) throw new Error(error?.message ?? "Arquivo indisponível.");
       const response = await fetch(signed.signedUrl);
-      if (!response.ok || !response.body) throw new Error("Falha ao ler o arquivo do armazenamento.");
+      if (!response.ok || !response.body)
+        throw new Error("Falha ao ler o arquivo do armazenamento.");
       const total = Number(response.headers.get("content-length") ?? size);
       if (!total) throw new Error("Tamanho do arquivo desconhecido.");
       // Substituição da mesma mídia: revisa o arquivo existente em vez de duplicar.
       if (link.drive_file_id) {
         try {
-          await driveFetch(`${DRIVE_API}/files/${encodeURIComponent(link.drive_file_id)}?${ALL_DRIVES}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ trashed: true }),
-          });
+          await driveFetch(
+            `${DRIVE_API}/files/${encodeURIComponent(link.drive_file_id)}?${ALL_DRIVES}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ trashed: true }),
+            },
+          );
         } catch {
           // segue: o arquivo novo é a referência autoritativa
         }
@@ -721,7 +773,11 @@ async function syncOneFile(
       if (link.drive_file_id) {
         const res = await driveFetch(
           `${DRIVE_UPLOAD}/files/${encodeURIComponent(link.drive_file_id)}?uploadType=media&${ALL_DRIVES}&fields=id,name,size`,
-          { method: "PATCH", headers: { "Content-Type": args.mimeType }, body: bytes as unknown as BodyInit },
+          {
+            method: "PATCH",
+            headers: { "Content-Type": args.mimeType },
+            body: bytes as unknown as BodyInit,
+          },
         );
         if (res.ok) {
           uploaded = (await res.json()) as { id: string; name: string; size?: string };
@@ -813,7 +869,12 @@ export async function runDriveWorker(
     _lease_seconds: 240,
   });
   if (error) throw new Error(error.message);
-  const list = (jobs ?? []) as Array<{ id: string; property_id: string; attempts: number; max_attempts: number }>;
+  const list = (jobs ?? []) as Array<{
+    id: string;
+    property_id: string;
+    attempts: number;
+    max_attempts: number;
+  }>;
   let synced = 0;
   let failed = 0;
 
@@ -822,7 +883,9 @@ export async function runDriveWorker(
       const result = await syncPropertyDrive(admin, job.property_id);
       const stillPending =
         result.waitingWatermark ||
-        (["horizontal", "vertical", "video"] as DriveCategory[]).some((c) => result.totals[c].pending > 0);
+        (["horizontal", "vertical", "video"] as DriveCategory[]).some(
+          (c) => result.totals[c].pending > 0,
+        );
       if (stillPending && job.attempts < job.max_attempts) {
         // A marca-d'água ainda está rodando: espera, nunca sobe o original.
         await admin
@@ -857,7 +920,10 @@ export async function runDriveWorker(
         .eq("id", job.id);
       await admin
         .from("property_drive_folders")
-        .update({ status: terminal ? "error" : "pending", last_error_message: message.slice(0, 400) } as never)
+        .update({
+          status: terminal ? "error" : "pending",
+          last_error_message: message.slice(0, 400),
+        } as never)
         .eq("property_id", job.property_id);
     }
   }
@@ -884,16 +950,29 @@ export async function applyDriveChecklist(
     .order("created_at", { ascending: false })
     .limit(1);
   const agenciamento = (rows ?? [])[0] as
-    | { id: string; corretor_id: string | null; fotos_drive: boolean; video_realizado: boolean; endereco: string | null }
+    | {
+        id: string;
+        corretor_id: string | null;
+        fotos_drive: boolean;
+        video_realizado: boolean;
+        endereco: string | null;
+      }
     | undefined;
   if (!agenciamento || agenciamento.fotos_drive) return;
 
   const patch: Record<string, unknown> = { fotos_drive: true };
   // Vídeo tem regra própria: só marca quando existir vídeo confirmado.
-  if (!agenciamento.video_realizado && result.totals.video.total > 0 && result.totals.video.synced === result.totals.video.total) {
+  if (
+    !agenciamento.video_realizado &&
+    result.totals.video.total > 0 &&
+    result.totals.video.synced === result.totals.video.total
+  ) {
     patch.video_realizado = true;
   }
-  await admin.from("agenciamentos").update(patch as never).eq("id", agenciamento.id);
+  await admin
+    .from("agenciamentos")
+    .update(patch as never)
+    .eq("id", agenciamento.id);
 
   if (agenciamento.corretor_id) {
     try {

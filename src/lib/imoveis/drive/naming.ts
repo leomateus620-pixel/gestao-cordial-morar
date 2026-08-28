@@ -42,7 +42,8 @@ export function buildPropertyDriveFolderName(input: {
   const cordial = sanitizeCode(input.cordialCode);
   const morar = sanitizeCode(input.morarCode);
   const parts: string[] = [];
-  if ((providers.size === 0 || providers.has("cordial")) && cordial) parts.push(`CORDIAL ${cordial}`);
+  if ((providers.size === 0 || providers.has("cordial")) && cordial)
+    parts.push(`CORDIAL ${cordial}`);
   if ((providers.size === 0 || providers.has("morar")) && morar) parts.push(`MORAR ${morar}`);
   if (!parts.length) {
     const fallback = sanitizeCode(input.fallback) ?? "SEM CÓDIGO";
@@ -62,7 +63,8 @@ export function buildFilePrefix(input: {
   const cordial = sanitizeCode(input.cordialCode);
   const morar = sanitizeCode(input.morarCode);
   const parts: string[] = [];
-  if ((providers.size === 0 || providers.has("cordial")) && cordial) parts.push(`CORDIAL-${cordial}`);
+  if ((providers.size === 0 || providers.has("cordial")) && cordial)
+    parts.push(`CORDIAL-${cordial}`);
   if ((providers.size === 0 || providers.has("morar")) && morar) parts.push(`MORAR-${morar}`);
   if (!parts.length) parts.push(sanitizeCode(input.fallback) ?? "IMOVEL");
   return parts.join("_");

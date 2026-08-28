@@ -55,10 +55,16 @@ export function PropertyDriveRootCard() {
               <span
                 className={
                   "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider " +
-                  (connected ? "bg-emerald-600/12 text-emerald-800" : "bg-amber-500/14 text-amber-900")
+                  (connected
+                    ? "bg-emerald-600/12 text-emerald-800"
+                    : "bg-amber-500/14 text-amber-900")
                 }
               >
-                {connected ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
+                {connected ? (
+                  <CheckCircle2 className="size-3" />
+                ) : (
+                  <AlertTriangle className="size-3" />
+                )}
                 {STATUS_LABEL[data.status] ?? "Verificando"}
               </span>
             ) : null}
@@ -107,7 +113,8 @@ export function PropertyDriveRootCard() {
                 disabled={!link.trim() || save.isPending}
                 className="min-h-11 shrink-0"
               >
-                {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null} Validar acesso
+                {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null} Validar
+                acesso
               </Button>
             </div>
           ) : null}

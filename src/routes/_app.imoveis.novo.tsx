@@ -102,7 +102,6 @@ function NovoImovelPage() {
         ? ((await update.mutateAsync({ id: existing, ...values })).property?.id ?? existing)
         : (await create.mutateAsync({ ...values })).id;
 
-
       await commitCodes(propertyId);
 
       if (agency.enabled && canRegisterAgency) {
@@ -168,7 +167,9 @@ function NovoImovelPage() {
       <PropertyForm
         initial={emptyPropertyValues()}
         submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
-        pending={create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending}
+        pending={
+          create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending
+        }
         extraSteps={[
           {
             label: "Agenciamento",
@@ -196,7 +197,6 @@ function NovoImovelPage() {
             ),
           },
         ]}
-
         destinos={destinos}
         onDestinosChange={setDestinos}
         propertyId={draftId}

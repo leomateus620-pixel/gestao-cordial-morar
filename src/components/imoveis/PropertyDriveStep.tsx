@@ -12,7 +12,11 @@ import {
   Video,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ACCEPTED_VIDEO_MIME, usePropertyDrive, usePropertyDriveStatus } from "@/hooks/usePropertyDrive";
+import {
+  ACCEPTED_VIDEO_MIME,
+  usePropertyDrive,
+  usePropertyDriveStatus,
+} from "@/hooks/usePropertyDrive";
 import type { DriveCategory } from "@/lib/imoveis/drive/naming";
 
 const CARD_ICON: Record<DriveCategory, typeof Images> = {
@@ -100,12 +104,15 @@ export function PropertyDriveStep({
               <div className="min-w-0">
                 <h3 className="text-sm font-bold">Google Drive</h3>
                 <p className="text-[11px] text-foreground/55">
-                  Organize automaticamente as fotos e os vídeos deste imóvel na pasta compartilhada da
-                  imobiliária.
+                  Organize automaticamente as fotos e os vídeos deste imóvel na pasta compartilhada
+                  da imobiliária.
                 </p>
               </div>
             </div>
-            <p className="mt-3 truncate text-[12px] font-semibold text-foreground/80" title={data?.folderName}>
+            <p
+              className="mt-3 truncate text-[12px] font-semibold text-foreground/80"
+              title={data?.folderName}
+            >
               {data?.folderName ?? "Nome da pasta será definido pelos códigos do imóvel"}
             </p>
             <p className="mt-0.5 text-[11px] text-foreground/55">
@@ -128,7 +135,11 @@ export function PropertyDriveStep({
                   : "bg-amber-500/14 text-amber-900")
               }
             >
-              {data?.connected ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
+              {data?.connected ? (
+                <CheckCircle2 className="size-3" />
+              ) : (
+                <AlertTriangle className="size-3" />
+              )}
               {data?.connected ? "Drive conectado" : "Drive indisponível"}
             </span>
             <div className="flex flex-wrap gap-2">
@@ -241,7 +252,10 @@ export function PropertyDriveStep({
         {drive.videoProgress.length ? (
           <ul className="mt-3 space-y-1">
             {drive.videoProgress.map((item, i) => (
-              <li key={`${item.name}-${i}`} className="flex items-center gap-2 text-[11px] text-foreground/65">
+              <li
+                key={`${item.name}-${i}`}
+                className="flex items-center gap-2 text-[11px] text-foreground/65"
+              >
                 {item.status === "enviando" ? <Loader2 className="size-3 animate-spin" /> : null}
                 <span className="truncate">{item.name}</span>
                 <span className="ml-auto shrink-0 font-semibold">
@@ -263,7 +277,9 @@ export function PropertyDriveStep({
                 <span className="truncate" title={video.fileName}>
                   {video.fileName}
                 </span>
-                <span className="ml-auto shrink-0 text-foreground/50">{formatSize(video.sizeBytes)}</span>
+                <span className="ml-auto shrink-0 text-foreground/50">
+                  {formatSize(video.sizeBytes)}
+                </span>
                 <button
                   type="button"
                   aria-label={`Remover ${video.fileName}`}

@@ -94,7 +94,9 @@ export function usePropertyDrive(propertyId: string | undefined) {
           });
           setVideoProgress((p) =>
             p.map((item) =>
-              item.name === file.name && item.status === "enviando" ? { ...item, status: "pronto" } : item,
+              item.name === file.name && item.status === "enviando"
+                ? { ...item, status: "pronto" }
+                : item,
             ),
           );
         } catch (err) {
@@ -112,7 +114,8 @@ export function usePropertyDrive(propertyId: string | undefined) {
   });
 
   const removeVideo = useMutation({
-    mutationFn: (videoId: string) => deleteVideoFn({ data: { propertyId: propertyId as string, videoId } }),
+    mutationFn: (videoId: string) =>
+      deleteVideoFn({ data: { propertyId: propertyId as string, videoId } }),
     onSuccess: invalidate,
   });
 
