@@ -62,8 +62,12 @@ async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[
   return (data ?? []) as ImageRow[];
 }
 
-/** Aciona o worker de marca-d'água; a fila persistente é a garantia real. */
-async function kickImageWorker(limit = 4) {
+/**
+ * Aciona o worker de marca-d'água sem prender a resposta do upload: a chamada
+ * é disparada e abandonada em 1s — quem garante o resultado é a fila persistente
+ * (o worker se reencadeia e o pg_cron é a rede de segurança).
+ */
+async function kickImageWorker(limit = 2) {
   try {
     const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
     if (!secret) return;
@@ -74,11 +78,13 @@ async function kickImageWorker(limit = 4) {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: secret },
       body: JSON.stringify({ limit }),
+      signal: AbortSignal.timeout(1000),
     });
   } catch {
     // pg_cron reprocessa no próximo ciclo
   }
 }
+
 
 export const listPropertyImages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
