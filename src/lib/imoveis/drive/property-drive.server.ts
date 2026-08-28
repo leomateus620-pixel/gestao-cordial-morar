@@ -537,13 +537,20 @@ export type SyncOutcome = {
   totals: Record<DriveCategory, { total: number; synced: number; pending: number; failed: number }>;
   photosComplete: boolean;
   waitingWatermark: boolean;
+  /** Sobrou arquivo para o próximo lote (orçamento de envios por execução). */
+  hasMore: boolean;
 };
 
+/** Orçamento compartilhado entre os arquivos de uma mesma execução. */
+type Budget = { remaining: number };
+
 /**
- * Reconcilia o imóvel inteiro: garante a estrutura, cria/atualiza os vínculos
- * de cada mídia ativa e envia apenas o que ainda não está confirmado.
+ * Reconcilia o imóvel em blocos: garante a estrutura, cria/atualiza os vínculos
+ * de cada mídia ativa e envia apenas o que ainda não está confirmado, até o
+ * limite de envios da execução. O restante continua no lote seguinte.
  */
 export async function syncPropertyDrive(admin: Admin, propertyId: string): Promise<SyncOutcome> {
+
   const structure = await ensurePropertyDriveStructure(admin, propertyId);
   const property = await loadProperty(admin, propertyId);
   const prefix = filePrefixFor(property);
