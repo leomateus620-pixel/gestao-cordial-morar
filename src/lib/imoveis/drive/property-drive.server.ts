@@ -757,29 +757,35 @@ async function syncOneFile(
   }
 
   // Já confirmado: só corrige nome/pasta/categoria quando o cadastro mudou.
-  if (confirmed) {
-
-    const meta = await getFileMeta(link.drive_file_id);
+  const confirmedId = link.drive_file_id;
+  if (confirmed && confirmedId) {
+    const meta = await getFileMeta(confirmedId);
     if (meta && !meta.trashed) {
-      if (meta.name !== args.name) await renameFile(link.drive_file_id, args.name);
+      if (meta.name !== args.name) await renameFile(confirmedId, args.name);
       const parent = meta.parents?.[0];
-      if (parent && parent !== args.folderId)
-        await moveFile(link.drive_file_id, args.folderId, parent);
-      if (meta.name !== args.name || link.category !== args.category) {
-        await admin
-          .from("property_drive_files")
-          .update({ drive_file_name: args.name, category: args.category } as never)
-          .eq("id", link.id);
-      }
+      if (parent && parent !== args.folderId) await moveFile(confirmedId, args.folderId, parent);
+      await admin
+        .from("property_drive_files")
+        .update({
+          drive_file_name: args.name,
+          category: args.category,
+          verified_at: new Date().toISOString(),
+        } as never)
+        .eq("id", link.id);
       return "synced";
     }
   }
+
+  // Orçamento da execução esgotado: o arquivo continua no próximo lote.
+  if (args.budget.remaining <= 0) return "deferred";
+  args.budget.remaining -= 1;
 
   try {
     await admin
       .from("property_drive_files")
       .update({ sync_status: "uploading", category: args.category } as never)
       .eq("id", link.id);
+
 
     let uploaded: { id: string; name: string; size?: string };
     const size = args.size ?? 0;
