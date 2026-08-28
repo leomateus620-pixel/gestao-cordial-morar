@@ -46,7 +46,10 @@ export function usePropertyImages(propertyId: string | undefined) {
     // Enquanto houver foto na fila, acompanhamos a marca sendo aplicada.
     refetchInterval: (query) =>
       (query.state.data ?? []).some(
-        (image) => image.processingStatus === "pending" || image.processingStatus === "processing",
+        (image) =>
+          image.processingStatus === "pending" ||
+          image.processingStatus === "processing" ||
+          image.processingStatus === "failed_retryable",
       )
         ? 3000
         : false,
