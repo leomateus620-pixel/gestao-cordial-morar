@@ -272,14 +272,13 @@ type PropertyRow = {
   codigo: string | null;
   codigo_cordial: string | null;
   codigo_morar: string | null;
-  providers: string[] | null;
   publish_targets: string[] | null;
   carteira: string | null;
 };
 
 function activeProviders(p: PropertyRow): string[] {
   const set = new Set<string>();
-  for (const value of [...(p.publish_targets ?? []), ...(p.providers ?? [])]) {
+  for (const value of [...(p.publish_targets ?? [])]) {
     if (value === "cordial" || value === "morar") set.add(value);
   }
   if (!set.size && (p.carteira === "cordial" || p.carteira === "morar")) set.add(p.carteira);
@@ -307,12 +306,12 @@ export function filePrefixFor(p: PropertyRow): string {
 async function loadProperty(admin: Admin, propertyId: string): Promise<PropertyRow> {
   const { data, error } = await admin
     .from("properties")
-    .select("id, codigo, codigo_cordial, codigo_morar, providers, publish_targets, carteira")
+    .select("id, codigo, codigo_cordial, codigo_morar, publish_targets, carteira")
     .eq("id", propertyId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Imóvel não encontrado.");
-  return data as PropertyRow;
+  return data as unknown as PropertyRow;
 }
 
 export type DriveStructure = {

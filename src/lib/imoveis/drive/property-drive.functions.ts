@@ -154,23 +154,22 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<PropertyDriveStatus> => {
     const { data: propertyRow, error } = await context.supabase
       .from("properties")
-      .select("id, codigo, codigo_cordial, codigo_morar, providers, publish_targets, carteira")
+      .select("id, codigo, codigo_cordial, codigo_morar, publish_targets, carteira")
       .eq("id", data.propertyId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!propertyRow) throw new Error("Imóvel não encontrado ou sem permissão.");
-    const property = propertyRow as {
+    const property = propertyRow as unknown as {
       codigo: string | null;
       codigo_cordial: string | null;
       codigo_morar: string | null;
-      providers: string[] | null;
       publish_targets: string[] | null;
       carteira: string | null;
     };
 
     const providers = Array.from(
       new Set(
-        [...(property.publish_targets ?? []), ...(property.providers ?? [])].filter(
+        (property.publish_targets ?? []).filter(
           (p) => p === "cordial" || p === "morar",
         ),
       ),
