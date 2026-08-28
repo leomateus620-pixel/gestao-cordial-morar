@@ -192,11 +192,12 @@ export const retryPropertyImageWatermark = createServerFn({ method: "POST" })
   .inputValidator((data: { propertyId: string; imageId?: string }) => data)
   .handler(async ({ data, context }): Promise<PropertyImage[]> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { enqueueImageJobs, runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
+    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
     const rows = await listRows(context.supabase, data.propertyId);
+    const retryable = ["failed", "failed_retryable", "failed_permanent", "pending", "processing"];
     const ids = data.imageId
       ? [data.imageId]
-      : rows.filter((r) => r.processing_status === "failed" || r.processing_status === "pending").map((r) => r.id);
+      : rows.filter((r) => retryable.includes(r.processing_status)).map((r) => r.id);
     if (ids.length) {
       await supabaseAdmin
         .from("property_image_jobs")
@@ -205,15 +206,12 @@ export const retryPropertyImageWatermark = createServerFn({ method: "POST" })
         .in("status", ["pending", "processing", "retry", "failed"]);
       await supabaseAdmin
         .from("property_images")
-        .update({ destination_hash: null, processing_status: "pending" })
+        .update({ destination_hash: null, processing_status: "pending", processing_error_message: null })
         .in("id", ids);
       await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: ids });
-      try {
-        await runImageWorker(supabaseAdmin, { limit: 4 });
-      } catch {
-        await kickImageWorker(4);
-      }
+      await kickImageWorker(2);
     }
+
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
