@@ -721,8 +721,9 @@ async function syncOneFile(
     path: string;
     mimeType: string;
     size: number | null;
+    budget: Budget;
   },
-): Promise<"synced" | "pending" | "failed"> {
+): Promise<"synced" | "pending" | "failed" | "deferred"> {
   let link = args.link;
   if (!link) {
     const { data } = await admin
@@ -741,12 +742,23 @@ async function syncOneFile(
 
   if (link.sync_status === "failed_permanent") return "failed";
 
-  // Já confirmado: só corrige nome/pasta/categoria quando o cadastro mudou.
+  const confirmed =
+    link.drive_file_id && link.sync_status === "synced" && link.source_checksum === args.checksum;
+
+  // Confirmado e reconferido há pouco, com nome/categoria iguais: nada a fazer.
   if (
-    link.drive_file_id &&
-    link.sync_status === "synced" &&
-    link.source_checksum === args.checksum
+    confirmed &&
+    link.drive_file_name === args.name &&
+    link.category === args.category &&
+    link.verified_at &&
+    Date.now() - new Date(link.verified_at).getTime() < REVERIFY_AFTER_MS
   ) {
+    return "synced";
+  }
+
+  // Já confirmado: só corrige nome/pasta/categoria quando o cadastro mudou.
+  if (confirmed) {
+
     const meta = await getFileMeta(link.drive_file_id);
     if (meta && !meta.trashed) {
       if (meta.name !== args.name) await renameFile(link.drive_file_id, args.name);
