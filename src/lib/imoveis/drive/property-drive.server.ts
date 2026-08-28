@@ -513,7 +513,17 @@ type DriveFileRow = {
   source_checksum: string | null;
   sync_status: string;
   retry_count: number;
+  verified_at?: string | null;
+  resumable_session_url?: string | null;
+  resumable_offset?: number | null;
+  resumable_expires_at?: string | null;
 };
+
+/** Reconfirmação no Drive só depois desta janela: economiza chamadas por lote. */
+const REVERIFY_AFTER_MS = 24 * 60 * 60 * 1000;
+/** Orçamento de envios por execução: o restante continua no próximo lote. */
+const MAX_UPLOADS_PER_RUN = 6;
+
 
 async function downloadBytes(admin: Admin, bucket: string, path: string): Promise<Uint8Array> {
   const { data, error } = await admin.storage.from(bucket).download(path);
