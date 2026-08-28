@@ -16,6 +16,8 @@ import {
   emptyAgencyStepState,
   type AgencyStepState,
 } from "@/components/imoveis/PropertyAgencyStep";
+import { PropertyDriveStep } from "@/components/imoveis/PropertyDriveStep";
+
 import { useSession } from "@/lib/auth-mock";
 import { canAccessModule } from "@/lib/access-control";
 import { useEnqueuePropertySync } from "@/hooks/usePropertySync";
@@ -158,21 +160,34 @@ function NovoImovelPage() {
         initial={emptyPropertyValues()}
         submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
         pending={create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending}
-        extraStep={{
-          label: "Agenciamento",
-          render: ({ values, goToStep }) => (
-            <PropertyAgencyStep
-              values={values}
-              destinos={destinos.length ? destinos : [values.carteira]}
-              state={agency}
-              onChange={setAgency}
-              onEditStep={goToStep}
-              canRegister={canRegisterAgency}
-              corretorNome={session?.nome ?? "Você"}
-              fotosProntas={fotosProntas}
-            />
-          ),
-        }}
+        extraSteps={[
+          {
+            label: "Agenciamento",
+            render: ({ values, goToStep }) => (
+              <PropertyAgencyStep
+                values={values}
+                destinos={destinos.length ? destinos : [values.carteira]}
+                state={agency}
+                onChange={setAgency}
+                onEditStep={goToStep}
+                canRegister={canRegisterAgency}
+                corretorNome={session?.nome ?? "Você"}
+                fotosProntas={fotosProntas}
+              />
+            ),
+          },
+          {
+            label: "Google Drive",
+            render: ({ goToStep }) => (
+              <PropertyDriveStep
+                propertyId={draftId}
+                onRequestSave={ensureDraft}
+                onEditStep={goToStep}
+              />
+            ),
+          },
+        ]}
+
         destinos={destinos}
         onDestinosChange={setDestinos}
         propertyId={draftId}
