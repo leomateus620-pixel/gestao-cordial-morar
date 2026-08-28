@@ -580,3 +580,70 @@ export const updateImovel = createServerFn({ method: "POST" })
     };
   });
 
+
+export type DeleteImovelResult = {
+  status: "deleted" | "pending_removal";
+  providers: string[];
+};
+
+/**
+ * Exclui o imóvel do Gestão Cordial. Se ele estiver publicado, primeiro
+ * enfileira a remoção nos sites; o cadastro só é apagado quando os provedores
+ * confirmarem (ver `finalizePendingRemoval`).
+ */
+export const deleteImovel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }): Promise<DeleteImovelResult> => {
+    const { id } = data;
+
+    const { data: current, error: readError } = await context.supabase
+      .from("properties")
+      .select("id, revision")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
+
+    const { data: links } = await context.supabase
+      .from("property_provider_publications")
+      .select("provider, enabled, external_property_id")
+      .eq("property_id", id);
+
+    const live = ((links ?? []) as Array<{
+      provider: string;
+      enabled: boolean;
+      external_property_id: string | null;
+    }>).filter((link) => link.external_property_id) as Array<{
+      provider: "cordial" | "morar";
+      enabled: boolean;
+      external_property_id: string | null;
+    }>;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (live.length) {
+      const revision = Number((current as { revision?: number }).revision ?? 1);
+      await supabaseAdmin.from("property_sync_jobs").upsert(
+        live.map((link) => ({
+          property_id: id,
+          provider: link.provider,
+          action: "delete" as const,
+          requested_revision: revision,
+          requested_by: context.userId,
+          status: "pending" as const,
+          next_run_at: new Date().toISOString(),
+        })),
+        { onConflict: "property_id,provider,action,requested_revision" },
+      );
+      await supabaseAdmin
+        .from("properties")
+        .update({ removal_state: "pending_removal", updated_at: new Date().toISOString() })
+        .eq("id", id);
+      return { status: "pending_removal", providers: live.map((link) => link.provider) };
+    }
+
+    const { purgeProperty } = await import("@/lib/imoveis/purge.server");
+    await purgeProperty(supabaseAdmin, id);
+    return { status: "deleted", providers: [] };
+  });

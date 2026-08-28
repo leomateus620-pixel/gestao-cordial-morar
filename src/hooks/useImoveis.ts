@@ -2,16 +2,33 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   createImovel,
+  deleteImovel,
   getImovel,
   getImoveisFacets,
   getPropertyDetail,
   listImoveis,
   updateImovel,
   type CreateImovelInput,
+  type DeleteImovelResult,
   type ListImoveisInput,
   type UpdateImovelInput,
 } from "@/lib/imoveis/imoveis.functions";
 import type { Property, PropertyDetail } from "@/types/property";
+
+export function useDeleteImovel() {
+  const qc = useQueryClient();
+  const remove = useServerFn(deleteImovel);
+  return useMutation<DeleteImovelResult, Error, string>({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: (_result, id) => {
+      qc.invalidateQueries({ queryKey: ["imoveis"] });
+      qc.invalidateQueries({ queryKey: ["imoveis-facets"] });
+      qc.invalidateQueries({ queryKey: ["imovel-detalhe", id] });
+      qc.invalidateQueries({ queryKey: ["imovel", id] });
+    },
+  });
+}
+
 
 export function useImoveisList(filters: ListImoveisInput) {
   const list = useServerFn(listImoveis);
