@@ -47,6 +47,12 @@ export const Route = createFileRoute("/_app/imoveis/novo")({
   ),
 });
 
+const carteiraLabels: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
+
+function destinosLabel(destinos: PropertyCarteira[]) {
+  return destinos.map((d) => carteiraLabels[d] ?? d).join(" e ");
+}
+
 function NovoImovelPage() {
   const navigate = useNavigate();
   const create = useCreateImovel();
