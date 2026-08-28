@@ -21,6 +21,7 @@ import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCard
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
+import { PropertyIntelligenceCard } from "@/components/dashboard/PropertyIntelligenceCard";
 import { RentalVsSaleCard } from "@/components/dashboard/RentalVsSaleCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
 import { TeamPerformanceCard } from "@/components/dashboard/TeamPerformanceCard";
