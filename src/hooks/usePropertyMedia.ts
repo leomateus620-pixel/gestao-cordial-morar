@@ -1,7 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import {
   createPropertyImageUploadUrl,
   deletePropertyImage,
@@ -12,19 +11,30 @@ import {
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
+import { prepareImageForUpload, sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
 import type { PropertyImage } from "@/types/property";
 
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const BUCKET = "property-images";
+/** Envios simultâneos: rápido sem saturar a conexão do corretor. */
+const UPLOAD_CONCURRENCY = 3;
 
-async function sha256(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+export type UploadItemStatus =
+  | "preparando"
+  | "enviando"
+  | "processando"
+  | "pronta"
+  | "duplicada"
+  | "erro";
 
-export type UploadProgress = { name: string; status: "enviando" | "pronta" | "duplicada" | "erro"; error?: string };
+export type UploadItem = {
+  key: string;
+  name: string;
+  previewUrl: string;
+  status: UploadItemStatus;
+  progress: number;
+  error?: string;
+};
 
 export function usePropertyImages(propertyId: string | undefined) {
   const list = useServerFn(listPropertyImages);
@@ -32,9 +42,13 @@ export function usePropertyImages(propertyId: string | undefined) {
     queryKey: ["property-images", propertyId],
     queryFn: () => list({ data: { propertyId: propertyId as string } }),
     enabled: !!propertyId,
-    // Enquanto houver foto em processamento, acompanhamos a marca sendo aplicada.
+    // Enquanto houver foto na fila, acompanhamos a marca sendo aplicada.
     refetchInterval: (query) =>
-      (query.state.data ?? []).some((image) => image.processingStatus === "pending") ? 4000 : false,
+      (query.state.data ?? []).some(
+        (image) => image.processingStatus === "pending" || image.processingStatus === "processing",
+      )
+        ? 3000
+        : false,
   });
 }
 
@@ -47,57 +61,113 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const removeFn = useServerFn(deletePropertyImage);
   const retryFn = useServerFn(retryPropertyImageWatermark);
   const targetsFn = useServerFn(setPropertyPublishTargets);
-  const [progress, setProgress] = useState<UploadProgress[]>([]);
+  const [progress, setProgress] = useState<UploadItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  // Guarda o arquivo para permitir "tentar novamente" sem reselecionar.
+  const filesByKey = useRef(new Map<string, File>());
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["property-images", propertyId] });
     qc.invalidateQueries({ queryKey: ["imovel-detalhe", propertyId] });
+    qc.invalidateQueries({ queryKey: ["property-drive", propertyId] });
     qc.invalidateQueries({ queryKey: ["imoveis"] });
   }, [qc, propertyId]);
 
-  const upload = useMutation({
-    mutationFn: async (files: File[]) => {
+  const patch = useCallback((key: string, next: Partial<UploadItem>) => {
+    setProgress((items) => items.map((item) => (item.key === key ? { ...item, ...next } : item)));
+  }, []);
+
+  const sendOne = useCallback(
+    async (key: string, file: File) => {
       if (!propertyId) throw new Error("Salve o imóvel antes de enviar fotos.");
-      for (const file of files) {
-        setProgress((p) => [...p, { name: file.name, status: "enviando" }]);
-        try {
-          if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) throw new Error("Formato não suportado.");
-          const hash = await sha256(file);
-          const target = await createUrl({ data: { propertyId, fileName: file.name } });
-          const { error } = await supabase.storage
-            .from("property-images")
-            .uploadToSignedUrl(target.path, target.token, file, { contentType: file.type });
-          if (error) throw new Error(error.message);
-          const result = await register({
-            data: {
-              propertyId,
-              storagePath: target.path,
-              fileName: file.name,
-              mimeType: file.type,
-              sizeBytes: file.size,
-              contentHash: hash,
-            },
-          });
-          setProgress((p) =>
-            p.map((item) =>
-              item.name === file.name && item.status === "enviando"
-                ? { ...item, status: result.duplicated ? "duplicada" : "pronta" }
-                : item,
-            ),
-          );
-        } catch (err) {
-          setProgress((p) =>
-            p.map((item) =>
-              item.name === file.name && item.status === "enviando"
-                ? { ...item, status: "erro", error: (err as Error)?.message }
-                : item,
-            ),
-          );
-        }
-      }
+      patch(key, { status: "preparando", progress: 0, error: undefined });
+      const prepared = await prepareImageForUpload(file);
+      const hash = await sha256Hex(prepared.blob);
+      const target = await createUrl({ data: { propertyId, fileName: prepared.fileName } });
+
+      patch(key, { status: "enviando" });
+      await uploadSignedWithProgress({
+        bucket: BUCKET,
+        path: target.path,
+        token: target.token,
+        blob: prepared.blob,
+        contentType: prepared.mimeType,
+        onProgress: (ratio) => patch(key, { progress: Math.round(ratio * 100) }),
+      });
+
+      patch(key, { status: "processando", progress: 100 });
+      const result = await register({
+        data: {
+          propertyId,
+          storagePath: target.path,
+          fileName: prepared.fileName,
+          mimeType: prepared.mimeType,
+          sizeBytes: prepared.sizeBytes,
+          contentHash: hash,
+        },
+      });
+      patch(key, { status: result.duplicated ? "duplicada" : "pronta" });
     },
-    onSettled: invalidate,
-  });
+    [createUrl, patch, propertyId, register],
+  );
+
+  /** Fila com concorrência limitada — uma falha nunca interrompe as demais. */
+  const runQueue = useCallback(
+    async (entries: { key: string; file: File }[]) => {
+      setUploading(true);
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(UPLOAD_CONCURRENCY, entries.length) }, async () => {
+        while (cursor < entries.length) {
+          const entry = entries[cursor++]!;
+          try {
+            await sendOne(entry.key, entry.file);
+          } catch (err) {
+            patch(entry.key, {
+              status: "erro",
+              error: (err as Error)?.message ?? "Não foi possível enviar esta foto.",
+            });
+          }
+          invalidate();
+        }
+      });
+      await Promise.all(workers);
+      setUploading(false);
+      invalidate();
+    },
+    [invalidate, patch, sendOne],
+  );
+
+  const upload = useCallback(
+    (files: File[]) => {
+      const entries = files.map((file) => {
+        const key = `${file.name}-${file.size}-${crypto.randomUUID().slice(0, 8)}`;
+        filesByKey.current.set(key, file);
+        return { key, file };
+      });
+      setProgress((items) => [
+        ...items,
+        ...entries.map(({ key, file }) => ({
+          key,
+          name: file.name,
+          // Prévia local imediata: aparece antes de qualquer envio.
+          previewUrl: URL.createObjectURL(file),
+          status: "preparando" as UploadItemStatus,
+          progress: 0,
+        })),
+      ]);
+      void runQueue(entries);
+    },
+    [runQueue],
+  );
+
+  const retryUpload = useCallback(
+    (key: string) => {
+      const file = filesByKey.current.get(key);
+      if (!file) return;
+      void runQueue([{ key, file }]);
+    },
+    [runQueue],
+  );
 
   const setCover = useMutation({
     mutationFn: (imageId: string) => setCoverFn({ data: { propertyId: propertyId as string, imageId } }),
@@ -126,14 +196,23 @@ export function usePropertyMedia(propertyId: string | undefined) {
     onSuccess: invalidate,
   });
 
+  const clearProgress = useCallback(() => {
+    setProgress((items) => {
+      for (const item of items) URL.revokeObjectURL(item.previewUrl);
+      filesByKey.current.clear();
+      return [];
+    });
+  }, []);
+
   return {
-    upload,
+    upload: { mutate: upload, isPending: uploading },
+    retryUpload,
     setCover,
     reorder,
     remove,
     retryWatermark,
     updateTargets,
     progress,
-    clearProgress: () => setProgress([]),
+    clearProgress,
   };
 }
