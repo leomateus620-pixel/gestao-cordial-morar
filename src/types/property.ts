@@ -48,7 +48,15 @@ export type Property = {
   archivedAt: string | null;
 };
 
-export type PropertyImageProcessingStatus = "pending" | "ready" | "failed" | "legacy";
+export type PropertyImageProcessingStatus =
+  | "pending"
+  | "processing"
+  | "ready"
+  | "failed_retryable"
+  | "failed_permanent"
+  | "failed"
+  | "legacy";
+
 
 export type PropertyImage = {
   id: string;

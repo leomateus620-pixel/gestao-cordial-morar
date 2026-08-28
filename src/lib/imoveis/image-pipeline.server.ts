@@ -52,8 +52,12 @@ export async function enqueueImageJobs(
     processing_status: string;
   }>;
 
-  const stale = rows.filter((row) => row.destination_hash !== hash || row.processing_status === "failed");
+  const failed = ["failed", "failed_retryable", "failed_permanent"];
+  const stale = rows.filter(
+    (row) => row.destination_hash !== hash || failed.includes(row.processing_status),
+  );
   if (!stale.length) return { enqueued: 0, variant, hash };
+
 
   const ids = stale.map((row) => row.id);
   // Jobs de destinos antigos deixam de valer.
