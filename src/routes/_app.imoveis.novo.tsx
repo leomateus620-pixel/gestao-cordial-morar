@@ -167,7 +167,7 @@ function NovoImovelPage() {
 
       <PropertyForm
         initial={emptyPropertyValues()}
-        submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
+        submitLabel={publicar ? "Publicar imóvel" : "Salvar imóvel"}
         pending={
           create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending
         }
