@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import test from "node:test";
 import {
   buildDriveFileName,
   buildFilePrefix,
@@ -6,74 +7,84 @@ import {
   classifyOrientation,
   parseDriveFolderId,
   sanitizeDriveSegment,
-} from "./naming";
+} from "./naming.ts";
 
-describe("buildPropertyDriveFolderName", () => {
-  it("usa apenas o código Cordial quando só a Cordial é destino", () => {
-    expect(
-      buildPropertyDriveFolderName({ cordialCode: "1234", morarCode: "5678", providers: ["cordial"] }),
-    ).toBe("IMÓVEL - CORDIAL 1234");
-  });
-
-  it("usa apenas o código Morar quando só a Morar é destino", () => {
-    expect(
-      buildPropertyDriveFolderName({ cordialCode: "1234", morarCode: "5678", providers: ["morar"] }),
-    ).toBe("IMÓVEL - MORAR 5678");
-  });
-
-  it("preserva os dois códigos quando ambos os sites são destino", () => {
-    expect(
-      buildPropertyDriveFolderName({
-        cordialCode: "1234",
-        morarCode: "5678",
-        providers: ["cordial", "morar"],
-      }),
-    ).toBe("IMÓVEL - CORDIAL 1234 - MORAR 5678");
-  });
-
-  it("cai para o código interno quando nenhum código por provedor existe", () => {
-    expect(buildPropertyDriveFolderName({ providers: ["cordial"], fallback: "A-99" })).toBe(
-      "IMÓVEL - A-99",
-    );
-  });
+test("somente Cordial gera pasta com o código Cordial", () => {
+  assert.equal(
+    buildPropertyDriveFolderName({ cordialCode: "1234", morarCode: "5678", providers: ["cordial"] }),
+    "IMÓVEL - CORDIAL 1234",
+  );
 });
 
-describe("classifyOrientation", () => {
-  it("classifica pela dimensão real", () => {
-    expect(classifyOrientation({ width: 1600, height: 900 })).toBe("horizontal");
-    expect(classifyOrientation({ width: 900, height: 1600 })).toBe("vertical");
-  });
-  it("trata quadrada como horizontal", () => {
-    expect(classifyOrientation({ width: 1000, height: 1000 })).toBe("horizontal");
-  });
-  it("respeita a correção manual", () => {
-    expect(classifyOrientation({ width: 1600, height: 900, override: "vertical" })).toBe("vertical");
-  });
+test("somente Morar gera pasta com o código Morar", () => {
+  assert.equal(
+    buildPropertyDriveFolderName({ cordialCode: "1234", morarCode: "5678", providers: ["morar"] }),
+    "IMÓVEL - MORAR 5678",
+  );
 });
 
-describe("nomes de arquivo", () => {
-  it("segue prefixo, categoria e ordem", () => {
-    const prefix = buildFilePrefix({ cordialCode: "1234", morarCode: "5678", providers: ["cordial", "morar"] });
-    expect(prefix).toBe("CORDIAL-1234_MORAR-5678");
-    expect(
-      buildDriveFileName({ prefix, category: "horizontal", index: 1, mimeType: "image/jpeg", originalName: "a.jpeg" }),
-    ).toBe("CORDIAL-1234_MORAR-5678_HORIZONTAL_001.jpg");
-    expect(
-      buildDriveFileName({ prefix, category: "video", index: 1, mimeType: "video/mp4", originalName: "v.mp4" }),
-    ).toBe("CORDIAL-1234_MORAR-5678_VIDEO_001.mp4");
-  });
+test("ambos preservam os dois códigos", () => {
+  assert.equal(
+    buildPropertyDriveFolderName({
+      cordialCode: "1234",
+      morarCode: "5678",
+      providers: ["cordial", "morar"],
+    }),
+    "IMÓVEL - CORDIAL 1234 - MORAR 5678",
+  );
 });
 
-describe("parseDriveFolderId", () => {
-  it("aceita link de pasta do Drive", () => {
-    expect(
-      parseDriveFolderId("https://drive.google.com/drive/folders/1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf?usp=drive_link"),
-    ).toBe("1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf");
+test("sem código por provedor usa o código interno", () => {
+  assert.equal(
+    buildPropertyDriveFolderName({ providers: ["cordial"], fallback: "A-99" }),
+    "IMÓVEL - A-99",
+  );
+});
+
+test("orientação segue a dimensão real", () => {
+  assert.equal(classifyOrientation({ width: 1600, height: 900 }), "horizontal");
+  assert.equal(classifyOrientation({ width: 900, height: 1600 }), "vertical");
+  assert.equal(classifyOrientation({ width: 1000, height: 1000 }), "horizontal");
+  assert.equal(classifyOrientation({ width: 1600, height: 900, override: "vertical" }), "vertical");
+});
+
+test("nome de arquivo previsível e ordenável", () => {
+  const prefix = buildFilePrefix({
+    cordialCode: "1234",
+    morarCode: "5678",
+    providers: ["cordial", "morar"],
   });
-  it("recusa host estranho", () => {
-    expect(parseDriveFolderId("https://example.com/drive/folders/1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf")).toBeNull();
-  });
-  it("sanitiza segmentos", () => {
-    expect(sanitizeDriveSegment("  a/b:c  ")).toBe("a b c");
-  });
+  assert.equal(prefix, "CORDIAL-1234_MORAR-5678");
+  assert.equal(
+    buildDriveFileName({
+      prefix,
+      category: "horizontal",
+      index: 1,
+      mimeType: "image/jpeg",
+      originalName: "a.jpeg",
+    }),
+    "CORDIAL-1234_MORAR-5678_HORIZONTAL_001.jpg",
+  );
+  assert.equal(
+    buildDriveFileName({
+      prefix,
+      category: "video",
+      index: 1,
+      mimeType: "video/mp4",
+      originalName: "v.mp4",
+    }),
+    "CORDIAL-1234_MORAR-5678_VIDEO_001.mp4",
+  );
+});
+
+test("link da pasta raiz é validado por host e formato", () => {
+  assert.equal(
+    parseDriveFolderId("https://drive.google.com/drive/folders/1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf?usp=drive_link"),
+    "1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf",
+  );
+  assert.equal(
+    parseDriveFolderId("https://example.com/drive/folders/1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf"),
+    null,
+  );
+  assert.equal(sanitizeDriveSegment("  a/b:c  "), "a b c");
 });
