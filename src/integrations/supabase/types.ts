@@ -4558,6 +4558,10 @@ export type Database = {
           pending_open_count: number
         }[]
       }
+      get_property_portfolio_analytics: {
+        Args: { _operation_filter?: string; _provider_filter?: string }
+        Returns: Json
+      }
       get_satisfaction_survey_by_token: {
         Args: { _token: string }
         Returns: {
@@ -4762,6 +4766,8 @@ export type Database = {
           read_ct: number
         }[]
       }
+      region_display_label: { Args: { _raw: string }; Returns: string }
+      region_normalized_key: { Args: { _raw: string }; Returns: string }
       release_expired_provider_codes: { Args: never; Returns: number }
       reserve_provider_code: {
         Args: {
