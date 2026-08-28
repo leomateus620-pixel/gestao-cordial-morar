@@ -83,6 +83,9 @@ function DetalhePage() {
   const session = useSession();
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+
 
   if (query.isPending) {
     return (
