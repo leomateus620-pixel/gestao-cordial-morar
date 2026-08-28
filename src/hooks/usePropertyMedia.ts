@@ -25,6 +25,7 @@ export type UploadItemStatus =
   | "processando"
   | "pronta"
   | "duplicada"
+  | "retomada"
   | "erro";
 
 export type UploadItem = {
@@ -106,7 +107,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
           contentHash: hash,
         },
       });
-      patch(key, { status: result.duplicated ? "duplicada" : "pronta" });
+      patch(key, { status: result.resumed ? "retomada" : result.duplicated ? "duplicada" : "pronta" });
     },
     [createUrl, patch, propertyId, register],
   );

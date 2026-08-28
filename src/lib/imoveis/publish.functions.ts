@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { IMOBI_PROVIDER_KEYS, isImobiProvider, type ImobiProvider } from "@/lib/imobibrasil/providers";
+import { IMAGE_PROCESSING_BLOCKING_STATUSES } from "@/lib/imoveis/image-status";
 
 export type SyncAction = "publish" | "update" | "unpublish" | "delete" | "reconcile";
 
@@ -87,7 +88,7 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
         .from("property_images")
         .select("id, file_name, processing_status")
         .eq("property_id", property.id)
-        .in("processing_status", ["pending", "failed"]);
+        .in("processing_status", [...IMAGE_PROCESSING_BLOCKING_STATUSES]);
       if (pendingImages?.length) {
         const names = pendingImages
           .slice(0, 3)

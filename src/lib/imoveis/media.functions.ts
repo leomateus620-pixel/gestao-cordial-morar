@@ -120,12 +120,23 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       contentHash: string;
     }) => data,
   )
-  .handler(async ({ data, context }): Promise<{ images: PropertyImage[]; duplicated: boolean }> => {
+  .handler(async ({ data, context }): Promise<{ images: PropertyImage[]; duplicated: boolean; resumed: boolean }> => {
     const rows = await listRows(context.supabase, data.propertyId);
     const duplicate = rows.find((r) => r.content_hash && r.content_hash === data.contentHash);
     if (duplicate) {
       await context.supabase.storage.from(BUCKET).remove([data.storagePath]);
-      return { images: await signImages(context.supabase, rows), duplicated: true };
+      const incomplete = duplicate.processing_status !== "ready" && duplicate.processing_status !== "legacy";
+      if (incomplete) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+        await supabaseAdmin
+          .from("property_images")
+          .update({ destination_hash: null, processing_status: "pending", processing_error_message: null })
+          .eq("id", duplicate.id);
+        await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [duplicate.id] });
+        await kickImageWorker(1);
+      }
+      return { images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)), duplicated: true, resumed: incomplete };
     }
 
     const position = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
@@ -152,13 +163,15 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-    await enqueueImageJobs(supabaseAdmin, data.propertyId, inserted?.id ? { imageIds: [inserted.id] } : {});
+    if (!inserted?.id) throw new Error("A foto foi enviada, mas não pôde ser registrada.");
+    await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [inserted.id] });
     // A marca é aplicada pelo worker: o navegador não espera o processamento.
     await kickImageWorker(2);
 
     return {
       images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
       duplicated: false,
+      resumed: false,
     };
   });
 

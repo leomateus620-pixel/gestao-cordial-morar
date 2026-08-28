@@ -18,6 +18,7 @@ import {
   boolToImageSimNao,
   type LocalPropertyForSync,
 } from "./serializers";
+import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
 import type { ImobiProvider } from "./providers";
 import { providerExternalCode } from "./provider-code";
 
@@ -143,9 +144,12 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     .order("position", { ascending: true });
 
   // Só publicamos fotos com marca-d'água aplicada (ou o acervo legado já publicado).
-  const list = (images ?? []).filter(
-    (image) => image.processed_storage_path || image.processing_status === "legacy",
-  );
+  const allImages = images ?? [];
+  const list = allImages.filter(canPublishPropertyImage);
+  const incomplete = allImages.length - list.length;
+  if (incomplete > 0) {
+    throw new Error(`${incomplete} foto(s) ainda não possuem a marca-d'água confirmada.`);
+  }
   if (!list.length) return { sent: 0, failed: 0 };
 
   const { data: published } = await admin

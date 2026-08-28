@@ -113,7 +113,7 @@ export function PropertyPhotosStep({
             <span className="font-semibold text-foreground/70">
               {enviando > 0
                 ? `Enviando ${totalLote - enviando + 1} de ${totalLote}…`
-                : `${totalLote} ${totalLote === 1 ? "foto processada" : "fotos processadas"} neste envio`}
+                : `${totalLote} ${totalLote === 1 ? "foto enviada" : "fotos enviadas"} neste lote`}
             </span>
             <button type="button" onClick={media.clearProgress} className="font-semibold text-primary">
               Limpar
@@ -136,7 +136,7 @@ export function PropertyPhotosStep({
                       }`}
                       style={{
                         width:
-                          item.status === "pronta" || item.status === "duplicada"
+                          item.status === "pronta" || item.status === "duplicada" || item.status === "retomada"
                             ? "100%"
                             : `${Math.max(6, item.progress)}%`,
                       }}
@@ -147,7 +147,7 @@ export function PropertyPhotosStep({
                   className={`shrink-0 ${
                     item.status === "erro"
                       ? "text-rose-600"
-                      : item.status === "duplicada"
+                      : item.status === "duplicada" || item.status === "retomada"
                         ? "text-amber-600"
                         : "text-foreground/55"
                   }`}
@@ -161,7 +161,9 @@ export function PropertyPhotosStep({
                       <RefreshCw className="size-3" /> Tentar novamente
                     </button>
                   ) : item.status === "duplicada" ? (
-                    "Foto repetida"
+                    "Já estava pronta"
+                  ) : item.status === "retomada" ? (
+                    "Processamento retomado"
                   ) : item.status === "pronta" ? (
                     "Enviada"
                   ) : item.status === "processando" ? (

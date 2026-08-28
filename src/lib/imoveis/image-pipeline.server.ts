@@ -45,7 +45,8 @@ export async function enqueueImageJobs(
     .select("id, storage_path, original_storage_path, destination_hash, processing_status")
     .eq("property_id", propertyId);
   if (options.imageIds?.length) query = query.in("id", options.imageIds);
-  const { data: images } = await query;
+  const { data: images, error: imagesError } = await query;
+  if (imagesError) throw new Error(imagesError.message);
   const rows = (images ?? []) as Array<{
     id: string;
     destination_hash: string | null;
@@ -85,11 +86,26 @@ export async function enqueueImageJobs(
       max_attempts: MAX_ATTEMPTS,
       run_after: new Date().toISOString(),
       lease_expires_at: null,
+      locked_at: null,
+      locked_by: null,
+      last_error_code: null,
+      last_error_message: null,
       correlation_id: crypto.randomUUID(),
     })),
-    { onConflict: "image_id,destination_hash", ignoreDuplicates: true },
+    { onConflict: "image_id,destination_hash", ignoreDuplicates: false },
   );
-  if (error && !/duplicate key/i.test(error.message)) throw new Error(error.message);
+  if (error) {
+    await admin
+      .from("property_images")
+      .update({
+        processing_status: "failed_retryable",
+        processing_error_code: "enqueue_failed",
+        processing_error_message: "Não foi possível iniciar o processamento da foto.",
+        processing_finished_at: new Date().toISOString(),
+      })
+      .in("id", ids);
+    throw new Error(error.message);
+  }
   return { enqueued: stale.length, variant, hash };
 }
 
@@ -123,20 +139,26 @@ const PERMANENT_CODES = [
 ];
 
 export async function processImageJob(admin: Admin, job: Job): Promise<void> {
-  const { data: image } = await admin
+  const { data: image, error: imageError } = await admin
     .from("property_images")
     .select("id, property_id, storage_path, original_storage_path, destination_hash, processed_checksum")
     .eq("id", job.image_id)
     .maybeSingle();
+  if (imageError) throw new WatermarkError("image_read_failed", imageError.message);
   if (!image) {
     await admin.from("property_image_jobs").update({ status: "cancelled" }).eq("id", job.id);
     return;
   }
 
-  await admin
+  const { error: processingError } = await admin
     .from("property_images")
-    .update({ processing_status: "processing", processing_started_at: new Date().toISOString() })
+    .update({
+      processing_status: "processing",
+      processing_started_at: new Date().toISOString(),
+      processing_finished_at: null,
+    })
     .eq("id", job.image_id);
+  if (processingError) throw new WatermarkError("persist_failed", processingError.message);
 
   const originalPath: string = image.original_storage_path ?? image.storage_path;
   const download = await admin.storage.from(BUCKET).download(originalPath);
@@ -150,9 +172,10 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     .from(BUCKET)
     .upload(paths.processed, result.processed, { contentType: "image/jpeg", upsert: true });
   if (upload.error) throw new WatermarkError("upload_failed", upload.error.message);
-  await admin.storage
+  const thumbnailUpload = await admin.storage
     .from(BUCKET)
     .upload(paths.thumbnail, result.thumbnail, { contentType: "image/jpeg", upsert: true });
+  if (thumbnailUpload.error) throw new WatermarkError("upload_failed", thumbnailUpload.error.message);
 
   // Integridade: só é "pronta" depois que o arquivo final volta legível do Storage.
   const verify = await admin.storage.from(BUCKET).download(paths.processed);
