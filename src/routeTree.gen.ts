@@ -49,6 +49,7 @@ import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/a
 import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
 import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes/api/public/hooks/property-import-worker'
 import { Route as ApiPublicHooksPropertyImageWorkerRouteImport } from './routes/api/public/hooks/property-image-worker'
+import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
@@ -262,6 +263,12 @@ const ApiPublicHooksPropertyImageWorkerRoute =
     path: '/api/public/hooks/property-image-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksPropertyDriveWorkerRoute =
+  ApiPublicHooksPropertyDriveWorkerRouteImport.update({
+    id: '/api/public/hooks/property-drive-worker',
+    path: '/api/public/hooks/property-drive-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksGoogleCalendarSyncRoute =
   ApiPublicHooksGoogleCalendarSyncRouteImport.update({
     id: '/api/public/hooks/google-calendar-sync',
@@ -329,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
@@ -373,6 +381,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
@@ -421,6 +430,7 @@ export interface FileRoutesById {
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
@@ -469,6 +479,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-worker'
     | '/api/public/hooks/property-import-worker'
     | '/api/public/hooks/property-sync-reconcile'
@@ -513,6 +524,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-worker'
     | '/api/public/hooks/property-import-worker'
     | '/api/public/hooks/property-sync-reconcile'
@@ -560,6 +572,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-worker'
     | '/api/public/hooks/property-import-worker'
     | '/api/public/hooks/property-sync-reconcile'
@@ -583,6 +596,7 @@ export interface RootRouteChildren {
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
+  ApiPublicHooksPropertyDriveWorkerRoute: typeof ApiPublicHooksPropertyDriveWorkerRoute
   ApiPublicHooksPropertyImageWorkerRoute: typeof ApiPublicHooksPropertyImageWorkerRoute
   ApiPublicHooksPropertyImportWorkerRoute: typeof ApiPublicHooksPropertyImportWorkerRoute
   ApiPublicHooksPropertySyncReconcileRoute: typeof ApiPublicHooksPropertySyncReconcileRoute
@@ -875,6 +889,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPropertyImageWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/property-drive-worker': {
+      id: '/api/public/hooks/property-drive-worker'
+      path: '/api/public/hooks/property-drive-worker'
+      fullPath: '/api/public/hooks/property-drive-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertyDriveWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/google-calendar-sync': {
       id: '/api/public/hooks/google-calendar-sync'
       path: '/api/public/hooks/google-calendar-sync'
@@ -1015,6 +1036,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
+  ApiPublicHooksPropertyDriveWorkerRoute:
+    ApiPublicHooksPropertyDriveWorkerRoute,
   ApiPublicHooksPropertyImageWorkerRoute:
     ApiPublicHooksPropertyImageWorkerRoute,
   ApiPublicHooksPropertyImportWorkerRoute:
