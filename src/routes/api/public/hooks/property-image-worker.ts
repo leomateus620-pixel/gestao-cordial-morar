@@ -25,10 +25,10 @@ export const Route = createFileRoute("/api/public/hooks/property-image-worker")(
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        let limit = 4;
+        let limit = 2;
         try {
           const body = (await request.json()) as { limit?: number } | null;
-          if (body && typeof body.limit === "number") limit = Math.min(6, Math.max(1, body.limit));
+          if (body && typeof body.limit === "number") limit = Math.min(3, Math.max(1, body.limit));
         } catch {
           // corpo vazio é válido
         }
@@ -38,6 +38,16 @@ export const Route = createFileRoute("/api/public/hooks/property-image-worker")(
 
         try {
           const result = await runImageWorker(supabaseAdmin, { limit });
+          // Enquanto sobrar fila, o próprio worker chama o próximo lote:
+          // lotes pequenos nunca estouram tempo/memória e a fila drena sozinha.
+          if (result.pending > 0 && result.claimed > 0) {
+            void fetch(new URL(request.url).toString(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json", apikey: provided },
+              body: JSON.stringify({ limit }),
+              signal: AbortSignal.timeout(1000),
+            }).catch(() => undefined);
+          }
           return Response.json({ ok: true, ...result });
         } catch (error) {
           const { sanitizeMessage } = await import("@/lib/imobibrasil/errors");
@@ -47,3 +57,4 @@ export const Route = createFileRoute("/api/public/hooks/property-image-worker")(
     },
   },
 });
+
