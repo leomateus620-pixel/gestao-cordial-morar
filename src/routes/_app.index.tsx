@@ -157,7 +157,7 @@ function Dashboard() {
       {isAdminOwner && (
         <section className="mb-5 grid min-w-0 gap-4 lg:grid-cols-3">
           <RentalVsSaleCard />
-          <ComparativoCard />
+          <PropertyIntelligenceCard />
         </section>
       )}
 
