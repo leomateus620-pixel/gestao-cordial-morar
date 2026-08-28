@@ -1033,11 +1033,14 @@ export async function runDriveWorker(
             status: "retry",
             run_after: new Date(Date.now() + delay).toISOString(),
             lease_expires_at: null,
+            // Continuar o mesmo lote não consome tentativa: só falha real consome.
+            attempts: result.hasMore ? Math.max(0, job.attempts - 1) : job.attempts,
             // Continuar de onde parou é responsabilidade do próprio vínculo
             // de cada arquivo (drive_file_id + checkpoint resumível).
             cursor: { has_more: result.hasMore, at: new Date().toISOString() },
           } as never)
           .eq("id", job.id);
+
       } else {
 
         await admin
