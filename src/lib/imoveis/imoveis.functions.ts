@@ -614,7 +614,11 @@ export const deleteImovel = createServerFn({ method: "POST" })
       provider: string;
       enabled: boolean;
       external_property_id: string | null;
-    }>).filter((link) => link.external_property_id);
+    }>).filter((link) => link.external_property_id) as Array<{
+      provider: "cordial" | "morar";
+      enabled: boolean;
+      external_property_id: string | null;
+    }>;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
