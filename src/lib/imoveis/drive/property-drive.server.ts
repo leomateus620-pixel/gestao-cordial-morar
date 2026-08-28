@@ -587,6 +587,9 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
     video: { total: 0, synced: 0, pending: 0, failed: 0 },
   };
   const indexes: Record<DriveCategory, number> = { horizontal: 0, vertical: 0, video: 0 };
+  const budget: Budget = { remaining: MAX_UPLOADS_PER_RUN };
+  let hasMore = false;
+
 
   // -------- Fotos --------
   for (const image of images) {
