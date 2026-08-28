@@ -2328,6 +2328,7 @@ export type Database = {
           id: string
           is_cover: boolean
           mime_type: string | null
+          orientation_override: string | null
           original_checksum: string | null
           original_storage_path: string | null
           position: number
@@ -2358,6 +2359,7 @@ export type Database = {
           id?: string
           is_cover?: boolean
           mime_type?: string | null
+          orientation_override?: string | null
           original_checksum?: string | null
           original_storage_path?: string | null
           position?: number
@@ -2388,6 +2390,7 @@ export type Database = {
           id?: string
           is_cover?: boolean
           mime_type?: string | null
+          orientation_override?: string | null
           original_checksum?: string | null
           original_storage_path?: string | null
           position?: number
