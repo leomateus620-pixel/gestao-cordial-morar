@@ -1968,6 +1968,9 @@ export type Database = {
           last_error_message: string | null
           mime_type: string | null
           property_id: string
+          resumable_expires_at: string | null
+          resumable_offset: number
+          resumable_session_url: string | null
           retry_count: number
           size_bytes: number | null
           source_checksum: string | null
@@ -1988,6 +1991,9 @@ export type Database = {
           last_error_message?: string | null
           mime_type?: string | null
           property_id: string
+          resumable_expires_at?: string | null
+          resumable_offset?: number
+          resumable_session_url?: string | null
           retry_count?: number
           size_bytes?: number | null
           source_checksum?: string | null
@@ -2008,6 +2014,9 @@ export type Database = {
           last_error_message?: string | null
           mime_type?: string | null
           property_id?: string
+          resumable_expires_at?: string | null
+          resumable_offset?: number
+          resumable_session_url?: string | null
           retry_count?: number
           size_bytes?: number | null
           source_checksum?: string | null
@@ -2122,6 +2131,7 @@ export type Database = {
           attempts: number
           correlation_id: string | null
           created_at: string
+          cursor: Json | null
           id: string
           last_error_code: string | null
           last_error_message: string | null
@@ -2138,6 +2148,7 @@ export type Database = {
           attempts?: number
           correlation_id?: string | null
           created_at?: string
+          cursor?: Json | null
           id?: string
           last_error_code?: string | null
           last_error_message?: string | null
@@ -2154,6 +2165,7 @@ export type Database = {
           attempts?: number
           correlation_id?: string | null
           created_at?: string
+          cursor?: Json | null
           id?: string
           last_error_code?: string | null
           last_error_message?: string | null
@@ -2337,6 +2349,8 @@ export type Database = {
           processed_storage_path: string | null
           processing_error_code: string | null
           processing_error_message: string | null
+          processing_finished_at: string | null
+          processing_started_at: string | null
           processing_status: string
           property_id: string
           size_bytes: number | null
@@ -2368,6 +2382,8 @@ export type Database = {
           processed_storage_path?: string | null
           processing_error_code?: string | null
           processing_error_message?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
           processing_status?: string
           property_id: string
           size_bytes?: number | null
@@ -2399,6 +2415,8 @@ export type Database = {
           processed_storage_path?: string | null
           processing_error_code?: string | null
           processing_error_message?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
           processing_status?: string
           property_id?: string
           size_bytes?: number | null
@@ -4647,6 +4665,7 @@ export type Database = {
           attempts: number
           correlation_id: string | null
           created_at: string
+          cursor: Json | null
           id: string
           last_error_code: string | null
           last_error_message: string | null
@@ -4695,6 +4714,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_image_reclaim_stale: { Args: { _max?: number }; Returns: number }
       property_import_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
         Returns: {
