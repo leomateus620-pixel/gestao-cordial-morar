@@ -24,9 +24,16 @@ export function PropertyPhotosStep({
   const media = usePropertyMedia(propertyId ?? undefined);
   const rows = images.data ?? [];
   const marcaAtual = WATERMARK_COMBINED_LABEL;
-  const pendentes = rows.filter((image) => image.processingStatus === "pending").length;
-  const falhas = rows.filter((image) => image.processingStatus === "failed").length;
+  const pendentes = rows.filter(
+    (image) => image.processingStatus === "pending" || image.processingStatus === "processing",
+  ).length;
+  const falhas = rows.filter((image) => image.processingStatus.startsWith("failed")).length;
   const prontas = rows.length - pendentes - falhas;
+  const enviando = media.progress.filter(
+    (item) => item.status === "preparando" || item.status === "enviando" || item.status === "processando",
+  ).length;
+  const totalLote = media.progress.length;
+
 
   // Trocar o destino regenera as marcas a partir do original.
   const targetsKey = [...destinos].sort().join(",");
