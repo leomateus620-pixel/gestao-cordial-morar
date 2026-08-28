@@ -37,11 +37,26 @@ export const Route = createFileRoute("/api/public/hooks/property-drive-worker")(
 
         try {
           const result = await runDriveWorker(supabaseAdmin, { limit });
-          return Response.json({ ok: true, ...result });
+          // Cada execução envia só um bloco de arquivos; se ainda houver imóvel
+          // na fila, o próprio worker chama o próximo bloco.
+          const { count } = await supabaseAdmin
+            .from("property_drive_jobs")
+            .select("id", { count: "exact", head: true })
+            .in("status", ["pending", "retry"]);
+          if ((count ?? 0) > 0 && result.claimed > 0) {
+            void fetch(new URL(request.url).toString(), {
+              method: "POST",
+              headers: { "Content-Type": "application/json", apikey: provided },
+              body: JSON.stringify({ limit }),
+              signal: AbortSignal.timeout(1000),
+            }).catch(() => undefined);
+          }
+          return Response.json({ ok: true, pending: count ?? 0, ...result });
         } catch (error) {
           const { sanitizeMessage } = await import("@/lib/imobibrasil/errors");
           return Response.json({ ok: false, error: sanitizeMessage(error) }, { status: 500 });
         }
+
       },
     },
   },
