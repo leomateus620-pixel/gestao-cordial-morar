@@ -58,7 +58,8 @@ function NovoImovelPage() {
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
-  const [publicar, setPublicar] = useState(false);
+  /** Publicar é a ação padrão da última etapa: os destinos vêm da Etapa 1. */
+  const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
   const [draftId, setDraftId] = useState<string | null>(null);
   const images = usePropertyImages(draftId ?? undefined);
