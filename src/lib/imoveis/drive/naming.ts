@@ -15,6 +15,7 @@ export const DRIVE_SUBFOLDERS: Record<DriveCategory, string> = {
 /** Remove o que o Drive/So trata mal e normaliza espaços. */
 export function sanitizeDriveSegment(value: string, max = 120): string {
   return (value || "")
+    // eslint-disable-next-line no-control-regex
     .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
