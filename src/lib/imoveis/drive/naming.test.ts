@@ -11,7 +11,11 @@ import {
 
 test("somente Cordial gera pasta com o código Cordial", () => {
   assert.equal(
-    buildPropertyDriveFolderName({ cordialCode: "1234", morarCode: "5678", providers: ["cordial"] }),
+    buildPropertyDriveFolderName({
+      cordialCode: "1234",
+      morarCode: "5678",
+      providers: ["cordial"],
+    }),
     "IMÓVEL - CORDIAL 1234",
   );
 });
@@ -79,7 +83,9 @@ test("nome de arquivo previsível e ordenável", () => {
 
 test("link da pasta raiz é validado por host e formato", () => {
   assert.equal(
-    parseDriveFolderId("https://drive.google.com/drive/folders/1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf?usp=drive_link"),
+    parseDriveFolderId(
+      "https://drive.google.com/drive/folders/1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf?usp=drive_link",
+    ),
     "1JRCFkohIiGUjQNF5kboEaXfrhcoGosEf",
   );
   assert.equal(

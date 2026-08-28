@@ -14,11 +14,14 @@ export const DRIVE_SUBFOLDERS: Record<DriveCategory, string> = {
 
 /** Remove o que o Drive/So trata mal e normaliza espaços. */
 export function sanitizeDriveSegment(value: string, max = 120): string {
-  return (value || "")
-    .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
+  return (
+    (value || "")
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, max)
+  );
 }
 
 export function sanitizeCode(code: string | null | undefined): string | null {
@@ -42,7 +45,8 @@ export function buildPropertyDriveFolderName(input: {
   const cordial = sanitizeCode(input.cordialCode);
   const morar = sanitizeCode(input.morarCode);
   const parts: string[] = [];
-  if ((providers.size === 0 || providers.has("cordial")) && cordial) parts.push(`CORDIAL ${cordial}`);
+  if ((providers.size === 0 || providers.has("cordial")) && cordial)
+    parts.push(`CORDIAL ${cordial}`);
   if ((providers.size === 0 || providers.has("morar")) && morar) parts.push(`MORAR ${morar}`);
   if (!parts.length) {
     const fallback = sanitizeCode(input.fallback) ?? "SEM CÓDIGO";
@@ -62,7 +66,8 @@ export function buildFilePrefix(input: {
   const cordial = sanitizeCode(input.cordialCode);
   const morar = sanitizeCode(input.morarCode);
   const parts: string[] = [];
-  if ((providers.size === 0 || providers.has("cordial")) && cordial) parts.push(`CORDIAL-${cordial}`);
+  if ((providers.size === 0 || providers.has("cordial")) && cordial)
+    parts.push(`CORDIAL-${cordial}`);
   if ((providers.size === 0 || providers.has("morar")) && morar) parts.push(`MORAR-${morar}`);
   if (!parts.length) parts.push(sanitizeCode(input.fallback) ?? "IMOVEL");
   return parts.join("_");

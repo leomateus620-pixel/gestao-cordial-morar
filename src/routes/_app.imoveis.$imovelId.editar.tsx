@@ -123,7 +123,8 @@ function EditarImovelPage() {
             {detail.codigoMorar ? ` · Morar ${detail.codigoMorar}` : ""}
           </h1>
           <p className="text-[12px] text-foreground/55">
-            Ao salvar, as alterações são enfileiradas apenas para os sites já vinculados a este imóvel.
+            Ao salvar, as alterações são enfileiradas apenas para os sites já vinculados a este
+            imóvel.
           </p>
         </div>
       </div>
@@ -147,7 +148,6 @@ function EditarImovelPage() {
           },
         ]}
         bairros={facets.data?.bairros ?? []}
-
         onCancel={() => navigate({ to: "/imoveis/$imovelId", params: { imovelId } })}
         onSubmit={handleSubmit}
       />

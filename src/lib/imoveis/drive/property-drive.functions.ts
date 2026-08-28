@@ -36,7 +36,13 @@ export type PropertyDriveStatus = {
   providers: string[];
   categories: DriveCategoryState[];
   videos: Array<{ id: string; fileName: string; sizeBytes: number | null; status: string }>;
-  photos: Array<{ id: string; fileName: string; category: DriveCategory; status: string; error: string | null }>;
+  photos: Array<{
+    id: string;
+    fileName: string;
+    category: DriveCategory;
+    status: string;
+    error: string | null;
+  }>;
   lastError: string | null;
 };
 
@@ -46,7 +52,9 @@ function categoryState(
   totalMedia: number,
 ): DriveCategoryState {
   const synced = items.filter((i) => i.sync_status === "synced").length;
-  const uploading = items.filter((i) => i.sync_status === "uploading" || i.sync_status === "verifying").length;
+  const uploading = items.filter(
+    (i) => i.sync_status === "uploading" || i.sync_status === "verifying",
+  ).length;
   const failed = items.filter((i) => i.sync_status.startsWith("failed")).length;
   let status: DriveCategoryState["status"] = "aguardando";
   if (totalMedia === 0) status = "aguardando";
@@ -67,7 +75,8 @@ function categoryState(
 
 async function kickDriveWorker() {
   try {
-    const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const secret =
+      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
@@ -143,7 +152,12 @@ export const setPropertyDriveRoot = createServerFn({ method: "POST" })
       configuredAt: new Date().toISOString(),
       configuredBy: context.userId,
     });
-    return { ok: true as const, status: validation.status, message: null, folderName: validation.name };
+    return {
+      ok: true as const,
+      status: validation.status,
+      message: null,
+      folderName: validation.name,
+    };
   });
 
 // ============ Estado da Etapa 8 ============
@@ -168,11 +182,7 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
     };
 
     const providers = Array.from(
-      new Set(
-        (property.publish_targets ?? []).filter(
-          (p) => p === "cordial" || p === "morar",
-        ),
-      ),
+      new Set((property.publish_targets ?? []).filter((p) => p === "cordial" || p === "morar")),
     );
     if (!providers.length && (property.carteira === "cordial" || property.carteira === "morar")) {
       providers.push(property.carteira);
@@ -228,8 +238,12 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       sync_status: string;
       last_error_message: string | null;
     }>;
-    const byImage = new Map(fileRows.filter((f) => f.image_id).map((f) => [f.image_id as string, f]));
-    const byVideo = new Map(fileRows.filter((f) => f.video_id).map((f) => [f.video_id as string, f]));
+    const byImage = new Map(
+      fileRows.filter((f) => f.image_id).map((f) => [f.image_id as string, f]),
+    );
+    const byVideo = new Map(
+      fileRows.filter((f) => f.video_id).map((f) => [f.video_id as string, f]),
+    );
 
     const photos = imageRows.map((image) => {
       const category = classifyOrientation({
@@ -251,17 +265,17 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       };
     });
 
-    const categories: DriveCategoryState[] = (["horizontal", "vertical", "video"] as DriveCategory[]).map(
-      (category) => {
-        if (category === "video") {
-          const items = videoRows.map((v) => byVideo.get(v.id) ?? { sync_status: "pending" });
-          return categoryState(category, items, videoRows.length);
-        }
-        const inCategory = photos.filter((p) => p.category === category);
-        const items = inCategory.map((p) => ({ sync_status: p.status }));
-        return categoryState(category, items, inCategory.length);
-      },
-    );
+    const categories: DriveCategoryState[] = (
+      ["horizontal", "vertical", "video"] as DriveCategory[]
+    ).map((category) => {
+      if (category === "video") {
+        const items = videoRows.map((v) => byVideo.get(v.id) ?? { sync_status: "pending" });
+        return categoryState(category, items, videoRows.length);
+      }
+      const inCategory = photos.filter((p) => p.category === category);
+      const items = inCategory.map((p) => ({ sync_status: p.status }));
+      return categoryState(category, items, inCategory.length);
+    });
 
     let connected = true;
     let connectionMessage: string | null = null;
@@ -323,7 +337,8 @@ export const syncPropertyDriveNow = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { ensurePropertyDriveStructure, enqueueDriveJob } = await import("./property-drive.server");
+    const { ensurePropertyDriveStructure, enqueueDriveJob } =
+      await import("./property-drive.server");
     const structure = await ensurePropertyDriveStructure(supabaseAdmin, data.propertyId);
     await enqueueDriveJob(supabaseAdmin, data.propertyId);
     await kickDriveWorker();
@@ -338,7 +353,12 @@ export const retryPropertyDriveFiles = createServerFn({ method: "POST" })
     const { enqueueDriveJob } = await import("./property-drive.server");
     let query = supabaseAdmin
       .from("property_drive_files")
-      .update({ sync_status: "pending", retry_count: 0, last_error_code: null, last_error_message: null } as never)
+      .update({
+        sync_status: "pending",
+        retry_count: 0,
+        last_error_code: null,
+        last_error_message: null,
+      } as never)
       .eq("property_id", data.propertyId);
     if (data.fileId) query = query.eq("id", data.fileId);
     if (data.category) query = query.eq("category", data.category);
@@ -352,7 +372,13 @@ export const retryPropertyDriveFiles = createServerFn({ method: "POST" })
 /** Correção manual da orientação: move o vínculo, nunca duplica o arquivo. */
 export const setPropertyImageOrientation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; imageId: string; orientation: "horizontal" | "vertical" | null }) => data)
+  .inputValidator(
+    (data: {
+      propertyId: string;
+      imageId: string;
+      orientation: "horizontal" | "vertical" | null;
+    }) => data,
+  )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("property_images")
@@ -372,11 +398,14 @@ export const setPropertyImageOrientation = createServerFn({ method: "POST" })
 
 export const createPropertyVideoUploadUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; fileName: string; mimeType: string; sizeBytes: number }) => {
-    if (!ACCEPTED_VIDEO_MIME.includes(data.mimeType)) throw new Error("Formato de vídeo não suportado.");
-    if (data.sizeBytes > MAX_VIDEO_BYTES) throw new Error("O vídeo excede o limite de 500 MB.");
-    return data;
-  })
+  .inputValidator(
+    (data: { propertyId: string; fileName: string; mimeType: string; sizeBytes: number }) => {
+      if (!ACCEPTED_VIDEO_MIME.includes(data.mimeType))
+        throw new Error("Formato de vídeo não suportado.");
+      if (data.sizeBytes > MAX_VIDEO_BYTES) throw new Error("O vídeo excede o limite de 500 MB.");
+      return data;
+    },
+  )
   .handler(async ({ data, context }) => {
     const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
     const path = `${data.propertyId}/videos/${crypto.randomUUID()}-${safe}`;
@@ -398,7 +427,8 @@ export const registerPropertyVideo = createServerFn({ method: "POST" })
       sizeBytes: number;
       checksum?: string | null;
     }) => {
-      if (!ACCEPTED_VIDEO_MIME.includes(data.mimeType)) throw new Error("Formato de vídeo não suportado.");
+      if (!ACCEPTED_VIDEO_MIME.includes(data.mimeType))
+        throw new Error("Formato de vídeo não suportado.");
       return data;
     },
   )
