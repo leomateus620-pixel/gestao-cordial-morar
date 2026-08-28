@@ -11,7 +11,11 @@ import {
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
-import { prepareImageForUpload, sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
+import {
+  prepareImageForUpload,
+  sha256Hex,
+  uploadSignedWithProgress,
+} from "@/lib/imoveis/image-client";
 import type { PropertyImage } from "@/types/property";
 
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -25,6 +29,7 @@ export type UploadItemStatus =
   | "processando"
   | "pronta"
   | "duplicada"
+  | "retomada"
   | "erro";
 
 export type UploadItem = {
@@ -45,7 +50,10 @@ export function usePropertyImages(propertyId: string | undefined) {
     // Enquanto houver foto na fila, acompanhamos a marca sendo aplicada.
     refetchInterval: (query) =>
       (query.state.data ?? []).some(
-        (image) => image.processingStatus === "pending" || image.processingStatus === "processing",
+        (image) =>
+          image.processingStatus === "pending" ||
+          image.processingStatus === "processing" ||
+          image.processingStatus === "failed_retryable",
       )
         ? 3000
         : false,
@@ -106,7 +114,9 @@ export function usePropertyMedia(propertyId: string | undefined) {
           contentHash: hash,
         },
       });
-      patch(key, { status: result.duplicated ? "duplicada" : "pronta" });
+      patch(key, {
+        status: result.resumed ? "retomada" : result.duplicated ? "duplicada" : "pronta",
+      });
     },
     [createUrl, patch, propertyId, register],
   );
@@ -116,20 +126,23 @@ export function usePropertyMedia(propertyId: string | undefined) {
     async (entries: { key: string; file: File }[]) => {
       setUploading(true);
       let cursor = 0;
-      const workers = Array.from({ length: Math.min(UPLOAD_CONCURRENCY, entries.length) }, async () => {
-        while (cursor < entries.length) {
-          const entry = entries[cursor++]!;
-          try {
-            await sendOne(entry.key, entry.file);
-          } catch (err) {
-            patch(entry.key, {
-              status: "erro",
-              error: (err as Error)?.message ?? "Não foi possível enviar esta foto.",
-            });
+      const workers = Array.from(
+        { length: Math.min(UPLOAD_CONCURRENCY, entries.length) },
+        async () => {
+          while (cursor < entries.length) {
+            const entry = entries[cursor++]!;
+            try {
+              await sendOne(entry.key, entry.file);
+            } catch (err) {
+              patch(entry.key, {
+                status: "erro",
+                error: (err as Error)?.message ?? "Não foi possível enviar esta foto.",
+              });
+            }
+            invalidate();
           }
-          invalidate();
-        }
-      });
+        },
+      );
       await Promise.all(workers);
       setUploading(false);
       invalidate();
@@ -170,7 +183,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   );
 
   const setCover = useMutation({
-    mutationFn: (imageId: string) => setCoverFn({ data: { propertyId: propertyId as string, imageId } }),
+    mutationFn: (imageId: string) =>
+      setCoverFn({ data: { propertyId: propertyId as string, imageId } }),
     onSuccess: invalidate,
   });
 
@@ -181,7 +195,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   });
 
   const remove = useMutation({
-    mutationFn: (imageId: string) => removeFn({ data: { propertyId: propertyId as string, imageId } }),
+    mutationFn: (imageId: string) =>
+      removeFn({ data: { propertyId: propertyId as string, imageId } }),
     onSuccess: invalidate,
   });
 
@@ -192,7 +207,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   });
 
   const updateTargets = useMutation({
-    mutationFn: (targets: string[]) => targetsFn({ data: { propertyId: propertyId as string, targets } }),
+    mutationFn: (targets: string[]) =>
+      targetsFn({ data: { propertyId: propertyId as string, targets } }),
     onSuccess: invalidate,
   });
 

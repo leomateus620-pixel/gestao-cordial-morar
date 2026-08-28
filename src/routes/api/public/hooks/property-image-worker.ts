@@ -33,10 +33,9 @@ export const Route = createFileRoute("/api/public/hooks/property-image-worker")(
           // corpo vazio é válido
         }
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
-
         try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { runImageWorker } = await import("@/lib/imoveis/image-pipeline.server");
           const result = await runImageWorker(supabaseAdmin, { limit });
           // Enquanto sobrar fila, o próprio worker chama o próximo lote:
           // lotes pequenos nunca estouram tempo/memória e a fila drena sozinha.
@@ -57,4 +56,3 @@ export const Route = createFileRoute("/api/public/hooks/property-image-worker")(
     },
   },
 });
-

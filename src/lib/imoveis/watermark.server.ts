@@ -3,15 +3,7 @@
  * Sempre parte do arquivo original privado e devolve derivadas novas —
  * o original nunca é sobrescrito.
  */
-import {
-  PhotonImage,
-  SamplingFilter,
-  fliph,
-  flipv,
-  resize,
-  rotate,
-  watermark as photonWatermark,
-} from "@cf-wasm/photon";
+import type { PhotonImage as PhotonImageType } from "@cf-wasm/photon/node";
 import {
   WATERMARK_GEOMETRY,
   WATERMARK_LIMITS,
@@ -57,11 +49,19 @@ function templateBytes(variant: WatermarkVariant): Uint8Array {
   return bytes;
 }
 
-
 /** Assinatura real do arquivo — não confiamos no MIME informado pelo navegador. */
-export function detectImageType(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {
-  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
-  if (bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47)
+export function detectImageType(
+  bytes: Uint8Array,
+): "image/jpeg" | "image/png" | "image/webp" | null {
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return "image/jpeg";
+  if (
+    bytes.length > 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  )
     return "image/png";
   if (
     bytes.length > 12 &&
@@ -106,7 +106,23 @@ export function readExifOrientation(bytes: Uint8Array): number {
   return 1;
 }
 
-function applyOrientation(image: PhotonImage, orientation: number): PhotonImage {
+type PhotonModule = typeof import("@cf-wasm/photon/node");
+let photonModulePromise: Promise<PhotonModule> | null = null;
+
+/** A distribuição node incorpora os bytes do WASM; o import padrão depende de
+ * um arquivo externo que não existe no pacote publicado do Worker. O import
+ * tardio também evita compilar WebAssembly durante a avaliação global. */
+function loadPhoton(): Promise<PhotonModule> {
+  photonModulePromise ??= import("@cf-wasm/photon/node");
+  return photonModulePromise;
+}
+
+function applyOrientation(
+  image: PhotonImageType,
+  orientation: number,
+  photon: PhotonModule,
+): PhotonImageType {
+  const { fliph, flipv, rotate } = photon;
   switch (orientation) {
     case 2:
       fliph(image);
@@ -166,7 +182,12 @@ export async function applyWatermark(
   const detected = detectImageType(original);
   if (!detected) throw new WatermarkError("invalid_type", "Arquivo não é uma imagem suportada.");
 
-  let photo: PhotonImage;
+  const photon = await loadPhoton();
+  const { PhotonImage, SamplingFilter, resize, watermark: photonWatermark } = photon;
+  let photo: PhotonImageType;
+  let template: PhotonImageType | null = null;
+  let mark: PhotonImageType | null = null;
+  let thumb: PhotonImageType | null = null;
   try {
     photo = PhotonImage.new_from_byteslice(original);
   } catch {
@@ -176,49 +197,64 @@ export async function applyWatermark(
   if (photo.get_width() * photo.get_height() > WATERMARK_LIMITS.maxPixels)
     throw new WatermarkError("too_many_pixels", "Foto com resolução acima do limite.");
 
-  if (detected === "image/jpeg") photo = applyOrientation(photo, readExifOrientation(original));
+  try {
+    if (detected === "image/jpeg") {
+      const oriented = applyOrientation(photo, readExifOrientation(original), photon);
+      if (oriented !== photo) {
+        photo.free();
+        photo = oriented;
+      }
+    }
 
-  const maxEdge = Math.max(photo.get_width(), photo.get_height());
-  if (maxEdge > WATERMARK_GEOMETRY.maxOutputEdgePx) {
-    const scale = WATERMARK_GEOMETRY.maxOutputEdgePx / maxEdge;
-    photo = resize(
-      photo,
-      Math.max(1, Math.round(photo.get_width() * scale)),
-      Math.max(1, Math.round(photo.get_height() * scale)),
-      SamplingFilter.Lanczos3,
+    const maxEdge = Math.max(photo.get_width(), photo.get_height());
+    if (maxEdge > WATERMARK_GEOMETRY.maxOutputEdgePx) {
+      const scale = WATERMARK_GEOMETRY.maxOutputEdgePx / maxEdge;
+      const resized = resize(
+        photo,
+        Math.max(1, Math.round(photo.get_width() * scale)),
+        Math.max(1, Math.round(photo.get_height() * scale)),
+        SamplingFilter.Lanczos3,
+      );
+      photo.free();
+      photo = resized;
+    }
+
+    if (Math.min(photo.get_width(), photo.get_height()) < WATERMARK_LIMITS.minEdgePx)
+      throw new WatermarkError("too_small", "Foto pequena demais para publicação.");
+
+    template = PhotonImage.new_from_byteslice(templateBytes(variant));
+    const placement = computePlacement(
+      photo.get_width(),
+      photo.get_height(),
+      template.get_width(),
+      template.get_height(),
+      variant,
     );
+    mark = resize(template, placement.width, placement.height, SamplingFilter.Lanczos3);
+    photonWatermark(photo, mark, BigInt(placement.x), BigInt(placement.y));
+
+    const processed = photo.get_bytes_jpeg(WATERMARK_GEOMETRY.jpegQuality);
+    const thumbWidth = Math.min(WATERMARK_GEOMETRY.thumbnailWidthPx, photo.get_width());
+    thumb = resize(
+      photo,
+      thumbWidth,
+      Math.max(1, Math.round((photo.get_height() * thumbWidth) / photo.get_width())),
+      SamplingFilter.Nearest,
+    );
+
+    return {
+      variant,
+      version: WATERMARK_VERSION,
+      processed,
+      processedChecksum: await sha256Hex(processed),
+      thumbnail: thumb.get_bytes_jpeg(WATERMARK_GEOMETRY.thumbnailQuality),
+      width: photo.get_width(),
+      height: photo.get_height(),
+    };
+  } finally {
+    thumb?.free();
+    mark?.free();
+    template?.free();
+    photo.free();
   }
-
-  if (Math.min(photo.get_width(), photo.get_height()) < WATERMARK_LIMITS.minEdgePx)
-    throw new WatermarkError("too_small", "Foto pequena demais para publicação.");
-
-  const template = PhotonImage.new_from_byteslice(templateBytes(variant));
-  const placement = computePlacement(
-    photo.get_width(),
-    photo.get_height(),
-    template.get_width(),
-    template.get_height(),
-    variant,
-  );
-  const mark = resize(template, placement.width, placement.height, SamplingFilter.Lanczos3);
-  photonWatermark(photo, mark, BigInt(placement.x), BigInt(placement.y));
-
-  const processed = photo.get_bytes_jpeg(WATERMARK_GEOMETRY.jpegQuality);
-  const thumbWidth = Math.min(WATERMARK_GEOMETRY.thumbnailWidthPx, photo.get_width());
-  const thumb = resize(
-    photo,
-    thumbWidth,
-    Math.max(1, Math.round((photo.get_height() * thumbWidth) / photo.get_width())),
-    SamplingFilter.Nearest,
-  );
-
-  return {
-    variant,
-    version: WATERMARK_VERSION,
-    processed,
-    processedChecksum: await sha256Hex(processed),
-    thumbnail: thumb.get_bytes_jpeg(WATERMARK_GEOMETRY.thumbnailQuality),
-    width: photo.get_width(),
-    height: photo.get_height(),
-  };
 }
