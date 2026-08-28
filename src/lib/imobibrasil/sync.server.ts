@@ -366,8 +366,12 @@ export async function processJob(admin: Admin, job: SyncJob) {
         last_synced_at: new Date().toISOString(),
       })
       .eq("id", publication.id);
+    // Exclusão pedida pelo usuário: apaga o cadastro assim que todos os sites confirmarem.
+    const { finalizePendingRemoval } = await import("@/lib/imoveis/purge.server");
+    await finalizePendingRemoval(admin, job.property_id);
     return { status: "deleted" as const };
   }
+
 
   if (job.action === "reconcile") {
     return reconcilePublication(admin, publication, job.correlation_id);
