@@ -1142,26 +1142,6 @@ export const projecoesFinanceirasSeed: ProjecaoFinanceira[] = [
   },
 ];
 
-export const dashboardComparativoCordialMorar = [
-  {
-    imobiliaria: "Cordial",
-    conversao: 28,
-    atendimentos: 142,
-    alugueis: 18,
-    vendas: 9,
-    receitaPrevista: 480000,
-    origemContatos: "Instagram",
-  },
-  {
-    imobiliaria: "Morar",
-    conversao: 22,
-    atendimentos: 96,
-    alugueis: 24,
-    vendas: 4,
-    receitaPrevista: 280000,
-    origemContatos: "Indicação",
-  },
-];
 
 export const dashboardEvolucaoMensal = [
   { mes: "Jan", cordial: 42, morar: 28, total: 70 },
