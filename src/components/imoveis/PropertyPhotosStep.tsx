@@ -107,31 +107,77 @@ export function PropertyPhotosStep({
         />
       </div>
 
-      {media.progress.length > 0 && (
-        <ul className="space-y-1 rounded-2xl bg-foreground/[0.04] p-3 text-[11px]">
-          {media.progress.map((item, i) => (
-            <li key={`${item.name}-${i}`} className="flex items-center justify-between gap-2">
-              <span className="truncate text-foreground/70">{item.name}</span>
-              <span
-                className={
-                  item.status === "erro"
-                    ? "text-rose-600"
-                    : item.status === "duplicada"
-                      ? "text-amber-600"
-                      : "text-foreground/55"
-                }
-              >
-                {item.status === "erro" ? item.error ?? "Falhou" : item.status}
-              </span>
-            </li>
-          ))}
-          <li className="pt-1 text-right">
+      {totalLote > 0 && (
+        <div className="space-y-2 rounded-2xl bg-foreground/[0.04] p-3 text-[11px]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold text-foreground/70">
+              {enviando > 0
+                ? `Enviando ${totalLote - enviando + 1} de ${totalLote}…`
+                : `${totalLote} ${totalLote === 1 ? "foto processada" : "fotos processadas"} neste envio`}
+            </span>
             <button type="button" onClick={media.clearProgress} className="font-semibold text-primary">
               Limpar
             </button>
-          </li>
-        </ul>
+          </div>
+          <ul className="space-y-1.5">
+            {media.progress.map((item) => (
+              <li key={item.key} className="flex items-center gap-2">
+                <img
+                  src={item.previewUrl}
+                  alt=""
+                  className="size-8 shrink-0 rounded-lg object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-foreground/70">{item.name}</p>
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-foreground/10">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        item.status === "erro" ? "bg-rose-500" : "bg-primary"
+                      }`}
+                      style={{
+                        width:
+                          item.status === "pronta" || item.status === "duplicada"
+                            ? "100%"
+                            : `${Math.max(6, item.progress)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 ${
+                    item.status === "erro"
+                      ? "text-rose-600"
+                      : item.status === "duplicada"
+                        ? "text-amber-600"
+                        : "text-foreground/55"
+                  }`}
+                >
+                  {item.status === "erro" ? (
+                    <button
+                      type="button"
+                      onClick={() => media.retryUpload(item.key)}
+                      className="inline-flex items-center gap-1 font-semibold text-rose-600"
+                    >
+                      <RefreshCw className="size-3" /> Tentar novamente
+                    </button>
+                  ) : item.status === "duplicada" ? (
+                    "Foto repetida"
+                  ) : item.status === "pronta" ? (
+                    "Enviada"
+                  ) : item.status === "processando" ? (
+                    "Aplicando marca"
+                  ) : item.status === "enviando" ? (
+                    `${item.progress}%`
+                  ) : (
+                    "Preparando"
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
+
 
       {!propertyId && (
         <p className="rounded-2xl bg-amber-500/10 p-3 text-[11px] font-medium text-amber-700">
