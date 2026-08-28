@@ -140,12 +140,10 @@ function NovoImovelPage() {
       } else {
         toast.success("Imóvel cadastrado no catálogo.");
       }
-      // Falha no Drive nunca bloqueia o cadastro nem a publicação.
-      try {
-        await drive.sync.mutateAsync();
-      } catch {
-        // a fila persistente retoma em segundo plano
-      }
+      // Drive roda em segundo plano: nunca segura a saída da tela de cadastro.
+      void drive.sync.mutateAsync().catch(() => {
+        // a fila persistente retoma sozinha
+      });
 
       navigate({ to: "/imoveis/$imovelId", params: { imovelId: propertyId } });
     } catch (err) {

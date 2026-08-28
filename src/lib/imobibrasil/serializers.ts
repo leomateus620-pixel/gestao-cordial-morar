@@ -141,6 +141,20 @@ export function boolToSimNao(value: boolean | null | undefined): "sim" | "nao" |
   return value ? "sim" : "nao";
 }
 
+/**
+ * Campos "liga/desliga" gravados como texto no banco (`true`/`false`, `sim`/`nao`).
+ * A API recusa `true`/`false` literais, então normalizamos para `sim`/`nao`.
+ */
+export function flagToSimNao(value: string | boolean | null | undefined): "sim" | "nao" | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "boolean") return value ? "sim" : "nao";
+  const text = value.trim().toLowerCase();
+  if (!text) return undefined;
+  if (["true", "sim", "s", "1", "yes"].includes(text)) return "sim";
+  if (["false", "nao", "não", "n", "0", "no"].includes(text)) return "nao";
+  return undefined;
+}
+
 /** `sim` / `nao` (sem acento) — exclusivo do multipart de imagem. */
 export function boolToImageSimNao(value: boolean): "sim" | "nao" {
   return value ? "sim" : "nao";
@@ -266,7 +280,7 @@ export function serializeProperty(
   assign(payload, "acomodacoes", intToString(property.acomodacoes));
   assign(payload, "pavimento", textOrUndefined(property.pavimento));
   assign(payload, "anoConstrucao", textOrUndefined(property.ano_construcao));
-  assign(payload, "mobiliado", textOrUndefined(property.mobiliado));
+  assign(payload, "mobiliado", flagToSimNao(property.mobiliado));
 
   // Conteúdo
   assign(payload, "descricaoImovel", textOrUndefined(property.descricao_imovel));

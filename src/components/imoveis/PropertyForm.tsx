@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
@@ -254,6 +254,22 @@ export function PropertyForm({
     // Só o conteúdo do formulário deve disparar o aviso ao pai.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values]);
+
+  /**
+   * Todo imóvel publicado precisa do número da imobiliária. Ao escolher o
+   * destino, reservamos o código automaticamente (uma vez por destino) — o
+   * botão "Gerar" continua disponível para trocar por outro.
+   */
+  const autoReserved = useRef<Set<PropertyCarteira>>(new Set());
+  useEffect(() => {
+    for (const provider of activeTargets) {
+      if (autoReserved.current.has(provider)) continue;
+      if (providerCodes[provider]?.code) continue;
+      autoReserved.current.add(provider);
+      void reserveCode(provider);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTargets.join(",")]);
 
   function set<K extends keyof PropertyFormValues>(key: K, value: PropertyFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
