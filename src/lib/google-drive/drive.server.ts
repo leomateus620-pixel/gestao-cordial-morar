@@ -32,7 +32,7 @@ function driveHeaders(extra?: HeadersInit): Headers {
   return h;
 }
 
-async function driveFetch(
+export async function driveFetch(
   url: string,
   init: RequestInit = {},
   attempt = 0,
@@ -47,13 +47,16 @@ async function driveFetch(
   return res;
 }
 
-async function driveJson<T = unknown>(url: string, init: RequestInit = {}): Promise<T> {
+export async function driveJson<T = unknown>(url: string, init: RequestInit = {}): Promise<T> {
   const res = await driveFetch(url, init);
   if (!res.ok) {
     throw new Error(`Drive API ${res.status}: ${await res.text()}`);
   }
   return (await res.json()) as T;
 }
+
+export const DRIVE_ENDPOINTS = { api: DRIVE_API, upload: DRIVE_UPLOAD_API } as const;
+
 
 // ============ Connection ping ============
 

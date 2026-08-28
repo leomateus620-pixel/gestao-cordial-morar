@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
 import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 import { GoogleDriveCard } from "@/components/configuracoes/GoogleDriveCard";
+import { PropertyDriveRootCard } from "@/components/configuracoes/PropertyDriveRootCard";
 import { agencies } from "@/lib/mock/data";
 import { useApp, useFiltered } from "@/store/app-store";
 
@@ -68,6 +69,7 @@ function Page() {
         <div className="space-y-3">
           <GoogleCalendarCard />
           <GoogleDriveCard />
+          <PropertyDriveRootCard />
         </div>
       </section>
 

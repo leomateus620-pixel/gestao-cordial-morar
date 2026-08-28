@@ -195,6 +195,7 @@ export function PropertyForm({
   onValuesChange,
   bairros,
   extraStep,
+  extraSteps,
 }: {
   initial: PropertyFormValues;
   submitLabel: string;
@@ -210,12 +211,20 @@ export function PropertyForm({
   onValuesChange?: (values: PropertyFormValues) => void;
   /** Bairros já usados nos imóveis publicados nos sites Cordial/Morar. */
   bairros?: string[];
-  /** Etapa opcional adicional (ex.: Etapa 7 — Agenciamento) renderizada ao final. */
+  /** Etapas opcionais adicionais (Etapa 7 — Agenciamento, Etapa 8 — Google Drive). */
   extraStep?: {
     label: string;
     render: (ctx: { values: PropertyFormValues; goToStep: (index: number) => void }) => ReactNode;
   };
+  extraSteps?: Array<{
+    label: string;
+    render: (ctx: { values: PropertyFormValues; goToStep: (index: number) => void }) => ReactNode;
+  }>;
 }) {
+  const extras = useMemo(
+    () => [...(extraStep ? [extraStep] : []), ...(extraSteps ?? [])],
+    [extraStep, extraSteps],
+  );
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
   const bairroListId = useId();
@@ -225,10 +234,7 @@ export function PropertyForm({
     if (values.bairro?.trim()) set.add(values.bairro.trim());
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [bairros, values.bairro]);
-  const STEPS = useMemo(
-    () => (extraStep ? [...BASE_STEPS, extraStep.label] : BASE_STEPS),
-    [extraStep],
-  );
+  const STEPS = useMemo(() => [...BASE_STEPS, ...extras.map((e) => e.label)], [extras]);
   const codes = usePropertyCodeReservation();
   const [providerCodes, setProviderCodes] = useState<ProviderCodes>(() => {
     const base: ProviderCodes = {};
@@ -690,8 +696,8 @@ export function PropertyForm({
           </>
         )}
 
-        {extraStep && step === BASE_STEPS.length
-          ? extraStep.render({ values, goToStep: setStep })
+        {step >= BASE_STEPS.length && extras[step - BASE_STEPS.length]
+          ? extras[step - BASE_STEPS.length]!.render({ values, goToStep: setStep })
           : null}
       </div>
 

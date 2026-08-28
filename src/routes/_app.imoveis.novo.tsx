@@ -16,6 +16,9 @@ import {
   emptyAgencyStepState,
   type AgencyStepState,
 } from "@/components/imoveis/PropertyAgencyStep";
+import { PropertyDriveStep } from "@/components/imoveis/PropertyDriveStep";
+import { usePropertyDrive } from "@/hooks/usePropertyDrive";
+
 import { useSession } from "@/lib/auth-mock";
 import { canAccessModule } from "@/lib/access-control";
 import { useEnqueuePropertySync } from "@/hooks/usePropertySync";
@@ -63,6 +66,7 @@ function NovoImovelPage() {
     (image) => image.processingStatus === "ready" || image.processingStatus === "legacy",
   ).length;
   const update = useUpdateImovel(draftId ?? undefined);
+  const drive = usePropertyDrive(draftId ?? undefined);
   /** Uma reserva ativa por provedor: retry/duplo clique substitui, nunca duplica. */
   const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
   const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
@@ -130,6 +134,13 @@ function NovoImovelPage() {
       } else {
         toast.success("Imóvel cadastrado no catálogo.");
       }
+      // Falha no Drive nunca bloqueia o cadastro nem a publicação.
+      try {
+        await drive.sync.mutateAsync();
+      } catch {
+        // a fila persistente retoma em segundo plano
+      }
+
       navigate({ to: "/imoveis/$imovelId", params: { imovelId: propertyId } });
     } catch (err) {
       toast.error((err as Error)?.message ?? "Não foi possível salvar o imóvel.");
@@ -158,21 +169,34 @@ function NovoImovelPage() {
         initial={emptyPropertyValues()}
         submitLabel={publicar && destinos.length ? "Cadastrar e publicar" : "Salvar rascunho"}
         pending={create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending}
-        extraStep={{
-          label: "Agenciamento",
-          render: ({ values, goToStep }) => (
-            <PropertyAgencyStep
-              values={values}
-              destinos={destinos.length ? destinos : [values.carteira]}
-              state={agency}
-              onChange={setAgency}
-              onEditStep={goToStep}
-              canRegister={canRegisterAgency}
-              corretorNome={session?.nome ?? "Você"}
-              fotosProntas={fotosProntas}
-            />
-          ),
-        }}
+        extraSteps={[
+          {
+            label: "Agenciamento",
+            render: ({ values, goToStep }) => (
+              <PropertyAgencyStep
+                values={values}
+                destinos={destinos.length ? destinos : [values.carteira]}
+                state={agency}
+                onChange={setAgency}
+                onEditStep={goToStep}
+                canRegister={canRegisterAgency}
+                corretorNome={session?.nome ?? "Você"}
+                fotosProntas={fotosProntas}
+              />
+            ),
+          },
+          {
+            label: "Google Drive",
+            render: ({ goToStep }) => (
+              <PropertyDriveStep
+                propertyId={draftId}
+                onRequestSave={ensureDraft}
+                onEditStep={goToStep}
+              />
+            ),
+          },
+        ]}
+
         destinos={destinos}
         onDestinosChange={setDestinos}
         propertyId={draftId}

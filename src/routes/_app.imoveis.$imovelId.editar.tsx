@@ -8,6 +8,7 @@ import {
   emptyPropertyValues,
   type PropertyFormValues,
 } from "@/components/imoveis/PropertyForm";
+import { PropertyDriveStep } from "@/components/imoveis/PropertyDriveStep";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useImoveisFacets, usePropertyDetail, useUpdateImovel } from "@/hooks/useImoveis";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
@@ -137,6 +138,14 @@ function EditarImovelPage() {
           reservationIds.current = { ...reservationIds.current, [provider]: reservationId };
         }}
         propertyId={imovelId}
+        extraSteps={[
+          {
+            label: "Google Drive",
+            render: ({ goToStep }) => (
+              <PropertyDriveStep propertyId={imovelId} onEditStep={goToStep} />
+            ),
+          },
+        ]}
         bairros={facets.data?.bairros ?? []}
 
         onCancel={() => navigate({ to: "/imoveis/$imovelId", params: { imovelId } })}

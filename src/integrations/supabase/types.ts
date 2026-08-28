@@ -1956,6 +1956,233 @@ export type Database = {
         }
         Relationships: []
       }
+      property_drive_files: {
+        Row: {
+          category: string
+          created_at: string
+          drive_file_id: string | null
+          drive_file_name: string | null
+          id: string
+          image_id: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          mime_type: string | null
+          property_id: string
+          retry_count: number
+          size_bytes: number | null
+          source_checksum: string | null
+          sync_status: string
+          updated_at: string
+          uploaded_at: string | null
+          verified_at: string | null
+          video_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          drive_file_id?: string | null
+          drive_file_name?: string | null
+          id?: string
+          image_id?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          mime_type?: string | null
+          property_id: string
+          retry_count?: number
+          size_bytes?: number | null
+          source_checksum?: string | null
+          sync_status?: string
+          updated_at?: string
+          uploaded_at?: string | null
+          verified_at?: string | null
+          video_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          drive_file_id?: string | null
+          drive_file_name?: string | null
+          id?: string
+          image_id?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          mime_type?: string | null
+          property_id?: string
+          retry_count?: number
+          size_bytes?: number | null
+          source_checksum?: string | null
+          sync_status?: string
+          updated_at?: string
+          uploaded_at?: string | null
+          verified_at?: string | null
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_drive_files_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_drive_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_drive_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_drive_files_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "property_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_drive_folders: {
+        Row: {
+          created_at: string
+          folder_name: string
+          horizontal_folder_id: string | null
+          id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          property_folder_id: string | null
+          property_folder_url: string | null
+          property_id: string
+          root_folder_id: string
+          status: string
+          updated_at: string
+          verified_at: string | null
+          vertical_folder_id: string | null
+          videos_folder_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          folder_name: string
+          horizontal_folder_id?: string | null
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          property_folder_id?: string | null
+          property_folder_url?: string | null
+          property_id: string
+          root_folder_id: string
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          vertical_folder_id?: string | null
+          videos_folder_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          folder_name?: string
+          horizontal_folder_id?: string | null
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          property_folder_id?: string | null
+          property_folder_url?: string | null
+          property_id?: string
+          root_folder_id?: string
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          vertical_folder_id?: string | null
+          videos_folder_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_drive_folders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_drive_folders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_drive_jobs: {
+        Row: {
+          attempts: number
+          correlation_id: string | null
+          created_at: string
+          id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          lease_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          property_id: string
+          run_after: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          correlation_id?: string | null
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          lease_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          property_id: string
+          run_after?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          correlation_id?: string | null
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          last_error_message?: string | null
+          lease_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          property_id?: string
+          run_after?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_drive_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_drive_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_image_jobs: {
         Row: {
           attempts: number
@@ -2101,6 +2328,7 @@ export type Database = {
           id: string
           is_cover: boolean
           mime_type: string | null
+          orientation_override: string | null
           original_checksum: string | null
           original_storage_path: string | null
           position: number
@@ -2131,6 +2359,7 @@ export type Database = {
           id?: string
           is_cover?: boolean
           mime_type?: string | null
+          orientation_override?: string | null
           original_checksum?: string | null
           original_storage_path?: string | null
           position?: number
@@ -2161,6 +2390,7 @@ export type Database = {
           id?: string
           is_cover?: boolean
           mime_type?: string | null
+          orientation_override?: string | null
           original_checksum?: string | null
           original_storage_path?: string | null
           position?: number
@@ -2680,6 +2910,66 @@ export type Database = {
           },
           {
             foreignKeyName: "property_sync_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_videos: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          position: number
+          property_id: string
+          size_bytes: number | null
+          storage_path: string
+          updated_at: string
+          upload_status: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          position?: number
+          property_id: string
+          size_bytes?: number | null
+          storage_path: string
+          updated_at?: string
+          upload_status?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          position?: number
+          property_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          updated_at?: string
+          upload_status?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_videos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_videos_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties_catalog"
@@ -4346,6 +4636,31 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      property_drive_claim_jobs: {
+        Args: { _lease_seconds?: number; _limit?: number; _worker: string }
+        Returns: {
+          attempts: number
+          correlation_id: string | null
+          created_at: string
+          id: string
+          last_error_code: string | null
+          last_error_message: string | null
+          lease_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          property_id: string
+          run_after: string
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "property_drive_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       property_image_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
