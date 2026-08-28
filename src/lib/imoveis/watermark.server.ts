@@ -192,7 +192,7 @@ export async function applyWatermark(
   if (Math.min(photo.get_width(), photo.get_height()) < WATERMARK_LIMITS.minEdgePx)
     throw new WatermarkError("too_small", "Foto pequena demais para publicação.");
 
-  const template = PhotonImage.new_from_byteslice(base64ToBytes(TEMPLATES[variant]));
+  const template = PhotonImage.new_from_byteslice(templateBytes(variant));
   const placement = computePlacement(
     photo.get_width(),
     photo.get_height(),
