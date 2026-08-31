@@ -11,11 +11,8 @@ import {
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
-import {
-  prepareImageForUpload,
-  sha256Hex,
-  uploadSignedWithProgress,
-} from "@/lib/imoveis/image-client";
+import { sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
+import { composeWatermarkedUpload } from "@/lib/imoveis/watermark-client";
 import type { PropertyImage } from "@/types/property";
 
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
