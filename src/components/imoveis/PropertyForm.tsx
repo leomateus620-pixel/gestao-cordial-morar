@@ -333,6 +333,18 @@ export function PropertyForm({
   }
 
 
+  /** Destino desmarcado devolve o número reservado para a fila. */
+  function releaseRemovedTargets(next: PropertyCarteira[]) {
+    for (const provider of destinos ?? []) {
+      if (next.includes(provider)) continue;
+      const reservationId = providerCodes[provider]?.reservationId;
+      autoReserved.current.delete(provider);
+      setProviderCode(provider, null);
+      set(provider === "cordial" ? "codigoCordial" : "codigoMorar", null);
+      if (reservationId) void codes.release.mutateAsync(reservationId).catch(() => {});
+    }
+  }
+
   function manualCode(provider: PropertyCarteira, code: string) {
     setProviderCode(provider, {
       code,
@@ -388,7 +400,10 @@ export function PropertyForm({
               >
                 <PublishTargetSelector
                   value={destinos ?? []}
-                  onChange={(next) => onDestinosChange?.(next)}
+                  onChange={(next) => {
+                    releaseRemovedTargets(next);
+                    onDestinosChange?.(next);
+                  }}
                 />
               </Field>
             )}

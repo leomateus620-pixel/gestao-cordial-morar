@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
@@ -55,6 +55,19 @@ function EditarImovelPage() {
   const facets = useImoveisFacets();
   const codes = usePropertyCodeReservation();
   const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
+  const committed = useRef(false);
+  const releasePending = codes.releasePending;
+
+  /** Sair da edição sem salvar devolve códigos recém-gerados para a fila. */
+  useEffect(() => {
+    return () => {
+      if (committed.current) return;
+      const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
+      if (!ids.length) return;
+      void releasePending(ids).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (query.isPending) {
     return (
@@ -90,6 +103,7 @@ function EditarImovelPage() {
       if (ids.length) {
         try {
           await codes.commit.mutateAsync({ propertyId: imovelId, reservationIds: ids });
+          committed.current = true;
         } catch {
           // A reserva expira sozinha; não travamos o salvamento por isso.
         }

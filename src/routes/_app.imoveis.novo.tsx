@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
@@ -77,12 +77,36 @@ function NovoImovelPage() {
   /** Uma reserva ativa por provedor: retry/duplo clique substitui, nunca duplica. */
   const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
   const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
+  /** Enquanto o imóvel não é salvo de verdade, as reservas continuam devolvíveis. */
+  const committed = useRef(false);
+  const releasePending = codes.releasePending;
+
+  /** Sair do cadastro sem concluir devolve os códigos para a fila. */
+  function releaseCodesIfPending() {
+    if (committed.current) return;
+    const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
+    if (!ids.length) return;
+    reservationIds.current = {};
+    void releasePending(ids).catch(() => {
+      // A rotina periódica devolve o número mesmo se esta chamada falhar.
+    });
+  }
+
+  useEffect(() => releaseCodesIfPending, []);
+
+  useEffect(() => {
+    const handler = () => releaseCodesIfPending();
+    window.addEventListener("pagehide", handler);
+    return () => window.removeEventListener("pagehide", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function commitCodes(propertyId: string) {
     const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
     if (!ids.length) return;
     try {
       await codes.commit.mutateAsync({ propertyId, reservationIds: ids });
+      committed.current = true;
     } catch {
       // A reserva expira sozinha; não travamos o cadastro por isso.
     }
@@ -91,9 +115,14 @@ function NovoImovelPage() {
   async function ensureDraft(): Promise<string | null> {
     if (draftId) return draftId;
     try {
-      const property = await create.mutateAsync({ ...latestValues.current });
+      // O rascunho existe só para anexar fotos/arquivos: ele nunca guarda o
+      // código da imobiliária, senão um cadastro abandonado queimaria o número.
+      const property = await create.mutateAsync({
+        ...latestValues.current,
+        codigoCordial: null,
+        codigoMorar: null,
+      });
       setDraftId(property.id);
-      await commitCodes(property.id);
       toast.info("Rascunho salvo para receber as fotos.");
       return property.id;
     } catch (err) {
@@ -213,7 +242,10 @@ function NovoImovelPage() {
           reservationIds.current = { ...reservationIds.current, [provider]: reservationId };
         }}
         bairros={facets.data?.bairros ?? []}
-        onCancel={() => navigate({ to: "/imoveis" })}
+        onCancel={() => {
+          releaseCodesIfPending();
+          navigate({ to: "/imoveis" });
+        }}
         onSubmit={handleSubmit}
       />
 
