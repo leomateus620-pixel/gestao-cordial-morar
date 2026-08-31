@@ -44,7 +44,7 @@ export function ProviderCodeFields({
   }
 
   const both = list.length === 2;
-  const generatingAll = list.every((p) => codes[p]?.status === "generating");
+  const generatingAny = list.some((p) => codes[p]?.status === "generating");
 
   return (
     <div className="space-y-2">
@@ -90,7 +90,7 @@ export function ProviderCodeFields({
                   ) : (
                     <RefreshCw className="size-3" />
                   )}
-                  {state?.code ? "Gerar outro" : "Gerar"}
+                  {state?.code ? "Revalidar" : "Gerar"}
                 </button>
               </div>
             </div>
@@ -102,10 +102,10 @@ export function ProviderCodeFields({
         <button
           type="button"
           onClick={() => list.forEach((p) => onGenerate(p))}
-          disabled={generatingAll}
+          disabled={generatingAny}
           className="inline-flex items-center gap-1.5 rounded-2xl bg-primary px-3.5 py-2 text-[11px] font-bold text-primary-foreground transition disabled:opacity-50"
         >
-          {generatingAll ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+          {generatingAny ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
           Gerar códigos
         </button>
       ) : null}
