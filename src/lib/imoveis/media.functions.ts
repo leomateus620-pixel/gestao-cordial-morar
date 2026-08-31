@@ -230,6 +230,9 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
         };
       }
 
+      // Envios simultâneos disputam a capa (índice único). Inserimos sempre sem
+      // capa e definimos a capa depois, num passo isolado — assim nenhuma foto
+      // do corretor falha por causa da concorrência.
       const position = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
       const { data: inserted, error } = await context.supabase
         .from("property_images")
@@ -243,7 +246,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           size_bytes: data.sizeBytes ?? null,
           content_hash: data.contentHash,
           position,
-          is_cover: rows.length === 0,
+          is_cover: false,
           upload_status: "ready",
           processing_status: "pending",
           uploaded_by: context.userId,
@@ -253,6 +256,21 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
         .maybeSingle();
       if (error) throw new Error(error.message);
       if (!inserted?.id) throw new Error("A foto foi enviada, mas não pôde ser registrada.");
+
+      // Primeira foto do imóvel vira capa; conflito aqui é inofensivo.
+      const { count: coverCount } = await context.supabase
+        .from("property_images")
+        .select("id", { count: "exact", head: true })
+        .eq("property_id", data.propertyId)
+        .eq("is_cover", true);
+      if (!coverCount) {
+        await context.supabase
+          .from("property_images")
+          .update({ is_cover: true })
+          .eq("id", inserted.id);
+      }
+
+
 
       if (!ready) {
         // Caminho de exceção (navegador sem canvas): a fila do servidor assume.
