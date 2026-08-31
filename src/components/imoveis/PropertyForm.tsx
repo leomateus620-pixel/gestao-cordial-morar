@@ -687,27 +687,24 @@ export function PropertyForm({
             </Field>
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Valor (R$)">
-                <input
-                  inputMode="decimal"
-                  value={str(values.valor)}
-                  onChange={(e) => set("valor", num(e.target.value))}
+                <DecimalInput
+                  value={values.valor}
+                  onCommit={(next) => set("valor", next)}
                   className={inputCls}
                   disabled={values.valorModo === "consulte"}
                 />
               </Field>
               <Field label="IPTU (R$)">
-                <input
-                  inputMode="decimal"
-                  value={str(values.valorIptu)}
-                  onChange={(e) => set("valorIptu", num(e.target.value))}
+                <DecimalInput
+                  value={values.valorIptu}
+                  onCommit={(next) => set("valorIptu", next)}
                   className={inputCls}
                 />
               </Field>
               <Field label="Condomínio (R$)">
-                <input
-                  inputMode="decimal"
-                  value={str(values.valorCondominio)}
-                  onChange={(e) => set("valorCondominio", num(e.target.value))}
+                <DecimalInput
+                  value={values.valorCondominio}
+                  onCommit={(next) => set("valorCondominio", next)}
                   className={inputCls}
                 />
               </Field>
