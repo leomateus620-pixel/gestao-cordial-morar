@@ -88,33 +88,66 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const sendOne = useCallback(
     async (key: string, file: File) => {
       if (!propertyId) throw new Error("Salve o imóvel antes de enviar fotos.");
-      patch(key, { status: "preparando", progress: 0, error: undefined });
-      const prepared = await prepareImageForUpload(file);
-      const hash = await sha256Hex(prepared.blob);
-      const target = await createUrl({ data: { propertyId, fileName: prepared.fileName } });
+      // A marca é composta aqui no navegador: a foto já sobe pronta para publicar.
+      patch(key, { status: "processando", progress: 0, error: undefined });
+      const composed = await composeWatermarkedUpload(file);
+      const hash = await sha256Hex(composed.original.blob);
+      const target = await createUrl({ data: { propertyId, fileName: composed.original.fileName } });
 
       patch(key, { status: "enviando" });
-      await uploadSignedWithProgress({
-        bucket: BUCKET,
-        path: target.path,
-        token: target.token,
-        blob: prepared.blob,
-        contentType: prepared.mimeType,
-        onProgress: (ratio) => patch(key, { progress: Math.round(ratio * 100) }),
-      });
+      const totalBytes =
+        composed.original.blob.size + composed.processed.blob.size + composed.thumbnail.blob.size;
+      let sentBytes = 0;
+      const sendPart = async (
+        part: { path: string; token: string },
+        blob: Blob,
+        contentType: string,
+      ) => {
+        await uploadSignedWithProgress({
+          bucket: BUCKET,
+          path: part.path,
+          token: part.token,
+          blob,
+          contentType,
+          onProgress: (ratio) =>
+            patch(key, {
+              progress: Math.min(
+                99,
+                Math.round(((sentBytes + ratio * blob.size) / totalBytes) * 100),
+              ),
+            }),
+        });
+        sentBytes += blob.size;
+      };
 
-      patch(key, { status: "processando", progress: 100 });
+      await sendPart(
+        { path: target.path, token: target.token },
+        composed.original.blob,
+        composed.original.mimeType,
+      );
+      await sendPart(target.processed, composed.processed.blob, "image/jpeg");
+      await sendPart(target.thumbnail, composed.thumbnail.blob, "image/jpeg");
+
       const result = await register({
         data: {
           propertyId,
           storagePath: target.path,
-          fileName: prepared.fileName,
-          mimeType: prepared.mimeType,
-          sizeBytes: prepared.sizeBytes,
+          fileName: composed.original.fileName,
+          mimeType: composed.original.mimeType,
+          sizeBytes: composed.original.blob.size,
           contentHash: hash,
+          processedPath: target.processed.path,
+          thumbnailPath: target.thumbnail.path,
+          processedChecksum: composed.processed.checksum,
+          watermarkVariant: composed.variant,
+          watermarkVersion: composed.version,
+          destinationHash: composed.destinationHash,
+          width: composed.processed.width,
+          height: composed.processed.height,
         },
       });
       patch(key, {
+        progress: 100,
         status: result.resumed ? "retomada" : result.duplicated ? "duplicada" : "pronta",
       });
     },
