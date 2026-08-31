@@ -89,6 +89,8 @@ export type TipoImovelInteresse =
 
 export type OrigemLeadAtendimento =
   | "whatsapp"
+  | "ligacao"
+  | "email"
   | "instagram"
   | "indicacao"
   | "site"
@@ -314,6 +316,8 @@ export const atendimentoTipoImovelOptions = [
 
 export const atendimentoOrigemOptions = [
   { value: "whatsapp", label: "WhatsApp" },
+  { value: "ligacao", label: "Ligação" },
+  { value: "email", label: "E-mail" },
   { value: "instagram", label: "Instagram" },
   { value: "indicacao", label: "Indicação" },
   { value: "site", label: "Site" },

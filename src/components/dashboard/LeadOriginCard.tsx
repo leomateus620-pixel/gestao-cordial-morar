@@ -9,7 +9,9 @@ import {
   Globe,
   Instagram,
   Loader2,
+  Mail,
   MessageCircle,
+  Phone,
   SlidersHorizontal,
   Store,
   Users,
@@ -71,6 +73,8 @@ const ORIGIN_VISUALS: Record<
   { color: string; Icon: ComponentType<{ className?: string }> }
 > = {
   whatsapp: { color: "#2F9E68", Icon: MessageCircle },
+  ligacao: { color: "#3B7FA6", Icon: Phone },
+  email: { color: "#8A6FD1", Icon: Mail },
   instagram: { color: "#C45A8B", Icon: Instagram },
   site: { color: chartSystem, Icon: Globe },
   portal: { color: chartCordial, Icon: Building2 },

@@ -303,6 +303,8 @@ function formatHistoryStamp(date: Date) {
 
 const ORIGIN_MAP: Record<OrigemLeadAtendimento, LeadOrigin> = {
   whatsapp: "whatsapp",
+  ligacao: "outro",
+  email: "outro",
   instagram: "instagram",
   indicacao: "indicacao",
   site: "site",

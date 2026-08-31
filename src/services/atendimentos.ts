@@ -635,6 +635,8 @@ function normalizeOrigem(value: unknown): OrigemLeadAtendimento {
   if (normalized.includes("porta")) return "porta_fria";
   if (normalized.includes("presencial") || normalized.includes("captacao")) return "presencial";
   if (normalized.includes("whatsapp")) return "whatsapp";
+  if (normalized.includes("mail")) return "email";
+  if (normalized.includes("liga") || normalized.includes("telefone")) return "ligacao";
   return "outro";
 }
 
@@ -698,6 +700,7 @@ function normalizeHistoryType(value: unknown): Atendimento["historico"][number][
 
 function mapOriginToClient(value: OrigemLeadAtendimento): LeadOrigin {
   if (value === "porta_fria" || value === "presencial") return "presencial";
+  if (value === "ligacao" || value === "email") return "outro";
   return value;
 }
 
