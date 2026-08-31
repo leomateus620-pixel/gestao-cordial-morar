@@ -77,6 +77,29 @@ function NovoImovelPage() {
   /** Uma reserva ativa por provedor: retry/duplo clique substitui, nunca duplica. */
   const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
   const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
+  /** Enquanto o imóvel não é salvo de verdade, as reservas continuam devolvíveis. */
+  const committed = useRef(false);
+  const releasePending = codes.releasePending;
+
+  /** Sair do cadastro sem concluir devolve os códigos para a fila. */
+  function releaseCodesIfPending() {
+    if (committed.current) return;
+    const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
+    if (!ids.length) return;
+    reservationIds.current = {};
+    void releasePending(ids).catch(() => {
+      // A rotina periódica devolve o número mesmo se esta chamada falhar.
+    });
+  }
+
+  useEffect(() => releaseCodesIfPending, []);
+
+  useEffect(() => {
+    const handler = () => releaseCodesIfPending();
+    window.addEventListener("pagehide", handler);
+    return () => window.removeEventListener("pagehide", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function commitCodes(propertyId: string) {
     const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
