@@ -388,7 +388,10 @@ export function PropertyForm({
               >
                 <PublishTargetSelector
                   value={destinos ?? []}
-                  onChange={(next) => onDestinosChange?.(next)}
+                  onChange={(next) => {
+                    releaseRemovedTargets(next);
+                    onDestinosChange?.(next);
+                  }}
                 />
               </Field>
             )}
