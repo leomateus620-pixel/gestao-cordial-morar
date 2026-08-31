@@ -1999,6 +1999,8 @@ function atendimentoStatusLabel(value: string) {
 function leadOriginLabel(value: string) {
   const labels: Record<string, string> = {
     whatsapp: "WhatsApp",
+    ligacao: "Ligação",
+    email: "E-mail",
     instagram: "Instagram",
     indicacao: "Indicação",
     site: "Site",
