@@ -83,6 +83,7 @@ function NovoImovelPage() {
     if (!ids.length) return;
     try {
       await codes.commit.mutateAsync({ propertyId, reservationIds: ids });
+      committed.current = true;
     } catch {
       // A reserva expira sozinha; não travamos o cadastro por isso.
     }
@@ -91,9 +92,14 @@ function NovoImovelPage() {
   async function ensureDraft(): Promise<string | null> {
     if (draftId) return draftId;
     try {
-      const property = await create.mutateAsync({ ...latestValues.current });
+      // O rascunho existe só para anexar fotos/arquivos: ele nunca guarda o
+      // código da imobiliária, senão um cadastro abandonado queimaria o número.
+      const property = await create.mutateAsync({
+        ...latestValues.current,
+        codigoCordial: null,
+        codigoMorar: null,
+      });
       setDraftId(property.id);
-      await commitCodes(property.id);
       toast.info("Rascunho salvo para receber as fotos.");
       return property.id;
     } catch (err) {
