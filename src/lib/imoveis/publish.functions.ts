@@ -97,43 +97,43 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     if (propertyError) throw new Error(propertyError.message);
     if (!property) throw new Error("Imóvel não encontrado.");
 
+    // Só a marca-d'água EM ANDAMENTO segura a publicação. Fotos com falha são
+    // ignoradas no envio (o worker de sincronização nunca publica imagem sem
+    // arquivo processado) — elas jamais podem bloquear os dados do imóvel.
+    let skippedImages = 0;
     if (action === "publish" || action === "update") {
-      const { data: pendingImages } = await context.supabase
+      const { data: inFlightImages } = await context.supabase
         .from("property_images")
         .select("id, file_name, processing_status")
         .eq("property_id", property.id)
-        .in("processing_status", [...IMAGE_PROCESSING_BLOCKING_STATUSES]);
-      if (pendingImages?.length) {
-        const names = pendingImages
+        .in("processing_status", ["pending", "processing"]);
+      if (inFlightImages?.length) {
+        const names = inFlightImages
           .slice(0, 3)
           .map((image: { file_name: string }) => image.file_name)
           .join(", ");
         throw new Error(
-          `Aguardando a marca-d'água em ${pendingImages.length} foto(s): ${names}. Reprocesse ou remova antes de publicar.`,
+          `Aguardando a marca-d'água em ${inFlightImages.length} foto(s): ${names}. Tente novamente em instantes.`,
         );
       }
+      const { count } = await context.supabase
+        .from("property_images")
+        .select("id", { count: "exact", head: true })
+        .eq("property_id", property.id)
+        .in("processing_status", ["failed", "failed_retryable", "failed_permanent"]);
+      skippedImages = count ?? 0;
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
 
-    // Destinos escolhidos definem a marca aplicada nas fotos.
-    const { enqueueImageJobs, runImageWorker } =
-      await import("@/lib/imoveis/image-pipeline.server");
     if (action === "publish" || action === "update") {
       await supabaseAdmin
         .from("properties")
         .update({ publish_targets: providers })
         .eq("id", property.id);
-      const queued = await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
-      if (queued.enqueued) {
-        try {
-          await runImageWorker(supabaseAdmin, { limit: 6 });
-        } catch {
-          // a fila persistente garante o reprocessamento
-        }
-      }
     }
+
 
     for (const provider of providers) {
       await supabaseAdmin.from("property_provider_publications").upsert(
