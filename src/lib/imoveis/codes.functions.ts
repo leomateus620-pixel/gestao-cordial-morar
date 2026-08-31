@@ -69,6 +69,26 @@ export const releasePropertyCode = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Devolve à fila todas as reservas do próprio usuário que ainda não viraram
+ * imóvel salvo (cadastro abandonado, cancelado ou aba fechada).
+ */
+export const releasePendingPropertyCodes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data?: { reservationIds?: string[] }) => data ?? {})
+  .handler(async ({ data, context }): Promise<{ released: number }> => {
+    let query = context.supabase
+      .from("provider_code_reservations")
+      .update({ status: "released" })
+      .eq("reserved_by", context.userId)
+      .eq("status", "reserved")
+      .is("property_id", null);
+    if (data.reservationIds?.length) query = query.in("id", data.reservationIds);
+    const { data: rows, error } = await query.select("id");
+    if (error) throw new Error(error.message);
+    return { released: rows?.length ?? 0 };
+  });
+
 /** Confirma as reservas assim que o imóvel é salvo. */
 export const commitPropertyCodes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
