@@ -179,6 +179,24 @@ function str(v: number | null | undefined): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
+/**
+ * Aceita "32,5", "32.5" e "1.234,56". Um ponto seguido de exatamente 3 dígitos
+ * continua sendo separador de milhar ("1.234").
+ */
+function decimalNum(v: string): number | null {
+  const t = v.trim();
+  if (!t) return null;
+  let s = t;
+  if (!s.includes(",")) {
+    const parts = s.split(".");
+    const last = parts[parts.length - 1] ?? "";
+    // "1.234" = milhar; "32.5" / "32.50" = decimal.
+    if (parts.length === 2 && last.length !== 3) s = s.replace(".", ",");
+  }
+  const n = Number(s.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Exibe o número no padrão pt-BR (vírgula decimal). */
 function decimalStr(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "";
