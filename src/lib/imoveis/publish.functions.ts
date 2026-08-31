@@ -6,7 +6,6 @@ import {
   isImobiProvider,
   type ImobiProvider,
 } from "@/lib/imobibrasil/providers";
-import { IMAGE_PROCESSING_BLOCKING_STATUSES } from "@/lib/imoveis/image-status";
 
 export type SyncAction = "publish" | "update" | "unpublish" | "delete" | "reconcile";
 
