@@ -14,6 +14,7 @@ export type { PropertyCodeReservation };
 export function usePropertyCodeReservation() {
   const reserve = useServerFn(reservePropertyCode);
   const release = useServerFn(releasePropertyCode);
+  const releasePending = useServerFn(releasePendingPropertyCodes);
   const commit = useServerFn(commitPropertyCodes);
 
   return {
