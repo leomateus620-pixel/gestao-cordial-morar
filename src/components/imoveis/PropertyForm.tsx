@@ -225,7 +225,7 @@ function DecimalInput({
     // Só dígitos e separadores decimais/milhar.
     const cleaned = raw.replace(/[^\d.,]/g, "");
     setDraft(cleaned);
-    const parsed = num(cleaned);
+    const parsed = decimalNum(cleaned);
     // Reflete no formulário sem reescrever o texto em edição.
     if (cleaned.trim() === "") onCommit(null);
     else if (parsed !== null) onCommit(parsed);
@@ -238,7 +238,7 @@ function DecimalInput({
       disabled={disabled}
       onChange={(e) => handleChange(e.target.value)}
       onBlur={() => {
-        onCommit(num(shown));
+        onCommit(decimalNum(shown));
         setDraft(null);
       }}
       className={className}
