@@ -135,3 +135,15 @@ test("normalizeLabel remove acentos e pontuação", () => {
   assert.equal(normalizeLabel("Sala Comercial / Loja"), "sala comercial loja");
   assert.equal(normalizeLabel("Chácara"), "chacara");
 });
+
+test("sanitizeRichText remove emojis, mantém acentos e quebra linhas", () => {
+  const input = "✨ Casa à venda!\n🔹 01 quarto\n✔️ Localização — próximo a tudo";
+  const out = sanitizeRichText(input);
+  assert.equal(out, "Casa à venda!<br />- 01 quarto<br />- Localização - próximo a tudo");
+  assert.equal(/[?]/.test(out ?? ""), false);
+});
+
+test("sanitizeRichText devolve undefined para vazio", () => {
+  assert.equal(sanitizeRichText("   "), undefined);
+  assert.equal(sanitizeRichText(null), undefined);
+});
