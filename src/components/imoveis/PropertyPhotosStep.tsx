@@ -256,11 +256,11 @@ export function PropertyPhotosStep({
               {image.processingStatus.startsWith("failed") && (
                 <button
                   type="button"
-                  onClick={() => media.retryWatermark.mutate(image.id)}
+                  onClick={() => media.remove.mutate(image.id)}
                   className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-rose-900/60 px-2 text-center text-[10px] font-bold text-white"
                 >
-                  <RefreshCw className="size-3.5" />
-                  Marca não aplicada — tentar de novo
+                  <Trash2 className="size-3.5" />
+                  Marca não aplicada — remover e enviar de novo
                 </button>
               )}
 
