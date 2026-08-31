@@ -179,6 +179,73 @@ function str(v: number | null | undefined): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
+/**
+ * Aceita "32,5", "32.5" e "1.234,56". Um ponto seguido de exatamente 3 dígitos
+ * continua sendo separador de milhar ("1.234").
+ */
+function decimalNum(v: string): number | null {
+  const t = v.trim();
+  if (!t) return null;
+  let s = t;
+  if (!s.includes(",")) {
+    const parts = s.split(".");
+    const last = parts[parts.length - 1] ?? "";
+    // "1.234" = milhar; "32.5" / "32.50" = decimal.
+    if (parts.length === 2 && last.length !== 3) s = s.replace(".", ",");
+  }
+  const n = Number(s.replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Exibe o número no padrão pt-BR (vírgula decimal). */
+function decimalStr(v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "";
+  return String(v).replace(".", ",");
+}
+
+/**
+ * Campo decimal que preserva o texto digitado (inclusive a vírgula em aberto,
+ * ex.: "32,") e só converte para número ao sair do campo.
+ */
+function DecimalInput({
+  value,
+  onCommit,
+  className,
+  disabled,
+}: {
+  value: number | null | undefined;
+  onCommit: (next: number | null) => void;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? decimalStr(value);
+
+  function handleChange(raw: string) {
+    // Só dígitos e separadores decimais/milhar.
+    const cleaned = raw.replace(/[^\d.,]/g, "");
+    setDraft(cleaned);
+    const parsed = decimalNum(cleaned);
+    // Reflete no formulário sem reescrever o texto em edição.
+    if (cleaned.trim() === "") onCommit(null);
+    else if (parsed !== null) onCommit(parsed);
+  }
+
+  return (
+    <input
+      inputMode="decimal"
+      value={shown}
+      disabled={disabled}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={() => {
+        onCommit(decimalNum(shown));
+        setDraft(null);
+      }}
+      className={className}
+    />
+  );
+}
+
 export function PropertyForm({
   initial,
   submitLabel,
@@ -599,10 +666,9 @@ export function PropertyForm({
                 ] as Array<[string, keyof PropertyFormValues]>
               ).map(([label, key]) => (
                 <Field key={key} label={label}>
-                  <input
-                    inputMode="decimal"
-                    value={str(values[key] as number | null)}
-                    onChange={(e) => set(key, num(e.target.value) as never)}
+                  <DecimalInput
+                    value={values[key] as number | null}
+                    onCommit={(next) => set(key, next as never)}
                     className={inputCls}
                   />
                 </Field>
@@ -639,27 +705,24 @@ export function PropertyForm({
             </Field>
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Valor (R$)">
-                <input
-                  inputMode="decimal"
-                  value={str(values.valor)}
-                  onChange={(e) => set("valor", num(e.target.value))}
+                <DecimalInput
+                  value={values.valor}
+                  onCommit={(next) => set("valor", next)}
                   className={inputCls}
                   disabled={values.valorModo === "consulte"}
                 />
               </Field>
               <Field label="IPTU (R$)">
-                <input
-                  inputMode="decimal"
-                  value={str(values.valorIptu)}
-                  onChange={(e) => set("valorIptu", num(e.target.value))}
+                <DecimalInput
+                  value={values.valorIptu}
+                  onCommit={(next) => set("valorIptu", next)}
                   className={inputCls}
                 />
               </Field>
               <Field label="Condomínio (R$)">
-                <input
-                  inputMode="decimal"
-                  value={str(values.valorCondominio)}
-                  onChange={(e) => set("valorCondominio", num(e.target.value))}
+                <DecimalInput
+                  value={values.valorCondominio}
+                  onCommit={(next) => set("valorCondominio", next)}
                   className={inputCls}
                 />
               </Field>

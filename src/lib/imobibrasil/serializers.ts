@@ -35,6 +35,9 @@ export type LocalPropertyForSync = {
   exibir_endereco_site_personalizado?: string[] | null;
   exibir_endereco_portal_personalizado?: string[] | null;
   area_privativa?: number | null;
+  /** Campo do formulário: usado como área privativa quando esta não existe. */
+  area_principal?: number | null;
+  area_util?: number | null;
   area_total?: number | null;
   area_terreno?: number | null;
   area_construida?: number | null;
@@ -244,7 +247,9 @@ export function serializeProperty(
   assign(payload, "exibirEnderecoPortalPersonalizado", property.exibir_endereco_portal_personalizado ?? undefined);
 
   // Áreas — o par valor/tipo só viaja quando ambos existem de fato.
-  const areaPrivativa = areaToString(property.area_privativa);
+  const areaPrivativa = areaToString(
+    property.area_privativa ?? property.area_util ?? property.area_principal,
+  );
   assign(payload, "areaPrivativa", areaPrivativa);
   if (areaPrivativa) assign(payload, "tipoAreaPrivativa", textOrUndefined(codes.tipoAreaPrivativa));
   const areaTotal = areaToString(property.area_total);
