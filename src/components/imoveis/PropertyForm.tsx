@@ -179,6 +179,55 @@ function str(v: number | null | undefined): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
+/** Exibe o número no padrão pt-BR (vírgula decimal). */
+function decimalStr(v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "";
+  return String(v).replace(".", ",");
+}
+
+/**
+ * Campo decimal que preserva o texto digitado (inclusive a vírgula em aberto,
+ * ex.: "32,") e só converte para número ao sair do campo.
+ */
+function DecimalInput({
+  value,
+  onCommit,
+  className,
+  disabled,
+}: {
+  value: number | null | undefined;
+  onCommit: (next: number | null) => void;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? decimalStr(value);
+
+  function handleChange(raw: string) {
+    // Só dígitos e separadores decimais/milhar.
+    const cleaned = raw.replace(/[^\d.,]/g, "");
+    setDraft(cleaned);
+    const parsed = num(cleaned);
+    // Reflete no formulário sem reescrever o texto em edição.
+    if (cleaned.trim() === "") onCommit(null);
+    else if (parsed !== null) onCommit(parsed);
+  }
+
+  return (
+    <input
+      inputMode="decimal"
+      value={shown}
+      disabled={disabled}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={() => {
+        onCommit(num(shown));
+        setDraft(null);
+      }}
+      className={className}
+    />
+  );
+}
+
 export function PropertyForm({
   initial,
   submitLabel,
