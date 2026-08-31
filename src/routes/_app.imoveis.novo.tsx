@@ -242,7 +242,10 @@ function NovoImovelPage() {
           reservationIds.current = { ...reservationIds.current, [provider]: reservationId };
         }}
         bairros={facets.data?.bairros ?? []}
-        onCancel={() => navigate({ to: "/imoveis" })}
+        onCancel={() => {
+          releaseCodesIfPending();
+          navigate({ to: "/imoveis" });
+        }}
         onSubmit={handleSubmit}
       />
 
