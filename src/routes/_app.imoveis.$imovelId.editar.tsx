@@ -103,6 +103,7 @@ function EditarImovelPage() {
       if (ids.length) {
         try {
           await codes.commit.mutateAsync({ propertyId: imovelId, reservationIds: ids });
+          committed.current = true;
         } catch {
           // A reserva expira sozinha; não travamos o salvamento por isso.
         }
