@@ -24,6 +24,8 @@ export function usePropertyCodeReservation() {
     release: useMutation({
       mutationFn: (reservationId: string) => release({ data: { reservationId } }),
     }),
+    /** Devolve à fila as reservas ainda não vinculadas a um imóvel salvo. */
+    releasePending: (reservationIds?: string[]) => releasePending({ data: { reservationIds } }),
     commit: useMutation({
       mutationFn: (input: { propertyId: string; reservationIds: string[] }) => commit({ data: input }),
     }),
