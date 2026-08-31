@@ -151,13 +151,27 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     .order("position", { ascending: true });
 
   // Só publicamos fotos com marca-d'água aplicada (ou o acervo legado já publicado).
+  // Fotos em andamento seguram o envio; fotos com falha apenas ficam de fora —
+  // os dados do imóvel nunca podem deixar de ir ao site por causa de imagem.
   const allImages = images ?? [];
   const list = allImages.filter(canPublishPropertyImage);
-  const incomplete = allImages.length - list.length;
-  if (incomplete > 0) {
-    throw new Error(`${incomplete} foto(s) ainda não possuem a marca-d'água confirmada.`);
+  const inFlight = allImages.filter((image) =>
+    ["pending", "processing"].includes(String(image.processing_status)),
+  ).length;
+  if (inFlight > 0) {
+    throw new Error(`${inFlight} foto(s) ainda estão recebendo a marca-d'água.`);
+  }
+  const skipped = allImages.length - list.length;
+  if (skipped > 0) {
+    await logAttempt(admin, job, {
+      step: "images",
+      ok: true,
+      errorCategory: "skipped_images",
+      errorMessage: `${skipped} foto(s) sem marca-d'água foram ignoradas no envio.`,
+    });
   }
   if (!list.length) return { sent: 0, failed: 0 };
+
 
   const { data: published } = await admin
     .from("property_image_provider_publications")
