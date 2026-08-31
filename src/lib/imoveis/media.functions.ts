@@ -230,44 +230,46 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
         };
       }
 
-      // Envios simultâneos disputam a posição e a capa (índice único de capa).
-      // Recalculamos e tentamos de novo em vez de falhar a foto do corretor.
-      let current = rows;
-      let inserted: { id: string } | null = null;
-      let lastError = "";
-      for (let attempt = 0; attempt < 6 && !inserted; attempt += 1) {
-        const position = current.length ? Math.max(...current.map((r) => r.position)) + 1 : 0;
-        const { data: row, error } = await context.supabase
+      // Envios simultâneos disputam a capa (índice único). Inserimos sempre sem
+      // capa e definimos a capa depois, num passo isolado — assim nenhuma foto
+      // do corretor falha por causa da concorrência.
+      const position = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
+      const { data: inserted, error } = await context.supabase
+        .from("property_images")
+        .insert({
+          property_id: data.propertyId,
+          storage_path: data.storagePath,
+          original_storage_path: data.storagePath,
+          original_checksum: data.contentHash,
+          file_name: data.fileName,
+          mime_type: data.mimeType ?? null,
+          size_bytes: data.sizeBytes ?? null,
+          content_hash: data.contentHash,
+          position,
+          is_cover: false,
+          upload_status: "ready",
+          processing_status: "pending",
+          uploaded_by: context.userId,
+          ...(ready ?? {}),
+        })
+        .select("id")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!inserted?.id) throw new Error("A foto foi enviada, mas não pôde ser registrada.");
+
+      // Primeira foto do imóvel vira capa; conflito aqui é inofensivo.
+      const { count: coverCount } = await context.supabase
+        .from("property_images")
+        .select("id", { count: "exact", head: true })
+        .eq("property_id", data.propertyId)
+        .eq("is_cover", true);
+      if (!coverCount) {
+        await context.supabase
           .from("property_images")
-          .insert({
-            property_id: data.propertyId,
-            storage_path: data.storagePath,
-            original_storage_path: data.storagePath,
-            original_checksum: data.contentHash,
-            file_name: data.fileName,
-            mime_type: data.mimeType ?? null,
-            size_bytes: data.sizeBytes ?? null,
-            content_hash: data.contentHash,
-            position,
-            is_cover: current.length === 0,
-            upload_status: "ready",
-            processing_status: "pending",
-            uploaded_by: context.userId,
-            ...(ready ?? {}),
-          })
-          .select("id")
-          .maybeSingle();
-        if (!error && row?.id) {
-          inserted = row;
-          break;
-        }
-        lastError = error?.message ?? "A foto foi enviada, mas não pôde ser registrada.";
-        const conflict = error?.code === "23505" || /duplicate key/i.test(lastError);
-        if (!conflict) throw new Error(lastError);
-        await new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)));
-        current = await listRows(context.supabase, data.propertyId);
+          .update({ is_cover: true })
+          .eq("id", inserted.id);
       }
-      if (!inserted?.id) throw new Error(lastError || "A foto não pôde ser registrada.");
+
 
 
       if (!ready) {
