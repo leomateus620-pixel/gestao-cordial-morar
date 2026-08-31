@@ -332,23 +332,23 @@ export function serializeProperty(
   assign(payload, "mobiliado", flagToSimNao(property.mobiliado));
 
   // Conteúdo
-  assign(payload, "descricaoImovel", textOrUndefined(property.descricao_imovel));
-  assign(payload, "observacaoImovel", textOrUndefined(property.observacao_imovel));
-  assign(payload, "pontosFortesImovel", textOrUndefined(property.pontos_fortes));
-  assign(payload, "outrasInformacoesImovel", textOrUndefined(property.outras_informacoes));
+  assign(payload, "descricaoImovel", sanitizeRichText(property.descricao_imovel));
+  assign(payload, "observacaoImovel", sanitizeRichText(property.observacao_imovel));
+  assign(payload, "pontosFortesImovel", sanitizeRichText(property.pontos_fortes));
+  assign(payload, "outrasInformacoesImovel", sanitizeRichText(property.outras_informacoes));
   assign(payload, "video", textOrUndefined(property.video));
   assign(payload, "tourVirtual", textOrUndefined(property.tour_virtual));
   assign(payload, "tarjaImagem", textOrUndefined(property.tarja_imagem));
   assign(payload, "seoURL", textOrUndefined(property.seo_url));
-  assign(payload, "seoTitulo", textOrUndefined(property.seo_titulo));
-  assign(payload, "seoDescricao", textOrUndefined(property.seo_descricao));
+  assign(payload, "seoTitulo", sanitizeRichText(property.seo_titulo));
+  assign(payload, "seoDescricao", sanitizeRichText(property.seo_descricao));
 
   // Comercial — "Consulte" nunca vira 0.
   if (property.valor_modo !== "consulte") assign(payload, "valorImovel", moneyToString(property.valor));
   assign(payload, "valorIPTU", moneyToString(property.valor_iptu));
   assign(payload, "valorCondominio", moneyToString(property.valor_condominio));
   assign(payload, "valorTaxas", moneyToString(property.valor_taxas));
-  assign(payload, "valorObservacao", textOrUndefined(property.valor_observacao));
+  assign(payload, "valorObservacao", sanitizeRichText(property.valor_observacao));
 
   // Divulgação e documentação
   assign(payload, "exibirImovel", boolToSimNao(property.exibir_imovel ?? true));
@@ -377,7 +377,7 @@ export function serializeProperty(
   if (property.tratar_empreendimento) {
     assign(payload, "tratarEmpreendimento", boolToSimNao(true));
     assign(payload, "nomeEmpreendimento", textOrUndefined(property.nome_empreendimento));
-    assign(payload, "descricaoEmpreendimento", textOrUndefined(property.descricao_empreendimento));
+    assign(payload, "descricaoEmpreendimento", sanitizeRichText(property.descricao_empreendimento));
     assign(payload, "estagioEmpreendimento", textOrUndefined(property.estagio_empreendimento));
     assign(payload, "inicioPrevisaoEmpreendimento", textOrUndefined(property.inicio_previsao_empreendimento));
     assign(payload, "entregaPrevisaoEmpreendimento", textOrUndefined(property.entrega_previsao_empreendimento));
