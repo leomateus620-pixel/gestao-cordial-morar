@@ -161,8 +161,24 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     }
 
     await supabaseAdmin.from("properties").update({ is_draft: false }).eq("id", property.id);
+
+    // Fotos entram depois dos jobs: qualquer falha na fila de imagem não pode
+    // impedir o envio dos dados do imóvel para as imobiliárias.
+    if (action === "publish" || action === "update") {
+      try {
+        const { enqueueImageJobs, runImageWorker } = await import(
+          "@/lib/imoveis/image-pipeline.server"
+        );
+        const queued = await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
+        if (queued.enqueued) await runImageWorker(supabaseAdmin, { limit: 6 });
+      } catch {
+        // a fila persistente garante o reprocessamento
+      }
+    }
+
     await kickWorker();
-    return { enqueued: providers };
+    return { enqueued: providers, skippedImages };
+
   });
 
 export const getPropertySyncStatus = createServerFn({ method: "GET" })
