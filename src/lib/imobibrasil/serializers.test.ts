@@ -10,6 +10,7 @@ import {
   moneyToString,
   normalizeExibirEnderecoSite,
   normalizeLabel,
+  sanitizeRichText,
   serializeProperty,
   toFinalidade,
   type LocalPropertyForSync,
