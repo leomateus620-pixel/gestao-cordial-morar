@@ -294,6 +294,7 @@ export function PropertyForm({
   /** Reserva independente por imobiliária: falha em uma nunca afeta a outra. */
   async function reserveCode(provider: PropertyCarteira) {
     if (providerCodes[provider]?.status === "generating") return;
+    const previous = providerCodes[provider];
     setProviderCode(provider, {
       status: "generating",
       message: "Consultando o próximo código livre…",
@@ -316,10 +317,17 @@ export function PropertyForm({
     } catch (err) {
       const message = (err as Error)?.message ?? "Não foi possível gerar o código.";
       const conflict = /uso no site|já est/i.test(message);
-      setProviderCode(provider, { status: conflict ? "conflict" : "error", message });
+      // Uma falha nunca apaga o código que já estava no campo.
+      setProviderCode(provider, {
+        code: previous?.code ?? "",
+        reservationId: previous?.reservationId ?? null,
+        status: conflict ? "conflict" : "error",
+        message,
+      });
       toast.error(message);
     }
   }
+
 
   function manualCode(provider: PropertyCarteira, code: string) {
     setProviderCode(provider, {
