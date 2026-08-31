@@ -191,6 +191,50 @@ export function textOrUndefined(value: string | null | undefined): string | unde
   return trimmed.length ? trimmed : undefined;
 }
 
+/**
+ * Texto livre para os sites (Cordial/Morar). O banco dos provedores não aceita
+ * emojis nem símbolos fora do Latin-1: eles chegam como "????". Aqui:
+ *  - marcadores decorativos viram "-";
+ *  - demais pictogramas/variation selectors são removidos;
+ *  - pontuação tipográfica vira ASCII equivalente;
+ *  - acentos e cedilha são preservados;
+ *  - quebras de linha viram <br /> para o site renderizar em tópicos.
+ */
+export function sanitizeRichText(value: string | null | undefined): string | undefined {
+  const text = textOrUndefined(value);
+  if (!text) return undefined;
+
+  let out = text
+    .normalize("NFC")
+    // marcadores de lista comuns → hífen
+    .replace(/[\u2022\u25AA\u25CF\u25E6\u2043\u2219\u00B7]/g, "-")
+    .replace(/[\u{1F538}\u{1F539}\u{1F536}\u{1F537}\u{2705}\u{2714}\u{2611}\u{27A1}\u{2192}]/gu, "-")
+    // pontuação tipográfica
+    .replace(/[\u2013\u2014\u2015]/g, "-")
+    .replace(/[\u2018\u2019\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201F]/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/\u00A0/g, " ")
+    // emojis e demais pictogramas
+    .replace(
+      /[\u{1F000}-\u{1FAFF}\u{1F004}\u{2190}-\u{2BFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}\u{200D}\u{20E3}]/gu,
+      "",
+    );
+
+  // qualquer resto fora do Latin-1 imprimível some
+  out = out.replace(/[^\n\r\t\x20-\x7E\u00A1-\u00FF]/g, "");
+
+  out = out
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t]{2,}/g, " ").replace(/^[\s-]*-\s*$/, "").trimEnd())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!out) return undefined;
+  return out.replace(/\r?\n/g, "<br />");
+}
+
 /** `Personalizado` com P maiúsculo quando aplicável. */
 export function normalizeExibirEnderecoSite(value: string | null | undefined): string | undefined {
   const text = textOrUndefined(value);
