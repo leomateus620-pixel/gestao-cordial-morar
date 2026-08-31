@@ -55,6 +55,19 @@ function EditarImovelPage() {
   const facets = useImoveisFacets();
   const codes = usePropertyCodeReservation();
   const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
+  const committed = useRef(false);
+  const releasePending = codes.releasePending;
+
+  /** Sair da edição sem salvar devolve códigos recém-gerados para a fila. */
+  useEffect(() => {
+    return () => {
+      if (committed.current) return;
+      const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
+      if (!ids.length) return;
+      void releasePending(ids).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (query.isPending) {
     return (
