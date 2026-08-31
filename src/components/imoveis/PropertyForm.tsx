@@ -235,6 +235,7 @@ export function PropertyForm({
   }, [bairros, values.bairro]);
   const STEPS = useMemo(() => [...BASE_STEPS, ...extras.map((e) => e.label)], [extras]);
   const codes = usePropertyCodeReservation();
+  const codeRequestsInFlight = useRef<Set<PropertyCarteira>>(new Set());
   const [providerCodes, setProviderCodes] = useState<ProviderCodes>(() => {
     const base: ProviderCodes = {};
     if (initial.codigoCordial)
@@ -293,7 +294,8 @@ export function PropertyForm({
 
   /** Reserva independente por imobiliária: falha em uma nunca afeta a outra. */
   async function reserveCode(provider: PropertyCarteira) {
-    if (providerCodes[provider]?.status === "generating") return;
+    if (codeRequestsInFlight.current.has(provider)) return;
+    codeRequestsInFlight.current.add(provider);
     const previous = providerCodes[provider];
     setProviderCode(provider, {
       status: "generating",
@@ -325,6 +327,8 @@ export function PropertyForm({
         message,
       });
       toast.error(message);
+    } finally {
+      codeRequestsInFlight.current.delete(provider);
     }
   }
 
