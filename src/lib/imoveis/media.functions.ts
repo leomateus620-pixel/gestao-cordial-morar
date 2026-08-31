@@ -99,21 +99,55 @@ export const listPropertyImages = createServerFn({ method: "GET" })
       signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
   );
 
-/** URL assinada de upload — o arquivo vai direto do navegador para o bucket privado. */
+/**
+ * URLs assinadas de upload — os arquivos vão direto do navegador para o bucket
+ * privado: o original preservado, a versão com a marca e a miniatura.
+ */
 export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string; fileName: string }) => data)
-  .handler(async ({ data, context }): Promise<{ path: string; token: string }> => {
-    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-    const path = `${data.propertyId}/originais/${crypto.randomUUID()}-${safe}`;
-    const { data: signed, error } = await context.supabase.storage
-      .from(BUCKET)
-      .createSignedUploadUrl(path);
-    if (error || !signed) throw new Error(error?.message ?? "Falha ao preparar o envio da foto.");
-    return { path: signed.path, token: signed.token };
-  });
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      path: string;
+      token: string;
+      processed: { path: string; token: string };
+      thumbnail: { path: string; token: string };
+    }> => {
+      const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+      const id = crypto.randomUUID();
+      const sign = async (path: string) => {
+        const { data: signed, error } = await context.supabase.storage
+          .from(BUCKET)
+          .createSignedUploadUrl(path);
+        if (error || !signed) throw new Error(error?.message ?? "Falha ao preparar o envio.");
+        return { path: signed.path as string, token: signed.token as string };
+      };
+      const original = await sign(`${data.propertyId}/originais/${id}-${safe}`);
+      const processed = await sign(`${data.propertyId}/marcadas/${id}.jpg`);
+      const thumbnail = await sign(`${data.propertyId}/marcadas/${id}-thumb.jpg`);
+      return { path: original.path, token: original.token, processed, thumbnail };
+    },
+  );
 
-/** Registra a foto já enviada, evitando duplicatas pelo checksum, e enfileira a marca. */
+/** Confere que o arquivo chegou ao Storage e não ficou vazio. */
+async function storedSize(supabase: Client, path: string): Promise<number> {
+  const slash = path.lastIndexOf("/");
+  const dir = slash > 0 ? path.slice(0, slash) : "";
+  const name = path.slice(slash + 1);
+  const { data } = await supabase.storage.from(BUCKET).list(dir, { search: name, limit: 100 });
+  const found = ((data ?? []) as Array<{ name: string; metadata?: { size?: number } }>).find(
+    (f) => f.name === name,
+  );
+  return found?.metadata?.size ?? 0;
+}
+
+/**
+ * Registra a foto já enviada, evitando duplicatas pelo checksum.
+ * A marca é composta no navegador; aqui só validamos e persistimos as versões.
+ */
 export const registerPropertyImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -124,6 +158,14 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       mimeType?: string | null;
       sizeBytes?: number | null;
       contentHash: string;
+      processedPath?: string | null;
+      thumbnailPath?: string | null;
+      processedChecksum?: string | null;
+      watermarkVariant?: string | null;
+      watermarkVersion?: string | null;
+      destinationHash?: string | null;
+      width?: number | null;
+      height?: number | null;
     }) => data,
   )
   .handler(
@@ -132,24 +174,51 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       context,
     }): Promise<{ images: PropertyImage[]; duplicated: boolean; resumed: boolean }> => {
       const rows = await listRows(context.supabase, data.propertyId);
+
+      // Versão com marca vinda do navegador: só vale se estiver mesmo no Storage.
+      const buildReady = async () => {
+        if (!data.processedPath) return null;
+        const size = await storedSize(context.supabase, data.processedPath);
+        if (!size) throw new Error("A foto com a marca não pôde ser confirmada. Tente de novo.");
+        return {
+          processed_storage_path: data.processedPath,
+          thumbnail_storage_path: data.thumbnailPath ?? null,
+          processed_checksum: data.processedChecksum ?? null,
+          watermark_variant: data.watermarkVariant ?? "morar-cordial",
+          watermark_version: data.watermarkVersion ?? "v1",
+          destination_hash: data.destinationHash ?? null,
+          processing_status: "ready",
+          processing_error_code: null,
+          processing_error_message: null,
+          processed_at: new Date().toISOString(),
+          processing_finished_at: new Date().toISOString(),
+          width: data.width ?? null,
+          height: data.height ?? null,
+        };
+      };
+      const ready = await buildReady();
+
       const duplicate = rows.find((r) => r.content_hash && r.content_hash === data.contentHash);
       if (duplicate) {
-        await context.supabase.storage.from(BUCKET).remove([data.storagePath]);
         const incomplete =
           duplicate.processing_status !== "ready" && duplicate.processing_status !== "legacy";
-        if (incomplete) {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-          await supabaseAdmin
+        if (incomplete && ready) {
+          // Foto que estava presa na fila: adota a marca recém-gerada.
+          await context.supabase.storage.from(BUCKET).remove([data.storagePath]);
+          const { error } = await context.supabase
             .from("property_images")
-            .update({
-              destination_hash: null,
-              processing_status: "pending",
-              processing_error_message: null,
-            })
-            .eq("id", duplicate.id);
-          await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [duplicate.id] });
-          await kickImageWorker(1);
+            .update(ready)
+            .eq("id", duplicate.id)
+            .eq("property_id", data.propertyId);
+          if (error) throw new Error(error.message);
+        } else {
+          await context.supabase.storage
+            .from(BUCKET)
+            .remove(
+              [data.storagePath, data.processedPath, data.thumbnailPath].filter(
+                (p): p is string => Boolean(p),
+              ),
+            );
         }
         return {
           images: await signImages(
@@ -157,7 +226,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
             await listRows(context.supabase, data.propertyId),
           ),
           duplicated: true,
-          resumed: incomplete,
+          resumed: incomplete && Boolean(ready),
         };
       }
 
@@ -178,17 +247,20 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           upload_status: "ready",
           processing_status: "pending",
           uploaded_by: context.userId,
+          ...(ready ?? {}),
         })
         .select("id")
         .maybeSingle();
       if (error) throw new Error(error.message);
-
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
       if (!inserted?.id) throw new Error("A foto foi enviada, mas não pôde ser registrada.");
-      await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [inserted.id] });
-      // A marca é aplicada pelo worker: o navegador não espera o processamento.
-      await kickImageWorker(2);
+
+      if (!ready) {
+        // Caminho de exceção (navegador sem canvas): a fila do servidor assume.
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+        await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [inserted.id] });
+        await kickImageWorker(2);
+      }
 
       return {
         images: await signImages(
