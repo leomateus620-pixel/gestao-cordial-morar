@@ -195,7 +195,8 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           width: data.width ?? null,
           height: data.height ?? null,
         };
-      }
+      };
+      const ready = await buildReady();
 
       const duplicate = rows.find((r) => r.content_hash && r.content_hash === data.contentHash);
       if (duplicate) {
