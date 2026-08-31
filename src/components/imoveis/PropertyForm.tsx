@@ -648,10 +648,9 @@ export function PropertyForm({
                 ] as Array<[string, keyof PropertyFormValues]>
               ).map(([label, key]) => (
                 <Field key={key} label={label}>
-                  <input
-                    inputMode="decimal"
-                    value={str(values[key] as number | null)}
-                    onChange={(e) => set(key, num(e.target.value) as never)}
+                  <DecimalInput
+                    value={values[key] as number | null}
+                    onCommit={(next) => set(key, next as never)}
                     className={inputCls}
                   />
                 </Field>
