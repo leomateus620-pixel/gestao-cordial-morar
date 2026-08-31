@@ -176,11 +176,11 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       const rows = await listRows(context.supabase, data.propertyId);
 
       // Versão com marca vinda do navegador: só vale se estiver mesmo no Storage.
-      let ready: Record<string, unknown> | null = null;
-      if (data.processedPath) {
+      const buildReady = async () => {
+        if (!data.processedPath) return null;
         const size = await storedSize(context.supabase, data.processedPath);
         if (!size) throw new Error("A foto com a marca não pôde ser confirmada. Tente de novo.");
-        ready = {
+        return {
           processed_storage_path: data.processedPath,
           thumbnail_storage_path: data.thumbnailPath ?? null,
           processed_checksum: data.processedChecksum ?? null,
