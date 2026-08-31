@@ -159,14 +159,25 @@ function NovoImovelPage() {
 
       if (publicar) {
         try {
-          await enqueue.mutateAsync({ propertyId, providers: destinos, action: "publish" });
+          const result = await enqueue.mutateAsync({
+            propertyId,
+            providers: destinos,
+            action: "publish",
+          });
+          const skipped = (result as { skippedImages?: number } | undefined)?.skippedImages ?? 0;
           toast.success(`Imóvel enviado para publicação: ${destinosLabel(destinos)}.`);
+          if (skipped > 0) {
+            toast.warning(
+              `${skipped} foto(s) não subiram e ficaram de fora do envio. Reenvie na Etapa 6 — Fotos.`,
+            );
+          }
         } catch (err) {
           toast.warning(
             `Imóvel salvo, mas a publicação falhou: ${(err as Error)?.message ?? "erro desconhecido"}`,
           );
         }
       } else {
+
         toast.success("Imóvel cadastrado no catálogo.");
       }
       // Drive roda em segundo plano: nunca segura a saída da tela de cadastro.
