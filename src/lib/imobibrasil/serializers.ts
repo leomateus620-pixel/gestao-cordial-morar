@@ -35,6 +35,9 @@ export type LocalPropertyForSync = {
   exibir_endereco_site_personalizado?: string[] | null;
   exibir_endereco_portal_personalizado?: string[] | null;
   area_privativa?: number | null;
+  /** Campo do formulário: usado como área privativa quando esta não existe. */
+  area_principal?: number | null;
+  area_util?: number | null;
   area_total?: number | null;
   area_terreno?: number | null;
   area_construida?: number | null;
