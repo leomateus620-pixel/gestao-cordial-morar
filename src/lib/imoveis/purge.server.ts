@@ -37,6 +37,16 @@ export async function purgeProperty(admin: AnyClient, propertyId: string): Promi
     }
   }
 
+  // Imóvel apagado devolve os códigos Cordial/Morar para a numeração.
+  try {
+    await admin
+      .from("provider_code_reservations")
+      .update({ status: "released", property_id: null })
+      .eq("property_id", propertyId);
+  } catch {
+    /* ignora */
+  }
+
   const { error } = await admin.from("properties").delete().eq("id", propertyId);
   if (error) throw new Error(error.message);
 }
