@@ -22,7 +22,7 @@ export const reservePropertyCode = createServerFn({ method: "POST" })
       const { data: rows, error } = await context.supabase.rpc("reserve_provider_code", {
         _provider: data.provider,
         _property_id: data.propertyId ?? undefined,
-        _ttl_minutes: 120,
+        _ttl_minutes: 30,
       });
       if (error) throw new Error(error.message);
       const row = (Array.isArray(rows) ? rows[0] : rows) as
