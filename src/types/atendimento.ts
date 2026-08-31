@@ -89,6 +89,8 @@ export type TipoImovelInteresse =
 
 export type OrigemLeadAtendimento =
   | "whatsapp"
+  | "ligacao"
+  | "email"
   | "instagram"
   | "indicacao"
   | "site"
