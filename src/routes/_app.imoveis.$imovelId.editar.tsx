@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
