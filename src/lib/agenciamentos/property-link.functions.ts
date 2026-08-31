@@ -73,7 +73,7 @@ type PropertyRow = {
   cidade: string | null;
   codigo: string | null;
   carteira: string | null;
-  providers: string[] | null;
+  publish_targets: string[] | null;
   proprietario_nome: string | null;
   proprietario_telefone: string | null;
 };
@@ -96,7 +96,7 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
     const { data: propertyRow, error: propertyError } = await context.supabase
       .from("properties")
       .select(
-        "id, tipo, logradouro, numero, bairro, cidade, codigo, carteira, providers, proprietario_nome, proprietario_telefone",
+        "id, tipo, logradouro, numero, bairro, cidade, codigo, carteira, publish_targets, proprietario_nome, proprietario_telefone",
       )
       .eq("id", data.propertyId)
       .maybeSingle();
@@ -121,7 +121,7 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
 
     const operationKey = initialAgencyOperationKey(property.id);
     const imobiliaria = providersToImobiliaria(
-      data.providers?.length ? data.providers : property.providers,
+      data.providers?.length ? data.providers : property.publish_targets,
       property.carteira,
     );
 
