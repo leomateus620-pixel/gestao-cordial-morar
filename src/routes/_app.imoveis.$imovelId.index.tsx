@@ -467,16 +467,11 @@ function DetalhePage() {
           </div>
         </div>
 
-        {mapsUrl ? (
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 py-1.5 text-xs font-semibold"
-          >
-            <MapIcon className="size-3.5" /> Abrir endereço no Google Maps
-          </a>
-        ) : null}
+        <PropertyMapsCard
+          mapsUrl={imovel.localizacaoMapsUrl}
+          mapsCoords={imovel.localizacaoMapsCoords}
+          fallbackUrl={mapsUrl}
+        />
       </section>
 
       <div className="space-y-5">
