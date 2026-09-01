@@ -100,6 +100,9 @@ function DetalhePage() {
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+  
   
 
   /** Link interno da ficha no Gestão (não é o link público dos sites). */
@@ -150,6 +153,8 @@ function DetalhePage() {
     v === null || v === undefined ? null : v ? "Sim" : "Não";
 
 
+  // O Maps usa o melhor endereço disponível: rua completa, senão bairro/cidade,
+  // senão a localização exibida do anúncio. Assim o botão vale para todo imóvel.
   const enderecoCompleto = [
     [imovel.logradouro, imovel.numero].filter(Boolean).join(", "),
     imovel.bairro,
@@ -158,9 +163,17 @@ function DetalhePage() {
   ]
     .filter(Boolean)
     .join(" - ");
-  const mapsUrl = enderecoCompleto
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto)}`
+  const enderecoMaps =
+    enderecoCompleto ||
+    [imovel.bairro, imovel.cidade, imovel.uf].filter(Boolean).join(" - ") ||
+    imovel.localizacaoExibida ||
+    localidade ||
+    "";
+  const mapsUrl = enderecoMaps
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoMaps)}`
     : null;
+  const isArchived = Boolean(imovel.archivedAt);
+  const isArchiving = imovel.removalState === "pending_archive";
 
   const hasLocationDetails =
     imovel.cep || imovel.logradouro || imovel.numero || imovel.zona || imovel.regiao;
