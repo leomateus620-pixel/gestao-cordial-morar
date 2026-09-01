@@ -1,6 +1,7 @@
 import {
   BadgeDollarSign,
   Building2,
+  CalendarClock,
   FileText,
   Home,
   HousePlus,
@@ -22,6 +23,7 @@ export const categoriaIcons: Record<BuscaCategoria, LucideIcon> = {
   agenciamento: HousePlus,
   imovel: Building2,
   inquilino: KeyRound,
+  visita: CalendarClock,
 };
 
 type Props = {
