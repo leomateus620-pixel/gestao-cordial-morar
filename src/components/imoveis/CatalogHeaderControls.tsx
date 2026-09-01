@@ -25,7 +25,12 @@ function useCatalogFilters() {
 export function CatalogSearchInput({ className }: { className?: string }) {
   const { filters, apply } = useCatalogFilters();
   const navigate = useNavigate();
+  const session = useSession();
+  // A busca global é restrita aos administradores (RLS no servidor). Sem isso,
+  // corretor/secretária caíam numa rota bloqueada ao apertar Enter.
+  const canUseGlobalSearch = canAccessModule(session, "busca");
   const [term, setTerm] = useState(filters.q);
+
 
 
   useEffect(() => setTerm(filters.q), [filters.q]);
