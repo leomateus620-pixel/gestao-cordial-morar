@@ -23,6 +23,7 @@ import { ArchivePropertyDialog } from "@/components/imoveis/ArchivePropertyDialo
 import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
 import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
+import { PropertyMapsCard } from "@/components/imoveis/PropertyMapsCard";
 import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { usePropertyDetail } from "@/hooks/useImoveis";
