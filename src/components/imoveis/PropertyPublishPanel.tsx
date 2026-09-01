@@ -161,7 +161,10 @@ export function PropertyPublishPanel({
 
               {canPublish && row && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {(row.status === "error" || row.status === "partial") && (
+                  {(row.status === "error" ||
+                    row.status === "partial" ||
+                    row.status === "out_of_sync" ||
+                    Boolean(row.lastErrorMessage)) && (
                     <button
                       onClick={() =>
                         retry
