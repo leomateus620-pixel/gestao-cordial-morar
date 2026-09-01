@@ -216,9 +216,11 @@ export function SiteSyncPanel({ isAdmin }: { isAdmin: boolean }) {
             ))}
           </div>
         </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <ImportConflictsDialog open={conflictsOpen} onOpenChange={setConflictsOpen} />
-    </section>
+    </>
+
   );
 }
