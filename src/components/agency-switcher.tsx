@@ -90,12 +90,13 @@ export function AgencySwitcher({
           }}
           style={activeAgency === o.id ? { background: o.color, color: "#fff" } : undefined}
           className={cn(
-            "min-h-9 min-w-0 flex-1 cursor-pointer truncate rounded-full px-3 py-1.5 text-xs font-semibold select-none touch-manipulation [-webkit-tap-highlight-color:transparent] transition-[background-color,color,box-shadow] duration-75 ease-out motion-reduce:transition-none",
-
+            "min-h-9 min-w-0 cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap select-none touch-manipulation [-webkit-tap-highlight-color:transparent] transition-[background-color,color,box-shadow] duration-75 ease-out motion-reduce:transition-none",
+            controlled ? "flex-none" : "flex-1 truncate",
             activeAgency === o.id
               ? "shadow-[0_6px_18px_-6px_rgba(23,27,33,0.35)]"
               : "text-foreground/60 [@media(hover:hover)]:hover:text-foreground/85",
           )}
+
         >
           {o.label}
         </button>
