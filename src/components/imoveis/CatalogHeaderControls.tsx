@@ -60,6 +60,16 @@ export function CatalogSearchInput({ className }: { className?: string }) {
         className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground/40 focus:outline-none"
       />
 
+      {term.trim().length >= 2 ? (
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/busca", search: { q: term.trim() } })}
+          className="hidden shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15 sm:inline-flex"
+        >
+          Buscar em todo o sistema
+        </button>
+      ) : null}
+
       {term ? (
         <button
           type="button"

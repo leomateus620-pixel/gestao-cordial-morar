@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AtendimentoConvertSaleCard } from "./AtendimentoConvertSaleCard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -568,6 +569,8 @@ export function AtendimentoDetailDrawer({
                         {noteMutation.isPending ? "Registrando..." : "Adicionar ao histórico"}
                       </button>
                     </SectionCard>
+
+                    <AtendimentoConvertSaleCard atendimento={atendimento} />
 
                     <section aria-labelledby="history-title">
                       <div className="mb-2 flex items-center justify-between gap-2 px-1">

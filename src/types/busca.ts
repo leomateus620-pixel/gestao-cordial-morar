@@ -6,7 +6,8 @@ export type BuscaCategoria =
   | "venda"
   | "agenciamento"
   | "imovel"
-  | "inquilino";
+  | "inquilino"
+  | "visita";
 
 
 export type BuscaCategoriaFiltro = "todos" | BuscaCategoria;
@@ -55,6 +56,7 @@ export const buscaCategoriaLabels: Record<BuscaCategoria, string> = {
   agenciamento: "Agenciamentos",
   imovel: "Imóveis de locação",
   inquilino: "Inquilinos",
+  visita: "Visitas e compromissos",
 };
 
 export const buscaCategoriaOrdem: BuscaCategoria[] = [
@@ -66,6 +68,7 @@ export const buscaCategoriaOrdem: BuscaCategoria[] = [
   "agenciamento",
   "imovel",
   "inquilino",
+  "visita",
 ];
 
 export function formatBuscaDate(value?: string | null) {

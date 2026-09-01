@@ -163,6 +163,7 @@ export function AtendimentoFormModal({
     }))
     .concat({ id: "a_definir", label: "A definir" });
 
+  const [imovelBusca, setImovelBusca] = useState("");
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -611,6 +612,12 @@ export function AtendimentoFormModal({
               </Field>
 
               <Field label="Vincular imóvel existente (opcional)">
+                <input
+                  value={imovelBusca}
+                  onChange={(event) => setImovelBusca(event.target.value)}
+                  className={cn(inputClass(), "mb-2")}
+                  placeholder="Filtrar por código, bairro ou título do imóvel"
+                />
                 <select
                   value={form.imovelId}
                   onChange={(event) => {
@@ -626,11 +633,21 @@ export function AtendimentoFormModal({
                   className={inputClass()}
                 >
                   <option value="">Nenhum imóvel vinculado</option>
-                  {imoveis.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.titulo}
-                    </option>
-                  ))}
+                  {imoveis
+                    .filter((property) => {
+                      const term = imovelBusca.trim().toLowerCase();
+                      if (!term) return true;
+                      if (property.id === form.imovelId) return true;
+                      return `${property.titulo ?? ""} ${property.codigoInterno ?? ""}`
+                        .toLowerCase()
+                        .includes(term);
+                    })
+                    .map((property) => (
+                      <option key={property.id} value={property.id}>
+                        {property.codigoInterno ? `${property.codigoInterno} · ` : ""}
+                        {property.titulo}
+                      </option>
+                    ))}
                 </select>
                 {form.imovelId ? (
                   <p className="mt-1.5 text-[11px] font-medium text-foreground/60">

@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Bath,
   Bed,
   Car,
   ChevronDown,
+  Copy,
   ExternalLink,
+  Map as MapIcon,
   Loader2,
   MapPin,
   Maximize2,
@@ -83,6 +86,17 @@ function DetalhePage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
+  /** Link interno da ficha no Gestão (não é o link público dos sites). */
+  async function copyInternalLink() {
+    const url = `${window.location.origin}/imoveis/${imovelId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link interno da ficha copiado.");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
+  }
+
   if (query.isPending) {
     return (
       <div className="grid place-items-center py-20 text-foreground/45">
@@ -122,6 +136,18 @@ function DetalhePage() {
     imovel.proprietarioEmail ||
     imovel.corretorNome ||
     imovel.observacaoImovel;
+
+  const enderecoCompleto = [
+    [imovel.logradouro, imovel.numero].filter(Boolean).join(", "),
+    imovel.bairro,
+    imovel.cidade,
+    imovel.uf,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+  const mapsUrl = enderecoCompleto
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto)}`
+    : null;
 
   const hasLocationDetails =
     imovel.cep || imovel.logradouro || imovel.numero || imovel.zona || imovel.regiao;
@@ -163,6 +189,15 @@ function DetalhePage() {
             .map((p) => (
               <CopyPublicLinkIcon key={p.provider} provider={p.provider} url={p.publicUrl} />
             ))}
+          <button
+            type="button"
+            onClick={copyInternalLink}
+            aria-label="Copiar link interno da ficha"
+            title="Copiar link interno da ficha"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-white/60 bg-white/70 text-foreground/60 transition hover:text-foreground"
+          >
+            <Copy className="size-4" />
+          </button>
           <Link
             to="/imoveis/$imovelId/editar"
             params={{ imovelId }}
@@ -335,6 +370,18 @@ function DetalhePage() {
                   <Field label="Telefone" value={imovel.proprietarioTelefone} />
                   <Field label="E-mail" value={imovel.proprietarioEmail} />
                   <Field label="Quem agenciou" value={imovel.corretorNome} />
+                  {mapsUrl ? (
+                    <div className="sm:col-span-3">
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 py-1.5 text-xs font-semibold"
+                      >
+                        <MapIcon className="size-3.5" /> Abrir endereço no Google Maps
+                      </a>
+                    </div>
+                  ) : null}
                   {imovel.observacaoImovel ? (
                     <div className="sm:col-span-3">
                       <p className="text-[11px] font-medium text-foreground/45">
