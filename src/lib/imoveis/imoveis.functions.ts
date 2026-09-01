@@ -506,7 +506,7 @@ export const createImovel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: CreateImovelInput) => data)
   .handler(async ({ data, context }): Promise<Property> => {
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...toDbPayload(data),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
       source: "gestao_cordial",
