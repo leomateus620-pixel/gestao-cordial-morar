@@ -697,6 +697,25 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
+            <div className="sm:col-span-2">
+              <Field
+                label="Localização Google Maps"
+                hint="Cole o link do local copiado do Google Maps. Uso interno: não vai para os sites Cordial e Morar."
+              >
+                <input
+                  value={values.localizacaoMapsUrl ?? ""}
+                  onChange={(e) => set("localizacaoMapsUrl", e.target.value)}
+                  placeholder="https://maps.app.goo.gl/..."
+                  className={inputCls}
+                />
+                {values.localizacaoMapsUrl && !isGoogleMapsUrl(values.localizacaoMapsUrl) ? (
+                  <p className="mt-1 text-[11px] font-medium text-destructive">
+                    Este link não parece ser do Google Maps. Copie o link direto do app ou do site
+                    do Maps.
+                  </p>
+                ) : null}
+              </Field>
+            </div>
           </div>
         )}
 

@@ -512,6 +512,10 @@ export const createImovel = createServerFn({ method: "POST" })
       source: "gestao_cordial",
       source_property_id: crypto.randomUUID(),
     };
+    if (data.localizacaoMapsUrl !== undefined) {
+      const { resolveMapsCoords } = await import("./maps-link.server");
+      payload["localizacao_maps_coords"] = await resolveMapsCoords(data.localizacaoMapsUrl);
+    }
     const { data: row, error } = await context.supabase
       .from("properties")
       .insert(payload)
