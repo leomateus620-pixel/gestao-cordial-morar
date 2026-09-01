@@ -535,6 +535,7 @@ type DriveFileRow = {
   id: string;
   image_id: string | null;
   video_id: string | null;
+  drive_photo_id?: string | null;
   category: string;
   drive_file_id: string | null;
   drive_file_name: string | null;
