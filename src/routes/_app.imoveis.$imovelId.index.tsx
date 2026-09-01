@@ -2,6 +2,8 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   Bath,
   Bed,
@@ -17,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import { ArchivePropertyDialog } from "@/components/imoveis/ArchivePropertyDialog";
 import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
 import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
@@ -97,6 +100,9 @@ function DetalhePage() {
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+  
   
 
   /** Link interno da ficha no Gestão (não é o link público dos sites). */
@@ -147,6 +153,8 @@ function DetalhePage() {
     v === null || v === undefined ? null : v ? "Sim" : "Não";
 
 
+  // O Maps usa o melhor endereço disponível: rua completa, senão bairro/cidade,
+  // senão a localização exibida do anúncio. Assim o botão vale para todo imóvel.
   const enderecoCompleto = [
     [imovel.logradouro, imovel.numero].filter(Boolean).join(", "),
     imovel.bairro,
@@ -155,9 +163,17 @@ function DetalhePage() {
   ]
     .filter(Boolean)
     .join(" - ");
-  const mapsUrl = enderecoCompleto
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto)}`
+  const enderecoMaps =
+    enderecoCompleto ||
+    [imovel.bairro, imovel.cidade, imovel.uf].filter(Boolean).join(" - ") ||
+    imovel.localizacaoExibida ||
+    localidade ||
+    "";
+  const mapsUrl = enderecoMaps
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoMaps)}`
     : null;
+  const isArchived = Boolean(imovel.archivedAt);
+  const isArchiving = imovel.removalState === "pending_archive";
 
   const hasLocationDetails =
     imovel.cep || imovel.logradouro || imovel.numero || imovel.zona || imovel.regiao;
@@ -217,6 +233,19 @@ function DetalhePage() {
           </Link>
           <button
             type="button"
+            onClick={() => setArchiveOpen(true)}
+            aria-label={isArchived ? "Reativar imóvel" : "Arquivar imóvel"}
+            title={
+              isArchived
+                ? "Reativar imóvel"
+                : "Arquivar imóvel (sai dos sites e fica guardado aqui)"
+            }
+            className="inline-flex size-9 items-center justify-center rounded-full border border-white/60 bg-white/70 text-foreground/60 transition hover:text-foreground"
+          >
+            {isArchived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+          </button>
+          <button
+            type="button"
             onClick={() => setDeleteOpen(true)}
             aria-label="Excluir imóvel"
             title="Excluir imóvel"
@@ -227,7 +256,17 @@ function DetalhePage() {
         </span>
       </div>
 
+      {(isArchived || isArchiving) && (
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-300/60 bg-amber-50/70 px-4 py-2.5 text-xs font-semibold text-amber-900">
+          <Archive className="size-4" />
+          {isArchived
+            ? "Imóvel arquivado — fora dos sites, guardado no sistema."
+            : "Arquivamento em andamento — aguardando os sites confirmarem a retirada do anúncio."}
+        </div>
+      )}
+
       <DeletePropertyDialog imovel={imovel} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <ArchivePropertyDialog imovel={imovel} open={archiveOpen} onOpenChange={setArchiveOpen} />
 
       {/* Hero: galeria + resumo */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -277,9 +316,24 @@ function DetalhePage() {
           )}
 
           {imovel.descricaoImovel ? (
-            <p className="mt-4 line-clamp-5 whitespace-pre-line text-sm leading-relaxed text-foreground/70">
-              {imovel.descricaoImovel}
-            </p>
+            <div className="mt-4">
+              <p
+                className={`whitespace-pre-line text-sm leading-relaxed text-foreground/70 ${
+                  descExpanded ? "" : "line-clamp-[10]"
+                }`}
+              >
+                {imovel.descricaoImovel}
+              </p>
+              {imovel.descricaoImovel.length > 480 ? (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded((v) => !v)}
+                  className="mt-1.5 text-xs font-semibold text-primary hover:underline"
+                >
+                  {descExpanded ? "Ver menos" : "Ver descrição completa"}
+                </button>
+              ) : null}
+            </div>
           ) : null}
 
           {imovel.pontosFortes ? (
@@ -426,7 +480,11 @@ function DetalhePage() {
       </section>
 
       <div className="space-y-5">
-          <PropertyPublishPanel propertyId={imovel.id} canPublish={true} isAdmin={isAdmin} />
+          <PropertyPublishPanel
+            propertyId={imovel.id}
+            canPublish={!isArchived && !isArchiving}
+            isAdmin={isAdmin}
+          />
 
 
           {isAdmin && (

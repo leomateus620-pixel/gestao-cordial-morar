@@ -330,11 +330,14 @@ export async function processJob(admin: Admin, job: SyncJob) {
   });
 
   if (job.action === "unpublish") {
+    // Arquivamento pedido pelo usuário: conclui assim que todos os sites confirmam.
+    const { finalizePendingArchive } = await import("@/lib/imoveis/purge.server");
     if (!publication.external_property_id) {
       await admin
         .from("property_provider_publications")
         .update({ status: "unpublished", enabled: false, last_synced_at: new Date().toISOString() })
         .eq("id", publication.id);
+      await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
     const payload = serializeProperty(
@@ -358,6 +361,7 @@ export async function processJob(admin: Admin, job: SyncJob) {
       .from("property_provider_publications")
       .update({ status: "unpublished", enabled: false, last_synced_at: new Date().toISOString() })
       .eq("id", publication.id);
+    await finalizePendingArchive(admin, job.property_id);
     return { status: "unpublished" as const };
   }
 

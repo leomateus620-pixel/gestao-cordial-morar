@@ -242,6 +242,17 @@ export function PropertyFilterBar({
           options={SORT_OPTIONS}
           onChange={(sort) => onChange({ sort: sort as CatalogFilters["sort"], page: 0 })}
         />
+        <SelectField
+          label=""
+          value={filters.arquivados}
+          options={[
+            { value: "ocultar", label: "Catálogo ativo" },
+            { value: "somente", label: "Arquivados" },
+          ]}
+          onChange={(arquivados) =>
+            onChange({ arquivados: arquivados as CatalogFilters["arquivados"], page: 0 })
+          }
+        />
 
         <PriceRangeFilter
           valorMin={filters.valorMin}

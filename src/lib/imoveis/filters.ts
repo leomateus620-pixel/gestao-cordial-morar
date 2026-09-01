@@ -16,6 +16,8 @@ export type CatalogFilters = {
   areaMin: number | null;
   areaMax: number | null;
   status: string;
+  /** "ocultar" = catálogo ativo (padrão) · "somente" = imóveis arquivados. */
+  arquivados: "ocultar" | "somente";
   sort: ImoveisSort;
   page: number;
 };
@@ -36,6 +38,7 @@ export const DEFAULT_FILTERS: CatalogFilters = {
   areaMin: null,
   areaMax: null,
   status: "",
+  arquivados: "ocultar",
   sort: "recentes",
   page: 0,
 };
@@ -74,6 +77,7 @@ export function parseCatalogSearch(search: Record<string, unknown>): CatalogFilt
     areaMin: number(search["areaMin"]),
     areaMax: number(search["areaMax"]),
     status: text(search["status"]),
+    arquivados: oneOf(search["arquivados"], ["ocultar", "somente"] as const, "ocultar"),
     sort: oneOf(search["sort"], SORTS, "recentes"),
     page: page === null ? 0 : Math.min(9999, Math.floor(page)),
   };
@@ -107,6 +111,7 @@ export function toListInput(filters: CatalogFilters, pageSize: number): ListImov
     areaMin: filters.areaMin,
     areaMax: filters.areaMax,
     statusPublicacao: filters.status || null,
+    arquivados: filters.arquivados,
     sort: filters.sort,
     page: filters.page,
     pageSize,
@@ -118,6 +123,7 @@ export type ActiveChip = { key: keyof CatalogFilters; label: string };
 export function activeChips(filters: CatalogFilters): ActiveChip[] {
   const chips: ActiveChip[] = [];
   const push = (key: keyof CatalogFilters, label: string) => chips.push({ key, label });
+  if (filters.arquivados === "somente") push("arquivados", "Arquivados");
   if (filters.carteira !== "todas")
     push(
       "carteira",

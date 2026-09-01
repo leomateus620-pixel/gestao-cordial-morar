@@ -81,3 +81,43 @@ export async function finalizePendingRemoval(
   await purgeProperty(admin, propertyId);
   return true;
 }
+
+/**
+ * Conclui o arquivamento de um imóvel marcado como `pending_archive` assim que
+ * todos os provedores confirmarem a despublicação. Nada é apagado: o cadastro
+ * apenas sai do catálogo ativo e passa a ser listado como arquivado.
+ */
+export async function finalizePendingArchive(
+  admin: AnyClient,
+  propertyId: string,
+): Promise<boolean> {
+  const { data: property } = await admin
+    .from("properties")
+    .select("id, removal_state")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (
+    !property ||
+    (property as { removal_state?: string | null }).removal_state !== "pending_archive"
+  ) {
+    return false;
+  }
+
+  const { data: links } = await admin
+    .from("property_provider_publications")
+    .select("enabled, status")
+    .eq("property_id", propertyId);
+
+  const stillLive = ((links ?? []) as Array<{ enabled: boolean; status: string | null }>).some(
+    (link) => link.enabled && link.status !== "unpublished",
+  );
+  if (stillLive) return false;
+
+  const now = new Date().toISOString();
+  const { error } = await admin
+    .from("properties")
+    .update({ archived_at: now, removal_state: "archived", updated_at: now })
+    .eq("id", propertyId);
+  if (error) throw new Error(error.message);
+  return true;
+}
