@@ -5,11 +5,12 @@ import {
   Bath,
   Bed,
   Car,
+  ChevronDown,
   ExternalLink,
   Loader2,
   MapPin,
+  Maximize2,
   Pencil,
-  Ruler,
   Trash2,
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
@@ -24,9 +25,7 @@ import { isAdminUser } from "@/lib/access-control";
 import { brl } from "@/lib/format";
 import {
   formatArea,
-  NAO_INFORMADO,
   propertyLocalidade,
-  PUBLICATION_STATUS_LABEL,
   type PropertyDetail,
 } from "@/types/property";
 
@@ -52,31 +51,28 @@ export const Route = createFileRoute("/_app/imoveis/$imovelId/")({
   ),
 });
 
-const PROVIDER_LABEL: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
+function money(value: number | null | undefined) {
+  return value === null || value === undefined ? null : brl(value);
+}
 
-function Info({ label, value }: { label: string; value: React.ReactNode }) {
-  const empty = value === null || value === undefined || value === "" || value === false;
+/** Renderiza apenas quando há dado — campos vazios não ocupam espaço. */
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === null || value === undefined || value === "") return null;
   return (
-    <div className="rounded-2xl bg-white/45 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/45">{label}</p>
-      <p className={"mt-0.5 text-sm font-semibold " + (empty ? "italic text-foreground/35" : "")}>
-        {empty ? NAO_INFORMADO : value === true ? "Sim" : value}
-      </p>
+    <div>
+      <p className="text-xs text-foreground/45">{label}</p>
+      <p className="mt-0.5 text-sm font-medium">{value}</p>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="glass-panel rounded-3xl p-4">
-      <h2 className="mb-3 text-sm font-bold">{title}</h2>
+    <section className="rounded-3xl border border-white/60 bg-white/60 p-5 shadow-[0_10px_30px_-16px_rgba(23,27,33,0.15)] backdrop-blur-xl">
+      <h2 className="mb-4 text-base font-semibold">{title}</h2>
       {children}
     </section>
   );
-}
-
-function money(value: number | null) {
-  return value === null || value === undefined ? null : brl(value);
 }
 
 function DetalhePage() {
@@ -85,8 +81,7 @@ function DetalhePage() {
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
-
-
+  const [contactOpen, setContactOpen] = useState(false);
 
   if (query.isPending) {
     return (
@@ -110,27 +105,54 @@ function DetalhePage() {
 
   const imovel: PropertyDetail = query.data;
   const localidade = propertyLocalidade(imovel);
+  const address = imovel.localizacaoExibida ?? localidade;
+
+  const facts = [
+    imovel.dormitorios !== null ? { icon: Bed, text: `${imovel.dormitorios} dorm.` } : null,
+    imovel.banheiros !== null ? { icon: Bath, text: `${imovel.banheiros} banh.` } : null,
+    imovel.vagas !== null ? { icon: Car, text: `${imovel.vagas} vagas` } : null,
+    formatArea(imovel.areaPrincipal)
+      ? { icon: Maximize2, text: formatArea(imovel.areaPrincipal) }
+      : null,
+  ].filter(Boolean) as Array<{ icon: typeof Bed; text: string }>;
+
+  const hasOwnerContact =
+    imovel.proprietarioNome || imovel.proprietarioTelefone || imovel.proprietarioEmail;
+
+  const hasLocationDetails =
+    imovel.cep || imovel.logradouro || imovel.numero || imovel.zona || imovel.regiao;
+
+  const hasAreas =
+    imovel.areaTotal || imovel.areaUtil || imovel.areaConstruida || imovel.areaTerreno;
+
+  const hasExtraCharacteristics = imovel.suites || imovel.salas || imovel.mobiliado;
+
+  const hasValues =
+    imovel.valorIptu ||
+    imovel.valorCondominio ||
+    imovel.aceitaFinanciamento ||
+    imovel.permuta ||
+    imovel.disponibilidade;
+
+  const hasDocs =
+    imovel.origemCaptacao ||
+    imovel.exclusividade ||
+    imovel.autorizacao ||
+    imovel.escriturada ||
+    imovel.averbada ||
+    imovel.comPlaca;
 
   return (
-    <div className="space-y-4 pb-10">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-5 pb-10">
+      {/* Ações no topo */}
+      <div className="flex items-center gap-3">
         <Link
           to="/imoveis"
-          className="glass-panel inline-flex size-9 items-center justify-center rounded-full"
+          className="glass-panel inline-flex size-10 items-center justify-center rounded-full"
           aria-label="Voltar para o catálogo"
         >
           <ArrowLeft className="size-4" />
         </Link>
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold">
-            {imovel.tipo ?? "Imóvel"}
-            {imovel.codigo ? <span className="text-foreground/45"> · Cód. {imovel.codigo}</span> : null}
-          </h1>
-          <p className="text-[12px] text-foreground/55">
-            {imovel.operacao === "venda" ? "Venda" : "Aluguel"} ·{" "}
-            {imovel.localizacaoExibida ?? localidade ?? NAO_INFORMADO}
-          </p>
-        </div>
         <span className="ml-auto flex shrink-0 items-center gap-2">
           {imovel.publications
             .filter((p) => p.status === "published" && p.publicUrl)
@@ -158,192 +180,193 @@ function DetalhePage() {
 
       <DeletePropertyDialog imovel={imovel} open={deleteOpen} onOpenChange={setDeleteOpen} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <PropertyGallery
-            images={imovel.images}
-            alt={`Fotos do imóvel ${imovel.codigo ?? ""} em ${imovel.cidade ?? "catálogo"}`}
-          />
+      {/* Hero: galeria + resumo */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <PropertyGallery
+          images={imovel.images}
+          alt={`Fotos do imóvel ${imovel.codigo ?? ""} em ${imovel.cidade ?? "catálogo"}`}
+        />
 
-          <Section title="Visão geral">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {imovel.publications.map((p) => (
-                <span
-                  key={p.provider}
-                  className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary"
-                >
-                  {PROVIDER_LABEL[p.provider] ?? p.provider} ·{" "}
-                  {PUBLICATION_STATUS_LABEL[p.status] ?? p.status}
+        <div className="flex flex-col justify-center rounded-3xl border border-white/60 bg-white/60 p-6 shadow-[0_10px_30px_-16px_rgba(23,27,33,0.15)] backdrop-blur-xl">
+          <p className="text-sm font-medium text-foreground/50">
+            {imovel.operacao === "venda" ? "Venda" : "Aluguel"}
+            {imovel.codigo ? (
+              <span className="ml-2 font-mono text-xs text-foreground/40">{imovel.codigo}</span>
+            ) : null}
+          </p>
+          <h1 className="mt-1 text-2xl font-bold leading-tight">{imovel.tipo ?? "Imóvel"}</h1>
+
+          {address ? (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-foreground/60">
+              <MapPin className="size-4 shrink-0" />
+              <span className="truncate">{address}</span>
+            </p>
+          ) : null}
+
+          <p className="mt-4 text-3xl font-bold text-primary">
+            {imovel.valorModo === "consulte" || imovel.valor === null ? (
+              <span className="text-xl">Consulte</span>
+            ) : (
+              <>
+                {brl(imovel.valor)}
+                {imovel.operacao === "aluguel" && (
+                  <span className="text-sm font-medium text-foreground/55"> /mês</span>
+                )}
+              </>
+            )}
+          </p>
+
+          {facts.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-foreground/70">
+              {facts.map((f, i) => (
+                <span key={i} className="flex items-center gap-1.5">
+                  <f.icon className="size-4" />
+                  {f.text}
                 </span>
               ))}
             </div>
-            <p className="font-mono text-2xl font-bold text-primary">
-              {imovel.valorModo === "consulte" || imovel.valor === null ? (
-                <span className="text-lg">Consulte</span>
-              ) : (
-                <>
-                  {brl(imovel.valor)}
-                  {imovel.operacao === "aluguel" && (
-                    <span className="text-xs font-medium text-foreground/55">/mês</span>
-                  )}
-                </>
-              )}
+          )}
+
+          {imovel.descricaoImovel ? (
+            <p className="mt-4 line-clamp-5 whitespace-pre-line text-sm leading-relaxed text-foreground/70">
+              {imovel.descricaoImovel}
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Fact icon={Bed} label="Dorm." value={imovel.dormitorios} />
-              <Fact icon={Bath} label="Banh." value={imovel.banheiros} />
-              <Fact icon={Car} label="Vagas" value={imovel.vagas} />
-              <Fact icon={Ruler} label="Área" value={formatArea(imovel.areaPrincipal)} />
-            </div>
-            {imovel.descricaoImovel ? (
-              <p className="mt-3 whitespace-pre-line text-[13px] leading-relaxed text-foreground/70">
-                {imovel.descricaoImovel}
-              </p>
-            ) : null}
-            {imovel.pontosFortes ? (
-              <p className="mt-2 whitespace-pre-line text-[12px] text-foreground/60">
-                <span className="font-semibold text-foreground/75">Pontos fortes: </span>
-                {imovel.pontosFortes}
-              </p>
-            ) : null}
-          </Section>
+          ) : null}
 
-          <Section title="Localização">
-            <div className="mb-2 flex items-start gap-1.5 text-sm text-foreground/65">
-              <MapPin className="mt-0.5 size-4 shrink-0" />
-              {imovel.localizacaoExibida ?? localidade ?? NAO_INFORMADO}
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Info label="CEP" value={imovel.cep} />
-              <Info label="Logradouro" value={imovel.logradouro} />
-              <Info label="Número" value={imovel.numero} />
-              <Info label="Bairro" value={imovel.bairro} />
-              <Info label="Cidade" value={imovel.cidade} />
-              <Info label="UF" value={imovel.uf} />
-              <Info label="Zona" value={imovel.zona} />
-              <Info label="Região" value={imovel.regiao} />
-            </div>
-          </Section>
-
-          <Section title="Características">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Info label="Dormitórios" value={imovel.dormitorios} />
-              <Info label="Suítes" value={imovel.suites} />
-              <Info label="Banheiros" value={imovel.banheiros} />
-              <Info label="Vagas" value={imovel.vagas} />
-              <Info label="Salas" value={imovel.salas} />
-              <Info label="Mobiliado" value={imovel.mobiliado ? "Sim" : "Não"} />
-            </div>
-          </Section>
-
-          <Section title="Áreas e terreno">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Info
-                label={imovel.areaTipo ? `Área (${imovel.areaTipo})` : "Área principal"}
-                value={formatArea(imovel.areaPrincipal)}
-              />
-              <Info label="Área total" value={formatArea(imovel.areaTotal)} />
-              <Info label="Área útil" value={formatArea(imovel.areaUtil)} />
-              <Info label="Área construída" value={formatArea(imovel.areaConstruida)} />
-              <Info label="Área do terreno" value={formatArea(imovel.areaTerreno)} />
-            </div>
-          </Section>
+          {imovel.pontosFortes ? (
+            <p className="mt-3 whitespace-pre-line text-sm text-foreground/60">
+              <span className="font-semibold text-foreground/75">Pontos fortes: </span>
+              {imovel.pontosFortes}
+            </p>
+          ) : null}
         </div>
+      </div>
 
-        <div className="space-y-4">
-          <Section title="Valores e condições">
-            <div className="grid grid-cols-2 gap-2">
-              <Info label="Valor" value={imovel.valorModo === "consulte" ? "Consulte" : money(imovel.valor)} />
-              <Info label="IPTU" value={money(imovel.valorIptu)} />
-              <Info label="Condomínio" value={money(imovel.valorCondominio)} />
-              <Info label="Financiamento" value={imovel.aceitaFinanciamento ? "Aceita" : "Não aceita"} />
-              <Info label="Permuta" value={imovel.permuta ? "Aceita" : "Não aceita"} />
-              <Info label="Disponibilidade" value={imovel.disponibilidade} />
-            </div>
-          </Section>
-
-          <Section title="Documentação e captação">
-            <div className="grid grid-cols-2 gap-2">
-              <Info label="Proprietário" value={imovel.proprietarioNome} />
-              <Info label="Telefone do proprietário" value={imovel.proprietarioTelefone} />
-              <Info label="E-mail do proprietário" value={imovel.proprietarioEmail} />
-              <Info label="Origem da captação" value={imovel.origemCaptacao} />
-              <Info label="Exclusividade" value={imovel.exclusividade ? "Sim" : "Não"} />
-              <Info label="Autorização" value={imovel.autorizacao ? "Sim" : "Não"} />
-              <Info label="Escriturada" value={imovel.escriturada ? "Sim" : "Não"} />
-              <Info label="Averbada" value={imovel.averbada ? "Sim" : "Não"} />
-              <Info label="Com placa" value={imovel.comPlaca ? "Sim" : "Não"} />
-            </div>
-          </Section>
-
-          {(imovel.nomeEmpreendimento || imovel.unidade) && (
-            <Section title="Empreendimento">
-              <div className="grid grid-cols-2 gap-2">
-                <Info label="Empreendimento" value={imovel.nomeEmpreendimento} />
-                <Info label="Unidade" value={imovel.unidade} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="space-y-5">
+          {hasLocationDetails && (
+            <Section title="Localização">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+                <Field label="CEP" value={imovel.cep} />
+                <Field label="Logradouro" value={imovel.logradouro} />
+                <Field label="Número" value={imovel.numero} />
+                <Field label="Bairro" value={imovel.bairro} />
+                <Field label="Cidade" value={imovel.cidade} />
+                <Field label="UF" value={imovel.uf} />
+                <Field label="Zona" value={imovel.zona} />
+                <Field label="Região" value={imovel.regiao} />
               </div>
             </Section>
           )}
 
-          <Section title="Divulgação">
-            <div className="grid grid-cols-2 gap-2">
-              <Info label="Exibir no site" value={imovel.exibirImovel ? "Sim" : "Não"} />
-              <Info label="Destaque na home" value={imovel.destaqueInicial ? "Sim" : "Não"} />
-              <Info label="Revisão" value={`v${imovel.revision}`} />
-              <Info
-                label="Última atualização"
-                value={imovel.updatedAt ? new Date(imovel.updatedAt).toLocaleString("pt-BR") : null}
-              />
-            </div>
-          </Section>
+          {(hasExtraCharacteristics || hasAreas) && (
+            <Section title="Características e áreas">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+                <Field label="Suítes" value={imovel.suites} />
+                <Field label="Salas" value={imovel.salas} />
+                <Field label="Mobiliado" value={imovel.mobiliado ? "Sim" : null} />
+                <Field label="Área total" value={formatArea(imovel.areaTotal)} />
+                <Field label="Área útil" value={formatArea(imovel.areaUtil)} />
+                <Field label="Área construída" value={formatArea(imovel.areaConstruida)} />
+                <Field label="Área do terreno" value={formatArea(imovel.areaTerreno)} />
+              </div>
+            </Section>
+          )}
+
+          {(imovel.nomeEmpreendimento || imovel.unidade) && (
+            <Section title="Empreendimento">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <Field label="Empreendimento" value={imovel.nomeEmpreendimento} />
+                <Field label="Unidade" value={imovel.unidade} />
+              </div>
+            </Section>
+          )}
+        </div>
+
+        <div className="space-y-5">
+          {hasValues && (
+            <Section title="Valores e condições">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <Field label="IPTU" value={money(imovel.valorIptu)} />
+                <Field label="Condomínio" value={money(imovel.valorCondominio)} />
+                <Field
+                  label="Financiamento"
+                  value={imovel.aceitaFinanciamento ? "Aceita" : null}
+                />
+                <Field label="Permuta" value={imovel.permuta ? "Aceita" : null} />
+                <Field label="Disponibilidade" value={imovel.disponibilidade} />
+              </div>
+            </Section>
+          )}
+
+          {hasDocs && (
+            <Section title="Documentação e captação">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <Field label="Origem da captação" value={imovel.origemCaptacao} />
+                <Field label="Exclusividade" value={imovel.exclusividade ? "Sim" : null} />
+                <Field label="Autorização" value={imovel.autorizacao ? "Sim" : null} />
+                <Field label="Escriturada" value={imovel.escriturada ? "Sim" : null} />
+                <Field label="Averbada" value={imovel.averbada ? "Sim" : null} />
+                <Field label="Com placa" value={imovel.comPlaca ? "Sim" : null} />
+              </div>
+            </Section>
+          )}
+
+          {hasOwnerContact && (
+            <section className="rounded-3xl border border-white/60 bg-white/60 shadow-[0_10px_30px_-16px_rgba(23,27,33,0.15)] backdrop-blur-xl">
+              <button
+                type="button"
+                onClick={() => setContactOpen((v) => !v)}
+                className="flex w-full items-center justify-between p-5 text-left"
+                aria-expanded={contactOpen}
+              >
+                <span className="text-base font-semibold">Contato interno</span>
+                <ChevronDown
+                  className={`size-4 text-foreground/45 transition-transform ${contactOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {contactOpen && (
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 px-5 pb-5 sm:grid-cols-3">
+                  <Field label="Proprietário" value={imovel.proprietarioNome} />
+                  <Field label="Telefone" value={imovel.proprietarioTelefone} />
+                  <Field label="E-mail" value={imovel.proprietarioEmail} />
+                </div>
+              )}
+            </section>
+          )}
 
           <PropertyPublishPanel propertyId={imovel.id} canPublish={true} isAdmin={isAdmin} />
 
-          <Section title="Origem do registro">
-            <div className="space-y-2 text-[12px] text-foreground/60">
-              <p>
-                Fonte: <span className="font-semibold text-foreground/80">{imovel.source}</span>
-                {imovel.sourceCatalogPage ? ` · página ${imovel.sourceCatalogPage} do catálogo` : ""}
-              </p>
-              <p className="break-all font-mono text-[11px]">ID de origem: {imovel.sourcePropertyId}</p>
-              {imovel.sourcePropertyUrl && (
-                <a
-                  href={imovel.sourcePropertyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary"
-                >
-                  Abrir anúncio original
-                  <ExternalLink className="size-3" />
-                </a>
-              )}
-            </div>
-          </Section>
+          {isAdmin && (
+            <details className="rounded-2xl px-2 text-xs text-foreground/40">
+              <summary className="cursor-pointer select-none font-medium">
+                Detalhes técnicos
+              </summary>
+              <div className="mt-2 space-y-1.5 pb-2">
+                <p>
+                  Fonte: {imovel.source}
+                  {imovel.sourceCatalogPage ? ` · página ${imovel.sourceCatalogPage}` : ""} ·
+                  revisão v{imovel.revision}
+                  {imovel.updatedAt
+                    ? ` · atualizado em ${new Date(imovel.updatedAt).toLocaleString("pt-BR")}`
+                    : ""}
+                </p>
+                <p className="break-all font-mono text-[11px]">{imovel.sourcePropertyId}</p>
+                {imovel.sourcePropertyUrl && (
+                  <a
+                    href={imovel.sourcePropertyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-primary/70 hover:text-primary"
+                  >
+                    Anúncio original <ExternalLink className="size-3" />
+                  </a>
+                )}
+              </div>
+            </details>
+          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Fact({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Bed;
-  label: string;
-  value: string | number | null;
-}) {
-  const empty = value === null || value === undefined || value === "";
-  return (
-    <div className="rounded-2xl bg-white/45 px-3 py-2">
-      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-foreground/45">
-        <Icon className="size-3" />
-        {label}
-      </p>
-      <p className={"mt-0.5 text-sm font-bold " + (empty ? "italic text-foreground/35" : "")}>
-        {empty ? "—" : value}
-      </p>
     </div>
   );
 }
