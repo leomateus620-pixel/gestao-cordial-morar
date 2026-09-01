@@ -24,7 +24,9 @@ function useCatalogFilters() {
 /** Busca do catálogo dentro do header (substitui a busca global na rota /imoveis). */
 export function CatalogSearchInput({ className }: { className?: string }) {
   const { filters, apply } = useCatalogFilters();
+  const navigate = useNavigate();
   const [term, setTerm] = useState(filters.q);
+
 
   useEffect(() => setTerm(filters.q), [filters.q]);
 
