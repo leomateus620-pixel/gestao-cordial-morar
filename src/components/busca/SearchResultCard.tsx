@@ -2,6 +2,7 @@ import {
   BadgeDollarSign,
   Building2,
   FileText,
+  Home,
   HousePlus,
   Inbox,
   KeyRound,
@@ -13,6 +14,7 @@ import { buscaCategoriaLabels, formatBuscaDate } from "@/types/busca";
 import { cn } from "@/lib/utils";
 
 export const categoriaIcons: Record<BuscaCategoria, LucideIcon> = {
+  catalogo: Home,
   atendimento: Inbox,
   cliente: Users,
   aluguel: KeyRound,
