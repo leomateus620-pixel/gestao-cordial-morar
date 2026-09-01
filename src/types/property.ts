@@ -127,6 +127,8 @@ export type PropertyWriteInput = {
   observacaoImovel: string | null;
   /** Outras informações internas — nunca publicadas nos sites. */
   outrasInformacoes: string | null;
+  /** Link do Google Maps colado pela equipe — uso interno, nunca vai aos sites. */
+  localizacaoMapsUrl: string | null;
   /** Quem agenciou o imóvel. */
   corretorId: string | null;
   corretorNome: string | null;
