@@ -3,6 +3,9 @@ import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listCorretores } from "@/lib/corretores/corretores.functions";
 import { PropertyPhotosStep } from "./PropertyPhotosStep";
 import { PublishTargetSelector } from "./PublishTargetSelector";
 import {
@@ -153,6 +156,9 @@ export function emptyPropertyValues(): PropertyFormValues {
     proprietarioNome: null,
     proprietarioTelefone: null,
     proprietarioEmail: null,
+    observacaoImovel: null,
+    corretorId: null,
+    corretorNome: null,
     origemCaptacao: null,
     nomeEmpreendimento: null,
     unidade: null,
@@ -301,6 +307,14 @@ export function PropertyForm({
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [bairros, values.bairro]);
   const STEPS = useMemo(() => [...BASE_STEPS, ...extras.map((e) => e.label)], [extras]);
+  const fetchCorretores = useServerFn(listCorretores);
+  const corretoresQuery = useQuery({
+    queryKey: ["corretores", "property-form"],
+    queryFn: () => fetchCorretores(),
+    staleTime: 5 * 60_000,
+  });
+  const corretores = corretoresQuery.data ?? [];
+
   const codes = usePropertyCodeReservation();
   const codeRequestsInFlight = useRef<Set<PropertyCarteira>>(new Set());
   const [providerCodes, setProviderCodes] = useState<ProviderCodes>(() => {
@@ -565,7 +579,38 @@ export function PropertyForm({
                   className={inputCls}
                 />
               </Field>
+              <Field label="Quem agenciou" hint="Uso interno: nao e publicado nos sites.">
+                <select
+                  value={values.corretorId ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value || null;
+                    const corretor = corretores.find((c) => c.id === id);
+                    set("corretorId", id);
+                    set("corretorNome", corretor?.nome ?? null);
+                  }}
+                  className={inputCls}
+                >
+                  <option value="">Nao informado</option>
+                  {corretores.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
+            <Field
+              label="Informacoes internas"
+              hint="So a equipe ve: nao vai para os sites Cordial e Morar."
+            >
+              <textarea
+                rows={4}
+                value={values.observacaoImovel ?? ""}
+                onChange={(e) => set("observacaoImovel", e.target.value)}
+                placeholder="Chaves, combinados com o proprietario, restricoes de visita..."
+                className={inputCls}
+              />
+            </Field>
           </>
         )}
 

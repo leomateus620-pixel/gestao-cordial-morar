@@ -3,19 +3,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  ACCEPTED_DRIVE_PHOTO_MIME,
   ACCEPTED_VIDEO_MIME,
+  createPropertyDrivePhotoUploadUrl,
   createPropertyVideoUploadUrl,
+  deletePropertyDrivePhoto,
   deletePropertyVideo,
   getPropertyDriveStatus,
+  registerPropertyDrivePhoto,
   registerPropertyVideo,
   retryPropertyDriveFiles,
-  setPropertyImageOrientation,
   syncPropertyDriveNow,
   type PropertyDriveStatus,
 } from "@/lib/imoveis/drive/property-drive.functions";
 import type { DriveCategory } from "@/lib/imoveis/drive/naming";
 
-export { ACCEPTED_VIDEO_MIME };
+export { ACCEPTED_VIDEO_MIME, ACCEPTED_DRIVE_PHOTO_MIME };
 
 export function usePropertyDriveStatus(propertyId: string | undefined) {
   const load = useServerFn(getPropertyDriveStatus);
@@ -39,10 +42,15 @@ export function usePropertyDrive(propertyId: string | undefined) {
   const qc = useQueryClient();
   const syncFn = useServerFn(syncPropertyDriveNow);
   const retryFn = useServerFn(retryPropertyDriveFiles);
-  const orientationFn = useServerFn(setPropertyImageOrientation);
   const uploadUrlFn = useServerFn(createPropertyVideoUploadUrl);
   const registerFn = useServerFn(registerPropertyVideo);
   const deleteVideoFn = useServerFn(deletePropertyVideo);
+  const photoUrlFn = useServerFn(createPropertyDrivePhotoUploadUrl);
+  const registerPhotoFn = useServerFn(registerPropertyDrivePhoto);
+  const deletePhotoFn = useServerFn(deletePropertyDrivePhoto);
+  const [photoProgress, setPhotoProgress] = useState<
+    { name: string; status: "enviando" | "pronto" | "erro"; error?: string }[]
+  >([]);
   const [videoProgress, setVideoProgress] = useState<
     { name: string; status: "enviando" | "pronto" | "erro"; error?: string }[]
   >([]);
@@ -63,9 +71,55 @@ export function usePropertyDrive(propertyId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  const setOrientation = useMutation({
-    mutationFn: (input: { imageId: string; orientation: "horizontal" | "vertical" | null }) =>
-      orientationFn({ data: { propertyId: propertyId as string, ...input } }),
+  /** Fotos verticais: canal exclusivo do Drive, não vão para os sites. */
+  const uploadDrivePhotos = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!propertyId) throw new Error("Salve o imóvel antes de enviar fotos verticais.");
+      for (const file of files) {
+        setPhotoProgress((p) => [...p, { name: file.name, status: "enviando" }]);
+        try {
+          if (!ACCEPTED_DRIVE_PHOTO_MIME.includes(file.type))
+            throw new Error("Formato não suportado.");
+          const target = await photoUrlFn({
+            data: { propertyId, fileName: file.name, mimeType: file.type, sizeBytes: file.size },
+          });
+          const { error } = await supabase.storage
+            .from("property-drive-photos")
+            .uploadToSignedUrl(target.path, target.token, file, { contentType: file.type });
+          if (error) throw new Error(error.message);
+          await registerPhotoFn({
+            data: {
+              propertyId,
+              storagePath: target.path,
+              fileName: file.name,
+              mimeType: file.type,
+              sizeBytes: file.size,
+            },
+          });
+          setPhotoProgress((p) =>
+            p.map((item) =>
+              item.name === file.name && item.status === "enviando"
+                ? { ...item, status: "pronto" }
+                : item,
+            ),
+          );
+        } catch (err) {
+          setPhotoProgress((p) =>
+            p.map((item) =>
+              item.name === file.name && item.status === "enviando"
+                ? { ...item, status: "erro", error: (err as Error)?.message }
+                : item,
+            ),
+          );
+        }
+      }
+    },
+    onSettled: invalidate,
+  });
+
+  const removeDrivePhoto = useMutation({
+    mutationFn: (photoId: string) =>
+      deletePhotoFn({ data: { propertyId: propertyId as string, photoId } }),
     onSuccess: invalidate,
   });
 
@@ -119,5 +173,14 @@ export function usePropertyDrive(propertyId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  return { sync, retry, setOrientation, uploadVideos, removeVideo, videoProgress };
+  return {
+    sync,
+    retry,
+    uploadVideos,
+    removeVideo,
+    videoProgress,
+    uploadDrivePhotos,
+    removeDrivePhoto,
+    photoProgress,
+  };
 }

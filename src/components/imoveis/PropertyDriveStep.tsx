@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  ACCEPTED_DRIVE_PHOTO_MIME,
   ACCEPTED_VIDEO_MIME,
   usePropertyDrive,
   usePropertyDriveStatus,
@@ -61,6 +62,7 @@ export function PropertyDriveStep({
   const status = usePropertyDriveStatus(propertyId ?? undefined);
   const drive = usePropertyDrive(propertyId ?? undefined);
   const videoInput = useRef<HTMLInputElement>(null);
+  const verticalInput = useRef<HTMLInputElement>(null);
   const data = status.data;
 
   async function ensureSaved(): Promise<string | null> {
@@ -220,6 +222,88 @@ export function PropertyDriveStep({
       <div className="rounded-3xl bg-white/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
+            <p className="text-[12px] font-bold">Fotos verticais (só Drive)</p>
+            <p className="text-[11px] text-foreground/55">
+              JPG, PNG ou WEBP até 50 MB. Estas fotos não são publicadas nos sites — vão apenas para
+              a pasta Vertical do Drive.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const id = await ensureSaved();
+              if (id) verticalInput.current?.click();
+            }}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-foreground/[0.06] px-4 text-xs font-semibold"
+          >
+            <Upload className="size-3.5" /> Adicionar foto vertical
+          </button>
+          <input
+            ref={verticalInput}
+            type="file"
+            accept={ACCEPTED_DRIVE_PHOTO_MIME.join(",")}
+            multiple
+            hidden
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              e.target.value = "";
+              if (files.length) drive.uploadDrivePhotos.mutate(files);
+            }}
+          />
+        </div>
+
+        {drive.photoProgress.length ? (
+          <ul className="mt-3 space-y-1">
+            {drive.photoProgress.map((item, i) => (
+              <li
+                key={`${item.name}-${i}`}
+                className="flex items-center gap-2 text-[11px] text-foreground/65"
+              >
+                {item.status === "enviando" ? <Loader2 className="size-3 animate-spin" /> : null}
+                <span className="truncate">{item.name}</span>
+                <span className="ml-auto shrink-0 font-semibold">
+                  {item.status === "erro" ? (item.error ?? "Erro") : item.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {(data?.drivePhotos ?? []).length ? (
+          <ul className="mt-3 space-y-1.5">
+            {(data?.drivePhotos ?? []).map((photo) => (
+              <li
+                key={photo.id}
+                className="flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 text-[11px]"
+              >
+                <Images className="size-3.5 shrink-0 text-primary" />
+                <span className="truncate" title={photo.fileName}>
+                  {photo.fileName}
+                </span>
+                <span className="ml-auto shrink-0 text-foreground/50">
+                  {formatSize(photo.sizeBytes)}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remover ${photo.fileName}`}
+                  onClick={() => drive.removeDrivePhoto.mutate(photo.id)}
+                  className="grid size-11 shrink-0 place-items-center rounded-full text-foreground/50 hover:text-rose-700"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-[11px] text-foreground/50">
+            Nenhuma foto vertical enviada ainda.
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-3xl bg-white/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
             <p className="text-[12px] font-bold">Vídeos do imóvel</p>
             <p className="text-[11px] text-foreground/55">
               MP4, MOV ou WEBM até 500 MB. O envio continua em segundo plano.
@@ -310,7 +394,8 @@ export function PropertyDriveStep({
           ) : null}
         </div>
         <p className="mt-1 text-[11px] text-foreground/55">
-          As fotos já enviadas são reaproveitadas automaticamente — nada precisa ser reenviado.
+          As fotos do cadastro vão automaticamente para a pasta Horizontal — nada precisa ser
+          reenviado.
         </p>
         {(data?.photos ?? []).length ? (
           <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
@@ -322,20 +407,9 @@ export function PropertyDriveStep({
                 <span className="truncate" title={photo.fileName}>
                   {photo.fileName}
                 </span>
-                <select
-                  aria-label={`Orientação de ${photo.fileName}`}
-                  value={photo.category === "vertical" ? "vertical" : "horizontal"}
-                  onChange={(e) =>
-                    drive.setOrientation.mutate({
-                      imageId: photo.id,
-                      orientation: e.target.value as "horizontal" | "vertical",
-                    })
-                  }
-                  className="ml-auto min-h-11 shrink-0 rounded-full bg-foreground/[0.05] px-2 text-[11px] font-semibold"
-                >
-                  <option value="horizontal">Horizontal</option>
-                  <option value="vertical">Vertical</option>
-                </select>
+                <span className="ml-auto shrink-0 rounded-full bg-foreground/[0.05] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground/60">
+                  Horizontal
+                </span>
               </li>
             ))}
           </ul>

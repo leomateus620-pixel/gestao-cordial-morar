@@ -329,9 +329,9 @@ export function serializeProperty(
 
   // Conteúdo
   assign(payload, "descricaoImovel", sanitizeRichText(property.descricao_imovel));
-  assign(payload, "observacaoImovel", sanitizeRichText(property.observacao_imovel));
+  // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
   assign(payload, "pontosFortesImovel", sanitizeRichText(property.pontos_fortes));
-  assign(payload, "outrasInformacoesImovel", sanitizeRichText(property.outras_informacoes));
+
   assign(payload, "video", textOrUndefined(property.video));
   assign(payload, "tourVirtual", textOrUndefined(property.tour_virtual));
   assign(payload, "tarjaImagem", textOrUndefined(property.tarja_imagem));

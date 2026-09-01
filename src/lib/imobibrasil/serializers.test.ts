@@ -153,3 +153,19 @@ test("sanitizeRichText devolve undefined para vazio", () => {
   assert.equal(sanitizeRichText("   "), undefined);
   assert.equal(sanitizeRichText(null), undefined);
 });
+
+test("campos internos não vão para os sites", () => {
+  const payload = serializeProperty(
+    {
+      ...base,
+      descricao_imovel: "Casa ótima",
+      observacao_imovel: "Chave na imobiliária",
+      outras_informacoes: "Proprietário só atende à tarde",
+    } as LocalPropertyForSync,
+    {} as ResolvedProviderCodes,
+    { mode: "insert" },
+  );
+  const raw = JSON.stringify(payload);
+  assert.equal(raw.includes("Chave na imobili"), false);
+  assert.equal(raw.includes("s\u00f3 atende"), false);
+});

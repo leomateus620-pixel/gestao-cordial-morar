@@ -121,13 +121,21 @@ const COMBINING: Record<string, string> = {
 
 const HTML_ENTITIES: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+  mdash: "—", ndash: "–", bull: "•", middot: "·", hellip: "…",
+  laquo: "«", raquo: "»", deg: "°", ordm: "º", ordf: "ª",
+  rsquo: "’", lsquo: "‘", ldquo: "“", rdquo: "”", trade: "™",
+  reg: "®", copy: "©", euro: "€", pound: "£", sup2: "²", sup3: "³",
+  frac12: "½", frac14: "¼", times: "×", eacute: "é", ntilde: "ñ",
 };
 
-/** A API devolve descrição em HTML com entidades — o cadastro guarda texto limpo. */
+/** A API devolve descrição em HTML — o cadastro guarda texto limpo, com parágrafos preservados. */
 export function decodeHtml(value: string | null): string | null {
   if (!value) return null;
   const decoded = value
     .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|tr|section|article)\s*>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<\/(li|ul|ol)\s*>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
     .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
@@ -136,12 +144,14 @@ export function decodeHtml(value: string | null): string | null {
       (_, letter: string, accent: string) =>
         (letter + (COMBINING[accent] ?? "")).normalize("NFC"),
     )
-    .replace(/&([a-z]+);/gi, (match, name: string) => HTML_ENTITIES[name.toLowerCase()] ?? match)
+    .replace(/&([a-zA-Z]+);/g, (match, name: string) => HTML_ENTITIES[name.toLowerCase()] ?? match)
     .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   return decoded.length ? decoded : null;
 }
+
 
 export function normalizeFinalidade(value: unknown): "venda" | "locacao" | "temporada" {
   const raw = normalizeKey(text(value));

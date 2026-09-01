@@ -12,6 +12,9 @@ import {
 const VIDEO_BUCKET = "property-videos";
 export const ACCEPTED_VIDEO_MIME = ["video/mp4", "video/quicktime", "video/webm"];
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+const DRIVE_PHOTO_BUCKET = "property-drive-photos";
+export const ACCEPTED_DRIVE_PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"];
+const MAX_DRIVE_PHOTO_BYTES = 50 * 1024 * 1024;
 
 export type DriveCategoryState = {
   category: DriveCategory;
@@ -36,6 +39,14 @@ export type PropertyDriveStatus = {
   providers: string[];
   categories: DriveCategoryState[];
   videos: Array<{ id: string; fileName: string; sizeBytes: number | null; status: string }>;
+  /** Fotos verticais enviadas só para o Drive — nunca vão para os sites. */
+  drivePhotos: Array<{
+    id: string;
+    fileName: string;
+    sizeBytes: number | null;
+    status: string;
+    error: string | null;
+  }>;
   photos: Array<{
     id: string;
     fileName: string;
@@ -188,8 +199,14 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       providers.push(property.carteira);
     }
 
-    const [{ data: images }, { data: videos }, { data: files }, { data: folder }, { data: jobs }] =
-      await Promise.all([
+    const [
+      { data: images },
+      { data: videos },
+      { data: drivePhotoRows },
+      { data: files },
+      { data: folder },
+      { data: jobs },
+    ] = await Promise.all([
         context.supabase
           .from("property_images")
           .select("id, file_name, width, height, orientation_override, processing_status, position")
@@ -201,8 +218,13 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
           .eq("property_id", data.propertyId)
           .order("position", { ascending: true }),
         context.supabase
+          .from("property_drive_photos")
+          .select("id, file_name, size_bytes, position")
+          .eq("property_id", data.propertyId)
+          .order("position", { ascending: true }),
+        context.supabase
           .from("property_drive_files")
-          .select("id, image_id, video_id, category, sync_status, last_error_message")
+          .select("id, image_id, video_id, drive_photo_id, category, sync_status, last_error_message")
           .eq("property_id", data.propertyId),
         context.supabase
           .from("property_drive_folders")
@@ -230,10 +252,16 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       size_bytes: number | null;
       upload_status: string;
     }>;
+    const drivePhotoList = (drivePhotoRows ?? []) as Array<{
+      id: string;
+      file_name: string;
+      size_bytes: number | null;
+    }>;
     const fileRows = (files ?? []) as Array<{
       id: string;
       image_id: string | null;
       video_id: string | null;
+      drive_photo_id: string | null;
       category: string;
       sync_status: string;
       last_error_message: string | null;
@@ -244,13 +272,23 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
     const byVideo = new Map(
       fileRows.filter((f) => f.video_id).map((f) => [f.video_id as string, f]),
     );
+    const byDrivePhoto = new Map(
+      fileRows.filter((f) => f.drive_photo_id).map((f) => [f.drive_photo_id as string, f]),
+    );
+    const drivePhotos = drivePhotoList.map((photo) => {
+      const link = byDrivePhoto.get(photo.id);
+      return {
+        id: photo.id,
+        fileName: photo.file_name,
+        sizeBytes: photo.size_bytes,
+        status: link?.sync_status ?? "pending",
+        error: link?.last_error_message ?? null,
+      };
+    });
 
+    // As fotos do cadastro (Etapa 6) alimentam apenas a pasta Horizontal.
     const photos = imageRows.map((image) => {
-      const category = classifyOrientation({
-        width: image.width,
-        height: image.height,
-        override: image.orientation_override,
-      });
+      const category: DriveCategory = "horizontal";
       const link = byImage.get(image.id);
       return {
         id: image.id,
@@ -271,6 +309,13 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       if (category === "video") {
         const items = videoRows.map((v) => byVideo.get(v.id) ?? { sync_status: "pending" });
         return categoryState(category, items, videoRows.length);
+      }
+      if (category === "vertical") {
+        return categoryState(
+          category,
+          drivePhotos.map((p) => ({ sync_status: p.status })),
+          drivePhotos.length,
+        );
       }
       const inCategory = photos.filter((p) => p.category === category);
       const items = inCategory.map((p) => ({ sync_status: p.status }));
@@ -320,6 +365,7 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
         status: byVideo.get(v.id)?.sync_status ?? "pending",
       })),
       photos,
+      drivePhotos,
       lastError: folderRow?.last_error_message ?? null,
     };
   });
@@ -477,5 +523,91 @@ export const deletePropertyVideo = createServerFn({ method: "POST" })
     const path = (row as { storage_path?: string } | null)?.storage_path;
     if (path) await context.supabase.storage.from(VIDEO_BUCKET).remove([path]);
     // O arquivo já confirmado no Drive é histórico: não é apagado aqui.
+    return { ok: true };
+  });
+
+// ============ Fotos verticais exclusivas do Drive ============
+
+export const createPropertyDrivePhotoUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { propertyId: string; fileName: string; mimeType: string; sizeBytes: number }) => {
+      if (!ACCEPTED_DRIVE_PHOTO_MIME.includes(data.mimeType))
+        throw new Error("Formato de imagem não suportado.");
+      if (data.sizeBytes > MAX_DRIVE_PHOTO_BYTES)
+        throw new Error("A imagem excede o limite de 50 MB.");
+      return data;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+    const path = `${data.propertyId}/vertical/${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await context.supabase.storage
+      .from(DRIVE_PHOTO_BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !signed) throw new Error(error?.message ?? "Falha ao preparar o envio da foto.");
+    return { path: signed.path, token: signed.token };
+  });
+
+export const registerPropertyDrivePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      propertyId: string;
+      storagePath: string;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+      checksum?: string | null;
+    }) => {
+      if (!ACCEPTED_DRIVE_PHOTO_MIME.includes(data.mimeType))
+        throw new Error("Formato de imagem não suportado.");
+      return data;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { data: existing } = await context.supabase
+      .from("property_drive_photos")
+      .select("position")
+      .eq("property_id", data.propertyId);
+    const rows = (existing ?? []) as Array<{ position: number }>;
+    const position = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
+    const { error } = await context.supabase.from("property_drive_photos").insert({
+      property_id: data.propertyId,
+      storage_path: data.storagePath,
+      file_name: data.fileName,
+      mime_type: data.mimeType,
+      size_bytes: data.sizeBytes,
+      checksum: data.checksum ?? null,
+      position,
+      uploaded_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { enqueueDriveJob } = await import("./property-drive.server");
+    await enqueueDriveJob(supabaseAdmin, data.propertyId);
+    await kickDriveWorker();
+    return { ok: true };
+  });
+
+export const deletePropertyDrivePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string; photoId: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { data: row } = await context.supabase
+      .from("property_drive_photos")
+      .select("storage_path")
+      .eq("id", data.photoId)
+      .eq("property_id", data.propertyId)
+      .maybeSingle();
+    const { error } = await context.supabase
+      .from("property_drive_photos")
+      .delete()
+      .eq("id", data.photoId)
+      .eq("property_id", data.propertyId);
+    if (error) throw new Error(error.message);
+    const path = (row as { storage_path?: string } | null)?.storage_path;
+    if (path) await context.supabase.storage.from(DRIVE_PHOTO_BUCKET).remove([path]);
     return { ok: true };
   });
