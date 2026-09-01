@@ -23,9 +23,9 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
   const localidade = propertyLocalidade(property);
   const area = formatArea(property.areaPrincipal);
   const specs = [
-    property.dormitorios !== null ? { icon: Bed, text: `${property.dormitorios}` } : null,
-    property.banheiros !== null ? { icon: Bath, text: `${property.banheiros}` } : null,
-    property.vagas !== null
+    property.dormitorios ? { icon: Bed, text: `${property.dormitorios}` } : null,
+    property.banheiros ? { icon: Bath, text: `${property.banheiros}` } : null,
+    property.vagas
       ? { icon: Car, text: `${property.vagas}` }
       : area
         ? { icon: Maximize2, text: area }

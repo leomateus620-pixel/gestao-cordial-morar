@@ -108,9 +108,9 @@ function DetalhePage() {
   const address = imovel.localizacaoExibida ?? localidade;
 
   const facts = [
-    imovel.dormitorios !== null ? { icon: Bed, text: `${imovel.dormitorios} dorm.` } : null,
-    imovel.banheiros !== null ? { icon: Bath, text: `${imovel.banheiros} banh.` } : null,
-    imovel.vagas !== null ? { icon: Car, text: `${imovel.vagas} vagas` } : null,
+    imovel.dormitorios ? { icon: Bed, text: `${imovel.dormitorios} dorm.` } : null,
+    imovel.banheiros ? { icon: Bath, text: `${imovel.banheiros} banh.` } : null,
+    imovel.vagas ? { icon: Car, text: `${imovel.vagas} vagas` } : null,
     formatArea(imovel.areaPrincipal)
       ? { icon: Maximize2, text: formatArea(imovel.areaPrincipal) }
       : null,
