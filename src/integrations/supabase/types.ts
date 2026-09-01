@@ -1642,6 +1642,8 @@ export type Database = {
           is_draft: boolean
           local_chave: string | null
           localizacao_exibida: string | null
+          localizacao_maps_coords: string | null
+          localizacao_maps_url: string | null
           logradouro: string | null
           mapa: string | null
           mobiliado: string | null
@@ -1766,6 +1768,8 @@ export type Database = {
           is_draft?: boolean
           local_chave?: string | null
           localizacao_exibida?: string | null
+          localizacao_maps_coords?: string | null
+          localizacao_maps_url?: string | null
           logradouro?: string | null
           mapa?: string | null
           mobiliado?: string | null
@@ -1890,6 +1894,8 @@ export type Database = {
           is_draft?: boolean
           local_chave?: string | null
           localizacao_exibida?: string | null
+          localizacao_maps_coords?: string | null
+          localizacao_maps_url?: string | null
           logradouro?: string | null
           mapa?: string | null
           mobiliado?: string | null
