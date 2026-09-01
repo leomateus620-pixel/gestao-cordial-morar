@@ -105,10 +105,15 @@ export function PropertyPublishPanel({
                 )}
                 <span className="text-sm font-semibold">{provider.label}</span>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${meta.className}`}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${liveMeta.className}`}
                 >
-                  {busy ? "Em andamento" : meta.label}
+                  {liveMeta.label}
                 </span>
+                {attempts > 0 && (
+                  <span className="text-[10px] font-semibold text-foreground/45">
+                    {attempts} tentativa{attempts > 1 ? "s" : ""}
+                  </span>
+                )}
                 {row?.externalPropertyId && (
                   <span className="font-mono text-[10px] text-foreground/45">
                     #{row.externalPropertyId}
