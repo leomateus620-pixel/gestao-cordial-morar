@@ -12,6 +12,9 @@ import {
 const VIDEO_BUCKET = "property-videos";
 export const ACCEPTED_VIDEO_MIME = ["video/mp4", "video/quicktime", "video/webm"];
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+const DRIVE_PHOTO_BUCKET = "property-drive-photos";
+export const ACCEPTED_DRIVE_PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"];
+const MAX_DRIVE_PHOTO_BYTES = 50 * 1024 * 1024;
 
 export type DriveCategoryState = {
   category: DriveCategory;
@@ -477,5 +480,91 @@ export const deletePropertyVideo = createServerFn({ method: "POST" })
     const path = (row as { storage_path?: string } | null)?.storage_path;
     if (path) await context.supabase.storage.from(VIDEO_BUCKET).remove([path]);
     // O arquivo já confirmado no Drive é histórico: não é apagado aqui.
+    return { ok: true };
+  });
+
+// ============ Fotos verticais exclusivas do Drive ============
+
+export const createPropertyDrivePhotoUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { propertyId: string; fileName: string; mimeType: string; sizeBytes: number }) => {
+      if (!ACCEPTED_DRIVE_PHOTO_MIME.includes(data.mimeType))
+        throw new Error("Formato de imagem não suportado.");
+      if (data.sizeBytes > MAX_DRIVE_PHOTO_BYTES)
+        throw new Error("A imagem excede o limite de 50 MB.");
+      return data;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
+    const path = `${data.propertyId}/vertical/${crypto.randomUUID()}-${safe}`;
+    const { data: signed, error } = await context.supabase.storage
+      .from(DRIVE_PHOTO_BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !signed) throw new Error(error?.message ?? "Falha ao preparar o envio da foto.");
+    return { path: signed.path, token: signed.token };
+  });
+
+export const registerPropertyDrivePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      propertyId: string;
+      storagePath: string;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+      checksum?: string | null;
+    }) => {
+      if (!ACCEPTED_DRIVE_PHOTO_MIME.includes(data.mimeType))
+        throw new Error("Formato de imagem não suportado.");
+      return data;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { data: existing } = await context.supabase
+      .from("property_drive_photos")
+      .select("position")
+      .eq("property_id", data.propertyId);
+    const rows = (existing ?? []) as Array<{ position: number }>;
+    const position = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
+    const { error } = await context.supabase.from("property_drive_photos").insert({
+      property_id: data.propertyId,
+      storage_path: data.storagePath,
+      file_name: data.fileName,
+      mime_type: data.mimeType,
+      size_bytes: data.sizeBytes,
+      checksum: data.checksum ?? null,
+      position,
+      uploaded_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { enqueueDriveJob } = await import("./property-drive.server");
+    await enqueueDriveJob(supabaseAdmin, data.propertyId);
+    await kickDriveWorker();
+    return { ok: true };
+  });
+
+export const deletePropertyDrivePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string; photoId: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { data: row } = await context.supabase
+      .from("property_drive_photos")
+      .select("storage_path")
+      .eq("id", data.photoId)
+      .eq("property_id", data.propertyId)
+      .maybeSingle();
+    const { error } = await context.supabase
+      .from("property_drive_photos")
+      .delete()
+      .eq("id", data.photoId)
+      .eq("property_id", data.propertyId);
+    if (error) throw new Error(error.message);
+    const path = (row as { storage_path?: string } | null)?.storage_path;
+    if (path) await context.supabase.storage.from(DRIVE_PHOTO_BUCKET).remove([path]);
     return { ok: true };
   });
