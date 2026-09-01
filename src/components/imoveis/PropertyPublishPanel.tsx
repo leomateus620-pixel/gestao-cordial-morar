@@ -90,7 +90,16 @@ export function PropertyPublishPanel({
         {PROVIDERS.map((provider) => {
           const row = byProvider.get(provider.key);
           const meta = STATUS_META[row?.status ?? "draft"] ?? STATUS_META["draft"]!;
-          const busy = Boolean(row?.activeJob) || row?.status === "syncing" || row?.status === "pending";
+          const job = row?.activeJob ?? null;
+          const attempts = job?.attempts ?? 0;
+          // Estado honesto: o job em curso manda no rótulo, não o status antigo.
+          const liveMeta = job
+            ? job.status === "processing"
+              ? { label: "Enviando", className: "bg-sky-500/12 text-sky-700" }
+              : job.status === "retry"
+                ? { label: "Reenviando", className: "bg-amber-500/15 text-amber-700" }
+                : { label: "Na fila", className: "bg-amber-500/12 text-amber-700" }
+            : meta;
           return (
             <div key={provider.key} className="rounded-2xl bg-white/50 p-3">
               <div className="flex flex-wrap items-center gap-2">
