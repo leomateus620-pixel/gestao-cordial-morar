@@ -137,12 +137,17 @@ test("normalizeLabel remove acentos e pontuação", () => {
   assert.equal(normalizeLabel("Chácara"), "chacara");
 });
 
-test("sanitizeRichText remove emojis, mantém acentos e quebra linhas", () => {
+test("sanitizeRichText preserva emojis como entidades, acentos e quebras", () => {
   const input = "✨ Casa à venda!\n🔹 01 quarto\n✔️ Localização — próximo a tudo";
-  const out = sanitizeRichText(input);
-  assert.equal(out, "Casa à venda!<br />- 01 quarto<br />- Localização - próximo a tudo");
-  assert.equal(/[?]/.test(out ?? ""), false);
+  const out = sanitizeRichText(input) ?? "";
+  assert.equal(
+    out,
+    "&#10024; Casa à venda!<br />&#128313; 01 quarto<br />&#10004;&#65039; Localização &#8212; próximo a tudo",
+  );
+  assert.equal(/[?]/.test(out), false);
+  assert.equal(out.includes("- 01 quarto"), false);
 });
+
 
 test("sanitizeRichText devolve undefined para vazio", () => {
   assert.equal(sanitizeRichText("   "), undefined);

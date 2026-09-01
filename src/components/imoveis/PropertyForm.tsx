@@ -751,15 +751,8 @@ export function PropertyForm({
                 rows={7}
                 className={inputCls}
               />
-              {/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{2BFF}]/u.test(
-                values.descricaoImovel ?? "",
-              ) && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Os sites não exibem emojis — eles serão convertidos automaticamente (marcadores
-                  viram “-”) no envio. O texto original continua salvo aqui.
-                </p>
-              )}
             </Field>
+
 
             <Field label="Pontos fortes">
               <textarea
