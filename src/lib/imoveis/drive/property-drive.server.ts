@@ -17,6 +17,7 @@ const ALL_DRIVES = "supportsAllDrives=true&includeItemsFromAllDrives=true";
 export const ROOT_SETTING_KEY = "property_drive_root";
 const IMAGE_BUCKET = "property-images";
 const VIDEO_BUCKET = "property-videos";
+const DRIVE_PHOTO_BUCKET = "property-drive-photos";
 /** Acima disso o upload vai por sessão resumível com checkpoint. */
 const RESUMABLE_THRESHOLD = 5 * 1024 * 1024;
 
@@ -582,7 +583,8 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
   const property = await loadProperty(admin, propertyId);
   const prefix = filePrefixFor(property);
 
-  const [{ data: imageRows }, { data: videoRows }, { data: linkRows }] = await Promise.all([
+  const [{ data: imageRows }, { data: videoRows }, { data: drivePhotoRows }, { data: linkRows }] =
+    await Promise.all([
     admin
       .from("property_images")
       .select(
@@ -595,6 +597,11 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
       .select("id, file_name, position, storage_path, mime_type, size_bytes, checksum")
       .eq("property_id", propertyId)
       .order("position", { ascending: true }),
+    admin
+      .from("property_drive_photos")
+      .select("id, file_name, storage_path, mime_type, size_bytes, checksum, position")
+      .eq("property_id", propertyId)
+      .order("position", { ascending: true }),
     admin.from("property_drive_files").select("*").eq("property_id", propertyId),
   ]);
 
@@ -603,6 +610,17 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
   const links = (linkRows ?? []) as DriveFileRow[];
   const byImage = new Map(links.filter((l) => l.image_id).map((l) => [l.image_id as string, l]));
   const byVideo = new Map(links.filter((l) => l.video_id).map((l) => [l.video_id as string, l]));
+  const drivePhotos = (drivePhotoRows ?? []) as Array<{
+    id: string;
+    file_name: string;
+    storage_path: string;
+    mime_type: string | null;
+    size_bytes: number | null;
+    checksum: string | null;
+  }>;
+  const byDrivePhoto = new Map(
+    links.filter((l) => l.drive_photo_id).map((l) => [l.drive_photo_id as string, l]),
+  );
 
   let waitingWatermark = false;
   const counters: Record<
@@ -620,11 +638,8 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
 
   // -------- Fotos --------
   for (const image of images) {
-    const category = classifyOrientation({
-      width: image.width,
-      height: image.height,
-      override: image.orientation_override,
-    });
+    // Fotos do cadastro (as que vão aos sites) ficam sempre na pasta Horizontal.
+    const category: DriveCategory = "horizontal";
     indexes[category] += 1;
     counters[category].total += 1;
     const index = indexes[category];
@@ -680,6 +695,41 @@ export async function syncPropertyDrive(admin: Admin, propertyId: string): Promi
     counters[category][outcome] += 1;
   }
 
+
+  // -------- Fotos verticais (exclusivas do Drive) --------
+  for (const photo of drivePhotos) {
+    indexes.vertical += 1;
+    counters.vertical.total += 1;
+    const link = byDrivePhoto.get(photo.id) ?? null;
+    const mimeType = photo.mime_type ?? "image/jpeg";
+    const name = buildDriveFileName({
+      prefix,
+      category: "vertical",
+      index: indexes.vertical,
+      mimeType,
+      originalName: photo.file_name,
+    });
+    const outcome = await syncOneFile(admin, {
+      propertyId,
+      link,
+      insert: { drive_photo_id: photo.id },
+      category: "vertical",
+      folderId: structure.folders.vertical,
+      name,
+      checksum: photo.checksum,
+      bucket: DRIVE_PHOTO_BUCKET,
+      path: photo.storage_path,
+      mimeType,
+      size: photo.size_bytes ?? null,
+      budget,
+    });
+    if (outcome === "deferred") {
+      hasMore = true;
+      counters.vertical.pending += 1;
+      continue;
+    }
+    counters.vertical[outcome] += 1;
+  }
 
   // -------- Vídeos --------
   for (const video of videos) {
@@ -739,7 +789,7 @@ async function syncOneFile(
   args: {
     propertyId: string;
     link: DriveFileRow | null;
-    insert: { image_id?: string; video_id?: string };
+    insert: { image_id?: string; video_id?: string; drive_photo_id?: string };
     category: DriveCategory;
     folderId: string;
     name: string;
