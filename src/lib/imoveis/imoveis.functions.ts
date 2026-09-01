@@ -61,6 +61,7 @@ const WRITE_COLUMNS: Record<keyof PropertyWriteInput, string> = {
   proprietarioEmail: "proprietario_email",
   observacaoImovel: "observacao_imovel",
   outrasInformacoes: "outras_informacoes",
+  localizacaoMapsUrl: "localizacao_maps_url",
   corretorId: "corretor_id",
   corretorNome: "corretor_nome",
   origemCaptacao: "origem_captacao",
@@ -400,6 +401,8 @@ function mapDetail(row: Record<string, any>, extras: {
     proprietarioEmail: row.proprietario_email ?? null,
     observacaoImovel: row.observacao_imovel ?? null,
     outrasInformacoes: row.outras_informacoes ?? null,
+    localizacaoMapsUrl: row.localizacao_maps_url ?? null,
+    localizacaoMapsCoords: row.localizacao_maps_coords ?? null,
     corretorId: row.corretor_id ?? null,
     corretorNome: row.corretor_nome ?? null,
     origemCaptacao: row.origem_captacao ?? null,
@@ -503,15 +506,19 @@ export const createImovel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: CreateImovelInput) => data)
   .handler(async ({ data, context }): Promise<Property> => {
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...toDbPayload(data),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
       source: "gestao_cordial",
       source_property_id: crypto.randomUUID(),
     };
+    if (data.localizacaoMapsUrl !== undefined) {
+      const { resolveMapsCoords } = await import("./maps-link.server");
+      payload["localizacao_maps_coords"] = await resolveMapsCoords(data.localizacaoMapsUrl);
+    }
     const { data: row, error } = await context.supabase
       .from("properties")
-      .insert(payload)
+      .insert(payload as never)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
@@ -530,6 +537,10 @@ export const updateImovel = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ property: PropertyDetail | null; queued: string[] }> => {
     const { id, ...rest } = data;
     const payload = toDbPayload(rest);
+    if (rest.localizacaoMapsUrl !== undefined) {
+      const { resolveMapsCoords } = await import("./maps-link.server");
+      payload["localizacao_maps_coords"] = await resolveMapsCoords(rest.localizacaoMapsUrl);
+    }
     if (!Object.keys(payload).length) throw new Error("Nada para salvar.");
 
     const { data: current, error: readError } = await context.supabase

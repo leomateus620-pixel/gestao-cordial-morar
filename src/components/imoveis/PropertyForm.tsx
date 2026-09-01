@@ -3,6 +3,7 @@ import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
+import { isGoogleMapsUrl } from "@/lib/imoveis/maps-link";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
@@ -159,6 +160,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     proprietarioEmail: null,
     observacaoImovel: null,
     outrasInformacoes: null,
+    localizacaoMapsUrl: null,
     corretorId: null,
     corretorNome: null,
     origemCaptacao: null,
@@ -696,6 +698,25 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
+            <div className="sm:col-span-2">
+              <Field
+                label="Localização Google Maps"
+                hint="Cole o link do local copiado do Google Maps. Uso interno: não vai para os sites Cordial e Morar."
+              >
+                <input
+                  value={values.localizacaoMapsUrl ?? ""}
+                  onChange={(e) => set("localizacaoMapsUrl", e.target.value)}
+                  placeholder="https://maps.app.goo.gl/..."
+                  className={inputCls}
+                />
+                {values.localizacaoMapsUrl && !isGoogleMapsUrl(values.localizacaoMapsUrl) ? (
+                  <p className="mt-1 text-[11px] font-medium text-destructive">
+                    Este link não parece ser do Google Maps. Copie o link direto do app ou do site
+                    do Maps.
+                  </p>
+                ) : null}
+              </Field>
+            </div>
           </div>
         )}
 
