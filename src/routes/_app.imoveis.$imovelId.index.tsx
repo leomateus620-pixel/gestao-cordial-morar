@@ -143,12 +143,9 @@ function DetalhePage() {
       : null,
   ].filter(Boolean) as Array<{ icon: typeof Bed; text: string }>;
 
-  const hasOwnerContact =
-    imovel.proprietarioNome ||
-    imovel.proprietarioTelefone ||
-    imovel.proprietarioEmail ||
-    imovel.corretorNome ||
-    imovel.observacaoImovel;
+  const boolLabel = (v: boolean | null | undefined) =>
+    v === null || v === undefined ? null : v ? "Sim" : "Não";
+
 
   const enderecoCompleto = [
     [imovel.logradouro, imovel.numero].filter(Boolean).join(", "),
