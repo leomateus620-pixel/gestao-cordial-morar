@@ -212,7 +212,9 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
               formData: form,
               extraHeaders: { codigoImovel: externalId },
               correlationId: job.correlation_id,
-              timeoutMs: 45_000,
+              // Upload de imagem é bem mais lento que as chamadas de catálogo.
+              timeoutMs: 90_000,
+              retryOnNetwork: true,
             },
           );
           await admin.from("property_image_provider_publications").upsert(

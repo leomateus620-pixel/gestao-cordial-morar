@@ -169,7 +169,7 @@ export async function imobiRequest<T = unknown>(
           httpStatus: response.status,
         });
 
-        if (error.retryable && attempt < maxAttempts) {
+        if (canRetry(error) && attempt < maxAttempts) {
           lastError = error;
           await delay(backoffMs(attempt));
           continue;
@@ -215,7 +215,7 @@ export async function imobiRequest<T = unknown>(
         errorCategory: normalized.category,
         correlationId,
       });
-      if (normalized.retryable && attempt < maxAttempts) {
+      if (canRetry(normalized) && attempt < maxAttempts) {
         lastError = normalized;
         await delay(backoffMs(attempt));
         continue;
