@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search, X } from "lucide-react";
 import { AgencySwitcher } from "@/components/agency-switcher";
+import { useSession } from "@/lib/auth-mock";
+import { canAccessModule } from "@/lib/access-control";
 import { parseCatalogSearch, serializeCatalogSearch, type CatalogFilters } from "@/lib/imoveis/filters";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +27,12 @@ function useCatalogFilters() {
 export function CatalogSearchInput({ className }: { className?: string }) {
   const { filters, apply } = useCatalogFilters();
   const navigate = useNavigate();
+  const session = useSession();
+  // A busca global é restrita aos administradores (RLS no servidor). Sem isso,
+  // corretor/secretária caíam numa rota bloqueada ao apertar Enter.
+  const canUseGlobalSearch = canAccessModule(session, "busca");
   const [term, setTerm] = useState(filters.q);
+
 
 
   useEffect(() => setTerm(filters.q), [filters.q]);
@@ -50,17 +57,18 @@ export function CatalogSearchInput({ className }: { className?: string }) {
         onChange={(event) => setTerm(event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
+          if (!canUseGlobalSearch) return;
           const q = term.trim();
           if (q.length < 2) return;
           event.preventDefault();
           navigate({ to: "/busca", search: { q } });
         }}
-        placeholder="Código, bairro, cidade… (Enter = busca geral)"
+        placeholder={canUseGlobalSearch ? "Código, bairro, cidade… (Enter = busca geral)" : "Código, bairro, cidade…"}
         aria-label="Buscar no catálogo de imóveis. Pressione Enter para a busca geral do sistema."
         className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground/40 focus:outline-none"
       />
 
-      {term.trim().length >= 2 ? (
+      {canUseGlobalSearch && term.trim().length >= 2 ? (
         <button
           type="button"
           onClick={() => navigate({ to: "/busca", search: { q: term.trim() } })}
