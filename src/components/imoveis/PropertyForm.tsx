@@ -17,6 +17,7 @@ import {
 export const TIPOS = [
   "Casa",
   "Apartamento",
+  "Kitnet",
   "Sobrado",
   "Terreno",
   "Sala Comercial",
