@@ -41,6 +41,63 @@ export async function runGlobalSearch(
   const wants = (c: BuscaCategoria) => categoria === "todos" || categoria === c;
   const tasks: Array<Promise<BuscaResultado[]>> = [];
 
+  if (wants("catalogo")) {
+    tasks.push(
+      supabase
+        .from("properties")
+        .select(
+          "id, seo_titulo, tipo, operacao, finalidade, codigo, codigo_cordial, codigo_morar, referencia, logradouro, numero, bairro, cidade, valor, corretor_nome, proprietario_nome, proprietario_telefone, proprietario_email, exibir_imovel, is_draft, updated_at",
+        )
+        .or(
+          ilikeOr(
+            [
+              "seo_titulo",
+              "codigo",
+              "codigo_cordial",
+              "codigo_morar",
+              "referencia",
+              "logradouro",
+              "bairro",
+              "cidade",
+              "proprietario_nome",
+              "proprietario_telefone",
+              "proprietario_email",
+              "corretor_nome",
+            ],
+            term,
+          ),
+        )
+        .order("updated_at", { ascending: false })
+        .limit(LIMIT_PER_CATEGORY)
+        .then(({ data, error }: any) => {
+          if (error) throw new Error(error.message);
+          return (data ?? []).map(
+            (row: any): BuscaResultado => ({
+              id: row.id,
+              categoria: "catalogo",
+              titulo:
+                row.seo_titulo ||
+                joinParts([row.tipo, row.bairro, row.cidade], " · ") ||
+                "Imóvel",
+              subtitulo: joinParts([
+                joinParts([row.logradouro, row.numero], ", "),
+                row.bairro,
+                formatBuscaCurrency(row.valor),
+              ]),
+              detalhe: joinParts([
+                row.codigo_cordial && `Cordial ${row.codigo_cordial}`,
+                row.codigo_morar && `Morar ${row.codigo_morar}`,
+                row.proprietario_nome && `Proprietário: ${row.proprietario_nome}`,
+              ]),
+              status: row.is_draft ? "rascunho" : row.exibir_imovel ? "publicado" : "inativo",
+              data: row.updated_at,
+              rota: `/imoveis/${row.id}`,
+            }),
+          );
+        }),
+    );
+  }
+
   if (wants("atendimento")) {
     tasks.push(
       supabase
@@ -337,6 +394,8 @@ export async function buildRecordTimeline(
   id: string,
 ): Promise<BuscaTimeline> {
   switch (categoria) {
+    case "catalogo":
+      return catalogoTimeline(supabase, id);
     case "atendimento":
       return atendimentoTimeline(supabase, id);
     case "cliente":
@@ -361,6 +420,90 @@ async function single(supabase: Db, table: string, select: string, id: string) {
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Registro não encontrado.");
   return data as any;
+}
+
+async function catalogoTimeline(supabase: Db, id: string): Promise<BuscaTimeline> {
+  const row = await single(supabase, "properties", "*", id);
+  const [{ data: agenciamentos }, { data: atendimentos }, { data: publicacoes }] =
+    await Promise.all([
+      supabase
+        .from("agenciamentos")
+        .select("id, corretor_nome, status, data_agenciamento, created_at, imobiliaria")
+        .eq("property_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("attendances")
+        .select("id, cliente_nome, corretor_nome, pipeline_stage, status, created_at")
+        .eq("imovel_id", id)
+        .order("created_at", { ascending: false })
+        .limit(30),
+      supabase
+        .from("property_provider_publications")
+        .select("id, provider, status, published_at, updated_at, external_code")
+        .eq("property_id", id)
+        .order("updated_at", { ascending: false }),
+    ]);
+
+  const events: BuscaTimelineEvento[] = [
+    evt("created", row.created_at, "Imóvel cadastrado", row.source ?? undefined, "criação"),
+  ];
+  if (row.updated_at && row.updated_at !== row.created_at) {
+    events.push(evt("updated", row.updated_at, "Cadastro atualizado", undefined, "atualização"));
+  }
+  for (const a of agenciamentos ?? []) {
+    events.push(
+      evt(
+        `ag-${a.id}`,
+        a.data_agenciamento ?? a.created_at,
+        "Agenciamento vinculado",
+        joinParts([a.corretor_nome && `Corretor: ${a.corretor_nome}`, a.imobiliaria, a.status]),
+        "agenciamento",
+      ),
+    );
+  }
+  for (const at of atendimentos ?? []) {
+    events.push(
+      evt(
+        `at-${at.id}`,
+        at.created_at,
+        "Atendimento com este imóvel",
+        joinParts([at.cliente_nome, at.corretor_nome && `Corretor: ${at.corretor_nome}`]),
+        at.pipeline_stage ?? "atendimento",
+      ),
+    );
+  }
+  for (const p of publicacoes ?? []) {
+    events.push(
+      evt(
+        `pub-${p.id}`,
+        p.published_at ?? p.updated_at,
+        `Publicação ${p.provider === "morar" ? "Morar" : "Cordial"}`,
+        joinParts([p.status, p.external_code && `Código ${p.external_code}`]),
+        "publicação",
+      ),
+    );
+  }
+
+  return {
+    categoria: "catalogo",
+    id,
+    titulo:
+      row.seo_titulo || joinParts([row.tipo, row.bairro, row.cidade], " · ") || "Imóvel",
+    subtitulo: joinParts([row.logradouro, row.numero, row.bairro, row.cidade], ", "),
+    status: row.is_draft ? "rascunho" : row.exibir_imovel ? "publicado" : "inativo",
+    rota: `/imoveis/${id}`,
+    campos: [
+      { label: "Tipo", valor: row.tipo ?? "—" },
+      { label: "Operação", valor: row.operacao ?? "—" },
+      { label: "Valor", valor: formatBuscaCurrency(row.valor) },
+      { label: "Código Cordial", valor: row.codigo_cordial ?? "—" },
+      { label: "Código Morar", valor: row.codigo_morar ?? "—" },
+      { label: "Corretor", valor: row.corretor_nome ?? "—" },
+      { label: "Proprietário", valor: row.proprietario_nome ?? "—" },
+      { label: "Contato do proprietário", valor: row.proprietario_telefone ?? "—" },
+    ],
+    eventos: sortEvents(events),
+  };
 }
 
 async function atendimentoTimeline(supabase: Db, id: string): Promise<BuscaTimeline> {
