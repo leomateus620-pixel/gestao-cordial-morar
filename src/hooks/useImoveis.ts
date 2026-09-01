@@ -97,3 +97,34 @@ export function useUpdateImovel(id?: string) {
     },
   });
 }
+
+function useInvalidateImovel() {
+  const qc = useQueryClient();
+  return (id: string) => {
+    qc.invalidateQueries({ queryKey: ["imoveis"] });
+    qc.invalidateQueries({ queryKey: ["imoveis-facets"] });
+    qc.invalidateQueries({ queryKey: ["imovel-detalhe", id] });
+    qc.invalidateQueries({ queryKey: ["imovel", id] });
+    qc.invalidateQueries({ queryKey: ["property-sync", id] });
+  };
+}
+
+/** Arquiva o imóvel: sai dos sites, mas continua guardado no sistema. */
+export function useArchiveImovel() {
+  const invalidate = useInvalidateImovel();
+  const archive = useServerFn(archiveImovel);
+  return useMutation<ArchiveImovelResult, Error, string>({
+    mutationFn: (id: string) => archive({ data: { id } }),
+    onSuccess: (_result, id) => invalidate(id),
+  });
+}
+
+/** Reativa um imóvel arquivado (sem republicar automaticamente). */
+export function useUnarchiveImovel() {
+  const invalidate = useInvalidateImovel();
+  const unarchive = useServerFn(unarchiveImovel);
+  return useMutation<{ status: "active" }, Error, string>({
+    mutationFn: (id: string) => unarchive({ data: { id } }),
+    onSuccess: (_result, id) => invalidate(id),
+  });
+}
