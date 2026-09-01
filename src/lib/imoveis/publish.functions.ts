@@ -63,10 +63,12 @@ async function kickWorker() {
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
     if (!origin) return;
+    // Lote maior + drenagem: o worker repete o ciclo enquanto sobrar job
+    // pendente, para a fila não ficar parada esperando o pg_cron.
     await fetch(`${origin}/api/public/hooks/property-sync-worker`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: secret },
-      body: JSON.stringify({ limit: 3 }),
+      body: JSON.stringify({ limit: 10, drain: true }),
     });
   } catch {
     // A fila persistente é a garantia; o pg_cron reprocessa no próximo ciclo.
