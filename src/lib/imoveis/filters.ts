@@ -16,6 +16,8 @@ export type CatalogFilters = {
   areaMin: number | null;
   areaMax: number | null;
   status: string;
+  /** "ocultar" = catálogo ativo (padrão) · "somente" = imóveis arquivados. */
+  arquivados: "ocultar" | "somente";
   sort: ImoveisSort;
   page: number;
 };
@@ -36,6 +38,7 @@ export const DEFAULT_FILTERS: CatalogFilters = {
   areaMin: null,
   areaMax: null,
   status: "",
+  arquivados: "ocultar",
   sort: "recentes",
   page: 0,
 };
