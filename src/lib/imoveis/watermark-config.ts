@@ -4,7 +4,7 @@
  * parte da chave de idempotência do processamento.
  */
 
-export const WATERMARK_VERSION = "v1";
+export const WATERMARK_VERSION = "v2";
 
 export type WatermarkVariant = "cordial" | "morar" | "morar-cordial";
 export type PublishTarget = "cordial" | "morar";
@@ -21,6 +21,8 @@ export const WATERMARK_GEOMETRY = {
   /** Limites de saída. */
   maxOutputEdgePx: 2560,
   thumbnailWidthPx: 480,
+  /** Opacidade da marca — mais leve que a v1 (era 1). */
+  opacity: 0.7,
   jpegQuality: 90,
   thumbnailQuality: 78,
 } as const;

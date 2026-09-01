@@ -95,7 +95,9 @@ export async function composeWatermarkedUpload(file: File): Promise<ComposedUplo
 
     const mark = await loadTemplate();
     const placement = computePlacement(width, height, mark.width, mark.height, variant);
+    ctx.globalAlpha = WATERMARK_GEOMETRY.opacity;
     ctx.drawImage(mark, placement.x, placement.y, placement.width, placement.height);
+    ctx.globalAlpha = 1;
 
     const processed = await toBlob(canvas, WATERMARK_GEOMETRY.jpegQuality / 100);
 
