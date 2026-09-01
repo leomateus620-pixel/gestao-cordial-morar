@@ -71,7 +71,7 @@ export function CatalogCarteiraPills({ className }: { className?: string }) {
 
   return (
     <AgencySwitcher
-      className={cn("w-auto sm:max-w-none [&>button]:!flex-none [&>button]:!overflow-visible [&>button]:px-4", className)}
+      className={cn("w-auto sm:max-w-none", className)}
       value={value}
       onChange={(next) => apply({ carteira: next })}
     />
