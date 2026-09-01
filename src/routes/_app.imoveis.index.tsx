@@ -2,13 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useCallback, useMemo } from "react";
 import { Plus } from "lucide-react";
-import { useSession } from "@/lib/auth-mock";
-import { isAdminUser } from "@/lib/access-control";
 import { Fab } from "@/components/fab";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PropertyCatalogCard } from "@/components/imoveis/PropertyCatalogCard";
 import { PropertyFilterBar } from "@/components/imoveis/PropertyFilterBar";
-import { SiteSyncPanel } from "@/components/imoveis/SiteSyncPanel";
 import { useImoveisFacets, useImoveisList } from "@/hooks/useImoveis";
 import {
   DEFAULT_FILTERS,
@@ -50,7 +47,6 @@ function GuardedPage() {
 function Page() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const isAdmin = isAdminUser(useSession());
 
   const filters = useMemo(() => parseCatalogSearch(search as Record<string, unknown>), [search]);
 
