@@ -8,16 +8,28 @@ const options = [
   { id: "morar" as const, label: "Morar", color: "var(--morar-primary)" },
 ];
 
-export function AgencySwitcher() {
+type AgencyId = (typeof options)[number]["id"];
+
+export function AgencySwitcher({
+  value,
+  onChange,
+  className,
+}: {
+  /** Modo controlado (ex.: filtro de carteira do catálogo de Imóveis). */
+  value?: AgencyId;
+  onChange?: (value: AgencyId) => void;
+  className?: string;
+} = {}) {
+  const controlled = value !== undefined;
   const agency = useApp((s) => s.agency);
   const setAgency = useApp((s) => s.setAgency);
-  const [activeAgency, setActiveAgency] = useState(agency);
+  const [activeAgency, setActiveAgency] = useState<AgencyId>(value ?? agency);
   const pendingFrame = useRef<number | null>(null);
   const pointerHandled = useRef(false);
 
   useEffect(() => {
-    setActiveAgency(agency);
-  }, [agency]);
+    setActiveAgency(value ?? agency);
+  }, [agency, value]);
 
   useEffect(
     () => () => {
@@ -26,8 +38,13 @@ export function AgencySwitcher() {
     [],
   );
 
-  const changeAgency = (nextAgency: (typeof options)[number]["id"]) => {
+  const changeAgency = (nextAgency: AgencyId) => {
     setActiveAgency(nextAgency);
+
+    if (controlled) {
+      onChange?.(nextAgency);
+      return;
+    }
 
     if (pendingFrame.current !== null) window.cancelAnimationFrame(pendingFrame.current);
     if (agency === nextAgency) {
@@ -44,7 +61,13 @@ export function AgencySwitcher() {
   };
 
   return (
-    <div className="glass-panel flex w-full min-w-0 gap-1 rounded-full p-1 sm:max-w-xs">
+    <div
+      className={cn(
+        "glass-panel flex w-full min-w-0 gap-0.5 rounded-full p-0.5 sm:max-w-xs",
+        className,
+      )}
+    >
+
       {options.map((o) => (
         <button
           key={o.id}
