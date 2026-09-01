@@ -570,6 +570,8 @@ export function AtendimentoDetailDrawer({
                       </button>
                     </SectionCard>
 
+                    <AtendimentoConvertSaleCard atendimento={atendimento} />
+
                     <section aria-labelledby="history-title">
                       <div className="mb-2 flex items-center justify-between gap-2 px-1">
                         <div>
