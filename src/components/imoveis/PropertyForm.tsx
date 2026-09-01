@@ -157,6 +157,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     proprietarioTelefone: null,
     proprietarioEmail: null,
     observacaoImovel: null,
+    outrasInformacoes: null,
     corretorId: null,
     corretorNome: null,
     origemCaptacao: null,
@@ -599,18 +600,37 @@ export function PropertyForm({
                 </select>
               </Field>
             </div>
-            <Field
-              label="Informacoes internas"
-              hint="So a equipe ve: nao vai para os sites Cordial e Morar."
-            >
-              <textarea
-                rows={4}
-                value={values.observacaoImovel ?? ""}
-                onChange={(e) => set("observacaoImovel", e.target.value)}
-                placeholder="Chaves, combinados com o proprietario, restricoes de visita..."
-                className={inputCls}
-              />
-            </Field>
+            <div className="rounded-2xl border border-amber-300/50 bg-amber-50/50 p-4">
+              <p className="mb-3 inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                Uso interno · não vai para o site
+              </p>
+              <div className="grid gap-3">
+                <Field
+                  label="Informações internas"
+                  hint="Só a equipe vê: não vai para os sites Cordial e Morar."
+                >
+                  <textarea
+                    rows={4}
+                    value={values.observacaoImovel ?? ""}
+                    onChange={(e) => set("observacaoImovel", e.target.value)}
+                    placeholder="Chaves, combinados com o proprietário, restrições de visita..."
+                    className={inputCls}
+                  />
+                </Field>
+                <Field
+                  label="Outras informações"
+                  hint="Só a equipe vê: não vai para os sites Cordial e Morar."
+                >
+                  <textarea
+                    rows={3}
+                    value={values.outrasInformacoes ?? ""}
+                    onChange={(e) => set("outrasInformacoes", e.target.value)}
+                    placeholder="Documentação pendente, histórico de negociação, avisos da equipe..."
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+            </div>
           </>
         )}
 

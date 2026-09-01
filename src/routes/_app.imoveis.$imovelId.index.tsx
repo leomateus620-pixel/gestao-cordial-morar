@@ -6,7 +6,7 @@ import {
   Bath,
   Bed,
   Car,
-  ChevronDown,
+  Lock,
   Copy,
   ExternalLink,
   Map as MapIcon,
@@ -58,6 +58,19 @@ function money(value: number | null | undefined) {
   return value === null || value === undefined ? null : brl(value);
 }
 
+/** Campo interno: sempre visível, mostra "Não informado" quando vazio. */
+function InternalField({ label, value }: { label: string; value: React.ReactNode }) {
+  const empty = value === null || value === undefined || value === "";
+  return (
+    <div>
+      <p className="text-xs text-foreground/45">{label}</p>
+      <p className={`mt-0.5 text-sm ${empty ? "text-foreground/35" : "font-medium"}`}>
+        {empty ? "Não informado" : value}
+      </p>
+    </div>
+  );
+}
+
 /** Renderiza apenas quando há dado — campos vazios não ocupam espaço. */
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
@@ -84,7 +97,7 @@ function DetalhePage() {
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [contactOpen, setContactOpen] = useState(false);
+  
 
   /** Link interno da ficha no Gestão (não é o link público dos sites). */
   async function copyInternalLink() {
@@ -130,12 +143,9 @@ function DetalhePage() {
       : null,
   ].filter(Boolean) as Array<{ icon: typeof Bed; text: string }>;
 
-  const hasOwnerContact =
-    imovel.proprietarioNome ||
-    imovel.proprietarioTelefone ||
-    imovel.proprietarioEmail ||
-    imovel.corretorNome ||
-    imovel.observacaoImovel;
+  const boolLabel = (v: boolean | null | undefined) =>
+    v === null || v === undefined ? null : v ? "Sim" : "Não";
+
 
   const enderecoCompleto = [
     [imovel.logradouro, imovel.numero].filter(Boolean).join(", "),
@@ -281,6 +291,15 @@ function DetalhePage() {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 pt-1">
+        <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-primary">
+          Publicado nos sites
+        </span>
+        <span className="text-xs text-foreground/45">
+          Estes dados são enviados para Cordial e Morar.
+        </span>
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-5">
           {hasLocationDetails && (
@@ -311,15 +330,6 @@ function DetalhePage() {
               </div>
             </Section>
           )}
-
-          {(imovel.nomeEmpreendimento || imovel.unidade) && (
-            <Section title="Empreendimento">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <Field label="Empreendimento" value={imovel.nomeEmpreendimento} />
-                <Field label="Unidade" value={imovel.unidade} />
-              </div>
-            </Section>
-          )}
         </div>
 
         <div className="space-y-5">
@@ -338,66 +348,86 @@ function DetalhePage() {
             </Section>
           )}
 
-          {hasDocs && (
-            <Section title="Documentação e captação">
+          {(imovel.nomeEmpreendimento || imovel.unidade) && (
+            <Section title="Empreendimento">
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <Field label="Origem da captação" value={imovel.origemCaptacao} />
-                <Field label="Exclusividade" value={imovel.exclusividade ? "Sim" : null} />
-                <Field label="Autorização" value={imovel.autorizacao ? "Sim" : null} />
-                <Field label="Escriturada" value={imovel.escriturada ? "Sim" : null} />
-                <Field label="Averbada" value={imovel.averbada ? "Sim" : null} />
-                <Field label="Com placa" value={imovel.comPlaca ? "Sim" : null} />
+                <Field label="Empreendimento" value={imovel.nomeEmpreendimento} />
+                <Field label="Unidade" value={imovel.unidade} />
               </div>
             </Section>
           )}
+        </div>
+      </div>
 
-          {hasOwnerContact && (
-            <section className="rounded-3xl border border-white/60 bg-white/60 shadow-[0_10px_30px_-16px_rgba(23,27,33,0.15)] backdrop-blur-xl">
-              <button
-                type="button"
-                onClick={() => setContactOpen((v) => !v)}
-                className="flex w-full items-center justify-between p-5 text-left"
-                aria-expanded={contactOpen}
-              >
-                <span className="text-base font-semibold">Contato interno</span>
-                <ChevronDown
-                  className={`size-4 text-foreground/45 transition-transform ${contactOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              {contactOpen && (
-                <div className="grid grid-cols-1 gap-x-4 gap-y-3 px-5 pb-5 sm:grid-cols-3">
-                  <Field label="Proprietário" value={imovel.proprietarioNome} />
-                  <Field label="Telefone" value={imovel.proprietarioTelefone} />
-                  <Field label="E-mail" value={imovel.proprietarioEmail} />
-                  <Field label="Quem agenciou" value={imovel.corretorNome} />
-                  {mapsUrl ? (
-                    <div className="sm:col-span-3">
-                      <a
-                        href={mapsUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 py-1.5 text-xs font-semibold"
-                      >
-                        <MapIcon className="size-3.5" /> Abrir endereço no Google Maps
-                      </a>
-                    </div>
-                  ) : null}
-                  {imovel.observacaoImovel ? (
-                    <div className="sm:col-span-3">
-                      <p className="text-[11px] font-medium text-foreground/45">
-                        Informações internas
-                      </p>
-                      <p className="mt-1 whitespace-pre-line text-sm text-foreground/80">
-                        {imovel.observacaoImovel}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
+      {/* Bloco interno — nunca publicado nos sites */}
+      <section className="rounded-3xl border border-amber-300/60 bg-amber-50/60 p-5 shadow-[0_10px_30px_-16px_rgba(23,27,33,0.15)]">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Lock className="size-4 text-amber-700" />
+          <h2 className="text-base font-semibold text-amber-900">Uso interno</h2>
+          <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-700">
+            Não vai para o site
+          </span>
+          <Link
+            to="/imoveis/$imovelId/editar"
+            params={{ imovelId }}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-white/70 px-3 py-1.5 text-xs font-semibold text-amber-800"
+          >
+            <Pencil className="size-3.5" /> Completar no cadastro
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+          <InternalField label="Proprietário" value={imovel.proprietarioNome} />
+          <InternalField label="Telefone do proprietário" value={imovel.proprietarioTelefone} />
+          <InternalField label="E-mail do proprietário" value={imovel.proprietarioEmail} />
+          <InternalField label="Quem agenciou" value={imovel.corretorNome} />
+          <InternalField label="Origem da captação" value={imovel.origemCaptacao} />
+          <InternalField label="Carteira de origem" value={imovel.carteira === "cordial" ? "Cordial" : "Morar"} />
+          <InternalField label="Exclusividade" value={boolLabel(imovel.exclusividade)} />
+          <InternalField label="Autorização" value={boolLabel(imovel.autorizacao)} />
+          <InternalField label="Escriturada" value={boolLabel(imovel.escriturada)} />
+          <InternalField label="Averbada" value={boolLabel(imovel.averbada)} />
+          <InternalField label="Com placa" value={boolLabel(imovel.comPlaca)} />
+        </div>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800/70">
+              Informações internas
+            </p>
+            <p className="mt-1 whitespace-pre-line text-sm text-foreground/80">
+              {imovel.observacaoImovel || (
+                <span className="text-foreground/35">Não informado</span>
               )}
-            </section>
-          )}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800/70">
+              Outras informações
+            </p>
+            <p className="mt-1 whitespace-pre-line text-sm text-foreground/80">
+              {imovel.outrasInformacoes || (
+                <span className="text-foreground/35">Não informado</span>
+              )}
+            </p>
+          </div>
+        </div>
 
+        {mapsUrl ? (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 py-1.5 text-xs font-semibold"
+          >
+            <MapIcon className="size-3.5" /> Abrir endereço no Google Maps
+          </a>
+        ) : null}
+      </section>
+
+      <div className="space-y-5">
           <PropertyPublishPanel propertyId={imovel.id} canPublish={true} isAdmin={isAdmin} />
+
 
           {isAdmin && (
             <details className="rounded-2xl px-2 text-xs text-foreground/40">
@@ -427,7 +457,6 @@ function DetalhePage() {
               </div>
             </details>
           )}
-        </div>
       </div>
     </div>
   );
