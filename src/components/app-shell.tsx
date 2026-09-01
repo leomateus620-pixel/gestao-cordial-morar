@@ -58,6 +58,9 @@ export function AppShell() {
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const canSearch = Boolean(session?.modules?.includes("busca"));
+  const isCatalogRoute = pathname === "/imoveis";
+  const isAdmin = isAdminUser(session);
+
   const sessionModules = useMemo(
     () => (session ? Array.from(new Set(session.modules)) : []),
     [session],
