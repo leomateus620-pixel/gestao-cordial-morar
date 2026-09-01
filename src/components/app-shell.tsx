@@ -241,6 +241,7 @@ export function AppShell() {
                   <div className="app-sidebar-footer">Cordial Imóveis • Morar Imóveis</div>
                 </SheetContent>
               </Sheet>
+              {isCatalogRoute ? <SiteSyncPanel isAdmin={isAdmin} /> : null}
               <NotificationBell />
               <Link
                 to="/mais"
@@ -254,8 +255,9 @@ export function AppShell() {
               </Link>
             </div>
           </div>
-          {canSearch ? <GlobalSearchBar /> : null}
-          <AgencySwitcher />
+          {isCatalogRoute ? <CatalogSearchInput /> : canSearch ? <GlobalSearchBar /> : null}
+          {isCatalogRoute ? <CatalogCarteiraPills className="sm:max-w-none" /> : <AgencySwitcher />}
+
         </header>
 
         {/* Header desktop — sticky com blur ao rolar */}
