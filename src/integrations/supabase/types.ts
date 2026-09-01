@@ -777,6 +777,7 @@ export type Database = {
           telefone: string
           tipo_imovel: string
           updated_at: string
+          venda_id: string | null
         }
         Insert: {
           bairro_interesse?: string | null
@@ -821,6 +822,7 @@ export type Database = {
           telefone: string
           tipo_imovel?: string
           updated_at?: string
+          venda_id?: string | null
         }
         Update: {
           bairro_interesse?: string | null
@@ -865,6 +867,7 @@ export type Database = {
           telefone?: string
           tipo_imovel?: string
           updated_at?: string
+          venda_id?: string | null
         }
         Relationships: []
       }
@@ -3194,6 +3197,7 @@ export type Database = {
       real_estate_sales: {
         Row: {
           area_m2: number | null
+          attendance_id: string | null
           bathrooms: number | null
           bedrooms: number | null
           buyer_address: string | null
@@ -3230,6 +3234,7 @@ export type Database = {
         }
         Insert: {
           area_m2?: number | null
+          attendance_id?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           buyer_address?: string | null
@@ -3266,6 +3271,7 @@ export type Database = {
         }
         Update: {
           area_m2?: number | null
+          attendance_id?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           buyer_address?: string | null
