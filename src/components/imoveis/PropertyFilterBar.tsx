@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Search, SlidersHorizontal, X } from "lucide-react";
+import { Loader2, SlidersHorizontal, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DEFAULT_FILTERS,
