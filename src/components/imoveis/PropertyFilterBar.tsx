@@ -199,18 +199,10 @@ export function PropertyFilterBar({
   onChange: (patch: Partial<CatalogFilters>) => void;
   onReset: () => void;
 }) {
-  const [term, setTerm] = useState(filters.q);
   const [draft, setDraft] = useState(filters);
 
-  useEffect(() => setTerm(filters.q), [filters.q]);
   useEffect(() => setDraft(filters), [filters]);
 
-  // Busca só dispara depois que a digitação para: evita uma consulta por tecla.
-  useEffect(() => {
-    if (term === filters.q) return;
-    const timer = setTimeout(() => onChange({ q: term, page: 0 }), 300);
-    return () => clearTimeout(timer);
-  }, [term, filters.q, onChange]);
 
   const chips = activeChips(filters);
   const advanced = countActiveAdvanced(filters);
