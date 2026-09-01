@@ -17,6 +17,10 @@ import { useAuthReady, useHasAuthSession, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearchBar } from "./busca/GlobalSearchBar";
+import { CatalogCarteiraPills, CatalogSearchInput } from "./imoveis/CatalogHeaderControls";
+import { SiteSyncPanel } from "./imoveis/SiteSyncPanel";
+import { isAdminUser } from "@/lib/access-control";
+
 import { getPrimaryItemsForProfile, isModuleItemActive } from "./shared/module-menu";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
 import { NotificationCenter } from "./notifications/NotificationCenter";
