@@ -215,10 +215,6 @@ export function PropertyPublishPanel({
         </button>
       )}
 
-      <p className="mt-2 text-[10px] leading-relaxed text-foreground/40">
-        A publicação é assíncrona e idempotente: o imóvel só é marcado como publicado após confirmação
-        do site de destino. Cada destino mantém seus próprios códigos.
-      </p>
     </section>
   );
 }
