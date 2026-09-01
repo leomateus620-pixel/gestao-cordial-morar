@@ -354,6 +354,51 @@ export async function runGlobalSearch(
     );
   }
 
+  if (wants("visita")) {
+    tasks.push(
+      supabase
+        .from("agenda_events")
+        .select(
+          "id, titulo, tipo, status, inicio, local, cliente_nome, responsavel_nome, imovel_nome, imovel_endereco, imovel_descricao, updated_at",
+        )
+        .is("deleted_at", null)
+        .or(
+          ilikeOr(
+            [
+              "titulo",
+              "cliente_nome",
+              "responsavel_nome",
+              "imovel_nome",
+              "imovel_endereco",
+              "imovel_descricao",
+              "local",
+            ],
+            term,
+          ),
+        )
+        .order("inicio", { ascending: false })
+        .limit(LIMIT_PER_CATEGORY)
+        .then(({ data, error }: any) => {
+          if (error) throw new Error(error.message);
+          return (data ?? []).map(
+            (row: any): BuscaResultado => ({
+              id: row.id,
+              categoria: "visita",
+              titulo: row.titulo ?? "Compromisso",
+              subtitulo: joinParts([
+                row.cliente_nome && `Cliente: ${row.cliente_nome}`,
+                row.responsavel_nome && `Responsável: ${row.responsavel_nome}`,
+              ]),
+              detalhe: joinParts([row.imovel_nome ?? row.imovel_endereco, row.local, row.tipo]),
+              status: row.status,
+              data: row.inicio,
+              rota: "/agenda",
+            }),
+          );
+        }),
+    );
+  }
+
   const settled = await Promise.allSettled(tasks);
   const results: BuscaResultado[] = [];
   for (const item of settled) {
