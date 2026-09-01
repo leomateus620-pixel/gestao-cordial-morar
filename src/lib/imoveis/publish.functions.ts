@@ -173,7 +173,7 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     }
 
     await kickWorker();
-    return { enqueued: providers, skippedImages };
+    return { enqueued: providers, skippedImages, pendingImages };
 
   });
 
