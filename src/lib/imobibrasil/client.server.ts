@@ -79,6 +79,11 @@ export type ImobiRequestOptions = {
   timeoutMs?: number;
   /** Requisições ambíguas (criação) não devem sofrer retry cego. */
   allowRetry?: boolean;
+  /**
+   * Falhas de rede/timeout podem ser repetidas mesmo fora de GET quando a
+   * operação é idempotente do lado do provedor (ex.: upload de imagem com hash).
+   */
+  retryOnNetwork?: boolean;
   correlationId?: string;
   onLog?: (entry: ImobiRequestLog) => void;
 };
@@ -93,7 +98,12 @@ export async function imobiRequest<T = unknown>(
   const method = options.method ?? "GET";
   const correlationId = options.correlationId ?? crypto.randomUUID();
   const allowRetry = options.allowRetry ?? method === "GET";
-  const maxAttempts = allowRetry ? MAX_ATTEMPTS : 1;
+  // Retry cego só em GET. Fora disso, no máximo repetimos falhas de
+  // rede/timeout quando a chamada foi marcada como idempotente.
+  const networkOnlyRetry = !allowRetry && options.retryOnNetwork === true;
+  const maxAttempts = allowRetry || networkOnlyRetry ? MAX_ATTEMPTS : 1;
+  const canRetry = (error: ImobiApiError) =>
+    allowRetry ? error.retryable : networkOnlyRetry && error.category === "network";
 
   let lastError: ImobiApiError | null = null;
 
@@ -159,7 +169,7 @@ export async function imobiRequest<T = unknown>(
           httpStatus: response.status,
         });
 
-        if (error.retryable && attempt < maxAttempts) {
+        if (canRetry(error) && attempt < maxAttempts) {
           lastError = error;
           await delay(backoffMs(attempt));
           continue;
@@ -205,7 +215,7 @@ export async function imobiRequest<T = unknown>(
         errorCategory: normalized.category,
         correlationId,
       });
-      if (normalized.retryable && attempt < maxAttempts) {
+      if (canRetry(normalized) && attempt < maxAttempts) {
         lastError = normalized;
         await delay(backoffMs(attempt));
         continue;

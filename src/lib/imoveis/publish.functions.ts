@@ -63,10 +63,12 @@ async function kickWorker() {
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
     if (!origin) return;
+    // Lote maior + drenagem: o worker repete o ciclo enquanto sobrar job
+    // pendente, para a fila não ficar parada esperando o pg_cron.
     await fetch(`${origin}/api/public/hooks/property-sync-worker`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: secret },
-      body: JSON.stringify({ limit: 3 }),
+      body: JSON.stringify({ limit: 10, drain: true }),
     });
   } catch {
     // A fila persistente é a garantia; o pg_cron reprocessa no próximo ciclo.
@@ -96,31 +98,26 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     if (propertyError) throw new Error(propertyError.message);
     if (!property) throw new Error("Imóvel não encontrado.");
 
-    // Só a marca-d'água EM ANDAMENTO segura a publicação. Fotos com falha são
-    // ignoradas no envio (o worker de sincronização nunca publica imagem sem
-    // arquivo processado) — elas jamais podem bloquear os dados do imóvel.
+    // Foto nunca segura os dados do imóvel: o publish sobe já, e apenas
+    // contamos quantas fotos ficam de fora (em processamento ou com falha)
+    // para a UI avisar o usuário em vez de falhar em silêncio.
     let skippedImages = 0;
+    let pendingImages = 0;
     if (action === "publish" || action === "update") {
-      const { data: inFlightImages } = await context.supabase
-        .from("property_images")
-        .select("id, file_name, processing_status")
-        .eq("property_id", property.id)
-        .in("processing_status", ["pending", "processing"]);
-      if (inFlightImages?.length) {
-        const names = inFlightImages
-          .slice(0, 3)
-          .map((image: { file_name: string }) => image.file_name)
-          .join(", ");
-        throw new Error(
-          `Aguardando a marca-d'água em ${inFlightImages.length} foto(s): ${names}. Tente novamente em instantes.`,
-        );
-      }
-      const { count } = await context.supabase
-        .from("property_images")
-        .select("id", { count: "exact", head: true })
-        .eq("property_id", property.id)
-        .in("processing_status", ["failed", "failed_retryable", "failed_permanent"]);
-      skippedImages = count ?? 0;
+      const [{ count: inFlight }, { count: failed }] = await Promise.all([
+        context.supabase
+          .from("property_images")
+          .select("id", { count: "exact", head: true })
+          .eq("property_id", property.id)
+          .in("processing_status", ["pending", "processing"]),
+        context.supabase
+          .from("property_images")
+          .select("id", { count: "exact", head: true })
+          .eq("property_id", property.id)
+          .in("processing_status", ["failed", "failed_retryable", "failed_permanent"]),
+      ]);
+      pendingImages = inFlight ?? 0;
+      skippedImages = failed ?? 0;
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -176,7 +173,7 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     }
 
     await kickWorker();
-    return { enqueued: providers, skippedImages };
+    return { enqueued: providers, skippedImages, pendingImages };
 
   });
 

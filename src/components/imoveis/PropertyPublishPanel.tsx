@@ -64,11 +64,18 @@ export function PropertyPublishPanel({
       return;
     }
     try {
-      await enqueue.mutateAsync({ propertyId, providers, action });
+      const result = (await enqueue.mutateAsync({ propertyId, providers, action })) as {
+        skippedImages?: number;
+        pendingImages?: number;
+      };
+      const outOfSync = (result?.skippedImages ?? 0) + (result?.pendingImages ?? 0);
       toast.success(
         action === "publish"
           ? "Publicação enfileirada. Acompanhe o status abaixo."
           : "Despublicação enfileirada.",
+        outOfSync > 0
+          ? { description: `${outOfSync} foto(s) ficaram de fora: sem marca-d'água concluída.` }
+          : undefined,
       );
       setSelected([]);
     } catch (error) {
@@ -90,7 +97,16 @@ export function PropertyPublishPanel({
         {PROVIDERS.map((provider) => {
           const row = byProvider.get(provider.key);
           const meta = STATUS_META[row?.status ?? "draft"] ?? STATUS_META["draft"]!;
-          const busy = Boolean(row?.activeJob) || row?.status === "syncing" || row?.status === "pending";
+          const job = row?.activeJob ?? null;
+          const attempts = job?.attempts ?? 0;
+          // Estado honesto: o job em curso manda no rótulo, não o status antigo.
+          const liveMeta = job
+            ? job.status === "processing"
+              ? { label: "Enviando", className: "bg-sky-500/12 text-sky-700" }
+              : job.status === "retry"
+                ? { label: "Reenviando", className: "bg-amber-500/15 text-amber-700" }
+                : { label: "Na fila", className: "bg-amber-500/12 text-amber-700" }
+            : meta;
           return (
             <div key={provider.key} className="rounded-2xl bg-white/50 p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -105,10 +121,15 @@ export function PropertyPublishPanel({
                 )}
                 <span className="text-sm font-semibold">{provider.label}</span>
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${meta.className}`}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${liveMeta.className}`}
                 >
-                  {busy ? "Em andamento" : meta.label}
+                  {liveMeta.label}
                 </span>
+                {attempts > 0 && (
+                  <span className="text-[10px] font-semibold text-foreground/45">
+                    {attempts} tentativa{attempts > 1 ? "s" : ""}
+                  </span>
+                )}
                 {row?.externalPropertyId && (
                   <span className="font-mono text-[10px] text-foreground/45">
                     #{row.externalPropertyId}
@@ -147,7 +168,10 @@ export function PropertyPublishPanel({
 
               {canPublish && row && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {(row.status === "error" || row.status === "partial") && (
+                  {(row.status === "error" ||
+                    row.status === "partial" ||
+                    row.status === "out_of_sync" ||
+                    Boolean(row.lastErrorMessage)) && (
                     <button
                       onClick={() =>
                         retry
@@ -198,10 +222,6 @@ export function PropertyPublishPanel({
         </button>
       )}
 
-      <p className="mt-2 text-[10px] leading-relaxed text-foreground/40">
-        A publicação é assíncrona e idempotente: o imóvel só é marcado como publicado após confirmação
-        do site de destino. Cada destino mantém seus próprios códigos.
-      </p>
     </section>
   );
 }
