@@ -2,13 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useCallback, useMemo } from "react";
 import { Plus } from "lucide-react";
-import { useSession } from "@/lib/auth-mock";
-import { isAdminUser } from "@/lib/access-control";
 import { Fab } from "@/components/fab";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PropertyCatalogCard } from "@/components/imoveis/PropertyCatalogCard";
 import { PropertyFilterBar } from "@/components/imoveis/PropertyFilterBar";
-import { SiteSyncPanel } from "@/components/imoveis/SiteSyncPanel";
 import { useImoveisFacets, useImoveisList } from "@/hooks/useImoveis";
 import {
   DEFAULT_FILTERS,
@@ -50,7 +47,6 @@ function GuardedPage() {
 function Page() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const isAdmin = isAdminUser(useSession());
 
   const filters = useMemo(() => parseCatalogSearch(search as Record<string, unknown>), [search]);
 
@@ -78,14 +74,12 @@ function Page() {
 
   return (
     <>
-      <SiteSyncPanel isAdmin={isAdmin} />
-
-      <div className="mb-2 flex justify-end">
+      <div className="mb-3 flex justify-start">
         <Link
           to="/imoveis/novo"
-          className="hidden items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md shadow-primary/25 lg:inline-flex"
+          className="hidden items-center gap-2 rounded-2xl border border-primary/20 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition hover:brightness-110 lg:inline-flex"
         >
-          <Plus className="size-4" /> Novo imóvel
+          <Plus className="size-4" strokeWidth={2.4} /> Novo imóvel
         </Link>
       </div>
 
@@ -97,6 +91,7 @@ function Page() {
         onChange={applyFilters}
         onReset={resetFilters}
       />
+
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {query.isPending &&

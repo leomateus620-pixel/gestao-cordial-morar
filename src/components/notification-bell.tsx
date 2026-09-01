@@ -11,7 +11,7 @@ export function NotificationBell() {
     <button
       type="button"
       className={cn(
-        "notification-bell glass-panel relative grid size-11 shrink-0 place-items-center rounded-full text-primary",
+        "notification-bell glass-panel relative grid size-9 shrink-0 place-items-center rounded-full text-primary transition hover:bg-white/70",
         unread > 0 && "notification-bell--active",
       )}
       onClick={() => setCenterOpen(true)}

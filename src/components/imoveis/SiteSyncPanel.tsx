@@ -16,7 +16,15 @@ import {
   useStartPropertyImport,
 } from "@/hooks/usePropertyImport";
 import { useProvidersHealth } from "@/hooks/usePropertySync";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ImportConflictsDialog } from "./ImportConflictsDialog";
+
 
 const PROVIDER_LABEL: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
 const MODE_LABEL: Record<string, string> = {
@@ -43,6 +51,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+/** Ícone compacto no header: abre o painel completo de sincronização (somente admin). */
 export function SiteSyncPanel({ isAdmin }: { isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   const [conflictsOpen, setConflictsOpen] = useState(false);
@@ -75,22 +84,27 @@ export function SiteSyncPanel({ isAdmin }: { isAdmin: boolean }) {
   };
 
   return (
-    <section className="mb-4 overflow-hidden rounded-3xl bg-white/60 backdrop-blur">
+    <>
       <button
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Sincronização dos sites"
+        title="Sincronização dos sites"
+        className="glass-panel grid size-9 shrink-0 place-items-center rounded-full text-primary transition hover:bg-white/70"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <RefreshCw className={`size-4 ${overview.isFetching ? "animate-spin" : ""}`} />
-          Sincronização dos sites
-        </span>
-        <span className="text-[11px] font-medium text-foreground/45">
-          {open ? "Ocultar" : "Abrir"}
-        </span>
+        <RefreshCw className={`size-4 ${overview.isFetching ? "animate-spin" : ""}`} />
       </button>
 
-      {open && (
-        <div className="space-y-4 border-t border-white/50 px-4 py-4">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[85vh] w-[min(96vw,42rem)] overflow-y-auto rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Sincronização dos sites</DialogTitle>
+            <DialogDescription>
+              Saúde da conexão com Cordial e Morar e importação do catálogo.
+            </DialogDescription>
+          </DialogHeader>
+        <div className="space-y-4">
+
           <div className="grid gap-2 sm:grid-cols-2">
             {(health.data?.accounts ?? []).map((account: Record<string, unknown>) => {
               const ok = Boolean(account["ok"]);
@@ -210,9 +224,11 @@ export function SiteSyncPanel({ isAdmin }: { isAdmin: boolean }) {
             ))}
           </div>
         </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <ImportConflictsDialog open={conflictsOpen} onOpenChange={setConflictsOpen} />
-    </section>
+    </>
+
   );
 }

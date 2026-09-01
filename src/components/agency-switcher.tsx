@@ -8,16 +8,28 @@ const options = [
   { id: "morar" as const, label: "Morar", color: "var(--morar-primary)" },
 ];
 
-export function AgencySwitcher() {
+type AgencyId = (typeof options)[number]["id"];
+
+export function AgencySwitcher({
+  value,
+  onChange,
+  className,
+}: {
+  /** Modo controlado (ex.: filtro de carteira do catálogo de Imóveis). */
+  value?: AgencyId;
+  onChange?: (value: AgencyId) => void;
+  className?: string;
+} = {}) {
+  const controlled = value !== undefined;
   const agency = useApp((s) => s.agency);
   const setAgency = useApp((s) => s.setAgency);
-  const [activeAgency, setActiveAgency] = useState(agency);
+  const [activeAgency, setActiveAgency] = useState<AgencyId>(value ?? agency);
   const pendingFrame = useRef<number | null>(null);
   const pointerHandled = useRef(false);
 
   useEffect(() => {
-    setActiveAgency(agency);
-  }, [agency]);
+    setActiveAgency(value ?? agency);
+  }, [agency, value]);
 
   useEffect(
     () => () => {
@@ -26,8 +38,13 @@ export function AgencySwitcher() {
     [],
   );
 
-  const changeAgency = (nextAgency: (typeof options)[number]["id"]) => {
+  const changeAgency = (nextAgency: AgencyId) => {
     setActiveAgency(nextAgency);
+
+    if (controlled) {
+      onChange?.(nextAgency);
+      return;
+    }
 
     if (pendingFrame.current !== null) window.cancelAnimationFrame(pendingFrame.current);
     if (agency === nextAgency) {
@@ -44,7 +61,13 @@ export function AgencySwitcher() {
   };
 
   return (
-    <div className="glass-panel flex w-full min-w-0 gap-1 rounded-full p-1 sm:max-w-xs">
+    <div
+      className={cn(
+        "glass-panel flex w-full min-w-0 gap-0.5 rounded-full p-0.5 sm:max-w-xs",
+        className,
+      )}
+    >
+
       {options.map((o) => (
         <button
           key={o.id}
@@ -67,11 +90,13 @@ export function AgencySwitcher() {
           }}
           style={activeAgency === o.id ? { background: o.color, color: "#fff" } : undefined}
           className={cn(
-            "min-h-11 min-w-0 flex-1 cursor-pointer truncate rounded-full px-3 py-2 text-xs font-semibold select-none touch-manipulation [-webkit-tap-highlight-color:transparent] transition-[background-color,color,box-shadow] duration-75 ease-out motion-reduce:transition-none",
+            "min-h-9 min-w-0 cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap select-none touch-manipulation [-webkit-tap-highlight-color:transparent] transition-[background-color,color,box-shadow] duration-75 ease-out motion-reduce:transition-none",
+            controlled ? "flex-none" : "flex-1 truncate",
             activeAgency === o.id
               ? "shadow-[0_6px_18px_-6px_rgba(23,27,33,0.35)]"
               : "text-foreground/60 [@media(hover:hover)]:hover:text-foreground/85",
           )}
+
         >
           {o.label}
         </button>

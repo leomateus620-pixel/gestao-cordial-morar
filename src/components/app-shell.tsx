@@ -17,6 +17,10 @@ import { useAuthReady, useHasAuthSession, useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearchBar } from "./busca/GlobalSearchBar";
+import { CatalogCarteiraPills, CatalogSearchInput } from "./imoveis/CatalogHeaderControls";
+import { SiteSyncPanel } from "./imoveis/SiteSyncPanel";
+import { isAdminUser } from "@/lib/access-control";
+
 import { getPrimaryItemsForProfile, isModuleItemActive } from "./shared/module-menu";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
 import { NotificationCenter } from "./notifications/NotificationCenter";
@@ -54,6 +58,9 @@ export function AppShell() {
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const canSearch = Boolean(session?.modules?.includes("busca"));
+  const isCatalogRoute = pathname === "/imoveis";
+  const isAdmin = isAdminUser(session);
+
   const sessionModules = useMemo(
     () => (session ? Array.from(new Set(session.modules)) : []),
     [session],
@@ -234,6 +241,7 @@ export function AppShell() {
                   <div className="app-sidebar-footer">Cordial Imóveis • Morar Imóveis</div>
                 </SheetContent>
               </Sheet>
+              {isCatalogRoute ? <SiteSyncPanel isAdmin={isAdmin} /> : null}
               <NotificationBell />
               <Link
                 to="/mais"
@@ -247,60 +255,58 @@ export function AppShell() {
               </Link>
             </div>
           </div>
-          {canSearch ? <GlobalSearchBar /> : null}
-          <AgencySwitcher />
+          {isCatalogRoute ? <CatalogSearchInput /> : canSearch ? <GlobalSearchBar /> : null}
+          {isCatalogRoute ? <CatalogCarteiraPills className="sm:max-w-none" /> : <AgencySwitcher />}
+
         </header>
 
         {/* Header desktop — sticky com blur ao rolar */}
         <header
           className={cn(
-            "sticky top-0 z-30 hidden px-6 py-3 transition-all duration-300 lg:block",
+            "sticky top-0 z-30 hidden px-6 py-2.5 transition-all duration-300 lg:block",
             scrolled && "backdrop-blur-xl backdrop-saturate-150",
           )}
         >
           <div
             className={cn(
-              "mx-auto flex max-w-screen-2xl items-center justify-between gap-4 rounded-[1.75rem] border px-4 py-2.5 transition-all duration-300",
+              "mx-auto flex max-w-screen-2xl items-center gap-3 rounded-full border px-3 py-2 transition-all duration-300",
               scrolled
-                ? "border-white/60 bg-white/75 shadow-lg shadow-foreground/8 backdrop-blur-xl"
-                : "glass-panel-strong border-white/50 shadow-xl shadow-primary/5",
+                ? "border-white/60 bg-white/75 shadow-md shadow-foreground/8 backdrop-blur-xl"
+                : "glass-panel-strong border-white/50 shadow-lg shadow-primary/5",
             )}
           >
-            <div className="min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary/80">
-                Bem-vindo de volta
-              </span>
-              <h1 className="truncate text-base font-semibold tracking-tight leading-tight">
-                Olá, {session.nome}
-              </h1>
-            </div>
+            <span className="min-w-0 shrink-0 truncate text-sm font-semibold tracking-tight text-foreground/70">
+              Olá, {session.nome.split(" ")[0]}
+            </span>
 
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
-              {canSearch ? <GlobalSearchBar className="w-full max-w-md" /> : null}
-              <div className="w-full max-w-xs">
-                <AgencySwitcher />
-              </div>
+            {isCatalogRoute ? (
+              <CatalogSearchInput className="w-full max-w-[22rem]" />
+            ) : canSearch ? (
+              <GlobalSearchBar className="w-full max-w-[22rem]" />
+            ) : null}
+
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              {isCatalogRoute ? (
+                <CatalogCarteiraPills className="w-auto sm:max-w-none" />
+              ) : (
+                <div className="w-full max-w-[15rem]">
+                  <AgencySwitcher />
+                </div>
+              )}
+              {isCatalogRoute ? <SiteSyncPanel isAdmin={isAdmin} /> : null}
               <NotificationBell />
               <Link
                 to="/mais"
-                className="glass-panel flex shrink-0 items-center gap-2.5 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-semibold text-primary transition-all hover:scale-[1.02] hover:bg-white/70"
+                className="glass-panel grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold text-primary transition hover:bg-white/70"
                 aria-label="Perfil do usuário"
+                title={session.nome}
               >
-                <span className="grid size-8 place-items-center rounded-full bg-primary/15 text-xs font-bold">
-                  {session.iniciais}
-                </span>
-                <span className="hidden text-left xl:block">
-                  <span className="block text-sm leading-tight text-foreground">
-                    {session.nome}
-                  </span>
-                  <span className="block text-[11px] leading-tight text-foreground/50">
-                    {session.cargo}
-                  </span>
-                </span>
+                {session.iniciais}
               </Link>
             </div>
           </div>
         </header>
+
 
         <main className="mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10">
           <NotificationTransientRegion />
