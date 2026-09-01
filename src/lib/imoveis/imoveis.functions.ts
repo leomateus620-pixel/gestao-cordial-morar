@@ -215,6 +215,8 @@ export type ListImoveisInput = {
   areaMin?: number | null;
   areaMax?: number | null;
   statusPublicacao?: string | null;
+  /** "ocultar" (padrão) esconde arquivados; "somente" mostra apenas os arquivados. */
+  arquivados?: "ocultar" | "somente";
   sort?: ImoveisSort;
   page?: number;
   pageSize?: number;
@@ -229,10 +231,13 @@ export const listImoveis = createServerFn({ method: "GET" })
 
     // A view `properties_catalog` resolve, no banco, em quais sites o imóvel
     // está publicado (ou a carteira de origem quando ainda não há vínculo).
-    let query = context.supabase
-      .from("properties_catalog")
-      .select("*", { count: "exact" })
-      .is("archived_at", null);
+    let query = context.supabase.from("properties_catalog").select("*", { count: "exact" });
+
+    // Arquivados ficam guardados no sistema, mas fora do catálogo ativo.
+    query =
+      data.arquivados === "somente"
+        ? query.not("archived_at", "is", null)
+        : query.is("archived_at", null);
 
     if (data.carteira === "ambas") {
       query = query.contains("providers", ["cordial"]).contains("providers", ["morar"]);
