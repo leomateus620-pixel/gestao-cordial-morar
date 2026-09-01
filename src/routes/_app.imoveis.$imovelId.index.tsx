@@ -117,7 +117,11 @@ function DetalhePage() {
   ].filter(Boolean) as Array<{ icon: typeof Bed; text: string }>;
 
   const hasOwnerContact =
-    imovel.proprietarioNome || imovel.proprietarioTelefone || imovel.proprietarioEmail;
+    imovel.proprietarioNome ||
+    imovel.proprietarioTelefone ||
+    imovel.proprietarioEmail ||
+    imovel.corretorNome ||
+    imovel.observacaoImovel;
 
   const hasLocationDetails =
     imovel.cep || imovel.logradouro || imovel.numero || imovel.zona || imovel.regiao;
@@ -330,6 +334,17 @@ function DetalhePage() {
                   <Field label="Proprietário" value={imovel.proprietarioNome} />
                   <Field label="Telefone" value={imovel.proprietarioTelefone} />
                   <Field label="E-mail" value={imovel.proprietarioEmail} />
+                  <Field label="Quem agenciou" value={imovel.corretorNome} />
+                  {imovel.observacaoImovel ? (
+                    <div className="sm:col-span-3">
+                      <p className="text-[11px] font-medium text-foreground/45">
+                        Informações internas
+                      </p>
+                      <p className="mt-1 whitespace-pre-line text-sm text-foreground/80">
+                        {imovel.observacaoImovel}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </section>

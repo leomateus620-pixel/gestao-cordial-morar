@@ -1962,6 +1962,7 @@ export type Database = {
           created_at: string
           drive_file_id: string | null
           drive_file_name: string | null
+          drive_photo_id: string | null
           id: string
           image_id: string | null
           last_error_code: string | null
@@ -1985,6 +1986,7 @@ export type Database = {
           created_at?: string
           drive_file_id?: string | null
           drive_file_name?: string | null
+          drive_photo_id?: string | null
           id?: string
           image_id?: string | null
           last_error_code?: string | null
@@ -2008,6 +2010,7 @@ export type Database = {
           created_at?: string
           drive_file_id?: string | null
           drive_file_name?: string | null
+          drive_photo_id?: string | null
           id?: string
           image_id?: string | null
           last_error_code?: string | null
@@ -2027,6 +2030,13 @@ export type Database = {
           video_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "property_drive_files_drive_photo_id_fkey"
+            columns: ["drive_photo_id"]
+            isOneToOne: false
+            referencedRelation: "property_drive_photos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_drive_files_image_id_fkey"
             columns: ["image_id"]
@@ -2188,6 +2198,63 @@ export type Database = {
           },
           {
             foreignKeyName: "property_drive_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_drive_photos: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string
+          position: number
+          property_id: string
+          size_bytes: number | null
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string
+          position?: number
+          property_id: string
+          size_bytes?: number | null
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          position?: number
+          property_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_drive_photos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_drive_photos_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties_catalog"

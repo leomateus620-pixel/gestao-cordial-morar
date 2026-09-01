@@ -123,6 +123,11 @@ export type PropertyWriteInput = {
   proprietarioNome: string | null;
   proprietarioTelefone: string | null;
   proprietarioEmail: string | null;
+  /** Informações internas — nunca publicadas nos sites. */
+  observacaoImovel: string | null;
+  /** Quem agenciou o imóvel. */
+  corretorId: string | null;
+  corretorNome: string | null;
   origemCaptacao: string | null;
   nomeEmpreendimento: string | null;
   unidade: string | null;
