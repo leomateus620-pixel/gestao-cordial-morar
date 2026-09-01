@@ -39,6 +39,14 @@ export type PropertyDriveStatus = {
   providers: string[];
   categories: DriveCategoryState[];
   videos: Array<{ id: string; fileName: string; sizeBytes: number | null; status: string }>;
+  /** Fotos verticais enviadas só para o Drive — nunca vão para os sites. */
+  drivePhotos: Array<{
+    id: string;
+    fileName: string;
+    sizeBytes: number | null;
+    status: string;
+    error: string | null;
+  }>;
   photos: Array<{
     id: string;
     fileName: string;
@@ -191,8 +199,14 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       providers.push(property.carteira);
     }
 
-    const [{ data: images }, { data: videos }, { data: files }, { data: folder }, { data: jobs }] =
-      await Promise.all([
+    const [
+      { data: images },
+      { data: videos },
+      { data: drivePhotoRows },
+      { data: files },
+      { data: folder },
+      { data: jobs },
+    ] = await Promise.all([
         context.supabase
           .from("property_images")
           .select("id, file_name, width, height, orientation_override, processing_status, position")
@@ -204,8 +218,13 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
           .eq("property_id", data.propertyId)
           .order("position", { ascending: true }),
         context.supabase
+          .from("property_drive_photos")
+          .select("id, file_name, size_bytes, position")
+          .eq("property_id", data.propertyId)
+          .order("position", { ascending: true }),
+        context.supabase
           .from("property_drive_files")
-          .select("id, image_id, video_id, category, sync_status, last_error_message")
+          .select("id, image_id, video_id, drive_photo_id, category, sync_status, last_error_message")
           .eq("property_id", data.propertyId),
         context.supabase
           .from("property_drive_folders")
@@ -233,10 +252,16 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       size_bytes: number | null;
       upload_status: string;
     }>;
+    const drivePhotoList = (drivePhotoRows ?? []) as Array<{
+      id: string;
+      file_name: string;
+      size_bytes: number | null;
+    }>;
     const fileRows = (files ?? []) as Array<{
       id: string;
       image_id: string | null;
       video_id: string | null;
+      drive_photo_id: string | null;
       category: string;
       sync_status: string;
       last_error_message: string | null;
@@ -247,13 +272,23 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
     const byVideo = new Map(
       fileRows.filter((f) => f.video_id).map((f) => [f.video_id as string, f]),
     );
+    const byDrivePhoto = new Map(
+      fileRows.filter((f) => f.drive_photo_id).map((f) => [f.drive_photo_id as string, f]),
+    );
+    const drivePhotos = drivePhotoList.map((photo) => {
+      const link = byDrivePhoto.get(photo.id);
+      return {
+        id: photo.id,
+        fileName: photo.file_name,
+        sizeBytes: photo.size_bytes,
+        status: link?.sync_status ?? "pending",
+        error: link?.last_error_message ?? null,
+      };
+    });
 
+    // As fotos do cadastro (Etapa 6) alimentam apenas a pasta Horizontal.
     const photos = imageRows.map((image) => {
-      const category = classifyOrientation({
-        width: image.width,
-        height: image.height,
-        override: image.orientation_override,
-      });
+      const category: DriveCategory = "horizontal";
       const link = byImage.get(image.id);
       return {
         id: image.id,
@@ -274,6 +309,13 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
       if (category === "video") {
         const items = videoRows.map((v) => byVideo.get(v.id) ?? { sync_status: "pending" });
         return categoryState(category, items, videoRows.length);
+      }
+      if (category === "vertical") {
+        return categoryState(
+          category,
+          drivePhotos.map((p) => ({ sync_status: p.status })),
+          drivePhotos.length,
+        );
       }
       const inCategory = photos.filter((p) => p.category === category);
       const items = inCategory.map((p) => ({ sync_status: p.status }));
@@ -323,6 +365,7 @@ export const getPropertyDriveStatus = createServerFn({ method: "GET" })
         status: byVideo.get(v.id)?.sync_status ?? "pending",
       })),
       photos,
+      drivePhotos,
       lastError: folderRow?.last_error_message ?? null,
     };
   });
