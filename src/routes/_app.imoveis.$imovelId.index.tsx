@@ -6,7 +6,7 @@ import {
   Bath,
   Bed,
   Car,
-  ChevronDown,
+  Lock,
   Copy,
   ExternalLink,
   Map as MapIcon,
@@ -97,7 +97,7 @@ function DetalhePage() {
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [contactOpen, setContactOpen] = useState(false);
+  
 
   /** Link interno da ficha no Gestão (não é o link público dos sites). */
   async function copyInternalLink() {
