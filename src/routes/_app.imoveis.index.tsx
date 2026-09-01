@@ -98,10 +98,10 @@ function Page() {
         onReset={resetFilters}
       />
 
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {query.isPending &&
           Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-3xl bg-white/45" />
+            <div key={i} className="aspect-[4/3] animate-pulse rounded-3xl bg-white/45" />
           ))}
 
         {!query.isPending && items.map((im) => <PropertyCatalogCard key={im.id} property={im} />)}
