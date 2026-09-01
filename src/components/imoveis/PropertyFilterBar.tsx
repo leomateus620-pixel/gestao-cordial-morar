@@ -222,21 +222,34 @@ export function PropertyFilterBar({
   return (
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex min-w-[240px] flex-1 items-center gap-2 rounded-2xl bg-white/60 px-3 py-2 backdrop-blur">
-          <Search className="size-4 shrink-0 text-foreground/40" />
-          <input
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            placeholder="Código, referência, bairro, cidade, tipo ou endereço…"
-            className="w-full bg-transparent text-sm outline-none placeholder:text-foreground/35"
-          />
-          {term && (
-            <button onClick={() => setTerm("")} aria-label="Limpar busca">
-              <X className="size-4 text-foreground/40" />
-            </button>
-          )}
-          {loading && <Loader2 className="size-4 animate-spin text-foreground/35" />}
-        </div>
+        <SelectField
+          label=""
+          value={filters.operacao}
+          options={[
+            { value: "todos", label: "Venda e aluguel" },
+            { value: "venda", label: "Venda" },
+            { value: "aluguel", label: "Aluguel" },
+          ]}
+          onChange={(operacao) => onChange({ operacao: operacao as CatalogFilters["operacao"], page: 0 })}
+        />
+        <SelectField
+          label=""
+          value={filters.tipo}
+          options={listOptions(facets?.tipos, "Todos os tipos")}
+          onChange={(tipo) => onChange({ tipo, page: 0 })}
+        />
+        <SelectField
+          label=""
+          value={filters.cidade}
+          options={listOptions(facets?.cidades, "Todas as cidades")}
+          onChange={(cidade) => onChange({ cidade, page: 0 })}
+        />
+        <SelectField
+          label=""
+          value={filters.sort}
+          options={SORT_OPTIONS}
+          onChange={(sort) => onChange({ sort: sort as CatalogFilters["sort"], page: 0 })}
+        />
 
         <PriceRangeFilter
           valorMin={filters.valorMin}
@@ -320,52 +333,13 @@ export function PropertyFilterBar({
             </div>
           </PopoverContent>
         </Popover>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <SelectField
-          label=""
-          value={filters.carteira}
-          options={[
-            { value: "todas", label: "Todas as carteiras" },
-            { value: "cordial", label: "Cordial" },
-            { value: "morar", label: "Morar" },
-            { value: "ambas", label: "Cordial + Morar" },
-          ]}
-          onChange={(carteira) => onChange({ carteira: carteira as CatalogFilters["carteira"], page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.operacao}
-          options={[
-            { value: "todos", label: "Venda e aluguel" },
-            { value: "venda", label: "Venda" },
-            { value: "aluguel", label: "Aluguel" },
-          ]}
-          onChange={(operacao) => onChange({ operacao: operacao as CatalogFilters["operacao"], page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.tipo}
-          options={listOptions(facets?.tipos, "Todos os tipos")}
-          onChange={(tipo) => onChange({ tipo, page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.cidade}
-          options={listOptions(facets?.cidades, "Todas as cidades")}
-          onChange={(cidade) => onChange({ cidade, page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.sort}
-          options={SORT_OPTIONS}
-          onChange={(sort) => onChange({ sort: sort as CatalogFilters["sort"], page: 0 })}
-        />
-        <span className="ml-auto text-[11px] font-medium text-foreground/45">
+        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground/45">
+          {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
           {total} {total === 1 ? "imóvel" : "imóveis"}
         </span>
       </div>
+
 
       {chips.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
