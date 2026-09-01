@@ -157,6 +157,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     proprietarioTelefone: null,
     proprietarioEmail: null,
     observacaoImovel: null,
+    outrasInformacoes: null,
     corretorId: null,
     corretorNome: null,
     origemCaptacao: null,
