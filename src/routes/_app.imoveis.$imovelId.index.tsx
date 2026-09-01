@@ -58,6 +58,19 @@ function money(value: number | null | undefined) {
   return value === null || value === undefined ? null : brl(value);
 }
 
+/** Campo interno: sempre visível, mostra "Não informado" quando vazio. */
+function InternalField({ label, value }: { label: string; value: React.ReactNode }) {
+  const empty = value === null || value === undefined || value === "";
+  return (
+    <div>
+      <p className="text-xs text-foreground/45">{label}</p>
+      <p className={`mt-0.5 text-sm ${empty ? "text-foreground/35" : "font-medium"}`}>
+        {empty ? "Não informado" : value}
+      </p>
+    </div>
+  );
+}
+
 /** Renderiza apenas quando há dado — campos vazios não ocupam espaço. */
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
