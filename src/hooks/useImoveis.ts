@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  archiveImovel,
   createImovel,
   deleteImovel,
+  unarchiveImovel,
   getImovel,
   getImoveisFacets,
   getPropertyDetail,
   listImoveis,
   updateImovel,
+  type ArchiveImovelResult,
   type CreateImovelInput,
   type DeleteImovelResult,
   type ListImoveisInput,
