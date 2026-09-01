@@ -1,4 +1,5 @@
 export type BuscaCategoria =
+  | "catalogo"
   | "atendimento"
   | "cliente"
   | "aluguel"
@@ -6,6 +7,7 @@ export type BuscaCategoria =
   | "agenciamento"
   | "imovel"
   | "inquilino";
+
 
 export type BuscaCategoriaFiltro = "todos" | BuscaCategoria;
 
