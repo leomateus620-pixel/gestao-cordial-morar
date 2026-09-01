@@ -79,6 +79,11 @@ export type ImobiRequestOptions = {
   timeoutMs?: number;
   /** Requisições ambíguas (criação) não devem sofrer retry cego. */
   allowRetry?: boolean;
+  /**
+   * Falhas de rede/timeout podem ser repetidas mesmo fora de GET quando a
+   * operação é idempotente do lado do provedor (ex.: upload de imagem com hash).
+   */
+  retryOnNetwork?: boolean;
   correlationId?: string;
   onLog?: (entry: ImobiRequestLog) => void;
 };
