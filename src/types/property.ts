@@ -141,6 +141,8 @@ export type PropertyDetail = Property &
   PropertyWriteInput & {
     revision: number;
     updatedAt: string | null;
+    /** Coordenada resolvida a partir do link do Maps, usada só para a prévia. */
+    localizacaoMapsCoords: string | null;
     isDraft: boolean;
     images: PropertyImage[];
   };
