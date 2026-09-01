@@ -518,7 +518,7 @@ export const createImovel = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await context.supabase
       .from("properties")
-      .insert(payload)
+      .insert(payload as never)
       .select("*")
       .single();
     if (error) throw new Error(error.message);
@@ -537,6 +537,10 @@ export const updateImovel = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ property: PropertyDetail | null; queued: string[] }> => {
     const { id, ...rest } = data;
     const payload = toDbPayload(rest);
+    if (rest.localizacaoMapsUrl !== undefined) {
+      const { resolveMapsCoords } = await import("./maps-link.server");
+      payload["localizacao_maps_coords"] = await resolveMapsCoords(rest.localizacaoMapsUrl);
+    }
     if (!Object.keys(payload).length) throw new Error("Nada para salvar.");
 
     const { data: current, error: readError } = await context.supabase
