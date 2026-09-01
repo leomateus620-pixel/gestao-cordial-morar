@@ -46,10 +46,18 @@ export function CatalogSearchInput({ className }: { className?: string }) {
       <input
         value={term}
         onChange={(event) => setTerm(event.target.value)}
-        placeholder="Código, bairro, cidade, endereço…"
-        aria-label="Buscar no catálogo de imóveis"
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          const q = term.trim();
+          if (q.length < 2) return;
+          event.preventDefault();
+          navigate({ to: "/busca", search: { q } });
+        }}
+        placeholder="Código, bairro, cidade… (Enter = busca geral)"
+        aria-label="Buscar no catálogo de imóveis. Pressione Enter para a busca geral do sistema."
         className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground/40 focus:outline-none"
       />
+
       {term ? (
         <button
           type="button"
