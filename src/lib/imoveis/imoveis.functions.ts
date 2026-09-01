@@ -660,3 +660,95 @@ export const deleteImovel = createServerFn({ method: "POST" })
     await purgeProperty(supabaseAdmin, id);
     return { status: "deleted", providers: [] };
   });
+
+export type ArchiveImovelResult = {
+  status: "archived" | "pending_archive";
+  providers: string[];
+};
+
+/**
+ * Arquiva o imóvel: o anúncio sai dos sites (ação `unpublish`), mas o cadastro,
+ * fotos, vídeos, códigos e histórico continuam guardados no Gestão Cordial.
+ * Quando há publicação viva, o arquivamento termina assim que os provedores
+ * confirmarem a despublicação (ver `finalizePendingArchive`).
+ */
+export const archiveImovel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }): Promise<ArchiveImovelResult> => {
+    const { id } = data;
+
+    const { data: current, error: readError } = await context.supabase
+      .from("properties")
+      .select("id, revision")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
+
+    const { data: links } = await context.supabase
+      .from("property_provider_publications")
+      .select("provider, enabled, status, external_property_id")
+      .eq("property_id", id);
+
+    const live = ((links ?? []) as Array<{
+      provider: "cordial" | "morar";
+      enabled: boolean;
+      status: string | null;
+      external_property_id: string | null;
+    }>).filter((link) => link.external_property_id && link.status !== "unpublished");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const now = new Date().toISOString();
+
+    if (live.length) {
+      const revision = Number((current as { revision?: number }).revision ?? 1);
+      await supabaseAdmin.from("property_sync_jobs").upsert(
+        live.map((link) => ({
+          property_id: id,
+          provider: link.provider,
+          action: "unpublish" as const,
+          requested_revision: revision,
+          requested_by: context.userId,
+          status: "pending" as const,
+          next_run_at: now,
+        })),
+        { onConflict: "property_id,provider,action,requested_revision" },
+      );
+      const { error } = await supabaseAdmin
+        .from("properties")
+        .update({ removal_state: "pending_archive", updated_at: now })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      return { status: "pending_archive", providers: live.map((link) => link.provider) };
+    }
+
+    const { error } = await supabaseAdmin
+      .from("properties")
+      .update({ archived_at: now, removal_state: "archived", updated_at: now })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return { status: "archived", providers: [] };
+  });
+
+/** Reativa um imóvel arquivado: volta ao catálogo, sem republicar automaticamente. */
+export const unarchiveImovel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data, context }): Promise<{ status: "active" }> => {
+    const { data: current, error: readError } = await context.supabase
+      .from("properties")
+      .select("id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("properties")
+      .update({ archived_at: null, removal_state: null, updated_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { status: "active" };
+  });
