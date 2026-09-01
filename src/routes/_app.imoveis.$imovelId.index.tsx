@@ -2,6 +2,8 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   Bath,
   Bed,
@@ -17,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
+import { ArchivePropertyDialog } from "@/components/imoveis/ArchivePropertyDialog";
 import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
 import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
