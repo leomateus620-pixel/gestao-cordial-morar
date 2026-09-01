@@ -98,7 +98,12 @@ export async function imobiRequest<T = unknown>(
   const method = options.method ?? "GET";
   const correlationId = options.correlationId ?? crypto.randomUUID();
   const allowRetry = options.allowRetry ?? method === "GET";
-  const maxAttempts = allowRetry ? MAX_ATTEMPTS : 1;
+  // Retry cego só em GET. Fora disso, no máximo repetimos falhas de
+  // rede/timeout quando a chamada foi marcada como idempotente.
+  const networkOnlyRetry = !allowRetry && options.retryOnNetwork === true;
+  const maxAttempts = allowRetry || networkOnlyRetry ? MAX_ATTEMPTS : 1;
+  const canRetry = (error: ImobiApiError) =>
+    allowRetry ? error.retryable : networkOnlyRetry && error.category === "network";
 
   let lastError: ImobiApiError | null = null;
 
