@@ -123,6 +123,7 @@ export type ActiveChip = { key: keyof CatalogFilters; label: string };
 export function activeChips(filters: CatalogFilters): ActiveChip[] {
   const chips: ActiveChip[] = [];
   const push = (key: keyof CatalogFilters, label: string) => chips.push({ key, label });
+  if (filters.arquivados === "somente") push("arquivados", "Arquivados");
   if (filters.carteira !== "todas")
     push(
       "carteira",

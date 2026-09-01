@@ -480,7 +480,11 @@ function DetalhePage() {
       </section>
 
       <div className="space-y-5">
-          <PropertyPublishPanel propertyId={imovel.id} canPublish={true} isAdmin={isAdmin} />
+          <PropertyPublishPanel
+            propertyId={imovel.id}
+            canPublish={!isArchived && !isArchiving}
+            isAdmin={isAdmin}
+          />
 
 
           {isAdmin && (
