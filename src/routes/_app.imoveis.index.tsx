@@ -78,14 +78,12 @@ function Page() {
 
   return (
     <>
-      <SiteSyncPanel isAdmin={isAdmin} />
-
-      <div className="mb-2 flex justify-end">
+      <div className="mb-3 flex justify-start">
         <Link
           to="/imoveis/novo"
-          className="hidden items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-md shadow-primary/25 lg:inline-flex"
+          className="hidden items-center gap-2 rounded-2xl border border-primary/20 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition hover:brightness-110 lg:inline-flex"
         >
-          <Plus className="size-4" /> Novo imóvel
+          <Plus className="size-4" strokeWidth={2.4} /> Novo imóvel
         </Link>
       </div>
 
@@ -97,6 +95,7 @@ function Page() {
         onChange={applyFilters}
         onReset={resetFilters}
       />
+
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {query.isPending &&
