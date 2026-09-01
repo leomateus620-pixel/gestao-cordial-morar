@@ -11,6 +11,8 @@ import { Handshake, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { convertAttendanceToSale } from "@/lib/sales/convert.functions";
 import type { Atendimento } from "@/types/atendimento";
+import { useSession } from "@/lib/auth-mock";
+import { canAccessModule } from "@/lib/access-control";
 
 const inputClass =
   "min-h-10 w-full rounded-xl border border-stone-900/12 bg-white px-3 text-sm text-stone-900 outline-none focus:border-teal-700";
@@ -23,8 +25,11 @@ export function AtendimentoConvertSaleCard({ atendimento }: { atendimento: Atend
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [pagamento, setPagamento] = useState("Financiamento");
   const [saving, setSaving] = useState(false);
+  const session = useSession();
 
   if (atendimento.pipelineStage !== "fechamento") return null;
+  // Sem acesso ao menu Vendas a conversão levaria a uma rota bloqueada.
+  if (!canAccessModule(session, "vendas")) return null;
 
   async function handleConvert() {
     const parsed = Number(valor.replace(/\./g, "").replace(",", "."));
