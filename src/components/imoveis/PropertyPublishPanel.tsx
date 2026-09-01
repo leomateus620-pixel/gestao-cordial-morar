@@ -64,11 +64,18 @@ export function PropertyPublishPanel({
       return;
     }
     try {
-      await enqueue.mutateAsync({ propertyId, providers, action });
+      const result = (await enqueue.mutateAsync({ propertyId, providers, action })) as {
+        skippedImages?: number;
+        pendingImages?: number;
+      };
+      const outOfSync = (result?.skippedImages ?? 0) + (result?.pendingImages ?? 0);
       toast.success(
         action === "publish"
           ? "Publicação enfileirada. Acompanhe o status abaixo."
           : "Despublicação enfileirada.",
+        outOfSync > 0
+          ? { description: `${outOfSync} foto(s) ficaram de fora: sem marca-d'água concluída.` }
+          : undefined,
       );
       setSelected([]);
     } catch (error) {
