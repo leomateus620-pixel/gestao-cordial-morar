@@ -16,7 +16,15 @@ import {
   useStartPropertyImport,
 } from "@/hooks/usePropertyImport";
 import { useProvidersHealth } from "@/hooks/usePropertySync";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ImportConflictsDialog } from "./ImportConflictsDialog";
+
 
 const PROVIDER_LABEL: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
 const MODE_LABEL: Record<string, string> = {
