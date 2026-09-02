@@ -230,17 +230,38 @@ export function sanitizeRichText(value: string | null | undefined): string | und
   return out.replace(/\r?\n/g, "<br />");
 }
 
-/** Teto da API ImobiBrasil para a descrição do imóvel (contado já sanitizado). */
+/**
+ * Teto da API ImobiBrasil para a descrição. Medido em BYTES do texto já
+ * sanitizado: acentos ocupam 2 bytes e cada emoji vira `&#128513;`, então o
+ * texto digitado pode ser bem menor que esse número.
+ */
 export const IMOBI_DESCRICAO_MAX = 1500;
+
+const encoder = new TextEncoder();
+
+/** Tamanho em bytes (é assim que a API conta). */
+export function byteLength(text: string): number {
+  return encoder.encode(text).length;
+}
 
 /**
  * Encurta o texto já sanitizado sem quebrar entidade HTML (`&#128513;`) nem a
  * tag `<br />` no meio. Corta pelo fim, preferindo o último parágrafo/palavra.
  */
 export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): string {
-  if (text.length <= max) return text;
+  if (byteLength(text) <= max) return text;
   const suffix = "...";
-  let cut = Math.max(1, max - suffix.length);
+  const budget = Math.max(1, max - suffix.length);
+
+  // Maior prefixo que cabe no orçamento de bytes.
+  let cut = 0;
+  let used = 0;
+  for (const char of text) {
+    const size = byteLength(char);
+    if (used + size > budget) break;
+    used += size;
+    cut += char.length;
+  }
 
   // Nunca terminar no meio de "&#123;" ou de "<br />".
   const amp = text.lastIndexOf("&", cut - 1);
@@ -262,10 +283,12 @@ export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): stri
   return `${kept || text.slice(0, cut)}${suffix}`;
 }
 
-/** Tamanho que a descrição terá no payload dos sites (para contador na UI). */
+/** Tamanho (em bytes) que a descrição terá no payload dos sites — contador da UI. */
 export function sanitizedLength(value: string | null | undefined): number {
-  return sanitizeRichText(value)?.length ?? 0;
+  const out = sanitizeRichText(value);
+  return out ? byteLength(out) : 0;
 }
+
 
 
 
