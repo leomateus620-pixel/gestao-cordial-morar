@@ -45,6 +45,7 @@ export type NotificationDestination = {
   path:
     | "/atendimentos"
     | "/agenda"
+    | "/agenda/fotos"
     | "/vendas"
     | "/agenciamentos"
     | "/alugueis"
@@ -110,6 +111,17 @@ export const notificationTypeConfig: Readonly<Record<string, NotificationTypeCon
     durationMs: 10_000,
     groupable: false,
   },
+  agenda_fotos: {
+    category: "agenda",
+    label: "Produção de material",
+    icon: "calendar",
+    motion: "from-bottom",
+    sound: "important",
+    ctaLabel: "Ver agenda de fotos",
+    priority: 4,
+    durationMs: 8_000,
+    groupable: true,
+  },
   google_calendar: {
     category: "system",
     label: "Google Agenda",
@@ -168,6 +180,7 @@ function safePathFromLink(link: string | null): NotificationDestination["path"] 
     const allowed: NotificationDestination["path"][] = [
       "/atendimentos",
       "/agenda",
+      "/agenda/fotos",
       "/vendas",
       "/agenciamentos",
       "/alugueis",
@@ -200,6 +213,9 @@ export function resolveNotificationDestination(
   }
   if (notification.type === "agenda_lembrete") {
     return entityId ? { path: "/agenda", search: { id: entityId } } : null;
+  }
+  if (notification.type === "agenda_fotos") {
+    return { path: "/agenda/fotos", search: entityId ? { id: entityId } : {} };
   }
   if (notification.type === "venda_vencimento") {
     return entityId ? { path: "/vendas", search: { id: entityId } } : null;
