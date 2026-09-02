@@ -839,6 +839,20 @@ export function PropertyForm({
                 rows={7}
                 className={inputCls}
               />
+              {(() => {
+                const used = sanitizedLength(values.descricaoImovel);
+                const over = used > IMOBI_DESCRICAO_MAX;
+                return (
+                  <p
+                    className={`mt-1 text-[11px] font-semibold ${over ? "text-destructive" : "text-foreground/45"}`}
+                  >
+                    {used}/{IMOBI_DESCRICAO_MAX} caracteres nos sites
+                    {over
+                      ? " — o texto será encurtado no fim ao publicar em Cordial e Morar. O cadastro continua completo aqui."
+                      : ""}
+                  </p>
+                );
+              })()}
             </Field>
 
 
