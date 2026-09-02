@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import { isGoogleMapsUrl } from "@/lib/imoveis/maps-link";
+import { IMOBI_DESCRICAO_MAX, sanitizedLength } from "@/lib/imobibrasil/serializers";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
