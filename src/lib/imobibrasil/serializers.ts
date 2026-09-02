@@ -230,6 +230,68 @@ export function sanitizeRichText(value: string | null | undefined): string | und
   return out.replace(/\r?\n/g, "<br />");
 }
 
+/**
+ * Teto da API ImobiBrasil para a descrição. Medido em BYTES do texto já
+ * sanitizado: acentos ocupam 2 bytes e cada emoji vira `&#128513;`, então o
+ * texto digitado pode ser bem menor que esse número.
+ */
+export const IMOBI_DESCRICAO_MAX = 1500;
+
+const encoder = new TextEncoder();
+
+/** Tamanho em bytes (é assim que a API conta). */
+export function byteLength(text: string): number {
+  return encoder.encode(text).length;
+}
+
+/**
+ * Encurta o texto já sanitizado sem quebrar entidade HTML (`&#128513;`) nem a
+ * tag `<br />` no meio. Corta pelo fim, preferindo o último parágrafo/palavra.
+ */
+export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): string {
+  if (byteLength(text) <= max) return text;
+  const suffix = "...";
+  const budget = Math.max(1, max - suffix.length);
+
+  // Maior prefixo que cabe no orçamento de bytes.
+  let cut = 0;
+  let used = 0;
+  for (const char of text) {
+    const size = byteLength(char);
+    if (used + size > budget) break;
+    used += size;
+    cut += char.length;
+  }
+
+  // Nunca terminar no meio de "&#123;" ou de "<br />".
+  const amp = text.lastIndexOf("&", cut - 1);
+  if (amp !== -1) {
+    const end = text.indexOf(";", amp);
+    if (end >= cut && /^&#\d*$/.test(text.slice(amp, cut))) cut = amp;
+  }
+  const lt = text.lastIndexOf("<", cut - 1);
+  if (lt !== -1 && text.indexOf(">", lt) >= cut) cut = lt;
+
+  const window = text.slice(0, cut);
+  const lastBr = window.lastIndexOf("<br />");
+  const lastSpace = window.lastIndexOf(" ");
+  let boundary = cut;
+  if (lastBr >= cut - 250 && lastBr > 0) boundary = lastBr;
+  else if (lastSpace >= cut - 80 && lastSpace > 0) boundary = lastSpace;
+
+  const kept = text.slice(0, boundary).replace(/(?:<br \/>|\s)+$/, "");
+  return `${kept || text.slice(0, cut)}${suffix}`;
+}
+
+/** Tamanho (em bytes) que a descrição terá no payload dos sites — contador da UI. */
+export function sanitizedLength(value: string | null | undefined): number {
+  const out = sanitizeRichText(value);
+  return out ? byteLength(out) : 0;
+}
+
+
+
+
 
 /** `Personalizado` com P maiúsculo quando aplicável. */
 export function normalizeExibirEnderecoSite(value: string | null | undefined): string | undefined {
@@ -328,7 +390,8 @@ export function serializeProperty(
   assign(payload, "mobiliado", flagToSimNao(property.mobiliado));
 
   // Conteúdo
-  assign(payload, "descricaoImovel", sanitizeRichText(property.descricao_imovel));
+  const descricao = sanitizeRichText(property.descricao_imovel);
+  assign(payload, "descricaoImovel", descricao ? truncateSanitized(descricao) : undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
   assign(payload, "pontosFortesImovel", sanitizeRichText(property.pontos_fortes));
 

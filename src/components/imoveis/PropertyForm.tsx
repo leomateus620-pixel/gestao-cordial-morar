@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import { isGoogleMapsUrl } from "@/lib/imoveis/maps-link";
+import { IMOBI_DESCRICAO_MAX, sanitizedLength } from "@/lib/imobibrasil/serializers";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
@@ -838,6 +839,20 @@ export function PropertyForm({
                 rows={7}
                 className={inputCls}
               />
+              {(() => {
+                const used = sanitizedLength(values.descricaoImovel);
+                const over = used > IMOBI_DESCRICAO_MAX;
+                return (
+                  <p
+                    className={`mt-1 text-[11px] font-semibold ${over ? "text-destructive" : "text-foreground/45"}`}
+                  >
+                    {used}/{IMOBI_DESCRICAO_MAX} caracteres nos sites
+                    {over
+                      ? " — o texto será encurtado no fim ao publicar em Cordial e Morar. O cadastro continua completo aqui."
+                      : ""}
+                  </p>
+                );
+              })()}
             </Field>
 
 
