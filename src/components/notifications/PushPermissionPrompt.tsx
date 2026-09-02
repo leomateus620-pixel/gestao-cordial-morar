@@ -6,7 +6,7 @@ import { isPushConfigured } from "@/lib/push/firebase-config";
 import { enablePush, type PushStatus } from "@/lib/push/push-client";
 
 const SNOOZE_KEY = "gc.push.prompt-snooze";
-const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+const SNOOZE_MS = 24 * 60 * 60 * 1000;
 
 function snoozeKey(userId: string) {
   return `${SNOOZE_KEY}:${userId}`;
