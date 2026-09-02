@@ -177,7 +177,7 @@ test("descrição longa é encurtada no fim sem quebrar entidade nem <br />", ()
     mode: "insert",
   });
   const out = String(payload["descricaoImovel"]);
-  assert.ok(out.length <= 1500, `tamanho ${out.length}`);
+  assert.ok(new TextEncoder().encode(out).length <= 1500, `bytes ${new TextEncoder().encode(out).length}`);
   assert.ok(out.endsWith("..."));
   assert.ok(out.includes("&#10024;"));
   assert.equal(/&#\d*$/.test(out.slice(0, -3)), false);
