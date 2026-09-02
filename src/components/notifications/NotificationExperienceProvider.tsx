@@ -621,6 +621,7 @@ export function NotificationExperienceProvider({ children }: { children: ReactNo
   return (
     <NotificationExperienceContext.Provider value={value}>
       {children}
+      <PushPermissionPrompt userId={session?.id ?? null} />
     </NotificationExperienceContext.Provider>
   );
 }
