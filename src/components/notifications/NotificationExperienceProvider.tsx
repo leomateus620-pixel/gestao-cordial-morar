@@ -158,6 +158,16 @@ export function NotificationExperienceProvider({ children }: { children: ReactNo
     previousSessionId.current = nextId;
   }, [queryClient, session?.id]);
 
+  // Push: renova silenciosamente o token FCM do dispositivo após o login,
+  // apenas quando a permissão já foi concedida (nunca pede permissão sozinho).
+  useEffect(() => {
+    if (!session?.id) return;
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted" || !isPushConfigured()) return;
+    void enablePush();
+  }, [session?.id]);
+
+
   useEffect(() => {
     const onPreference = (event: Event) => {
       const customEvent = event as CustomEvent<{ enabled?: boolean }>;
