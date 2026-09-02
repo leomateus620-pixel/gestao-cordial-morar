@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 import { GoogleDriveCard } from "@/components/configuracoes/GoogleDriveCard";
 import { PropertyDriveRootCard } from "@/components/configuracoes/PropertyDriveRootCard";
+import { PushDiagnosticsCard } from "@/components/notifications/PushDiagnosticsCard";
 import { agencies } from "@/lib/mock/data";
 import { useApp, useFiltered } from "@/store/app-store";
 
@@ -70,6 +71,7 @@ function Page() {
           <GoogleCalendarCard />
           <GoogleDriveCard />
           <PropertyDriveRootCard />
+          <PushDiagnosticsCard />
         </div>
       </section>
 
