@@ -230,6 +230,45 @@ export function sanitizeRichText(value: string | null | undefined): string | und
   return out.replace(/\r?\n/g, "<br />");
 }
 
+/** Teto da API ImobiBrasil para a descrição do imóvel (contado já sanitizado). */
+export const IMOBI_DESCRICAO_MAX = 1500;
+
+/**
+ * Encurta o texto já sanitizado sem quebrar entidade HTML (`&#128513;`) nem a
+ * tag `<br />` no meio. Corta pelo fim, preferindo o último parágrafo/palavra.
+ */
+export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): string {
+  if (text.length <= max) return text;
+  const suffix = "...";
+  let cut = Math.max(1, max - suffix.length);
+
+  // Nunca terminar no meio de "&#123;" ou de "<br />".
+  const amp = text.lastIndexOf("&", cut - 1);
+  if (amp !== -1) {
+    const end = text.indexOf(";", amp);
+    if (end >= cut && /^&#\d*$/.test(text.slice(amp, cut))) cut = amp;
+  }
+  const lt = text.lastIndexOf("<", cut - 1);
+  if (lt !== -1 && text.indexOf(">", lt) >= cut) cut = lt;
+
+  const window = text.slice(0, cut);
+  const lastBr = window.lastIndexOf("<br />");
+  const lastSpace = window.lastIndexOf(" ");
+  let boundary = cut;
+  if (lastBr >= cut - 250 && lastBr > 0) boundary = lastBr;
+  else if (lastSpace >= cut - 80 && lastSpace > 0) boundary = lastSpace;
+
+  const kept = text.slice(0, boundary).replace(/(?:<br \/>|\s)+$/, "");
+  return `${kept || text.slice(0, cut)}${suffix}`;
+}
+
+/** Tamanho que a descrição terá no payload dos sites (para contador na UI). */
+export function sanitizedLength(value: string | null | undefined): number {
+  return sanitizeRichText(value)?.length ?? 0;
+}
+
+
+
 
 /** `Personalizado` com P maiúsculo quando aplicável. */
 export function normalizeExibirEnderecoSite(value: string | null | undefined): string | undefined {
