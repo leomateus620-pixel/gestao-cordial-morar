@@ -11,6 +11,8 @@ import {
 import { NotificationCard } from "@/components/notifications/NotificationCard";
 import { useNotificationExperience } from "@/components/notifications/notification-experience-context";
 import { NotificationManagementSummary } from "@/components/notifications/NotificationManagementSummary";
+import { PushToggle } from "@/components/notifications/PushToggle";
+
 import {
   Sheet,
   SheetContent,
@@ -157,7 +159,9 @@ export function NotificationCenter() {
                   aria-label="Ativar sons de notificação"
                 />
               </div>
+              <PushToggle />
             </div>
+
           ) : null}
         </SheetHeader>
 
