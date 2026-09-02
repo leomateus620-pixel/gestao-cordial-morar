@@ -367,7 +367,8 @@ export function serializeProperty(
   assign(payload, "mobiliado", flagToSimNao(property.mobiliado));
 
   // Conteúdo
-  assign(payload, "descricaoImovel", sanitizeRichText(property.descricao_imovel));
+  const descricao = sanitizeRichText(property.descricao_imovel);
+  assign(payload, "descricaoImovel", descricao ? truncateSanitized(descricao) : undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
   assign(payload, "pontosFortesImovel", sanitizeRichText(property.pontos_fortes));
 
