@@ -85,6 +85,7 @@ export interface AgendaEvent {
   criadoEm: string;
   atualizadoEm: string;
   googleCalendarSyncStatus: GoogleCalendarSyncStatus;
+  googleCalendarSyncError?: string;
 }
 
 /** Event types that belong to the shared "Agenda de fotos" view. */
