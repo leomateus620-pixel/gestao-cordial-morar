@@ -150,7 +150,9 @@ export function PropertyPublishPanel({
               {row?.lastErrorMessage && (
                 <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-destructive/8 p-2 text-[11px] text-destructive">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0" />
-                  {row.lastErrorMessage}
+                  {/1500 caracteres/i.test(row.lastErrorMessage)
+                    ? "A descrição passava do limite do site (1500 caracteres). Agora ela é encurtada automaticamente no fim — clique em Reprocessar para publicar."
+                    : row.lastErrorMessage}
                 </p>
               )}
 
