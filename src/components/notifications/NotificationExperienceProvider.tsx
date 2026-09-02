@@ -39,7 +39,10 @@ import {
   type NotificationPage,
   type NotificationSummary,
 } from "@/lib/notifications/notifications.functions";
+import { isPushConfigured } from "@/lib/push/firebase-config";
+import { enablePush } from "@/lib/push/push-client";
 import { useApp } from "@/store/app-store";
+
 
 function summarizeLoadedNotifications(items: NotificationRecord[]): NotificationSummary {
   const today = new Date().toDateString();
@@ -157,6 +160,16 @@ export function NotificationExperienceProvider({ children }: { children: ReactNo
     }
     previousSessionId.current = nextId;
   }, [queryClient, session?.id]);
+
+  // Push: renova silenciosamente o token FCM do dispositivo após o login,
+  // apenas quando a permissão já foi concedida (nunca pede permissão sozinho).
+  useEffect(() => {
+    if (!session?.id) return;
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted" || !isPushConfigured()) return;
+    void enablePush();
+  }, [session?.id]);
+
 
   useEffect(() => {
     const onPreference = (event: Event) => {
