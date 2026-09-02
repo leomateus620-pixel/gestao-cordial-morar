@@ -530,6 +530,7 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
 
   let anySuccess = false;
   let anyConnected = false;
+  let anyFailure = false;
 
   for (const userId of recipientIds) {
     const conn = connByUser.get(userId);
@@ -539,7 +540,8 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
 
     // Conexões sem o escopo calendar.events nunca vão funcionar: sinalize e siga.
     if (!hasCalendarScope(conn)) {
-      errors.push(`${userId.slice(0, 8)}: escopo insuficiente`);
+      errors.push(`${conn.google_email ?? userId.slice(0, 8)}: permissão do Google Agenda incompleta`);
+      anyFailure = true;
       await flagReconnect(conn, SCOPE_ERROR);
       continue;
     }
@@ -578,7 +580,8 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
       }
       anySuccess = true;
     } else {
-      errors.push(`${userId.slice(0, 8)}: ${result.error}`);
+      errors.push(`${conn.google_email ?? userId.slice(0, 8)}: ${result.error}`);
+      anyFailure = true;
       if (needsReconnect(result.error)) {
         await flagReconnect(
           conn,
@@ -590,21 +593,25 @@ export async function syncAgendaEventToGoogle(eventId: string): Promise<{
     }
   }
 
-  const finalStatus: "sincronizado" | "preparado" | "nao_sincronizado" = anySuccess
-    ? "sincronizado"
-    : anyConnected
-      ? "preparado"
-      : "nao_sincronizado";
+  // Verdade acima de tudo: se QUALQUER destinatário conectado falhou, o evento
+  // não está de fato no Google Agenda dele — não marque como sincronizado.
+  const finalStatus: "sincronizado" | "preparado" | "nao_sincronizado" = anyFailure
+    ? "preparado"
+    : anySuccess
+      ? "sincronizado"
+      : anyConnected
+        ? "preparado"
+        : "nao_sincronizado";
   await supabaseAdmin
     .from("agenda_events")
     .update({
       google_calendar_sync_status: finalStatus,
-      google_synced_at: anySuccess ? new Date().toISOString() : null,
+      google_synced_at: anySuccess && !anyFailure ? new Date().toISOString() : null,
       google_calendar_sync_error: errors.length ? errors.join(" | ").slice(0, 500) : null,
     })
     .eq("id", eventId);
 
-  return anySuccess
+  return finalStatus === "sincronizado"
     ? { status: "sincronizado" }
     : { status: finalStatus, error: errors.join(" | ") || undefined };
 }
