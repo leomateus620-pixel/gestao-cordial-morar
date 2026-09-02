@@ -12,7 +12,6 @@ import {
   normalizeLabel,
   sanitizeRichText,
   sanitizedLength,
-  truncateSanitized,
   serializeProperty,
   toFinalidade,
   type LocalPropertyForSync,
