@@ -39,6 +39,7 @@ import {
   type NotificationPage,
   type NotificationSummary,
 } from "@/lib/notifications/notifications.functions";
+import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 import { isPushConfigured } from "@/lib/push/firebase-config";
 import { enablePush } from "@/lib/push/push-client";
 import { useApp } from "@/store/app-store";
