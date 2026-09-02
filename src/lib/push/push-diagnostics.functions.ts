@@ -73,8 +73,9 @@ export const sendTestPush = createServerFn({ method: "POST" })
       },
       {
         user_id: context.userId,
-        tipo: "atendimento_atribuido",
-        category: "attendance",
+        // `system` evita a validação de entidade vinculada: é um teste, não há atendimento real.
+        tipo: "system",
+        category: "system",
         titulo: "Foi vinculado um atendimento a você",
         mensagem: "Abrir?",
         link: "/atendimentos",
