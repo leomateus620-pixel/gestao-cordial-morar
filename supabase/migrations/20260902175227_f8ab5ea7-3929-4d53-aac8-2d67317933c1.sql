@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.agenda_notify_photo_session() FROM PUBLIC, anon, authenticated;
