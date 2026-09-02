@@ -45,6 +45,7 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
+import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
 import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
 import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
 import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes/api/public/hooks/property-import-worker'
@@ -239,6 +240,12 @@ const ApiPublicHooksSalePaymentRemindersRoute =
     path: '/api/public/hooks/sale-payment-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksPushWorkerRoute =
+  ApiPublicHooksPushWorkerRouteImport.update({
+    id: '/api/public/hooks/push-worker',
+    path: '/api/public/hooks/push-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksPropertySyncWorkerRoute =
   ApiPublicHooksPropertySyncWorkerRouteImport.update({
     id: '/api/public/hooks/property-sync-worker',
@@ -341,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
+  '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -386,6 +394,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
+  '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -435,6 +444,7 @@ export interface FileRoutesById {
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
+  '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -484,6 +494,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-import-worker'
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
+    | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-import-worker'
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
+    | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -577,6 +589,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-import-worker'
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
+    | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
@@ -601,6 +614,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPropertyImportWorkerRoute: typeof ApiPublicHooksPropertyImportWorkerRoute
   ApiPublicHooksPropertySyncReconcileRoute: typeof ApiPublicHooksPropertySyncReconcileRoute
   ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
+  ApiPublicHooksPushWorkerRoute: typeof ApiPublicHooksPushWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -861,6 +875,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/push-worker': {
+      id: '/api/public/hooks/push-worker'
+      path: '/api/public/hooks/push-worker'
+      fullPath: '/api/public/hooks/push-worker'
+      preLoaderRoute: typeof ApiPublicHooksPushWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/property-sync-worker': {
       id: '/api/public/hooks/property-sync-worker'
       path: '/api/public/hooks/property-sync-worker'
@@ -1045,6 +1066,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksPropertySyncReconcileRoute:
     ApiPublicHooksPropertySyncReconcileRoute,
   ApiPublicHooksPropertySyncWorkerRoute: ApiPublicHooksPropertySyncWorkerRoute,
+  ApiPublicHooksPushWorkerRoute: ApiPublicHooksPushWorkerRoute,
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,

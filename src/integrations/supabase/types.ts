@@ -3200,6 +3200,47 @@ export type Database = {
         }
         Relationships: []
       }
+      push_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          notification_id: string
+          processed_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          notification_id: string
+          processed_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          notification_id?: string
+          processed_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_outbox_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       real_estate_sales: {
         Row: {
           area_m2: number | null
@@ -4183,6 +4224,33 @@ export type Database = {
           agency?: string
           created_at?: string
           source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          token: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          token: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          token?: string
+          updated_at?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
