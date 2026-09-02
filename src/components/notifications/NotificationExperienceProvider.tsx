@@ -39,7 +39,10 @@ import {
   type NotificationPage,
   type NotificationSummary,
 } from "@/lib/notifications/notifications.functions";
+import { isPushConfigured } from "@/lib/push/firebase-config";
+import { enablePush } from "@/lib/push/push-client";
 import { useApp } from "@/store/app-store";
+
 
 function summarizeLoadedNotifications(items: NotificationRecord[]): NotificationSummary {
   const today = new Date().toDateString();
