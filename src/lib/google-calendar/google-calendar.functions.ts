@@ -20,7 +20,21 @@ export const getMyGoogleConnection = createServerFn({ method: "GET" })
       .select("google_email,calendar_id,scope,last_error,created_at,updated_at")
       .eq("user_id", context.userId)
       .maybeSingle();
-    return data;
+    if (!data) return null;
+    // Conexões antigas foram autorizadas antes do escopo calendar.events existir:
+    // sem ele nada chega ao Google, então a UI precisa pedir reconexão.
+    const hasCalendarScope = (data.scope ?? "").includes(
+      "https://www.googleapis.com/auth/calendar.events",
+    );
+    return {
+      ...data,
+      hasCalendarScope,
+      last_error:
+        data.last_error ??
+        (hasCalendarScope
+          ? null
+          : "Permissão do Google Agenda incompleta. Reconecte sua conta Google para que os compromissos apareçam no seu Google Agenda."),
+    };
   });
 
 export const disconnectGoogleCalendar = createServerFn({ method: "POST" })
