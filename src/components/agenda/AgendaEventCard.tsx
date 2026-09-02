@@ -181,6 +181,7 @@ export function AgendaEventCard({
 
 function GoogleSyncBadge({ event }: { event: AgendaEvent }) {
   const status = event.googleCalendarSyncStatus;
+  const syncError = event.googleCalendarSyncError;
   if (status === "sincronizado") {
     return (
       <span
@@ -195,7 +196,11 @@ function GoogleSyncBadge({ event }: { event: AgendaEvent }) {
     return (
       <span
         className="inline-flex items-center gap-1 rounded-full bg-rose-500/14 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-800"
-        title="Falha na sincronização com o Google"
+        title={
+          syncError
+            ? `Não chegou ao Google Agenda — ${syncError}`
+            : "Falha na sincronização com o Google"
+        }
       >
         <TriangleAlert className="size-3" /> Falha sync
       </span>

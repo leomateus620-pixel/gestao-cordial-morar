@@ -48,6 +48,7 @@ type DbEvent = {
   responsavel_nome: string | null;
   criado_por_nome: string | null;
   google_calendar_sync_status: string;
+  google_calendar_sync_error?: string | null;
   created_at: string;
   updated_at: string;
   agenda_event_participants?: Array<{
@@ -135,6 +136,7 @@ function rowToEvent(row: DbEvent): AgendaEvent {
     atualizadoEm: row.updated_at,
     googleCalendarSyncStatus: (row.google_calendar_sync_status ??
       "nao_sincronizado") as GoogleCalendarSyncStatus,
+    googleCalendarSyncError: orUndef(row.google_calendar_sync_error ?? null),
   };
 }
 

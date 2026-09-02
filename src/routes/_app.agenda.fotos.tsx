@@ -8,6 +8,7 @@ import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
 import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
 import { AgendaTimeline } from "@/components/agenda/AgendaTimeline";
 import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
+import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 
 import {
   defaultAgendaFilters,
@@ -140,6 +141,8 @@ function AgendaFotosPage() {
 
   return (
     <div className="space-y-4">
+      <GoogleCalendarCard variant="inline" />
+
       <AgendaViewSwitcher activeCount={filteredEvents.length} />
 
       <section className="glass-panel flex items-start gap-3 rounded-2xl border border-fuchsia-200/40 bg-gradient-to-br from-fuchsia-50/60 via-white/70 to-white/60 p-4 shadow-sm">
