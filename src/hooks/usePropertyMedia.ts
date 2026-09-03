@@ -216,24 +216,31 @@ export function usePropertyMedia(propertyId: string | undefined) {
 
   const enqueueSync = useServerFn(enqueuePropertySync);
   /** Reenfileira apenas os sites em que o imóvel já está publicado. */
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncOrderToProviders = useCallback(
-    async (id: string) => {
-      try {
-        const detail = qc.getQueryData<{
-          archivedAt: string | null;
-          isDraft?: boolean;
-          publications?: Array<{ provider: string; status: string }>;
-        }>(["imovel-detalhe", id]);
-        if (!detail || detail.archivedAt || detail.isDraft) return;
-        const providers = (detail.publications ?? [])
-          .filter((p) => p.status === "published" || p.status === "partial")
-          .map((p) => p.provider);
-        if (!providers.length) return;
-        await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
-        qc.invalidateQueries({ queryKey: ["property-sync", id] });
-      } catch {
-        // A ordem já está salva; o painel de publicação permite reenviar.
-      }
+    (id: string) => {
+      // Agrupa várias trocas seguidas: um único reenvio ao fim da organização.
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      syncTimer.current = setTimeout(() => {
+        void (async () => {
+          try {
+            const detail = qc.getQueryData<{
+              archivedAt: string | null;
+              isDraft?: boolean;
+              publications?: Array<{ provider: string; status: string }>;
+            }>(["imovel-detalhe", id]);
+            if (!detail || detail.archivedAt || detail.isDraft) return;
+            const providers = (detail.publications ?? [])
+              .filter((p) => p.status === "published" || p.status === "partial")
+              .map((p) => p.provider);
+            if (!providers.length) return;
+            await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
+            qc.invalidateQueries({ queryKey: ["property-sync", id] });
+          } catch {
+            // A ordem já está salva; o painel de publicação permite reenviar.
+          }
+        })();
+      }, 3000);
     },
     [qc, enqueueSync],
   );
@@ -243,7 +250,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
       setCoverFn({ data: { propertyId: propertyId as string, imageId } }),
     onSuccess: () => {
       invalidate();
-      if (propertyId) void syncOrderToProviders(propertyId);
+      if (propertyId) syncOrderToProviders(propertyId);
     },
   });
 
@@ -277,8 +284,11 @@ export function usePropertyMedia(propertyId: string | undefined) {
         void (async () => {
           try {
             await reorderFn({ data: { propertyId, orderedIds } });
-            invalidate();
-            await syncOrderToProviders(propertyId);
+            // Não invalida "property-images": a ordem na tela já é a correta,
+            // e recarregar faria a tira piscar no meio da organização.
+            qc.invalidateQueries({ queryKey: ["imovel-detalhe", propertyId] });
+            qc.invalidateQueries({ queryKey: ["imoveis"] });
+            syncOrderToProviders(propertyId);
           } catch (err) {
             if (previous) qc.setQueryData(key, previous);
             toast.error(
@@ -286,9 +296,9 @@ export function usePropertyMedia(propertyId: string | undefined) {
             );
           }
         })();
-      }, 800);
+      }, 350);
     },
-    [propertyId, qc, reorderFn, invalidate, syncOrderToProviders],
+    [propertyId, qc, reorderFn, syncOrderToProviders],
   );
 
   const remove = useMutation({
