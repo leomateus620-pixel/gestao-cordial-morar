@@ -1,15 +1,13 @@
 import {
-  AlarmClock,
+  BellRing,
   Building2,
-  CalendarRange,
   CheckCircle2,
-  Clock3,
+  Flag,
   LockKeyhole,
   MapPin,
   RefreshCw,
   TriangleAlert,
   UserRound,
-  UsersRound,
 } from "lucide-react";
 import {
   agendaImobiliariaLabel,
@@ -20,157 +18,201 @@ import {
   type AgendaTipo,
 } from "@/types/agenda";
 import { cn } from "@/lib/utils";
-import { useSession } from "@/lib/auth-mock";
-import { isAdminUser } from "@/lib/access-control";
 
-const typeStyles: Record<AgendaTipo, string> = {
-  visita: "bg-teal-600/12 text-teal-800",
-  fotos: "bg-violet-600/12 text-violet-800",
-  video: "bg-orange-500/14 text-orange-800",
-  assinatura: "bg-emerald-600/12 text-emerald-800",
-  reuniao: "bg-sky-600/12 text-sky-800",
-  retorno: "bg-yellow-500/16 text-yellow-800",
-  vistoria: "bg-amber-600/14 text-amber-800",
-  captacao: "bg-cyan-600/12 text-cyan-800",
-  interno: "bg-slate-500/12 text-slate-700",
-  outro: "bg-stone-500/12 text-stone-700",
+/** Accent used for the left rail and the type dot, keyed by event type. */
+const typeAccent: Record<AgendaTipo, string> = {
+  visita: "bg-teal-600",
+  fotos: "bg-violet-500",
+  video: "bg-orange-500",
+  assinatura: "bg-emerald-600",
+  reuniao: "bg-sky-600",
+  retorno: "bg-amber-500",
+  vistoria: "bg-amber-700",
+  captacao: "bg-cyan-600",
+  interno: "bg-slate-500",
+  outro: "bg-stone-500",
 };
 
 const statusStyles: Record<AgendaEvent["status"], string> = {
-  agendado: "bg-slate-500/10 text-slate-700",
-  confirmado: "bg-teal-600/12 text-teal-800",
-  em_andamento: "bg-sky-600/12 text-sky-800",
-  concluido: "bg-emerald-600/12 text-emerald-800",
-  cancelado: "bg-rose-600/10 text-rose-700",
-  reagendado: "bg-amber-600/12 text-amber-800",
+  agendado: "bg-slate-500/10 text-slate-700 ring-slate-500/15",
+  confirmado: "bg-teal-600/12 text-teal-800 ring-teal-600/15",
+  em_andamento: "bg-sky-600/12 text-sky-800 ring-sky-600/15",
+  concluido: "bg-emerald-600/12 text-emerald-800 ring-emerald-600/15",
+  cancelado: "bg-rose-600/10 text-rose-700 ring-rose-600/15",
+  reagendado: "bg-amber-600/12 text-amber-800 ring-amber-600/15",
+};
+
+const imobiliariaStyles: Record<AgendaEvent["imobiliaria"], string> = {
+  cordial: "bg-[var(--cordial-light)] text-[var(--cordial-dark)]",
+  morar: "bg-[var(--morar-light)] text-[var(--morar-dark)]",
+  ambas: "bg-foreground/6 text-foreground/65",
 };
 
 export function AgendaEventCard({
   event,
   onClick,
   canEdit,
+  past = false,
 }: {
   event: AgendaEvent;
   onClick: () => void;
   canEdit: boolean;
+  /** Softens cards that already happened so the upcoming ones stand out. */
+  past?: boolean;
 }) {
   const start = new Date(event.inicio);
   const end = event.fim ? new Date(event.fim) : undefined;
-  const property = event.imovelDescricao || event.local;
-  const session = useSession();
-  const isAdmin = isAdminUser(session);
   const ownerName = event.responsavelPrincipalNome || event.criadoPorNome;
-  const ownerInitials = ownerName
-    ? ownerName
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? "")
-        .join("")
-    : "";
+  const property = event.imovelDescricao || event.imovelNome;
+  const location = event.local && event.local !== property ? event.local : undefined;
+  const activeReminders = event.lembretes.filter((reminder) => reminder.ativo).length;
+  const highPriority = event.prioridade === "alta" || event.prioridade === "urgente";
+  const cancelled = event.status === "cancelado";
+  const done = event.status === "concluido";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="agenda-event-card glass-panel group w-full rounded-3xl p-3 text-left transition duration-200 hover:-translate-y-0.5 hover:bg-white/72 hover:shadow-lg hover:shadow-teal-950/8 active:scale-[0.995] sm:p-4"
+      className={cn(
+        "agenda-event-card glass-panel group relative w-full overflow-hidden rounded-[1.35rem] p-3.5 pl-4 text-left",
+        "transition duration-200 hover:-translate-y-0.5 hover:bg-white/72 hover:shadow-lg hover:shadow-teal-950/8 active:scale-[0.995]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50",
+        (past || cancelled) && "opacity-80 hover:opacity-100",
+      )}
       aria-label={`${canEdit ? "Editar" : "Ver"} ${event.titulo}`}
     >
-      <div className="flex gap-3 sm:gap-4">
-        <div className="flex w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-white/52 px-2 py-3 ring-1 ring-white/65 sm:w-20">
-          <span className="font-mono text-base font-semibold text-teal-900 sm:text-lg">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-y-3.5 left-0 w-[3px] rounded-r-full transition-all duration-200 group-hover:inset-y-2.5",
+          typeAccent[event.tipo],
+          (cancelled || done) && "opacity-50",
+        )}
+      />
+
+      <div className="flex gap-3.5">
+        <div className="flex w-12 shrink-0 flex-col pt-0.5 text-left sm:w-14">
+          <span
+            className={cn(
+              "font-mono text-[15px] font-semibold leading-none tabular-nums tracking-tight sm:text-base",
+              cancelled ? "text-foreground/45 line-through" : "text-teal-950",
+            )}
+          >
             {event.diaInteiro
               ? "Dia"
               : start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
           </span>
-          <span className="mt-0.5 text-[9px] font-semibold text-foreground/45">
+          <span className="mt-1 text-[10px] font-medium leading-tight text-foreground/45">
             {event.diaInteiro
               ? "inteiro"
               : end
                 ? `até ${end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
-                : `${event.duracaoMin ?? 0} min`}
+                : event.duracaoMin
+                  ? `${event.duracaoMin} min`
+                  : ""}
           </span>
-          <span className="mt-2 h-1 w-8 rounded-full bg-orange-300/90 transition-all group-hover:w-11" />
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2.5">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="truncate text-sm font-semibold tracking-tight sm:text-base">
-                  {event.titulo}
-                </h3>
-                {!canEdit && <LockKeyhole className="size-3.5 shrink-0 text-foreground/35" />}
-              </div>
-              {event.descricao && (
-                <p className="mt-0.5 line-clamp-1 text-[11px] text-foreground/48">
-                  {event.descricao}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-wrap justify-end gap-1.5">
-              <Badge className={typeStyles[event.tipo]}>{agendaTipoLabel[event.tipo]}</Badge>
-              <Badge className={statusStyles[event.status]}>
-                {agendaStatusLabel[event.status]}
-              </Badge>
-              <Badge className={priorityStyle(event.prioridade)}>
-                {agendaPrioridadeLabel[event.prioridade]}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="mt-3 grid gap-x-5 gap-y-2 text-[11px] text-foreground/58 sm:grid-cols-2 xl:grid-cols-3">
-            <Info icon={UserRound} text={event.clienteNome || "Sem cliente vinculado"} />
-            <Info icon={Building2} text={property || "Sem imóvel/local definido"} />
-            <Info icon={MapPin} text={event.local || "Local a definir"} />
-            <Info
-              icon={CalendarRange}
-              text={event.responsavelPrincipalNome || "Responsável a definir"}
-            />
-            <Info
-              icon={UsersRound}
-              text={
-                event.participantes.length
-                  ? event.participantes.map((participant) => participant.nome).join(", ")
-                  : "Sem participantes adicionais"
-              }
-            />
-            <Info
-              icon={AlarmClock}
-              text={
-                event.lembretes.some((reminder) => reminder.ativo)
-                  ? `${event.lembretes.filter((reminder) => reminder.ativo).length} lembrete(s) ativo(s)`
-                  : "Sem lembrete"
-              }
-            />
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/55 pt-2.5">
-            <span className="rounded-full bg-white/50 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-teal-800 ring-1 ring-white/65">
-              {agendaImobiliariaLabel[event.imobiliaria]}
-            </span>
-            <GoogleSyncBadge event={event} />
-            {isAdmin && ownerName && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full bg-teal-600/12 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-teal-900 ring-1 ring-teal-700/15"
-                title={`Corretor responsável: ${ownerName}`}
+              <h3
+                className={cn(
+                  "line-clamp-2 text-[13.5px] font-semibold leading-snug tracking-tight sm:text-sm",
+                  cancelled && "text-foreground/55 line-through",
+                )}
               >
-                {ownerInitials && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-teal-700 text-[8px] font-bold text-white">
-                    {ownerInitials}
+                {event.titulo}
+              </h3>
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-foreground/55">
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  <span
+                    aria-hidden="true"
+                    className={cn("size-1.5 rounded-full", typeAccent[event.tipo])}
+                  />
+                  {agendaTipoLabel[event.tipo]}
+                </span>
+                {highPriority && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 font-semibold",
+                      event.prioridade === "urgente" ? "text-rose-700" : "text-orange-700",
+                    )}
+                  >
+                    <Flag className="size-3" />
+                    {agendaPrioridadeLabel[event.prioridade]}
                   </span>
                 )}
-                Corretor: {ownerName}
+                {event.descricao && (
+                  <span className="hidden min-w-0 flex-1 truncate text-foreground/45 sm:inline">
+                    {event.descricao}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!canEdit && (
+                <LockKeyhole className="size-3.5 text-foreground/35" aria-label="Somente leitura" />
+              )}
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] ring-1",
+                  statusStyles[event.status],
+                )}
+              >
+                {agendaStatusLabel[event.status]}
+              </span>
+            </div>
+          </div>
+
+          {(event.clienteNome || property || location) && (
+            <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-foreground/62">
+              {event.clienteNome && <Info icon={UserRound} text={event.clienteNome} />}
+              {property && <Info icon={Building2} text={property} />}
+              {location && <Info icon={MapPin} text={location} />}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-white/60 pt-2.5">
+            {ownerName && (
+              <span
+                className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-foreground/70"
+                title={`Responsável: ${ownerName}`}
+              >
+                <Avatar name={ownerName} />
+                <span className="truncate">{ownerName}</span>
+                {event.participantes.length > 0 && (
+                  <span
+                    className="rounded-full bg-foreground/6 px-1.5 py-0.5 font-mono text-[9.5px] font-semibold text-foreground/55"
+                    title={event.participantes.map((participant) => participant.nome).join(", ")}
+                  >
+                    +{event.participantes.length}
+                  </span>
+                )}
               </span>
             )}
-            {event.observacoes && (
-              <span className="min-w-0 flex-1 truncate text-[10px] italic text-foreground/44">
-                "{event.observacoes}"
+
+            <span className="ml-auto flex items-center gap-1.5">
+              {activeReminders > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-foreground/45"
+                  title={`${activeReminders} lembrete${activeReminders === 1 ? "" : "s"} ativo${activeReminders === 1 ? "" : "s"}`}
+                >
+                  <BellRing className="size-3" />
+                  {activeReminders}
+                </span>
+              )}
+              <GoogleSyncIndicator event={event} />
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                  imobiliariaStyles[event.imobiliaria],
+                )}
+              >
+                {agendaImobiliariaLabel[event.imobiliaria]}
               </span>
-            )}
-            <span className="ml-auto hidden items-center gap-1 text-[9px] font-semibold text-foreground/38 sm:flex">
-              <Clock3 className="size-3" />
-              Atualizado {new Date(event.atualizadoEm).toLocaleDateString("pt-BR")}
             </span>
           </div>
         </div>
@@ -179,28 +221,27 @@ export function AgendaEventCard({
   );
 }
 
-function GoogleSyncBadge({ event }: { event: AgendaEvent }) {
+function GoogleSyncIndicator({ event }: { event: AgendaEvent }) {
   const status = event.googleCalendarSyncStatus;
-  const syncError = event.googleCalendarSyncError;
   if (status === "sincronizado") {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-full bg-emerald-600/12 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-800"
-        title="Sincronizado com Google Agenda"
+        className="grid size-5 place-items-center rounded-full bg-emerald-600/12 text-emerald-700"
+        title="Sincronizado com o Google Agenda"
+        aria-label="Sincronizado com o Google Agenda"
       >
-        <CheckCircle2 className="size-3" /> Google
+        <CheckCircle2 className="size-3" />
       </span>
     );
   }
   if (status === "preparado") {
+    const detail = event.googleCalendarSyncError
+      ? `Não chegou ao Google Agenda — ${event.googleCalendarSyncError}`
+      : "Falha na sincronização com o Google Agenda";
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-full bg-rose-500/14 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-800"
-        title={
-          syncError
-            ? `Não chegou ao Google Agenda — ${syncError}`
-            : "Falha na sincronização com o Google"
-        }
+        className="inline-flex items-center gap-1 rounded-full bg-rose-500/12 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-700"
+        title={detail}
       >
         <TriangleAlert className="size-3" /> Falha sync
       </span>
@@ -208,39 +249,37 @@ function GoogleSyncBadge({ event }: { event: AgendaEvent }) {
   }
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-slate-400/14 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-700"
-      title="Conecte sua conta Google em Configurações para sincronizar"
+      className="grid size-5 place-items-center rounded-full bg-foreground/5 text-foreground/35"
+      title="Não sincronizado — conecte sua conta Google em Configurações"
+      aria-label="Não sincronizado com o Google Agenda"
     >
-      <RefreshCw className="size-3" /> Não sincronizado
+      <RefreshCw className="size-3" />
+    </span>
+  );
+}
+
+function Avatar({ name }: { name: string }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+  return (
+    <span
+      aria-hidden="true"
+      className="grid size-5 shrink-0 place-items-center rounded-full bg-teal-700/12 text-[8.5px] font-bold text-teal-900 ring-1 ring-white/70"
+    >
+      {initials}
     </span>
   );
 }
 
 function Info({ icon: Icon, text }: { icon: typeof UserRound; text: string }) {
   return (
-    <span className="flex min-w-0 items-center gap-1.5">
+    <span className="flex min-w-0 max-w-full items-center gap-1.5">
       <Icon className="size-3.5 shrink-0 text-teal-700/55" />
       <span className="truncate">{text}</span>
     </span>
   );
-}
-
-function Badge({ className, children }: { className: string; children: string }) {
-  return (
-    <span
-      className={cn(
-        "rounded-full px-2 py-1 text-[8px] font-bold uppercase tracking-[0.08em] sm:text-[9px]",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-function priorityStyle(priority: AgendaEvent["prioridade"]) {
-  if (priority === "urgente") return "bg-rose-600/12 text-rose-700";
-  if (priority === "alta") return "bg-orange-600/12 text-orange-800";
-  if (priority === "baixa") return "bg-slate-500/10 text-slate-600";
-  return "bg-amber-500/12 text-amber-700";
 }
