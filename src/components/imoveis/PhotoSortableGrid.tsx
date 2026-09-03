@@ -40,6 +40,7 @@ export function usePhotoSorting<T extends { id: string }>({
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const draggingRef = useRef(false);
+  const dragIdRef = useRef<string | null>(null);
   const startRef = useRef<{ x: number; y: number; index: number } | null>(null);
   const orderRef = useRef(order);
   orderRef.current = order;
@@ -88,11 +89,12 @@ export function usePhotoSorting<T extends { id: string }>({
             Math.abs(event.clientY - start.y) > DRAG_THRESHOLD_PX;
           if (!moved) return;
           draggingRef.current = true;
-          setDraggingId(orderRef.current[start.index] ?? null);
+          dragIdRef.current = orderRef.current[start.index] ?? null;
+          setDraggingId(dragIdRef.current);
           event.currentTarget.setPointerCapture?.(event.pointerId);
         }
-        const dragId = orderRef.current.findIndex((id) => id === draggingId);
-        const fromIndex = dragId >= 0 ? dragId : start.index;
+        const currentIndex = orderRef.current.findIndex((id) => id === dragIdRef.current);
+        const fromIndex = currentIndex >= 0 ? currentIndex : start.index;
         const element = document.elementFromPoint(event.clientX, event.clientY);
         const target = element?.closest("[data-sort-index]") as HTMLElement | null;
         if (!target) return;
@@ -105,12 +107,14 @@ export function usePhotoSorting<T extends { id: string }>({
         startRef.current = null;
         if (!draggingRef.current) return;
         draggingRef.current = false;
+        dragIdRef.current = null;
         setDraggingId(null);
         commit();
       },
       onPointerCancel: () => {
         startRef.current = null;
         draggingRef.current = false;
+        dragIdRef.current = null;
         setDraggingId(null);
       },
       onKeyDown: (event) => {
