@@ -88,13 +88,23 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
 
         <div className="space-y-1.5 p-4">
           <div className="flex items-baseline justify-between gap-2">
-            <p className="truncate text-[15px] font-semibold leading-tight">
-              {property.tipo ?? "Imóvel"}
-              {property.codigo ? (
-                <span className="ml-1.5 font-mono text-[11px] font-medium text-foreground/40">
-                  {property.codigo}
+            <p className="flex min-w-0 items-baseline gap-1.5 truncate text-[15px] font-semibold leading-tight">
+              <span className="truncate">{property.tipo ?? "Imóvel"}</span>
+              {codes.map((code) => (
+                <span
+                  key={`${code.provider}-${code.value}`}
+                  title={`${code.label}: ${code.value}`}
+                  className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none ${
+                    code.provider === "cordial"
+                      ? "bg-sky-500/10 text-sky-700"
+                      : code.provider === "morar"
+                        ? "bg-orange-500/10 text-orange-700"
+                        : "bg-foreground/[0.06] text-foreground/50"
+                  }`}
+                >
+                  {code.value}
                 </span>
-              ) : null}
+              ))}
             </p>
             <p className="shrink-0 text-base font-bold text-primary">{price}</p>
           </div>
