@@ -19,9 +19,12 @@ type OutboxRow = {
 type NotificationRow = {
   id: string;
   user_id: string;
+  tipo: string;
+  category: string | null;
   titulo: string;
   mensagem: string | null;
   link: string | null;
+  imobiliaria: string | null;
   entity_type: string | null;
   entity_id: string | null;
 };
