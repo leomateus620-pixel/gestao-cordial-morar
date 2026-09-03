@@ -7,6 +7,7 @@ import {
   usePropertyMedia,
 } from "@/hooks/usePropertyMedia";
 import { WATERMARK_COMBINED_LABEL } from "@/lib/imoveis/watermark-config";
+import { usePhotoSorting } from "@/components/imoveis/PhotoSortableGrid";
 
 /**
  * Etapa 6 — fotos. O upload só existe com imóvel salvo, porque cada arquivo
@@ -66,13 +67,15 @@ export function PropertyPhotosStep({
     inputRef.current?.click();
   }
 
+  const sorting = usePhotoSorting({
+    items: rows,
+    onReorder: (orderedIds) => media.reorderPhotos(orderedIds),
+  });
+  const sortedRows = sorting.ordered;
+
   function move(index: number, delta: number) {
-    const next = [...rows];
-    const target = index + delta;
-    if (target < 0 || target >= next.length) return;
-    const [item] = next.splice(index, 1);
-    next.splice(target, 0, item!);
-    media.reorder.mutate(next.map((image) => image.id));
+    sorting.moveTo(index, index + delta);
+    setTimeout(sorting.commit, 0);
   }
 
   return (
@@ -81,7 +84,8 @@ export function PropertyPhotosStep({
         <div>
           <p className="text-sm font-semibold">Fotos do imóvel</p>
           <p className="text-[11px] text-foreground/55">
-            A primeira foto é a capa. Todas recebem a marca {marcaAtual} antes de ir para os sites.
+            Arraste para reordenar — a primeira foto é a capa e a ordem salva sozinha. Todas
+            recebem a marca {marcaAtual} antes de ir para os sites.
           </p>
         </div>
         <button
@@ -230,10 +234,14 @@ export function PropertyPhotosStep({
 
       {rows.length > 0 && (
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {rows.map((image, index) => (
+          {sortedRows.map((image, index) => (
             <li
               key={image.id}
-              className="group relative overflow-hidden rounded-2xl bg-foreground/[0.05]"
+              {...sorting.getItemProps(index)}
+              className={
+                "group relative cursor-grab overflow-hidden rounded-2xl bg-foreground/[0.05] transition active:cursor-grabbing " +
+                (sorting.draggingId === image.id ? "scale-95 opacity-60 ring-2 ring-primary" : "")
+              }
             >
               <img
                 src={image.url}

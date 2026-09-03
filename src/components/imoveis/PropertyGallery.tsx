@@ -1,10 +1,31 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, ImageOff, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, ImageOff, Star, X } from "lucide-react";
 import type { PropertyImage } from "@/types/property";
+import { usePhotoSorting } from "@/components/imoveis/PhotoSortableGrid";
 
-export function PropertyGallery({ images, alt }: { images: PropertyImage[]; alt: string }) {
+export function PropertyGallery({
+  images,
+  alt,
+  editable = false,
+  onReorder,
+  onSetCover,
+}: {
+  images: PropertyImage[];
+  alt: string;
+  /** Permite organizar as fotos direto na ficha, sem entrar em edição. */
+  editable?: boolean;
+  onReorder?: (orderedIds: string[]) => void;
+  onSetCover?: (imageId: string) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  const [organizando, setOrganizando] = useState(false);
+  const sorting = usePhotoSorting({
+    items: images,
+    onReorder: (ids) => onReorder?.(ids),
+    enabled: editable && organizando,
+  });
+  const strip = editable ? sorting.ordered : images;
 
   const count = images.length;
   const go = (delta: number) => setIndex((i) => (count ? (i + delta + count) % count : 0));
@@ -32,7 +53,7 @@ export function PropertyGallery({ images, alt }: { images: PropertyImage[]; alt:
     );
   }
 
-  const current = images[Math.min(index, count - 1)]!;
+  const current = (editable ? sorting.ordered : images)[Math.min(index, count - 1)]!;
 
   return (
     <>
@@ -61,21 +82,66 @@ export function PropertyGallery({ images, alt }: { images: PropertyImage[]; alt:
           )}
         </div>
 
+        {editable && count > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-foreground/55">
+              {organizando
+                ? "Arraste as fotos para reordenar — a primeira é a capa e tudo salva sozinho."
+                : "Organize a ordem das fotos sem entrar em edição."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setOrganizando((v) => !v)}
+              className={
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition " +
+                (organizando
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-white/60 bg-white/70 text-foreground/70 hover:text-foreground")
+              }
+            >
+              <GripVertical className="size-3.5" />
+              {organizando ? "Concluir" : "Organizar fotos"}
+            </button>
+          </div>
+        )}
+
         {count > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {images.map((img, i) => (
-              <button
+            {strip.map((img, i) => (
+              <div
                 key={img.id}
-                type="button"
-                onClick={() => setIndex(i)}
-                aria-label={`Foto ${i + 1}`}
+                {...(editable && organizando ? sorting.getItemProps(i) : {})}
                 className={
-                  "size-16 shrink-0 overflow-hidden rounded-xl border-2 transition " +
-                  (i === index ? "border-primary" : "border-transparent opacity-70 hover:opacity-100")
+                  "relative size-16 shrink-0 overflow-hidden rounded-xl border-2 transition " +
+                  (editable && organizando ? "cursor-grab active:cursor-grabbing " : "") +
+                  (sorting.draggingId === img.id ? "scale-95 opacity-60 " : "") +
+                  (i === index
+                    ? "border-primary"
+                    : "border-transparent opacity-70 hover:opacity-100")
                 }
               >
-                <img src={img.url} alt="" className="size-full object-cover" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIndex(i)}
+                  aria-label={`Foto ${i + 1}`}
+                  className="block size-full"
+                >
+                  <img src={img.url} alt="" className="size-full object-cover" />
+                </button>
+                {editable && organizando && onSetCover && (
+                  <button
+                    type="button"
+                    onClick={() => onSetCover(img.id)}
+                    aria-label="Definir como capa"
+                    title="Definir como capa"
+                    className="absolute right-0.5 top-0.5 grid size-5 place-items-center rounded-full bg-white/85"
+                  >
+                    <Star
+                      className={`size-3 ${img.isCover ? "text-primary" : "text-foreground/50"}`}
+                    />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}

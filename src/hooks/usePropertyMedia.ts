@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -11,6 +12,7 @@ import {
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
+import { enqueuePropertySync } from "@/lib/imoveis/publish.functions";
 import { sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
 import { composeWatermarkedUpload } from "@/lib/imoveis/watermark-client";
 import type { PropertyImage } from "@/types/property";
@@ -212,10 +214,37 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [runQueue],
   );
 
+  const enqueueSync = useServerFn(enqueuePropertySync);
+  /** Reenfileira apenas os sites em que o imóvel já está publicado. */
+  const syncOrderToProviders = useCallback(
+    async (id: string) => {
+      try {
+        const detail = qc.getQueryData<{
+          archivedAt: string | null;
+          isDraft?: boolean;
+          publications?: Array<{ provider: string; status: string }>;
+        }>(["imovel-detalhe", id]);
+        if (!detail || detail.archivedAt || detail.isDraft) return;
+        const providers = (detail.publications ?? [])
+          .filter((p) => p.status === "published" || p.status === "partial")
+          .map((p) => p.provider);
+        if (!providers.length) return;
+        await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
+        qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      } catch {
+        // A ordem já está salva; o painel de publicação permite reenviar.
+      }
+    },
+    [qc, enqueueSync],
+  );
+
   const setCover = useMutation({
     mutationFn: (imageId: string) =>
       setCoverFn({ data: { propertyId: propertyId as string, imageId } }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      if (propertyId) void syncOrderToProviders(propertyId);
+    },
   });
 
   const reorder = useMutation({
@@ -223,6 +252,44 @@ export function usePropertyMedia(propertyId: string | undefined) {
       reorderFn({ data: { propertyId: propertyId as string, orderedIds } }),
     onSuccess: invalidate,
   });
+
+  /**
+   * Reordenação com salvamento automático: aplica na hora na tela, agrupa
+   * trocas seguidas e, ao gravar, reenvia as fotos para os sites publicados.
+   */
+  const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reorderPhotos = useCallback(
+    (orderedIds: string[]) => {
+      if (!propertyId) return;
+      const key = ["property-images", propertyId];
+      const previous = qc.getQueryData<PropertyImage[]>(key);
+      if (previous) {
+        const byId = new Map(previous.map((image) => [image.id, image]));
+        const next = orderedIds
+          .map((id) => byId.get(id))
+          .filter(Boolean)
+          .map((image, index) => ({ ...(image as PropertyImage), position: index }));
+        if (next.length === previous.length) qc.setQueryData(key, next);
+      }
+
+      if (reorderTimer.current) clearTimeout(reorderTimer.current);
+      reorderTimer.current = setTimeout(() => {
+        void (async () => {
+          try {
+            await reorderFn({ data: { propertyId, orderedIds } });
+            invalidate();
+            await syncOrderToProviders(propertyId);
+          } catch (err) {
+            if (previous) qc.setQueryData(key, previous);
+            toast.error(
+              (err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.",
+            );
+          }
+        })();
+      }, 800);
+    },
+    [propertyId, qc, reorderFn, invalidate, syncOrderToProviders],
+  );
 
   const remove = useMutation({
     mutationFn: (imageId: string) =>
@@ -255,6 +322,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
     retryUpload,
     setCover,
     reorder,
+    reorderPhotos,
     remove,
     retryWatermark,
     updateTargets,

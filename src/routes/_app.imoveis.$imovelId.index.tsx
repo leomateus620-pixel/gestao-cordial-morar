@@ -23,6 +23,7 @@ import { ArchivePropertyDialog } from "@/components/imoveis/ArchivePropertyDialo
 import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
 import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
+import { usePropertyMedia } from "@/hooks/usePropertyMedia";
 import { PropertyMapsCard } from "@/components/imoveis/PropertyMapsCard";
 import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -100,6 +101,7 @@ function DetalhePage() {
   const session = useSession();
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
+  const media = usePropertyMedia(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -274,6 +276,9 @@ function DetalhePage() {
         <PropertyGallery
           images={imovel.images}
           alt={`Fotos do imóvel ${imovel.codigo ?? ""} em ${imovel.cidade ?? "catálogo"}`}
+          editable={!isArchived}
+          onReorder={(ids) => media.reorderPhotos(ids)}
+          onSetCover={(imageId) => media.setCover.mutate(imageId)}
         />
 
         <div className="flex flex-col justify-center rounded-3xl border border-white/60 bg-white/60 p-6 shadow-[0_10px_30px_-16px_rgba(23,27,33,0.15)] backdrop-blur-xl">
