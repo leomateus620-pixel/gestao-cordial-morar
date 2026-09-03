@@ -171,18 +171,19 @@ test("campos internos não vão para os sites", () => {
   assert.equal(raw.includes("s\u00f3 atende"), false);
 });
 
-test("descrição longa é encurtada no fim sem quebrar entidade nem <br />", () => {
+test("descrição longa respeita 1500 bytes sem quebrar entidade nem <br />", () => {
   const long = ("✨ Casa ótima com pátio amplo e churrasqueira.\n".repeat(60)).trim();
   const payload = serializeProperty({ ...base, descricao_imovel: long } as LocalPropertyForSync, {}, {
     mode: "insert",
   });
   const out = String(payload["descricaoImovel"]);
   assert.ok(new TextEncoder().encode(out).length <= 1500, `bytes ${new TextEncoder().encode(out).length}`);
-  assert.ok(out.endsWith("..."));
   assert.ok(out.includes("&#10024;"));
-  assert.equal(/&#\d*$/.test(out.slice(0, -3)), false);
-  assert.equal(/<[^>]*$/.test(out.slice(0, -3)), false);
+  assert.equal(/&#\d*$/.test(out), false);
+  assert.equal(/<[^>]*$/.test(out), false);
+  assert.ok(String(payload["pontosFortesImovel"] ?? "").length > 0);
 });
+
 
 test("descrição curta não é alterada", () => {
   const payload = serializeProperty({ ...base, descricao_imovel: "✨ Casa nova\nÓtima" } as LocalPropertyForSync, {}, {
