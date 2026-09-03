@@ -47,6 +47,13 @@ export const defaultAgendaFilters: AgendaFilters = {
   dataFim: "",
 };
 
+/** True when any filter differs from the defaults (used to offer a "clear filters" action). */
+export function hasActiveAgendaFilters(filters: AgendaFilters) {
+  return (Object.keys(defaultAgendaFilters) as (keyof AgendaFilters)[]).some(
+    (key) => filters[key] !== defaultAgendaFilters[key],
+  );
+}
+
 export type AgendaScope = "todos" | "geral" | "fotos";
 
 export const AGENDA_QUERY_KEY = ["agenda", "events"] as const;
@@ -86,7 +93,6 @@ export function useAgenda(
         return aPast ? bTime - aTime : aTime - bTime;
       });
   }, [events, filters, query]);
-
 
   const stats = useMemo(
     () => (scope === "fotos" ? getPhotoStats(filteredEvents) : getAgendaStats(filteredEvents)),

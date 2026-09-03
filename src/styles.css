@@ -2002,32 +2002,6 @@ html,
   }
 }
 
-.agenda-create-card {
-  transform-style: preserve-3d;
-  transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
-}
-
-.agenda-create-card::after {
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background: linear-gradient(125deg, rgba(255, 255, 255, 0.16), transparent 40%);
-  content: "";
-  pointer-events: none;
-}
-
-.agenda-create-card:hover {
-  transform: perspective(1000px) rotateX(2.6deg) translateY(-3px) scale(1.008);
-  box-shadow:
-    0 28px 50px -25px rgba(5, 58, 62, 0.76),
-    0 14px 26px -18px rgba(234, 115, 45, 0.45),
-    inset 0 1px 1px rgba(255, 255, 255, 0.22);
-}
-
-.agenda-create-card:active {
-  transform: perspective(1000px) rotateX(0deg) translateY(2px) scale(0.98);
-}
-
 .agenda-modal-backdrop {
   animation: client-modal-backdrop-in 180ms ease-out both;
 }
@@ -2078,10 +2052,6 @@ html,
   .atendimento-create-card:hover {
     transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
   }
-
-  .agenda-create-card:hover {
-    transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2129,8 +2099,7 @@ html,
 
   /* Desliga camadas 3D em devices touch (hover não dispara mesmo) */
   .client-create-card,
-  .atendimento-create-card,
-  .agenda-create-card {
+  .atendimento-create-card {
     transform-style: flat;
     transform: none;
   }

@@ -1,17 +1,21 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
-import { AgendaCreateCard } from "@/components/agenda/AgendaCreateCard";
+import { AgendaFeedback, type AgendaFeedbackState } from "@/components/agenda/AgendaFeedback";
 import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
+import { AgendaHero } from "@/components/agenda/AgendaHero";
+import {
+  AgendaListEmpty,
+  AgendaListError,
+  AgendaListSkeleton,
+} from "@/components/agenda/AgendaListState";
 import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
 import { AgendaTimeline } from "@/components/agenda/AgendaTimeline";
-import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
-import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCard";
 
 import {
   defaultAgendaFilters,
+  hasActiveAgendaFilters,
   useAgenda,
   type AgendaFilters as AgendaFiltersState,
 } from "@/hooks/useAgenda";
@@ -60,12 +64,11 @@ function AgendaPage() {
     ...defaultAgendaFilters,
     ...buildAgendaContextFilters({ corretorId, periodo, imobiliaria, status }),
   }));
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<AgendaFeedbackState>(null);
   const unavailableDeepLink = useRef<string | null>(null);
   const clientes = useApp((state) => state.clientes);
-  const imoveis = useApp((state) => state.imoveis);
   const corretores = useApp((state) => state.corretores);
-  const atendimentos = useApp((state) => state.atendimentos);
+  const canCreate = Boolean(session?.permissions.includes("agenda:write"));
   const {
     events,
     filteredEvents,
@@ -96,7 +99,10 @@ function AgendaPage() {
       if (isLoading || !isReady) return;
       if (unavailableDeepLink.current !== highlightedId) {
         unavailableDeepLink.current = highlightedId;
-        setFeedback("Compromisso indisponível ou sem permissão para este usuário.");
+        setFeedback({
+          message: "Compromisso indisponível ou sem permissão para este usuário.",
+          tone: "error",
+        });
       }
       return;
     }
@@ -104,7 +110,6 @@ function AgendaPage() {
     setSelected(event);
     setOpen(true);
   }, [events, highlightedId, isError, isLoading, isReady]);
-
 
   const people = useMemo(() => {
     const values = [
@@ -118,15 +123,6 @@ function AgendaPage() {
   const clientOptions = useMemo(
     () => clientes.map((client) => ({ id: client.id, nome: client.nome })),
     [clientes],
-  );
-  const propertyOptions = useMemo(
-    () =>
-      imoveis.map((property) => ({
-        id: property.id,
-        titulo: property.titulo,
-        endereco: property.endereco,
-      })),
-    [imoveis],
   );
 
   useEffect(() => {
@@ -151,15 +147,15 @@ function AgendaPage() {
         const updated = await editEvent(selected, input);
         setFeedback(
           updated
-            ? `Compromisso “${updated.titulo}” atualizado.`
-            : "Você não pode editar este compromisso.",
+            ? { message: `Compromisso “${updated.titulo}” atualizado.` }
+            : { message: "Você não pode editar este compromisso.", tone: "error" },
         );
         return;
       }
       const created = await createEvent(input);
-      setFeedback(`Compromisso “${created.titulo}” agendado.`);
+      setFeedback({ message: `Compromisso “${created.titulo}” agendado.` });
     } catch (err) {
-      setFeedback(`Não foi possível salvar: ${(err as Error).message}`);
+      setFeedback({ message: `Não foi possível salvar: ${(err as Error).message}`, tone: "error" });
       throw err;
     }
   }
@@ -167,25 +163,29 @@ function AgendaPage() {
   async function removeEvent(event: AgendaEvent) {
     try {
       await deleteEvent(event.id);
-      setFeedback(`Compromisso “${event.titulo}” excluído do sistema e do Google Agenda.`);
+      setFeedback({
+        message: `Compromisso “${event.titulo}” excluído do sistema e do Google Agenda.`,
+      });
       setSelected(undefined);
     } catch (err) {
-      setFeedback(`Não foi possível excluir: ${(err as Error).message}`);
+      setFeedback({
+        message: `Não foi possível excluir: ${(err as Error).message}`,
+        tone: "error",
+      });
       throw err;
     }
   }
 
+  const hasActiveFilters = hasActiveAgendaFilters(filters);
 
   return (
     <div className="space-y-4">
-      <GoogleCalendarCard variant="inline" />
-
-      <AgendaViewSwitcher activeCount={filteredEvents.length} />
-
-      <AgendaCreateCard
-        onClick={openCreate}
-        isOpen={open && !selected}
-        canCreate={Boolean(session?.permissions.includes("agenda:write"))}
+      <AgendaHero
+        variant="geral"
+        activeCount={isReady ? filteredEvents.length : undefined}
+        canCreate={canCreate}
+        isCreating={open && !selected}
+        onCreate={openCreate}
       />
 
       <AgendaFilters
@@ -193,6 +193,11 @@ function AgendaPage() {
         onFiltersChange={setFilters}
         people={people}
         clients={clientOptions}
+        resultText={
+          isReady
+            ? `${filteredEvents.length} compromisso${filteredEvents.length === 1 ? "" : "s"}`
+            : undefined
+        }
       />
 
       <AgendaSummaryCards
@@ -202,49 +207,31 @@ function AgendaPage() {
         onFiltersChange={setFilters}
       />
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3 px-1">
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight">Compromissos</h2>
-            <p className="text-[11px] text-foreground/50">
-              {filteredEvents.length} compromisso{filteredEvents.length === 1 ? "" : "s"} no recorte
-              atual
-            </p>
-          </div>
-          <span className="rounded-full bg-white/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-teal-800">
-            Agenda da equipe
-          </span>
-        </div>
+      <section aria-label="Compromissos">
         {isLoading ? (
-          <div className="glass-panel rounded-2xl p-6 text-sm text-foreground/60">
-            Carregando compromissos…
-          </div>
+          <AgendaListSkeleton />
         ) : isError ? (
-          <div className="glass-panel flex items-center justify-between gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
-            <span>Não foi possível carregar a agenda. {error?.message}</span>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground"
-            >
-              Tentar novamente
-            </button>
-          </div>
+          <AgendaListError message={error?.message} onRetry={() => refetch()} />
         ) : filteredEvents.length === 0 ? (
-          <div className="glass-panel rounded-2xl p-6 text-center text-sm text-foreground/60">
-            Nenhum compromisso encontrado para o recorte atual.
-          </div>
+          <AgendaListEmpty
+            title="Nenhum compromisso encontrado"
+            description={
+              hasActiveFilters
+                ? "Nada corresponde ao recorte atual. Ajuste ou limpe os filtros para ver mais."
+                : "A agenda da equipe está vazia. Registre o primeiro compromisso."
+            }
+            hasFilters={hasActiveFilters}
+            onClearFilters={() => setFilters(defaultAgendaFilters)}
+            canCreate={canCreate}
+            createLabel="Novo compromisso"
+            onCreate={openCreate}
+          />
         ) : (
           <AgendaTimeline events={filteredEvents} onOpen={openEvent} canEdit={canEdit} />
         )}
       </section>
 
-      {feedback && (
-        <div className="fixed left-1/2 top-5 z-[70] flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-2 rounded-2xl border border-white/70 bg-white/90 px-4 py-3 text-sm font-semibold text-teal-900 shadow-xl shadow-stone-950/12 backdrop-blur-xl">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
-          {feedback}
-        </div>
-      )}
+      <AgendaFeedback feedback={feedback} />
 
       {open && (
         <AgendaFormModal
@@ -262,9 +249,7 @@ function AgendaPage() {
           }}
           onSubmit={save}
           onDelete={removeEvent}
-          canEdit={
-            selected ? canEdit(selected) : Boolean(session?.permissions.includes("agenda:write"))
-          }
+          canEdit={selected ? canEdit(selected) : canCreate}
           clients={clientOptions}
           people={people}
           currentUser={session ? { id: session.id, nome: session.nome } : undefined}
