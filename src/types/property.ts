@@ -35,6 +35,10 @@ export type Property = {
   areaConstruida: number | null;
   areaTerreno: number | null;
   codigo: string | null;
+  /** Código externo da publicação Cordial. */
+  codigoCordial: string | null;
+  /** Código externo da publicação Morar. */
+  codigoMorar: string | null;
   source: string;
   sourcePropertyId: string;
   sourceCatalogPage: number | null;
