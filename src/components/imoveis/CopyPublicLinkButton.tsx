@@ -88,47 +88,89 @@ export function CopyPublicLinkButton({
 }
 
 /**
- * Variante só-ícone para o cabeçalho da ficha: um círculo por site publicado.
- * Sem URL resolvida, não renderiza nada.
+ * Controle ÚNICO de copiar link do site na ficha.
+ * Com um site publicado copia direto; com dois, abre um menu mínimo
+ * (nunca dois ou três ícones iguais lado a lado).
  */
-export function CopyPublicLinkIcon({
-  provider,
-  url,
+export function CopyPublicLinkControl({
+  links,
 }: {
-  provider: string;
-  url: string | null;
+  links: Array<{ provider: string; url: string | null }>;
 }) {
-  const { copied, label, copy } = useCopyPublicUrl(provider, url);
-  if (!url) return null;
+  const [copied, setCopied] = useState<string | null>(null);
+  const available = links.filter((link): link is { provider: string; url: string } =>
+    Boolean(link.url),
+  );
+
+  async function copy(provider: string, url: string) {
+    const label = PROVIDER_LABEL[provider] ?? provider;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(provider);
+      toast.success(`Link ${label} copiado.`);
+      setTimeout(() => setCopied(null), 1800);
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
+  }
+
+  if (!available.length) return null;
+
+  const icon = copied ? <Check className="size-4" /> : <Copy className="size-4" />;
+  const buttonCls =
+    "glass-panel inline-flex size-9 items-center justify-center rounded-full text-primary transition hover:scale-105";
+
+  if (available.length === 1) {
+    const only = available[0]!;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => copy(only.provider, only.url)}
+              aria-label="Copiar link do site"
+              className={buttonCls}
+            >
+              {icon}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <span className="flex items-center gap-2">
+              Copiar link do site
+              <a
+                href={only.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 underline"
+              >
+                Abrir <ExternalLink className="size-3" />
+              </a>
+            </span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={copy}
-            aria-label={`Copiar link ${label}`}
-            className="glass-panel inline-flex size-9 items-center justify-center rounded-full text-primary transition hover:scale-105 hover:text-primary"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label="Copiar link do site" className={buttonCls}>
+          {icon}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        {available.map((link) => (
+          <DropdownMenuItem
+            key={link.provider}
+            onSelect={() => void copy(link.provider, link.url)}
+            className="gap-2 text-xs font-semibold"
           >
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span className="flex items-center gap-2">
-            {copied ? `Link ${label} copiado` : `Copiar link ${label}`}
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              aria-label={`Abrir anúncio ${label} em nova aba`}
-              className="inline-flex items-center gap-0.5 underline"
-            >
-              Abrir <ExternalLink className="size-3" />
-            </a>
-          </span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            <Copy className="size-3.5" /> Copiar link {PROVIDER_LABEL[link.provider] ?? link.provider}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
