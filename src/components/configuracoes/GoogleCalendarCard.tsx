@@ -28,7 +28,14 @@ import { cn } from "@/lib/utils";
 
 const QK = ["google-calendar", "connection"] as const;
 
-export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "inline" }) {
+export function GoogleCalendarCard({
+  variant = "card",
+  tone = "light",
+}: {
+  variant?: "card" | "inline";
+  /** `dark` adapts the inline pill to sit on dark/gradient surfaces (e.g. module heroes). */
+  tone?: "light" | "dark";
+}) {
   const qc = useQueryClient();
   const search = useSearch({ strict: false }) as { google?: string; detail?: string };
 
@@ -67,16 +74,20 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   const conn = connection.data;
 
   if (variant === "inline") {
     const hasError = Boolean(conn?.last_error);
+    const dark = tone === "dark";
     return (
       <div
         className={cn(
-          "glass-panel flex items-center gap-2.5 rounded-full py-1.5 pl-2 pr-1.5",
-          hasError && "border border-destructive/25 bg-destructive/5",
+          "flex items-center gap-2.5 rounded-full py-1.5 pl-2 pr-1.5",
+          dark ? "bg-white/10 ring-1 ring-white/14 backdrop-blur-sm" : "glass-panel",
+          hasError &&
+            (dark
+              ? "bg-rose-300/12 ring-rose-200/30"
+              : "border border-destructive/25 bg-destructive/5"),
         )}
       >
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5">
@@ -84,24 +95,50 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
         </span>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {connection.isLoading ? (
-            <span className="truncate text-[11px] text-foreground/55">Google Agenda…</span>
+            <span
+              className={cn("truncate text-[11px]", dark ? "text-white/60" : "text-foreground/55")}
+            >
+              Google Agenda…
+            </span>
           ) : conn ? (
             <>
-              <span className="truncate text-[11.5px] font-semibold text-foreground/80">
+              <span
+                className={cn(
+                  "truncate text-[11.5px] font-semibold",
+                  dark ? "text-white/88" : "text-foreground/80",
+                )}
+              >
                 {conn.google_email}
               </span>
               {hasError ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-destructive/12 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-destructive">
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider",
+                    dark ? "bg-rose-200/20 text-rose-100" : "bg-destructive/12 text-destructive",
+                  )}
+                >
                   <AlertTriangle className="size-3" /> Erro
                 </span>
               ) : (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600/12 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-emerald-800">
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider",
+                    dark
+                      ? "bg-emerald-300/18 text-emerald-100"
+                      : "bg-emerald-600/12 text-emerald-800",
+                  )}
+                >
                   <CheckCircle2 className="size-3" /> Conectada
                 </span>
               )}
             </>
           ) : (
-            <span className="truncate text-[11.5px] text-foreground/60">
+            <span
+              className={cn(
+                "truncate text-[11.5px]",
+                dark ? "text-white/70" : "text-foreground/60",
+              )}
+            >
               Google Agenda não conectada
             </span>
           )}
@@ -113,7 +150,12 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
               <button
                 type="button"
                 aria-label="Opções da conexão Google Agenda"
-                className="grid size-7 shrink-0 place-items-center rounded-full text-foreground/55 transition hover:bg-white/70 hover:text-foreground"
+                className={cn(
+                  "grid size-7 shrink-0 place-items-center rounded-full transition",
+                  dark
+                    ? "text-white/70 hover:bg-white/15 hover:text-white"
+                    : "text-foreground/55 hover:bg-white/70 hover:text-foreground",
+                )}
               >
                 <MoreHorizontal className="size-4" />
               </button>
@@ -139,7 +181,10 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
         ) : (
           <Button
             size="sm"
-            className="h-7 shrink-0 rounded-full px-3 text-[11px]"
+            className={cn(
+              "h-7 shrink-0 rounded-full px-3 text-[11px]",
+              dark && "bg-white text-teal-950 shadow-none hover:bg-white/90",
+            )}
             onClick={() => connectMut.mutate()}
             disabled={connectMut.isPending || connection.isLoading}
           >
@@ -184,8 +229,8 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] text-foreground/50">
-                  Sincronização automática ativa — compromissos criados, editados,
-                  reatribuídos ou cancelados são enviados sozinhos.
+                  Sincronização automática ativa — compromissos criados, editados, reatribuídos ou
+                  cancelados são enviados sozinhos.
                 </p>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -215,9 +260,9 @@ export function GoogleCalendarCard({ variant = "card" }: { variant?: "card" | "i
           ) : (
             <>
               <p className="mt-0.5 text-[11px] text-foreground/60">
-                Conecte sua conta Google e cada compromisso criado na Agenda será
-                espelhado automaticamente no seu Google Calendar, com lembretes
-                nativos (popup/e-mail) no horário configurado.
+                Conecte sua conta Google e cada compromisso criado na Agenda será espelhado
+                automaticamente no seu Google Calendar, com lembretes nativos (popup/e-mail) no
+                horário configurado.
               </p>
               <div className="mt-3">
                 <Button
