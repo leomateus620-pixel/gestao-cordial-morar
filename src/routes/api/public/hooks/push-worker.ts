@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { buildPushPresentation } from "@/lib/push/push-presentation";
 
 /**
  * Worker de push (Firebase Cloud Messaging HTTP v1).
@@ -19,9 +20,12 @@ type OutboxRow = {
 type NotificationRow = {
   id: string;
   user_id: string;
+  tipo: string;
+  category: string | null;
   titulo: string;
   mensagem: string | null;
   link: string | null;
+  imobiliaria: string | null;
   entity_type: string | null;
   entity_id: string | null;
 };
@@ -105,16 +109,42 @@ function readServiceAccount(): ServiceAccount | null {
   }
 }
 
+function buildLink(notification: NotificationRow, presentationLink: string): string {
+  const separator = presentationLink.includes("?") ? "&" : "?";
+  return `${presentationLink}${separator}push=${notification.id}`;
+}
+
 async function sendToToken(
   accessToken: string,
   projectId: string,
   token: string,
   notification: NotificationRow,
 ): Promise<{ ok: boolean; unregistered: boolean; error?: string }> {
+  const presentation = buildPushPresentation({
+    id: notification.id,
+    type: notification.tipo,
+    category: notification.category,
+    titulo: notification.titulo,
+    mensagem: notification.mensagem,
+    link: notification.link,
+    agency: notification.imobiliaria,
+    entityType: notification.entity_type,
+    entityId: notification.entity_id,
+  });
+  const link = buildLink(notification, presentation.link);
+
   const data: Record<string, string> = {
     notification_id: notification.id,
-    link: notification.link ?? "/",
+    type: notification.tipo,
+    category: presentation.category,
+    label: presentation.label,
+    title: presentation.title,
+    body: presentation.body,
+    cta: presentation.ctaLabel,
+    tag: presentation.tag,
+    link,
   };
+  if (notification.imobiliaria) data['agency'] = notification.imobiliaria;
   if (notification.entity_type) data['entity_type'] = notification.entity_type;
   if (notification.entity_id) data['entity_id'] = notification.entity_id;
 
@@ -129,13 +159,21 @@ async function sendToToken(
       body: JSON.stringify({
         message: {
           token,
-          notification: {
-            title: notification.titulo,
-            body: notification.mensagem ?? "",
-          },
           data,
           webpush: {
-            fcm_options: { link: notification.link ?? "/" },
+            headers: { Urgency: "high" },
+            notification: {
+              title: presentation.title,
+              body: presentation.body,
+              icon: presentation.icon,
+              badge: presentation.badge,
+              tag: presentation.tag,
+              renotify: true,
+              requireInteraction: false,
+              actions: [{ action: "open", title: presentation.ctaLabel }],
+              data: { link, notification_id: notification.id },
+            },
+            fcm_options: { link },
           },
         },
       }),
@@ -157,7 +195,7 @@ async function processRow(
 ): Promise<"sent" | "skipped" | "failed"> {
   const { data: notification, error: notificationError } = await admin
     .from("notifications")
-    .select("id, user_id, titulo, mensagem, link, entity_type, entity_id")
+    .select("id, user_id, tipo, category, titulo, mensagem, link, imobiliaria, entity_type, entity_id")
     .eq("id", row.notification_id)
     .maybeSingle<NotificationRow>();
 

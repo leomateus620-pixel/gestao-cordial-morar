@@ -501,6 +501,19 @@ export function NotificationExperienceProvider({ children }: { children: ReactNo
     },
   });
 
+  // Push aberto pelo aparelho traz ?push=<id>: marca como lida e limpa a URL.
+  const markOneRef = useRef(markOneMutation);
+  markOneRef.current = markOneMutation;
+  useEffect(() => {
+    if (typeof window === "undefined" || !session?.id) return;
+    const url = new URL(window.location.href);
+    const pushed = url.searchParams.get("push");
+    if (!pushed) return;
+    url.searchParams.delete("push");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    markOneRef.current.mutate(pushed);
+  }, [session?.id]);
+
   const markAllMutation = useMutation({
     mutationFn: () => markAllNotificationsRead(),
     onMutate: async () => {

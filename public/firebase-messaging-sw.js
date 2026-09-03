@@ -11,14 +11,18 @@ if (config.apiKey && config.projectId && config.appId && config.messagingSenderI
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage((payload) => {
-    const title = payload.notification?.title || payload.data?.title || "Gestão Cordial";
-    const body = payload.notification?.body || payload.data?.body || "";
-    const link = payload.data?.link || "/";
+    const data = payload.data || {};
+    const title = data.title || payload.notification?.title || "Gestão Cordial";
+    const body = data.body || payload.notification?.body || "";
+    const link = data.link || "/";
     self.registration.showNotification(title, {
       body,
       icon: "/favicon.ico",
-      tag: payload.data?.notification_id || undefined,
-      data: { link },
+      badge: "/favicon.ico",
+      tag: data.tag || data.notification_id || undefined,
+      renotify: true,
+      actions: data.cta ? [{ action: "open", title: data.cta }] : undefined,
+      data: { link, notification_id: data.notification_id },
     });
   });
 }
