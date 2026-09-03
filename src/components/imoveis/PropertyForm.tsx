@@ -123,6 +123,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     cep: null,
     logradouro: null,
     numero: null,
+    exibirEnderecoSite: "nao",
     bairro: null,
     cidade: CIDADE_PADRAO,
     uf: UF_PADRAO,
