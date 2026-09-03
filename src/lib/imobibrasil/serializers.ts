@@ -321,11 +321,15 @@ export function sanitizedLength(value: string | null | undefined): number {
 
 
 
-/** `Personalizado` com P maiúsculo quando aplicável. */
-export function normalizeExibirEnderecoSite(value: string | null | undefined): string | undefined {
-  const text = textOrUndefined(value);
-  if (!text) return undefined;
-  return text.toLowerCase() === "personalizado" ? "Personalizado" : text;
+/**
+ * Valores aceitos pela API (validados contra Cordial/Morar em 03/09/2026):
+ * `sim` (endereço completo), `nao` (oculta rua/número) e `personalizado`.
+ * Regra da operação: o padrão é `nao` — o anúncio público nunca mostra a rua.
+ */
+export function normalizeExibirEnderecoSite(value: string | null | undefined): string {
+  const text = textOrUndefined(value)?.toLowerCase();
+  if (text === "sim" || text === "personalizado") return text;
+  return "nao";
 }
 
 function assign(target: ImobiPayload, key: string, value: string | number | string[] | undefined) {
