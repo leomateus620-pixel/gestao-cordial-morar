@@ -373,12 +373,15 @@ export function serializeProperty(
   assign(payload, "numero", textOrUndefined(property.numero));
   assign(payload, "pontoReferencia", textOrUndefined(property.ponto_referencia));
   assign(payload, "complemento", textOrUndefined(property.complemento));
-  assign(payload, "mapa", textOrUndefined(property.mapa));
+  // `mapa` fica de fora de propósito: o ponto exato é uso interno (Google Maps do Gestão).
   assign(payload, "zona", textOrUndefined(property.zona));
   assign(payload, "regiao", textOrUndefined(property.regiao));
-  assign(payload, "exibirEnderecoSite", normalizeExibirEnderecoSite(property.exibir_endereco_site));
-  assign(payload, "exibirEnderecoSitePersonalizado", property.exibir_endereco_site_personalizado ?? undefined);
-  assign(payload, "exibirEnderecoPortalPersonalizado", property.exibir_endereco_portal_personalizado ?? undefined);
+  const exibirEndereco = normalizeExibirEnderecoSite(property.exibir_endereco_site);
+  assign(payload, "exibirEnderecoSite", exibirEndereco);
+  if (exibirEndereco === "personalizado") {
+    assign(payload, "exibirEnderecoSitePersonalizado", property.exibir_endereco_site_personalizado ?? undefined);
+    assign(payload, "exibirEnderecoPortalPersonalizado", property.exibir_endereco_portal_personalizado ?? undefined);
+  }
 
   // Áreas — o par valor/tipo só viaja quando ambos existem de fato.
   const areaPrivativa = areaToString(
