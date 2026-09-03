@@ -108,16 +108,42 @@ function readServiceAccount(): ServiceAccount | null {
   }
 }
 
+function buildLink(notification: NotificationRow, presentationLink: string): string {
+  const separator = presentationLink.includes("?") ? "&" : "?";
+  return `${presentationLink}${separator}push=${notification.id}`;
+}
+
 async function sendToToken(
   accessToken: string,
   projectId: string,
   token: string,
   notification: NotificationRow,
 ): Promise<{ ok: boolean; unregistered: boolean; error?: string }> {
+  const presentation = buildPushPresentation({
+    id: notification.id,
+    type: notification.tipo,
+    category: notification.category,
+    titulo: notification.titulo,
+    mensagem: notification.mensagem,
+    link: notification.link,
+    agency: notification.imobiliaria,
+    entityType: notification.entity_type,
+    entityId: notification.entity_id,
+  });
+  const link = buildLink(notification, presentation.link);
+
   const data: Record<string, string> = {
     notification_id: notification.id,
-    link: notification.link ?? "/",
+    type: notification.tipo,
+    category: presentation.category,
+    label: presentation.label,
+    title: presentation.title,
+    body: presentation.body,
+    cta: presentation.ctaLabel,
+    tag: presentation.tag,
+    link,
   };
+  if (notification.imobiliaria) data['agency'] = notification.imobiliaria;
   if (notification.entity_type) data['entity_type'] = notification.entity_type;
   if (notification.entity_id) data['entity_id'] = notification.entity_id;
 
@@ -132,13 +158,21 @@ async function sendToToken(
       body: JSON.stringify({
         message: {
           token,
-          notification: {
-            title: notification.titulo,
-            body: notification.mensagem ?? "",
-          },
           data,
           webpush: {
-            fcm_options: { link: notification.link ?? "/" },
+            headers: { Urgency: "high" },
+            notification: {
+              title: presentation.title,
+              body: presentation.body,
+              icon: presentation.icon,
+              badge: presentation.badge,
+              tag: presentation.tag,
+              renotify: true,
+              requireInteraction: false,
+              actions: [{ action: "open", title: presentation.ctaLabel }],
+              data: { link, notification_id: notification.id },
+            },
+            fcm_options: { link },
           },
         },
       }),
