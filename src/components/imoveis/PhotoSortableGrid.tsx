@@ -129,22 +129,70 @@ export function usePhotoSorting<T extends { id: string }>({
     });
   }, []);
 
+  /**
+   * Índice de destino pela geometria das miniaturas (não por elementFromPoint:
+   * o item arrastado fica por cima do ponteiro e capturaria todos os testes).
+   */
+  const findTargetIndex = useCallback((x: number, y: number) => {
+    const ids = orderRef.current;
+    let contained = -1;
+    let nearest = -1;
+    let nearestDist = Infinity;
+    let nearestReach = 0;
+    ids.forEach((id, idx) => {
+      if (id === dragIdRef.current) return;
+      const rect = rectsRef.current.get(id);
+      if (!rect || rect.width === 0) return;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        contained = idx;
+        return;
+      }
+      const dist = Math.hypot(x - cx, y - cy);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = idx;
+        nearestReach = Math.max(rect.width, rect.height) * 0.75;
+      }
+    });
+    if (contained >= 0) return contained;
+    return nearestDist <= nearestReach ? nearest : -1;
+  }, []);
+
+  /** Contêiner rolável mais próximo (a tira pode rolar em um ancestral). */
+  const findScroller = useCallback((node: HTMLElement | null) => {
+    let el: HTMLElement | null = node?.parentElement ?? null;
+    while (el) {
+      if (el.scrollWidth > el.clientWidth + 4 || el.scrollHeight > el.clientHeight + 4) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }, []);
+
   /** Rola a faixa sozinha quando o arraste chega perto das bordas. */
   const autoScroll = useCallback(() => {
     scrollFrameRef.current = null;
     if (!draggingRef.current) return;
     const id = dragIdRef.current;
     const node = id ? nodesRef.current.get(id) : null;
-    const scroller = node?.parentElement;
-    if (scroller && scroller.scrollWidth > scroller.clientWidth + 4) {
+    const scroller = findScroller(node ?? null);
+    if (scroller) {
       const box = scroller.getBoundingClientRect();
-      const x = pointerRef.current.x;
-      if (x < box.left + EDGE_SCROLL_PX) scroller.scrollLeft -= EDGE_SCROLL_SPEED;
-      else if (x > box.right - EDGE_SCROLL_PX) scroller.scrollLeft += EDGE_SCROLL_SPEED;
+      const { x, y } = pointerRef.current;
+      if (scroller.scrollWidth > scroller.clientWidth + 4) {
+        if (x < box.left + EDGE_SCROLL_PX) scroller.scrollLeft -= EDGE_SCROLL_SPEED;
+        else if (x > box.right - EDGE_SCROLL_PX) scroller.scrollLeft += EDGE_SCROLL_SPEED;
+      }
+      if (scroller.scrollHeight > scroller.clientHeight + 4) {
+        if (y < box.top + EDGE_SCROLL_PX) scroller.scrollTop -= EDGE_SCROLL_SPEED;
+        else if (y > box.bottom - EDGE_SCROLL_PX) scroller.scrollTop += EDGE_SCROLL_SPEED;
+      }
     }
     positionDragged();
     scrollFrameRef.current = requestAnimationFrame(autoScroll);
-  }, [positionDragged]);
+  }, [positionDragged, findScroller]);
+
 
   const stopDrag = useCallback(() => {
     const id = dragIdRef.current;
