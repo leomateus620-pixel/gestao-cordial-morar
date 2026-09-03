@@ -4305,6 +4305,8 @@ export type Database = {
           cep: string | null
           cidade: string | null
           codigo: string | null
+          codigo_cordial: string | null
+          codigo_morar: string | null
           com_placa: boolean | null
           complemento: string | null
           corretor_id: string | null
@@ -4428,6 +4430,8 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           codigo?: string | null
+          codigo_cordial?: string | null
+          codigo_morar?: string | null
           com_placa?: boolean | null
           complemento?: string | null
           corretor_id?: string | null
@@ -4551,6 +4555,8 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           codigo?: string | null
+          codigo_cordial?: string | null
+          codigo_morar?: string | null
           com_placa?: boolean | null
           complemento?: string | null
           corretor_id?: string | null
