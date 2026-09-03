@@ -24,6 +24,8 @@ type FilterPatch = Partial<AgendaFilters>;
 type Item = {
   key: string;
   label: string;
+  /** Compact label for narrow viewports. */
+  shortLabel?: string;
   /** Filter applied when the card is activated. */
   patch: FilterPatch;
   /** Filter restored when the active card is clicked again. */
@@ -37,6 +39,7 @@ const geralItems: Item[] = [
   {
     key: "nextSevenDays",
     label: "Próximos 7 dias",
+    shortLabel: "7 dias",
     patch: { periodo: "sete_dias" },
     reset: { periodo: "todos" },
   },
@@ -57,10 +60,17 @@ const geralItems: Item[] = [
 ];
 
 const fotosItems: Item[] = [
-  { key: "today", label: "Fotos hoje", patch: periodoHoje, reset: { periodo: "todos" } },
+  {
+    key: "today",
+    label: "Fotos hoje",
+    shortLabel: "Hoje",
+    patch: periodoHoje,
+    reset: { periodo: "todos" },
+  },
   {
     key: "nextSevenDays",
     label: "Próximos 7 dias",
+    shortLabel: "7 dias",
     patch: { periodo: "sete_dias" },
     reset: { periodo: "todos" },
   },
@@ -90,10 +100,13 @@ const fotosItems: Item[] = [
   },
 ];
 
-type Props = ({ variant: "geral"; stats: AgendaGeralStats } | {
-  variant: "fotos";
-  stats: AgendaFotosStats;
-}) & {
+type Props = (
+  | { variant: "geral"; stats: AgendaGeralStats }
+  | {
+      variant: "fotos";
+      stats: AgendaFotosStats;
+    }
+) & {
   filters?: AgendaFilters;
   onFiltersChange?: (filters: AgendaFilters) => void;
 };
@@ -119,35 +132,35 @@ export function AgendaSummaryCards(props: Props) {
           : "Filtros rápidos da agenda de visitas e compromissos"
       }
     >
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-6 lg:px-0">
+      <div className="glass-panel grid grid-cols-3 gap-1 rounded-[1.35rem] p-1.5 lg:grid-cols-6">
         {items.map((item) => {
           const value = stats[item.key] ?? 0;
           const active = isActive(item, filters);
           const className = cn(
-            "min-w-28 shrink-0 rounded-2xl px-3.5 py-3 text-left transition lg:min-w-0",
+            "group relative flex min-w-0 flex-col justify-between gap-2 rounded-2xl px-3 py-2.5 text-left transition-all duration-200",
             active
-              ? "bg-gradient-to-br from-teal-700 to-teal-600 text-white shadow-md shadow-teal-900/20"
-              : "glass-panel text-foreground",
-            interactive && !active && "hover:-translate-y-0.5 hover:bg-white/85 hover:shadow-md",
-            !active && value === 0 && "opacity-60",
+              ? "bg-teal-700 text-white shadow-[0_10px_24px_-12px_rgba(15,118,110,0.9)]"
+              : "text-foreground",
+            interactive && !active && "hover:bg-white/70",
           );
           const content = (
             <>
               <span
                 className={cn(
-                  "block font-mono text-2xl font-semibold leading-none",
-                  active ? "text-white" : "text-foreground",
+                  "block truncate text-[10px] font-bold uppercase tracking-[0.1em]",
+                  active ? "text-white/78" : "text-foreground/48",
                 )}
               >
-                {value}
+                <span className="hidden sm:inline">{item.label}</span>
+                <span className="sm:hidden">{item.shortLabel ?? item.label}</span>
               </span>
               <span
                 className={cn(
-                  "mt-1.5 block truncate text-[10.5px] font-semibold tracking-tight",
-                  active ? "text-white/80" : "text-foreground/55",
+                  "block font-mono text-[1.35rem] font-semibold leading-none tabular-nums sm:text-2xl",
+                  active ? "text-white" : value === 0 ? "text-foreground/35" : "text-foreground",
                 )}
               >
-                {item.label}
+                {value}
               </span>
             </>
           );
@@ -165,6 +178,7 @@ export function AgendaSummaryCards(props: Props) {
               key={item.key}
               type="button"
               aria-pressed={active}
+              title={active ? "Remover filtro rápido" : `Filtrar por ${item.label.toLowerCase()}`}
               onClick={() =>
                 onFiltersChange!({
                   ...filters!,
@@ -173,7 +187,7 @@ export function AgendaSummaryCards(props: Props) {
               }
               className={cn(
                 className,
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 focus-visible:ring-inset",
               )}
             >
               {content}
