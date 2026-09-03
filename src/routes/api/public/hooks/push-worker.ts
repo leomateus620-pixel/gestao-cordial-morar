@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { buildPushPresentation } from "@/lib/push/push-presentation";
 
 /**
  * Worker de push (Firebase Cloud Messaging HTTP v1).
@@ -194,7 +195,7 @@ async function processRow(
 ): Promise<"sent" | "skipped" | "failed"> {
   const { data: notification, error: notificationError } = await admin
     .from("notifications")
-    .select("id, user_id, titulo, mensagem, link, entity_type, entity_id")
+    .select("id, user_id, tipo, category, titulo, mensagem, link, imobiliaria, entity_type, entity_id")
     .eq("id", row.notification_id)
     .maybeSingle<NotificationRow>();
 
