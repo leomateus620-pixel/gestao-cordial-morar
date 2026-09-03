@@ -423,12 +423,18 @@ export function serializeProperty(
   assign(payload, "descricaoImovel", split.head || undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
   // O que não coube na descrição continua aqui, também publicado no site.
-  const pontosFortes = joinSanitized(split.overflow, sanitizeRichText(property.pontos_fortes));
+  const pontosProprios = sanitizeRichText(property.pontos_fortes);
+  const reserva = pontosProprios ? byteLength(pontosProprios) + 12 : 0;
+  const overflow = split.overflow
+    ? truncateSanitized(split.overflow, Math.max(200, IMOBI_DESCRICAO_MAX - reserva))
+    : "";
+  const pontosFortes = joinSanitized(overflow, pontosProprios);
   assign(
     payload,
     "pontosFortesImovel",
     pontosFortes ? truncateSanitized(pontosFortes) : undefined,
   );
+
 
 
   assign(payload, "video", textOrUndefined(property.video));
