@@ -129,22 +129,86 @@ export function usePhotoSorting<T extends { id: string }>({
     });
   }, []);
 
+  /**
+   * Índice de destino pela geometria das miniaturas (não por elementFromPoint:
+   * o item arrastado fica por cima do ponteiro e capturaria todos os testes).
+   */
+  const findTargetIndex = useCallback((x: number, y: number) => {
+    const ids = orderRef.current;
+    let contained = -1;
+    let nearest = -1;
+    let nearestDist = Infinity;
+    let nearestReach = 0;
+    ids.forEach((id, idx) => {
+      if (id === dragIdRef.current) return;
+      const rect = rectsRef.current.get(id);
+      if (!rect || rect.width === 0) return;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        contained = idx;
+        return;
+      }
+      const dist = Math.hypot(x - cx, y - cy);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = idx;
+        nearestReach = Math.max(rect.width, rect.height) * 0.75;
+      }
+    });
+    if (contained >= 0) return contained;
+    return nearestDist <= nearestReach ? nearest : -1;
+  }, []);
+
+  /** Quantas colunas a grade tem (1 quando é uma tira horizontal). */
+  const countColumns = useCallback(() => {
+    const ids = orderRef.current;
+    const first = rectsRef.current.get(ids[0] ?? "");
+    if (!first) return 1;
+    let columns = 0;
+    for (const id of ids) {
+      const rect = rectsRef.current.get(id);
+      if (!rect) continue;
+      if (Math.abs(rect.top - first.top) < 4) columns += 1;
+      else break;
+    }
+    return Math.max(1, columns);
+  }, []);
+
+  /** Contêiner rolável mais próximo (a tira pode rolar em um ancestral). */
+
+  const findScroller = useCallback((node: HTMLElement | null) => {
+    let el: HTMLElement | null = node?.parentElement ?? null;
+    while (el) {
+      if (el.scrollWidth > el.clientWidth + 4 || el.scrollHeight > el.clientHeight + 4) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }, []);
+
   /** Rola a faixa sozinha quando o arraste chega perto das bordas. */
   const autoScroll = useCallback(() => {
     scrollFrameRef.current = null;
     if (!draggingRef.current) return;
     const id = dragIdRef.current;
     const node = id ? nodesRef.current.get(id) : null;
-    const scroller = node?.parentElement;
-    if (scroller && scroller.scrollWidth > scroller.clientWidth + 4) {
+    const scroller = findScroller(node ?? null);
+    if (scroller) {
       const box = scroller.getBoundingClientRect();
-      const x = pointerRef.current.x;
-      if (x < box.left + EDGE_SCROLL_PX) scroller.scrollLeft -= EDGE_SCROLL_SPEED;
-      else if (x > box.right - EDGE_SCROLL_PX) scroller.scrollLeft += EDGE_SCROLL_SPEED;
+      const { x, y } = pointerRef.current;
+      if (scroller.scrollWidth > scroller.clientWidth + 4) {
+        if (x < box.left + EDGE_SCROLL_PX) scroller.scrollLeft -= EDGE_SCROLL_SPEED;
+        else if (x > box.right - EDGE_SCROLL_PX) scroller.scrollLeft += EDGE_SCROLL_SPEED;
+      }
+      if (scroller.scrollHeight > scroller.clientHeight + 4) {
+        if (y < box.top + EDGE_SCROLL_PX) scroller.scrollTop -= EDGE_SCROLL_SPEED;
+        else if (y > box.bottom - EDGE_SCROLL_PX) scroller.scrollTop += EDGE_SCROLL_SPEED;
+      }
     }
     positionDragged();
     scrollFrameRef.current = requestAnimationFrame(autoScroll);
-  }, [positionDragged]);
+  }, [positionDragged, findScroller]);
+
 
   const stopDrag = useCallback(() => {
     const id = dragIdRef.current;
@@ -205,11 +269,8 @@ export function usePhotoSorting<T extends { id: string }>({
         positionDragged();
         const currentIndex = orderRef.current.findIndex((id) => id === dragIdRef.current);
         const fromIndex = currentIndex >= 0 ? currentIndex : start.index;
-        const element = document.elementFromPoint(event.clientX, event.clientY);
-        const target = element?.closest("[data-sort-index]") as HTMLElement | null;
-        if (!target) return;
-        const toIndex = Number(target.dataset["sortIndex"]);
-        if (Number.isNaN(toIndex) || toIndex === fromIndex) return;
+        const toIndex = findTargetIndex(event.clientX, event.clientY);
+        if (toIndex < 0 || toIndex === fromIndex) return;
         moveTo(fromIndex, toIndex);
       },
       onPointerUp: (event) => {
@@ -223,18 +284,42 @@ export function usePhotoSorting<T extends { id: string }>({
       onPointerCancel: () => stopDrag(),
       onKeyDown: (event) => {
         if (!enabled) return;
-        const delta = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+        const columns = countColumns();
+        const delta =
+          event.key === "ArrowLeft"
+            ? -1
+            : event.key === "ArrowRight"
+              ? 1
+              : event.key === "ArrowUp"
+                ? -columns
+                : event.key === "ArrowDown"
+                  ? columns
+                  : 0;
         if (!delta) return;
         event.preventDefault();
-        moveTo(index, index + delta);
+        const target = Math.max(0, Math.min(orderRef.current.length - 1, index + delta));
+        moveTo(index, target);
         // Teclado grava imediatamente: cada seta é uma decisão do usuário.
         setTimeout(() => {
           commit();
           onDragEnd?.();
         }, 0);
       },
+
     }),
-    [enabled, draggingId, moveTo, commit, autoScroll, positionDragged, stopDrag, onDragEnd],
+    [
+      enabled,
+      draggingId,
+      moveTo,
+      commit,
+      autoScroll,
+      positionDragged,
+      stopDrag,
+      onDragEnd,
+      findTargetIndex,
+      countColumns,
+    ],
+
   );
 
   return { ordered, draggingId, getItemProps, moveTo, commit };
