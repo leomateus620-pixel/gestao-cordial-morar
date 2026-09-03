@@ -214,7 +214,11 @@ test("overflow da descrição continua em pontosFortesImovel, sem duplicar", () 
   assert.equal(/<[^>]*$/.test(desc), false);
   assert.ok(pontos.includes("Perto do centro"));
   assert.ok(pontos.includes("disponibilidade atualizada"));
-  assert.equal(pontos.startsWith(desc.slice(0, 40)), false);
+  // continuação exata: desc + overflow reconstitui o texto sanitizado completo
+  const full = String(sanitizeRichText(longa));
+  const rebuilt = (desc + "<br />" + pontos.split("<br /><br />Perto do centro")[0]).replace(/\s+/g, "");
+  assert.equal(rebuilt, full.replace(/\s+/g, ""));
+
   assert.ok(desc.includes("&#127969;"));
 });
 
