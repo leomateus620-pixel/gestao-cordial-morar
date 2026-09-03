@@ -321,11 +321,15 @@ export function sanitizedLength(value: string | null | undefined): number {
 
 
 
-/** `Personalizado` com P maiúsculo quando aplicável. */
-export function normalizeExibirEnderecoSite(value: string | null | undefined): string | undefined {
-  const text = textOrUndefined(value);
-  if (!text) return undefined;
-  return text.toLowerCase() === "personalizado" ? "Personalizado" : text;
+/**
+ * Valores aceitos pela API (validados contra Cordial/Morar em 03/09/2026):
+ * `sim` (endereço completo), `nao` (oculta rua/número) e `personalizado`.
+ * Regra da operação: o padrão é `nao` — o anúncio público nunca mostra a rua.
+ */
+export function normalizeExibirEnderecoSite(value: string | null | undefined): string {
+  const text = textOrUndefined(value)?.toLowerCase();
+  if (text === "sim" || text === "personalizado") return text;
+  return "nao";
 }
 
 function assign(target: ImobiPayload, key: string, value: string | number | string[] | undefined) {
@@ -369,12 +373,15 @@ export function serializeProperty(
   assign(payload, "numero", textOrUndefined(property.numero));
   assign(payload, "pontoReferencia", textOrUndefined(property.ponto_referencia));
   assign(payload, "complemento", textOrUndefined(property.complemento));
-  assign(payload, "mapa", textOrUndefined(property.mapa));
+  // `mapa` fica de fora de propósito: o ponto exato é uso interno (Google Maps do Gestão).
   assign(payload, "zona", textOrUndefined(property.zona));
   assign(payload, "regiao", textOrUndefined(property.regiao));
-  assign(payload, "exibirEnderecoSite", normalizeExibirEnderecoSite(property.exibir_endereco_site));
-  assign(payload, "exibirEnderecoSitePersonalizado", property.exibir_endereco_site_personalizado ?? undefined);
-  assign(payload, "exibirEnderecoPortalPersonalizado", property.exibir_endereco_portal_personalizado ?? undefined);
+  const exibirEndereco = normalizeExibirEnderecoSite(property.exibir_endereco_site);
+  assign(payload, "exibirEnderecoSite", exibirEndereco);
+  if (exibirEndereco === "personalizado") {
+    assign(payload, "exibirEnderecoSitePersonalizado", property.exibir_endereco_site_personalizado ?? undefined);
+    assign(payload, "exibirEnderecoPortalPersonalizado", property.exibir_endereco_portal_personalizado ?? undefined);
+  }
 
   // Áreas — o par valor/tipo só viaja quando ambos existem de fato.
   const areaPrivativa = areaToString(

@@ -47,10 +47,25 @@ test("booleanos usam sim/nao no JSON e sim/nao na imagem", () => {
   assert.equal(boolToImageSimNao(false), "nao");
 });
 
-test("Personalizado mantém o P maiúsculo", () => {
-  assert.equal(normalizeExibirEnderecoSite("personalizado"), "Personalizado");
-  assert.equal(normalizeExibirEnderecoSite("Completo"), "Completo");
-  assert.equal(normalizeExibirEnderecoSite(""), undefined);
+test("exibirEnderecoSite oculta a rua por padrão", () => {
+  assert.equal(normalizeExibirEnderecoSite("personalizado"), "personalizado");
+  assert.equal(normalizeExibirEnderecoSite("Sim"), "sim");
+  assert.equal(normalizeExibirEnderecoSite(""), "nao");
+  assert.equal(normalizeExibirEnderecoSite(null), "nao");
+  assert.equal(normalizeExibirEnderecoSite("Completo"), "nao");
+});
+
+test("payload público esconde rua e não envia mapa", () => {
+  const payload = serializeProperty(
+    { ...base, logradouro: "Rua X", numero: "185", mapa: "-27.87,-54.48" },
+    {},
+    { mode: "update" },
+  );
+  assert.equal(payload["exibirEnderecoSite"], "nao");
+  assert.equal(payload["mapa"], undefined);
+  assert.equal(payload["exibirEnderecoSitePersonalizado"], undefined);
+  const visivel = serializeProperty({ ...base, exibir_endereco_site: "sim" }, {}, { mode: "update" });
+  assert.equal(visivel["exibirEnderecoSite"], "sim");
 });
 
 test("finalidade deriva de operacao quando ausente", () => {
