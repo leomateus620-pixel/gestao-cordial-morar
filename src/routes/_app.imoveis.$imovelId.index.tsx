@@ -101,6 +101,7 @@ function DetalhePage() {
   const session = useSession();
   const isAdmin = isAdminUser(session);
   const query = usePropertyDetail(imovelId);
+  const media = usePropertyMedia(imovelId);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
