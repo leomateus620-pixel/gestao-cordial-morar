@@ -112,14 +112,21 @@ export function PropertyGallery({
                 key={img.id}
                 {...(editable && organizando ? sorting.getItemProps(i) : {})}
                 className={
-                  "relative size-16 shrink-0 overflow-hidden rounded-xl border-2 transition " +
+                  "relative size-16 shrink-0 overflow-hidden rounded-xl border-2 " +
                   (editable && organizando ? "cursor-grab active:cursor-grabbing " : "") +
-                  (sorting.draggingId === img.id ? "scale-95 opacity-60 " : "") +
-                  (i === index
+                  (sorting.draggingId === img.id
+                    ? "z-30 border-primary opacity-90 shadow-2xl "
+                    : sorting.draggingId
+                      ? "opacity-70 "
+                      : "") +
+                  (i === index && sorting.draggingId !== img.id
                     ? "border-primary"
-                    : "border-transparent opacity-70 hover:opacity-100")
+                    : sorting.draggingId === img.id
+                      ? ""
+                      : "border-transparent opacity-70 hover:opacity-100")
                 }
               >
+
                 <button
                   type="button"
                   onClick={() => setIndex(i)}
