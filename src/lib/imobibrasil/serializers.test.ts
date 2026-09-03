@@ -199,7 +199,7 @@ test("sanitizedLength conta o tamanho já serializado", () => {
 
 test("overflow da descrição continua em pontosFortesImovel, sem duplicar", () => {
   const bloco = "🏡 Casa nova de esquina com ótimo acabamento e área gourmet completa.\n";
-  const longa = bloco.repeat(15) + "Valor do imóvel: R$ 450.000\nAgende sua visita, disponibilidade atualizada.";
+  const longa = bloco.repeat(30) + "Valor do imóvel: R$ 450.000\nAgende sua visita, disponibilidade atualizada.";
   const payload = serializeProperty(
     { ...base, descricao_imovel: longa, pontos_fortes: "Perto do centro" } as LocalPropertyForSync,
     {},
