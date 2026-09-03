@@ -662,6 +662,17 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
+            <Field label="Endereço no anúncio" hint="Rua e número são uso interno.">
+              <select
+                value={values.exibirEnderecoSite ?? "nao"}
+                onChange={(e) => set("exibirEnderecoSite", e.target.value)}
+                className={inputCls}
+              >
+                <option value="nao">Ocultar rua e número (padrão)</option>
+                <option value="sim">Exibir endereço completo</option>
+              </select>
+            </Field>
+
             <Field label="Bairro" hint="Escolha um bairro já usado nos sites ou digite um novo.">
               <input
                 list={bairroListId}
