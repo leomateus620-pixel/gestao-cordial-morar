@@ -110,6 +110,8 @@ function mapRow(
       r.area_construida === null || r.area_construida === undefined ? null : Number(r.area_construida),
     areaTerreno: r.area_terreno === null || r.area_terreno === undefined ? null : Number(r.area_terreno),
     codigo: r.codigo ?? null,
+    codigoCordial: r.codigo_cordial ?? null,
+    codigoMorar: r.codigo_morar ?? null,
     source: r.source,
     sourcePropertyId: r.source_property_id,
     sourceCatalogPage: r.source_catalog_page ?? null,
