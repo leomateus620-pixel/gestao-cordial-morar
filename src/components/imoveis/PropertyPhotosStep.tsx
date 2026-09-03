@@ -239,8 +239,12 @@ export function PropertyPhotosStep({
               key={image.id}
               {...sorting.getItemProps(index)}
               className={
-                "group relative cursor-grab overflow-hidden rounded-2xl bg-foreground/[0.05] transition active:cursor-grabbing " +
-                (sorting.draggingId === image.id ? "scale-95 opacity-60 ring-2 ring-primary" : "")
+                "group relative cursor-grab overflow-hidden rounded-2xl bg-foreground/[0.05] active:cursor-grabbing " +
+                (sorting.draggingId === image.id
+                  ? "z-30 opacity-90 shadow-2xl ring-2 ring-primary"
+                  : sorting.draggingId
+                    ? "opacity-80"
+                    : "")
               }
             >
               <img
