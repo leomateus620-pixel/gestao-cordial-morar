@@ -284,10 +284,20 @@ export function usePropertyMedia(propertyId: string | undefined) {
         void (async () => {
           try {
             await reorderFn({ data: { propertyId, orderedIds } });
-            // Não invalida "property-images": a ordem na tela já é a correta,
-            // e recarregar faria a tira piscar no meio da organização.
-            qc.invalidateQueries({ queryKey: ["imovel-detalhe", propertyId] });
-            qc.invalidateQueries({ queryKey: ["imoveis"] });
+            // Não recarrega ficha nem lista: a ordem na tela já é a correta e
+            // recarregar faria as fotos baixarem de novo (delay e piscada).
+            const detailKey = ["imovel-detalhe", propertyId];
+            const detail = qc.getQueryData<{ images?: PropertyImage[] }>(detailKey);
+            if (detail?.images?.length) {
+              const byId = new Map(detail.images.map((image) => [image.id, image]));
+              const nextImages = orderedIds
+                .map((id) => byId.get(id))
+                .filter(Boolean)
+                .map((image, index) => ({ ...(image as PropertyImage), position: index }));
+              if (nextImages.length === detail.images.length) {
+                qc.setQueryData(detailKey, { ...detail, images: nextImages });
+              }
+            }
             syncOrderToProviders(propertyId);
           } catch (err) {
             if (previous) qc.setQueryData(key, previous);
@@ -296,7 +306,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
             );
           }
         })();
-      }, 350);
+      }, 250);
+
     },
     [propertyId, qc, reorderFn, syncOrderToProviders],
   );
