@@ -844,11 +844,11 @@ export function PropertyForm({
                 const over = used > IMOBI_DESCRICAO_MAX;
                 return (
                   <p
-                    className={`mt-1 text-[11px] font-semibold ${over ? "text-destructive" : "text-foreground/45"}`}
+                    className={`mt-1 text-[11px] font-semibold ${over ? "text-amber-600" : "text-foreground/45"}`}
                   >
-                    {used}/{IMOBI_DESCRICAO_MAX} caracteres nos sites
+                    {used}/{IMOBI_DESCRICAO_MAX} caracteres na descrição dos sites
                     {over
-                      ? " — o texto será encurtado no fim ao publicar em Cordial e Morar. O cadastro continua completo aqui."
+                      ? ` — o restante (~${used - IMOBI_DESCRICAO_MAX}) continua no site em “Pontos fortes”. Nada é perdido.`
                       : ""}
                   </p>
                 );

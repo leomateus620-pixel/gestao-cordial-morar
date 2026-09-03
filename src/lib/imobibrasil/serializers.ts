@@ -245,15 +245,11 @@ export function byteLength(text: string): number {
 }
 
 /**
- * Encurta o texto já sanitizado sem quebrar entidade HTML (`&#128513;`) nem a
- * tag `<br />` no meio. Corta pelo fim, preferindo o último parágrafo/palavra.
+ * Índice de corte seguro em `text` para caber em `max` bytes sem quebrar uma
+ * entidade HTML (`&#128513;`) nem a tag `<br />`, preferindo o fim de um
+ * parágrafo (`<br />`) ou de uma palavra.
  */
-export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): string {
-  if (byteLength(text) <= max) return text;
-  const suffix = "...";
-  const budget = Math.max(1, max - suffix.length);
-
-  // Maior prefixo que cabe no orçamento de bytes.
+function safeCutIndex(text: string, budget: number): number {
   let cut = 0;
   let used = 0;
   for (const char of text) {
@@ -263,7 +259,6 @@ export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): stri
     cut += char.length;
   }
 
-  // Nunca terminar no meio de "&#123;" ou de "<br />".
   const amp = text.lastIndexOf("&", cut - 1);
   if (amp !== -1) {
     const end = text.indexOf(";", amp);
@@ -275,12 +270,44 @@ export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): stri
   const window = text.slice(0, cut);
   const lastBr = window.lastIndexOf("<br />");
   const lastSpace = window.lastIndexOf(" ");
-  let boundary = cut;
-  if (lastBr >= cut - 250 && lastBr > 0) boundary = lastBr;
-  else if (lastSpace >= cut - 80 && lastSpace > 0) boundary = lastSpace;
+  if (lastBr >= cut - 250 && lastBr > 0) return lastBr;
+  if (lastSpace >= cut - 80 && lastSpace > 0) return lastSpace;
+  return cut;
+}
 
-  const kept = text.slice(0, boundary).replace(/(?:<br \/>|\s)+$/, "");
+/**
+ * Encurta o texto já sanitizado sem quebrar entidade HTML nem `<br />`.
+ */
+export function truncateSanitized(text: string, max = IMOBI_DESCRICAO_MAX): string {
+  if (byteLength(text) <= max) return text;
+  const suffix = "...";
+  const cut = safeCutIndex(text, Math.max(1, max - suffix.length));
+  const kept = text.slice(0, cut).replace(/(?:<br \/>|\s)+$/, "");
   return `${kept || text.slice(0, cut)}${suffix}`;
+}
+
+/**
+ * Divide a descrição já sanitizada no teto da API: o começo vai para
+ * `descricaoImovel` e o RESTO (sem duplicar nada, sem cortar entidade/tag)
+ * segue para `pontosFortesImovel`, que também é publicado no site.
+ */
+export function splitSanitizedForSites(
+  text: string,
+  max = IMOBI_DESCRICAO_MAX,
+): { head: string; overflow: string } {
+  if (byteLength(text) <= max) return { head: text, overflow: "" };
+  const cut = safeCutIndex(text, max);
+  const head = text.slice(0, cut).replace(/(?:<br \/>|\s)+$/, "");
+  const overflow = text.slice(cut).replace(/^(?:<br \/>|\s)+/, "");
+  if (!head) return { head: truncateSanitized(text, max), overflow: "" };
+  return { head, overflow };
+}
+
+/** Junta blocos já sanitizados em um único texto de site. */
+function joinSanitized(...parts: Array<string | undefined>): string | undefined {
+  const cleaned = parts.map((part) => part?.trim()).filter((part): part is string => !!part);
+  if (!cleaned.length) return undefined;
+  return cleaned.join("<br /><br />");
 }
 
 /** Tamanho (em bytes) que a descrição terá no payload dos sites — contador da UI. */
@@ -288,6 +315,7 @@ export function sanitizedLength(value: string | null | undefined): number {
   const out = sanitizeRichText(value);
   return out ? byteLength(out) : 0;
 }
+
 
 
 
@@ -391,9 +419,23 @@ export function serializeProperty(
 
   // Conteúdo
   const descricao = sanitizeRichText(property.descricao_imovel);
-  assign(payload, "descricaoImovel", descricao ? truncateSanitized(descricao) : undefined);
+  const split = descricao ? splitSanitizedForSites(descricao) : { head: "", overflow: "" };
+  assign(payload, "descricaoImovel", split.head || undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
-  assign(payload, "pontosFortesImovel", sanitizeRichText(property.pontos_fortes));
+  // O que não coube na descrição continua aqui, também publicado no site.
+  const pontosProprios = sanitizeRichText(property.pontos_fortes);
+  const reserva = pontosProprios ? byteLength(pontosProprios) + 12 : 0;
+  const overflow = split.overflow
+    ? truncateSanitized(split.overflow, Math.max(200, IMOBI_DESCRICAO_MAX - reserva))
+    : "";
+  const pontosFortes = joinSanitized(overflow, pontosProprios);
+  assign(
+    payload,
+    "pontosFortesImovel",
+    pontosFortes ? truncateSanitized(pontosFortes) : undefined,
+  );
+
+
 
   assign(payload, "video", textOrUndefined(property.video));
   assign(payload, "tourVirtual", textOrUndefined(property.tour_virtual));

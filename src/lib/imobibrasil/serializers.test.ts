@@ -171,18 +171,19 @@ test("campos internos não vão para os sites", () => {
   assert.equal(raw.includes("s\u00f3 atende"), false);
 });
 
-test("descrição longa é encurtada no fim sem quebrar entidade nem <br />", () => {
+test("descrição longa respeita 1500 bytes sem quebrar entidade nem <br />", () => {
   const long = ("✨ Casa ótima com pátio amplo e churrasqueira.\n".repeat(60)).trim();
   const payload = serializeProperty({ ...base, descricao_imovel: long } as LocalPropertyForSync, {}, {
     mode: "insert",
   });
   const out = String(payload["descricaoImovel"]);
   assert.ok(new TextEncoder().encode(out).length <= 1500, `bytes ${new TextEncoder().encode(out).length}`);
-  assert.ok(out.endsWith("..."));
   assert.ok(out.includes("&#10024;"));
-  assert.equal(/&#\d*$/.test(out.slice(0, -3)), false);
-  assert.equal(/<[^>]*$/.test(out.slice(0, -3)), false);
+  assert.equal(/&#\d*$/.test(out), false);
+  assert.equal(/<[^>]*$/.test(out), false);
+  assert.ok(String(payload["pontosFortesImovel"] ?? "").length > 0);
 });
+
 
 test("descrição curta não é alterada", () => {
   const payload = serializeProperty({ ...base, descricao_imovel: "✨ Casa nova\nÓtima" } as LocalPropertyForSync, {}, {
@@ -194,4 +195,45 @@ test("descrição curta não é alterada", () => {
 test("sanitizedLength conta o tamanho já serializado", () => {
   assert.equal(sanitizedLength("a\nb"), "a<br />b".length);
   assert.equal(sanitizedLength(""), 0);
+});
+
+test("overflow da descrição continua em pontosFortesImovel, sem duplicar", () => {
+  const bloco = "🏡 Casa nova de esquina com ótimo acabamento e área gourmet completa.\n";
+  const longa = bloco.repeat(30) + "Valor do imóvel: R$ 450.000\nAgende sua visita, disponibilidade atualizada.";
+  const payload = serializeProperty(
+    { ...base, descricao_imovel: longa, pontos_fortes: "Perto do centro" } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const desc = String(payload["descricaoImovel"]);
+  const pontos = String(payload["pontosFortesImovel"]);
+  const bytes = (t: string) => new TextEncoder().encode(t).length;
+  assert.ok(bytes(desc) <= 1500);
+  assert.equal(desc.endsWith("..."), false);
+  assert.equal(/&#\d*$/.test(desc), false);
+  assert.equal(/<[^>]*$/.test(desc), false);
+  assert.ok(pontos.includes("Perto do centro"));
+  assert.ok(pontos.includes("disponibilidade atualizada"));
+  // continuação exata: desc + overflow reconstitui o texto sanitizado completo
+  const full = String(sanitizeRichText(longa));
+  const rebuilt = (desc + "<br />" + pontos.split("<br /><br />Perto do centro")[0]).replace(/\s+/g, "");
+  assert.equal(rebuilt, full.replace(/\s+/g, ""));
+
+  assert.ok(desc.includes("&#127969;"));
+});
+
+test("campos internos nunca vazam para o payload", () => {
+  const payload = serializeProperty(
+    {
+      ...base,
+      descricao_imovel: "Casa",
+      observacao_imovel: "SEGREDO INTERNO",
+      outras_informacoes: "OUTRO SEGREDO",
+    } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const json = JSON.stringify(payload);
+  assert.equal(json.includes("SEGREDO INTERNO"), false);
+  assert.equal(json.includes("OUTRO SEGREDO"), false);
 });
