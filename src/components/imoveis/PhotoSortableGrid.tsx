@@ -253,11 +253,8 @@ export function usePhotoSorting<T extends { id: string }>({
         positionDragged();
         const currentIndex = orderRef.current.findIndex((id) => id === dragIdRef.current);
         const fromIndex = currentIndex >= 0 ? currentIndex : start.index;
-        const element = document.elementFromPoint(event.clientX, event.clientY);
-        const target = element?.closest("[data-sort-index]") as HTMLElement | null;
-        if (!target) return;
-        const toIndex = Number(target.dataset["sortIndex"]);
-        if (Number.isNaN(toIndex) || toIndex === fromIndex) return;
+        const toIndex = findTargetIndex(event.clientX, event.clientY);
+        if (toIndex < 0 || toIndex === fromIndex) return;
         moveTo(fromIndex, toIndex);
       },
       onPointerUp: (event) => {
@@ -271,16 +268,28 @@ export function usePhotoSorting<T extends { id: string }>({
       onPointerCancel: () => stopDrag(),
       onKeyDown: (event) => {
         if (!enabled) return;
-        const delta = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+        const columns = countColumns();
+        const delta =
+          event.key === "ArrowLeft"
+            ? -1
+            : event.key === "ArrowRight"
+              ? 1
+              : event.key === "ArrowUp"
+                ? -columns
+                : event.key === "ArrowDown"
+                  ? columns
+                  : 0;
         if (!delta) return;
         event.preventDefault();
-        moveTo(index, index + delta);
+        const target = Math.max(0, Math.min(orderRef.current.length - 1, index + delta));
+        moveTo(index, target);
         // Teclado grava imediatamente: cada seta é uma decisão do usuário.
         setTimeout(() => {
           commit();
           onDragEnd?.();
         }, 0);
       },
+
     }),
     [enabled, draggingId, moveTo, commit, autoScroll, positionDragged, stopDrag, onDragEnd],
   );
