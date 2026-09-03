@@ -419,9 +419,17 @@ export function serializeProperty(
 
   // Conteúdo
   const descricao = sanitizeRichText(property.descricao_imovel);
-  assign(payload, "descricaoImovel", descricao ? truncateSanitized(descricao) : undefined);
+  const split = descricao ? splitSanitizedForSites(descricao) : { head: "", overflow: "" };
+  assign(payload, "descricaoImovel", split.head || undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
-  assign(payload, "pontosFortesImovel", sanitizeRichText(property.pontos_fortes));
+  // O que não coube na descrição continua aqui, também publicado no site.
+  const pontosFortes = joinSanitized(split.overflow, sanitizeRichText(property.pontos_fortes));
+  assign(
+    payload,
+    "pontosFortesImovel",
+    pontosFortes ? truncateSanitized(pontosFortes) : undefined,
+  );
+
 
   assign(payload, "video", textOrUndefined(property.video));
   assign(payload, "tourVirtual", textOrUndefined(property.tour_virtual));
