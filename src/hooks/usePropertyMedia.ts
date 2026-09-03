@@ -241,7 +241,10 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const setCover = useMutation({
     mutationFn: (imageId: string) =>
       setCoverFn({ data: { propertyId: propertyId as string, imageId } }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      if (propertyId) void syncOrderToProviders(propertyId);
+    },
   });
 
   const reorder = useMutation({
