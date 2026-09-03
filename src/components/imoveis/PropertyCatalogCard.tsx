@@ -64,13 +64,13 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
         to="/imoveis/$imovelId"
         params={{ imovelId: property.id }}
         className="block outline-none"
-        aria-label={`Abrir ficha do imóvel ${property.codigo ?? property.tipo ?? ""}`}
+        aria-label={`Abrir ficha do imóvel ${codeLabel || property.tipo || ""}`}
       >
         <div className="relative aspect-[16/9] w-full overflow-hidden">
           {property.coverUrl ? (
             <img
               src={property.coverUrl}
-              alt={`Foto do imóvel ${property.codigo ?? ""} em ${property.cidade ?? "catálogo"}`}
+              alt={`Foto do imóvel ${codeLabel} em ${property.cidade ?? "catálogo"}`}
               loading="lazy"
               className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
