@@ -195,3 +195,40 @@ test("sanitizedLength conta o tamanho já serializado", () => {
   assert.equal(sanitizedLength("a\nb"), "a<br />b".length);
   assert.equal(sanitizedLength(""), 0);
 });
+
+test("overflow da descrição continua em pontosFortesImovel, sem duplicar", () => {
+  const bloco = "🏡 Casa nova de esquina com ótimo acabamento e área gourmet completa.\n";
+  const longa = bloco.repeat(40) + "Valor do imóvel: R$ 450.000\nAgende sua visita, disponibilidade atualizada.";
+  const payload = serializeProperty(
+    { ...base, descricao_imovel: longa, pontos_fortes: "Perto do centro" } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const desc = String(payload["descricaoImovel"]);
+  const pontos = String(payload["pontosFortesImovel"]);
+  const bytes = (t: string) => new TextEncoder().encode(t).length;
+  assert.ok(bytes(desc) <= 1500);
+  assert.equal(desc.endsWith("..."), false);
+  assert.equal(/&#\d*$/.test(desc), false);
+  assert.equal(/<[^>]*$/.test(desc), false);
+  assert.ok(pontos.includes("Perto do centro"));
+  assert.ok(pontos.includes("disponibilidade atualizada"));
+  assert.equal(pontos.startsWith(desc.slice(0, 40)), false);
+  assert.ok(desc.includes("&#127969;"));
+});
+
+test("campos internos nunca vazam para o payload", () => {
+  const payload = serializeProperty(
+    {
+      ...base,
+      descricao_imovel: "Casa",
+      observacao_imovel: "SEGREDO INTERNO",
+      outras_informacoes: "OUTRO SEGREDO",
+    } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const json = JSON.stringify(payload);
+  assert.equal(json.includes("SEGREDO INTERNO"), false);
+  assert.equal(json.includes("OUTRO SEGREDO"), false);
+});
