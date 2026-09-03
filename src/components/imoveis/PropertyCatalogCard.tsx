@@ -39,6 +39,25 @@ export function PropertyCatalogCard({ property }: { property: Property }) {
       ? "Consulte"
       : brl(property.valor);
 
+  // Códigos por imobiliária; imóveis antigos caem no código legado importado.
+  const providerCodes = [
+    property.codigoCordial
+      ? { provider: "cordial" as const, label: "Cordial", value: property.codigoCordial }
+      : null,
+    property.codigoMorar
+      ? { provider: "morar" as const, label: "Morar", value: property.codigoMorar }
+      : null,
+  ].filter(Boolean) as Array<{ provider: "cordial" | "morar"; label: string; value: string }>;
+
+  const codes: Array<{ provider: "cordial" | "morar" | "legado"; label: string; value: string }> =
+    providerCodes.length > 0
+      ? providerCodes
+      : property.codigo
+        ? [{ provider: "legado", label: "Código", value: property.codigo }]
+        : [];
+
+  const codeLabel = codes.map((c) => c.value).join(" / ");
+
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-white/60 bg-white/70 shadow-[0_10px_30px_-14px_rgba(23,27,33,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus-within:ring-2 focus-within:ring-primary/40">
       <Link
