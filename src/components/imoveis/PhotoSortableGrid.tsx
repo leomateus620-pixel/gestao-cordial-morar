@@ -307,7 +307,19 @@ export function usePhotoSorting<T extends { id: string }>({
       },
 
     }),
-    [enabled, draggingId, moveTo, commit, autoScroll, positionDragged, stopDrag, onDragEnd],
+    [
+      enabled,
+      draggingId,
+      moveTo,
+      commit,
+      autoScroll,
+      positionDragged,
+      stopDrag,
+      onDragEnd,
+      findTargetIndex,
+      countColumns,
+    ],
+
   );
 
   return { ordered, draggingId, getItemProps, moveTo, commit };
