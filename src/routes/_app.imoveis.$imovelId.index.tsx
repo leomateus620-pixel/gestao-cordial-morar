@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { toast } from "sonner";
 import {
   Archive,
   ArchiveRestore,
@@ -9,7 +8,6 @@ import {
   Bed,
   Car,
   Lock,
-  Copy,
   ExternalLink,
   Map as MapIcon,
   Loader2,
@@ -20,7 +18,7 @@ import {
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { ArchivePropertyDialog } from "@/components/imoveis/ArchivePropertyDialog";
-import { CopyPublicLinkIcon } from "@/components/imoveis/CopyPublicLinkButton";
+import { CopyPublicLinkControl } from "@/components/imoveis/CopyPublicLinkButton";
 import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
 import { usePropertyMedia } from "@/hooks/usePropertyMedia";
@@ -107,17 +105,6 @@ function DetalhePage() {
   const [descExpanded, setDescExpanded] = useState(false);
   
   
-
-  /** Link interno da ficha no Gestão (não é o link público dos sites). */
-  async function copyInternalLink() {
-    const url = `${window.location.origin}/imoveis/${imovelId}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link interno da ficha copiado.");
-    } catch {
-      toast.error("Não foi possível copiar o link.");
-    }
-  }
 
   if (query.isPending) {
     return (
@@ -213,20 +200,11 @@ function DetalhePage() {
           <ArrowLeft className="size-4" />
         </Link>
         <span className="ml-auto flex shrink-0 items-center gap-2">
-          {imovel.publications
-            .filter((p) => p.status === "published" && p.publicUrl)
-            .map((p) => (
-              <CopyPublicLinkIcon key={p.provider} provider={p.provider} url={p.publicUrl} />
-            ))}
-          <button
-            type="button"
-            onClick={copyInternalLink}
-            aria-label="Copiar link interno da ficha"
-            title="Copiar link interno da ficha"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-white/60 bg-white/70 text-foreground/60 transition hover:text-foreground"
-          >
-            <Copy className="size-4" />
-          </button>
+          <CopyPublicLinkControl
+            links={imovel.publications
+              .filter((p) => p.status === "published" && p.publicUrl)
+              .map((p) => ({ provider: p.provider, url: p.publicUrl }))}
+          />
           <Link
             to="/imoveis/$imovelId/editar"
             params={{ imovelId }}
