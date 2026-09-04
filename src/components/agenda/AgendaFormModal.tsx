@@ -833,7 +833,7 @@ function buildInput(
 
 function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption): FormState {
   const start = event ? new Date(event.inicio) : nextRoundedHour();
-  const end = event?.fim ? new Date(event.fim) : new Date(start.getTime() + 60 * 60_000);
+  
   const customParticipants =
     event?.participantes
       .filter((participant) => participant.userId.startsWith("externo-"))
