@@ -774,7 +774,8 @@ function buildInput(
   participants: NamedOption[],
 ): AgendaEventInput {
   const inicio = localToIso(form.data, form.horaInicio);
-  const fim = form.horaFim ? localToIso(form.data, form.horaFim) : addMinutesIso(inicio, 60);
+  // O formulário pede apenas o início; a duração padrão de 1 hora é derivada aqui.
+  const fim = addMinutesIso(inicio, 60);
   const customParticipant = form.participanteOutro.trim();
 
   return {
@@ -844,7 +845,7 @@ function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption):
     descricao: event?.descricao ?? "",
     data: localDate(start),
     horaInicio: localTime(start),
-    horaFim: localTime(end),
+    
     status: event?.status ?? "agendado",
     prioridade: event?.prioridade ?? "media",
     clienteId: event?.clienteId ?? "",
