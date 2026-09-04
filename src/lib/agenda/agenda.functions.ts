@@ -309,6 +309,8 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // Lembretes internos padrão: 1 dia, 1 hora e 30 min antes. O formulário não os edita,
+    // então garantimos aqui que o aviso de 60 min sempre exista (sino + push).
     const reminders = (input.lembretes ?? []).map((r) => ({
       event_id: eventId!,
       tipo: r.tipo,
@@ -316,6 +318,27 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       ativo: r.ativo,
       canal_futuro: Boolean(r.canalFuturo),
     }));
+    if (reminders.length === 0) {
+      for (const antecedencia of [1440, 60, 30]) {
+        reminders.push({
+          event_id: eventId!,
+          tipo: "interno",
+          antecedencia_min: antecedencia,
+          ativo: true,
+          canal_futuro: false,
+        });
+      }
+    } else if (
+      !reminders.some((r) => r.tipo === "interno" && r.antecedencia_min === 60 && r.ativo)
+    ) {
+      reminders.push({
+        event_id: eventId!,
+        tipo: "interno",
+        antecedencia_min: 60,
+        ativo: true,
+        canal_futuro: false,
+      });
+    }
     if (reminders.length) {
       const { error } = await context.supabase.from("agenda_event_reminders").insert(reminders);
       if (error) throw new Error(error.message);

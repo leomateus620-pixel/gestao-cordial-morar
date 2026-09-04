@@ -46,7 +46,7 @@ type FormState = {
   descricao: string;
   data: string;
   horaInicio: string;
-  horaFim: string;
+  
   status: AgendaStatus;
   prioridade: AgendaPrioridade;
   clienteId: string;
@@ -405,7 +405,7 @@ export function AgendaFormModal({
             <FormSection
               step="2"
               title="Data e horário"
-              description="Informe o início e o fim. A duração é calculada automaticamente."
+              description="Informe a data e a hora de início. Avisamos você 1 hora antes."
             >
               <Field label="Data" error={errors.inicio}>
                 <input
@@ -416,26 +416,15 @@ export function AgendaFormModal({
                   required
                 />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Início" error={errors.inicio}>
-                  <input
-                    type="time"
-                    value={form.horaInicio}
-                    onChange={(inputEvent) => update("horaInicio", inputEvent.target.value)}
-                    className={inputClass(errors.inicio)}
-                    required
-                  />
-                </Field>
-                <Field label="Fim" error={errors.fim}>
-                  <input
-                    type="time"
-                    value={form.horaFim}
-                    onChange={(inputEvent) => update("horaFim", inputEvent.target.value)}
-                    className={inputClass(errors.fim)}
-                    required
-                  />
-                </Field>
-              </div>
+              <Field label="Início" error={errors.inicio}>
+                <input
+                  type="time"
+                  value={form.horaInicio}
+                  onChange={(inputEvent) => update("horaInicio", inputEvent.target.value)}
+                  className={inputClass(errors.inicio)}
+                  required
+                />
+              </Field>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Status">
                   <select
@@ -785,7 +774,8 @@ function buildInput(
   participants: NamedOption[],
 ): AgendaEventInput {
   const inicio = localToIso(form.data, form.horaInicio);
-  const fim = form.horaFim ? localToIso(form.data, form.horaFim) : addMinutesIso(inicio, 60);
+  // O formulário pede apenas o início; a duração padrão de 1 hora é derivada aqui.
+  const fim = addMinutesIso(inicio, 60);
   const customParticipant = form.participanteOutro.trim();
 
   return {
@@ -843,7 +833,7 @@ function buildInput(
 
 function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption): FormState {
   const start = event ? new Date(event.inicio) : nextRoundedHour();
-  const end = event?.fim ? new Date(event.fim) : new Date(start.getTime() + 60 * 60_000);
+  
   const customParticipants =
     event?.participantes
       .filter((participant) => participant.userId.startsWith("externo-"))
@@ -855,7 +845,7 @@ function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption):
     descricao: event?.descricao ?? "",
     data: localDate(start),
     horaInicio: localTime(start),
-    horaFim: localTime(end),
+    
     status: event?.status ?? "agendado",
     prioridade: event?.prioridade ?? "media",
     clienteId: event?.clienteId ?? "",
