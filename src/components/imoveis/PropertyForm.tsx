@@ -569,13 +569,13 @@ export function PropertyForm({
               </Field>
               <Field
                 label="Telefone do proprietário"
-                hint="Uso interno: não é publicado nos sites."
+                hint="Uso interno: não é publicado nos sites. Para números de fora do Brasil, comece com + e o código do país."
               >
                 <input
                   inputMode="tel"
                   value={values.proprietarioTelefone ?? ""}
                   onChange={(e) => set("proprietarioTelefone", maskPhone(e.target.value))}
-                  placeholder="(55) 99999-9999"
+                  placeholder="(55) 99999-9999 ou +54 9 11 2345 6789"
                   className={inputCls}
                 />
               </Field>
