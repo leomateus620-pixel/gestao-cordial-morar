@@ -85,6 +85,7 @@ export type TipoImovelInteresse =
   | "terreno"
   | "sala_comercial"
   | "area_rural"
+  | "sitio_chacara"
   | "outro";
 
 export type OrigemLeadAtendimento =
