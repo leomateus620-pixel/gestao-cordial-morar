@@ -213,7 +213,11 @@ function Page() {
         className="pt-2"
       />
 
-      <Fab onClick={() => navigate({ to: "/imoveis/novo" })} label="Novo imóvel" />
+      <Fab
+        onClick={() => navigate({ to: "/imoveis/novo" })}
+        label="Novo imóvel"
+        className="lg:hidden"
+      />
     </div>
   );
 }

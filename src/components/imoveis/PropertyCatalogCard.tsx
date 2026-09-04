@@ -8,17 +8,18 @@ import {
   PUBLICATION_STATUS_LABEL,
   type Property,
 } from "@/types/property";
-import { CopyPublicLinkButton } from "./CopyPublicLinkButton";
+import { CopyPublicLinkControl } from "./CopyPublicLinkButton";
 
 export type CatalogView = "grid" | "list";
 
 const PROVIDER_LABEL: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
 const PROVIDER_INITIAL: Record<string, string> = { cordial: "C", morar: "M" };
 
-function statusTone(status: string) {
+function statusTone(status: string, tone: "overlay" | "surface" = "overlay") {
   if (status === "published") return "bg-emerald-400";
   if (status === "error" || status === "out_of_sync") return "bg-amber-400";
-  if (status === "unpublished" || status === "draft") return "bg-white/60";
+  if (status === "unpublished" || status === "draft")
+    return tone === "overlay" ? "bg-white/60" : "bg-foreground/30";
   return "bg-sky-300";
 }
 
@@ -58,13 +59,31 @@ function CodeChips({ codes, className }: { codes: CodeChip[]; className?: string
   );
 }
 
-function OperacaoBadge({ operacao }: { operacao: Property["operacao"] }) {
+function OperacaoBadge({
+  operacao,
+  tone = "overlay",
+  className,
+}: {
+  operacao: Property["operacao"];
+  /** `overlay` sobre a foto · `surface` sobre o fundo claro do card. */
+  tone?: "overlay" | "surface";
+  className?: string;
+}) {
   const venda = operacao === "venda";
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center rounded-full px-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-md",
-        venda ? "bg-[rgba(30,100,125,0.85)]" : "bg-[rgba(217,120,45,0.88)]",
+        "inline-flex items-center rounded-full font-bold uppercase tracking-[0.12em]",
+        tone === "overlay"
+          ? cn(
+              "h-6 px-2.5 text-[10px] text-white shadow-sm backdrop-blur-md",
+              venda ? "bg-[rgba(30,100,125,0.85)]" : "bg-[rgba(217,120,45,0.88)]",
+            )
+          : cn(
+              "h-5 px-2 text-[9.5px]",
+              venda ? "bg-primary/10 text-primary" : "bg-[var(--system-accent)]/12 text-[#b95f20]",
+            ),
+        className,
       )}
     >
       {venda ? "Venda" : "Aluguel"}
@@ -73,8 +92,18 @@ function OperacaoBadge({ operacao }: { operacao: Property["operacao"] }) {
 }
 
 /** Pílulas C/M com o estado de publicação em cada site. */
-function PublicationBadges({ property }: { property: Property }) {
+function PublicationBadges({
+  property,
+  tone = "overlay",
+}: {
+  property: Property;
+  tone?: "overlay" | "surface";
+}) {
   if (property.publications.length === 0 && !property.removalState) return null;
+  const pill =
+    tone === "overlay"
+      ? "bg-black/45 text-white backdrop-blur-md"
+      : "bg-foreground/[0.06] text-foreground/70";
   return (
     <span className="flex items-center gap-1">
       {property.publications.map((publication) => (
@@ -83,9 +112,12 @@ function PublicationBadges({ property }: { property: Property }) {
           title={`${PROVIDER_LABEL[publication.provider] ?? publication.provider}: ${
             PUBLICATION_STATUS_LABEL[publication.status] ?? publication.status
           }`}
-          className="inline-flex h-6 items-center gap-1 rounded-full bg-black/45 pl-1.5 pr-2 text-[10px] font-bold text-white backdrop-blur-md"
+          className={cn(
+            "inline-flex h-6 items-center gap-1 rounded-full pl-1.5 pr-2 text-[10px] font-bold",
+            pill,
+          )}
         >
-          <span className={cn("size-1.5 rounded-full", statusTone(publication.status))} />
+          <span className={cn("size-1.5 rounded-full", statusTone(publication.status, tone))} />
           {PROVIDER_INITIAL[publication.provider] ?? publication.provider.slice(0, 1).toUpperCase()}
         </span>
       ))}
@@ -182,17 +214,15 @@ function Cover({
 }
 
 function CardActions({ property, className }: { property: Property; className?: string }) {
-  const published = property.publications.filter((p) => p.status === "published");
+  const published = property.publications
+    .filter((p) => p.status === "published")
+    .map((p) => ({ provider: p.provider, url: p.publicUrl }));
   return (
     <div className={cn("relative z-10 flex items-center gap-1.5", className)}>
-      {published.map((publication) => (
-        <CopyPublicLinkButton
-          key={publication.provider}
-          provider={publication.provider}
-          url={publication.publicUrl}
-          compact
-        />
-      ))}
+      <CopyPublicLinkControl
+        links={published}
+        className="grid size-8 place-items-center rounded-full bg-foreground/[0.05] text-foreground/55 transition hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:size-3.5"
+      />
       <Link
         to="/imoveis/$imovelId/editar"
         params={{ imovelId: property.id }}
@@ -232,9 +262,11 @@ export function PropertyCatalogCard({
           aria-label={ariaLabel}
           className="absolute inset-0 z-[1] rounded-[22px] outline-none"
         />
-        <div className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-2xl sm:aspect-[4/3] sm:w-44">
-          <Cover property={property} alt={alt} />
-          <span className="absolute left-1.5 top-1.5 scale-90 sm:left-2 sm:top-2 sm:scale-100">
+        <div className="relative w-24 shrink-0 self-stretch overflow-hidden rounded-2xl sm:aspect-[4/3] sm:w-44 sm:self-auto">
+          <div className="absolute inset-0">
+            <Cover property={property} alt={alt} />
+          </div>
+          <span className="absolute left-2 top-2 hidden sm:block">
             <OperacaoBadge operacao={property.operacao} />
           </span>
         </div>
@@ -258,7 +290,10 @@ export function PropertyCatalogCard({
             <Price property={property} className="hidden shrink-0 text-[17px] sm:flex" />
           </div>
 
-          <CodeChips codes={codes} className="sm:hidden" />
+          <div className="flex items-center gap-1.5 sm:hidden">
+            <OperacaoBadge operacao={property.operacao} tone="surface" />
+            <CodeChips codes={codes} />
+          </div>
 
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0 space-y-1">
@@ -266,7 +301,7 @@ export function PropertyCatalogCard({
               <Specs property={property} />
             </div>
             <div className="hidden items-center gap-2 sm:flex">
-              <PublicationBadges property={property} />
+              <PublicationBadges property={property} tone="surface" />
               <CardActions property={property} />
             </div>
           </div>
