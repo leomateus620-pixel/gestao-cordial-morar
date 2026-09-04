@@ -37,7 +37,17 @@ const UF_PADRAO = "RS";
 const CIDADE_PADRAO = "Santa Rosa";
 
 export function maskPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  const trimmed = raw.trim();
+  const allDigits = trimmed.replace(/\D/g, "");
+  const international = trimmed.startsWith("+") || allDigits.length > 11;
+  if (international) {
+    // Formato internacional (E.164): + e até 15 dígitos, agrupados para leitura.
+    const digits = allDigits.slice(0, 15);
+    if (!digits) return "+";
+    const groups = digits.match(/.{1,4}/g) ?? [digits];
+    return `+${groups.join(" ")}`;
+  }
+  const digits = allDigits.slice(0, 11);
   if (digits.length <= 2) return digits;
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   const split = digits.length > 10 ? 7 : 6;
