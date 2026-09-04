@@ -1,110 +1,61 @@
-import { useEffect, useState } from "react";
-import { Loader2, SlidersHorizontal, X } from "lucide-react";
+import { useState } from "react";
+import {
+  Archive,
+  ArrowUpDown,
+  Bed,
+  Home,
+  MapPin,
+  SlidersHorizontal,
+  Tag,
+  Wallet,
+  X,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  ARQUIVADOS_OPTIONS,
   DEFAULT_FILTERS,
+  OPERACAO_OPTIONS,
+  PRICE_PRESETS,
+  SORT_OPTIONS,
   activeChips,
-  countActiveAdvanced,
+  countActiveFilters,
+  priceRangeLabel,
   type CatalogFilters,
 } from "@/lib/imoveis/filters";
+import { cn } from "@/lib/utils";
+import { FilterChip, FilterChipSelect } from "./catalog/FilterChip";
+import { PropertyFiltersPanel, type CatalogFacets } from "./catalog/PropertyFiltersPanel";
 
-type Facets = { tipos: string[]; cidades: string[]; bairros: string[] };
-
-const STATUS_OPTIONS = [
-  { value: "", label: "Qualquer status" },
-  { value: "published", label: "Publicado" },
-  { value: "pending", label: "Pendente" },
-  { value: "error", label: "Com erro" },
-  { value: "out_of_sync", label: "Divergente" },
-  { value: "draft", label: "Rascunho" },
+/** Filtros que só existem no painel completo — aparecem como etiquetas removíveis abaixo do rail. */
+const PANEL_ONLY_KEYS: Array<keyof CatalogFilters> = [
+  "bairro",
+  "suitesMin",
+  "banheirosMin",
+  "vagasMin",
+  "areaMin",
+  "areaMax",
+  "status",
 ];
 
-const SORT_OPTIONS: Array<{ value: CatalogFilters["sort"]; label: string }> = [
-  { value: "recentes", label: "Mais recentes" },
-  { value: "codigo", label: "Código" },
-  { value: "preco_asc", label: "Menor preço" },
-  { value: "preco_desc", label: "Maior preço" },
-  { value: "area_desc", label: "Maior área" },
-];
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/60">
-      {label}
-      <input
-        inputMode="numeric"
-        value={value ?? ""}
-        placeholder={placeholder}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/\D/g, "");
-          onChange(raw ? Number(raw) : null);
-        }}
-        className="rounded-xl bg-white/70 px-3 py-2 text-sm font-medium text-foreground outline-none ring-1 ring-white/60 focus:ring-primary/40"
-      />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/60">
-      {label}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-xl bg-white/70 px-3 py-2 text-sm font-medium text-foreground outline-none ring-1 ring-white/60 focus:ring-primary/40"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-const PRICE_PRESETS: Array<{ label: string; min: number | null; max: number | null }> = [
-  { label: "Até R$ 200 mil", min: null, max: 200_000 },
-  { label: "R$ 200 mil – 350 mil", min: 200_000, max: 350_000 },
-  { label: "R$ 350 mil – 500 mil", min: 350_000, max: 500_000 },
-  { label: "R$ 500 mil – 600 mil", min: 500_000, max: 600_000 },
-  { label: "R$ 600 mil – 800 mil", min: 600_000, max: 800_000 },
-  { label: "R$ 800 mil – 1 mi", min: 800_000, max: 1_000_000 },
-  { label: "Acima de R$ 1 mi", min: 1_000_000, max: null },
+const DORM_OPTIONS = [
+  { value: "", label: "Qualquer" },
+  { value: "1", label: "1+ dormitório" },
+  { value: "2", label: "2+ dormitórios" },
+  { value: "3", label: "3+ dormitórios" },
+  { value: "4", label: "4+ dormitórios" },
 ];
 
 function formatBRL(value: number | null): string {
   return value === null ? "" : `R$ ${value.toLocaleString("pt-BR")}`;
 }
 
-function parseBRL(raw: string): number | null {
+function parseDigits(raw: string): number | null {
   const digits = raw.replace(/\D/g, "");
   return digits ? Number(digits) : null;
 }
 
-/** Faixa de valor visível na barra: presets rápidos + digitação livre. */
-function PriceRangeFilter({
+/** Faixa de valor direto no rail: presets rápidos + digitação livre. */
+function PriceChip({
   valorMin,
   valorMax,
   onChange,
@@ -113,42 +64,65 @@ function PriceRangeFilter({
   valorMax: number | null;
   onChange: (patch: { valorMin: number | null; valorMax: number | null }) => void;
 }) {
-  const label =
-    valorMin === null && valorMax === null
-      ? "Valor"
-      : valorMin !== null && valorMax !== null
-        ? `${formatBRL(valorMin)} – ${formatBRL(valorMax)}`
-        : valorMin !== null
-          ? `A partir de ${formatBRL(valorMin)}`
-          : `Até ${formatBRL(valorMax)}`;
+  const [open, setOpen] = useState(false);
+  const label = priceRangeLabel(valorMin, valorMax);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="glass-panel inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold">
-          {label}
-        </button>
+        <FilterChip
+          icon={Wallet}
+          label="Valor"
+          value={label}
+          active={open}
+          onClear={() => onChange({ valorMin: null, valorMax: null })}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(92vw,22rem)] space-y-3 rounded-3xl p-4">
+      <PopoverContent
+        align="start"
+        sideOffset={8}
+        collisionPadding={12}
+        className="w-[min(92vw,21rem)] space-y-3 rounded-2xl border-white/70 bg-white/92 p-3.5 shadow-[0_24px_60px_-20px_rgba(23,27,33,0.35)] backdrop-blur-2xl"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/45">
+            Faixa de valor
+          </span>
+          {label ? (
+            <button
+              type="button"
+              onClick={() => onChange({ valorMin: null, valorMax: null })}
+              className="text-[11px] font-semibold text-primary hover:underline"
+            >
+              Limpar
+            </button>
+          ) : null}
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/60">
-            Valor mínimo
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/55">
+            Mínimo
             <input
               inputMode="numeric"
               value={formatBRL(valorMin)}
               placeholder="R$ 0"
-              onChange={(e) => onChange({ valorMin: parseBRL(e.target.value), valorMax })}
-              className="rounded-xl bg-white/70 px-3 py-2 text-sm font-medium text-foreground outline-none ring-1 ring-white/60 focus:ring-primary/40"
+              onChange={(event) =>
+                onChange({ valorMin: parseDigits(event.target.value), valorMax })
+              }
+              className="h-10 rounded-xl border border-foreground/[0.08] bg-white px-3 text-[13px] font-medium text-foreground outline-none transition placeholder:text-foreground/35 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
             />
           </label>
-          <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/60">
-            Valor máximo
+          <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/55">
+            Máximo
             <input
               inputMode="numeric"
               value={formatBRL(valorMax)}
               placeholder="Sem limite"
-              onChange={(e) => onChange({ valorMin, valorMax: parseBRL(e.target.value) })}
-              className="rounded-xl bg-white/70 px-3 py-2 text-sm font-medium text-foreground outline-none ring-1 ring-white/60 focus:ring-primary/40"
+              onChange={(event) =>
+                onChange({ valorMin, valorMax: parseDigits(event.target.value) })
+              }
+              className="h-10 rounded-xl border border-foreground/[0.08] bg-white px-3 text-[13px] font-medium text-foreground outline-none transition placeholder:text-foreground/35 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
             />
           </label>
         </div>
@@ -158,27 +132,28 @@ function PriceRangeFilter({
             return (
               <button
                 key={preset.label}
-                onClick={() => onChange({ valorMin: preset.min, valorMax: preset.max })}
-                className={
-                  "rounded-full px-3 py-1.5 text-[11px] font-semibold transition " +
-                  (active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10")
-                }
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  onChange(
+                    active
+                      ? { valorMin: null, valorMax: null }
+                      : { valorMin: preset.min, valorMax: preset.max },
+                  );
+                  setOpen(false);
+                }}
+                className={cn(
+                  "h-8 rounded-full px-3 text-[11px] font-semibold transition-colors",
+                  active
+                    ? "bg-primary text-white"
+                    : "bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10",
+                )}
               >
                 {preset.label}
               </button>
             );
           })}
         </div>
-        {(valorMin !== null || valorMax !== null) && (
-          <button
-            onClick={() => onChange({ valorMin: null, valorMax: null })}
-            className="text-xs font-semibold text-foreground/55"
-          >
-            Limpar faixa de valor
-          </button>
-        )}
       </PopoverContent>
     </Popover>
   );
@@ -188,179 +163,162 @@ export function PropertyFilterBar({
   filters,
   facets,
   total,
-  loading,
   onChange,
   onReset,
+  className,
 }: {
   filters: CatalogFilters;
-  facets: Facets | undefined;
+  facets: CatalogFacets | undefined;
   total: number;
-  loading?: boolean;
   onChange: (patch: Partial<CatalogFilters>) => void;
   onReset: () => void;
+  className?: string;
 }) {
-  const [draft, setDraft] = useState(filters);
+  const [panelOpen, setPanelOpen] = useState(false);
 
-  useEffect(() => setDraft(filters), [filters]);
-
-
-  const chips = activeChips(filters);
-  const advanced = countActiveAdvanced(filters);
-  const listOptions = (values: string[] | undefined, label: string) => [
-    { value: "", label },
-    ...(values ?? []).map((value) => ({ value, label: value })),
+  const totalActive = countActiveFilters(filters);
+  const panelChips = activeChips(filters).filter((chip) => PANEL_ONLY_KEYS.includes(chip.key));
+  const tipoOptions = [
+    { value: "", label: "Todos os tipos" },
+    ...(facets?.tipos ?? []).map((t) => ({ value: t, label: t })),
+  ];
+  const cidadeOptions = [
+    { value: "", label: "Todas as cidades" },
+    ...(facets?.cidades ?? []).map((c) => ({ value: c, label: c })),
   ];
 
   return (
-    <div className="mb-4 space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <SelectField
-          label=""
-          value={filters.operacao}
-          options={[
-            { value: "todos", label: "Venda e aluguel" },
-            { value: "venda", label: "Venda" },
-            { value: "aluguel", label: "Aluguel" },
-          ]}
-          onChange={(operacao) => onChange({ operacao: operacao as CatalogFilters["operacao"], page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.tipo}
-          options={listOptions(facets?.tipos, "Todos os tipos")}
-          onChange={(tipo) => onChange({ tipo, page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.cidade}
-          options={listOptions(facets?.cidades, "Todas as cidades")}
-          onChange={(cidade) => onChange({ cidade, page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.sort}
-          options={SORT_OPTIONS}
-          onChange={(sort) => onChange({ sort: sort as CatalogFilters["sort"], page: 0 })}
-        />
-        <SelectField
-          label=""
-          value={filters.arquivados}
-          options={[
-            { value: "ocultar", label: "Catálogo ativo" },
-            { value: "somente", label: "Arquivados" },
-          ]}
-          onChange={(arquivados) =>
-            onChange({ arquivados: arquivados as CatalogFilters["arquivados"], page: 0 })
-          }
-        />
+    <div className={cn("catalog-filter-bar space-y-2", className)}>
+      {/* Rail: rola na horizontal no mobile, quebra linha no desktop. */}
+      <div className="-mx-4 lg:mx-0">
+        <div
+          role="toolbar"
+          aria-label="Filtros do catálogo"
+          className="catalog-filter-rail flex items-center gap-2 overflow-x-auto px-4 py-1 lg:flex-wrap lg:overflow-visible lg:px-0"
+        >
+          <FilterChip
+            icon={SlidersHorizontal}
+            label="Filtros"
+            count={panelChips.length || undefined}
+            active={panelOpen}
+            onClick={() => setPanelOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={panelOpen}
+            className="order-first lg:order-last lg:ml-auto"
+          />
 
-        <PriceRangeFilter
-          valorMin={filters.valorMin}
-          valorMax={filters.valorMax}
-          onChange={(patch) => onChange({ ...patch, page: 0 })}
-        />
+          <FilterChipSelect
+            icon={Tag}
+            label="Operação"
+            emptyLabel="Venda e aluguel"
+            value={filters.operacao}
+            emptyValue="todos"
+            options={OPERACAO_OPTIONS}
+            onChange={(operacao) => onChange({ operacao, page: 0 })}
+          />
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <button className="glass-panel inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold">
-              <SlidersHorizontal className="size-4" />
-              Filtros
-              {advanced > 0 && (
-                <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
-                  {advanced}
-                </span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-[min(92vw,26rem)] space-y-3 rounded-3xl p-4">
-            <div className="grid grid-cols-2 gap-2">
-              <SelectField
-                label="Bairro"
-                value={draft.bairro}
-                options={listOptions(facets?.bairros, "Todos")}
-                onChange={(bairro) => setDraft((d) => ({ ...d, bairro }))}
-              />
-              <SelectField
-                label="Status de publicação"
-                value={draft.status}
-                options={STATUS_OPTIONS}
-                onChange={(status) => setDraft((d) => ({ ...d, status }))}
-              />
-              <NumberField
-                label="Dormitórios (mín.)"
-                value={draft.dormitoriosMin}
-                onChange={(dormitoriosMin) => setDraft((d) => ({ ...d, dormitoriosMin }))}
-              />
-              <NumberField
-                label="Suítes (mín.)"
-                value={draft.suitesMin}
-                onChange={(suitesMin) => setDraft((d) => ({ ...d, suitesMin }))}
-              />
-              <NumberField
-                label="Banheiros (mín.)"
-                value={draft.banheirosMin}
-                onChange={(banheirosMin) => setDraft((d) => ({ ...d, banheirosMin }))}
-              />
-              <NumberField
-                label="Vagas (mín.)"
-                value={draft.vagasMin}
-                onChange={(vagasMin) => setDraft((d) => ({ ...d, vagasMin }))}
-              />
-              <NumberField
-                label="Área mínima (m²)"
-                value={draft.areaMin}
-                onChange={(areaMin) => setDraft((d) => ({ ...d, areaMin }))}
-              />
-              <NumberField
-                label="Área máxima (m²)"
-                value={draft.areaMax}
-                onChange={(areaMax) => setDraft((d) => ({ ...d, areaMax }))}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <button
-                onClick={() => {
-                  setDraft({ ...DEFAULT_FILTERS, q: filters.q });
-                  onReset();
-                }}
-                className="text-xs font-semibold text-foreground/55"
-              >
-                Limpar filtros
-              </button>
-              <button
-                onClick={() => onChange({ ...draft, page: 0 })}
-                className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
-              >
-                Aplicar
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
+          <FilterChipSelect
+            icon={Home}
+            label="Tipo"
+            value={filters.tipo}
+            emptyValue=""
+            options={tipoOptions}
+            onChange={(tipo) => onChange({ tipo, page: 0 })}
+          />
 
-        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground/45">
-          {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {total} {total === 1 ? "imóvel" : "imóveis"}
-        </span>
+          <FilterChipSelect
+            icon={MapPin}
+            label="Cidade"
+            value={filters.cidade}
+            emptyValue=""
+            options={cidadeOptions}
+            onChange={(cidade) => onChange({ cidade, page: 0 })}
+          />
+
+          <PriceChip
+            valorMin={filters.valorMin}
+            valorMax={filters.valorMax}
+            onChange={(patch) => onChange({ ...patch, page: 0 })}
+          />
+
+          <FilterChipSelect
+            icon={Bed}
+            label="Dormitórios"
+            value={
+              filters.dormitoriosMin === null ? "" : String(Math.min(4, filters.dormitoriosMin))
+            }
+            emptyValue=""
+            options={DORM_OPTIONS}
+            onChange={(raw) => onChange({ dormitoriosMin: raw ? Number(raw) : null, page: 0 })}
+          />
+
+          <span aria-hidden className="hidden h-6 w-px shrink-0 bg-foreground/10 lg:block" />
+
+          <FilterChipSelect
+            icon={ArrowUpDown}
+            label="Ordenar"
+            emptyLabel="Mais recentes"
+            value={filters.sort}
+            emptyValue="recentes"
+            options={SORT_OPTIONS}
+            onChange={(sort) => onChange({ sort, page: 0 })}
+            iconOnlyOnMobile
+          />
+
+          <FilterChipSelect
+            icon={Archive}
+            label="Catálogo"
+            emptyLabel="Catálogo ativo"
+            value={filters.arquivados}
+            emptyValue="ocultar"
+            options={ARQUIVADOS_OPTIONS}
+            onChange={(arquivados) => onChange({ arquivados, page: 0 })}
+            iconOnlyOnMobile
+          />
+        </div>
       </div>
 
-
-      {chips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {chips.map((chip) => (
+      {(panelChips.length > 0 || totalActive > 0) && (
+        <div className="flex flex-wrap items-center gap-1.5 px-0.5">
+          {panelChips.map((chip) => (
             <button
               key={`${chip.key}-${chip.label}`}
-              onClick={() => onChange({ [chip.key]: DEFAULT_FILTERS[chip.key], page: 0 } as Partial<CatalogFilters>)}
-              className="glass-panel inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold text-foreground/70"
+              type="button"
+              onClick={() =>
+                onChange({
+                  [chip.key]: DEFAULT_FILTERS[chip.key],
+                  page: 0,
+                } as Partial<CatalogFilters>)
+              }
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-primary/20 bg-primary/[0.07] pl-2.5 pr-1.5 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
             >
               {chip.label}
-              <X className="size-3" />
+              <span className="grid size-4 place-items-center rounded-full bg-primary/10">
+                <X className="size-2.5" strokeWidth={2.6} />
+              </span>
             </button>
           ))}
-          <button onClick={onReset} className="text-[11px] font-semibold text-primary">
-            Limpar tudo
-          </button>
+          {totalActive > 0 ? (
+            <button
+              type="button"
+              onClick={onReset}
+              className="inline-flex h-7 items-center rounded-full px-2.5 text-[11px] font-semibold text-foreground/50 transition hover:bg-foreground/[0.05] hover:text-foreground"
+            >
+              Limpar tudo ({totalActive})
+            </button>
+          ) : null}
         </div>
       )}
+
+      <PropertyFiltersPanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        filters={filters}
+        facets={facets}
+        total={total}
+        onApply={(next) => onChange(next)}
+        onReset={onReset}
+      />
     </div>
   );
 }

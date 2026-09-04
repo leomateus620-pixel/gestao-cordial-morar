@@ -909,6 +909,25 @@ html,
 .fab-safe-bottom {
   bottom: calc(6.5rem + env(safe-area-inset-bottom));
 }
+
+/* Catálogo de imóveis — rail de filtros com rolagem horizontal discreta no mobile */
+.catalog-filter-rail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+.catalog-filter-rail::-webkit-scrollbar {
+  display: none;
+}
+.catalog-filter-rail > * {
+  scroll-snap-align: start;
+}
+.catalog-filters-sheet > button[class*="absolute"] {
+  top: 0.875rem;
+  right: 0.875rem;
+}
 @media (min-width: 1024px) {
   .fab-safe-bottom {
     bottom: 2rem;
