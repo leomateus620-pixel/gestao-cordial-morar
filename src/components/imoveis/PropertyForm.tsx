@@ -10,6 +10,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
 import { PropertyPhotosStep } from "./PropertyPhotosStep";
 import { PublishTargetSelector } from "./PublishTargetSelector";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import {
   ProviderCodeFields,
   type ProviderCodeState,
