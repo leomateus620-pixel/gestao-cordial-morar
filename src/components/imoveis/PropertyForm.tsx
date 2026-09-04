@@ -10,6 +10,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
 import { PropertyPhotosStep } from "./PropertyPhotosStep";
 import { PublishTargetSelector } from "./PublishTargetSelector";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import {
   ProviderCodeFields,
   type ProviderCodeState,
@@ -116,6 +118,101 @@ function Toggle({
     </button>
   );
 }
+
+/** Seleção rápida de quantidade (0 a 20) para dormitórios, suítes, banheiros, vagas e salas. */
+function CountPicker({
+  label,
+  value,
+  onChange,
+  max = 20,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (next: number | null) => void;
+  max?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const quick = [0, 1, 2, 3, 4, 5];
+  const isHigh = value !== null && value > 5;
+  const all = Array.from({ length: max + 1 }, (_, i) => i);
+
+  const chip = (active: boolean) =>
+    "grid h-9 min-w-9 place-items-center rounded-xl px-2 text-sm font-semibold transition " +
+    (active
+      ? "bg-primary text-primary-foreground shadow-sm"
+      : "bg-foreground/[0.05] text-foreground/70 hover:bg-foreground/10");
+
+  return (
+    <div className="block">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground/50">
+          {label}
+        </span>
+        <span className="text-[11px] font-semibold text-foreground/60">
+          {value === null ? "—" : value}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {quick.map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={value === n}
+            aria-label={`${label}: ${n}`}
+            onClick={() => onChange(value === n ? null : n)}
+            className={chip(value === n)}
+          >
+            {n}
+          </button>
+        ))}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Escolher outra quantidade de ${label}`}
+              aria-pressed={isHigh}
+              className={chip(isHigh)}
+            >
+              {isHigh ? value : "6+"}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-52 p-2">
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-foreground/50">
+              {label}
+            </p>
+            <div className="grid max-h-56 grid-cols-4 gap-1.5 overflow-y-auto">
+              {all.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-pressed={value === n}
+                  onClick={() => {
+                    onChange(n);
+                    setOpen(false);
+                  }}
+                  className={chip(value === n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+        {value !== null ? (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="rounded-xl px-2 py-1.5 text-[11px] font-semibold text-foreground/45 transition hover:text-foreground/70"
+          >
+            Limpar
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+
 
 export type PropertyFormValues = PropertyWriteInput;
 
@@ -745,7 +842,7 @@ export function PropertyForm({
 
         {step === 2 && (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {(
                 [
                   ["Dormitórios", "dormitorios"],
@@ -755,16 +852,15 @@ export function PropertyForm({
                   ["Salas", "salas"],
                 ] as Array<[string, keyof PropertyFormValues]>
               ).map(([label, key]) => (
-                <Field key={key} label={label}>
-                  <input
-                    inputMode="numeric"
-                    value={str(values[key] as number | null)}
-                    onChange={(e) => set(key, num(e.target.value) as never)}
-                    className={inputCls}
-                  />
-                </Field>
+                <CountPicker
+                  key={key}
+                  label={label}
+                  value={values[key] as number | null}
+                  onChange={(next) => set(key, next as never)}
+                />
               ))}
             </div>
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(
                 [
