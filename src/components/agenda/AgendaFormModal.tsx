@@ -112,7 +112,6 @@ export function AgendaFormModal({
   });
   const imovelSelecionado = usePropertyDetail(form.imovelId || undefined).data;
 
-
   useEffect(() => {
     if (open) {
       setMounted(true);
@@ -210,7 +209,17 @@ export function AgendaFormModal({
     });
   }
 
-  function selectProperty(id: string, item: { tipo: string | null; bairro: string | null; codigoCordial: string | null; codigoMorar: string | null; codigo: string | null; localizacaoExibida: string | null }) {
+  function selectProperty(
+    id: string,
+    item: {
+      tipo: string | null;
+      bairro: string | null;
+      codigoCordial: string | null;
+      codigoMorar: string | null;
+      codigo: string | null;
+      localizacaoExibida: string | null;
+    },
+  ) {
     const nome =
       [item.codigoCordial, item.codigoMorar].filter(Boolean).join(" / ") || item.codigo || "";
     setForm((current) => ({
@@ -278,7 +287,6 @@ export function AgendaFormModal({
       setDeleting(false);
     }
   }
-
 
   return createPortal(
     <div
