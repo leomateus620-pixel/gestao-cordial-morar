@@ -21,6 +21,7 @@ export type PropertyType =
   | "terreno"
   | "sala_comercial"
   | "area_rural"
+  | "sitio_chacara"
   | "outro";
 
 export type BedroomOption = "1" | "2" | "3" | "4+" | "nao_aplica";
@@ -111,6 +112,7 @@ export const propertyTypeOptions = [
   { value: "terreno", label: "Terreno" },
   { value: "sala_comercial", label: "Sala comercial" },
   { value: "area_rural", label: "Área rural" },
+  { value: "sitio_chacara", label: "Sítio / chácara" },
   { value: "outro", label: "Outro" },
 ] as const;
 

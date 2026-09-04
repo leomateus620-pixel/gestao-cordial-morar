@@ -312,6 +312,7 @@ export const atendimentoTipoImovelOptions = [
   { value: "terreno", label: "Terreno" },
   { value: "sala_comercial", label: "Sala comercial" },
   { value: "area_rural", label: "Área rural" },
+  { value: "sitio_chacara", label: "Sítio / chácara" },
   { value: "outro", label: "Outro" },
 ] as const;
 

@@ -414,6 +414,7 @@ function inferPropertyType(interesse?: string): PropertyType {
   if (normalized.includes("casa")) return "casa";
   if (normalized.includes("terreno")) return "terreno";
   if (normalized.includes("sala")) return "sala_comercial";
+  if (normalized.includes("sitio") || normalized.includes("chacara")) return "sitio_chacara";
   if (normalized.includes("rural")) return "area_rural";
   return "apartamento";
 }

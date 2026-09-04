@@ -615,6 +615,7 @@ function normalizeTipoImovel(value: unknown): TipoImovelInteresse {
   if (normalized.includes("casa")) return "casa";
   if (normalized.includes("terreno")) return "terreno";
   if (normalized.includes("sala") || normalized.includes("comercial")) return "sala_comercial";
+  if (normalized.includes("sitio") || normalized.includes("chacara")) return "sitio_chacara";
   if (normalized.includes("rural") || normalized.includes("area")) return "area_rural";
   if (
     normalized.includes("apart") ||
