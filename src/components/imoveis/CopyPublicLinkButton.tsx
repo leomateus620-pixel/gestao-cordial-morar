@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Check, Copy, ExternalLink, Link2Off } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,8 +95,11 @@ export function CopyPublicLinkButton({
  */
 export function CopyPublicLinkControl({
   links,
+  className,
 }: {
   links: Array<{ provider: string; url: string | null }>;
+  /** Substitui o estilo padrão do botão (ex.: versão compacta nos cards). */
+  className?: string;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
   const available = links.filter((link): link is { provider: string; url: string } =>
@@ -124,6 +122,7 @@ export function CopyPublicLinkControl({
 
   const icon = copied ? <Check className="size-4" /> : <Copy className="size-4" />;
   const buttonCls =
+    className ??
     "glass-panel inline-flex size-9 items-center justify-center rounded-full text-primary transition hover:scale-105";
 
   if (available.length === 1) {
@@ -173,7 +172,8 @@ export function CopyPublicLinkControl({
             onSelect={() => void copy(link.provider, link.url)}
             className="gap-2 text-xs font-semibold"
           >
-            <Copy className="size-3.5" /> Copiar link {PROVIDER_LABEL[link.provider] ?? link.provider}
+            <Copy className="size-3.5" /> Copiar link{" "}
+            {PROVIDER_LABEL[link.provider] ?? link.provider}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

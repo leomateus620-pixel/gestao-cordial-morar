@@ -118,6 +118,94 @@ export function toListInput(filters: CatalogFilters, pageSize: number): ListImov
   };
 }
 
+export const OPERACAO_OPTIONS: Array<{ value: CatalogFilters["operacao"]; label: string }> = [
+  { value: "todos", label: "Venda e aluguel" },
+  { value: "venda", label: "Venda" },
+  { value: "aluguel", label: "Aluguel" },
+];
+
+export const SORT_OPTIONS: Array<{ value: ImoveisSort; label: string }> = [
+  { value: "recentes", label: "Mais recentes" },
+  { value: "codigo", label: "Código" },
+  { value: "preco_asc", label: "Menor preço" },
+  { value: "preco_desc", label: "Maior preço" },
+  { value: "area_desc", label: "Maior área" },
+];
+
+export const ARQUIVADOS_OPTIONS: Array<{ value: CatalogFilters["arquivados"]; label: string }> = [
+  { value: "ocultar", label: "Catálogo ativo" },
+  { value: "somente", label: "Arquivados" },
+];
+
+export const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "Qualquer status" },
+  { value: "published", label: "Publicado" },
+  { value: "pending", label: "Pendente" },
+  { value: "error", label: "Com erro" },
+  { value: "out_of_sync", label: "Divergente" },
+  { value: "draft", label: "Rascunho" },
+];
+
+export const PRICE_PRESETS: Array<{ label: string; min: number | null; max: number | null }> = [
+  { label: "Até R$ 200 mil", min: null, max: 200_000 },
+  { label: "R$ 200 – 350 mil", min: 200_000, max: 350_000 },
+  { label: "R$ 350 – 500 mil", min: 350_000, max: 500_000 },
+  { label: "R$ 500 – 600 mil", min: 500_000, max: 600_000 },
+  { label: "R$ 600 – 800 mil", min: 600_000, max: 800_000 },
+  { label: "R$ 800 mil – 1 mi", min: 800_000, max: 1_000_000 },
+  { label: "Acima de R$ 1 mi", min: 1_000_000, max: null },
+];
+
+/** Valores em reais de forma curta, para caber em chips: 350 mil, 1,2 mi. */
+export function shortBRL(value: number): string {
+  if (value >= 1_000_000) {
+    const m = value / 1_000_000;
+    return `R$ ${m.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
+  }
+  if (value >= 1_000) {
+    const k = value / 1_000;
+    return `R$ ${k.toLocaleString("pt-BR", { maximumFractionDigits: k % 1 === 0 ? 0 : 1 })} mil`;
+  }
+  return `R$ ${value.toLocaleString("pt-BR")}`;
+}
+
+/** Rótulo curto da faixa de valor selecionada (ou null sem faixa). */
+export function priceRangeLabel(valorMin: number | null, valorMax: number | null): string | null {
+  if (valorMin === null && valorMax === null) return null;
+  if (valorMin !== null && valorMax !== null)
+    return `${shortBRL(valorMin)} – ${shortBRL(valorMax)}`;
+  if (valorMin !== null) return `A partir de ${shortBRL(valorMin)}`;
+  return `Até ${shortBRL(valorMax as number)}`;
+}
+
+export function statusLabel(value: string): string {
+  return STATUS_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+/** Quantos filtros (além da busca, carteira, ordenação e página) estão ativos. */
+export function countActiveFilters(filters: CatalogFilters): number {
+  const keys: Array<keyof CatalogFilters> = [
+    "operacao",
+    "tipo",
+    "cidade",
+    "bairro",
+    "valorMin",
+    "valorMax",
+    "dormitoriosMin",
+    "suitesMin",
+    "banheirosMin",
+    "vagasMin",
+    "areaMin",
+    "areaMax",
+    "status",
+    "arquivados",
+  ];
+  return keys.filter((key) => {
+    const value = filters[key];
+    return value !== null && value !== "" && value !== DEFAULT_FILTERS[key];
+  }).length;
+}
+
 export type ActiveChip = { key: keyof CatalogFilters; label: string };
 
 export function activeChips(filters: CatalogFilters): ActiveChip[] {
@@ -133,13 +221,14 @@ export function activeChips(filters: CatalogFilters): ActiveChip[] {
           ? "Cordial"
           : "Morar",
     );
-  if (filters.operacao !== "todos") push("operacao", filters.operacao === "venda" ? "Venda" : "Aluguel");
+  if (filters.operacao !== "todos")
+    push("operacao", filters.operacao === "venda" ? "Venda" : "Aluguel");
   if (filters.tipo) push("tipo", filters.tipo);
   if (filters.cidade) push("cidade", filters.cidade);
   if (filters.bairro) push("bairro", filters.bairro);
-  if (filters.status) push("status", `Status: ${filters.status}`);
-  if (filters.valorMin !== null) push("valorMin", `A partir de R$ ${filters.valorMin.toLocaleString("pt-BR")}`);
-  if (filters.valorMax !== null) push("valorMax", `Até R$ ${filters.valorMax.toLocaleString("pt-BR")}`);
+  if (filters.status) push("status", `Status: ${statusLabel(filters.status)}`);
+  if (filters.valorMin !== null) push("valorMin", `A partir de ${shortBRL(filters.valorMin)}`);
+  if (filters.valorMax !== null) push("valorMax", `Até ${shortBRL(filters.valorMax)}`);
   if (filters.dormitoriosMin !== null) push("dormitoriosMin", `${filters.dormitoriosMin}+ dorm.`);
   if (filters.suitesMin !== null) push("suitesMin", `${filters.suitesMin}+ suítes`);
   if (filters.banheirosMin !== null) push("banheirosMin", `${filters.banheirosMin}+ banheiros`);
