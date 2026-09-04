@@ -416,26 +416,15 @@ export function AgendaFormModal({
                   required
                 />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Início" error={errors.inicio}>
-                  <input
-                    type="time"
-                    value={form.horaInicio}
-                    onChange={(inputEvent) => update("horaInicio", inputEvent.target.value)}
-                    className={inputClass(errors.inicio)}
-                    required
-                  />
-                </Field>
-                <Field label="Fim" error={errors.fim}>
-                  <input
-                    type="time"
-                    value={""}
-                    onChange={() => {}}
-                    className={inputClass(errors.fim)}
-                    required
-                  />
-                </Field>
-              </div>
+              <Field label="Início" error={errors.inicio}>
+                <input
+                  type="time"
+                  value={form.horaInicio}
+                  onChange={(inputEvent) => update("horaInicio", inputEvent.target.value)}
+                  className={inputClass(errors.inicio)}
+                  required
+                />
+              </Field>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Status">
                   <select
