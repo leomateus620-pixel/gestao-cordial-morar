@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useDebouncedValue } from "@/hooks/useGlobalSearch";
-import { useImoveisList, usePropertyDetail } from "@/hooks/useImoveis";
+import { usePropertyDetail } from "@/hooks/useImoveis";
+import { listImoveis } from "@/lib/imoveis/imoveis.functions";
+import { propertyLocalidade } from "@/types/property";
 import {
   Check,
   ChevronRight,
@@ -95,6 +99,18 @@ export function AgendaFormModal({
   const [mounted, setMounted] = useState(open);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [imovelBusca, setImovelBusca] = useState("");
+  const [pessoaBusca, setPessoaBusca] = useState("");
+
+  const searchImoveis = useServerFn(listImoveis);
+  const termoImovel = useDebouncedValue(imovelBusca.trim(), 300);
+  const imoveisQuery = useQuery({
+    queryKey: ["agenda", "imoveis-busca", termoImovel],
+    queryFn: () => searchImoveis({ data: { search: termoImovel, pageSize: 8, sort: "recentes" } }),
+    enabled: open && termoImovel.length >= 2,
+    staleTime: 30_000,
+  });
+  const imovelSelecionado = usePropertyDetail(form.imovelId || undefined).data;
 
 
   useEffect(() => {
@@ -110,6 +126,8 @@ export function AgendaFormModal({
     setErrors({});
     setConfirmingDelete(false);
     setSubmitError(null);
+    setImovelBusca("");
+    setPessoaBusca("");
   }, [currentUser, event, open]);
 
   useEffect(() => {
@@ -153,6 +171,10 @@ export function AgendaFormModal({
     [form.participantesIds, people],
   );
 
+  const pessoasFiltradas = people.filter((person) =>
+    normalize(person.nome).includes(normalize(pessoaBusca)),
+  );
+
   if (!mounted || typeof document === "undefined") return null;
 
   function requestClose() {
@@ -186,6 +208,22 @@ export function AgendaFormModal({
             : current.titulo,
       };
     });
+  }
+
+  function selectProperty(id: string, item: { tipo: string | null; bairro: string | null; codigoCordial: string | null; codigoMorar: string | null; codigo: string | null; localizacaoExibida: string | null }) {
+    const nome =
+      [item.codigoCordial, item.codigoMorar].filter(Boolean).join(" / ") || item.codigo || "";
+    setForm((current) => ({
+      ...current,
+      imovelId: id,
+      imovelNome: [nome, item.tipo, item.bairro].filter(Boolean).join(" · "),
+      imovelEndereco: current.imovelEndereco || item.localizacaoExibida || "",
+    }));
+    setImovelBusca("");
+  }
+
+  function clearProperty() {
+    setForm((current) => ({ ...current, imovelId: "", imovelNome: "" }));
   }
 
   function toggleParticipant(userId: string) {
@@ -426,65 +464,119 @@ export function AgendaFormModal({
 
             <FormSection
               step="3"
-              title="Vínculos e imóvel"
-              description="Vincule um atendimento real e cadastre o imóvel do compromisso."
+              title="Imóvel"
+              description="Busque pelo código Cordial/Morar, bairro ou tipo. O proprietário aparece automaticamente."
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Cliente vinculado">
-                  <select
-                    value={form.clienteId}
-                    onChange={(inputEvent) => updateClient(inputEvent.target.value)}
-                    className={inputClass()}
-                  >
-                    <option value="">Sem cliente vinculado</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.nome}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Atendimento vinculado">
-                  <select
-                    value={form.atendimentoId}
-                    onChange={(inputEvent) => updateAttendance(inputEvent.target.value)}
-                    className={inputClass()}
-                  >
-                    <option value="">Sem atendimento vinculado</option>
-                    {attendanceOptions.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {[item.clienteNome, item.finalidade, item.corretorNome]
+              {form.imovelId && imovelSelecionado ? (
+                <div className="rounded-2xl border border-white/65 bg-white/62 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {imovelSelecionado.tipo ?? "Imóvel"}
+                        {imovelSelecionado.bairro ? ` · ${imovelSelecionado.bairro}` : ""}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-foreground/58">
+                        {[
+                          imovelSelecionado.codigoCordial
+                            ? `Cordial ${imovelSelecionado.codigoCordial}`
+                            : null,
+                          imovelSelecionado.codigoMorar
+                            ? `Morar ${imovelSelecionado.codigoMorar}`
+                            : null,
+                          propertyLocalidade(imovelSelecionado),
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
-                      </option>
-                    ))}
-                  </select>
+                      </p>
+                      {form.imovelEndereco && (
+                        <p className="mt-1 text-[11px] text-foreground/58">{form.imovelEndereco}</p>
+                      )}
+                      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-teal-900">
+                        <span className="inline-flex items-center gap-1">
+                          <UserRoundCheck className="size-3.5 text-teal-700" />
+                          Proprietário: {imovelSelecionado.proprietarioNome ?? "não informado"}
+                        </span>
+                        {imovelSelecionado.proprietarioTelefone && (
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="size-3.5 text-teal-700" />
+                            {imovelSelecionado.proprietarioTelefone}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => clearProperty()}
+                      className="shrink-0 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-foreground/65 transition hover:text-foreground"
+                    >
+                      Trocar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Field label="Buscar imóvel por código, bairro ou tipo">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/35" />
+                    <input
+                      value={imovelBusca}
+                      onChange={(inputEvent) => setImovelBusca(inputEvent.target.value)}
+                      className={cn(inputClass(), "pl-9")}
+                      placeholder="Ex.: 4340607, Centro, apartamento"
+                    />
+                  </div>
+                  <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto pr-1">
+                    {termoImovel.length < 2 ? (
+                      <p className="text-[11px] leading-5 text-foreground/52">
+                        Digite ao menos 2 caracteres para buscar no menu Imóveis. Compromissos
+                        internos podem ficar sem imóvel.
+                      </p>
+                    ) : imoveisQuery.isLoading ? (
+                      <p className="text-[11px] text-foreground/52">Buscando imóveis...</p>
+                    ) : (imoveisQuery.data?.items.length ?? 0) === 0 ? (
+                      <p className="text-[11px] text-foreground/52">Nenhum imóvel encontrado.</p>
+                    ) : (
+                      imoveisQuery.data?.items.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => selectProperty(item.id, item)}
+                          className="flex w-full items-center gap-3 rounded-2xl bg-white/62 px-3 py-2 text-left ring-1 ring-white/65 transition hover:bg-white/85"
+                        >
+                          <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-teal-700/10">
+                            {item.coverUrl ? (
+                              <img
+                                src={item.coverUrl}
+                                alt=""
+                                className="size-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <Home className="size-4 text-teal-700" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-semibold text-foreground/85">
+                              {[item.codigoCordial, item.codigoMorar].filter(Boolean).join(" / ") ||
+                                item.codigo ||
+                                "Sem código"}
+                              {item.tipo ? ` · ${item.tipo}` : ""}
+                            </span>
+                            <span className="block truncate text-[11px] text-foreground/55">
+                              {propertyLocalidade(item) ?? "Localização não informada"}
+                            </span>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </Field>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Nome / referência do imóvel">
-                  <input
-                    value={form.imovelNome}
-                    onChange={(inputEvent) => update("imovelNome", inputEvent.target.value)}
-                    className={inputClass()}
-                    placeholder="Ex.: Residencial Aurora — Apto 302"
-                  />
-                </Field>
-                <Field label="Endereço do imóvel">
-                  <input
-                    value={form.imovelEndereco}
-                    onChange={(inputEvent) => update("imovelEndereco", inputEvent.target.value)}
-                    className={inputClass()}
-                    placeholder="Rua, número, bairro"
-                  />
-                </Field>
-              </div>
-              <Field label="Descrição do imóvel">
+              )}
+              <Field label="Endereço / local do compromisso">
                 <input
-                  value={form.imovelDescricao}
-                  onChange={(inputEvent) => update("imovelDescricao", inputEvent.target.value)}
+                  value={form.imovelEndereco}
+                  onChange={(inputEvent) => update("imovelEndereco", inputEvent.target.value)}
                   className={inputClass()}
-                  placeholder="Características, andar, ponto de referência"
+                  placeholder="Rua, número, bairro ou ponto de encontro"
                 />
               </Field>
               <Field label="Imobiliária">
@@ -515,20 +607,53 @@ export function AgendaFormModal({
                   {responsibleName}
                 </div>
               </Field>
-              <Field label="Participantes adicionais / quem acompanha">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {people.map((person) => (
-                    <label
-                      key={person.id}
-                      className="flex items-center gap-2 rounded-2xl bg-white/55 px-3 py-2.5 text-xs font-medium text-foreground/68 ring-1 ring-white/65"
-                    >
-                      <Checkbox
-                        checked={form.participantesIds.includes(person.id)}
-                        onCheckedChange={() => toggleParticipant(person.id)}
-                      />
-                      <span className="truncate">{person.nome}</span>
-                    </label>
-                  ))}
+              <Field label="Quem mais participa">
+                {selectedParticipants.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {selectedParticipants.map((person) => (
+                      <span
+                        key={person.id}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-teal-700/10 px-3 py-1.5 text-[11px] font-semibold text-teal-900"
+                      >
+                        {person.nome}
+                        <button
+                          type="button"
+                          onClick={() => toggleParticipant(person.id)}
+                          aria-label={`Remover ${person.nome}`}
+                          className="text-teal-900/50 transition hover:text-rose-600"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/35" />
+                  <input
+                    value={pessoaBusca}
+                    onChange={(inputEvent) => setPessoaBusca(inputEvent.target.value)}
+                    className={cn(inputClass(), "pl-9")}
+                    placeholder="Buscar pessoa pelo nome"
+                  />
+                </div>
+                <div className="mt-2 max-h-52 space-y-1 overflow-y-auto pr-1">
+                  {pessoasFiltradas.length === 0 ? (
+                    <p className="text-[11px] text-foreground/52">Nenhuma pessoa encontrada.</p>
+                  ) : (
+                    pessoasFiltradas.map((person) => (
+                      <label
+                        key={person.id}
+                        className="flex items-center gap-2 rounded-2xl bg-white/55 px-3 py-2.5 text-xs font-medium text-foreground/68 ring-1 ring-white/65"
+                      >
+                        <Checkbox
+                          checked={form.participantesIds.includes(person.id)}
+                          onCheckedChange={() => toggleParticipant(person.id)}
+                        />
+                        <span className="truncate">{person.nome}</span>
+                      </label>
+                    ))
+                  )}
                 </div>
               </Field>
               <Field label="Outro acompanhante">
@@ -539,145 +664,6 @@ export function AgendaFormModal({
                   placeholder="Nome de participante externo"
                 />
               </Field>
-            </FormSection>
-
-            <FormSection
-              step="5"
-              title="Convidados externos"
-              description="O Google Agenda envia o convite por e-mail e cria o evento na agenda de cada convidado."
-              className="lg:col-span-2"
-            >
-              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                <input
-                  type="email"
-                  value={form.convidadoEmailInput}
-                  onChange={(inputEvent) => update("convidadoEmailInput", inputEvent.target.value)}
-                  className={inputClass(guestEmailError)}
-                  placeholder="email@exemplo.com"
-                  onKeyDown={(keyEvent) => {
-                    if (keyEvent.key === "Enter") {
-                      keyEvent.preventDefault();
-                      addGuest();
-                    }
-                  }}
-                />
-                <input
-                  value={form.convidadoNomeInput}
-                  onChange={(inputEvent) => update("convidadoNomeInput", inputEvent.target.value)}
-                  className={inputClass()}
-                  placeholder="Nome (opcional)"
-                  onKeyDown={(keyEvent) => {
-                    if (keyEvent.key === "Enter") {
-                      keyEvent.preventDefault();
-                      addGuest();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={addGuest}
-                  className="flex items-center justify-center gap-2 rounded-2xl bg-teal-700 px-4 py-3 text-xs font-semibold text-white shadow-md shadow-teal-900/15 transition hover:bg-teal-800 active:scale-[0.98]"
-                >
-                  <Plus className="size-3.5" /> Adicionar
-                </button>
-              </div>
-              {guestEmailError && (
-                <p className="text-[11px] font-medium text-destructive">{guestEmailError}</p>
-              )}
-              {form.convidados.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {form.convidados.map((guest) => (
-                    <span
-                      key={guest.email}
-                      className="inline-flex items-center gap-2 rounded-full bg-white/72 px-3 py-1.5 text-[11px] font-medium text-foreground/78 shadow-sm ring-1 ring-teal-700/15"
-                    >
-                      <Mail className="size-3 text-teal-700" />
-                      <span className="max-w-[200px] truncate">
-                        {guest.nome ? `${guest.nome} · ` : ""}
-                        {guest.email}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeGuest(guest.email)}
-                        className="text-foreground/35 transition hover:text-rose-600"
-                        aria-label={`Remover ${guest.email}`}
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] leading-5 text-foreground/52">
-                  Nenhum convidado adicionado. O convite sai da conta Google do responsável.
-                </p>
-              )}
-            </FormSection>
-
-            <FormSection
-              step="6"
-              title="Checklist e observações"
-              description="Itens rápidos de preparação. Os lembretes são automáticos."
-              className="lg:col-span-2"
-            >
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/52">
-                      Checklist do compromisso
-                    </span>
-                    <button
-                      type="button"
-                      onClick={addChecklistItem}
-                      className="flex items-center gap-1 rounded-full bg-teal-700/9 px-2.5 py-1.5 text-[10px] font-semibold text-teal-800"
-                    >
-                      <Plus className="size-3" /> Adicionar
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {form.checklist.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2 rounded-2xl bg-white/55 px-3 py-2 ring-1 ring-white/65"
-                      >
-                        <Checkbox
-                          checked={item.done}
-                          onCheckedChange={(checked) =>
-                            updateChecklist(item.id, { done: checked === true })
-                          }
-                        />
-                        <input
-                          value={item.label}
-                          onChange={(inputEvent) =>
-                            updateChecklist(item.id, { label: inputEvent.target.value })
-                          }
-                          className={cn(
-                            "min-w-0 flex-1 bg-transparent text-xs outline-none",
-                            item.done && "text-foreground/38 line-through",
-                          )}
-                          placeholder="Novo item"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeChecklistItem(item.id)}
-                          className="text-foreground/30 transition hover:text-rose-600"
-                          aria-label="Remover item"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <Field label="Observações internas">
-                  <textarea
-                    value={form.observacoes}
-                    onChange={(inputEvent) => update("observacoes", inputEvent.target.value)}
-                    className={cn(inputClass(), "min-h-32 resize-none leading-5")}
-                    placeholder="Informações úteis apenas para a equipe."
-                  />
-                </Field>
-              </div>
             </FormSection>
           </fieldset>
         </div>
@@ -809,6 +795,7 @@ function buildInput(
     clienteId: optional(form.clienteId),
     clienteNome: client?.nome,
     atendimentoId: optional(form.atendimentoId),
+    imovelId: optional(form.imovelId),
     imovelNome: optional(form.imovelNome),
     imovelEndereco: optional(form.imovelEndereco),
     imovelDescricao: optional(form.imovelDescricao) ?? optional(form.imovelNome),
@@ -865,6 +852,7 @@ function initialForm(event: AgendaEvent | undefined, currentUser?: NamedOption):
     prioridade: event?.prioridade ?? "media",
     clienteId: event?.clienteId ?? "",
     atendimentoId: event?.atendimentoId ?? "",
+    imovelId: event?.imovelId ?? "",
     imovelNome: event?.imovelNome ?? "",
     imovelEndereco: event?.imovelEndereco ?? event?.local ?? "",
     imovelDescricao: event?.imovelDescricao ?? "",
@@ -969,6 +957,14 @@ function inputClass(error?: string) {
     "placeholder:text-foreground/35 focus:border-teal-700/45 focus:ring-4 focus:ring-teal-700/10",
     error ? "border-destructive/35" : "border-white/65",
   );
+}
+
+function normalize(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function nextRoundedHour() {
