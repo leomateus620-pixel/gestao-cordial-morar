@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/hooks/useGlobalSearch";
+import { useImoveisList, usePropertyDetail } from "@/hooks/useImoveis";
 import {
   Check,
   ChevronRight,
   CircleAlert,
   Clock3,
-  Mail,
-  Plus,
+  Home,
+  Phone,
   RefreshCcw,
   Save,
+  Search,
   Trash2,
   UserRoundCheck,
   X,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { agendaTitleSuggestion, validateAgendaEvent } from "@/services/agenda";
-import { listAgendaAttendanceOptions } from "@/lib/agenda/agenda.functions";
 import {
   agendaImobiliariaOptions,
   agendaPrioridadeOptions,
@@ -46,6 +47,7 @@ type FormState = {
   prioridade: AgendaPrioridade;
   clienteId: string;
   atendimentoId: string;
+  imovelId: string;
   imovelNome: string;
   imovelEndereco: string;
   imovelDescricao: string;
@@ -62,14 +64,7 @@ type FormState = {
 
 const checklistSeed = ["Confirmar com o cliente", "Enviar endereço", "Levar documentos"];
 
-const STEPS = [
-  "Tipo e título",
-  "Data e horário",
-  "Vínculos e imóvel",
-  "Responsáveis",
-  "Convidados",
-  "Checklist",
-];
+const STEPS = ["Tipo e título", "Data e horário", "Imóvel", "Responsáveis"];
 
 export function AgendaFormModal({
   open,
@@ -98,17 +93,9 @@ export function AgendaFormModal({
   const [closing, setClosing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(open);
-  const [guestEmailError, setGuestEmailError] = useState<string | undefined>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-
-  const { data: attendanceOptions = [] } = useQuery({
-    queryKey: ["agenda", "attendance-options"],
-    queryFn: () => listAgendaAttendanceOptions(),
-    enabled: open,
-    staleTime: 60_000,
-  });
 
   useEffect(() => {
     if (open) {
@@ -201,96 +188,12 @@ export function AgendaFormModal({
     });
   }
 
-  function updateClient(clienteId: string) {
-    const client = clients.find((item) => item.id === clienteId);
-    setForm((current) => ({
-      ...current,
-      clienteId,
-      titulo:
-        !isEditing &&
-        current.tipo === "retorno" &&
-        (!current.titulo.trim() || current.titulo.startsWith("Retorno para"))
-          ? agendaTitleSuggestion("retorno", client?.nome)
-          : current.titulo,
-    }));
-  }
-
-  function updateAttendance(atendimentoId: string) {
-    const attendance = attendanceOptions.find((item) => item.id === atendimentoId);
-    setForm((current) => ({
-      ...current,
-      atendimentoId,
-      imovelNome:
-        current.imovelNome || attendance?.imovelCodigo || attendance?.imovelDescricao || "",
-      imovelDescricao: current.imovelDescricao || attendance?.imovelDescricao || "",
-      titulo:
-        !isEditing && !current.titulo.trim() && attendance?.clienteNome
-          ? agendaTitleSuggestion(current.tipo, attendance.clienteNome, attendance.imovelDescricao)
-          : current.titulo,
-    }));
-  }
-
   function toggleParticipant(userId: string) {
     setForm((current) => ({
       ...current,
       participantesIds: current.participantesIds.includes(userId)
         ? current.participantesIds.filter((id) => id !== userId)
         : [...current.participantesIds, userId],
-    }));
-  }
-
-  function updateChecklist(id: string, patch: Partial<AgendaChecklistItem>) {
-    setForm((current) => ({
-      ...current,
-      checklist: current.checklist.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    }));
-  }
-
-  function addChecklistItem() {
-    setForm((current) => ({
-      ...current,
-      checklist: [
-        ...current.checklist,
-        {
-          id: `check-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          label: "",
-          done: false,
-        },
-      ],
-    }));
-  }
-
-  function removeChecklistItem(id: string) {
-    setForm((current) => ({
-      ...current,
-      checklist: current.checklist.filter((item) => item.id !== id),
-    }));
-  }
-
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  function addGuest() {
-    const email = form.convidadoEmailInput.trim().toLowerCase();
-    const nome = form.convidadoNomeInput.trim();
-    if (!email) return setGuestEmailError("Informe um e-mail.");
-    if (!EMAIL_RE.test(email)) return setGuestEmailError("E-mail inválido.");
-    if (form.convidados.some((guest) => guest.email === email))
-      return setGuestEmailError("E-mail já adicionado.");
-    setGuestEmailError(undefined);
-    setForm((current) => ({
-      ...current,
-      convidados: [
-        ...current.convidados,
-        { email, nome: nome || undefined, responseStatus: "needsAction" },
-      ],
-      convidadoEmailInput: "",
-      convidadoNomeInput: "",
-    }));
-  }
-
-  function removeGuest(email: string) {
-    setForm((current) => ({
-      ...current,
-      convidados: current.convidados.filter((guest) => guest.email !== email),
     }));
   }
 
