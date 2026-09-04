@@ -172,6 +172,8 @@ const tipoImovelLabelMap: Record<string, string> = {
   studio: "Studio",
   terreno: "Terreno",
   sitio: "Sítio",
+  sitio_chacara: "Sítio / chácara",
+  area_rural: "Área rural",
   sala_comercial: "Sala comercial",
   galpao: "Galpão",
 };
