@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  ARQUIVADOS_OPTIONS,
   DEFAULT_FILTERS,
   OPERACAO_OPTIONS,
   PRICE_PRESETS,
@@ -36,6 +35,12 @@ import {
 import { cn } from "@/lib/utils";
 
 export type CatalogFacets = { tipos: string[]; cidades: string[]; bairros: string[] };
+
+/** Rótulos curtos para caber no segmento lado a lado com o status. */
+const CATALOGO_SEGMENTS: Array<{ value: CatalogFilters["arquivados"]; label: string }> = [
+  { value: "ocultar", label: "Ativos" },
+  { value: "somente", label: "Arquivados" },
+];
 
 function formatBRL(value: number | null): string {
   return value === null ? "" : `R$ ${value.toLocaleString("pt-BR")}`;
@@ -471,7 +476,7 @@ export function PropertyFiltersPanel({
                 <Segmented
                   ariaLabel="Catálogo"
                   value={draft.arquivados}
-                  options={ARQUIVADOS_OPTIONS}
+                  options={CATALOGO_SEGMENTS}
                   onChange={(arquivados) => patch({ arquivados })}
                 />
               </label>
