@@ -842,7 +842,7 @@ export function PropertyForm({
 
         {step === 2 && (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {(
                 [
                   ["Dormitórios", "dormitorios"],
@@ -852,16 +852,15 @@ export function PropertyForm({
                   ["Salas", "salas"],
                 ] as Array<[string, keyof PropertyFormValues]>
               ).map(([label, key]) => (
-                <Field key={key} label={label}>
-                  <input
-                    inputMode="numeric"
-                    value={str(values[key] as number | null)}
-                    onChange={(e) => set(key, num(e.target.value) as never)}
-                    className={inputCls}
-                  />
-                </Field>
+                <CountPicker
+                  key={key}
+                  label={label}
+                  value={values[key] as number | null}
+                  onChange={(next) => set(key, next as never)}
+                />
               ))}
             </div>
+
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(
                 [
