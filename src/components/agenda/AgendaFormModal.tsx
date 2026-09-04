@@ -46,7 +46,7 @@ type FormState = {
   descricao: string;
   data: string;
   horaInicio: string;
-  horaFim: string;
+  
   status: AgendaStatus;
   prioridade: AgendaPrioridade;
   clienteId: string;
@@ -405,7 +405,7 @@ export function AgendaFormModal({
             <FormSection
               step="2"
               title="Data e horário"
-              description="Informe o início e o fim. A duração é calculada automaticamente."
+              description="Informe a data e a hora de início. Avisamos você 1 hora antes."
             >
               <Field label="Data" error={errors.inicio}>
                 <input
@@ -429,8 +429,8 @@ export function AgendaFormModal({
                 <Field label="Fim" error={errors.fim}>
                   <input
                     type="time"
-                    value={form.horaFim}
-                    onChange={(inputEvent) => update("horaFim", inputEvent.target.value)}
+                    value={""}
+                    onChange={() => {}}
                     className={inputClass(errors.fim)}
                     required
                   />
