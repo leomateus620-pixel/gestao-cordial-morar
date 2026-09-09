@@ -115,17 +115,23 @@ export function PropertyGallery({
             </p>
             <button
               type="button"
-              onClick={() => setOrganizando((v) => !v)}
+              disabled={salvando}
+              onClick={() => (organizando ? void concluir() : setOrganizando(true))}
               className={
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition " +
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition disabled:opacity-60 " +
                 (organizando
                   ? "bg-primary text-primary-foreground"
                   : "border border-white/60 bg-white/70 text-foreground/70 hover:text-foreground")
               }
             >
-              <GripVertical className="size-3.5" />
-              {organizando ? "Concluir" : "Organizar fotos"}
+              {salvando ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <GripVertical className="size-3.5" />
+              )}
+              {organizando ? (salvando ? "Salvando…" : "Concluir") : "Organizar fotos"}
             </button>
+
           </div>
         )}
 
