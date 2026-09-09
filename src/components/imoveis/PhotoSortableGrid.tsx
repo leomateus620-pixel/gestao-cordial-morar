@@ -137,6 +137,17 @@ export function usePhotoSorting<T extends { id: string }>({
    * Índice de destino pela geometria das miniaturas (não por elementFromPoint:
    * o item arrastado fica por cima do ponteiro e capturaria todos os testes).
    */
+  /**
+   * Posição real de cada miniatura agora — medir na hora evita usar medidas
+   * antigas (a página pode ter rolado depois que a tela foi montada), que era
+   * o motivo de a foto arrastada não encontrar o lugar de destino.
+   */
+  const liveRect = useCallback((id: string) => {
+    const node = nodesRef.current.get(id);
+    if (!node?.isConnected) return null;
+    return node.getBoundingClientRect();
+  }, []);
+
   const findTargetIndex = useCallback((x: number, y: number) => {
     const ids = orderRef.current;
     let contained = -1;
@@ -145,7 +156,7 @@ export function usePhotoSorting<T extends { id: string }>({
     let nearestReach = 0;
     ids.forEach((id, idx) => {
       if (id === dragIdRef.current) return;
-      const rect = rectsRef.current.get(id);
+      const rect = liveRect(id);
       if (!rect || rect.width === 0) return;
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
