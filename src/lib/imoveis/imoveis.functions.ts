@@ -70,11 +70,23 @@ const WRITE_COLUMNS: Record<keyof PropertyWriteInput, string> = {
   unidade: "unidade",
 };
 
+/** Referência técnica interna (`GC-…`) nunca pode virar código de imobiliária. */
+const SYNTHETIC_CODE = /^GC-/i;
+
 function toDbPayload(input: Partial<PropertyWriteInput>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const [key, column] of Object.entries(WRITE_COLUMNS)) {
     const value = (input as Record<string, unknown>)[key];
-    if (value !== undefined) payload[column] = value === "" ? null : value;
+    if (value === undefined) continue;
+    let next: unknown = value === "" ? null : value;
+    if (
+      (column === "codigo_cordial" || column === "codigo_morar") &&
+      typeof next === "string" &&
+      SYNTHETIC_CODE.test(next.trim())
+    ) {
+      next = null;
+    }
+    payload[column] = next;
   }
   return payload;
 }
