@@ -70,3 +70,20 @@ são omitidos conforme a NTE.
 ## Fora de escopo (próximas fatias)
 
 Cancelamento/substituição de nota e emissão em lote mensal.
+
+## Onde configurar no sistema
+
+Menu **Integrações** → card "NFS-e Santa Rosa (IPM)" (visível apenas para admin/financeiro):
+CNPJ do prestador, inscrição municipal, razão social, item da lista de serviço (padrão 10.05),
+código NBS, alíquota ISS, modo teste e Simples Nacional — por marca (Cordial e Morar).
+
+A senha do webservice NUNCA fica no banco nem no navegador: cadastre em
+Configurações do projeto → Secrets como `IPM_NFSE_SENHA_CORDIAL` / `IPM_NFSE_SENHA_MORAR`
+(login opcional em `IPM_NFSE_LOGIN_*`; por padrão usa o CNPJ). O card mostra apenas
+"senha configurada / faltando".
+
+## Emissão
+
+Ficha do aluguel → seção "NFS-e (Santa Rosa)" → **Emitir NFS-e**. O valor é sempre a
+comissão mensal (serviço de administração), nunca o aluguel cheio. O modo teste vem
+ligado por padrão e apenas valida na prefeitura.
