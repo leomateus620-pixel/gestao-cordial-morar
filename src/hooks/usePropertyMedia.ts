@@ -41,11 +41,31 @@ export type UploadItem = {
   error?: string;
 };
 
+/**
+ * Ordem escolhida pelo usuário que ainda não foi confirmada pelo servidor.
+ * Enquanto existir, qualquer recarregamento respeita essa ordem — é o que
+ * impede a foto de "voltar para o lugar" durante a organização.
+ */
+const pendingOrder = new Map<string, string[]>();
+
+export function applyPendingOrder(propertyId: string, images: PropertyImage[]): PropertyImage[] {
+  const order = pendingOrder.get(propertyId);
+  if (!order) return images;
+  const byId = new Map(images.map((image) => [image.id, image]));
+  const sorted = order.map((id) => byId.get(id)).filter(Boolean) as PropertyImage[];
+  if (sorted.length !== images.length) return images;
+  return sorted.map((image, index) => ({ ...image, position: index }));
+}
+
 export function usePropertyImages(propertyId: string | undefined) {
   const list = useServerFn(listPropertyImages);
   return useQuery<PropertyImage[]>({
     queryKey: ["property-images", propertyId],
-    queryFn: () => list({ data: { propertyId: propertyId as string } }),
+    queryFn: async () =>
+      applyPendingOrder(
+        propertyId as string,
+        await list({ data: { propertyId: propertyId as string } }),
+      ),
     enabled: !!propertyId,
     // Enquanto houver foto na fila, acompanhamos a marca sendo aplicada.
     refetchInterval: (query) =>
@@ -267,49 +287,60 @@ export function usePropertyMedia(propertyId: string | undefined) {
    * trocas seguidas e, ao gravar, reenvia as fotos para os sites publicados.
    */
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingOrder = useRef<Promise<void> | null>(null);
   const reorderPhotos = useCallback(
     (orderedIds: string[]) => {
       if (!propertyId) return;
       const key = ["property-images", propertyId];
+      const detailKey = ["imovel-detalhe", propertyId];
       const previous = qc.getQueryData<PropertyImage[]>(key);
-      if (previous) {
-        const byId = new Map(previous.map((image) => [image.id, image]));
+
+      // A ordem escolhida passa a valer para qualquer recarregamento até o
+      // servidor confirmar — assim nenhuma atualização em segundo plano
+      // devolve a foto para a posição antiga.
+      pendingOrder.set(propertyId, orderedIds);
+      void qc.cancelQueries({ queryKey: key });
+
+      const applyLocal = (images: PropertyImage[] | undefined) => {
+        if (!images?.length) return undefined;
+        const byId = new Map(images.map((image) => [image.id, image]));
         const next = orderedIds
           .map((id) => byId.get(id))
           .filter(Boolean)
           .map((image, index) => ({ ...(image as PropertyImage), position: index }));
-        if (next.length === previous.length) qc.setQueryData(key, next);
-      }
+        return next.length === images.length ? next : undefined;
+      };
+
+      const nextList = applyLocal(previous);
+      if (nextList) qc.setQueryData(key, nextList);
+      const detail = qc.getQueryData<{ images?: PropertyImage[] }>(detailKey);
+      const nextDetail = applyLocal(detail?.images);
+      if (detail && nextDetail) qc.setQueryData(detailKey, { ...detail, images: nextDetail });
 
       if (reorderTimer.current) clearTimeout(reorderTimer.current);
       reorderTimer.current = setTimeout(() => {
-        void (async () => {
+        // Salvamentos em fila: o pedido mais novo nunca é ultrapassado por um
+        // mais antigo que ainda estava em andamento.
+        const run = async () => {
+          try {
+            await savingOrder.current;
+          } catch {
+            /* ignora falha anterior */
+          }
           try {
             await reorderFn({ data: { propertyId, orderedIds } });
-            // Não recarrega ficha nem lista: a ordem na tela já é a correta e
-            // recarregar faria as fotos baixarem de novo (delay e piscada).
-            const detailKey = ["imovel-detalhe", propertyId];
-            const detail = qc.getQueryData<{ images?: PropertyImage[] }>(detailKey);
-            if (detail?.images?.length) {
-              const byId = new Map(detail.images.map((image) => [image.id, image]));
-              const nextImages = orderedIds
-                .map((id) => byId.get(id))
-                .filter(Boolean)
-                .map((image, index) => ({ ...(image as PropertyImage), position: index }));
-              if (nextImages.length === detail.images.length) {
-                qc.setQueryData(detailKey, { ...detail, images: nextImages });
-              }
-            }
+            if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
             syncOrderToProviders(propertyId);
           } catch (err) {
+            if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
             if (previous) qc.setQueryData(key, previous);
             toast.error(
               (err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.",
             );
           }
-        })();
-      }, 250);
-
+        };
+        savingOrder.current = run();
+      }, 120);
     },
     [propertyId, qc, reorderFn, syncOrderToProviders],
   );
@@ -322,11 +353,11 @@ export function usePropertyMedia(propertyId: string | undefined) {
 
   /**
    * Refaz a marca-d'água no navegador a partir do original guardado.
-   * O processador do servidor não pode mais rodar no ambiente publicado, então
-   * o "tentar novamente" acontece aqui, com a mesma marca dos envios atuais.
+   * O processador do servidor não pode rodar no ambiente publicado, então o
+   * ajuste acontece aqui — automaticamente, sem o usuário pedir.
    */
-  const retryWatermark = useMutation({
-    mutationFn: async (imageId?: string) => {
+  const repairWatermarks = useCallback(
+    async (imageId?: string) => {
       const id = propertyId as string;
       const targets = await prepareRetryFn({
         data: { propertyId: id, ...(imageId ? { imageId } : {}) },
@@ -377,6 +408,26 @@ export function usePropertyMedia(propertyId: string | undefined) {
       }
       return { total: targets.length, ok, problemas };
     },
+    [propertyId, prepareRetryFn, finalizeRetryFn],
+  );
+
+  /** Correção silenciosa: roda sozinha enquanto a tela estiver aberta. */
+  const autoHealing = useRef(false);
+  const autoHealWatermarks = useCallback(async () => {
+    if (!propertyId || autoHealing.current) return;
+    autoHealing.current = true;
+    try {
+      const result = await repairWatermarks();
+      if (result.ok > 0) invalidate();
+    } catch {
+      // Sem aviso: a fila do servidor tenta de novo mais tarde.
+    } finally {
+      autoHealing.current = false;
+    }
+  }, [propertyId, repairWatermarks, invalidate]);
+
+  const retryWatermark = useMutation({
+    mutationFn: (imageId?: string) => repairWatermarks(imageId),
     onSuccess: (result) => {
       invalidate();
       if (!result.total) toast.info("Nenhuma foto pendente de marca.");
@@ -412,6 +463,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
     reorderPhotos,
     remove,
     retryWatermark,
+    autoHealWatermarks,
     updateTargets,
     progress,
     clearProgress,

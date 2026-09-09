@@ -51,6 +51,14 @@ export function PropertyPhotosStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId, targetsKey]);
 
+  // Fotos que ficaram sem marca são refeitas sozinhas, sem clique nenhum.
+  const autoHeal = media.autoHealWatermarks;
+  useEffect(() => {
+    if (!propertyId || falhas === 0) return;
+    const timer = setTimeout(() => void autoHeal(), 1200);
+    return () => clearTimeout(timer);
+  }, [propertyId, falhas, autoHeal]);
+
   async function pickFiles() {
     if (!propertyId && onRequestSave) {
       setPreparing(true);
@@ -206,20 +214,13 @@ export function PropertyPhotosStep({
             {pendentes > 0
               ? `Atualizando marcas nas fotos… ${prontas} de ${rows.length} prontas.`
               : `${prontas} de ${rows.length} fotos prontas com a marca ${marcaAtual}.`}
-            {falhas > 0 ? ` ${falhas} precisam de nova tentativa.` : ""}
+            {falhas > 0 ? ` ${falhas} sendo ajustadas automaticamente.` : ""}
           </span>
           {(falhas > 0 || pendentes > 0) && (
-            <button
-              type="button"
-              onClick={() => media.retryWatermark.mutate(undefined)}
-              disabled={media.retryWatermark.isPending}
-              className="inline-flex items-center gap-1 font-semibold text-primary disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`size-3 ${media.retryWatermark.isPending ? "animate-spin" : ""}`}
-              />
-              Tentar novamente todas
-            </button>
+            <span className="inline-flex items-center gap-1 font-semibold text-primary">
+              <RefreshCw className="size-3 animate-spin" />
+              Ajuste automático em andamento
+            </span>
           )}
         </div>
       )}
@@ -248,9 +249,11 @@ export function PropertyPhotosStep({
               }
             >
               <img
-                src={image.url}
+                src={image.thumbUrl || image.url}
                 alt={`Foto ${index + 1} do imóvel`}
                 loading="lazy"
+                decoding="async"
+                draggable={false}
                 className="aspect-square w-full object-cover"
               />
               {image.isCover && (

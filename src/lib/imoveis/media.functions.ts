@@ -44,17 +44,57 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
       s.signedUrl,
     ]),
   );
-  return rows.map((r) => ({
-    id: r.id,
-    url: byPath.get(r.processed_storage_path ?? r.storage_path) ?? "",
-    isCover: r.is_cover,
-    position: r.position,
-    processingStatus: (r.processing_status ?? "ready") as PropertyImage["processingStatus"],
-    watermarkLabel: r.watermark_variant
-      ? watermarkLabel(r.watermark_variant as WatermarkVariant)
-      : null,
-    processingError: r.processing_error_message,
-  }));
+
+  // Miniatura leve para as listas e para o organizador: usa a miniatura já
+  // gravada e, quando ela não existe, uma versão reduzida gerada pelo Storage.
+  const thumbByRow = new Map<string, string>();
+  const thumbPaths = rows
+    .map((r) => r.thumbnail_storage_path)
+    .filter((p): p is string => Boolean(p));
+  if (thumbPaths.length) {
+    const { data: signedThumbs } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(thumbPaths, 3600);
+    const map = new Map(
+      ((signedThumbs ?? []) as Array<{ path?: string | null; signedUrl: string }>).map((s) => [
+        s.path ?? "",
+        s.signedUrl,
+      ]),
+    );
+    for (const r of rows) {
+      const url = r.thumbnail_storage_path ? map.get(r.thumbnail_storage_path) : undefined;
+      if (url) thumbByRow.set(r.id, url);
+    }
+  }
+  await Promise.all(
+    rows
+      .filter((r) => !thumbByRow.has(r.id))
+      .map(async (r) => {
+        const path = r.processed_storage_path ?? r.storage_path;
+        const { data: small } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(path, 3600, {
+            transform: { width: 480, height: 480, resize: "cover", quality: 60 },
+          });
+        if (small?.signedUrl) thumbByRow.set(r.id, small.signedUrl);
+      }),
+  );
+
+  return rows.map((r) => {
+    const url = byPath.get(r.processed_storage_path ?? r.storage_path) ?? "";
+    return {
+      id: r.id,
+      url,
+      thumbUrl: thumbByRow.get(r.id) ?? url,
+      isCover: r.is_cover,
+      position: r.position,
+      processingStatus: (r.processing_status ?? "ready") as PropertyImage["processingStatus"],
+      watermarkLabel: r.watermark_variant
+        ? watermarkLabel(r.watermark_variant as WatermarkVariant)
+        : null,
+      processingError: r.processing_error_message,
+    };
+  });
 }
 
 async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[]> {
@@ -366,20 +406,20 @@ export const setPropertyImageCover = createServerFn({ method: "POST" })
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
+/**
+ * Salva a ordem inteira em uma única chamada ao banco (antes era uma por
+ * foto), e não devolve a lista assinada — a tela já mostra a ordem correta.
+ */
 export const reorderPropertyImages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string; orderedIds: string[] }) => data)
-  .handler(async ({ data, context }): Promise<PropertyImage[]> => {
-    for (let i = 0; i < data.orderedIds.length; i += 1) {
-      const id = data.orderedIds[i]!;
-      const { error } = await context.supabase
-        .from("property_images")
-        .update({ position: i })
-        .eq("id", id)
-        .eq("property_id", data.propertyId);
-      if (error) throw new Error(error.message);
-    }
-    return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
+  .handler(async ({ data, context }): Promise<{ ok: true; changed: number }> => {
+    const { data: changed, error } = await context.supabase.rpc("reorder_property_images", {
+      _property_id: data.propertyId,
+      _ids: data.orderedIds,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, changed: Number(changed ?? 0) };
   });
 
 /**

@@ -2413,13 +2413,16 @@ export type Database = {
       }
       property_image_provider_publications: {
         Row: {
+          attempts: number
           content_hash: string | null
           created_at: string
+          error_class: string | null
           external_image_id: string | null
           id: string
           image_id: string
           is_cover: boolean
           last_error_message: string | null
+          next_retry_at: string | null
           provider: Database["public"]["Enums"]["imobi_provider"]
           publication_id: string
           remote_url: string | null
@@ -2428,13 +2431,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attempts?: number
           content_hash?: string | null
           created_at?: string
+          error_class?: string | null
           external_image_id?: string | null
           id?: string
           image_id: string
           is_cover?: boolean
           last_error_message?: string | null
+          next_retry_at?: string | null
           provider: Database["public"]["Enums"]["imobi_provider"]
           publication_id: string
           remote_url?: string | null
@@ -2443,13 +2449,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attempts?: number
           content_hash?: string | null
           created_at?: string
+          error_class?: string | null
           external_image_id?: string | null
           id?: string
           image_id?: string
           is_cover?: boolean
           last_error_message?: string | null
+          next_retry_at?: string | null
           provider?: Database["public"]["Enums"]["imobi_provider"]
           publication_id?: string
           remote_url?: string | null
@@ -5073,6 +5082,10 @@ export type Database = {
       region_display_label: { Args: { _raw: string }; Returns: string }
       region_normalized_key: { Args: { _raw: string }; Returns: string }
       release_expired_provider_codes: { Args: never; Returns: number }
+      reorder_property_images: {
+        Args: { _ids: string[]; _property_id: string }
+        Returns: number
+      }
       reserve_provider_code: {
         Args: {
           _property_id?: string

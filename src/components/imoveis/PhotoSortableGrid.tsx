@@ -77,7 +77,11 @@ export function usePhotoSorting<T extends { id: string }>({
     const node = nodesRef.current.get(id);
     if (!node) return;
     const rect = node.getBoundingClientRect();
-    const current = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+    // getComputedStyle devolve "none" quando não há transform, e o construtor
+    // da matriz lança erro nesse caso — o que interrompia o arraste.
+    const raw = getComputedStyle(node).transform;
+    const current =
+      raw && raw !== "none" ? new DOMMatrixReadOnly(raw) : new DOMMatrixReadOnly();
     const baseLeft = rect.left - current.m41;
     const baseTop = rect.top - current.m42;
     const dx = pointerRef.current.x - grabOffsetRef.current.x - baseLeft;

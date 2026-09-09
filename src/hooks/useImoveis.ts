@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { applyPendingOrder } from "@/hooks/usePropertyMedia";
 import {
   archiveImovel,
   createImovel,
@@ -57,7 +58,13 @@ export function usePropertyDetail(id: string | undefined) {
   const get = useServerFn(getPropertyDetail);
   return useQuery<PropertyDetail | null>({
     queryKey: ["imovel-detalhe", id],
-    queryFn: () => get({ data: { id: id as string } }),
+    queryFn: async () => {
+      const detail = await get({ data: { id: id as string } });
+      if (!detail?.images?.length) return detail;
+      // Respeita a ordem que o usuário acabou de escolher, mesmo que o
+      // servidor ainda não tenha confirmado a gravação.
+      return { ...detail, images: applyPendingOrder(id as string, detail.images) };
+    },
     enabled: !!id,
     staleTime: 30_000,
   });
