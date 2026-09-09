@@ -469,6 +469,7 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
           images.push({
             id: r.id,
             url,
+            thumbUrl: url,
             isCover: r.is_cover,
             position: r.position,
             processingStatus: (r.processing_status ?? "ready") as PropertyImage["processingStatus"],

@@ -65,6 +65,8 @@ export type PropertyImageProcessingStatus =
 export type PropertyImage = {
   id: string;
   url: string;
+  /** Versão leve usada nas listas e no organizador (carrega bem mais rápido). */
+  thumbUrl: string;
   isCover: boolean;
   position: number;
   /** Estado da marca-d'água obrigatória aplicada no backend. */

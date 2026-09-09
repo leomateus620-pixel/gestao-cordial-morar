@@ -223,23 +223,27 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
 async function failJob(admin: Admin, job: Job, error: unknown) {
   const raw = (error as Error)?.message ?? "Falha ao aplicar a marca.";
   // O ambiente publicado não permite compilar WebAssembly: repetir no servidor
-  // nunca resolve. A foto é marcada para refazer a marca pelo navegador.
+  // nunca resolve. A foto fica aguardando o ajuste automático que qualquer
+  // sessão aberta do sistema executa em segundo plano — nunca vira falha final.
   const wasmBlocked = /WebAssembly|Wasm code generation/i.test(raw);
   const code = wasmBlocked
-    ? "reprocessar_no_navegador"
+    ? "aguardando_navegador"
     : error instanceof WatermarkError
       ? error.code
       : "unexpected";
   const message = wasmBlocked
-    ? "Esta foto precisa ser remarcada pelo navegador: use “Tentar novamente”."
+    ? "Ajuste automático da marca em andamento."
     : raw.slice(0, 400);
-  const terminal = job.attempts >= job.max_attempts || PERMANENT_CODES.includes(code) || wasmBlocked;
-  const delaySeconds = Math.min(300, 2 ** job.attempts * 15);
+  const terminal = !wasmBlocked && (job.attempts >= job.max_attempts || PERMANENT_CODES.includes(code));
+  const delaySeconds = wasmBlocked ? 900 : Math.min(300, 2 ** job.attempts * 15);
 
   await admin
     .from("property_image_jobs")
     .update({
       status: terminal ? "failed" : "retry",
+      // Espera longa nos casos que dependem do ajuste automático: o servidor
+      // não fica reprocessando à toa enquanto a sessão do navegador resolve.
+      ...(wasmBlocked ? { attempts: 0 } : {}),
       run_after: new Date(Date.now() + delaySeconds * 1000).toISOString(),
       lease_expires_at: null,
       last_error_code: code,

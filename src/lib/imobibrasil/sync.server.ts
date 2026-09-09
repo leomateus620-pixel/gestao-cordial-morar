@@ -19,6 +19,8 @@ import {
   type LocalPropertyForSync,
 } from "./serializers";
 import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
+import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
+import { fetchDeliveryBytes } from "@/lib/imoveis/delivery.server";
 import type { ImobiProvider } from "./providers";
 import { providerExternalCode } from "./provider-code";
 
@@ -140,24 +142,32 @@ async function syncCharacteristics(
   }
 }
 
+/** Foto travada há mais tempo que isso não segura mais a publicação do imóvel. */
+const STUCK_IMAGE_WINDOW_MS = 15 * 60 * 1000;
+
 async function syncImages(admin: Admin, job: SyncJob, publicationId: string, externalId: string) {
   const { data: images } = await admin
     .from("property_images")
     .select(
-      "id, storage_path, processed_storage_path, processed_checksum, file_name, mime_type, content_hash, is_cover, position, processing_status",
+      "id, storage_path, processed_storage_path, processed_checksum, file_name, mime_type, content_hash, is_cover, position, processing_status, processing_started_at, updated_at",
     )
     .eq("property_id", job.property_id)
     .order("is_cover", { ascending: false })
     .order("position", { ascending: true });
 
   // Só publicamos fotos com marca-d'água aplicada (ou o acervo legado já publicado).
-  // Fotos em andamento seguram o envio; fotos com falha apenas ficam de fora —
-  // os dados do imóvel nunca podem deixar de ir ao site por causa de imagem.
+  // Fotos em andamento recentes seguram o envio; as travadas há muito tempo
+  // apenas ficam de fora — os dados do imóvel nunca podem deixar de ir ao site
+  // por causa de imagem, e a varredura automática as recupera depois.
   const allImages = images ?? [];
   const list = allImages.filter(canPublishPropertyImage);
-  const inFlight = allImages.filter((image) =>
-    ["pending", "processing"].includes(String(image.processing_status)),
-  ).length;
+  const now = Date.now();
+  const inFlight = allImages.filter((image) => {
+    if (!["pending", "processing"].includes(String(image.processing_status))) return false;
+    const since = image.processing_started_at ?? image.updated_at;
+    const age = since ? now - new Date(since as string).getTime() : 0;
+    return age < STUCK_IMAGE_WINDOW_MS;
+  }).length;
   if (inFlight > 0) {
     throw new Error(`${inFlight} foto(s) ainda estão recebendo a marca-d'água.`);
   }
@@ -170,12 +180,12 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
       errorMessage: `${skipped} foto(s) sem marca-d'água foram ignoradas no envio.`,
     });
   }
-  if (!list.length) return { sent: 0, failed: 0 };
+  if (!list.length) return { sent: 0, failed: 0, retrying: 0 };
 
 
   const { data: published } = await admin
     .from("property_image_provider_publications")
-    .select("image_id, content_hash, external_image_id, status")
+    .select("image_id, content_hash, external_image_id, status, attempts, next_retry_at")
     .eq("publication_id", publicationId);
   const publishedIndex = new Map((published ?? []).map((row) => [row.image_id, row]));
 
@@ -184,25 +194,32 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
 
   const pending = list.filter((image) => {
     const existing = publishedIndex.get(image.id);
-    return (
-      !existing || existing.status !== "synced" || existing.content_hash !== deliveredHash(image)
-    );
+    if (!existing) return true;
+    const outdated =
+      existing.status !== "synced" || existing.content_hash !== deliveredHash(image);
+    if (!outdated) return false;
+    // Falha recente com nova tentativa marcada: respeita a espera programada.
+    if (existing.status === "error" && existing.next_retry_at) {
+      return new Date(existing.next_retry_at as string).getTime() <= now;
+    }
+    return true;
   });
 
   let sent = 0;
   let failed = 0;
+  let retrying = 0;
 
   for (let index = 0; index < pending.length; index += IMAGE_CONCURRENCY) {
     const batch = pending.slice(index, index + IMAGE_CONCURRENCY);
     await Promise.all(
       batch.map(async (image) => {
+        const previousAttempts = Number(publishedIndex.get(image.id)?.attempts ?? 0);
         try {
           const deliveryPath = image.processed_storage_path ?? image.storage_path;
-          const download = await admin.storage.from("property-images").download(deliveryPath);
-          if (download.error || !download.data)
-            throw new Error("Falha ao ler a imagem no armazenamento.");
+          // A cópia de envio é reduzida no armazenamento até caber no limite do site.
+          const delivery = await fetchDeliveryBytes(admin, "property-images", deliveryPath);
           const form = new FormData();
-          form.append("imagem", download.data, image.file_name);
+          form.append("imagem", delivery.blob, image.file_name);
           form.append("destaque", boolToImageSimNao(Boolean(image.is_cover)));
           const response = await imobiRequest(
             job.provider,
@@ -227,6 +244,9 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
               is_cover: Boolean(image.is_cover),
               status: "synced",
               last_error_message: null,
+              error_class: null,
+              attempts: 0,
+              next_retry_at: null,
               synced_at: new Date().toISOString(),
             },
             { onConflict: "image_id,publication_id" },
@@ -235,6 +255,10 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
         } catch (error) {
           failed += 1;
           const normalized = toImobiError(error);
+          const attempts = previousAttempts + 1;
+          const errorClass = classifyImageDeliveryError(normalized.message);
+          const retryAt = nextImageRetryAt(errorClass, attempts);
+          if (retryAt) retrying += 1;
           await admin.from("property_image_provider_publications").upsert(
             {
               image_id: image.id,
@@ -244,6 +268,9 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
               is_cover: Boolean(image.is_cover),
               status: "error",
               last_error_message: normalized.message,
+              error_class: errorClass,
+              attempts,
+              next_retry_at: retryAt,
             },
             { onConflict: "image_id,publication_id" },
           );
@@ -252,7 +279,7 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     );
   }
 
-  return { sent, failed };
+  return { sent, failed, retrying };
 }
 
 async function loadProperty(admin: Admin, propertyId: string) {
