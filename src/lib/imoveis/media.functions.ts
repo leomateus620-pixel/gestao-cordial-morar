@@ -413,14 +413,22 @@ export const setPropertyImageCover = createServerFn({ method: "POST" })
 export const reorderPropertyImages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string; orderedIds: string[] }) => data)
-  .handler(async ({ data, context }): Promise<{ ok: true; changed: number }> => {
-    const { data: changed, error } = await context.supabase.rpc("reorder_property_images", {
-      _property_id: data.propertyId,
-      _ids: data.orderedIds,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true, changed: Number(changed ?? 0) };
-  });
+  .handler(
+    async ({ data, context }): Promise<{ ok: true; changed: number; coverId: string | null }> => {
+      const { data: result, error } = await context.supabase.rpc("reorder_property_images", {
+        _property_id: data.propertyId,
+        _ids: data.orderedIds,
+      });
+      if (error) throw new Error(error.message);
+      const payload = (result ?? {}) as { changed?: number; coverId?: string | null };
+      return {
+        ok: true,
+        changed: Number(payload.changed ?? 0),
+        coverId: payload.coverId ?? data.orderedIds[0] ?? null,
+      };
+    },
+  );
+
 
 /**
  * Remove a foto: o arquivo só sai do Storage depois que o registro é apagado,

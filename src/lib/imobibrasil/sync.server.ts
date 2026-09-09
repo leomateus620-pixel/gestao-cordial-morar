@@ -152,8 +152,9 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
       "id, storage_path, processed_storage_path, processed_checksum, file_name, mime_type, content_hash, is_cover, position, processing_status, processing_started_at, updated_at",
     )
     .eq("property_id", job.property_id)
-    .order("is_cover", { ascending: false })
+    // A galeria vai para o site exatamente na ordem escolhida no sistema.
     .order("position", { ascending: true });
+
 
   // Só publicamos fotos com marca-d'água aplicada (ou o acervo legado já publicado).
   // Fotos em andamento recentes seguram o envio; as travadas há muito tempo
