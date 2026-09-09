@@ -186,7 +186,7 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
 
   const { data: published } = await admin
     .from("property_image_provider_publications")
-    .select("image_id, content_hash, external_image_id, status, attempts, next_retry_at")
+    .select("image_id, content_hash, external_image_id, status, attempts, next_retry_at, is_cover")
     .eq("publication_id", publicationId);
   const publishedIndex = new Map((published ?? []).map((row) => [row.image_id, row]));
 
@@ -196,8 +196,12 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
   const pending = list.filter((image) => {
     const existing = publishedIndex.get(image.id);
     if (!existing) return true;
+    // Mudança de capa exige reenviar a foto para o site atualizar o destaque.
+    const coverChanged = Boolean(existing.is_cover) !== Boolean(image.is_cover);
     const outdated =
-      existing.status !== "synced" || existing.content_hash !== deliveredHash(image);
+      existing.status !== "synced" ||
+      existing.content_hash !== deliveredHash(image) ||
+      coverChanged;
     if (!outdated) return false;
     // Falha recente com nova tentativa marcada: respeita a espera programada.
     if (existing.status === "error" && existing.next_retry_at) {
@@ -205,6 +209,7 @@ async function syncImages(admin: Admin, job: SyncJob, publicationId: string, ext
     }
     return true;
   });
+
 
   let sent = 0;
   let failed = 0;
