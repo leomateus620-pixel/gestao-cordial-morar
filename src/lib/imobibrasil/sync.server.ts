@@ -325,6 +325,37 @@ async function ensurePublication(
   return created;
 }
 
+/**
+ * Garante o código real da imobiliária antes de publicar.
+ * Se o imóvel ainda não tem `codigo_cordial` / `codigo_morar`, aloca o próximo
+ * número livre daquela sequência e grava no cadastro. Falha aqui nunca trava a
+ * fila: o fluxo segue com a referência técnica como último recurso.
+ */
+async function ensureProviderCode(
+  admin: Admin,
+  propertyId: string,
+  provider: ImobiProvider,
+  property: Record<string, unknown>,
+): Promise<string | null> {
+  const current = providerExternalCode(property, provider);
+  if (current) return current;
+  try {
+    const { data, error } = await admin.rpc("allocate_provider_code_for_property", {
+      _property_id: propertyId,
+      _provider: provider,
+    });
+    if (error) throw new Error(error.message);
+    const code = typeof data === "string" ? data.trim() : "";
+    if (!code) return null;
+    const column = provider === "cordial" ? "codigo_cordial" : "codigo_morar";
+    (property as Record<string, unknown>)[column] = code;
+    return code;
+  } catch {
+    return null;
+  }
+}
+
+
 export async function processJob(admin: Admin, job: SyncJob) {
   const property = await loadProperty(admin, job.property_id);
   // Um imóvel publicado numa imobiliária sem código próprio recebe agora um número
