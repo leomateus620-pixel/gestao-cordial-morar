@@ -240,33 +240,45 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const enqueueSync = useServerFn(enqueuePropertySync);
   /** Reenfileira apenas os sites em que o imóvel já está publicado. */
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runProviderSync = useCallback(
+    async (id: string) => {
+      if (syncTimer.current) {
+        clearTimeout(syncTimer.current);
+        syncTimer.current = null;
+      }
+      try {
+        const detail = qc.getQueryData<{
+          archivedAt: string | null;
+          isDraft?: boolean;
+          publications?: Array<{ provider: string; status: string }>;
+        }>(["imovel-detalhe", id]);
+        if (!detail || detail.archivedAt || detail.isDraft) return;
+        const providers = (detail.publications ?? [])
+          .filter((p) => p.status === "published" || p.status === "partial")
+          .map((p) => p.provider);
+        if (!providers.length) return;
+        await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
+        qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      } catch {
+        // A ordem já está salva; o painel de publicação permite reenviar.
+      }
+    },
+    [qc, enqueueSync],
+  );
+
   const syncOrderToProviders = useCallback(
     (id: string) => {
       // Agrupa várias trocas seguidas: um único reenvio ao fim da organização.
       if (syncTimer.current) clearTimeout(syncTimer.current);
       syncTimer.current = setTimeout(() => {
-        void (async () => {
-          try {
-            const detail = qc.getQueryData<{
-              archivedAt: string | null;
-              isDraft?: boolean;
-              publications?: Array<{ provider: string; status: string }>;
-            }>(["imovel-detalhe", id]);
-            if (!detail || detail.archivedAt || detail.isDraft) return;
-            const providers = (detail.publications ?? [])
-              .filter((p) => p.status === "published" || p.status === "partial")
-              .map((p) => p.provider);
-            if (!providers.length) return;
-            await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
-            qc.invalidateQueries({ queryKey: ["property-sync", id] });
-          } catch {
-            // A ordem já está salva; o painel de publicação permite reenviar.
-          }
-        })();
+        syncTimer.current = null;
+        void runProviderSync(id);
       }, 3000);
     },
-    [qc, enqueueSync],
+    [runProviderSync],
   );
+
 
   const setCover = useMutation({
     mutationFn: (imageId: string) =>
