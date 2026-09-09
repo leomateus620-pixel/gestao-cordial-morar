@@ -417,3 +417,127 @@ export const deletePropertyImage = createServerFn({ method: "POST" })
     }
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
+
+/**
+ * Prepara o reprocessamento das fotos travadas: o runtime publicado não pode
+ * compilar WebAssembly, então a marca é refeita no navegador a partir do
+ * original já guardado no Storage.
+ */
+export const preparePropertyImageReprocess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string; imageId?: string }) => data)
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<
+      Array<{
+        imageId: string;
+        fileName: string;
+        downloadUrl: string;
+        processed: { path: string; token: string };
+        thumbnail: { path: string; token: string };
+      }>
+    > => {
+      const rows = await listRows(context.supabase, data.propertyId);
+      const stuck = ["pending", "processing", "failed", "failed_retryable", "failed_permanent"];
+      const targets = rows.filter(
+        (row) =>
+          (data.imageId ? row.id === data.imageId : true) && stuck.includes(row.processing_status),
+      );
+      if (!targets.length) return [];
+
+      const sourcePaths = targets.map((row) => row.original_storage_path ?? row.storage_path);
+      const { data: signed } = await context.supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(sourcePaths, 1800);
+      const byPath = new Map(
+        ((signed ?? []) as Array<{ path?: string | null; signedUrl: string }>).map((item) => [
+          item.path ?? "",
+          item.signedUrl,
+        ]),
+      );
+
+      const sign = async (path: string) => {
+        const { data: upload, error } = await context.supabase.storage
+          .from(BUCKET)
+          .createSignedUploadUrl(path);
+        if (error || !upload) throw new Error(error?.message ?? "Falha ao preparar o reenvio.");
+        return { path: upload.path as string, token: upload.token as string };
+      };
+
+      const out: Array<{
+        imageId: string;
+        fileName: string;
+        downloadUrl: string;
+        processed: { path: string; token: string };
+        thumbnail: { path: string; token: string };
+      }> = [];
+      for (const row of targets) {
+        const source = row.original_storage_path ?? row.storage_path;
+        const downloadUrl = byPath.get(source);
+        if (!downloadUrl) continue;
+        const stamp = `${row.id}-${Date.now()}`;
+        out.push({
+          imageId: row.id,
+          fileName: row.file_name,
+          downloadUrl,
+          processed: await sign(`${data.propertyId}/marcadas/${stamp}.jpg`),
+          thumbnail: await sign(`${data.propertyId}/marcadas/${stamp}-thumb.jpg`),
+        });
+      }
+      return out;
+    },
+  );
+
+/** Registra a foto remarcada no navegador e libera a publicação nos sites. */
+export const finalizePropertyImageReprocess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      propertyId: string;
+      imageId: string;
+      processedPath: string;
+      thumbnailPath: string;
+      processedChecksum: string;
+      watermarkVariant: string;
+      watermarkVersion: string;
+      destinationHash: string;
+      width: number;
+      height: number;
+    }) => data,
+  )
+  .handler(async ({ data, context }): Promise<PropertyImage[]> => {
+    const size = await storedSize(context.supabase, data.processedPath);
+    if (!size) throw new Error("A foto com a marca não pôde ser confirmada. Tente de novo.");
+
+    const { error } = await context.supabase
+      .from("property_images")
+      .update({
+        processed_storage_path: data.processedPath,
+        thumbnail_storage_path: data.thumbnailPath,
+        processed_checksum: data.processedChecksum,
+        watermark_variant: data.watermarkVariant,
+        watermark_version: data.watermarkVersion,
+        destination_hash: data.destinationHash,
+        processing_status: "ready",
+        processing_error_code: null,
+        processing_error_message: null,
+        processed_at: new Date().toISOString(),
+        processing_finished_at: new Date().toISOString(),
+        width: data.width,
+        height: data.height,
+      })
+      .eq("id", data.imageId)
+      .eq("property_id", data.propertyId);
+    if (error) throw new Error(error.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("property_image_jobs")
+      .update({ status: "cancelled", last_error_code: "reprocessado_no_navegador" })
+      .eq("image_id", data.imageId)
+      .in("status", ["pending", "processing", "retry", "failed"]);
+
+    return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
+  });
