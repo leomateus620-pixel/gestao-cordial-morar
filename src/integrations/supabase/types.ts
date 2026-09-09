@@ -1483,6 +1483,75 @@ export type Database = {
           },
         ]
       }
+      nfse_provider_settings: {
+        Row: {
+          aliquota_iss: number
+          brand: string
+          cidade_tom: string
+          cnpj: string
+          codigo_ibge_municipio: string
+          codigo_item_lista_servico: string
+          codigo_nbs: string | null
+          created_at: string
+          endpoint_url: string
+          ibs_cbs_c_class_trib: string
+          ibs_cbs_c_ind_op: string
+          ibs_cbs_cst: string
+          id: string
+          inscricao_municipal: string | null
+          modo_teste: boolean
+          razao_social: string | null
+          simples_nacional: boolean
+          situacao_tributaria: string
+          tributa_municipio_prestador: string
+          updated_at: string
+        }
+        Insert: {
+          aliquota_iss?: number
+          brand: string
+          cidade_tom?: string
+          cnpj?: string
+          codigo_ibge_municipio?: string
+          codigo_item_lista_servico?: string
+          codigo_nbs?: string | null
+          created_at?: string
+          endpoint_url?: string
+          ibs_cbs_c_class_trib?: string
+          ibs_cbs_c_ind_op?: string
+          ibs_cbs_cst?: string
+          id?: string
+          inscricao_municipal?: string | null
+          modo_teste?: boolean
+          razao_social?: string | null
+          simples_nacional?: boolean
+          situacao_tributaria?: string
+          tributa_municipio_prestador?: string
+          updated_at?: string
+        }
+        Update: {
+          aliquota_iss?: number
+          brand?: string
+          cidade_tom?: string
+          cnpj?: string
+          codigo_ibge_municipio?: string
+          codigo_item_lista_servico?: string
+          codigo_nbs?: string | null
+          created_at?: string
+          endpoint_url?: string
+          ibs_cbs_c_class_trib?: string
+          ibs_cbs_c_ind_op?: string
+          ibs_cbs_cst?: string
+          id?: string
+          inscricao_municipal?: string | null
+          modo_teste?: boolean
+          razao_social?: string | null
+          simples_nacional?: boolean
+          situacao_tributaria?: string
+          tributa_municipio_prestador?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           actor_id: string | null
@@ -3773,6 +3842,68 @@ export type Database = {
           vinculo?: string | null
         }
         Relationships: []
+      }
+      rental_nfse_emissions: {
+        Row: {
+          brand: string
+          codigo_verificador: string | null
+          competencia: string
+          contract_id: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          link_pdf: string | null
+          modo_teste: boolean
+          numero_nfse: string | null
+          request_xml: string | null
+          response_raw: string | null
+          status: string
+          valor: number
+        }
+        Insert: {
+          brand: string
+          codigo_verificador?: string | null
+          competencia: string
+          contract_id: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          link_pdf?: string | null
+          modo_teste?: boolean
+          numero_nfse?: string | null
+          request_xml?: string | null
+          response_raw?: string | null
+          status?: string
+          valor: number
+        }
+        Update: {
+          brand?: string
+          codigo_verificador?: string | null
+          competencia?: string
+          contract_id?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          link_pdf?: string | null
+          modo_teste?: boolean
+          numero_nfse?: string | null
+          request_xml?: string | null
+          response_raw?: string | null
+          status?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_nfse_emissions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rental_properties: {
         Row: {
