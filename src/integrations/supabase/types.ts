@@ -5091,7 +5091,7 @@ export type Database = {
       release_expired_provider_codes: { Args: never; Returns: number }
       reorder_property_images: {
         Args: { _ids: string[]; _property_id: string }
-        Returns: number
+        Returns: Json
       }
       reserve_provider_code: {
         Args: {
