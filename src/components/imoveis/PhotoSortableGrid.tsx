@@ -173,22 +173,22 @@ export function usePhotoSorting<T extends { id: string }>({
     });
     if (contained >= 0) return contained;
     return nearestDist <= nearestReach ? nearest : -1;
-  }, []);
+  }, [liveRect]);
 
   /** Quantas colunas a grade tem (1 quando é uma tira horizontal). */
   const countColumns = useCallback(() => {
     const ids = orderRef.current;
-    const first = rectsRef.current.get(ids[0] ?? "");
+    const first = liveRect(ids[0] ?? "");
     if (!first) return 1;
     let columns = 0;
     for (const id of ids) {
-      const rect = rectsRef.current.get(id);
+      const rect = liveRect(id);
       if (!rect) continue;
       if (Math.abs(rect.top - first.top) < 4) columns += 1;
       else break;
     }
     return Math.max(1, columns);
-  }, []);
+  }, [liveRect]);
 
   /** Contêiner rolável mais próximo (a tira pode rolar em um ancestral). */
 
