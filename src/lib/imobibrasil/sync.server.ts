@@ -327,11 +327,14 @@ async function ensurePublication(
 
 export async function processJob(admin: Admin, job: SyncJob) {
   const property = await loadProperty(admin, job.property_id);
-  const providerCode = providerExternalCode(property as Record<string, unknown>, job.provider);
+  // Um imóvel publicado numa imobiliária sem código próprio recebe agora um número
+  // real da sequência daquela imobiliária — nunca mais a referência técnica `GC-…`.
+  const providerCode = await ensureProviderCode(admin, job.property_id, job.provider, property);
   const publication = await ensurePublication(admin, job.property_id, job.provider, providerCode);
   // Enquanto o imóvel não existe no site, a referência acompanha o código do provedor.
   let reference = publication.external_reference ?? buildExternalReference(job.property_id);
-  if (providerCode && !publication.external_property_id && reference !== providerCode) {
+  const referenceIsSynthetic = /^GC-/i.test(reference);
+  if (providerCode && reference !== providerCode && (!publication.external_property_id || referenceIsSynthetic)) {
     reference = providerCode;
     await admin
       .from("property_provider_publications")
