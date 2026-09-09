@@ -504,6 +504,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
     setCover,
     reorder,
     reorderPhotos,
+    flushReorder,
+
     remove,
     retryWatermark,
     autoHealWatermarks,
