@@ -200,9 +200,9 @@ function DetalhePage() {
           <ArrowLeft className="size-4" />
         </Link>
         <span className="ml-auto flex shrink-0 items-center gap-2">
-          <CopyPublicLinkControl
+          <PublicLinkButtons
             links={imovel.publications
-              .filter((p) => p.status === "published" && p.publicUrl)
+              .filter((p) => p.publicUrl && p.status !== "draft" && p.status !== "unpublished")
               .map((p) => ({ provider: p.provider, url: p.publicUrl }))}
           />
           <Link
