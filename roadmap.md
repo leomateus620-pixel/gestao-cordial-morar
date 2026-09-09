@@ -1,3 +1,3 @@
 
 ## Novo (09/09)
-- [ ] Enviar ao Imobi o corretor que agenciou e os dados do proprietário (uso interno na área dos corretores do provedor).
+- [x] Enviar ao Imobi o corretor que agenciou e o proprietário (códigos internos do provedor). Pendente: nomes sem correspondência no cadastro do site (ex.: "Ricardo Caetano", "Felipe") e proprietários ainda não cadastrados lá.
