@@ -10,6 +10,7 @@ import { useApp, useFiltered } from "@/store/app-store";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
+import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
@@ -42,6 +43,8 @@ function Page() {
   return (
     <>
       <ProvidersHealthCard enabled={isAdmin} />
+
+      <NfseStatusCard enabled={isAdmin} />
 
       <section className="mb-5 grid grid-cols-3 gap-3">
 

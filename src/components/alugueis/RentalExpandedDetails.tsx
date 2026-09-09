@@ -39,6 +39,9 @@ import type {
   RentalTenant,
 } from "@/types/rental";
 import { RentalDocuments } from "./RentalDocuments";
+import { RentalNfseSection } from "./RentalNfseSection";
+import { useSession } from "@/lib/auth-mock";
+import { canSeeFinancialInsights } from "@/lib/access-control";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
 
 type DetailSection = "resumo" | "contrato" | "locatarios" | "garantias" | "imovel" | "documentos";
@@ -382,6 +385,7 @@ export function RentalExpandedDetails({
   onEdit?: (contract: RentalContractFull) => void;
 }) {
   const [activeSection, setActiveSection] = useState<DetailSection>("resumo");
+  const canEmitNfse = canSeeFinancialInsights(useSession());
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contractId = contract?.id ?? null;
@@ -809,6 +813,8 @@ export function RentalExpandedDetails({
                 </div>
               </SectionSurface>
             </div>
+
+            <RentalNfseSection contract={contract} canEmit={canEmitNfse} />
 
             <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
           </div>
