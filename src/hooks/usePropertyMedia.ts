@@ -318,10 +318,74 @@ export function usePropertyMedia(propertyId: string | undefined) {
     onSuccess: invalidate,
   });
 
+  /**
+   * Refaz a marca-d'água no navegador a partir do original guardado.
+   * O processador do servidor não pode mais rodar no ambiente publicado, então
+   * o "tentar novamente" acontece aqui, com a mesma marca dos envios atuais.
+   */
   const retryWatermark = useMutation({
-    mutationFn: (imageId?: string) =>
-      retryFn({ data: { propertyId: propertyId as string, ...(imageId ? { imageId } : {}) } }),
-    onSuccess: invalidate,
+    mutationFn: async (imageId?: string) => {
+      const id = propertyId as string;
+      const targets = await prepareRetryFn({
+        data: { propertyId: id, ...(imageId ? { imageId } : {}) },
+      });
+      let ok = 0;
+      const problemas: string[] = [];
+      for (const target of targets) {
+        try {
+          const response = await fetch(target.downloadUrl);
+          if (!response.ok) throw new Error("Não foi possível baixar a foto original.");
+          const blob = await response.blob();
+          const file = new File([blob], target.fileName || "foto.jpg", {
+            type: blob.type || "image/jpeg",
+          });
+          const composed = await composeWatermarkedUpload(file);
+          await uploadSignedWithProgress({
+            bucket: BUCKET,
+            path: target.processed.path,
+            token: target.processed.token,
+            blob: composed.processed.blob,
+            contentType: "image/jpeg",
+          });
+          await uploadSignedWithProgress({
+            bucket: BUCKET,
+            path: target.thumbnail.path,
+            token: target.thumbnail.token,
+            blob: composed.thumbnail.blob,
+            contentType: "image/jpeg",
+          });
+          await finalizeRetryFn({
+            data: {
+              propertyId: id,
+              imageId: target.imageId,
+              processedPath: target.processed.path,
+              thumbnailPath: target.thumbnail.path,
+              processedChecksum: composed.processed.checksum,
+              watermarkVariant: composed.variant,
+              watermarkVersion: composed.version,
+              destinationHash: composed.destinationHash,
+              width: composed.processed.width,
+              height: composed.processed.height,
+            },
+          });
+          ok += 1;
+        } catch (error) {
+          problemas.push((error as Error)?.message ?? "Falha ao refazer a marca.");
+        }
+      }
+      return { total: targets.length, ok, problemas };
+    },
+    onSuccess: (result) => {
+      invalidate();
+      if (!result.total) toast.info("Nenhuma foto pendente de marca.");
+      else if (!result.problemas.length)
+        toast.success(`${result.ok} foto(s) prontas com a marca.`);
+      else
+        toast.warning(
+          `${result.ok} de ${result.total} fotos concluídas. ${result.problemas[0] ?? ""}`,
+        );
+    },
+    onError: (error) => toast.error((error as Error).message),
   });
 
   const updateTargets = useMutation({
