@@ -18,6 +18,9 @@ export type ImobiFinalidade = "venda" | "locacao" | "temporada";
 
 export type LocalPropertyForSync = {
   id: string;
+  /** Controle interno: viram códigos do provedor, nunca texto no site. */
+  corretor_nome?: string | null;
+  proprietario_nome?: string | null;
   referencia?: string | null;
   finalidade?: ImobiFinalidade | null;
   operacao?: string | null;
