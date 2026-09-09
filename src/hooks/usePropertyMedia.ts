@@ -54,8 +54,9 @@ export function applyPendingOrder(propertyId: string, images: PropertyImage[]): 
   const byId = new Map(images.map((image) => [image.id, image]));
   const sorted = order.map((id) => byId.get(id)).filter(Boolean) as PropertyImage[];
   if (sorted.length !== images.length) return images;
-  return sorted.map((image, index) => ({ ...image, position: index }));
+  return sorted.map((image, index) => ({ ...image, position: index, isCover: index === 0 }));
 }
+
 
 export function usePropertyImages(propertyId: string | undefined) {
   const list = useServerFn(listPropertyImages);
