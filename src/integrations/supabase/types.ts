@@ -4812,6 +4812,13 @@ export type Database = {
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
       agenda_is_participant: { Args: { _event_id: string }; Returns: boolean }
+      allocate_provider_code_for_property: {
+        Args: {
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Returns: string
+      }
       attendance_add_note: {
         Args: { _attendance_id: string; _texto: string }
         Returns: string
