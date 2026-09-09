@@ -54,8 +54,9 @@ export function applyPendingOrder(propertyId: string, images: PropertyImage[]): 
   const byId = new Map(images.map((image) => [image.id, image]));
   const sorted = order.map((id) => byId.get(id)).filter(Boolean) as PropertyImage[];
   if (sorted.length !== images.length) return images;
-  return sorted.map((image, index) => ({ ...image, position: index }));
+  return sorted.map((image, index) => ({ ...image, position: index, isCover: index === 0 }));
 }
+
 
 export function usePropertyImages(propertyId: string | undefined) {
   const list = useServerFn(listPropertyImages);
@@ -239,33 +240,45 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const enqueueSync = useServerFn(enqueuePropertySync);
   /** Reenfileira apenas os sites em que o imóvel já está publicado. */
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runProviderSync = useCallback(
+    async (id: string) => {
+      if (syncTimer.current) {
+        clearTimeout(syncTimer.current);
+        syncTimer.current = null;
+      }
+      try {
+        const detail = qc.getQueryData<{
+          archivedAt: string | null;
+          isDraft?: boolean;
+          publications?: Array<{ provider: string; status: string }>;
+        }>(["imovel-detalhe", id]);
+        if (!detail || detail.archivedAt || detail.isDraft) return;
+        const providers = (detail.publications ?? [])
+          .filter((p) => p.status === "published" || p.status === "partial")
+          .map((p) => p.provider);
+        if (!providers.length) return;
+        await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
+        qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      } catch {
+        // A ordem já está salva; o painel de publicação permite reenviar.
+      }
+    },
+    [qc, enqueueSync],
+  );
+
   const syncOrderToProviders = useCallback(
     (id: string) => {
       // Agrupa várias trocas seguidas: um único reenvio ao fim da organização.
       if (syncTimer.current) clearTimeout(syncTimer.current);
       syncTimer.current = setTimeout(() => {
-        void (async () => {
-          try {
-            const detail = qc.getQueryData<{
-              archivedAt: string | null;
-              isDraft?: boolean;
-              publications?: Array<{ provider: string; status: string }>;
-            }>(["imovel-detalhe", id]);
-            if (!detail || detail.archivedAt || detail.isDraft) return;
-            const providers = (detail.publications ?? [])
-              .filter((p) => p.status === "published" || p.status === "partial")
-              .map((p) => p.provider);
-            if (!providers.length) return;
-            await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
-            qc.invalidateQueries({ queryKey: ["property-sync", id] });
-          } catch {
-            // A ordem já está salva; o painel de publicação permite reenviar.
-          }
-        })();
+        syncTimer.current = null;
+        void runProviderSync(id);
       }, 3000);
     },
-    [qc, enqueueSync],
+    [runProviderSync],
   );
+
 
   const setCover = useMutation({
     mutationFn: (imageId: string) =>
@@ -288,17 +301,54 @@ export function usePropertyMedia(propertyId: string | undefined) {
    */
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingOrder = useRef<Promise<void> | null>(null);
+  // Última ordem escolhida ainda não confirmada — usada pelo "Concluir".
+  const latestOrder = useRef<string[] | null>(null);
+
+  const persistOrder = useCallback(
+    async (orderedIds: string[], previous: PropertyImage[] | undefined) => {
+      if (!propertyId) return;
+      const key = ["property-images", propertyId];
+      try {
+        await savingOrder.current;
+      } catch {
+        /* ignora falha anterior */
+      }
+      const run = (async () => {
+        try {
+          await reorderFn({ data: { propertyId, orderedIds } });
+          if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
+          if (latestOrder.current === orderedIds) latestOrder.current = null;
+          invalidate();
+          syncOrderToProviders(propertyId);
+        } catch (err) {
+          if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
+          if (latestOrder.current === orderedIds) latestOrder.current = null;
+          if (previous) qc.setQueryData(key, previous);
+          toast.error((err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.");
+          throw err;
+        }
+      })();
+      savingOrder.current = run.catch(() => undefined);
+      await run;
+    },
+    [propertyId, qc, reorderFn, syncOrderToProviders, invalidate],
+  );
+
+  const previousOrder = useRef<PropertyImage[] | undefined>(undefined);
+
   const reorderPhotos = useCallback(
     (orderedIds: string[]) => {
       if (!propertyId) return;
       const key = ["property-images", propertyId];
       const detailKey = ["imovel-detalhe", propertyId];
       const previous = qc.getQueryData<PropertyImage[]>(key);
+      if (!previousOrder.current) previousOrder.current = previous;
 
       // A ordem escolhida passa a valer para qualquer recarregamento até o
       // servidor confirmar — assim nenhuma atualização em segundo plano
       // devolve a foto para a posição antiga.
       pendingOrder.set(propertyId, orderedIds);
+      latestOrder.current = orderedIds;
       void qc.cancelQueries({ queryKey: key });
 
       const applyLocal = (images: PropertyImage[] | undefined) => {
@@ -307,7 +357,12 @@ export function usePropertyMedia(propertyId: string | undefined) {
         const next = orderedIds
           .map((id) => byId.get(id))
           .filter(Boolean)
-          .map((image, index) => ({ ...(image as PropertyImage), position: index }));
+          // Posição 0 é sempre a capa — a tela mostra isso na hora.
+          .map((image, index) => ({
+            ...(image as PropertyImage),
+            position: index,
+            isCover: index === 0,
+          }));
         return next.length === images.length ? next : undefined;
       };
 
@@ -318,32 +373,35 @@ export function usePropertyMedia(propertyId: string | undefined) {
       if (detail && nextDetail) qc.setQueryData(detailKey, { ...detail, images: nextDetail });
 
       if (reorderTimer.current) clearTimeout(reorderTimer.current);
+      const rollback = previousOrder.current;
       reorderTimer.current = setTimeout(() => {
-        // Salvamentos em fila: o pedido mais novo nunca é ultrapassado por um
-        // mais antigo que ainda estava em andamento.
-        const run = async () => {
-          try {
-            await savingOrder.current;
-          } catch {
-            /* ignora falha anterior */
-          }
-          try {
-            await reorderFn({ data: { propertyId, orderedIds } });
-            if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
-            syncOrderToProviders(propertyId);
-          } catch (err) {
-            if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
-            if (previous) qc.setQueryData(key, previous);
-            toast.error(
-              (err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.",
-            );
-          }
-        };
-        savingOrder.current = run();
+        reorderTimer.current = null;
+        previousOrder.current = undefined;
+        void persistOrder(orderedIds, rollback).catch(() => undefined);
       }, 120);
     },
-    [propertyId, qc, reorderFn, syncOrderToProviders],
+    [propertyId, qc, persistOrder],
   );
+
+  /**
+   * "Concluir": grava agora a ordem pendente e só devolve o controle quando o
+   * servidor confirmar — nada se perde se o usuário sair logo em seguida.
+   */
+  const flushReorder = useCallback(async () => {
+    if (reorderTimer.current) {
+      clearTimeout(reorderTimer.current);
+      reorderTimer.current = null;
+    }
+    const pending = latestOrder.current;
+    const rollback = previousOrder.current;
+    previousOrder.current = undefined;
+    if (pending) await persistOrder(pending, rollback);
+    else await savingOrder.current;
+    // Reenvio imediato aos sites: não depende de o usuário continuar na tela.
+    if (propertyId) await runProviderSync(propertyId);
+  }, [persistOrder, propertyId, runProviderSync]);
+
+
 
   const remove = useMutation({
     mutationFn: (imageId: string) =>
@@ -461,6 +519,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
     setCover,
     reorder,
     reorderPhotos,
+    flushReorder,
+
     remove,
     retryWatermark,
     autoHealWatermarks,

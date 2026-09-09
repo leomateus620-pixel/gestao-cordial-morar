@@ -159,8 +159,9 @@ async function loadListingExtras(
       .from("property_images")
       .select("property_id, storage_path, is_cover, position")
       .in("property_id", ids)
-      .order("is_cover", { ascending: false })
+      // A capa é sempre a foto da posição 0 — ordenar só por posição.
       .order("position", { ascending: true }),
+
     supabase
       .from("property_provider_publications")
       .select("property_id, provider, status, external_property_id, external_public_url")
@@ -444,8 +445,8 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
           "id, storage_path, processed_storage_path, is_cover, position, processing_status, processing_error_message, watermark_variant",
         )
         .eq("property_id", data.id)
-        .order("is_cover", { ascending: false })
         .order("position", { ascending: true }),
+
       context.supabase
         .from("property_provider_publications")
         .select("provider, status, external_property_id, external_public_url")

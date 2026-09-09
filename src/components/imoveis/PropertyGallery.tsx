@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, GripVertical, ImageOff, Star, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, ImageOff, Loader2, Star, X } from "lucide-react";
+import { toast } from "sonner";
 import type { PropertyImage } from "@/types/property";
 import { usePhotoSorting } from "@/components/imoveis/PhotoSortableGrid";
 
@@ -8,6 +9,7 @@ export function PropertyGallery({
   alt,
   editable = false,
   onReorder,
+  onFlushReorder,
   onSetCover,
 }: {
   images: PropertyImage[];
@@ -15,17 +17,39 @@ export function PropertyGallery({
   /** Permite organizar as fotos direto na ficha, sem entrar em edição. */
   editable?: boolean;
   onReorder?: (orderedIds: string[]) => void;
+  /** Grava imediatamente a ordem pendente ao concluir a organização. */
+  onFlushReorder?: () => Promise<void>;
   onSetCover?: (imageId: string) => void;
 }) {
   const [index, setIndex] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [organizando, setOrganizando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const sorting = usePhotoSorting({
     items: images,
     onReorder: (ids) => onReorder?.(ids),
     enabled: editable && organizando,
   });
   const strip = editable ? sorting.ordered : images;
+
+  /** Concluir só sai do modo depois que a nova ordem estiver gravada. */
+  async function concluir() {
+    if (!onFlushReorder) {
+      setOrganizando(false);
+      return;
+    }
+    setSalvando(true);
+    try {
+      await onFlushReorder();
+      setOrganizando(false);
+      toast.success("Ordem das fotos salva. A primeira é a capa.");
+    } catch {
+      toast.error("Não foi possível salvar a ordem das fotos. Tente novamente.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
 
   const count = images.length;
   const go = (delta: number) => setIndex((i) => (count ? (i + delta + count) % count : 0));
@@ -91,17 +115,23 @@ export function PropertyGallery({
             </p>
             <button
               type="button"
-              onClick={() => setOrganizando((v) => !v)}
+              disabled={salvando}
+              onClick={() => (organizando ? void concluir() : setOrganizando(true))}
               className={
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition " +
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition disabled:opacity-60 " +
                 (organizando
                   ? "bg-primary text-primary-foreground"
                   : "border border-white/60 bg-white/70 text-foreground/70 hover:text-foreground")
               }
             >
-              <GripVertical className="size-3.5" />
-              {organizando ? "Concluir" : "Organizar fotos"}
+              {salvando ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <GripVertical className="size-3.5" />
+              )}
+              {organizando ? (salvando ? "Salvando…" : "Concluir") : "Organizar fotos"}
             </button>
+
           </div>
         )}
 

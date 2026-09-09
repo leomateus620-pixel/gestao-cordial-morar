@@ -81,10 +81,20 @@ export function PropertyPhotosStep({
   });
   const sortedRows = sorting.ordered;
 
+  // Ao sair da etapa, grava na hora qualquer ordem que ainda estava em espera.
+  const flushRef = useRef(media.flushReorder);
+  flushRef.current = media.flushReorder;
+  useEffect(() => {
+    return () => {
+      void flushRef.current().catch(() => undefined);
+    };
+  }, []);
+
   function move(index: number, delta: number) {
     sorting.moveTo(index, index + delta);
     setTimeout(sorting.commit, 0);
   }
+
 
   return (
     <div className="space-y-3">
