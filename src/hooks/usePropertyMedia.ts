@@ -397,7 +397,10 @@ export function usePropertyMedia(propertyId: string | undefined) {
     previousOrder.current = undefined;
     if (pending) await persistOrder(pending, rollback);
     else await savingOrder.current;
-  }, [persistOrder]);
+    // Reenvio imediato aos sites: não depende de o usuário continuar na tela.
+    if (propertyId) await runProviderSync(propertyId);
+  }, [persistOrder, propertyId, runProviderSync]);
+
 
 
   const remove = useMutation({
