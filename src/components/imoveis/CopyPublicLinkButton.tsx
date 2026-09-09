@@ -88,6 +88,89 @@ export function CopyPublicLinkButton({
   );
 }
 
+/** Cores de marca: Cordial azul, Morar laranja. */
+const PROVIDER_STYLE: Record<string, string> = {
+  cordial: "bg-[#1e647d]/12 text-[#155063] hover:bg-[#1e647d]/22",
+  morar: "bg-[#d9782d]/14 text-[#a9551a] hover:bg-[#d9782d]/26",
+};
+
+/**
+ * Um botão dedicado por site (Cordial azul, Morar laranja).
+ * Aparece sempre que o anúncio tem link, mesmo quando a situação ainda está
+ * parcial ou divergente — o link continua válido.
+ */
+export function PublicLinkButtons({
+  links,
+  size = "md",
+  className,
+}: {
+  links: Array<{ provider: string; url: string | null }>;
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const available = links.filter((link): link is { provider: string; url: string } =>
+    Boolean(link.url),
+  );
+  if (!available.length) return null;
+
+  async function copy(event: React.MouseEvent, provider: string, url: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    const label = PROVIDER_LABEL[provider] ?? provider;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(provider);
+      toast.success(`Link ${label} copiado.`);
+      setTimeout(() => setCopied(null), 1800);
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
+  }
+
+  const box = size === "sm" ? "size-8 [&_svg]:size-3.5" : "size-9 [&_svg]:size-4";
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
+      <TooltipProvider>
+        {available.map((link) => {
+          const label = PROVIDER_LABEL[link.provider] ?? link.provider;
+          return (
+            <Tooltip key={link.provider}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(event) => void copy(event, link.provider, link.url)}
+                  aria-label={`Copiar link ${label}`}
+                  className={`grid place-items-center rounded-full font-bold transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary/40 ${box} ${
+                    PROVIDER_STYLE[link.provider] ?? "bg-foreground/[0.06] text-foreground/60"
+                  }`}
+                >
+                  {copied === link.provider ? <Check /> : <Copy />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span className="flex items-center gap-2">
+                  Copiar link {label}
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-0.5 underline"
+                  >
+                    Abrir <ExternalLink className="size-3" />
+                  </a>
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </TooltipProvider>
+    </span>
+  );
+}
+
 /**
  * Controle ÚNICO de copiar link do site na ficha.
  * Com um site publicado copia direto; com dois, abre um menu mínimo

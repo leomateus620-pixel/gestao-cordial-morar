@@ -8,7 +8,7 @@ import {
   PUBLICATION_STATUS_LABEL,
   type Property,
 } from "@/types/property";
-import { CopyPublicLinkControl } from "./CopyPublicLinkButton";
+import { PublicLinkButtons } from "./CopyPublicLinkButton";
 
 export type CatalogView = "grid" | "list";
 
@@ -214,15 +214,13 @@ function Cover({
 }
 
 function CardActions({ property, className }: { property: Property; className?: string }) {
-  const published = property.publications
-    .filter((p) => p.status === "published")
+  // O link vale mesmo quando a situação ainda é parcial/divergente.
+  const withLink = property.publications
+    .filter((p) => p.publicUrl && p.status !== "draft" && p.status !== "unpublished")
     .map((p) => ({ provider: p.provider, url: p.publicUrl }));
   return (
     <div className={cn("relative z-10 flex items-center gap-1.5", className)}>
-      <CopyPublicLinkControl
-        links={published}
-        className="grid size-8 place-items-center rounded-full bg-foreground/[0.05] text-foreground/55 transition hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:size-3.5"
-      />
+      <PublicLinkButtons links={withLink} size="sm" />
       <Link
         to="/imoveis/$imovelId/editar"
         params={{ imovelId: property.id }}
