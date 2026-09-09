@@ -11,18 +11,24 @@ import { imobiRequest, hasProviderToken } from "./client.server";
 import { normalizeLabel, type ResolvedProviderCodes, type LocalPropertyForSync } from "./serializers";
 import type { ImobiProvider } from "./providers";
 
-export type CatalogKind = "city" | "property_type" | "characteristic";
+export type CatalogKind = "city" | "property_type" | "characteristic" | "broker" | "owner";
 
 const CATALOG_ENDPOINTS: Record<CatalogKind, string> = {
   city: "/cidade/lista",
   property_type: "/imovel/tipo/lista",
   characteristic: "/imovel/caracteristica/lista",
+  // Uso interno do provedor: corretor que agenciou e proprietário (cadastro de
+  // cliente). O imóvel só aceita o CÓDIGO desses cadastros, nunca o nome.
+  broker: "/corretor/lista",
+  owner: "/cliente/lista",
 };
 
 const CODE_KEYS = [
   "codigoCidade",
   "codigoTipoImovel",
   "codigoCaracteristica",
+  "codigoCorretor",
+  "codigoCliente",
   "codigo",
   "id",
   "codigoTipo",
@@ -153,7 +159,7 @@ async function fetchCatalogPages(
 export async function refreshProviderCatalogs(
   admin: SupabaseClient,
   provider: ImobiProvider,
-  kinds: CatalogKind[] = ["city", "property_type", "characteristic"],
+  kinds: CatalogKind[] = ["city", "property_type", "characteristic", "broker", "owner"],
 ) {
   const summary: Record<string, number> = {};
   for (const kind of kinds) {
@@ -197,7 +203,13 @@ export type CodeResolution = {
 export async function resolveProviderCodes(
   admin: SupabaseClient,
   provider: ImobiProvider,
-  property: LocalPropertyForSync & { cidade?: string | null; uf?: string | null; caracteristicas?: string[] | null },
+  property: LocalPropertyForSync & {
+    cidade?: string | null;
+    uf?: string | null;
+    caracteristicas?: string[] | null;
+    corretor_nome?: string | null;
+    proprietario_nome?: string | null;
+  },
 ): Promise<CodeResolution> {
   const unmapped: CodeResolution["unmapped"] = [];
 
@@ -216,7 +228,10 @@ export async function resolveProviderCodes(
     if (!catalogIndex.has(key)) catalogIndex.set(key, row.external_code);
   }
 
-  const resolve = (domain: "property_type" | "city" | "characteristic" | "area_unit", value?: string | null) => {
+  const resolve = (
+    domain: "property_type" | "city" | "characteristic" | "area_unit" | "broker" | "owner",
+    value?: string | null,
+  ) => {
     const text = (value ?? "").trim();
     if (!text) return null;
     const normalized = normalizeLabel(text);
@@ -232,6 +247,10 @@ export async function resolveProviderCodes(
 
   const codigoTipoImovel = resolve("property_type", property.tipo);
   const codigoCidade = resolve("city", property.cidade);
+  // Controle interno do provedor: só o código do cadastro é aceito. Sem
+  // correspondência, o campo é omitido e a publicação segue normalmente.
+  const codigoCorretor = resolve("broker", property.corretor_nome);
+  const codigoProprietario = resolve("owner", property.proprietario_nome);
   const areaUnit = (label?: string | null) => resolve("area_unit", label ?? "m2") ?? undefined;
 
   const characteristicCodes: string[] = [];
@@ -245,6 +264,8 @@ export async function resolveProviderCodes(
       codigoTipoImovel,
       descricaoTipoImovel: property.tipo ?? null,
       codigoCidade,
+      codigoCorretor,
+      codigoProprietario,
       tipoAreaPrivativa: areaUnit(null),
       tipoAreaTotal: areaUnit(null),
       tipoAreaTerreno: areaUnit(null),
