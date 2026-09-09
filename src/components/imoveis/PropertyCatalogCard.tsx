@@ -8,7 +8,7 @@ import {
   PUBLICATION_STATUS_LABEL,
   type Property,
 } from "@/types/property";
-import { CopyPublicLinkControl } from "./CopyPublicLinkButton";
+import { PublicLinkButtons } from "./CopyPublicLinkButton";
 
 export type CatalogView = "grid" | "list";
 

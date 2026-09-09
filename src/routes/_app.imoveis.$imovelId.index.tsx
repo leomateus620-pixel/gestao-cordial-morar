@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { ArchivePropertyDialog } from "@/components/imoveis/ArchivePropertyDialog";
-import { CopyPublicLinkControl } from "@/components/imoveis/CopyPublicLinkButton";
+import { PublicLinkButtons } from "@/components/imoveis/CopyPublicLinkButton";
 import { DeletePropertyDialog } from "@/components/imoveis/DeletePropertyDialog";
 import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
 import { usePropertyMedia } from "@/hooks/usePropertyMedia";
