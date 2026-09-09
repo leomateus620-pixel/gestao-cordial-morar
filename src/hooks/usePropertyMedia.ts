@@ -5,10 +5,11 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   createPropertyImageUploadUrl,
   deletePropertyImage,
+  finalizePropertyImageReprocess,
   listPropertyImages,
+  preparePropertyImageReprocess,
   registerPropertyImage,
   reorderPropertyImages,
-  retryPropertyImageWatermark,
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
@@ -66,7 +67,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
   const removeFn = useServerFn(deletePropertyImage);
-  const retryFn = useServerFn(retryPropertyImageWatermark);
+  const prepareRetryFn = useServerFn(preparePropertyImageReprocess);
+  const finalizeRetryFn = useServerFn(finalizePropertyImageReprocess);
   const targetsFn = useServerFn(setPropertyPublishTargets);
   const [progress, setProgress] = useState<UploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
