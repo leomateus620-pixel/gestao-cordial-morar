@@ -608,11 +608,28 @@ export async function reconcilePublication(
   return { status: found ? ("published" as const) : ("out_of_sync" as const), externalId };
 }
 
+/**
+ * Trava de segurança (10/09/2026): enquanto `imobi_update_sync_paused` estiver
+ * ligada, nenhuma alteração é enviada aos sites. Motivo: as atualizações em massa
+ * de 08–09/09 coincidiram com o sumiço do proprietário vinculado no painel do
+ * Imobi. Publicação, despublicação e exclusão continuam liberadas.
+ */
+async function isUpdateSyncPaused(admin: Admin): Promise<boolean> {
+  const { data } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "imobi_update_sync_paused")
+    .maybeSingle();
+  const value = (data?.value ?? null) as { paused?: boolean } | null;
+  return value?.paused === true;
+}
+
 export async function runSyncWorker(
   admin: Admin,
   options: { limit?: number; workerId?: string } = {},
 ) {
   const workerId = options.workerId ?? `worker-${crypto.randomUUID().slice(0, 8)}`;
+  const updatesPaused = await isUpdateSyncPaused(admin);
   const { data: jobs, error } = await admin.rpc("property_sync_claim_jobs", {
     _worker: workerId,
     _limit: options.limit ?? 5,
