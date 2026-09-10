@@ -314,15 +314,21 @@ export function splitSanitizedForSites(
 const INTERNAL_NOTE_PATTERNS: RegExp[] = [
   /comiss[aã]o/i,
   /\bag\s*\.?\s*:/i,
+  // "Ag. Pablo Backes", "Ag Bianca H": sigla do corretor que agenciou, sem dois-pontos.
+  /^ag\s*\.?\s+[a-zà-ú]/i,
   /\bagenciad[oa]\b/i,
   /averb\w*/i,
-  /propriet[áa]ri[oa]\s+(quer|pede|aceita|n[ãa]o)/i,
+  // Qualquer menção ao dono do imóvel é recado interno (inclui grafias erradas:
+  // "proprietáira", "proprietártio"). Não agrega nada ao anúncio público.
+  /propriet[áa]\w*/i,
+
   /\bpra\s+ele\b/i,
   /contrato\s+de\s+compra\s+e\s+venda/i,
   /\bchave(s)?\s+(na|com|no)\b/i,
   /\bexclusividade\b/i,
   /\bcorretor\b/i,
 ];
+
 
 function isInternalLine(line: string): boolean {
   const text = line.trim();
