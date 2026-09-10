@@ -314,15 +314,23 @@ export function splitSanitizedForSites(
 const INTERNAL_NOTE_PATTERNS: RegExp[] = [
   /comiss[aã]o/i,
   /\bag\s*\.?\s*:/i,
+  // "Ag. Pablo Backes", "Ag Bianca H": sigla do corretor que agenciou, sem dois-pontos.
+  /^ag\s*\.?\s+[a-zà-ú]/i,
   /\bagenciad[oa]\b/i,
   /averb\w*/i,
-  /propriet[áa]ri[oa]\s+(quer|pede|aceita|n[ãa]o)/i,
+  /propriet[áa]ri[oa]s?\s+(quer|querem|pede|pedem|aceita|aceitam|n[ãa]o)/i,
+  // Recados de negociação/contato que citam o dono: valor, visita, avaliação.
+  /\b(com|para|pro|pra|d[oa])\s+(o\s+|a\s+)?propriet[áa]ri[oa]s?\b/i,
+  /\bpropriet[áa]ri[oa]s?\b[^\n]*\b(visita|agendar|contato|telefone|celular|avalia)/i,
+  // Linha que é só um valor seguido de "proprietário(a)".
+  /^[\d.,\s r$]+propriet[áa]ri[oa]s?\b/i,
   /\bpra\s+ele\b/i,
   /contrato\s+de\s+compra\s+e\s+venda/i,
   /\bchave(s)?\s+(na|com|no)\b/i,
   /\bexclusividade\b/i,
   /\bcorretor\b/i,
 ];
+
 
 function isInternalLine(line: string): boolean {
   const text = line.trim();
