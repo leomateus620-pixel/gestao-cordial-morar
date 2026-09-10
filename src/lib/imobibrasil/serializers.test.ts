@@ -277,3 +277,49 @@ test("pontos fortes totalmente internos não são enviados", () => {
   );
   assert.equal(payload["pontosFortesImovel"], undefined);
 });
+
+test("sigla do corretor sem dois-pontos e recados sobre o proprietário são removidos", () => {
+  const payload = serializeProperty(
+    {
+      ...base,
+      pontos_fortes: [
+        "Ag. Pablo Backes",
+        "78.000,00 para o proprietário",
+        "350.000 proprietária",
+        "Verificar disponibilidade e valor com o proprietário",
+        "Imóvel alugado, agendar com o proprietário as visitas.",
+        "Proprietártio aceita carro",
+        "proprietáira que 700.000 pra ela",
+        "Amplo quintal com churrasqueira",
+      ].join("\n"),
+    } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const pontos = String(payload["pontosFortesImovel"] ?? "");
+  assert.ok(pontos.includes("Amplo quintal com churrasqueira"));
+  assert.equal(/propriet/i.test(pontos), false);
+  assert.equal(/Pablo/i.test(pontos), false);
+  assert.equal(/78\.000/.test(pontos), false);
+});
+
+test("frases comerciais legítimas continuam publicadas", () => {
+  const payload = serializeProperty(
+    {
+      ...base,
+      pontos_fortes: [
+        "Aceita financiamento bancário",
+        "Agenda de visitas flexível",
+        "Garagem para dois carros",
+        "Área de lazer completa",
+      ].join("\n"),
+    } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const pontos = String(payload["pontosFortesImovel"] ?? "");
+  assert.ok(pontos.includes("Aceita financiamento bancário"));
+  assert.ok(pontos.includes("Agenda de visitas flexível"));
+  assert.ok(pontos.includes("Garagem para dois carros"));
+  assert.ok(pontos.includes("Área de lazer completa"));
+});
