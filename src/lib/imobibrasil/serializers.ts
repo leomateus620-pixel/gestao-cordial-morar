@@ -478,7 +478,9 @@ export function serializeProperty(
   assign(payload, "descricaoImovel", split.head || undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
   // O que não coube na descrição continua aqui, também publicado no site.
-  const pontosProprios = sanitizeRichText(property.pontos_fortes);
+  // Pontos fortes é campo público: recados internos (comissão, agenciador,
+  // averbação) são removidos antes de qualquer coisa ir para o site.
+  const pontosProprios = sanitizeRichText(stripInternalSiteNotes(property.pontos_fortes));
   const reserva = pontosProprios ? byteLength(pontosProprios) + 12 : 0;
   const overflow = split.overflow
     ? truncateSanitized(split.overflow, Math.max(200, IMOBI_DESCRICAO_MAX - reserva))
