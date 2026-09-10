@@ -318,12 +318,10 @@ const INTERNAL_NOTE_PATTERNS: RegExp[] = [
   /^ag\s*\.?\s+[a-zà-ú]/i,
   /\bagenciad[oa]\b/i,
   /averb\w*/i,
-  /propriet[áa]ri[oa]s?\s+(quer|querem|pede|pedem|aceita|aceitam|n[ãa]o)/i,
-  // Recados de negociação/contato que citam o dono: valor, visita, avaliação.
-  /\b(com|para|pro|pra|d[oa])\s+(o\s+|a\s+)?propriet[áa]ri[oa]s?\b/i,
-  /\bpropriet[áa]ri[oa]s?\b[^\n]*\b(visita|agendar|contato|telefone|celular|avalia)/i,
-  // Linha que é só um valor seguido de "proprietário(a)".
-  /^[\d.,\s r$]+propriet[áa]ri[oa]s?\b/i,
+  // Qualquer menção ao dono do imóvel é recado interno (inclui grafias erradas:
+  // "proprietáira", "proprietártio"). Não agrega nada ao anúncio público.
+  /propriet[áa]\w*/i,
+
   /\bpra\s+ele\b/i,
   /contrato\s+de\s+compra\s+e\s+venda/i,
   /\bchave(s)?\s+(na|com|no)\b/i,
