@@ -642,6 +642,23 @@ export async function runSyncWorker(
 
   for (const job of claimed) {
     const started = Date.now();
+    if (updatesPaused && job.action === "update") {
+      await admin
+        .from("property_sync_jobs")
+        .update({
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+          locked_at: null,
+          lock_expires_at: null,
+          locked_by: null,
+          last_error_category: "config",
+          last_error_message:
+            "Envio de alterações aos sites temporariamente pausado (apuração do cadastro de proprietário).",
+        })
+        .eq("id", job.id);
+      results.push({ jobId: job.id, provider: job.provider, status: "skipped_paused" });
+      continue;
+    }
     try {
       const outcome = await processJob(admin, job);
       await admin
