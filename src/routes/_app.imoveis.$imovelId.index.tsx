@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { usePropertyDetail } from "@/hooks/useImoveis";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
+import { hasInternalSiteNotes } from "@/lib/imobibrasil/serializers";
 import { brl } from "@/lib/format";
 import {
   formatArea,
@@ -323,10 +324,17 @@ function DetalhePage() {
           ) : null}
 
           {imovel.pontosFortes ? (
-            <p className="mt-3 whitespace-pre-line text-sm text-foreground/60">
-              <span className="font-semibold text-foreground/75">Pontos fortes: </span>
-              {imovel.pontosFortes}
-            </p>
+            <div className="mt-3">
+              <p className="whitespace-pre-line text-sm text-foreground/60">
+                <span className="font-semibold text-foreground/75">Pontos fortes: </span>
+                {imovel.pontosFortes}
+              </p>
+              {hasInternalSiteNotes(imovel.pontosFortes) ? (
+                <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                  Contém anotação interna — não vai para o site
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

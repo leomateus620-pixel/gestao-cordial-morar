@@ -4,7 +4,11 @@ import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
 import { isGoogleMapsUrl } from "@/lib/imoveis/maps-link";
-import { IMOBI_DESCRICAO_MAX, sanitizedLength } from "@/lib/imobibrasil/serializers";
+import {
+  IMOBI_DESCRICAO_MAX,
+  hasInternalSiteNotes,
+  sanitizedLength,
+} from "@/lib/imobibrasil/serializers";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
@@ -974,13 +978,24 @@ export function PropertyForm({
             </Field>
 
 
-            <Field label="Pontos fortes">
+            <Field label="Pontos fortes (publicado no site)">
               <textarea
                 value={values.pontosFortes ?? ""}
                 onChange={(e) => set("pontosFortes", e.target.value)}
                 rows={3}
+                placeholder="Ex.: Amplo quintal com churrasqueira • Próximo a escolas e mercado • Sol da manhã"
                 className={inputCls}
               />
+              <p className="mt-1 text-[11px] font-semibold text-foreground/45">
+                Comissão, corretor que agenciou, averbação e local das chaves vão em Informações
+                internas.
+              </p>
+              {hasInternalSiteNotes(values.pontosFortes) ? (
+                <p className="mt-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700">
+                  Este texto parece controle interno. Ele não será publicado no site — mova para
+                  Informações internas.
+                </p>
+              ) : null}
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Empreendimento">

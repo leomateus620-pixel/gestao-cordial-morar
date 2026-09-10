@@ -252,3 +252,28 @@ test("campos internos nunca vazam para o payload", () => {
   assert.equal(json.includes("SEGREDO INTERNO"), false);
   assert.equal(json.includes("OUTRO SEGREDO"), false);
 });
+
+test("pontos fortes não vazam controle interno para o site", () => {
+  const payload = serializeProperty(
+    {
+      ...base,
+      pontos_fortes: "comissão de 6%\n falta averbar a garagem\n Ag: Felipe/Geandré\nAmplo quintal",
+    } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  const pontos = String(payload["pontosFortesImovel"] ?? "");
+  assert.ok(pontos.includes("Amplo quintal"));
+  assert.equal(/comiss/i.test(pontos), false);
+  assert.equal(/averbar/i.test(pontos), false);
+  assert.equal(/Ag:/i.test(pontos), false);
+});
+
+test("pontos fortes totalmente internos não são enviados", () => {
+  const payload = serializeProperty(
+    { ...base, pontos_fortes: "comissão de 6%\nAg: Felipe" } as LocalPropertyForSync,
+    {},
+    { mode: "insert" },
+  );
+  assert.equal(payload["pontosFortesImovel"], undefined);
+});

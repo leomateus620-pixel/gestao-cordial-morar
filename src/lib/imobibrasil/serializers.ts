@@ -306,6 +306,51 @@ export function splitSanitizedForSites(
   return { head, overflow };
 }
 
+/**
+ * Padrões de controle interno que NUNCA podem aparecer no site: comissão,
+ * corretor que agenciou, pendências de cartório/averbação, recados sobre o
+ * proprietário e observações de negociação.
+ */
+const INTERNAL_NOTE_PATTERNS: RegExp[] = [
+  /comiss[aã]o/i,
+  /\bag\s*\.?\s*:/i,
+  /\bagenciad[oa]\b/i,
+  /averb\w*/i,
+  /propriet[áa]ri[oa]\s+(quer|pede|aceita|n[ãa]o)/i,
+  /\bpra\s+ele\b/i,
+  /contrato\s+de\s+compra\s+e\s+venda/i,
+  /\bchave(s)?\s+(na|com|no)\b/i,
+  /\bexclusividade\b/i,
+  /\bcorretor\b/i,
+];
+
+function isInternalLine(line: string): boolean {
+  const text = line.trim();
+  if (!text) return false;
+  return INTERNAL_NOTE_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+/**
+ * Remove de um texto público as linhas de controle interno. Linhas legítimas
+ * ("amplo quintal") continuam intactas. Retorna `undefined` se sobrar nada.
+ */
+export function stripInternalSiteNotes(value: string | null | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const kept = value
+    .split(/\r?\n|<br\s*\/?>/i)
+    .filter((line) => !isInternalLine(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return kept.length ? kept : undefined;
+}
+
+/** A UI usa isto para avisar que o texto parece controle interno. */
+export function hasInternalSiteNotes(value: string | null | undefined): boolean {
+  if (typeof value !== "string") return false;
+  return value.split(/\r?\n|<br\s*\/?>/i).some((line) => isInternalLine(line));
+}
+
 /** Junta blocos já sanitizados em um único texto de site. */
 function joinSanitized(...parts: Array<string | undefined>): string | undefined {
   const cleaned = parts.map((part) => part?.trim()).filter((part): part is string => !!part);
@@ -433,7 +478,9 @@ export function serializeProperty(
   assign(payload, "descricaoImovel", split.head || undefined);
   // observacao_imovel e outras_informacoes são internos: nunca vão para os sites.
   // O que não coube na descrição continua aqui, também publicado no site.
-  const pontosProprios = sanitizeRichText(property.pontos_fortes);
+  // Pontos fortes é campo público: recados internos (comissão, agenciador,
+  // averbação) são removidos antes de qualquer coisa ir para o site.
+  const pontosProprios = sanitizeRichText(stripInternalSiteNotes(property.pontos_fortes));
   const reserva = pontosProprios ? byteLength(pontosProprios) + 12 : 0;
   const overflow = split.overflow
     ? truncateSanitized(split.overflow, Math.max(200, IMOBI_DESCRICAO_MAX - reserva))
