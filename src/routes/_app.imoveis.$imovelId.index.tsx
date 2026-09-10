@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { usePropertyDetail } from "@/hooks/useImoveis";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
+import { hasInternalSiteNotes } from "@/lib/imobibrasil/serializers";
 import { brl } from "@/lib/format";
 import {
   formatArea,
