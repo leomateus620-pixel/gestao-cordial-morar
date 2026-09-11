@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canPublishPropertyImage, isImageProcessingBlocking } from "./image-status";
+import { canPublishPropertyImage, isImageProcessingBlocking } from "./image-status.ts";
 
 test("todos os estados incompletos bloqueiam a publicação", () => {
   for (const status of [

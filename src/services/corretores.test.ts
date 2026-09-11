@@ -223,7 +223,7 @@ test("aggregates only persisted UUID relationships and deduplicates cycles/event
   );
   assert.equal(ana.mediaRespostaSegundos, 4_080);
   assert.equal(ana.respostasPendentes, 1);
-  assert.deepEqual(result.unattributed, { sales: 1, rentals: 1 });
+  assert.deepEqual(result.unattributed, { sales: 1, rentals: 1, attendances: 0 });
 });
 
 test("marks paid commission unavailable when a persisted plan is absent", () => {
