@@ -593,9 +593,32 @@ export async function processJob(admin: Admin, job: SyncJob) {
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
-  const payload = serializeProperty({ ...property, referencia: reference }, resolution.codes, {
-    mode,
-  });
+  // Antes de alterar, recupera os vínculos que já existem no site e devolve-os no
+  // mesmo envio — o provedor apaga tudo que não vier no corpo da alteração.
+  const links = externalId
+    ? await loadPersonLinks(admin, job.provider, externalId, publication, job.correlation_id)
+    : {};
+  await hydrateOwnerContact(
+    admin,
+    job.provider,
+    job.property_id,
+    property as unknown as Record<string, unknown>,
+    links.codigoProprietario,
+    job.correlation_id,
+  );
+  const payload = serializeProperty(
+    { ...property, referencia: reference },
+    {
+      ...resolution.codes,
+      codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
+      codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
+      codigoUsuarioAdicional:
+        resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
+    },
+    {
+      mode,
+    },
+  );
   const payloadHash = hashPayload(payload);
 
   if (externalId) {
