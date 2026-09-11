@@ -678,6 +678,20 @@ export async function processJob(admin: Admin, job: SyncJob) {
   ).trim();
   const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
 
+  // Guarda a cópia mais recente dos vínculos que o site tem agora.
+  const remoteLinksAfter = pickPersonLinks(remote);
+  if (Object.keys(remoteLinksAfter).length) {
+    await admin
+      .from("property_provider_publications")
+      .update({
+        remote_codigo_proprietario: remoteLinksAfter.codigoProprietario ?? null,
+        remote_codigo_corretor: remoteLinksAfter.codigoCorretor ?? null,
+        remote_codigo_usuario_adicional: remoteLinksAfter.codigoUsuarioAdicional ?? null,
+        remote_links_synced_at: new Date().toISOString(),
+      })
+      .eq("id", publication.id);
+  }
+
   const finalStatus = verified && media.failed === 0 ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
