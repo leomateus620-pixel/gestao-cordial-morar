@@ -112,6 +112,113 @@ async function verifyRemote(provider: ImobiProvider, externalId: string, correla
   return response.data as Record<string, unknown>;
 }
 
+/**
+ * Vínculos internos do imóvel no site (proprietário, corretor, usuário adicional).
+ *
+ * O suporte ImobiBrasil confirmou em 11/09/2026 que `POST /imovel/alterar` zera todo
+ * campo ausente no corpo. Por isso toda alteração passa a ler esses códigos antes de
+ * enviar e devolvê-los junto — e o Gestão guarda uma cópia para nunca depender só do site.
+ */
+export type RemotePersonLinks = {
+  codigoProprietario?: string;
+  codigoCorretor?: string;
+  codigoUsuarioAdicional?: string;
+};
+
+function pickPersonLinks(remote: Record<string, unknown>): RemotePersonLinks {
+  const record =
+    (remote?.["resultSet"] as Record<string, unknown> | undefined) ??
+    (remote?.["data"] as Record<string, unknown> | undefined) ??
+    remote ??
+    {};
+  const source = Array.isArray(record) ? ((record[0] ?? {}) as Record<string, unknown>) : record;
+  const read = (key: string) => {
+    const raw = String(source[key] ?? "").trim();
+    return raw && raw !== "0" ? raw : undefined;
+  };
+  const links: RemotePersonLinks = {};
+  const owner = read("codigoProprietario");
+  const broker = read("codigoCorretor");
+  const extra = read("codigoUsuarioAdicional");
+  if (owner) links.codigoProprietario = owner;
+  if (broker) links.codigoCorretor = broker;
+  if (extra) links.codigoUsuarioAdicional = extra;
+  return links;
+}
+
+async function loadPersonLinks(
+  admin: Admin,
+  provider: ImobiProvider,
+  externalId: string,
+  publication: Record<string, unknown>,
+  correlationId: string,
+): Promise<RemotePersonLinks> {
+  const stored: RemotePersonLinks = {};
+  const storedOwner = String(publication["remote_codigo_proprietario"] ?? "").trim();
+  const storedBroker = String(publication["remote_codigo_corretor"] ?? "").trim();
+  const storedExtra = String(publication["remote_codigo_usuario_adicional"] ?? "").trim();
+  if (storedOwner) stored.codigoProprietario = storedOwner;
+  if (storedBroker) stored.codigoCorretor = storedBroker;
+  if (storedExtra) stored.codigoUsuarioAdicional = storedExtra;
+
+  let remoteLinks: RemotePersonLinks = {};
+  try {
+    const remote = await verifyRemote(provider, externalId, correlationId);
+    remoteLinks = pickPersonLinks(remote);
+  } catch {
+    // Falha de leitura nunca trava o envio: seguimos com a cópia local.
+  }
+
+  const merged: RemotePersonLinks = { ...stored, ...remoteLinks };
+
+  if (Object.keys(remoteLinks).length) {
+    await admin
+      .from("property_provider_publications")
+      .update({
+        remote_codigo_proprietario: merged.codigoProprietario ?? null,
+        remote_codigo_corretor: merged.codigoCorretor ?? null,
+        remote_codigo_usuario_adicional: merged.codigoUsuarioAdicional ?? null,
+        remote_links_synced_at: new Date().toISOString(),
+      })
+      .eq("id", publication["id"] as string);
+  }
+
+  return merged;
+}
+
+/** Traz nome/telefone/e-mail do proprietário do site para a ficha interna, só em campos vazios. */
+async function hydrateOwnerContact(
+  admin: Admin,
+  provider: ImobiProvider,
+  propertyId: string,
+  property: Record<string, unknown>,
+  ownerCode: string | undefined,
+  correlationId: string,
+) {
+  if (!ownerCode) return;
+  const hasAll =
+    String(property["proprietario_nome"] ?? "").trim() &&
+    String(property["proprietario_telefone"] ?? "").trim();
+  if (hasAll) return;
+  try {
+    const { fetchPersonDetail } = await import("./read.server");
+    const person = await fetchPersonDetail(provider, ownerCode, correlationId);
+    const nome = String(person["nome"] ?? person["razaoSocial"] ?? person["nomeFantasia"] ?? "").trim();
+    const telefone = String(person["telefone1"] ?? person["telefone2"] ?? "").trim();
+    const email = String(person["email"] ?? "").trim();
+    const patch: Record<string, string> = {};
+    if (nome && !String(property["proprietario_nome"] ?? "").trim()) patch["proprietario_nome"] = nome;
+    if (telefone && !String(property["proprietario_telefone"] ?? "").trim())
+      patch["proprietario_telefone"] = telefone;
+    if (email && !String(property["proprietario_email"] ?? "").trim()) patch["proprietario_email"] = email;
+    if (!Object.keys(patch).length) return;
+    await admin.from("properties").update(patch).eq("id", propertyId);
+    Object.assign(property, patch);
+  } catch {
+    // Contato é complementar: qualquer falha aqui não interrompe a publicação.
+  }
+}
+
 async function syncCharacteristics(
   admin: Admin,
   job: SyncJob,
@@ -407,9 +514,22 @@ export async function processJob(admin: Admin, job: SyncJob) {
       await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
+    const links = await loadPersonLinks(
+      admin,
+      job.provider,
+      publication.external_property_id,
+      publication,
+      job.correlation_id,
+    );
     const payload = serializeProperty(
       { ...property, referencia: reference, exibir_imovel: false },
-      resolution.codes,
+      {
+        ...resolution.codes,
+        codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
+        codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
+        codigoUsuarioAdicional:
+          resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
+      },
       {
         mode: "update",
       },
@@ -473,9 +593,32 @@ export async function processJob(admin: Admin, job: SyncJob) {
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
-  const payload = serializeProperty({ ...property, referencia: reference }, resolution.codes, {
-    mode,
-  });
+  // Antes de alterar, recupera os vínculos que já existem no site e devolve-os no
+  // mesmo envio — o provedor apaga tudo que não vier no corpo da alteração.
+  const links = externalId
+    ? await loadPersonLinks(admin, job.provider, externalId, publication, job.correlation_id)
+    : {};
+  await hydrateOwnerContact(
+    admin,
+    job.provider,
+    job.property_id,
+    property as unknown as Record<string, unknown>,
+    links.codigoProprietario,
+    job.correlation_id,
+  );
+  const payload = serializeProperty(
+    { ...property, referencia: reference },
+    {
+      ...resolution.codes,
+      codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
+      codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
+      codigoUsuarioAdicional:
+        resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
+    },
+    {
+      mode,
+    },
+  );
   const payloadHash = hashPayload(payload);
 
   if (externalId) {
@@ -534,6 +677,20 @@ export async function processJob(admin: Admin, job: SyncJob) {
       "") as string,
   ).trim();
   const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
+
+  // Guarda a cópia mais recente dos vínculos que o site tem agora.
+  const remoteLinksAfter = pickPersonLinks(remote);
+  if (Object.keys(remoteLinksAfter).length) {
+    await admin
+      .from("property_provider_publications")
+      .update({
+        remote_codigo_proprietario: remoteLinksAfter.codigoProprietario ?? null,
+        remote_codigo_corretor: remoteLinksAfter.codigoCorretor ?? null,
+        remote_codigo_usuario_adicional: remoteLinksAfter.codigoUsuarioAdicional ?? null,
+        remote_links_synced_at: new Date().toISOString(),
+      })
+      .eq("id", publication.id);
+  }
 
   const finalStatus = verified && media.failed === 0 ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);

@@ -40,6 +40,22 @@ export async function fetchPropertyDetail(
   return extractRecord(response.data);
 }
 
+/**
+ * Cadastro de pessoa (proprietário/corretor) no Imobi.
+ * Endpoint indicado pelo suporte em 11/09/2026: devolve nome, telefones e e-mail.
+ */
+export async function fetchPersonDetail(
+  provider: ImobiProvider,
+  personId: string,
+  correlationId?: string,
+): Promise<RemoteRecord> {
+  const response = await imobiRequest(provider, `/pessoa/dados/${encodeURIComponent(personId)}`, {
+    method: "GET",
+    ...(correlationId ? { correlationId } : {}),
+  });
+  return extractRecord(response.data);
+}
+
 export async function fetchPropertyImages(
   provider: ImobiProvider,
   externalId: string,
