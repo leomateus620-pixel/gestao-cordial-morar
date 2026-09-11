@@ -66,10 +66,20 @@ export async function sha256(bytes: ArrayBuffer | Uint8Array | string): Promise<
     .join("");
 }
 
-/** Remove dados sensíveis do proprietário antes de persistir o payload remoto. */
+/**
+ * Remove dados sensíveis do proprietário antes de persistir o payload remoto.
+ * Exceção deliberada: o código do vínculo (`codigoProprietario`/`codigoCorretor`) é
+ * guardado — é ele que permite reenviar o proprietário nas alterações sem apagá-lo.
+ */
+const KEEP_LINK_KEYS = /^codigo(Proprietario|Corretor|UsuarioAdicional)$/i;
+
 export function sanitizeRemotePayload(record: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(record)) {
+    if (KEEP_LINK_KEYS.test(key)) {
+      out[key] = value;
+      continue;
+    }
     if (/proprietario|telefone|celular|email|cpf|cnpj|senha|token/i.test(key)) continue;
     out[key] = value && typeof value === "object" && !Array.isArray(value)
       ? sanitizeRemotePayload(value as Record<string, unknown>)
