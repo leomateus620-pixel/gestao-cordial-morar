@@ -514,9 +514,22 @@ export async function processJob(admin: Admin, job: SyncJob) {
       await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
+    const links = await loadPersonLinks(
+      admin,
+      job.provider,
+      publication.external_property_id,
+      publication,
+      job.correlation_id,
+    );
     const payload = serializeProperty(
       { ...property, referencia: reference, exibir_imovel: false },
-      resolution.codes,
+      {
+        ...resolution.codes,
+        codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
+        codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
+        codigoUsuarioAdicional:
+          resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
+      },
       {
         mode: "update",
       },
