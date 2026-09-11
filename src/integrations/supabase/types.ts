@@ -2872,6 +2872,10 @@ export type Database = {
           local_desired_hash: string | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          remote_codigo_corretor: string | null
+          remote_codigo_proprietario: string | null
+          remote_codigo_usuario_adicional: string | null
+          remote_links_synced_at: string | null
           remote_observed_hash: string | null
           status: Database["public"]["Enums"]["property_publication_status"]
           system_managed: boolean
@@ -2899,6 +2903,10 @@ export type Database = {
           local_desired_hash?: string | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          remote_codigo_corretor?: string | null
+          remote_codigo_proprietario?: string | null
+          remote_codigo_usuario_adicional?: string | null
+          remote_links_synced_at?: string | null
           remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
           system_managed?: boolean
@@ -2926,6 +2934,10 @@ export type Database = {
           local_desired_hash?: string | null
           property_id?: string
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          remote_codigo_corretor?: string | null
+          remote_codigo_proprietario?: string | null
+          remote_codigo_usuario_adicional?: string | null
+          remote_links_synced_at?: string | null
           remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
           system_managed?: boolean
