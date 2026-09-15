@@ -296,10 +296,25 @@ function startOfCurrentYear(reference: Date) {
   return new Date(reference.getFullYear(), 0, 1);
 }
 
-function matchesPeriod(dateIso: string, periodo: AgenciamentoPeriodFilter, reference = new Date()) {
+export function matchesPeriod(
+  dateIso: string,
+  periodo: AgenciamentoPeriodFilter,
+  reference = new Date(),
+  range?: { dataInicio?: string; dataFim?: string },
+) {
   if (periodo === "todos") return true;
   const date = new Date(dateIso);
   if (Number.isNaN(date.getTime())) return false;
+  if (periodo === "personalizado") {
+    const inicio = (range?.dataInicio ?? "").trim();
+    const fim = (range?.dataFim ?? "").trim();
+    if (!inicio && !fim) return true;
+    const key = toSaoPauloDateKey(date);
+    if (!key) return false;
+    if (inicio && key < inicio) return false;
+    if (fim && key > fim) return false;
+    return true;
+  }
   if (periodo === "ano") return date >= startOfCurrentYear(reference);
   if (periodo === "trimestre") return date >= startOfCurrentQuarter(reference);
   if (periodo === "ultimos_30") {
@@ -379,7 +394,10 @@ export function filterAgenciamentos(
         matchesBroker &&
         matchesType &&
         matchesFinalidade &&
-        matchesPeriod(item.dataAgenciamento, nextFilters.periodo) &&
+        matchesPeriod(item.dataAgenciamento, nextFilters.periodo, new Date(), {
+          dataInicio: nextFilters.dataInicio,
+          dataFim: nextFilters.dataFim,
+        }) &&
         matchesStatus(item, nextFilters.status) &&
         matchesChecklist(item, nextFilters.checklist) &&
         matchesSearch
