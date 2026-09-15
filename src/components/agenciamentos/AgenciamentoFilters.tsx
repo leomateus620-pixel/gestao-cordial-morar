@@ -206,6 +206,25 @@ export function AgenciamentoFilters({
           </Select>
         </FilterLabel>
 
+        {filters.periodo === "personalizado" && (
+          <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2">
+            <RangeCalendar
+              label="Data inicial"
+              placeholder="Início"
+              value={filters.dataInicio}
+              max={filters.dataFim}
+              onChange={(dataInicio) => onFiltersChange({ periodo: "personalizado", dataInicio })}
+            />
+            <RangeCalendar
+              label="Data final"
+              placeholder="Fim"
+              value={filters.dataFim}
+              min={filters.dataInicio}
+              onChange={(dataFim) => onFiltersChange({ periodo: "personalizado", dataFim })}
+            />
+          </div>
+        )}
+
         <FilterLabel label="Status">
           <Select
             value={filters.status}
