@@ -522,7 +522,7 @@ function Page() {
     );
   }
 
-  const periodLabel = getAgenciamentoPeriodLabel(filters.periodo);
+  const periodLabel = getAgenciamentoPeriodLabel(filters.periodo, filters);
   const hasRecords = visibleAgenciamentos.length > 0;
   const hasFilteredResults = agenciamentos.length > 0;
   const printCorretorNome =
