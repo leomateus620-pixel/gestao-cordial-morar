@@ -459,9 +459,10 @@ function RangeCalendar({
           selected={selected}
           defaultMonth={selected ?? minDate ?? maxDate}
           onSelect={(date) => onChange(date ? toDateKey(date) : "")}
-          disabled={
-            minDate || maxDate ? { before: minDate as Date, after: maxDate as Date } : undefined
-          }
+          disabled={[
+            ...(minDate ? [{ before: minDate }] : []),
+            ...(maxDate ? [{ after: maxDate }] : []),
+          ]}
           className="pointer-events-auto w-full bg-transparent p-1 [--cell-size:1.9rem]"
         />
       </div>
