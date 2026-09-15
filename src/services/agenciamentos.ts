@@ -37,6 +37,8 @@ const DEFAULT_FILTERS: AgenciamentoFiltersState = {
   imobiliaria: "todas",
   status: "todos",
   periodo: "todos",
+  dataInicio: "",
+  dataFim: "",
   corretorId: "todos",
   tipoImovel: "todos",
   finalidade: "todas",
@@ -183,15 +185,47 @@ export function getAgenciamentoImobiliariaLabel(imobiliaria: AgenciamentoImobili
   return "Cordial";
 }
 
-export function getAgenciamentoPeriodLabel(periodo: AgenciamentoPeriodFilter) {
+export function getAgenciamentoPeriodLabel(
+  periodo: AgenciamentoPeriodFilter,
+  range?: { dataInicio?: string; dataFim?: string },
+) {
   const labels: Record<AgenciamentoPeriodFilter, string> = {
     todos: "Todo período",
     mes: "Este mês",
     ultimos_30: "Últimos 30 dias",
     trimestre: "Trimestre",
     ano: "Ano",
+    personalizado: "Personalizado",
   };
+  if (periodo === "personalizado") {
+    const inicio = formatLocalDateBR(range?.dataInicio);
+    const fim = formatLocalDateBR(range?.dataFim);
+    if (inicio && fim) return `${inicio} – ${fim}`;
+    if (inicio) return `A partir de ${inicio}`;
+    if (fim) return `Até ${fim}`;
+  }
   return labels[periodo];
+}
+
+/** Converte "YYYY-MM-DD" em "dd/mm/aaaa" sem passar por fuso UTC. */
+export function formatLocalDateBR(value?: string) {
+  if (!value) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return "";
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+/** Data (YYYY-MM-DD) do instante informado no fuso America/Sao_Paulo. */
+export function toSaoPauloDateKey(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+  return parts;
 }
 
 export function normalizeAgenciamento(input: LegacyAgenciamento): Agenciamento {
@@ -262,10 +296,25 @@ function startOfCurrentYear(reference: Date) {
   return new Date(reference.getFullYear(), 0, 1);
 }
 
-function matchesPeriod(dateIso: string, periodo: AgenciamentoPeriodFilter, reference = new Date()) {
+export function matchesPeriod(
+  dateIso: string,
+  periodo: AgenciamentoPeriodFilter,
+  reference = new Date(),
+  range?: { dataInicio?: string; dataFim?: string },
+) {
   if (periodo === "todos") return true;
   const date = new Date(dateIso);
   if (Number.isNaN(date.getTime())) return false;
+  if (periodo === "personalizado") {
+    const inicio = (range?.dataInicio ?? "").trim();
+    const fim = (range?.dataFim ?? "").trim();
+    if (!inicio && !fim) return true;
+    const key = toSaoPauloDateKey(date);
+    if (!key) return false;
+    if (inicio && key < inicio) return false;
+    if (fim && key > fim) return false;
+    return true;
+  }
   if (periodo === "ano") return date >= startOfCurrentYear(reference);
   if (periodo === "trimestre") return date >= startOfCurrentQuarter(reference);
   if (periodo === "ultimos_30") {
@@ -345,7 +394,10 @@ export function filterAgenciamentos(
         matchesBroker &&
         matchesType &&
         matchesFinalidade &&
-        matchesPeriod(item.dataAgenciamento, nextFilters.periodo) &&
+        matchesPeriod(item.dataAgenciamento, nextFilters.periodo, new Date(), {
+          dataInicio: nextFilters.dataInicio,
+          dataFim: nextFilters.dataFim,
+        }) &&
         matchesStatus(item, nextFilters.status) &&
         matchesChecklist(item, nextFilters.checklist) &&
         matchesSearch

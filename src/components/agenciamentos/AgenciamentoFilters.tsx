@@ -18,7 +18,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getAgenciamentoPeriodLabel, getAgenciamentoStatusLabel } from "@/services/agenciamentos";
+import { ptBR } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  formatLocalDateBR,
+  getAgenciamentoPeriodLabel,
+  getAgenciamentoStatusLabel,
+} from "@/services/agenciamentos";
 import type {
   AgenciamentoChecklistFilter,
   AgenciamentoFiltersState,
@@ -38,7 +44,14 @@ type AgenciamentoFiltersProps = {
   onReset: () => void;
 };
 
-const periodOptions: AgenciamentoPeriodFilter[] = ["todos", "mes", "ultimos_30", "trimestre", "ano"];
+const periodOptions: AgenciamentoPeriodFilter[] = [
+  "todos",
+  "mes",
+  "ultimos_30",
+  "trimestre",
+  "ano",
+  "personalizado",
+];
 const statusOptions: AgenciamentoStatusFilter[] = [
   "todos",
   "novo",
@@ -171,9 +184,14 @@ export function AgenciamentoFilters({
         <FilterLabel label="Período">
           <Select
             value={filters.periodo}
-            onValueChange={(periodo) =>
-              onFiltersChange({ periodo: periodo as AgenciamentoPeriodFilter })
-            }
+            onValueChange={(value) => {
+              const periodo = value as AgenciamentoPeriodFilter;
+              onFiltersChange(
+                periodo === "personalizado"
+                  ? { periodo }
+                  : { periodo, dataInicio: "", dataFim: "" },
+              );
+            }}
           >
             <SelectTrigger aria-label="Período" className={controlClassName}>
               <SelectValue />
@@ -187,6 +205,25 @@ export function AgenciamentoFilters({
             </SelectContent>
           </Select>
         </FilterLabel>
+
+        {filters.periodo === "personalizado" && (
+          <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2">
+            <RangeCalendar
+              label="Data inicial"
+              placeholder="Início"
+              value={filters.dataInicio}
+              max={filters.dataFim}
+              onChange={(dataInicio) => onFiltersChange({ periodo: "personalizado", dataInicio })}
+            />
+            <RangeCalendar
+              label="Data final"
+              placeholder="Fim"
+              value={filters.dataFim}
+              min={filters.dataInicio}
+              onChange={(dataFim) => onFiltersChange({ periodo: "personalizado", dataFim })}
+            />
+          </div>
+        )}
 
         <FilterLabel label="Status">
           <Select
@@ -365,6 +402,74 @@ export function AgenciamentoFilters({
   );
 }
 
+function parseDateKey(value?: string) {
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return undefined;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function toDateKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function RangeCalendar({
+  label,
+  placeholder,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  min?: string;
+  max?: string;
+  onChange: (value: string) => void;
+}) {
+  const selected = parseDateKey(value);
+  const minDate = parseDateKey(min);
+  const maxDate = parseDateKey(max);
+
+  return (
+    <FilterLabel label={label}>
+      <div className="rounded-xl border border-foreground/10 bg-[#f7f4f0] p-1.5">
+        <div className="flex items-center justify-between px-1.5 pb-1">
+          <span className="text-xs font-bold text-foreground/70">
+            {value ? formatLocalDateBR(value) : placeholder}
+          </span>
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              aria-label={`Limpar ${label.toLowerCase()}`}
+              className="grid size-6 place-items-center rounded-md text-foreground/45 hover:bg-foreground/5 hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+        <Calendar
+          mode="single"
+          locale={ptBR}
+          weekStartsOn={1}
+          selected={selected}
+          defaultMonth={selected ?? minDate ?? maxDate}
+          onSelect={(date) => onChange(date ? toDateKey(date) : "")}
+          disabled={[
+            ...(minDate ? [{ before: minDate }] : []),
+            ...(maxDate ? [{ after: maxDate }] : []),
+          ]}
+          className="pointer-events-auto w-full bg-transparent p-1 [--cell-size:1.9rem]"
+        />
+      </div>
+    </FilterLabel>
+  );
+}
+
 function FilterLabel({
   label,
   className,
@@ -409,8 +514,8 @@ function buildChips(
     chips.push({
       key: "periodo",
       group: "Período",
-      label: getAgenciamentoPeriodLabel(filters.periodo),
-      clear: { periodo: "todos" },
+      label: getAgenciamentoPeriodLabel(filters.periodo, filters),
+      clear: { periodo: "todos", dataInicio: "", dataFim: "" },
     });
   }
   if (filters.status !== "todos") {
@@ -456,7 +561,7 @@ function getActiveFilterCount(filters: AgenciamentoFiltersState, isAdmin: boolea
   return [
     filters.imobiliaria !== "todas",
     filters.status !== "todos",
-    filters.periodo !== "todos",
+    filters.periodo !== "todos" || Boolean(filters.dataInicio || filters.dataFim),
     filters.tipoImovel !== "todos",
     filters.checklist !== "todos",
     isAdmin && filters.corretorId !== "todos",

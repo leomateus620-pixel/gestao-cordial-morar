@@ -86,7 +86,7 @@ export function AgenciamentoPrintReport({
           </div>
           <div>
             <dt>Período</dt>
-            <dd>{getAgenciamentoPeriodLabel(filters.periodo)}</dd>
+            <dd>{getAgenciamentoPeriodLabel(filters.periodo, filters)}</dd>
           </div>
           <div>
             <dt>Trilha</dt>
@@ -170,7 +170,7 @@ export function AgenciamentoPrintReport({
 
       <footer className="print-report-footer">
         Gestão Cordial · Relatório de agenciamentos · {corretorNome} ·{" "}
-        {getAgenciamentoPeriodLabel(filters.periodo)}
+        {getAgenciamentoPeriodLabel(filters.periodo, filters)}
       </footer>
     </div>,
     document.body,

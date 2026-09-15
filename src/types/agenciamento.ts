@@ -115,7 +115,13 @@ export type AgenciamentoInput = Omit<
   validadoPorNome?: string;
 };
 
-export type AgenciamentoPeriodFilter = "todos" | "mes" | "ultimos_30" | "trimestre" | "ano";
+export type AgenciamentoPeriodFilter =
+  | "todos"
+  | "mes"
+  | "ultimos_30"
+  | "trimestre"
+  | "ano"
+  | "personalizado";
 
 export type AgenciamentoStatusFilter =
   | "todos"
@@ -145,6 +151,10 @@ export type AgenciamentoFiltersState = {
   imobiliaria: "todas" | Exclude<AgenciamentoImobiliaria, "ambas">;
   status: AgenciamentoStatusFilter;
   periodo: AgenciamentoPeriodFilter;
+  /** Data local (America/Sao_Paulo) no formato YYYY-MM-DD. */
+  dataInicio: string;
+  /** Data local (America/Sao_Paulo) no formato YYYY-MM-DD. */
+  dataFim: string;
   corretorId: string;
   tipoImovel: "todos" | AgenciamentoTipoImovel;
   finalidade: AgenciamentoFinalidadeFilter;
