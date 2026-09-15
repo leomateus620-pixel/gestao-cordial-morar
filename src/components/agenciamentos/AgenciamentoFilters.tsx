@@ -561,8 +561,7 @@ function getActiveFilterCount(filters: AgenciamentoFiltersState, isAdmin: boolea
   return [
     filters.imobiliaria !== "todas",
     filters.status !== "todos",
-    filters.periodo !== "todos",
-    Boolean(filters.dataInicio || filters.dataFim),
+    filters.periodo !== "todos" || Boolean(filters.dataInicio || filters.dataFim),
     filters.tipoImovel !== "todos",
     filters.checklist !== "todos",
     isAdmin && filters.corretorId !== "todos",
