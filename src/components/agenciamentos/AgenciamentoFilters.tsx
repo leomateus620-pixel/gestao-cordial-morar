@@ -514,8 +514,8 @@ function buildChips(
     chips.push({
       key: "periodo",
       group: "Período",
-      label: getAgenciamentoPeriodLabel(filters.periodo),
-      clear: { periodo: "todos" },
+      label: getAgenciamentoPeriodLabel(filters.periodo, filters),
+      clear: { periodo: "todos", dataInicio: "", dataFim: "" },
     });
   }
   if (filters.status !== "todos") {
@@ -562,6 +562,7 @@ function getActiveFilterCount(filters: AgenciamentoFiltersState, isAdmin: boolea
     filters.imobiliaria !== "todas",
     filters.status !== "todos",
     filters.periodo !== "todos",
+    Boolean(filters.dataInicio || filters.dataFim),
     filters.tipoImovel !== "todos",
     filters.checklist !== "todos",
     isAdmin && filters.corretorId !== "todos",
