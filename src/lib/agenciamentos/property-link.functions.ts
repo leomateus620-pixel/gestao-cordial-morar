@@ -166,9 +166,11 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (existing?.id) {
+      // Nunca apagar código já preenchido: o trigger do banco só completa colunas vazias.
+      const { codigo_cordial: _c, codigo_morar: _m, ...updatePayload } = payload;
       const { data: updated, error } = await context.supabase
         .from("agenciamentos")
-        .update(payload as never)
+        .update(updatePayload as never)
         .eq("id", (existing as { id: string }).id)
         .select("*")
         .single();
