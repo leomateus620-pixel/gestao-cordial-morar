@@ -72,6 +72,8 @@ type PropertyRow = {
   bairro: string | null;
   cidade: string | null;
   codigo: string | null;
+  codigo_cordial: string | null;
+  codigo_morar: string | null;
   carteira: string | null;
   publish_targets: string[] | null;
   proprietario_nome: string | null;
@@ -96,7 +98,7 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
     const { data: propertyRow, error: propertyError } = await context.supabase
       .from("properties")
       .select(
-        "id, tipo, logradouro, numero, bairro, cidade, codigo, carteira, publish_targets, proprietario_nome, proprietario_telefone",
+        "id, tipo, logradouro, numero, bairro, cidade, codigo, codigo_cordial, codigo_morar, carteira, publish_targets, proprietario_nome, proprietario_telefone",
       )
       .eq("id", data.propertyId)
       .maybeSingle();
@@ -135,8 +137,9 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
       endereco,
       bairro: property.bairro,
       cidade: property.cidade,
-      codigo_morar: imobiliaria === "cordial" ? null : property.codigo,
-      codigo_cordial: imobiliaria === "morar" ? null : property.codigo,
+      // Códigos reais dos sites; o trigger do banco completa/realinha depois.
+      codigo_morar: property.codigo_morar?.trim() || null,
+      codigo_cordial: property.codigo_cordial?.trim() || null,
       descricao_imovel: data.descricao || null,
       proprietario_nome: property.proprietario_nome || "Não informado",
       proprietario_telefone: property.proprietario_telefone || "",
