@@ -184,9 +184,14 @@ export function AgenciamentoFilters({
         <FilterLabel label="Período">
           <Select
             value={filters.periodo}
-            onValueChange={(periodo) =>
-              onFiltersChange({ periodo: periodo as AgenciamentoPeriodFilter })
-            }
+            onValueChange={(value) => {
+              const periodo = value as AgenciamentoPeriodFilter;
+              onFiltersChange(
+                periodo === "personalizado"
+                  ? { periodo }
+                  : { periodo, dataInicio: "", dataFim: "" },
+              );
+            }}
           >
             <SelectTrigger aria-label="Período" className={controlClassName}>
               <SelectValue />
