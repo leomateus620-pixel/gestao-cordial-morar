@@ -18,7 +18,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getAgenciamentoPeriodLabel, getAgenciamentoStatusLabel } from "@/services/agenciamentos";
+import { ptBR } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  formatLocalDateBR,
+  getAgenciamentoPeriodLabel,
+  getAgenciamentoStatusLabel,
+} from "@/services/agenciamentos";
 import type {
   AgenciamentoChecklistFilter,
   AgenciamentoFiltersState,
@@ -38,7 +44,14 @@ type AgenciamentoFiltersProps = {
   onReset: () => void;
 };
 
-const periodOptions: AgenciamentoPeriodFilter[] = ["todos", "mes", "ultimos_30", "trimestre", "ano"];
+const periodOptions: AgenciamentoPeriodFilter[] = [
+  "todos",
+  "mes",
+  "ultimos_30",
+  "trimestre",
+  "ano",
+  "personalizado",
+];
 const statusOptions: AgenciamentoStatusFilter[] = [
   "todos",
   "novo",
