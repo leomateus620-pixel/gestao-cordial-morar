@@ -402,6 +402,73 @@ export function AgenciamentoFilters({
   );
 }
 
+function parseDateKey(value?: string) {
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return undefined;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function toDateKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function RangeCalendar({
+  label,
+  placeholder,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  min?: string;
+  max?: string;
+  onChange: (value: string) => void;
+}) {
+  const selected = parseDateKey(value);
+  const minDate = parseDateKey(min);
+  const maxDate = parseDateKey(max);
+
+  return (
+    <FilterLabel label={label}>
+      <div className="rounded-xl border border-foreground/10 bg-[#f7f4f0] p-1.5">
+        <div className="flex items-center justify-between px-1.5 pb-1">
+          <span className="text-xs font-bold text-foreground/70">
+            {value ? formatLocalDateBR(value) : placeholder}
+          </span>
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              aria-label={`Limpar ${label.toLowerCase()}`}
+              className="grid size-6 place-items-center rounded-md text-foreground/45 hover:bg-foreground/5 hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+        <Calendar
+          mode="single"
+          locale={ptBR}
+          weekStartsOn={1}
+          selected={selected}
+          defaultMonth={selected ?? minDate ?? maxDate}
+          onSelect={(date) => onChange(date ? toDateKey(date) : "")}
+          disabled={
+            minDate || maxDate ? { before: minDate as Date, after: maxDate as Date } : undefined
+          }
+          className="pointer-events-auto w-full bg-transparent p-1 [--cell-size:1.9rem]"
+        />
+      </div>
+    </FilterLabel>
+  );
+}
+
 function FilterLabel({
   label,
   className,
