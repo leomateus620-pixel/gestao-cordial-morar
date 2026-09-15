@@ -14,3 +14,8 @@
 - [x] Suporte confirmou que `POST /imovel/alterar` zera campos omitidos. Envio agora lê o imóvel antes de alterar e reenvia proprietário/corretor; códigos guardados em `property_provider_publications`. Novo `GET /pessoa/dados/{codigo}` alimenta contato do proprietário na ficha interna.
 - [x] Resposta pronta ao suporte em `/mnt/documents/resposta-suporte-imobibrasil-11-09-2026.md` + listas v2 com colunas para eles devolverem os códigos restaurados.
 - [ ] Religar `imobi_update_sync_paused` só após teste de alteração em 1 imóvel de cada site (depende de o GET devolver o código real).
+
+## Novo (15/09)
+- [x] NFS-e Aluguéis: dados fiscais gravados (Cordial 42.767.687/0001-35 "Cordial Imoveis LTDA"; Morar 35.080.386/0001-73 "Bruna Weremchuk"; NBS 1.1001.21.00, item 10.05, ISS 3%, Simples Nacional nas duas).
+- [bloqueado] Teste de emissão na prefeitura: as duas marcas retornaram "Acesso Negado" (401) — a senha do webservice salva não foi aceita. Precisa confirmar/regenerar a senha de webservice no Portal do Cidadão (menu NFS-e → Webservice), que não é a senha de acesso ao portal, e recadastrar nos segredos.
+- [ ] Completar CPF/CNPJ de 2 locatários ativos (Alice Dezotti Freitas — sala 704; Caroline Fagundes/Fagundes Estética e Saúde Ltda — sala 502, ambos Morar/Clínica Cordis).
