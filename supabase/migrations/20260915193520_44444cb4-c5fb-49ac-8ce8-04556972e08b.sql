@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.agenciamentos_fill_codes_from_property() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.properties_propagate_codes_to_agenciamentos() FROM PUBLIC, anon, authenticated;
