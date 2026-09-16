@@ -43,6 +43,20 @@ export interface AgendaReminder {
   canalFuturo?: boolean;
 }
 
+/** Anexo interno do compromisso: foto no Storage ou link externo. */
+export interface AgendaAttachment {
+  id: string;
+  eventId: string;
+  kind: "foto" | "link";
+  filePath: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  url: string | null;
+  label: string | null;
+  createdAt: string;
+}
+
 export interface AgendaGuest {
   email: string;
   nome?: string;
