@@ -677,6 +677,24 @@ export function AgendaFormModal({
               </Field>
             </FormSection>
           </fieldset>
+
+          {isEditing && event && (
+            <div className="mt-4">
+              <FormSection
+                step="5"
+                title="Anexos"
+                description="Fotos e links deste compromisso, para consulta da equipe."
+              >
+                <AgendaAttachments eventId={event.id} canEdit={canEdit} />
+              </FormSection>
+            </div>
+          )}
+
+          {!isEditing && (
+            <p className="mt-4 rounded-2xl bg-white/55 px-4 py-3 text-[11px] text-foreground/55">
+              Salve o compromisso para anexar fotos e links.
+            </p>
+          )}
         </div>
 
         {submitError && (
