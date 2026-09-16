@@ -221,6 +221,56 @@ export type Database = {
           },
         ]
       }
+      agenda_event_attachments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: string
+          file_name: string | null
+          file_path: string | null
+          id: string
+          kind: string
+          label: string | null
+          mime_type: string | null
+          size_bytes: number | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          kind?: string
+          label?: string | null
+          mime_type?: string | null
+          size_bytes?: number | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          kind?: string
+          label?: string | null
+          mime_type?: string | null
+          size_bytes?: number | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_event_attachments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenda_event_checklist: {
         Row: {
           created_at: string

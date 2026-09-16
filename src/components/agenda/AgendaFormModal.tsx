@@ -36,6 +36,8 @@ import {
   type AgendaStatus,
   type AgendaTipo,
 } from "@/types/agenda";
+import { agendaTipoLabel } from "@/types/agenda";
+import { AgendaAttachments } from "@/components/agenda/AgendaAttachments";
 import { cn } from "@/lib/utils";
 
 type NamedOption = { id: string; nome: string };
@@ -69,6 +71,15 @@ type FormState = {
 const checklistSeed = ["Confirmar com o cliente", "Enviar endereço", "Levar documentos"];
 
 const STEPS = ["Tipo e título", "Data e horário", "Imóvel", "Responsáveis"];
+
+/** Resumo legível do compromisso: tipo · horário · imóvel/local · responsável. */
+function contextSummary(form: FormState, responsibleName: string): string {
+  const [year, month, day] = form.data.split("-");
+  const quando =
+    year && month && day ? `${day}/${month} às ${form.horaInicio || "--:--"}` : form.horaInicio;
+  const onde = form.imovelNome || form.imovelDescricao || form.imovelEndereco;
+  return [agendaTipoLabel[form.tipo], quando, onde, responsibleName].filter(Boolean).join(" · ");
+}
 
 export function AgendaFormModal({
   open,
@@ -324,6 +335,9 @@ export function AgendaFormModal({
                 Preencha o essencial: horário, imóvel e quem participa. Os lembretes são automáticos
                 (1 dia, 1 hora e 30 minutos antes).
               </p>
+              <p className="mt-1.5 truncate text-[11px] font-semibold text-teal-900/80">
+                {contextSummary(form, responsibleName)}
+              </p>
             </div>
             <button
               type="button"
@@ -336,7 +350,7 @@ export function AgendaFormModal({
           </div>
 
           <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto sm:mt-4">
-            {STEPS.map((section, index) => (
+            {(isEditing ? [...STEPS, "Anexos"] : STEPS).map((section, index) => (
               <span
                 key={section}
                 className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/65 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-foreground/55"
@@ -663,6 +677,24 @@ export function AgendaFormModal({
               </Field>
             </FormSection>
           </fieldset>
+
+          {isEditing && event && (
+            <div className="mt-4">
+              <FormSection
+                step="5"
+                title="Anexos"
+                description="Fotos e links deste compromisso, para consulta da equipe."
+              >
+                <AgendaAttachments eventId={event.id} canEdit={canEdit} />
+              </FormSection>
+            </div>
+          )}
+
+          {!isEditing && (
+            <p className="mt-4 rounded-2xl bg-white/55 px-4 py-3 text-[11px] text-foreground/55">
+              Salve o compromisso para anexar fotos e links.
+            </p>
+          )}
         </div>
 
         {submitError && (

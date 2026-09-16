@@ -3,6 +3,7 @@ import { render as renderAsync } from "@react-email/components";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { TEMPLATES } from "@/lib/email-templates/registry";
+import { agendaHookAuthorized } from "@/lib/notifications/hook-auth.server";
 
 /**
  * Dispatcher de lembretes da Agenda.
@@ -73,18 +74,6 @@ async function authorizedRecipientsForAgency(
   return candidateIds.filter((userId) => allowed.has(userId));
 }
 
-async function secretMatches(received: string | null, expected: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const [receivedHash, expectedHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(received ?? "")),
-    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
-  ]);
-  const left = new Uint8Array(receivedHash);
-  const right = new Uint8Array(expectedHash);
-  let difference = received === null ? 1 : 0;
-  for (let index = 0; index < left.length; index += 1) difference |= left[index] ^ right[index];
-  return difference === 0;
-}
 
 export const Route = createFileRoute("/api/public/hooks/agenda-reminders")({
   server: {
@@ -98,8 +87,14 @@ export const Route = createFileRoute("/api/public/hooks/agenda-reminders")({
           return Response.json({ error: "Server configuration error" }, { status: 500 });
         }
 
-        const apikey = request.headers.get("apikey") ?? request.headers.get("x-api-key");
-        if (!(await secretMatches(apikey, hookSecret))) {
+        // O job agendado envia o token interno em `x-api-key`; `apikey` pode trazer só a chave pública.
+        const candidates = [request.headers.get("x-api-key"), request.headers.get("apikey")];
+        const authorized = await Promise.all(
+          candidates.map((candidate) =>
+            agendaHookAuthorized(candidate, { envSecret: hookSecret, supabaseUrl, serviceRoleKey }),
+          ),
+        );
+        if (!authorized.some(Boolean)) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
