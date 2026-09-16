@@ -86,8 +86,14 @@ export const Route = createFileRoute("/api/public/hooks/agenda-reminders")({
           return Response.json({ error: "Server configuration error" }, { status: 500 });
         }
 
-        const apikey = request.headers.get("apikey") ?? request.headers.get("x-api-key");
-        if (!(await secretMatches(apikey, hookSecret))) {
+        // O job agendado envia o token interno em `x-api-key`; `apikey` pode trazer só a chave pública.
+        const candidates = [request.headers.get("x-api-key"), request.headers.get("apikey")];
+        const authorized = await Promise.all(
+          candidates.map((candidate) =>
+            agendaHookAuthorized(candidate, { envSecret: hookSecret, supabaseUrl, serviceRoleKey }),
+          ),
+        );
+        if (!authorized.some(Boolean)) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
