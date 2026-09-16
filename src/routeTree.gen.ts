@@ -55,6 +55,7 @@ import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
+import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
 
@@ -301,6 +302,12 @@ const ApiPublicHooksAgendaRemindersRoute =
     path: '/api/public/hooks/agenda-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAgendaPhotoDigestRoute =
+  ApiPublicHooksAgendaPhotoDigestRouteImport.update({
+    id: '/api/public/hooks/agenda-photo-digest',
+    path: '/api/public/hooks/agenda-photo-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCalendarCallbackRoute =
   ApiPublicGoogleCalendarCallbackRouteImport.update({
     id: '/api/public/google-calendar/callback',
@@ -347,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/imoveis/': typeof AppImoveisIndexRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -394,6 +402,7 @@ export interface FileRoutesByTo {
   '/imoveis': typeof AppImoveisIndexRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/_app/imoveis/': typeof AppImoveisIndexRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/imoveis/'
     | '/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/imoveis'
     | '/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
@@ -593,6 +605,7 @@ export interface FileRouteTypes {
     | '/_app/imoveis/'
     | '/_app/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/google-calendar-sync'
@@ -619,6 +632,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
+  ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -959,6 +973,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAgendaRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/agenda-photo-digest': {
+      id: '/api/public/hooks/agenda-photo-digest'
+      path: '/api/public/hooks/agenda-photo-digest'
+      fullPath: '/api/public/hooks/agenda-photo-digest'
+      preLoaderRoute: typeof ApiPublicHooksAgendaPhotoDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google-calendar/callback': {
       id: '/api/public/google-calendar/callback'
       path: '/api/public/google-calendar/callback'
@@ -1074,6 +1095,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
+  ApiPublicHooksAgendaPhotoDigestRoute: ApiPublicHooksAgendaPhotoDigestRoute,
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
