@@ -335,6 +335,9 @@ export function AgendaFormModal({
                 Preencha o essencial: horário, imóvel e quem participa. Os lembretes são automáticos
                 (1 dia, 1 hora e 30 minutos antes).
               </p>
+              <p className="mt-1.5 truncate text-[11px] font-semibold text-teal-900/80">
+                {contextSummary(form, responsibleName)}
+              </p>
             </div>
             <button
               type="button"
@@ -347,7 +350,7 @@ export function AgendaFormModal({
           </div>
 
           <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto sm:mt-4">
-            {STEPS.map((section, index) => (
+            {(isEditing ? [...STEPS, "Anexos"] : STEPS).map((section, index) => (
               <span
                 key={section}
                 className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/65 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-foreground/55"
