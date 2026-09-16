@@ -3,6 +3,7 @@ import { render as renderAsync } from "@react-email/components";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { TEMPLATES } from "@/lib/email-templates/registry";
+import { agendaHookAuthorized } from "@/lib/notifications/hook-auth.server";
 
 /**
  * Dispatcher de lembretes da Agenda.
