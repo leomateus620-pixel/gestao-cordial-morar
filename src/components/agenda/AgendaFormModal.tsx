@@ -36,6 +36,8 @@ import {
   type AgendaStatus,
   type AgendaTipo,
 } from "@/types/agenda";
+import { agendaTipoLabel } from "@/types/agenda";
+import { AgendaAttachments } from "@/components/agenda/AgendaAttachments";
 import { cn } from "@/lib/utils";
 
 type NamedOption = { id: string; nome: string };
@@ -69,6 +71,15 @@ type FormState = {
 const checklistSeed = ["Confirmar com o cliente", "Enviar endereço", "Levar documentos"];
 
 const STEPS = ["Tipo e título", "Data e horário", "Imóvel", "Responsáveis"];
+
+/** Resumo legível do compromisso: tipo · horário · imóvel/local · responsável. */
+function contextSummary(form: FormState, responsibleName: string): string {
+  const [year, month, day] = form.data.split("-");
+  const quando =
+    year && month && day ? `${day}/${month} às ${form.horaInicio || "--:--"}` : form.horaInicio;
+  const onde = form.imovelNome || form.imovelDescricao || form.imovelEndereco;
+  return [agendaTipoLabel[form.tipo], quando, onde, responsibleName].filter(Boolean).join(" · ");
+}
 
 export function AgendaFormModal({
   open,
