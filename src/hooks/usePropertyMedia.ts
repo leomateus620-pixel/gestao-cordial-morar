@@ -385,6 +385,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
           if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
           if (latestOrder.current === orderedIds) latestOrder.current = null;
           if (previous) qc.setQueryData(key, previous);
+          setOrderState("idle");
           toast.error((err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.");
           throw err;
         }
