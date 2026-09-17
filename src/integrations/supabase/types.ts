@@ -1756,6 +1756,7 @@ export type Database = {
           exibir_endereco_site_personalizado: string[] | null
           exibir_imovel: boolean
           finalidade: Database["public"]["Enums"]["property_finalidade"] | null
+          gallery_revision: number
           id: string
           inicio_previsao_empreendimento: string | null
           is_draft: boolean
@@ -1882,6 +1883,7 @@ export type Database = {
           exibir_endereco_site_personalizado?: string[] | null
           exibir_imovel?: boolean
           finalidade?: Database["public"]["Enums"]["property_finalidade"] | null
+          gallery_revision?: number
           id?: string
           inicio_previsao_empreendimento?: string | null
           is_draft?: boolean
@@ -2008,6 +2010,7 @@ export type Database = {
           exibir_endereco_site_personalizado?: string[] | null
           exibir_imovel?: boolean
           finalidade?: Database["public"]["Enums"]["property_finalidade"] | null
+          gallery_revision?: number
           id?: string
           inicio_previsao_empreendimento?: string | null
           is_draft?: boolean
@@ -2390,6 +2393,60 @@ export type Database = {
           },
         ]
       }
+      property_image_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duplicated_count: number
+          expected_count: number
+          failed_count: number
+          id: string
+          property_id: string
+          registered_count: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duplicated_count?: number
+          expected_count: number
+          failed_count?: number
+          id?: string
+          property_id: string
+          registered_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duplicated_count?: number
+          expected_count?: number
+          failed_count?: number
+          id?: string
+          property_id?: string
+          registered_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_batches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_batches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_image_jobs: {
         Row: {
           attempts: number
@@ -2466,6 +2523,7 @@ export type Database = {
           attempts: number
           content_hash: string | null
           created_at: string
+          delivery_file_name: string | null
           error_class: string | null
           external_image_id: string | null
           id: string
@@ -2475,15 +2533,18 @@ export type Database = {
           next_retry_at: string | null
           provider: Database["public"]["Enums"]["imobi_provider"]
           publication_id: string
+          remote_destaque: boolean | null
           remote_url: string | null
           status: string
           synced_at: string | null
+          synced_position: number | null
           updated_at: string
         }
         Insert: {
           attempts?: number
           content_hash?: string | null
           created_at?: string
+          delivery_file_name?: string | null
           error_class?: string | null
           external_image_id?: string | null
           id?: string
@@ -2493,15 +2554,18 @@ export type Database = {
           next_retry_at?: string | null
           provider: Database["public"]["Enums"]["imobi_provider"]
           publication_id: string
+          remote_destaque?: boolean | null
           remote_url?: string | null
           status?: string
           synced_at?: string | null
+          synced_position?: number | null
           updated_at?: string
         }
         Update: {
           attempts?: number
           content_hash?: string | null
           created_at?: string
+          delivery_file_name?: string | null
           error_class?: string | null
           external_image_id?: string | null
           id?: string
@@ -2511,9 +2575,11 @@ export type Database = {
           next_retry_at?: string | null
           provider?: Database["public"]["Enums"]["imobi_provider"]
           publication_id?: string
+          remote_destaque?: boolean | null
           remote_url?: string | null
           status?: string
           synced_at?: string | null
+          synced_position?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2536,6 +2602,7 @@ export type Database = {
       property_images: {
         Row: {
           alt_text: string | null
+          batch_id: string | null
           content_hash: string | null
           created_at: string
           destination_hash: string | null
@@ -2569,6 +2636,7 @@ export type Database = {
         }
         Insert: {
           alt_text?: string | null
+          batch_id?: string | null
           content_hash?: string | null
           created_at?: string
           destination_hash?: string | null
@@ -2602,6 +2670,7 @@ export type Database = {
         }
         Update: {
           alt_text?: string | null
+          batch_id?: string | null
           content_hash?: string | null
           created_at?: string
           destination_hash?: string | null
@@ -2634,6 +2703,13 @@ export type Database = {
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "property_images_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "property_image_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_images_property_id_fkey"
             columns: ["property_id"]
@@ -2908,18 +2984,27 @@ export type Database = {
           external_property_id: string | null
           external_public_url: string | null
           external_reference: string
+          gallery_revision: number | null
           id: string
           import_run_id: string | null
           last_error_category: string | null
           last_error_code: string | null
           last_error_message: string | null
           last_imported_at: string | null
+          last_media_synced_at: string | null
+          last_media_verified_at: string | null
           last_payload_hash: string | null
           last_published_hash: string | null
           last_synced_at: string | null
           last_synced_revision: number | null
           last_verified_at: string | null
           local_desired_hash: string | null
+          media_expected_count: number | null
+          media_failed_count: number | null
+          media_order_guarantee: string | null
+          media_remote_count: number | null
+          media_status: string | null
+          media_synced_count: number | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
           remote_codigo_corretor: string | null
@@ -2928,6 +3013,7 @@ export type Database = {
           remote_links_synced_at: string | null
           remote_observed_hash: string | null
           status: Database["public"]["Enums"]["property_publication_status"]
+          synced_gallery_revision: number | null
           system_managed: boolean
           updated_at: string
         }
@@ -2939,18 +3025,27 @@ export type Database = {
           external_property_id?: string | null
           external_public_url?: string | null
           external_reference: string
+          gallery_revision?: number | null
           id?: string
           import_run_id?: string | null
           last_error_category?: string | null
           last_error_code?: string | null
           last_error_message?: string | null
           last_imported_at?: string | null
+          last_media_synced_at?: string | null
+          last_media_verified_at?: string | null
           last_payload_hash?: string | null
           last_published_hash?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_expected_count?: number | null
+          media_failed_count?: number | null
+          media_order_guarantee?: string | null
+          media_remote_count?: number | null
+          media_status?: string | null
+          media_synced_count?: number | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
           remote_codigo_corretor?: string | null
@@ -2959,6 +3054,7 @@ export type Database = {
           remote_links_synced_at?: string | null
           remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
+          synced_gallery_revision?: number | null
           system_managed?: boolean
           updated_at?: string
         }
@@ -2970,18 +3066,27 @@ export type Database = {
           external_property_id?: string | null
           external_public_url?: string | null
           external_reference?: string
+          gallery_revision?: number | null
           id?: string
           import_run_id?: string | null
           last_error_category?: string | null
           last_error_code?: string | null
           last_error_message?: string | null
           last_imported_at?: string | null
+          last_media_synced_at?: string | null
+          last_media_verified_at?: string | null
           last_payload_hash?: string | null
           last_published_hash?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_expected_count?: number | null
+          media_failed_count?: number | null
+          media_order_guarantee?: string | null
+          media_remote_count?: number | null
+          media_status?: string | null
+          media_synced_count?: number | null
           property_id?: string
           provider?: Database["public"]["Enums"]["imobi_provider"]
           remote_codigo_corretor?: string | null
@@ -2990,6 +3095,7 @@ export type Database = {
           remote_links_synced_at?: string | null
           remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
+          synced_gallery_revision?: number | null
           system_managed?: boolean
           updated_at?: string
         }
@@ -3303,6 +3409,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      provider_rate_events: {
+        Row: {
+          created_at: string
+          id: number
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          provider?: string
+        }
+        Relationships: []
       }
       provider_value_maps: {
         Row: {
@@ -5077,6 +5201,14 @@ export type Database = {
         }
       }
       property_image_reclaim_stale: { Args: { _max?: number }; Returns: number }
+      property_image_register: {
+        Args: { _payload: Json; _property_id: string }
+        Returns: string
+      }
+      property_images_normalize: {
+        Args: { _property_id: string }
+        Returns: Json
+      }
       property_import_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
         Returns: {
@@ -5139,6 +5271,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      provider_rate_acquire: {
+        Args: { _limit?: number; _provider: string; _window_seconds?: number }
+        Returns: Json
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
@@ -5229,6 +5365,7 @@ export type Database = {
         | "unpublish"
         | "delete"
         | "reconcile"
+        | "media_sync"
       property_sync_job_status:
         | "pending"
         | "processing"
@@ -5454,6 +5591,7 @@ export const Constants = {
         "unpublish",
         "delete",
         "reconcile",
+        "media_sync",
       ],
       property_sync_job_status: [
         "pending",

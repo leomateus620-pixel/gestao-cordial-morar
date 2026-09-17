@@ -198,6 +198,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       mimeType?: string | null;
       sizeBytes?: number | null;
       contentHash: string;
+      batchId?: string | null;
       processedPath?: string | null;
       thumbnailPath?: string | null;
       processedChecksum?: string | null;
@@ -260,6 +261,8 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
               ),
             );
         }
+        // A foto já existente conta como item concluído do lote.
+        if (data.batchId) await bumpBatch(context.supabase, data.batchId, "duplicated_count");
         return {
           images: await signImages(
             context.supabase,
@@ -270,14 +273,11 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
         };
       }
 
-      // Envios simultâneos disputam a capa (índice único). Inserimos sempre sem
-      // capa e definimos a capa depois, num passo isolado — assim nenhuma foto
-      // do corretor falha por causa da concorrência.
-      const position = rows.length ? Math.max(...rows.map((r) => r.position)) + 1 : 0;
-      const { data: inserted, error } = await context.supabase
-        .from("property_images")
-        .insert({
-          property_id: data.propertyId,
+      // Posição e capa são atribuídas dentro do banco, com bloqueio por imóvel:
+      // 30 fotos enviadas ao mesmo tempo recebem 30 posições distintas.
+      const { data: insertedId, error } = await context.supabase.rpc("property_image_register", {
+        _property_id: data.propertyId,
+        _payload: {
           storage_path: data.storagePath,
           original_storage_path: data.storagePath,
           original_checksum: data.contentHash,
@@ -285,38 +285,32 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           mime_type: data.mimeType ?? null,
           size_bytes: data.sizeBytes ?? null,
           content_hash: data.contentHash,
-          position,
-          is_cover: false,
           upload_status: "ready",
-          processing_status: "pending",
           uploaded_by: context.userId,
-          ...(ready ?? {}),
-        })
-        .select("id")
-        .maybeSingle();
+          batch_id: data.batchId ?? null,
+          processing_status: ready ? "ready" : "pending",
+          processed_storage_path: ready?.processed_storage_path ?? null,
+          thumbnail_storage_path: ready?.thumbnail_storage_path ?? null,
+          processed_checksum: ready?.processed_checksum ?? null,
+          watermark_variant: ready?.watermark_variant ?? null,
+          watermark_version: ready?.watermark_version ?? null,
+          destination_hash: ready?.destination_hash ?? null,
+          processed_at: ready?.processed_at ?? null,
+          width: ready?.width ?? null,
+          height: ready?.height ?? null,
+        },
+      });
       if (error) throw new Error(error.message);
-      if (!inserted?.id) throw new Error("A foto foi enviada, mas não pôde ser registrada.");
+      const newId = typeof insertedId === "string" ? insertedId : null;
+      if (!newId) throw new Error("A foto foi enviada, mas não pôde ser registrada.");
 
-      // Primeira foto do imóvel vira capa; conflito aqui é inofensivo.
-      const { count: coverCount } = await context.supabase
-        .from("property_images")
-        .select("id", { count: "exact", head: true })
-        .eq("property_id", data.propertyId)
-        .eq("is_cover", true);
-      if (!coverCount) {
-        await context.supabase
-          .from("property_images")
-          .update({ is_cover: true })
-          .eq("id", inserted.id);
-      }
-
-
+      if (data.batchId) await bumpBatch(context.supabase, data.batchId, "registered_count");
 
       if (!ready) {
         // Caminho de exceção (navegador sem canvas): a fila do servidor assume.
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-        await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [inserted.id] });
+        await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [newId] });
         await kickImageWorker(2);
       }
 
@@ -330,6 +324,144 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       };
     },
   );
+
+type BatchColumn = "registered_count" | "duplicated_count" | "failed_count";
+
+async function bumpBatch(supabase: Client, batchId: string, column: BatchColumn) {
+  const { data: batch } = await supabase
+    .from("property_image_batches")
+    .select("id, expected_count, registered_count, duplicated_count, failed_count")
+    .eq("id", batchId)
+    .maybeSingle();
+  if (!batch) return;
+  const next = {
+    registered_count: Number(batch.registered_count ?? 0),
+    duplicated_count: Number(batch.duplicated_count ?? 0),
+    failed_count: Number(batch.failed_count ?? 0),
+  };
+  next[column] = next[column] + 1;
+  const concluded = next.registered_count + next.duplicated_count + next.failed_count;
+  const expected = Number(batch.expected_count ?? 0);
+  await supabase
+    .from("property_image_batches")
+    .update({
+      ...next,
+      status:
+        concluded < expected
+          ? "open"
+          : next.failed_count > 0
+            ? "incomplete"
+            : "complete",
+    })
+    .eq("id", batchId);
+}
+
+export type ImageBatchState = {
+  batchId: string;
+  expected: number;
+  registered: number;
+  duplicated: number;
+  failed: number;
+  complete: boolean;
+  status: string;
+};
+
+/**
+ * Abre um lote de envio: o cadastro só considera as fotos concluídas quando
+ * enviadas + duplicadas + com falha alcançam a quantidade selecionada — nenhuma
+ * foto se perde em silêncio.
+ */
+export const openPropertyImageBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string; expectedCount: number }) => data)
+  .handler(async ({ data, context }): Promise<{ batchId: string }> => {
+    const expected = Math.max(1, Math.floor(data.expectedCount));
+    const { data: batch, error } = await context.supabase
+      .from("property_image_batches")
+      .insert({
+        property_id: data.propertyId,
+        expected_count: expected,
+        created_by: context.userId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { batchId: batch.id as string };
+  });
+
+export const reportPropertyImageBatchFailure = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { batchId: string }) => data)
+  .handler(async ({ data, context }) => {
+    await bumpBatch(context.supabase, data.batchId, "failed_count");
+    return { ok: true };
+  });
+
+export const getPropertyImageBatch = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { batchId: string }) => data)
+  .handler(async ({ data, context }): Promise<ImageBatchState | null> => {
+    const { data: batch } = await context.supabase
+      .from("property_image_batches")
+      .select("id, expected_count, registered_count, duplicated_count, failed_count, status")
+      .eq("id", data.batchId)
+      .maybeSingle();
+    if (!batch) return null;
+    const registered = Number(batch.registered_count ?? 0);
+    const duplicated = Number(batch.duplicated_count ?? 0);
+    const failed = Number(batch.failed_count ?? 0);
+    const expected = Number(batch.expected_count ?? 0);
+    return {
+      batchId: batch.id as string,
+      expected,
+      registered,
+      duplicated,
+      failed,
+      complete: registered + duplicated === expected && failed === 0,
+      status: String(batch.status ?? "open"),
+    };
+  });
+
+/** Enfileira a sincronização de fotos dos sites já publicados (nunca o cadastro). */
+async function queueMedia(propertyId: string, userId?: string) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { queueMediaSync } = await import("@/lib/imobibrasil/media-sync.server");
+    const result = await queueMediaSync(supabaseAdmin, propertyId, {
+      requestedBy: userId ?? null,
+    });
+    if (result.enqueued.length) await kickSyncWorker();
+    return result;
+  } catch {
+    // A fila persistente e o pg_cron garantem o reenvio.
+    return { enqueued: [] as string[], galleryRevision: 0 };
+  }
+}
+
+async function kickSyncWorker() {
+  try {
+    const secret =
+      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!secret) return;
+    const request = getRequest();
+    const origin = request?.url ? new URL(request.url).origin : null;
+    if (!origin) return;
+    await fetch(`${origin}/api/public/hooks/property-sync-worker`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: secret },
+      body: JSON.stringify({ limit: 5, drain: true }),
+      signal: AbortSignal.timeout(1500),
+    });
+  } catch {
+    // pg_cron reprocessa no próximo ciclo
+  }
+}
+
+/** Sincroniza a galeria com os sites sob demanda (fotos apenas). */
+export const syncPropertyGallery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string }) => data)
+  .handler(async ({ data, context }) => queueMedia(data.propertyId, context.userId));
 
 /** Persiste os destinos do imóvel e regenera as marcas quando eles mudam. */
 export const setPropertyPublishTargets = createServerFn({ method: "POST" })
@@ -403,6 +535,9 @@ export const setPropertyImageCover = createServerFn({ method: "POST" })
       .eq("id", data.imageId)
       .eq("property_id", data.propertyId);
     if (error) throw new Error(error.message);
+    // Fotos apenas: nunca reenvia a mesma imagem só por causa do destaque (o
+    // site não tem recurso de alterar destaque e criaria uma cópia).
+    await queueMedia(data.propertyId, context.userId);
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
@@ -421,6 +556,8 @@ export const reorderPropertyImages = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
       const payload = (result ?? {}) as { changed?: number; coverId?: string | null };
+      // A nova ordem é uma mudança de mídia: entra na fila só de fotos.
+      if (Number(payload.changed ?? 0) > 0) await queueMedia(data.propertyId, context.userId);
       return {
         ok: true,
         changed: Number(payload.changed ?? 0),
@@ -456,13 +593,12 @@ export const deletePropertyImage = createServerFn({ method: "POST" })
     ].filter((path, index, all): path is string => Boolean(path) && all.indexOf(path) === index);
     await context.supabase.storage.from(BUCKET).remove(removable);
 
-    const remaining = await listRows(context.supabase, data.propertyId);
-    if (target.is_cover && remaining.length) {
-      await context.supabase
-        .from("property_images")
-        .update({ is_cover: true })
-        .eq("id", remaining[0]!.id);
-    }
+    // Renumera 0..N-1 e devolve a capa para a primeira foto restante.
+    await context.supabase.rpc("property_images_normalize", { _property_id: data.propertyId });
+    // Exclusão local aciona a reconciliação da galeria nos sites. A API do
+    // provedor não oferece remoção de imagem: o que sobrar remotamente fica
+    // registrado como divergência de mídia na publicação.
+    await queueMedia(data.propertyId, context.userId);
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 

@@ -15,12 +15,8 @@ import {
   buildExternalReference,
   hashPayload,
   serializeProperty,
-  boolToImageSimNao,
   type LocalPropertyForSync,
 } from "./serializers";
-import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
-import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
-import { fetchDeliveryBytes } from "@/lib/imoveis/delivery.server";
 import type { ImobiProvider } from "./providers";
 import { providerExternalCode } from "./provider-code";
 
@@ -30,14 +26,13 @@ export type SyncJob = {
   id: string;
   property_id: string;
   provider: ImobiProvider;
-  action: "publish" | "update" | "unpublish" | "delete" | "reconcile";
+  action: "publish" | "update" | "unpublish" | "delete" | "reconcile" | "media_sync";
   requested_revision: number;
   correlation_id: string;
   attempts: number;
   max_attempts: number;
 };
 
-const IMAGE_CONCURRENCY = 2;
 
 async function logAttempt(
   admin: Admin,
@@ -249,150 +244,35 @@ async function syncCharacteristics(
   }
 }
 
-/** Foto travada há mais tempo que isso não segura mais a publicação do imóvel. */
-const STUCK_IMAGE_WINDOW_MS = 15 * 60 * 1000;
-
+/**
+ * Etapa de fotos do publish/update: delega ao caminho de mídia, que é o único
+ * lugar que fala com os recursos de imagem do site (envio sequencial na ordem
+ * definida no Gestão, limite de requisições por site e métricas por publicação).
+ */
 async function syncImages(admin: Admin, job: SyncJob, publicationId: string, externalId: string) {
-  const { data: images } = await admin
-    .from("property_images")
-    .select(
-      "id, storage_path, processed_storage_path, processed_checksum, file_name, mime_type, content_hash, is_cover, position, processing_status, processing_started_at, updated_at",
-    )
-    .eq("property_id", job.property_id)
-    // A galeria vai para o site exatamente na ordem escolhida no sistema.
-    .order("position", { ascending: true });
-
-
-  // Só publicamos fotos com marca-d'água aplicada (ou o acervo legado já publicado).
-  // Fotos em andamento recentes seguram o envio; as travadas há muito tempo
-  // apenas ficam de fora — os dados do imóvel nunca podem deixar de ir ao site
-  // por causa de imagem, e a varredura automática as recupera depois.
-  const allImages = images ?? [];
-  const list = allImages.filter(canPublishPropertyImage);
-  const now = Date.now();
-  const inFlight = allImages.filter((image) => {
-    if (!["pending", "processing"].includes(String(image.processing_status))) return false;
-    const since = image.processing_started_at ?? image.updated_at;
-    const age = since ? now - new Date(since as string).getTime() : 0;
-    return age < STUCK_IMAGE_WINDOW_MS;
-  }).length;
-  if (inFlight > 0) {
-    throw new Error(`${inFlight} foto(s) ainda estão recebendo a marca-d'água.`);
-  }
-  const skipped = allImages.length - list.length;
-  if (skipped > 0) {
-    await logAttempt(admin, job, {
-      step: "images",
-      ok: true,
-      errorCategory: "skipped_images",
-      errorMessage: `${skipped} foto(s) sem marca-d'água foram ignoradas no envio.`,
-    });
-  }
-  if (!list.length) return { sent: 0, failed: 0, retrying: 0 };
-
-
-  const { data: published } = await admin
-    .from("property_image_provider_publications")
-    .select("image_id, content_hash, external_image_id, status, attempts, next_retry_at, is_cover")
-    .eq("publication_id", publicationId);
-  const publishedIndex = new Map((published ?? []).map((row) => [row.image_id, row]));
-
-  const deliveredHash = (image: (typeof list)[number]) =>
-    image.processed_checksum ?? image.content_hash;
-
-  const pending = list.filter((image) => {
-    const existing = publishedIndex.get(image.id);
-    if (!existing) return true;
-    // Mudança de capa exige reenviar a foto para o site atualizar o destaque.
-    const coverChanged = Boolean(existing.is_cover) !== Boolean(image.is_cover);
-    const outdated =
-      existing.status !== "synced" ||
-      existing.content_hash !== deliveredHash(image) ||
-      coverChanged;
-    if (!outdated) return false;
-    // Falha recente com nova tentativa marcada: respeita a espera programada.
-    if (existing.status === "error" && existing.next_retry_at) {
-      return new Date(existing.next_retry_at as string).getTime() <= now;
-    }
-    return true;
+  const { deliverGallery } = await import("./media-sync.server");
+  const result = await deliverGallery(admin, {
+    propertyId: job.property_id,
+    provider: job.provider,
+    publicationId,
+    externalId,
+    correlationId: job.correlation_id,
   });
-
-
-  let sent = 0;
-  let failed = 0;
-  let retrying = 0;
-
-  for (let index = 0; index < pending.length; index += IMAGE_CONCURRENCY) {
-    const batch = pending.slice(index, index + IMAGE_CONCURRENCY);
-    await Promise.all(
-      batch.map(async (image) => {
-        const previousAttempts = Number(publishedIndex.get(image.id)?.attempts ?? 0);
-        try {
-          const deliveryPath = image.processed_storage_path ?? image.storage_path;
-          // A cópia de envio é reduzida no armazenamento até caber no limite do site.
-          const delivery = await fetchDeliveryBytes(admin, "property-images", deliveryPath);
-          const form = new FormData();
-          form.append("imagem", delivery.blob, image.file_name);
-          form.append("destaque", boolToImageSimNao(Boolean(image.is_cover)));
-          const response = await imobiRequest(
-            job.provider,
-            `/imovel/${encodeURIComponent(externalId)}/imagem/inserir`,
-            {
-              method: "POST",
-              formData: form,
-              extraHeaders: { codigoImovel: externalId },
-              correlationId: job.correlation_id,
-              // Upload de imagem é bem mais lento que as chamadas de catálogo.
-              timeoutMs: 90_000,
-              retryOnNetwork: true,
-            },
-          );
-          await admin.from("property_image_provider_publications").upsert(
-            {
-              image_id: image.id,
-              publication_id: publicationId,
-              provider: job.provider,
-              external_image_id: extractExternalId(response.data),
-              content_hash: deliveredHash(image),
-              is_cover: Boolean(image.is_cover),
-              status: "synced",
-              last_error_message: null,
-              error_class: null,
-              attempts: 0,
-              next_retry_at: null,
-              synced_at: new Date().toISOString(),
-            },
-            { onConflict: "image_id,publication_id" },
-          );
-          sent += 1;
-        } catch (error) {
-          failed += 1;
-          const normalized = toImobiError(error);
-          const attempts = previousAttempts + 1;
-          const errorClass = classifyImageDeliveryError(normalized.message);
-          const retryAt = nextImageRetryAt(errorClass, attempts);
-          if (retryAt) retrying += 1;
-          await admin.from("property_image_provider_publications").upsert(
-            {
-              image_id: image.id,
-              publication_id: publicationId,
-              provider: job.provider,
-              content_hash: deliveredHash(image),
-              is_cover: Boolean(image.is_cover),
-              status: "error",
-              last_error_message: normalized.message,
-              error_class: errorClass,
-              attempts,
-              next_retry_at: retryAt,
-            },
-            { onConflict: "image_id,publication_id" },
-          );
-        }
-      }),
-    );
-  }
-
-  return { sent, failed, retrying };
+  await logAttempt(admin, job, {
+    step: "images",
+    ok: result.failedCount === 0,
+    errorCategory: result.status,
+    errorMessage:
+      result.failedCount > 0
+        ? `${result.failedCount} foto(s) não sincronizada(s).`
+        : `${result.sentCount} enviada(s), ${result.alreadySyncedCount} já sincronizada(s).`,
+  });
+  return {
+    sent: result.sentCount,
+    failed: result.failedCount,
+    retrying: result.waitingCount,
+    status: result.status,
+  };
 }
 
 async function loadProperty(admin: Admin, propertyId: string) {
@@ -470,6 +350,20 @@ async function ensureProviderCode(
 
 
 export async function processJob(admin: Admin, job: SyncJob) {
+  // Mídia é um caminho totalmente separado do cadastro: sai daqui antes de
+  // qualquer leitura/gravação cadastral (código do provedor, catálogos,
+  // vínculos de proprietário/corretor) e nunca chama `/imovel/alterar`.
+  if (job.action === "media_sync") {
+    if (!hasProviderToken(job.provider)) {
+      throw new ImobiApiError({
+        message: `Token do provedor ${job.provider} não configurado.`,
+        category: "config",
+      });
+    }
+    const { syncPropertyMedia } = await import("./media-sync.server");
+    return syncPropertyMedia(admin, job);
+  }
+
   const property = await loadProperty(admin, job.property_id);
   // Um imóvel publicado numa imobiliária sem código próprio recebe agora um número
   // real da sequência daquela imobiliária — nunca mais a referência técnica `GC-…`.
@@ -713,6 +607,13 @@ export async function processJob(admin: Admin, job: SyncJob) {
             : "Verificação remota divergente.",
     })
     .eq("id", publication.id);
+
+  // Galeria incompleta ou aguardando marca-d'água: o caminho de mídia retoma
+  // sozinho, sem depender de nova alteração cadastral.
+  if (media.failed > 0 || media.retrying > 0 || media.status !== "synced") {
+    const { queueMediaSync } = await import("./media-sync.server");
+    await queueMediaSync(admin, job.property_id, { providers: [job.provider] });
+  }
 
   return { status: finalStatus, externalId, media, unmapped: resolution.unmapped };
 }

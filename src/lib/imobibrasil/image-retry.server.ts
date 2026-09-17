@@ -16,6 +16,10 @@ type Admin = SupabaseClient;
 
 type QueueKey = { property_id: string; provider: string };
 
+/**
+ * Reenfileira apenas MÍDIA (`media_sync`). Nunca `update`: alteração cadastral
+ * segue protegida pela trava `imobi_update_sync_paused`.
+ */
 async function enqueueUpdates(admin: Admin, keys: QueueKey[]): Promise<number> {
   if (!keys.length) return 0;
 
@@ -23,19 +27,20 @@ async function enqueueUpdates(admin: Admin, keys: QueueKey[]): Promise<number> {
   const [{ data: properties }, { data: activeJobs }] = await Promise.all([
     admin
       .from("properties")
-      .select("id, revision, is_draft, archived_at")
+      .select("id, gallery_revision, is_draft, archived_at")
       .in("id", propertyIds),
     admin
       .from("property_sync_jobs")
       .select("property_id, provider")
       .in("property_id", propertyIds)
+      .eq("action", "media_sync")
       .in("status", ["pending", "processing", "retry"]),
   ]);
 
   const revisionById = new Map(
     (properties ?? [])
       .filter((row) => !row.is_draft && !row.archived_at)
-      .map((row) => [row.id as string, Number(row.revision ?? 1)]),
+      .map((row) => [row.id as string, Number(row.gallery_revision ?? 1)]),
   );
   const busy = new Set(
     (activeJobs ?? []).map((row) => `${row.property_id}:${row.provider}`),
@@ -47,7 +52,7 @@ async function enqueueUpdates(admin: Admin, keys: QueueKey[]): Promise<number> {
     .map((key) => ({
       property_id: key.property_id,
       provider: key.provider,
-      action: "update",
+      action: "media_sync",
       requested_revision: revisionById.get(key.property_id)!,
       status: "pending",
       attempts: 0,

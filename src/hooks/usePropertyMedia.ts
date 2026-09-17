@@ -6,14 +6,17 @@ import {
   createPropertyImageUploadUrl,
   deletePropertyImage,
   finalizePropertyImageReprocess,
+  getPropertyImageBatch,
   listPropertyImages,
+  openPropertyImageBatch,
   preparePropertyImageReprocess,
   registerPropertyImage,
   reorderPropertyImages,
+  reportPropertyImageBatchFailure,
   setPropertyImageCover,
   setPropertyPublishTargets,
+  syncPropertyGallery,
 } from "@/lib/imoveis/media.functions";
-import { enqueuePropertySync } from "@/lib/imoveis/publish.functions";
 import { sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
 import { composeWatermarkedUpload } from "@/lib/imoveis/watermark-client";
 import type { PropertyImage } from "@/types/property";
@@ -22,6 +25,9 @@ export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const BUCKET = "property-images";
 /** Envios simultâneos: rápido sem saturar a conexão do corretor. */
 const UPLOAD_CONCURRENCY = 3;
+
+/** Estado do salvamento da ordem, mostrado discretamente no organizador. */
+export type OrderSaveState = "idle" | "saving" | "saved" | "syncing";
 
 export type UploadItemStatus =
   | "preparando"
@@ -91,10 +97,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const prepareRetryFn = useServerFn(preparePropertyImageReprocess);
   const finalizeRetryFn = useServerFn(finalizePropertyImageReprocess);
   const targetsFn = useServerFn(setPropertyPublishTargets);
+  const openBatchFn = useServerFn(openPropertyImageBatch);
+  const batchFailureFn = useServerFn(reportPropertyImageBatchFailure);
+  const batchStateFn = useServerFn(getPropertyImageBatch);
   const [progress, setProgress] = useState<UploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
+  // "Salvando ordem…" / "Ordem salva" / "Sincronizando com os sites".
+  const [orderState, setOrderState] = useState<OrderSaveState>("idle");
   // Guarda o arquivo para permitir "tentar novamente" sem reselecionar.
   const filesByKey = useRef(new Map<string, File>());
+  const activeBatch = useRef<string | null>(null);
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["property-images", propertyId] });
@@ -158,6 +170,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
           mimeType: composed.original.mimeType,
           sizeBytes: composed.original.blob.size,
           contentHash: hash,
+          batchId: activeBatch.current,
           processedPath: target.processed.path,
           thumbnailPath: target.thumbnail.path,
           processedChecksum: composed.processed.checksum,
@@ -176,10 +189,53 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [createUrl, patch, propertyId, register],
   );
 
-  /** Fila com concorrência limitada — uma falha nunca interrompe as demais. */
+  const syncGalleryFn = useServerFn(syncPropertyGallery);
+  /**
+   * Sincroniza SÓ as fotos com os sites já publicados. Não passa pela
+   * atualização cadastral (que segue pausada por segurança).
+   */
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runProviderSync = useCallback(
+    async (id: string) => {
+      if (syncTimer.current) {
+        clearTimeout(syncTimer.current);
+        syncTimer.current = null;
+      }
+      try {
+        setOrderState("syncing");
+        await syncGalleryFn({ data: { propertyId: id } });
+        qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      } catch {
+        // A ordem já está salva; o painel de publicação permite reenviar.
+      } finally {
+        setOrderState("saved");
+      }
+    },
+    [qc, syncGalleryFn],
+  );
+
+  /**
+   * Fila com concorrência limitada — uma falha nunca interrompe as demais.
+   * O lote é transacional: só é considerado concluído quando registradas +
+   * duplicadas + com falha alcançam a quantidade selecionada.
+   */
   const runQueue = useCallback(
     async (entries: { key: string; file: File }[]) => {
       setUploading(true);
+      let batchId: string | null = null;
+      if (propertyId) {
+        try {
+          const opened = await openBatchFn({
+            data: { propertyId, expectedCount: entries.length },
+          });
+          batchId = opened.batchId;
+        } catch {
+          // Sem lote o envio continua; a conferência acontece pela lista.
+        }
+      }
+      activeBatch.current = batchId;
+
       let cursor = 0;
       const workers = Array.from(
         { length: Math.min(UPLOAD_CONCURRENCY, entries.length) },
@@ -193,16 +249,48 @@ export function usePropertyMedia(propertyId: string | undefined) {
                 status: "erro",
                 error: (err as Error)?.message ?? "Não foi possível enviar esta foto.",
               });
+              if (batchId) {
+                try {
+                  await batchFailureFn({ data: { batchId } });
+                } catch {
+                  /* o lote fica aberto e a lista mostra a foto com erro */
+                }
+              }
             }
             invalidate();
           }
         },
       );
       await Promise.all(workers);
+      activeBatch.current = null;
       setUploading(false);
       invalidate();
+
+      // Lote registrado por completo: as fotos vão para os sites publicados.
+      if (batchId && propertyId) {
+        try {
+          const state = await batchStateFn({ data: { batchId } });
+          if (state?.complete) await runProviderSync(propertyId);
+          else if (state && state.failed > 0)
+            toast.warning(
+              `${state.registered + state.duplicated} de ${state.expected} fotos registradas. As demais podem ser reenviadas.`,
+            );
+        } catch {
+          /* a fila do servidor recupera */
+        }
+      }
+      return batchId;
     },
-    [invalidate, patch, sendOne],
+    [
+      batchFailureFn,
+      batchStateFn,
+      invalidate,
+      openBatchFn,
+      patch,
+      propertyId,
+      runProviderSync,
+      sendOne,
+    ],
   );
 
   const upload = useCallback(
@@ -237,35 +325,6 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [runQueue],
   );
 
-  const enqueueSync = useServerFn(enqueuePropertySync);
-  /** Reenfileira apenas os sites em que o imóvel já está publicado. */
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const runProviderSync = useCallback(
-    async (id: string) => {
-      if (syncTimer.current) {
-        clearTimeout(syncTimer.current);
-        syncTimer.current = null;
-      }
-      try {
-        const detail = qc.getQueryData<{
-          archivedAt: string | null;
-          isDraft?: boolean;
-          publications?: Array<{ provider: string; status: string }>;
-        }>(["imovel-detalhe", id]);
-        if (!detail || detail.archivedAt || detail.isDraft) return;
-        const providers = (detail.publications ?? [])
-          .filter((p) => p.status === "published" || p.status === "partial")
-          .map((p) => p.provider);
-        if (!providers.length) return;
-        await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
-        qc.invalidateQueries({ queryKey: ["property-sync", id] });
-      } catch {
-        // A ordem já está salva; o painel de publicação permite reenviar.
-      }
-    },
-    [qc, enqueueSync],
-  );
 
   const syncOrderToProviders = useCallback(
     (id: string) => {
@@ -313,17 +372,20 @@ export function usePropertyMedia(propertyId: string | undefined) {
       } catch {
         /* ignora falha anterior */
       }
+      setOrderState("saving");
       const run = (async () => {
         try {
           await reorderFn({ data: { propertyId, orderedIds } });
           if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
           if (latestOrder.current === orderedIds) latestOrder.current = null;
+          setOrderState("saved");
           invalidate();
           syncOrderToProviders(propertyId);
         } catch (err) {
           if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
           if (latestOrder.current === orderedIds) latestOrder.current = null;
           if (previous) qc.setQueryData(key, previous);
+          setOrderState("idle");
           toast.error((err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.");
           throw err;
         }
@@ -520,6 +582,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
     reorder,
     reorderPhotos,
     flushReorder,
+    orderState,
+
 
     remove,
     retryWatermark,

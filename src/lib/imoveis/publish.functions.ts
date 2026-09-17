@@ -7,7 +7,14 @@ import {
   type ImobiProvider,
 } from "@/lib/imobibrasil/providers";
 
-export type SyncAction = "publish" | "update" | "unpublish" | "delete" | "reconcile";
+export type SyncAction =
+  | "publish"
+  | "update"
+  | "unpublish"
+  | "delete"
+  | "reconcile"
+  /** Somente fotos: caminho independente da trava de alteração cadastral. */
+  | "media_sync";
 
 export type PublicationStatusView = {
   provider: ImobiProvider;
