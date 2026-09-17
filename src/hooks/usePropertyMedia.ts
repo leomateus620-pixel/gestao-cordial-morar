@@ -189,6 +189,32 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [createUrl, patch, propertyId, register],
   );
 
+  const syncGalleryFn = useServerFn(syncPropertyGallery);
+  /**
+   * Sincroniza SÓ as fotos com os sites já publicados. Não passa pela
+   * atualização cadastral (que segue pausada por segurança).
+   */
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runProviderSync = useCallback(
+    async (id: string) => {
+      if (syncTimer.current) {
+        clearTimeout(syncTimer.current);
+        syncTimer.current = null;
+      }
+      try {
+        setOrderState("syncing");
+        await syncGalleryFn({ data: { propertyId: id } });
+        qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      } catch {
+        // A ordem já está salva; o painel de publicação permite reenviar.
+      } finally {
+        setOrderState("saved");
+      }
+    },
+    [qc, syncGalleryFn],
+  );
+
   /**
    * Fila com concorrência limitada — uma falha nunca interrompe as demais.
    * O lote é transacional: só é considerado concluído quando registradas +
