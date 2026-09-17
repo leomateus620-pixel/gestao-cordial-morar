@@ -27,6 +27,17 @@ export type PublicationStatusView = {
   lastVerifiedAt: string | null;
   lastErrorMessage: string | null;
   activeJob: { id: string; action: string; status: string; attempts: number } | null;
+  /** Estado só das fotos, independente do cadastro. */
+  media: {
+    status: string | null;
+    orderGuarantee: string | null;
+    expectedCount: number | null;
+    syncedCount: number | null;
+    failedCount: number | null;
+    remoteCount: number | null;
+    lastSyncedAt: string | null;
+    lastVerifiedAt: string | null;
+  };
 };
 
 function sanitizeProviders(input: unknown): ImobiProvider[] {
@@ -212,6 +223,16 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
       lastVerifiedAt: row.last_verified_at,
       lastErrorMessage: row.last_error_message,
       activeJob: jobIndex.get(row.provider) ?? null,
+      media: {
+        status: row.media_status ?? null,
+        orderGuarantee: row.media_order_guarantee ?? null,
+        expectedCount: row.media_expected_count ?? null,
+        syncedCount: row.media_synced_count ?? null,
+        failedCount: row.media_failed_count ?? null,
+        remoteCount: row.media_remote_count ?? null,
+        lastSyncedAt: row.last_media_synced_at ?? null,
+        lastVerifiedAt: row.last_media_verified_at ?? null,
+      },
     }));
   });
 

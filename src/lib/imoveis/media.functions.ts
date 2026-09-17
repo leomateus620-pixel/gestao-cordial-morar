@@ -327,33 +327,16 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
 
 type BatchColumn = "registered_count" | "duplicated_count" | "failed_count";
 
+/**
+ * Incremento atômico no banco: uploads simultâneos não perdem contagem
+ * (ler-somar-gravar no cliente perdia incrementos e o lote nunca fechava).
+ */
 async function bumpBatch(supabase: Client, batchId: string, column: BatchColumn) {
-  const { data: batch } = await supabase
-    .from("property_image_batches")
-    .select("id, expected_count, registered_count, duplicated_count, failed_count")
-    .eq("id", batchId)
-    .maybeSingle();
-  if (!batch) return;
-  const next = {
-    registered_count: Number(batch.registered_count ?? 0),
-    duplicated_count: Number(batch.duplicated_count ?? 0),
-    failed_count: Number(batch.failed_count ?? 0),
-  };
-  next[column] = next[column] + 1;
-  const concluded = next.registered_count + next.duplicated_count + next.failed_count;
-  const expected = Number(batch.expected_count ?? 0);
-  await supabase
-    .from("property_image_batches")
-    .update({
-      ...next,
-      status:
-        concluded < expected
-          ? "open"
-          : next.failed_count > 0
-            ? "incomplete"
-            : "complete",
-    })
-    .eq("id", batchId);
+  const { error } = await supabase.rpc("property_image_batch_bump", {
+    _batch_id: batchId,
+    _column: column,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export type ImageBatchState = {
@@ -523,17 +506,19 @@ export const setPropertyImageCover = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string; imageId: string }) => data)
   .handler(async ({ data, context }): Promise<PropertyImage[]> => {
-    // O índice único garante uma capa por imóvel: zera antes de marcar a nova.
-    await context.supabase
-      .from("property_images")
-      .update({ is_cover: false })
-      .eq("property_id", data.propertyId)
-      .eq("is_cover", true);
-    const { error } = await context.supabase
-      .from("property_images")
-      .update({ is_cover: true })
-      .eq("id", data.imageId)
-      .eq("property_id", data.propertyId);
+    // Invariante do sistema: a capa é sempre a posição 0. Marcar is_cover em
+    // outra posição era desfeito pela normalização, então definir capa move a
+    // foto para o início da galeria — uma única fonte de verdade.
+    const rows = await listRows(context.supabase, data.propertyId);
+    if (!rows.some((row) => row.id === data.imageId)) return signImages(context.supabase, rows);
+    const orderedIds = [
+      data.imageId,
+      ...rows.map((row) => row.id as string).filter((id) => id !== data.imageId),
+    ];
+    const { error } = await context.supabase.rpc("reorder_property_images", {
+      _property_id: data.propertyId,
+      _ids: orderedIds,
+    });
     if (error) throw new Error(error.message);
     // Fotos apenas: nunca reenvia a mesma imagem só por causa do destaque (o
     // site não tem recurso de alterar destaque e criaria uma cópia).
