@@ -372,11 +372,13 @@ export function usePropertyMedia(propertyId: string | undefined) {
       } catch {
         /* ignora falha anterior */
       }
+      setOrderState("saving");
       const run = (async () => {
         try {
           await reorderFn({ data: { propertyId, orderedIds } });
           if (pendingOrder.get(propertyId) === orderedIds) pendingOrder.delete(propertyId);
           if (latestOrder.current === orderedIds) latestOrder.current = null;
+          setOrderState("saved");
           invalidate();
           syncOrderToProviders(propertyId);
         } catch (err) {
