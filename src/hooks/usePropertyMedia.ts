@@ -582,6 +582,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
     reorder,
     reorderPhotos,
     flushReorder,
+    orderState,
+
 
     remove,
     retryWatermark,
