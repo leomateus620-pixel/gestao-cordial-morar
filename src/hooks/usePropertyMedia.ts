@@ -6,14 +6,17 @@ import {
   createPropertyImageUploadUrl,
   deletePropertyImage,
   finalizePropertyImageReprocess,
+  getPropertyImageBatch,
   listPropertyImages,
+  openPropertyImageBatch,
   preparePropertyImageReprocess,
   registerPropertyImage,
   reorderPropertyImages,
+  reportPropertyImageBatchFailure,
   setPropertyImageCover,
   setPropertyPublishTargets,
+  syncPropertyGallery,
 } from "@/lib/imoveis/media.functions";
-import { enqueuePropertySync } from "@/lib/imoveis/publish.functions";
 import { sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
 import { composeWatermarkedUpload } from "@/lib/imoveis/watermark-client";
 import type { PropertyImage } from "@/types/property";
@@ -22,6 +25,9 @@ export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const BUCKET = "property-images";
 /** Envios simultâneos: rápido sem saturar a conexão do corretor. */
 const UPLOAD_CONCURRENCY = 3;
+
+/** Estado do salvamento da ordem, mostrado discretamente no organizador. */
+export type OrderSaveState = "idle" | "saving" | "saved" | "syncing";
 
 export type UploadItemStatus =
   | "preparando"
