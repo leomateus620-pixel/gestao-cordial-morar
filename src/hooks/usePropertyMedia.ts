@@ -243,8 +243,11 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [runQueue],
   );
 
-  const enqueueSync = useServerFn(enqueuePropertySync);
-  /** Reenfileira apenas os sites em que o imóvel já está publicado. */
+  const syncGalleryFn = useServerFn(syncPropertyGallery);
+  /**
+   * Sincroniza SÓ as fotos com os sites já publicados. Não passa pela
+   * atualização cadastral (que segue pausada por segurança).
+   */
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const runProviderSync = useCallback(
@@ -254,23 +257,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
         syncTimer.current = null;
       }
       try {
-        const detail = qc.getQueryData<{
-          archivedAt: string | null;
-          isDraft?: boolean;
-          publications?: Array<{ provider: string; status: string }>;
-        }>(["imovel-detalhe", id]);
-        if (!detail || detail.archivedAt || detail.isDraft) return;
-        const providers = (detail.publications ?? [])
-          .filter((p) => p.status === "published" || p.status === "partial")
-          .map((p) => p.provider);
-        if (!providers.length) return;
-        await enqueueSync({ data: { propertyId: id, providers, action: "update" } });
+        setOrderState("syncing");
+        await syncGalleryFn({ data: { propertyId: id } });
         qc.invalidateQueries({ queryKey: ["property-sync", id] });
       } catch {
         // A ordem já está salva; o painel de publicação permite reenviar.
+      } finally {
+        setOrderState("saved");
       }
     },
-    [qc, enqueueSync],
+    [qc, syncGalleryFn],
   );
 
   const syncOrderToProviders = useCallback(
