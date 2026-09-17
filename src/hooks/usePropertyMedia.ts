@@ -170,6 +170,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
           mimeType: composed.original.mimeType,
           sizeBytes: composed.original.blob.size,
           contentHash: hash,
+          batchId: activeBatch.current,
           processedPath: target.processed.path,
           thumbnailPath: target.thumbnail.path,
           processedChecksum: composed.processed.checksum,
@@ -188,10 +189,27 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [createUrl, patch, propertyId, register],
   );
 
-  /** Fila com concorrência limitada — uma falha nunca interrompe as demais. */
+  /**
+   * Fila com concorrência limitada — uma falha nunca interrompe as demais.
+   * O lote é transacional: só é considerado concluído quando registradas +
+   * duplicadas + com falha alcançam a quantidade selecionada.
+   */
   const runQueue = useCallback(
     async (entries: { key: string; file: File }[]) => {
       setUploading(true);
+      let batchId: string | null = null;
+      if (propertyId) {
+        try {
+          const opened = await openBatchFn({
+            data: { propertyId, expectedCount: entries.length },
+          });
+          batchId = opened.batchId;
+        } catch {
+          // Sem lote o envio continua; a conferência acontece pela lista.
+        }
+      }
+      activeBatch.current = batchId;
+
       let cursor = 0;
       const workers = Array.from(
         { length: Math.min(UPLOAD_CONCURRENCY, entries.length) },
@@ -205,16 +223,48 @@ export function usePropertyMedia(propertyId: string | undefined) {
                 status: "erro",
                 error: (err as Error)?.message ?? "Não foi possível enviar esta foto.",
               });
+              if (batchId) {
+                try {
+                  await batchFailureFn({ data: { batchId } });
+                } catch {
+                  /* o lote fica aberto e a lista mostra a foto com erro */
+                }
+              }
             }
             invalidate();
           }
         },
       );
       await Promise.all(workers);
+      activeBatch.current = null;
       setUploading(false);
       invalidate();
+
+      // Lote registrado por completo: as fotos vão para os sites publicados.
+      if (batchId && propertyId) {
+        try {
+          const state = await batchStateFn({ data: { batchId } });
+          if (state?.complete) await runProviderSync(propertyId);
+          else if (state && state.failed > 0)
+            toast.warning(
+              `${state.registered + state.duplicated} de ${state.expected} fotos registradas. As demais podem ser reenviadas.`,
+            );
+        } catch {
+          /* a fila do servidor recupera */
+        }
+      }
+      return batchId;
     },
-    [invalidate, patch, sendOne],
+    [
+      batchFailureFn,
+      batchStateFn,
+      invalidate,
+      openBatchFn,
+      patch,
+      propertyId,
+      runProviderSync,
+      sendOne,
+    ],
   );
 
   const upload = useCallback(
