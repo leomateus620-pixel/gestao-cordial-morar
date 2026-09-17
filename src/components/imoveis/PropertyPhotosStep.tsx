@@ -105,6 +105,15 @@ export function PropertyPhotosStep({
             Arraste para reordenar — a primeira foto é a capa e a ordem salva sozinha. Todas
             recebem a marca {marcaAtual} antes de ir para os sites.
           </p>
+          {media.orderState !== "idle" && (
+            <p className="text-[11px] font-semibold text-foreground/60">
+              {media.orderState === "saving"
+                ? "Salvando ordem…"
+                : media.orderState === "syncing"
+                  ? "Ordem salva · enviando para os sites"
+                  : "Ordem salva"}
+            </p>
+          )}
         </div>
         <button
           type="button"
