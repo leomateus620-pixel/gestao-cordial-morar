@@ -277,13 +277,21 @@ export async function deliverGallery(
 
   // Nível de garantia REAL, sem inventar confirmação: a API só permite listar e
   // inserir, então a ordem é garantida na inserção e a paridade é conferida por
-  // quantidade — não há como reposicionar nem excluir foto remota.
+  // quantidade — não há como reposicionar, trocar destaque nem excluir foto
+  // remota. Cada limitação fica registrada com o próprio nome, para a tela nunca
+  // sugerir que a alteração local chegou ao site.
   const orderGuarantee =
     remoteCount === null
       ? "insercao_sem_verificacao"
-      : plan.orderDrift
-        ? "insercao_com_divergencia"
-        : "insercao_verificada_por_quantidade";
+      : remoteCount > plan.expectedCount
+        ? "remote_delete_unsupported"
+        : plan.orderDrift
+          ? "remote_order_mismatch"
+          : plan.coverDrift
+            ? "remote_cover_mismatch"
+            : !complete
+              ? "pending"
+              : "insercao_verificada_por_quantidade";
 
   await admin
     .from("property_provider_publications")

@@ -32,6 +32,43 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   out_of_sync: { label: "Divergente", className: "bg-destructive/10 text-destructive" },
 };
 
+/**
+ * Aviso discreto sobre as FOTOS. O site só oferece listar e inserir imagem —
+ * não há recurso para reordenar, trocar o destaque ou excluir foto já enviada.
+ * Quando a organização interna não pode ser reproduzida lá, isso é dito com
+ * clareza em vez de aparecer como "sincronizado".
+ */
+function mediaNote(media: {
+  status: string | null;
+  orderGuarantee: string | null;
+  expectedCount: number | null;
+  syncedCount: number | null;
+  remoteCount: number | null;
+}): string | null {
+  const counts =
+    media.expectedCount != null
+      ? ` (${media.syncedCount ?? 0} de ${media.expectedCount} fotos enviadas${
+          media.remoteCount != null ? `, ${media.remoteCount} no site` : ""
+        })`
+      : "";
+  switch (media.orderGuarantee) {
+    case "remote_order_mismatch":
+      return `Ordem salva no Gestão · o site não permite reordenar fotos já publicadas${counts}`;
+    case "remote_cover_mismatch":
+      return `Capa salva no Gestão · o site não permite trocar a foto de destaque já publicada${counts}`;
+    case "remote_delete_unsupported":
+      return `Foto removida no Gestão · o site não permite excluir foto já publicada${counts}`;
+    case "pending":
+      return `Envio de fotos em andamento${counts}`;
+    case "insercao_sem_verificacao":
+      return `Fotos enviadas · não foi possível conferir a galeria do site agora${counts}`;
+    case "insercao_verificada_por_quantidade":
+      return `Fotos conferidas com o site${counts}`;
+    default:
+      return null;
+  }
+}
+
 export function PropertyPublishPanel({
   propertyId,
   canPublish,
@@ -154,6 +191,10 @@ export function PropertyPublishPanel({
                     ? "A descrição passava do limite do site (1500 caracteres). Agora ela é encurtada automaticamente no fim — clique em Reprocessar para publicar."
                     : row.lastErrorMessage}
                 </p>
+              )}
+
+              {row?.media && mediaNote(row.media) && (
+                <p className="mt-2 text-[11px] text-foreground/55">{mediaNote(row.media)}</p>
               )}
 
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-foreground/45">

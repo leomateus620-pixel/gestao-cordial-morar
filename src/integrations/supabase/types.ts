@@ -5171,6 +5171,27 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_image_batch_bump: {
+        Args: { _batch_id: string; _column: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          duplicated_count: number
+          expected_count: number
+          failed_count: number
+          id: string
+          property_id: string
+          registered_count: number
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "property_image_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       property_image_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
         Returns: {
