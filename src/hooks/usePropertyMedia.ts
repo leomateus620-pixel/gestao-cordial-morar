@@ -299,31 +299,6 @@ export function usePropertyMedia(propertyId: string | undefined) {
     [runQueue],
   );
 
-  const syncGalleryFn = useServerFn(syncPropertyGallery);
-  /**
-   * Sincroniza SÓ as fotos com os sites já publicados. Não passa pela
-   * atualização cadastral (que segue pausada por segurança).
-   */
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const runProviderSync = useCallback(
-    async (id: string) => {
-      if (syncTimer.current) {
-        clearTimeout(syncTimer.current);
-        syncTimer.current = null;
-      }
-      try {
-        setOrderState("syncing");
-        await syncGalleryFn({ data: { propertyId: id } });
-        qc.invalidateQueries({ queryKey: ["property-sync", id] });
-      } catch {
-        // A ordem já está salva; o painel de publicação permite reenviar.
-      } finally {
-        setOrderState("saved");
-      }
-    },
-    [qc, syncGalleryFn],
-  );
 
   const syncOrderToProviders = useCallback(
     (id: string) => {
