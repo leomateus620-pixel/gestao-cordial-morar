@@ -97,10 +97,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const prepareRetryFn = useServerFn(preparePropertyImageReprocess);
   const finalizeRetryFn = useServerFn(finalizePropertyImageReprocess);
   const targetsFn = useServerFn(setPropertyPublishTargets);
+  const openBatchFn = useServerFn(openPropertyImageBatch);
+  const batchFailureFn = useServerFn(reportPropertyImageBatchFailure);
+  const batchStateFn = useServerFn(getPropertyImageBatch);
   const [progress, setProgress] = useState<UploadItem[]>([]);
   const [uploading, setUploading] = useState(false);
+  // "Salvando ordem…" / "Ordem salva" / "Sincronizando com os sites".
+  const [orderState, setOrderState] = useState<OrderSaveState>("idle");
   // Guarda o arquivo para permitir "tentar novamente" sem reselecionar.
   const filesByKey = useRef(new Map<string, File>());
+  const activeBatch = useRef<string | null>(null);
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["property-images", propertyId] });
