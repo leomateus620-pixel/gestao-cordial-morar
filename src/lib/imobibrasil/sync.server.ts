@@ -25,6 +25,8 @@ import {
   shouldCancelForPause,
   type WorkerKind,
 } from "./queue-policy";
+import { providerExternalCode } from "./provider-code";
+
 
 
 type Admin = SupabaseClient;
