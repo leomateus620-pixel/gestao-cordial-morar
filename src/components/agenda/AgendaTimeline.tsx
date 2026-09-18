@@ -10,10 +10,16 @@ export function AgendaTimeline({
   events,
   onOpen,
   canEdit,
+  variant = "geral",
+  referenceLinks,
 }: {
   events: AgendaEvent[];
   onOpen: (event: AgendaEvent) => void;
   canEdit: (event: AgendaEvent) => boolean;
+  /** "fotos" adapts the cards to the photo agenda (no agency badge). */
+  variant?: "geral" | "fotos";
+  /** Ids that carry a property reference link — resolved in one batched query. */
+  referenceLinks?: Set<string>;
 }) {
   if (events.length === 0) {
     return (
@@ -66,7 +72,14 @@ export function AgendaTimeline({
         ) : (
           <div className="space-y-5">
             {[...today, ...upcoming].map((group) => (
-              <DaySection key={group.day} group={group} onOpen={onOpen} canEdit={canEdit} />
+              <DaySection
+                key={group.day}
+                group={group}
+                onOpen={onOpen}
+                canEdit={canEdit}
+                variant={variant}
+                referenceLinks={referenceLinks}
+              />
             ))}
           </div>
         )}
@@ -82,7 +95,15 @@ export function AgendaTimeline({
           />
           <div className="space-y-5">
             {history.map((group) => (
-              <DaySection key={group.day} group={group} onOpen={onOpen} canEdit={canEdit} past />
+              <DaySection
+                key={group.day}
+                group={group}
+                onOpen={onOpen}
+                canEdit={canEdit}
+                variant={variant}
+                referenceLinks={referenceLinks}
+                past
+              />
             ))}
           </div>
         </section>
@@ -130,11 +151,15 @@ function DaySection({
   onOpen,
   canEdit,
   past,
+  variant = "geral",
+  referenceLinks,
 }: {
   group: DayGroup;
   onOpen: (event: AgendaEvent) => void;
   canEdit: (event: AgendaEvent) => boolean;
   past?: boolean;
+  variant?: "geral" | "fotos";
+  referenceLinks?: Set<string>;
 }) {
   const date = new Date(`${group.day}T00:00:00`);
   const relative = relativeLabel(date);
@@ -191,6 +216,8 @@ function DaySection({
             onClick={() => onOpen(event)}
             canEdit={canEdit(event)}
             past={past}
+            variant={variant}
+            hasReferenceLink={referenceLinks?.has(event.id) ?? false}
           />
         ))}
       </div>
