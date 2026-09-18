@@ -65,10 +65,20 @@ export function remoteRecordOf(payload: unknown): Record<string, unknown> {
   return (set ?? {}) as Record<string, unknown>;
 }
 
+/** Texto do site em linhas legíveis (sem HTML), como exibido na tela de limpeza. */
 export function remotePontosFortes(record: Record<string, unknown>): string {
   for (const key of ["pontosFortesImovel", "pontosFortes"]) {
     const value = record[key];
-    if (typeof value === "string" && value.trim()) return fixMojibake(value);
+    if (typeof value === "string" && value.trim()) {
+      return fixMojibake(value)
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .split("\n")
+        .map((line) => line.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join("\n");
+    }
   }
   return "";
 }
