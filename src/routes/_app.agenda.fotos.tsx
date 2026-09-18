@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listAgendaReferenceSummaries } from "@/lib/agenda/agenda-attachments.functions";
 import { AgendaFeedback, type AgendaFeedbackState } from "@/components/agenda/AgendaFeedback";
 import { AgendaFilters } from "@/components/agenda/AgendaFilters";
-import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
+import { AgendaPhotoFormModal } from "@/components/agenda/AgendaPhotoFormModal";
 import { AgendaHero } from "@/components/agenda/AgendaHero";
 import {
   AgendaListEmpty,
@@ -111,10 +114,11 @@ function AgendaFotosPage() {
             ? { message: `Sessão “${updated.titulo}” atualizada.` }
             : { message: "Você não pode editar esta sessão de fotos.", tone: "error" },
         );
-        return;
+        return updated;
       }
       const created = await createEvent(photoInput);
       setFeedback({ message: `Sessão “${created.titulo}” agendada.` });
+      return created;
     } catch (err) {
       setFeedback({ message: `Não foi possível salvar: ${(err as Error).message}`, tone: "error" });
       throw err;
@@ -136,6 +140,25 @@ function AgendaFotosPage() {
   }
 
   const hasActiveFilters = hasActiveAgendaFilters(filters);
+
+  // Uma única consulta agregada resolve os indicadores de referência da lista.
+  const loadReferences = useServerFn(listAgendaReferenceSummaries);
+  const eventIds = useMemo(() => filteredEvents.map((item) => item.id), [filteredEvents]);
+  const referencesQuery = useQuery({
+    queryKey: ["agenda", "references", eventIds.join("|")],
+    queryFn: () => loadReferences({ data: { eventIds } }),
+    enabled: eventIds.length > 0,
+    staleTime: 60_000,
+  });
+  const referenceLinks = useMemo(
+    () =>
+      new Set(
+        (referencesQuery.data ?? [])
+          .filter((item) => Boolean(item.linkUrl))
+          .map((item) => item.eventId),
+      ),
+    [referencesQuery.data],
+  );
 
   return (
     <div className="space-y-4">
@@ -186,22 +209,26 @@ function AgendaFotosPage() {
             onCreate={openCreate}
           />
         ) : (
-          <AgendaTimeline events={filteredEvents} onOpen={openEvent} canEdit={canEdit} />
+          <AgendaTimeline
+            events={filteredEvents}
+            onOpen={openEvent}
+            canEdit={canEdit}
+            variant="fotos"
+            referenceLinks={referenceLinks}
+          />
         )}
       </section>
 
       <AgendaFeedback feedback={feedback} />
 
       {open && (
-        <AgendaFormModal
+        <AgendaPhotoFormModal
           open={open}
           event={selected}
           onOpenChange={setOpen}
           onSubmit={save}
           onDelete={removeEvent}
           canEdit={selected ? canEdit(selected) : canCreate}
-          clients={clientOptions}
-          people={people}
           currentUser={session ? { id: session.id, nome: session.nome } : undefined}
         />
       )}

@@ -210,15 +210,44 @@ export const listAgendaEvents = createServerFn({ method: "GET" })
     return (rows ?? []).map((row) => rowToEvent(row as unknown as DbEvent));
   });
 
-type UpsertInput = { id?: string; input: AgendaEventInput };
+type UpsertInput = {
+  id?: string;
+  input: AgendaEventInput;
+  /** Cadastro vindo da Agenda de Fotos: tipo, imobiliária e responsável são fixados aqui. */
+  photoScope?: boolean;
+};
 
 export const upsertAgendaEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: UpsertInput) => d)
   .handler(async ({ data, context }) => {
-    const { id, input } = data;
+    const { id, input, photoScope } = data;
     validate(input);
-    const ownerId = asUuid(input.responsavelPrincipalId) ?? context.userId;
+    let ownerId = asUuid(input.responsavelPrincipalId) ?? context.userId;
+    let tipo: AgendaTipo = input.tipo;
+    let imobiliaria: AgendaImobiliaria = input.imobiliaria;
+    let responsavelNome = orNull(input.responsavelPrincipalNome);
+
+    if (photoScope) {
+      // Regras da Agenda de Fotos garantidas no servidor, sem confiar no payload.
+      imobiliaria = "ambas";
+      if (id) {
+        const { data: existing, error: ownerErr } = await context.supabase
+          .from("agenda_events")
+          .select("owner_user_id, responsavel_nome, tipo")
+          .eq("id", id)
+          .maybeSingle();
+        if (ownerErr) throw new Error(ownerErr.message);
+        // Editar não transfere a responsabilidade para quem editou.
+        ownerId = asUuid(existing?.owner_user_id) ?? ownerId;
+        responsavelNome = orNull(existing?.responsavel_nome) ?? responsavelNome;
+        // Eventos históricos de vídeo continuam com o tipo original.
+        tipo = (existing?.tipo as AgendaTipo | undefined) ?? "fotos";
+      } else {
+        ownerId = context.userId;
+        tipo = "fotos";
+      }
+    }
     const inicioIso = new Date(input.inicio).toISOString();
     const fimIso = input.fim ? new Date(input.fim).toISOString() : null;
     // A duração é sempre derivada do intervalo informado (o formulário não pede duração).
@@ -231,10 +260,10 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
 
     const payload = {
       owner_user_id: ownerId,
-      tipo: input.tipo,
+      tipo,
       status: input.status,
       prioridade: input.prioridade,
-      imobiliaria: input.imobiliaria,
+      imobiliaria,
       titulo: input.titulo.trim(),
       descricao: orNull(input.descricao),
       observacoes: orNull(input.observacoes),
@@ -253,7 +282,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       agenciamento_id: asUuid(input.agenciamentoId),
       local: orNull(input.local) ?? orNull(input.imovelEndereco),
       video_call_url: orNull(input.videoCallUrl),
-      responsavel_nome: orNull(input.responsavelPrincipalNome),
+      responsavel_nome: responsavelNome,
       google_calendar_sync_status: input.googleCalendarSyncStatus ?? "nao_sincronizado",
       concluido_em: input.status === "concluido" ? new Date().toISOString() : null,
     };

@@ -108,7 +108,8 @@ export function useAgenda(
 
   const upsert = useMutation({
     mutationFn: (payload: { id?: string; input: AgendaEventInput }) =>
-      upsertAgendaEvent({ data: payload }),
+      // A Agenda de Fotos avisa o servidor para fixar tipo, imobiliária e responsável.
+      upsertAgendaEvent({ data: { ...payload, photoScope: scope === "fotos" } }),
     onSuccess: invalidate,
   });
   const remove = useMutation({
