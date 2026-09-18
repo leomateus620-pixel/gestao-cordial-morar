@@ -194,15 +194,13 @@ function AgendaFotosPage() {
       <AgendaFeedback feedback={feedback} />
 
       {open && (
-        <AgendaFormModal
+        <AgendaPhotoFormModal
           open={open}
           event={selected}
           onOpenChange={setOpen}
           onSubmit={save}
           onDelete={removeEvent}
           canEdit={selected ? canEdit(selected) : canCreate}
-          clients={clientOptions}
-          people={people}
           currentUser={session ? { id: session.id, nome: session.nome } : undefined}
         />
       )}
