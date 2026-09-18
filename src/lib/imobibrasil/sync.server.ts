@@ -18,7 +18,14 @@ import {
   type LocalPropertyForSync,
 } from "./serializers";
 import type { ImobiProvider } from "./providers";
-import { providerExternalCode } from "./provider-code";
+import {
+  claimActionsFor,
+  claimLimitFor,
+  leaseSecondsFor,
+  shouldCancelForPause,
+  type WorkerKind,
+} from "./queue-policy";
+
 
 type Admin = SupabaseClient;
 
@@ -674,16 +681,28 @@ async function isUpdateSyncPaused(admin: Admin): Promise<boolean> {
   return value?.paused === true;
 }
 
+/** Devolve para a fila jobs cujo lease expirou. Não depende de ação manual. */
+export async function reclaimStaleSyncJobs(admin: Admin): Promise<number> {
+  const { data, error } = await admin.rpc("property_sync_reclaim_stale");
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
 export async function runSyncWorker(
   admin: Admin,
-  options: { limit?: number; workerId?: string } = {},
+  options: { limit?: number; workerId?: string; kind?: WorkerKind } = {},
 ) {
-  const workerId = options.workerId ?? `worker-${crypto.randomUUID().slice(0, 8)}`;
+  const kind: WorkerKind = options.kind ?? "cadastral";
+  const workerId = options.workerId ?? `worker-${kind}-${crypto.randomUUID().slice(0, 8)}`;
   const updatesPaused = await isUpdateSyncPaused(admin);
+  // Claim filtrado por ação: o worker cadastral nunca reivindica mídia (lenta) e
+  // o worker de mídia processa um job por vez — nenhum job fica preso em
+  // `processing` porque outro estourou o tempo do request.
   const { data: jobs, error } = await admin.rpc("property_sync_claim_jobs", {
     _worker: workerId,
-    _limit: options.limit ?? 5,
-    _lease_seconds: 180,
+    _limit: claimLimitFor(kind, options.limit ?? 5),
+    _lease_seconds: leaseSecondsFor(kind),
+    _actions: claimActionsFor(kind),
   });
   if (error) throw new Error(error.message);
 
@@ -692,7 +711,8 @@ export async function runSyncWorker(
 
   for (const job of claimed) {
     const started = Date.now();
-    if (updatesPaused && job.action === "update") {
+    if (shouldCancelForPause(job.action, updatesPaused)) {
+
       await admin
         .from("property_sync_jobs")
         .update({
