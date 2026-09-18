@@ -228,7 +228,6 @@ export function HotspotCleanupCard({ enabled }: { enabled: boolean }) {
         ))}
       </div>
 
-      {report && <DryRunPanel report={report} onClose={() => setReport(null)} />}
     </section>
   );
 }
