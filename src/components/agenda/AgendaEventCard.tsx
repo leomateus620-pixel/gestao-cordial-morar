@@ -3,6 +3,7 @@ import {
   Building2,
   CheckCircle2,
   Flag,
+  Link2,
   LockKeyhole,
   MapPin,
   RefreshCw,
@@ -216,15 +217,25 @@ export function AgendaEventCard({
                   {activeReminders}
                 </span>
               )}
+              {hasReferenceLink && (
+                <span
+                  className="inline-flex items-center text-foreground/40"
+                  title="Tem link de referência do imóvel"
+                >
+                  <Link2 className="size-3" />
+                </span>
+              )}
               <GoogleSyncIndicator event={event} />
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
-                  imobiliariaStyles[event.imobiliaria],
-                )}
-              >
-                {agendaImobiliariaLabel[event.imobiliaria]}
-              </span>
+              {!isPhotoVariant && (
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]",
+                    imobiliariaStyles[event.imobiliaria],
+                  )}
+                >
+                  {agendaImobiliariaLabel[event.imobiliaria]}
+                </span>
+              )}
             </span>
           </div>
         </div>
