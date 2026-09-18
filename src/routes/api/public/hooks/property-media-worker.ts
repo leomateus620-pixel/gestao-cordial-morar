@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Worker da fila de publicação de imóveis (ImobiBrasil).
- * Chamado pelo pg_cron e após enfileiramentos. Protegido por segredo compartilhado.
- * O lock/lease fica no banco (property_sync_claim_jobs), então execuções
- * concorrentes nunca processam o mesmo job.
+ * Worker da fila de FOTOS dos imóveis (ImobiBrasil).
+ *
+ * Separado do worker cadastral (correção 18/09/2026): mídia é lenta (limite de
+ * requisições por site + upload sequencial) e, quando um único request atendia
+ * cadastro e fotos juntos, um estouro de tempo deixava todos os jobs já
+ * reivindicados presos em `processing`.
+ *
+ * Aqui o claim é filtrado em `media_sync` e processa UM job por execução.
+ * Nunca chama `/imovel/alterar` — só recursos de imagem.
  */
-export const Route = createFileRoute("/api/public/hooks/property-sync-worker")({
+export const Route = createFileRoute("/api/public/hooks/property-media-worker")({
   server: {
     handlers: {
       POST: async ({ request }) => {
@@ -25,12 +30,12 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-worker")({
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        let limit = 8;
-        let drain = false;
+        let passes = 1;
         try {
-          const body = (await request.json()) as { limit?: number; drain?: boolean } | null;
-          if (body && typeof body.limit === "number") limit = Math.min(10, Math.max(1, body.limit));
-          if (body && typeof body.drain === "boolean") drain = body.drain;
+          const body = (await request.json()) as { passes?: number } | null;
+          if (body && typeof body.passes === "number") {
+            passes = Math.min(3, Math.max(1, Math.floor(body.passes)));
+          }
         } catch {
           // corpo vazio é válido
         }
@@ -38,24 +43,16 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-worker")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { runSyncWorker } = await import("@/lib/imobibrasil/sync.server");
 
-        // Teto de segurança: no máximo 5 ciclos por chamada, para nunca
-        // transformar a drenagem em loop infinito dentro do worker.
-        const MAX_PASSES = 5;
         try {
           let claimed = 0;
-          let passes = 0;
           const results: unknown[] = [];
-          do {
-            // Somente ações cadastrais: fotos têm worker próprio
-            // (/api/public/hooks/property-media-worker).
-            const result = await runSyncWorker(supabaseAdmin, { limit, kind: "cadastral" });
-
+          for (let pass = 0; pass < passes; pass += 1) {
+            const result = await runSyncWorker(supabaseAdmin, { kind: "media", limit: 1 });
             claimed += result.claimed;
             results.push(...result.results);
-            passes += 1;
-            if (!drain || result.claimed === 0) break;
-          } while (passes < MAX_PASSES);
-          return Response.json({ ok: true, claimed, passes, results });
+            if (result.claimed === 0) break;
+          }
+          return Response.json({ ok: true, kind: "media", claimed, results });
         } catch (error) {
           const { sanitizeMessage } = await import("@/lib/imobibrasil/errors");
           return Response.json({ ok: false, error: sanitizeMessage(error) }, { status: 500 });

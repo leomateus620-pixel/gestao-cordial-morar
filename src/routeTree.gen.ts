@@ -48,6 +48,7 @@ import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes
 import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
 import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
 import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
+import { Route as ApiPublicHooksPropertyMediaWorkerRouteImport } from './routes/api/public/hooks/property-media-worker'
 import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes/api/public/hooks/property-import-worker'
 import { Route as ApiPublicHooksPropertyImageWorkerRouteImport } from './routes/api/public/hooks/property-image-worker'
 import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
@@ -260,6 +261,12 @@ const ApiPublicHooksPropertySyncReconcileRoute =
     path: '/api/public/hooks/property-sync-reconcile',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksPropertyMediaWorkerRoute =
+  ApiPublicHooksPropertyMediaWorkerRouteImport.update({
+    id: '/api/public/hooks/property-media-worker',
+    path: '/api/public/hooks/property-media-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksPropertyImportWorkerRoute =
   ApiPublicHooksPropertyImportWorkerRouteImport.update({
     id: '/api/public/hooks/property-import-worker',
@@ -362,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
+  '/api/public/hooks/property-media-worker': typeof ApiPublicHooksPropertyMediaWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
@@ -410,6 +418,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
+  '/api/public/hooks/property-media-worker': typeof ApiPublicHooksPropertyMediaWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
@@ -462,6 +471,7 @@ export interface FileRoutesById {
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
   '/api/public/hooks/property-import-worker': typeof ApiPublicHooksPropertyImportWorkerRoute
+  '/api/public/hooks/property-media-worker': typeof ApiPublicHooksPropertyMediaWorkerRoute
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
@@ -514,6 +524,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-image-retry'
     | '/api/public/hooks/property-image-worker'
     | '/api/public/hooks/property-import-worker'
+    | '/api/public/hooks/property-media-worker'
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-image-retry'
     | '/api/public/hooks/property-image-worker'
     | '/api/public/hooks/property-import-worker'
+    | '/api/public/hooks/property-media-worker'
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
@@ -613,6 +625,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-image-retry'
     | '/api/public/hooks/property-image-worker'
     | '/api/public/hooks/property-import-worker'
+    | '/api/public/hooks/property-media-worker'
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
@@ -640,6 +653,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPropertyImageRetryRoute: typeof ApiPublicHooksPropertyImageRetryRoute
   ApiPublicHooksPropertyImageWorkerRoute: typeof ApiPublicHooksPropertyImageWorkerRoute
   ApiPublicHooksPropertyImportWorkerRoute: typeof ApiPublicHooksPropertyImportWorkerRoute
+  ApiPublicHooksPropertyMediaWorkerRoute: typeof ApiPublicHooksPropertyMediaWorkerRoute
   ApiPublicHooksPropertySyncReconcileRoute: typeof ApiPublicHooksPropertySyncReconcileRoute
   ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
   ApiPublicHooksPushWorkerRoute: typeof ApiPublicHooksPushWorkerRoute
@@ -924,6 +938,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPropertySyncReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/property-media-worker': {
+      id: '/api/public/hooks/property-media-worker'
+      path: '/api/public/hooks/property-media-worker'
+      fullPath: '/api/public/hooks/property-media-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertyMediaWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/property-import-worker': {
       id: '/api/public/hooks/property-import-worker'
       path: '/api/public/hooks/property-import-worker'
@@ -1107,6 +1128,8 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksPropertyImageWorkerRoute,
   ApiPublicHooksPropertyImportWorkerRoute:
     ApiPublicHooksPropertyImportWorkerRoute,
+  ApiPublicHooksPropertyMediaWorkerRoute:
+    ApiPublicHooksPropertyMediaWorkerRoute,
   ApiPublicHooksPropertySyncReconcileRoute:
     ApiPublicHooksPropertySyncReconcileRoute,
   ApiPublicHooksPropertySyncWorkerRoute: ApiPublicHooksPropertySyncWorkerRoute,

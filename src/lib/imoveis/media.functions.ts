@@ -429,12 +429,14 @@ async function kickSyncWorker() {
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
     if (!origin) return;
-    await fetch(`${origin}/api/public/hooks/property-sync-worker`, {
+    // Fila de fotos tem worker próprio: um job por execução, nunca em lote.
+    await fetch(`${origin}/api/public/hooks/property-media-worker`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: secret },
-      body: JSON.stringify({ limit: 5, drain: true }),
+      body: JSON.stringify({ passes: 2 }),
       signal: AbortSignal.timeout(1500),
     });
+
   } catch {
     // pg_cron reprocessa no próximo ciclo
   }

@@ -5353,7 +5353,12 @@ export type Database = {
         }
       }
       property_sync_claim_jobs: {
-        Args: { _lease_seconds?: number; _limit?: number; _worker: string }
+        Args: {
+          _actions?: string[]
+          _lease_seconds?: number
+          _limit?: number
+          _worker: string
+        }
         Returns: {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts: number
@@ -5383,6 +5388,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_sync_reclaim_stale: { Args: never; Returns: number }
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
         Returns: Json

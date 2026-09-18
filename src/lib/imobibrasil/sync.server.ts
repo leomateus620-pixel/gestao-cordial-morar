@@ -18,7 +18,16 @@ import {
   type LocalPropertyForSync,
 } from "./serializers";
 import type { ImobiProvider } from "./providers";
+import {
+  claimActionsFor,
+  claimLimitFor,
+  leaseSecondsFor,
+  shouldCancelForPause,
+  type WorkerKind,
+} from "./queue-policy";
 import { providerExternalCode } from "./provider-code";
+
+
 
 type Admin = SupabaseClient;
 
@@ -245,35 +254,34 @@ async function syncCharacteristics(
 }
 
 /**
- * Etapa de fotos do publish/update: delega ao caminho de mídia, que é o único
- * lugar que fala com os recursos de imagem do site (envio sequencial na ordem
- * definida no Gestão, limite de requisições por site e métricas por publicação).
+ * Fotos NÃO fazem parte do job cadastral (correção 18/09/2026). O publish/update
+ * apenas enfileira `media_sync`, que é o único caminho que fala com os recursos
+ * de imagem do site. Assim uma etapa lenta de mídia nunca segura — nem derruba —
+ * a publicação cadastral e os jobs seguintes da fila.
  */
-async function syncImages(admin: Admin, job: SyncJob, publicationId: string, externalId: string) {
-  const { deliverGallery } = await import("./media-sync.server");
-  const result = await deliverGallery(admin, {
-    propertyId: job.property_id,
-    provider: job.provider,
-    publicationId,
-    externalId,
-    correlationId: job.correlation_id,
-  });
-  await logAttempt(admin, job, {
-    step: "images",
-    ok: result.failedCount === 0,
-    errorCategory: result.status,
-    errorMessage:
-      result.failedCount > 0
-        ? `${result.failedCount} foto(s) não sincronizada(s).`
-        : `${result.sentCount} enviada(s), ${result.alreadySyncedCount} já sincronizada(s).`,
-  });
-  return {
-    sent: result.sentCount,
-    failed: result.failedCount,
-    retrying: result.waitingCount,
-    status: result.status,
-  };
+async function queueMediaAfterCadastral(admin: Admin, job: SyncJob) {
+  try {
+    const { queueMediaSync } = await import("./media-sync.server");
+    const queued = await queueMediaSync(admin, job.property_id, { providers: [job.provider] });
+    await logAttempt(admin, job, {
+      step: "media_enqueued",
+      ok: true,
+      errorMessage: `media_sync enfileirado (galeria v${queued.galleryRevision}).`,
+    });
+    return queued;
+  } catch (error) {
+    // Falha ao enfileirar mídia nunca invalida o cadastro já confirmado: a
+    // varredura de retry de imagens reenfileira sozinha.
+    await logAttempt(admin, job, {
+      step: "media_enqueued",
+      ok: false,
+      errorCategory: toImobiError(error).category,
+      errorMessage: toImobiError(error).message,
+    });
+    return { enqueued: [] as string[], galleryRevision: 0 };
+  }
 }
+
 
 async function loadProperty(admin: Admin, propertyId: string) {
   const { data, error } = await admin
@@ -559,7 +567,6 @@ export async function processJob(admin: Admin, job: SyncJob) {
     .eq("id", publication.id);
 
   await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
-  const media = await syncImages(admin, job, publication.id, externalId);
 
   // Verificação remota obrigatória antes de marcar como publicado.
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
@@ -586,7 +593,9 @@ export async function processJob(admin: Admin, job: SyncJob) {
       .eq("id", publication.id);
   }
 
-  const finalStatus = verified && media.failed === 0 ? "published" : "partial";
+  // Cadastro concluído não depende das fotos: o estado da mídia vive em
+  // `media_status` e é atualizado pelo caminho `media_sync`.
+  const finalStatus = verified ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   await admin
@@ -598,24 +607,16 @@ export async function processJob(admin: Admin, job: SyncJob) {
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
-      last_error_category: finalStatus === "published" ? null : "media",
-      last_error_message:
-        finalStatus === "published"
-          ? null
-          : media.failed > 0
-            ? `${media.failed} imagem(ns) não sincronizada(s).`
-            : "Verificação remota divergente.",
+      last_error_category: finalStatus === "published" ? null : "protocol",
+      last_error_message: finalStatus === "published" ? null : "Verificação remota divergente.",
     })
     .eq("id", publication.id);
 
-  // Galeria incompleta ou aguardando marca-d'água: o caminho de mídia retoma
-  // sozinho, sem depender de nova alteração cadastral.
-  if (media.failed > 0 || media.retrying > 0 || media.status !== "synced") {
-    const { queueMediaSync } = await import("./media-sync.server");
-    await queueMediaSync(admin, job.property_id, { providers: [job.provider] });
-  }
+  // Fotos seguem de forma assíncrona, exclusivamente por `media_sync`.
+  const media = await queueMediaAfterCadastral(admin, job);
 
   return { status: finalStatus, externalId, media, unmapped: resolution.unmapped };
+
 }
 
 export async function reconcilePublication(
@@ -682,16 +683,28 @@ async function isUpdateSyncPaused(admin: Admin): Promise<boolean> {
   return value?.paused === true;
 }
 
+/** Devolve para a fila jobs cujo lease expirou. Não depende de ação manual. */
+export async function reclaimStaleSyncJobs(admin: Admin): Promise<number> {
+  const { data, error } = await admin.rpc("property_sync_reclaim_stale");
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
 export async function runSyncWorker(
   admin: Admin,
-  options: { limit?: number; workerId?: string } = {},
+  options: { limit?: number; workerId?: string; kind?: WorkerKind } = {},
 ) {
-  const workerId = options.workerId ?? `worker-${crypto.randomUUID().slice(0, 8)}`;
+  const kind: WorkerKind = options.kind ?? "cadastral";
+  const workerId = options.workerId ?? `worker-${kind}-${crypto.randomUUID().slice(0, 8)}`;
   const updatesPaused = await isUpdateSyncPaused(admin);
+  // Claim filtrado por ação: o worker cadastral nunca reivindica mídia (lenta) e
+  // o worker de mídia processa um job por vez — nenhum job fica preso em
+  // `processing` porque outro estourou o tempo do request.
   const { data: jobs, error } = await admin.rpc("property_sync_claim_jobs", {
     _worker: workerId,
-    _limit: options.limit ?? 5,
-    _lease_seconds: 180,
+    _limit: claimLimitFor(kind, options.limit ?? 5),
+    _lease_seconds: leaseSecondsFor(kind),
+    _actions: claimActionsFor(kind),
   });
   if (error) throw new Error(error.message);
 
@@ -700,7 +713,8 @@ export async function runSyncWorker(
 
   for (const job of claimed) {
     const started = Date.now();
-    if (updatesPaused && job.action === "update") {
+    if (shouldCancelForPause(job.action, updatesPaused)) {
+
       await admin
         .from("property_sync_jobs")
         .update({
