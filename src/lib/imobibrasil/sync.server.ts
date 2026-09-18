@@ -245,35 +245,34 @@ async function syncCharacteristics(
 }
 
 /**
- * Etapa de fotos do publish/update: delega ao caminho de mídia, que é o único
- * lugar que fala com os recursos de imagem do site (envio sequencial na ordem
- * definida no Gestão, limite de requisições por site e métricas por publicação).
+ * Fotos NÃO fazem parte do job cadastral (correção 18/09/2026). O publish/update
+ * apenas enfileira `media_sync`, que é o único caminho que fala com os recursos
+ * de imagem do site. Assim uma etapa lenta de mídia nunca segura — nem derruba —
+ * a publicação cadastral e os jobs seguintes da fila.
  */
-async function syncImages(admin: Admin, job: SyncJob, publicationId: string, externalId: string) {
-  const { deliverGallery } = await import("./media-sync.server");
-  const result = await deliverGallery(admin, {
-    propertyId: job.property_id,
-    provider: job.provider,
-    publicationId,
-    externalId,
-    correlationId: job.correlation_id,
-  });
-  await logAttempt(admin, job, {
-    step: "images",
-    ok: result.failedCount === 0,
-    errorCategory: result.status,
-    errorMessage:
-      result.failedCount > 0
-        ? `${result.failedCount} foto(s) não sincronizada(s).`
-        : `${result.sentCount} enviada(s), ${result.alreadySyncedCount} já sincronizada(s).`,
-  });
-  return {
-    sent: result.sentCount,
-    failed: result.failedCount,
-    retrying: result.waitingCount,
-    status: result.status,
-  };
+async function queueMediaAfterCadastral(admin: Admin, job: SyncJob) {
+  try {
+    const { queueMediaSync } = await import("./media-sync.server");
+    const queued = await queueMediaSync(admin, job.property_id, { providers: [job.provider] });
+    await logAttempt(admin, job, {
+      step: "media_enqueued",
+      ok: true,
+      errorMessage: `media_sync enfileirado (galeria v${queued.galleryRevision}).`,
+    });
+    return queued;
+  } catch (error) {
+    // Falha ao enfileirar mídia nunca invalida o cadastro já confirmado: a
+    // varredura de retry de imagens reenfileira sozinha.
+    await logAttempt(admin, job, {
+      step: "media_enqueued",
+      ok: false,
+      errorCategory: toImobiError(error).category,
+      errorMessage: toImobiError(error).message,
+    });
+    return { enqueued: [] as string[], galleryRevision: 0 };
+  }
 }
+
 
 async function loadProperty(admin: Admin, propertyId: string) {
   const { data, error } = await admin
