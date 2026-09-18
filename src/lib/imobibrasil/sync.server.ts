@@ -558,7 +558,6 @@ export async function processJob(admin: Admin, job: SyncJob) {
     .eq("id", publication.id);
 
   await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
-  const media = await syncImages(admin, job, publication.id, externalId);
 
   // Verificação remota obrigatória antes de marcar como publicado.
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
@@ -585,7 +584,9 @@ export async function processJob(admin: Admin, job: SyncJob) {
       .eq("id", publication.id);
   }
 
-  const finalStatus = verified && media.failed === 0 ? "published" : "partial";
+  // Cadastro concluído não depende das fotos: o estado da mídia vive em
+  // `media_status` e é atualizado pelo caminho `media_sync`.
+  const finalStatus = verified ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   await admin
@@ -597,24 +598,16 @@ export async function processJob(admin: Admin, job: SyncJob) {
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
-      last_error_category: finalStatus === "published" ? null : "media",
-      last_error_message:
-        finalStatus === "published"
-          ? null
-          : media.failed > 0
-            ? `${media.failed} imagem(ns) não sincronizada(s).`
-            : "Verificação remota divergente.",
+      last_error_category: finalStatus === "published" ? null : "protocol",
+      last_error_message: finalStatus === "published" ? null : "Verificação remota divergente.",
     })
     .eq("id", publication.id);
 
-  // Galeria incompleta ou aguardando marca-d'água: o caminho de mídia retoma
-  // sozinho, sem depender de nova alteração cadastral.
-  if (media.failed > 0 || media.retrying > 0 || media.status !== "synced") {
-    const { queueMediaSync } = await import("./media-sync.server");
-    await queueMediaSync(admin, job.property_id, { providers: [job.provider] });
-  }
+  // Fotos seguem de forma assíncrona, exclusivamente por `media_sync`.
+  const media = await queueMediaAfterCadastral(admin, job);
 
   return { status: finalStatus, externalId, media, unmapped: resolution.unmapped };
+
 }
 
 export async function reconcilePublication(
