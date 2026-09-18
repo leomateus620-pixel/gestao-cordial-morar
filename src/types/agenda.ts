@@ -43,11 +43,15 @@ export interface AgendaReminder {
   canalFuturo?: boolean;
 }
 
+/** Finalidade do anexo: referência do imóvel (Agenda de Fotos) ou anexo comum. */
+export type AgendaAttachmentPurpose = "general" | "property_reference";
+
 /** Anexo interno do compromisso: foto no Storage ou link externo. */
 export interface AgendaAttachment {
   id: string;
   eventId: string;
   kind: "foto" | "link";
+  purpose: AgendaAttachmentPurpose;
   filePath: string | null;
   fileName: string | null;
   mimeType: string | null;
