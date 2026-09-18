@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listAgendaReferenceSummaries } from "@/lib/agenda/agenda-attachments.functions";
 import { AgendaFeedback, type AgendaFeedbackState } from "@/components/agenda/AgendaFeedback";
 import { AgendaFilters } from "@/components/agenda/AgendaFilters";
 import { AgendaPhotoFormModal } from "@/components/agenda/AgendaPhotoFormModal";
@@ -138,6 +141,25 @@ function AgendaFotosPage() {
 
   const hasActiveFilters = hasActiveAgendaFilters(filters);
 
+  // Uma única consulta agregada resolve os indicadores de referência da lista.
+  const loadReferences = useServerFn(listAgendaReferenceSummaries);
+  const eventIds = useMemo(() => filteredEvents.map((item) => item.id), [filteredEvents]);
+  const referencesQuery = useQuery({
+    queryKey: ["agenda", "references", eventIds.join("|")],
+    queryFn: () => loadReferences({ data: { eventIds } }),
+    enabled: eventIds.length > 0,
+    staleTime: 60_000,
+  });
+  const referenceLinks = useMemo(
+    () =>
+      new Set(
+        (referencesQuery.data ?? [])
+          .filter((item) => Boolean(item.linkUrl))
+          .map((item) => item.eventId),
+      ),
+    [referencesQuery.data],
+  );
+
   return (
     <div className="space-y-4">
       <AgendaHero
@@ -187,7 +209,13 @@ function AgendaFotosPage() {
             onCreate={openCreate}
           />
         ) : (
-          <AgendaTimeline events={filteredEvents} onOpen={openEvent} canEdit={canEdit} />
+          <AgendaTimeline
+            events={filteredEvents}
+            onOpen={openEvent}
+            canEdit={canEdit}
+            variant="fotos"
+            referenceLinks={referenceLinks}
+          />
         )}
       </section>
 
