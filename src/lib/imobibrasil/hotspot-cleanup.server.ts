@@ -155,7 +155,7 @@ export async function recheckRemote(params: {
     for (const key of keys) {
       if (key === "pontosFortesImovel" || key === "pontosFortes") continue;
       if (VOLATILE_REMOTE_KEYS.has(key)) continue;
-      if (JSON.stringify(before[key] ?? null) !== JSON.stringify(record[key] ?? null)) {
+      if (stableJson(before[key]) !== stableJson(record[key])) {
         changedFields.push(key);
       }
     }
