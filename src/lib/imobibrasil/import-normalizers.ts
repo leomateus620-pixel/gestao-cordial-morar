@@ -6,6 +6,7 @@
  */
 
 import type { ImobiProvider } from "./providers";
+import { stripInternalSiteNotes } from "./serializers";
 
 export type RemoteRecord = Record<string, unknown>;
 
@@ -286,9 +287,12 @@ export function normalizeRemoteProperty(
     areaTipo,
     descricao: decodeHtml(text(pick(record, ["descricaoImovel", "descricao"]))),
     observacao: decodeHtml(text(pick(record, ["observacoesImovel", "observacaoImovel", "observacao"]))),
-    pontosFortes: decodeHtml(
-      text(pick(record, ["pontosFortesImovel", "pontosFortes", "outrasInformacoesImovel"])),
-    ),
+    // `outrasInformacoesImovel` do Imobi é campo de controle interno: nunca
+    // serve de fallback para o campo público. E o texto remoto de pontos
+    // fortes passa pelo filtro interno para não reimportar comissão/agenciador.
+    pontosFortes:
+      stripInternalSiteNotes(decodeHtml(text(pick(record, ["pontosFortesImovel", "pontosFortes"])))) ??
+      null,
     codigo: text(pick(record, ["referenciaImovel", "codigo"])) ?? externalId,
     exibirImovel: parseBool(pick(record, ["exibirImovel", "statusImovel", "exibir"])),
     caracteristicas: extractCharacteristics(record),
