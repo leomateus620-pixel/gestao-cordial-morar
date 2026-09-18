@@ -477,7 +477,10 @@ export function AgendaPhotoFormModal({
                   <Field label="Link do imóvel" error={linkError ?? undefined}>
                     <input
                       value={form.link}
-                      onChange={(inputEvent) => update("link", inputEvent.target.value)}
+                      onChange={(inputEvent) => {
+                        setLinkError(null);
+                        update("link", inputEvent.target.value);
+                      }}
                       className={inputClass(linkError ?? undefined)}
                       placeholder="https://..."
                       inputMode="url"
