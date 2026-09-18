@@ -78,6 +78,7 @@ export function AgendaPhotoFormModal({
   const [errors, setErrors] = useState<ReturnType<typeof validateAgendaEvent>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [stage, setStage] = useState<"idle" | "saving" | "uploading">("idle");
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -128,6 +129,7 @@ export function AgendaPhotoFormModal({
     setErrors({});
     setSubmitError(null);
     setPhotoError(null);
+    setLinkError(null);
     setFile(null);
     setLocalPreview(null);
     setRemovedPhoto(false);
@@ -258,11 +260,11 @@ export function AgendaPhotoFormModal({
     if (!canEdit || stage !== "idle") return;
     const input = buildInput(form, event, currentUser, responsibleName);
     const validation = validateAgendaEvent(input);
-    if (form.link.trim() && !linkValid) {
-      validation.local = "Use um link começando com http:// ou https://";
-    }
+    const linkError =
+      form.link.trim() && !linkValid ? "Use um link começando com http:// ou https://" : null;
     setErrors(validation);
-    if (Object.keys(validation).length > 0) return;
+    setLinkError(linkError);
+    if (Object.keys(validation).length > 0 || linkError) return;
 
     setStage("saving");
     setSubmitError(null);
@@ -472,11 +474,11 @@ export function AgendaPhotoFormModal({
             >
               <div className="grid gap-3 lg:grid-cols-2">
                 <div className="space-y-3">
-                  <Field label="Link do imóvel" error={errors.local}>
+                  <Field label="Link do imóvel" error={linkError ?? undefined}>
                     <input
                       value={form.link}
                       onChange={(inputEvent) => update("link", inputEvent.target.value)}
-                      className={inputClass(errors.local)}
+                      className={inputClass(linkError ?? undefined)}
                       placeholder="https://..."
                       inputMode="url"
                       autoCapitalize="none"
