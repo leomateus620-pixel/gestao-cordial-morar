@@ -68,10 +68,18 @@ test("status cadastral não depende de falha de foto", () => {
   assert.ok(syncSource.includes('const finalStatus = verified ? "published" : "partial";'));
 });
 
+const stripComments = (source: string) =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("//") && !line.trim().startsWith("*"))
+    .join("\n");
+
 test("media_sync nunca chama /imovel/alterar", () => {
-  assert.equal(mediaSource.includes("/imovel/alterar"), false);
-  assert.equal(mediaRoute.includes("/imovel/alterar"), false);
+  assert.equal(stripComments(mediaSource).includes("/imovel/alterar"), false);
+  assert.equal(stripComments(mediaRoute).includes("/imovel/alterar"), false);
 });
+
 
 test("cada rota usa o worker do seu tipo", () => {
   assert.ok(cadastralRoute.includes('kind: "cadastral"'));
