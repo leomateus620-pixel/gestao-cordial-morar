@@ -232,6 +232,7 @@ export type Database = {
           kind: string
           label: string | null
           mime_type: string | null
+          purpose: string
           size_bytes: number | null
           url: string | null
         }
@@ -245,6 +246,7 @@ export type Database = {
           kind?: string
           label?: string | null
           mime_type?: string | null
+          purpose?: string
           size_bytes?: number | null
           url?: string | null
         }
@@ -258,6 +260,7 @@ export type Database = {
           kind?: string
           label?: string | null
           mime_type?: string | null
+          purpose?: string
           size_bytes?: number | null
           url?: string | null
         }
