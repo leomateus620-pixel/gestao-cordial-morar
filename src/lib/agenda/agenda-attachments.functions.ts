@@ -55,8 +55,6 @@ function normalizeUrl(raw: string): string {
   return parsed.toString().slice(0, 2000);
 }
 
-type Client = Parameters<typeof mapRow> extends never ? never : never;
-
 /**
  * Substituição idempotente da referência do imóvel: só existe uma foto e um link
  * `property_reference` por compromisso, então o anterior sai antes do novo entrar
