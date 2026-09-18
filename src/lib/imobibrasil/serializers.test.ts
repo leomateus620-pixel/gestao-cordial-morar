@@ -269,13 +269,13 @@ test("pontos fortes não vazam controle interno para o site", () => {
   assert.equal(/Ag:/i.test(pontos), false);
 });
 
-test("pontos fortes totalmente internos não são enviados", () => {
+test("pontos fortes totalmente internos viram string vazia (limpa o site)", () => {
   const payload = serializeProperty(
     { ...base, pontos_fortes: "comissão de 6%\nAg: Felipe" } as LocalPropertyForSync,
     {},
     { mode: "insert" },
   );
-  assert.equal(payload["pontosFortesImovel"], undefined);
+  assert.equal(payload["pontosFortesImovel"], "");
 });
 
 test("sigla do corretor sem dois-pontos e recados sobre o proprietário são removidos", () => {

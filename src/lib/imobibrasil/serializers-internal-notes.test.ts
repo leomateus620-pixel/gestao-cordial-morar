@@ -79,5 +79,5 @@ test("caso D: pontos fortes legítimos são preservados integralmente", () => {
     {},
     { mode: "update" },
   );
-  assert.equal(payload["pontosFortesImovel"], "Amplo quintal<br /> Próximo ao centro");
+  assert.equal(payload["pontosFortesImovel"], "Amplo quintal<br />Próximo ao centro");
 });
