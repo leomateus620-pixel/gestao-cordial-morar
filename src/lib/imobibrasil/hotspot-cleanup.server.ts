@@ -117,6 +117,29 @@ export function classify(
   return orphan ? "incerto" : "misto";
 }
 
+/**
+ * Comparação estável: ordem de chaves e diferenças de acentuação/HTML não
+ * podem virar falso alarme de "outro campo mudou".
+ */
+function stableJson(value: unknown): string {
+  const walk = (input: unknown): unknown => {
+    if (typeof input === "string") return normalizeForCompare(fixMojibake(input));
+    if (Array.isArray(input)) return input.map(walk);
+    if (input && typeof input === "object") {
+      return Object.keys(input as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          const inner = (input as Record<string, unknown>)[key];
+          if (inner !== null && inner !== undefined) acc[key] = walk(inner);
+          return acc;
+        }, {});
+    }
+    if (input === null || input === undefined) return null;
+    return input;
+  };
+  return JSON.stringify(walk(value) ?? null);
+}
+
 export type CheckResult = {
   ok: boolean;
   internalGone: boolean;
