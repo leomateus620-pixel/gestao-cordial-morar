@@ -2396,6 +2396,93 @@ export type Database = {
           },
         ]
       }
+      property_hotspot_cleanup: {
+        Row: {
+          check_result: Json | null
+          classification: string
+          codigo: string | null
+          created_at: string
+          expected_final: string
+          external_id: string
+          id: string
+          last_checked_at: string | null
+          local_internal_text: string | null
+          local_pontos_fortes: string | null
+          marked_cleaned_at: string | null
+          marked_cleaned_by: string | null
+          priority: number
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          public_url: string | null
+          publication_status: string | null
+          remote_pontos_fortes: string | null
+          remote_snapshot: Json | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          check_result?: Json | null
+          classification?: string
+          codigo?: string | null
+          created_at?: string
+          expected_final?: string
+          external_id: string
+          id?: string
+          last_checked_at?: string | null
+          local_internal_text?: string | null
+          local_pontos_fortes?: string | null
+          marked_cleaned_at?: string | null
+          marked_cleaned_by?: string | null
+          priority?: number
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          public_url?: string | null
+          publication_status?: string | null
+          remote_pontos_fortes?: string | null
+          remote_snapshot?: Json | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          check_result?: Json | null
+          classification?: string
+          codigo?: string | null
+          created_at?: string
+          expected_final?: string
+          external_id?: string
+          id?: string
+          last_checked_at?: string | null
+          local_internal_text?: string | null
+          local_pontos_fortes?: string | null
+          marked_cleaned_at?: string | null
+          marked_cleaned_by?: string | null
+          priority?: number
+          property_id?: string
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          public_url?: string | null
+          publication_status?: string | null
+          remote_pontos_fortes?: string | null
+          remote_snapshot?: Json | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_hotspot_cleanup_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_hotspot_cleanup_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_image_batches: {
         Row: {
           created_at: string

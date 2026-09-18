@@ -11,6 +11,7 @@ import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
+import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
@@ -45,6 +46,8 @@ function Page() {
       <ProvidersHealthCard enabled={isAdmin} />
 
       <NfseStatusCard enabled={isAdmin} />
+
+      <HotspotCleanupCard enabled={isAdmin} />
 
       <section className="mb-5 grid grid-cols-3 gap-3">
 
