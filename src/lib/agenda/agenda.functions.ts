@@ -260,10 +260,10 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
 
     const payload = {
       owner_user_id: ownerId,
-      tipo: input.tipo,
+      tipo,
       status: input.status,
       prioridade: input.prioridade,
-      imobiliaria: input.imobiliaria,
+      imobiliaria,
       titulo: input.titulo.trim(),
       descricao: orNull(input.descricao),
       observacoes: orNull(input.observacoes),
@@ -282,7 +282,7 @@ export const upsertAgendaEvent = createServerFn({ method: "POST" })
       agenciamento_id: asUuid(input.agenciamentoId),
       local: orNull(input.local) ?? orNull(input.imovelEndereco),
       video_call_url: orNull(input.videoCallUrl),
-      responsavel_nome: orNull(input.responsavelPrincipalNome),
+      responsavel_nome: responsavelNome,
       google_calendar_sync_status: input.googleCalendarSyncStatus ?? "nao_sincronizado",
       concluido_em: input.status === "concluido" ? new Date().toISOString() : null,
     };
