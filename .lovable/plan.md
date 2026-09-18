@@ -1,42 +1,35 @@
-# Auditoria: informações internas aparecendo em "Pontos fortes" nos sites
+# Pontos fortes: limpar informação interna já publicada
 
-## Conclusão (causa confirmada)
+## O que a auditoria mostrou (somente leitura, apenas consultas GET)
 
-É **dado histórico publicado antes da separação e nunca limpo no site**, agravado por **omissão do campo no envio**. O código atual **não gera mais** o vazamento.
+- O código atual **não vaza**: no serializador, `observacao_imovel` e `outras_informacoes` nunca entram no que é enviado aos sites, e `pontos_fortes` passa por filtro linha a linha.
+- O texto interno que aparece no site é **conteúdo antigo, publicado antes da separação dos campos e nunca apagado no site**. Confirmado no caso Cordial 868 (external 3423415): no Gestão o campo público está vazio, e a consulta ao site devolve "comissão de 3% / Ag: Felipe Fleck".
+- Agrava o problema: quando o campo público está vazio, o envio **omite** o campo e o site **preserva** o valor anterior.
+- Descartado: importação contaminando o campo público a partir de "outras informações" do site (esse campo remoto voltou vazio em praticamente todos os anúncios; confirmar na varredura final).
 
-Evidência do caso citado (Cordial 868 / external 3423415):
-- No Gestão: `pontos_fortes` está NULL e `observacao_imovel` = "comissão de 3% / Ag: Felipe Fleck".
-- No site (consulta somente leitura): `pontosFortesImovel` = "comissão de 3%<br /> Ag: Felipe Fleck" — ou seja, o texto antigo continua lá.
-- O único envio de alteração desse imóvel (09/09) ficou **cancelado** pela pausa de segurança de 10/09; nunca houve envio depois da limpeza interna.
+### Números até agora
+- 861 publicações ativas; 716 conferidas (519 Cordial, 197 Morar) — restam ~145 da Morar, que serão concluídas.
+- Anúncios expondo informação interna em pontos fortes: **360** (Cordial 302, Morar 58 parcial).
+- Padrões encontrados: comissão, "Ag: <nome>", "proprietário quer líquido", valores internos.
 
-Por que o texto não some sozinho: quando `pontos_fortes` fica vazio, o serializador **omite** `pontosFortesImovel` do corpo. Não existe nada no código nem nos registros que comprove que a Imobi apaga um campo omitido em "pontos fortes" — a evidência real (este imóvel) mostra o contrário: o valor antigo permanece. Portanto limpar exige **enviar o campo vazio explicitamente**, não omiti-lo.
+## Sequência proposta
 
-Descartado: (a) vazamento pelo código atual — o serializador ignora `observacao_imovel`/`outras_informacoes` e filtra `pontos_fortes` linha a linha; (d) importação — o importador copia o campo público remoto para `pontos_fortes`, então ele só reintroduz o texto que **já está** no site, e a limpeza interna já foi feita.
+1. **Terminar a varredura da Morar** e entregar a tabela definitiva: property_id, provedor, código, external ID, URL pública, pontos fortes local, informação interna local, pontos fortes remoto, motivo — com totais por site, quantos com campo público vazio, quantos com conteúdo legítimo misturado, e quantos `published` / `out_of_sync`.
+2. **Blindagem e testes do serializador** (casos A–F pedidos): inspeção recursiva de todo o corpo enviado, garantindo que nenhuma frase interna apareça em qualquer campo.
+3. **Ajuste único**: quando não houver pontos fortes públicos, enviar o campo **vazio** em vez de omitir — só para esse campo, sem política global de enviar campos vazios.
+4. **Importação**: nunca sobrescrever o campo público local com texto remoto que contenha sinal interno.
+5. **Limpeza remota**: caminho de envio restrito ao texto de pontos fortes, nos moldes do caminho exclusivo de fotos, autorizado com a pausa cadastral ligada, em lotes de 20 chamadas/minuto, com reconferência por leitura de que o campo ficou apenas com o conteúdo legítimo (ou vazio).
+6. **Antes de qualquer envio**, entrego o relatório e o método exato; se a limpeza exigir enviar o cadastro completo, **paro e te aviso** em vez de executar.
 
-## Números da varredura (somente leitura, 20 consultas/min por site)
+## Garantias
 
-- Verificados até agora: 556 anúncios (278 Cordial, 278 Morar) de 861 ativos. A varredura continua.
-- Afetados: **173 no Cordial**, **0 no Morar** até este ponto.
-- Padrões encontrados: comissão em % e em valor, "Ag: <corretor>", "Proprietário quer limpo R$…", valor de negociação interno.
+- Nada de proprietário, telefone, e-mail, corretor, códigos dos dois sites, fotos, ordem das fotos, preço, descrição, características, localização, Drive ou agenciamento é tocado.
+- A pausa de segurança das atualizações cadastrais permanece ligada.
+- As informações internas continuam intactas no Gestão.
 
-Exemplos (site | código | texto público):
-- Cordial 22 — "Terreno 160.000,00 / Comissão 12.000,00 / Quadra 1561 Lote06…"
-- Cordial 171 — "Proprietário quer limpo R$500.000,00 / Comissão de 6% / Ag: Ricardo Hoff"
-- Cordial 234 — "comissão 6% / Proprietário quer pra ele 450.000,00…"
-- Cordial 868 — "comissão de 3% / Ag: Felipe Fleck"
+## Detalhes técnicos
 
-A tabela completa (property_id, site, código, external_property_id, pontos fortes local, trecho interno local, pontos fortes remoto) fica em `/tmp/hits.json` e será entregue ao fim da varredura.
-
-## Correção mínima e segura (para aprovar)
-
-1. Terminar a varredura e fechar a lista definitiva por site.
-2. No serializador: quando não houver pontos fortes públicos, enviar `pontosFortesImovel` como **string vazia** em vez de omitir — é a única forma de apagar o texto antigo no site. Nada mais no payload muda.
-3. Criar um caminho de envio restrito a texto público (nos moldes do `media_sync` das fotos), autorizado com a pausa cadastral ligada, que envie **apenas** descrição/pontos fortes e nunca proprietário, corretor, fotos ou demais campos — assim a limpeza sai sem reabrir o risco que motivou a pausa.
-4. Enfileirar essa limpeza somente para os imóveis afetados, em lotes que respeitem o limite de 20 requisições por minuto, e reconferir por leitura que o campo ficou vazio.
-5. Ajuste opcional no importador: não sobrescrever `pontos_fortes` local com texto remoto que contenha sinal interno, para a limpeza não voltar em futura importação.
-
-Fora de escopo: proprietário, corretor, fotos, pausa de sincronização cadastral, qualquer outro campo.
-
-## Nota
-
-Nesta auditoria nada foi alterado: somente leituras no banco e consultas GET nas duas integrações.
+- `src/lib/imobibrasil/serializers.ts`: `stripInternalSiteNotes()` mantido; `pontosFortesImovel` passa a ser enviado como `""` quando não houver conteúdo público (hoje é omitido via `assign`, que descarta vazio).
+- Novo caminho de sincronização `text_sync` (espelhado em `media-sync.server.ts`), com corpo mínimo contendo apenas o campo de pontos fortes; jobs em `property_sync_jobs` com ação própria, ignorando `imobi_update_sync_paused` como o `media_sync`.
+- Testes com `bun test`: casos A–F + varredura recursiva do payload.
+- Relatório gerado a partir de `/tmp/sweep.jsonl` cruzado com `properties` e `property_provider_publications`.
