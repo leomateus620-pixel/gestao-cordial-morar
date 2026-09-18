@@ -53,18 +53,30 @@ export function AgendaEventCard({
   onClick,
   canEdit,
   past = false,
+  variant = "geral",
+  hasReferenceLink = false,
 }: {
   event: AgendaEvent;
   onClick: () => void;
   canEdit: boolean;
   /** Softens cards that already happened so the upcoming ones stand out. */
   past?: boolean;
+  /** "fotos" hides the agency badge (photo sessions are always "ambas"). */
+  variant?: "geral" | "fotos";
+  /** Discrete hint that the appointment carries a property reference link. */
+  hasReferenceLink?: boolean;
 }) {
+  const isPhotoVariant = variant === "fotos";
   const start = new Date(event.inicio);
   const end = event.fim ? new Date(event.fim) : undefined;
   const ownerName = event.responsavelPrincipalNome || event.criadoPorNome;
-  const property = event.imovelDescricao || event.imovelNome;
-  const location = event.local && event.local !== property ? event.local : undefined;
+  const property = isPhotoVariant ? undefined : event.imovelDescricao || event.imovelNome;
+  const location =
+    event.local && event.local !== property
+      ? event.local
+      : isPhotoVariant
+        ? event.imovelEndereco
+        : undefined;
   const activeReminders = event.lembretes.filter((reminder) => reminder.ativo).length;
   const highPriority = event.prioridade === "alta" || event.prioridade === "urgente";
   const cancelled = event.status === "cancelado";
