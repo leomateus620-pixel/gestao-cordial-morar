@@ -200,6 +200,13 @@ export function HotspotCleanupCard({ enabled }: { enabled: boolean }) {
         </button>
       </div>
 
+      {dryRunMutation.isPending && (
+        <p className="mt-3 flex items-center gap-2 text-[11px] text-foreground/60">
+          <Loader2 className="size-3 animate-spin" /> Montando a auditoria (sem enviar nada)…
+        </p>
+      )}
+      {report && <DryRunPanel report={report} onClose={() => setReport(null)} />}
+
       <div className="mt-4 space-y-3">
         {query.isLoading && (
           <p className="flex items-center gap-2 text-xs text-foreground/60">
