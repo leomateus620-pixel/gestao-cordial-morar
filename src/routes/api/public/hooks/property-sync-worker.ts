@@ -46,7 +46,10 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-worker")({
           let passes = 0;
           const results: unknown[] = [];
           do {
-            const result = await runSyncWorker(supabaseAdmin, { limit });
+            // Somente ações cadastrais: fotos têm worker próprio
+            // (/api/public/hooks/property-media-worker).
+            const result = await runSyncWorker(supabaseAdmin, { limit, kind: "cadastral" });
+
             claimed += result.claimed;
             results.push(...result.results);
             passes += 1;
