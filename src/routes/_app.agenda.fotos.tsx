@@ -3,7 +3,7 @@ import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useMemo, useState } from "react";
 import { AgendaFeedback, type AgendaFeedbackState } from "@/components/agenda/AgendaFeedback";
 import { AgendaFilters } from "@/components/agenda/AgendaFilters";
-import { AgendaFormModal } from "@/components/agenda/AgendaFormModal";
+import { AgendaPhotoFormModal } from "@/components/agenda/AgendaPhotoFormModal";
 import { AgendaHero } from "@/components/agenda/AgendaHero";
 import {
   AgendaListEmpty,
@@ -111,10 +111,11 @@ function AgendaFotosPage() {
             ? { message: `Sessão “${updated.titulo}” atualizada.` }
             : { message: "Você não pode editar esta sessão de fotos.", tone: "error" },
         );
-        return;
+        return updated;
       }
       const created = await createEvent(photoInput);
       setFeedback({ message: `Sessão “${created.titulo}” agendada.` });
+      return created;
     } catch (err) {
       setFeedback({ message: `Não foi possível salvar: ${(err as Error).message}`, tone: "error" });
       throw err;
