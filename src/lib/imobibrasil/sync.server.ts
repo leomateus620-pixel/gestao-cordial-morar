@@ -509,11 +509,88 @@ export async function processJob(admin: Admin, job: SyncJob) {
   }
 
   // ---- publish / update ----
-  let externalId = publication.external_property_id as string | null;
+  // Imóvel que já existe no site NUNCA volta ao caminho de criação: `publish`
+  // vira alteração; sem ID guardado mas com histórico publicado, vira reconciliação.
+  const effectiveAction = normalizeCadastralAction(
+    job.action as "publish" | "update",
+    publication as { external_property_id?: string | null; status?: string | null; last_synced_at?: string | null },
+  );
+  if (effectiveAction === "reconcile") {
+    return reconcilePublication(admin, publication, job.correlation_id);
+  }
 
-  // Resultado ambíguo anterior ou primeira publicação: sempre buscar a referência antes de criar.
+  let externalId = publication.external_property_id as string | null;
+  let createLockWorker: string | null = null;
+
+  // Resultado ambíguo anterior ou primeira publicação: single-flight + leitura
+  // remota obrigatória antes de qualquer criação.
   if (!externalId) {
-    externalId = await findRemoteByReference(job.provider, reference, job.correlation_id);
+    const workerTag = `job-${job.id}`;
+    const { data: lockData, error: lockError } = await admin.rpc(
+      "property_publication_acquire_create_lock",
+      { _publication_id: publication.id, _worker: workerTag, _lease_seconds: 180 },
+    );
+    if (lockError) throw new Error(lockError.message);
+    const lock = (lockData ?? {}) as {
+      acquired?: boolean;
+      publication?: Record<string, unknown> | null;
+    };
+    const fresh = (lock.publication ?? publication) as Record<string, unknown>;
+    if (!lock.acquired) {
+      throw new ImobiApiError({
+        message: "Outra execução já está criando este imóvel no site. Nova tentativa em seguida.",
+        category: "server",
+      });
+    }
+    createLockWorker = workerTag;
+
+    // Estado relido sob a trava: outro worker pode ter acabado de gravar o ID.
+    externalId = (fresh["external_property_id"] as string | null) ?? null;
+
+    if (!externalId) {
+      const { match } = await lookupByReference(job.provider, reference, job.correlation_id);
+      const decision = decideFromMatches(match, null);
+
+      if (decision.kind === "duplicate") {
+        await recordRemoteMatch(admin, publication.id, match, {
+          create_state: "remote_duplicate_detected",
+          status: "error",
+          last_error_category: "business",
+          last_error_message: `O site tem ${match.count} anúncios com a referência ${reference} (${match.ids.join(", ")}). Criação bloqueada até a duplicidade ser resolvida.`,
+        });
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw new ImobiApiError({
+          message: `Duplicidade remota detectada na referência ${reference}: ${match.ids.join(", ")}. Nenhum imóvel foi criado.`,
+          category: "business",
+        });
+      }
+
+      if (decision.kind === "reuse") {
+        externalId = decision.externalId;
+        await recordRemoteMatch(admin, publication.id, match, {
+          external_property_id: externalId,
+          create_state: null,
+          create_absent_checks: 0,
+        });
+      } else {
+        // Ausente: só cria se não houver criação ambígua pendente sem confirmação.
+        const absentChecks = Number(fresh["create_absent_checks"] ?? 0) + 1;
+        await recordRemoteMatch(admin, publication.id, match, {
+          create_absent_checks: absentChecks,
+        });
+        if (!canCreateAfterAmbiguity({
+          create_state: (fresh["create_state"] as string | null) ?? null,
+          create_absent_checks: absentChecks,
+        })) {
+          await releaseCreateLock(admin, publication.id, createLockWorker);
+          throw new ImobiApiError({
+            message:
+              "Criação anterior sem resposta confirmada: aguardando novas leituras do site antes de tentar criar de novo.",
+            category: "server",
+          });
+        }
+      }
+    }
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
