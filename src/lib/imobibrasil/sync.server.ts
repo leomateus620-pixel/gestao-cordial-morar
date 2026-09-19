@@ -720,8 +720,32 @@ export async function processJob(admin: Admin, job: SyncJob) {
       create_absent_checks: 0,
     })
     .eq("id", publication.id);
+  const createdNow = mode === "insert";
   await releaseCreateLock(admin, publication.id, createLockWorker);
   createLockWorker = null;
+
+  // Conferência pós-criação: se o site passou a ter mais de um anúncio com a
+  // mesma referência, o estado de duplicidade é registrado na hora (sem excluir
+  // nada) e nenhuma nova criação será permitida.
+  if (createdNow) {
+    try {
+      const { match } = await lookupByReference(job.provider, reference, job.correlation_id);
+      await recordRemoteMatch(
+        admin,
+        publication.id,
+        match,
+        match.count > 1
+          ? {
+              create_state: "remote_duplicate_detected",
+              last_error_category: "business",
+              last_error_message: `O site tem ${match.count} anúncios com a referência ${reference} (${match.ids.join(", ")}).`,
+            }
+          : {},
+      );
+    } catch {
+      // Conferência é complementar: falha aqui não invalida o cadastro criado.
+    }
+  }
 
   await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
 
