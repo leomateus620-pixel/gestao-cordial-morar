@@ -83,7 +83,10 @@ test("criação passa obrigatoriamente pela trava antes do inserir", () => {
 });
 
 test("envio de fotos nunca mexe no cadastro do imóvel", () => {
-  const source = read("./media-sync.server.ts");
+  // Compara só o código executável: comentários podem citar os endpoints.
+  const source = read("./media-sync.server.ts")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
   assert.ok(!source.includes("/imovel/alterar"));
   assert.ok(!source.includes("/imovel/inserir"));
 });
