@@ -38,6 +38,13 @@ export type PublicationStatusView = {
     lastSyncedAt: string | null;
     lastVerifiedAt: string | null;
   };
+  /** Conferência da referência no site: quantos anúncios respondem por ela. */
+  remote: {
+    createState: string | null;
+    matchCount: number | null;
+    matchIds: string[];
+    checkedAt: string | null;
+  };
 };
 
 function sanitizeProviders(input: unknown): ImobiProvider[] {
