@@ -38,6 +38,13 @@ export type PublicationStatusView = {
     lastSyncedAt: string | null;
     lastVerifiedAt: string | null;
   };
+  /** Conferência da referência no site: quantos anúncios respondem por ela. */
+  remote: {
+    createState: string | null;
+    matchCount: number | null;
+    matchIds: string[];
+    checkedAt: string | null;
+  };
 };
 
 function sanitizeProviders(input: unknown): ImobiProvider[] {
@@ -246,6 +253,14 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         lastSyncedAt: row.last_media_synced_at ?? null,
         lastVerifiedAt: row.last_media_verified_at ?? null,
       },
+      remote: {
+        createState: row.create_state ?? null,
+        matchCount: row.remote_match_count ?? null,
+        matchIds: Array.isArray(row.remote_match_ids)
+          ? (row.remote_match_ids as string[]).map(String)
+          : [],
+        checkedAt: row.remote_match_checked_at ?? null,
+      },
     }));
   });
 
@@ -373,4 +388,45 @@ export const listProviderCatalog = createServerFn({ method: "GET" })
       .order("label", { ascending: true });
     if (error) throw new Error(error.message);
     return rows ?? [];
+  });
+
+/**
+ * Ferramenta administrativa SOMENTE LEITURA: lista as referências que o site
+ * responde com mais de um anúncio, além das criações que ficaram sem resposta
+ * confirmada. Não publica, não altera e não exclui nada — serve para decidir
+ * manualmente, no painel do site, qual anúncio permanece.
+ */
+export const listRemoteDuplicateReferences = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Apenas administradores podem conferir duplicidades.");
+
+    const { data, error } = await context.supabase
+      .from("property_provider_publications")
+      .select(
+        "property_id, provider, external_reference, external_property_id, create_state, remote_match_count, remote_match_ids, remote_match_checked_at, properties(titulo)",
+      )
+      .or("remote_match_count.gt.1,create_state.not.is.null")
+      .order("remote_match_checked_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+
+    return (data ?? []).map((row) => ({
+      propertyId: row.property_id as string,
+      titulo:
+        (row as { properties?: { titulo?: string | null } | null }).properties?.titulo ?? null,
+      provider: row.provider as ImobiProvider,
+      reference: row.external_reference as string,
+      canonicalId: row.external_property_id as string | null,
+      createState: (row.create_state ?? null) as string | null,
+      matchCount: (row.remote_match_count ?? null) as number | null,
+      matchIds: Array.isArray(row.remote_match_ids)
+        ? (row.remote_match_ids as string[]).map(String)
+        : [],
+      checkedAt: (row.remote_match_checked_at ?? null) as string | null,
+    }));
   });

@@ -26,6 +26,14 @@ import {
   type WorkerKind,
 } from "./queue-policy";
 import { providerExternalCode } from "./provider-code";
+import {
+  canCreateAfterAmbiguity,
+  decideFromMatches,
+  extractRemoteListItems,
+  matchByReference,
+  normalizeCadastralAction,
+  type ReferenceMatch,
+} from "./reference-lookup";
 
 
 
@@ -72,12 +80,16 @@ function backoffSeconds(attempts: number): number {
   return Math.min(3600, 60 * 2 ** Math.max(0, attempts - 1));
 }
 
-/** Procura a referência externa antes de qualquer criação — idempotência obrigatória. */
-async function findRemoteByReference(
+/**
+ * Procura a referência externa antes de qualquer criação — idempotência obrigatória.
+ * Toda forma de resposta da lista é reconhecida (ver `reference-lookup.ts`): um
+ * parser cego aqui significaria criar um segundo anúncio do mesmo imóvel.
+ */
+async function lookupByReference(
   provider: ImobiProvider,
   reference: string,
   correlationId: string,
-): Promise<string | null> {
+): Promise<{ match: ReferenceMatch; items: number }> {
   const response = await imobiRequest(
     provider,
     `/imovel/lista?referencia=${encodeURIComponent(reference)}`,
@@ -86,25 +98,48 @@ async function findRemoteByReference(
       correlationId,
     },
   );
-  const items = Array.isArray(response.data)
-    ? response.data
-    : ((response.data as Record<string, unknown>)?.["resultSet"] ??
-      (response.data as Record<string, unknown>)?.["data"] ??
-      []);
-  const list = Array.isArray(items)
-    ? items
-    : Array.isArray((items as Record<string, unknown>)?.["data"])
-      ? ((items as Record<string, unknown>)["data"] as unknown[])
-      : [];
-  for (const item of list) {
-    if (!item || typeof item !== "object") continue;
-    const record = item as Record<string, unknown>;
-    const remoteRef = String(record["referenciaImovel"] ?? record["referencia"] ?? "").trim();
-    if (remoteRef && remoteRef.toUpperCase() !== reference.toUpperCase()) continue;
-    const id = extractExternalId(record);
-    if (id) return id;
+  const items = extractRemoteListItems(response.data);
+  return { match: matchByReference(items, reference), items: items.length };
+}
+
+/** Devolve a trava de criação. Nunca lança: falhar aqui não pode travar a fila. */
+async function releaseCreateLock(admin: Admin, publicationId: string, worker: string | null) {
+  if (!worker) return;
+  try {
+    await admin.rpc("property_publication_release_create_lock", {
+      _publication_id: publicationId,
+      _worker: worker,
+    });
+  } catch {
+    // O lease expira sozinho.
   }
-  return null;
+}
+
+/** Grava o resultado da conferência remota na publicação (auditável na tela). */
+async function recordRemoteMatch(
+  admin: Admin,
+  publicationId: string,
+  match: ReferenceMatch,
+  extra: Record<string, unknown> = {},
+) {
+  await admin
+    .from("property_provider_publications")
+    .update({
+      remote_match_count: match.count,
+      remote_match_ids: match.ids,
+      remote_match_checked_at: new Date().toISOString(),
+      ...extra,
+    })
+    .eq("id", publicationId);
+}
+
+async function findRemoteByReference(
+  provider: ImobiProvider,
+  reference: string,
+  correlationId: string,
+): Promise<string | null> {
+  const { match } = await lookupByReference(provider, reference, correlationId);
+  return match.count === 1 ? match.ids[0]! : null;
 }
 
 async function verifyRemote(provider: ImobiProvider, externalId: string, correlationId: string) {
@@ -487,11 +522,88 @@ export async function processJob(admin: Admin, job: SyncJob) {
   }
 
   // ---- publish / update ----
-  let externalId = publication.external_property_id as string | null;
+  // Imóvel que já existe no site NUNCA volta ao caminho de criação: `publish`
+  // vira alteração; sem ID guardado mas com histórico publicado, vira reconciliação.
+  const effectiveAction = normalizeCadastralAction(
+    job.action as "publish" | "update",
+    publication as { external_property_id?: string | null; status?: string | null; last_synced_at?: string | null },
+  );
+  if (effectiveAction === "reconcile") {
+    return reconcilePublication(admin, publication, job.correlation_id);
+  }
 
-  // Resultado ambíguo anterior ou primeira publicação: sempre buscar a referência antes de criar.
+  let externalId = publication.external_property_id as string | null;
+  let createLockWorker: string | null = null;
+
+  // Resultado ambíguo anterior ou primeira publicação: single-flight + leitura
+  // remota obrigatória antes de qualquer criação.
   if (!externalId) {
-    externalId = await findRemoteByReference(job.provider, reference, job.correlation_id);
+    const workerTag = `job-${job.id}`;
+    const { data: lockData, error: lockError } = await admin.rpc(
+      "property_publication_acquire_create_lock",
+      { _publication_id: publication.id, _worker: workerTag, _lease_seconds: 180 },
+    );
+    if (lockError) throw new Error(lockError.message);
+    const lock = (lockData ?? {}) as {
+      acquired?: boolean;
+      publication?: Record<string, unknown> | null;
+    };
+    const fresh = (lock.publication ?? publication) as Record<string, unknown>;
+    if (!lock.acquired) {
+      throw new ImobiApiError({
+        message: "Outra execução já está criando este imóvel no site. Nova tentativa em seguida.",
+        category: "server",
+      });
+    }
+    createLockWorker = workerTag;
+
+    // Estado relido sob a trava: outro worker pode ter acabado de gravar o ID.
+    externalId = (fresh["external_property_id"] as string | null) ?? null;
+
+    if (!externalId) {
+      const { match } = await lookupByReference(job.provider, reference, job.correlation_id);
+      const decision = decideFromMatches(match, null);
+
+      if (decision.kind === "duplicate") {
+        await recordRemoteMatch(admin, publication.id, match, {
+          create_state: "remote_duplicate_detected",
+          status: "error",
+          last_error_category: "business",
+          last_error_message: `O site tem ${match.count} anúncios com a referência ${reference} (${match.ids.join(", ")}). Criação bloqueada até a duplicidade ser resolvida.`,
+        });
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw new ImobiApiError({
+          message: `Duplicidade remota detectada na referência ${reference}: ${match.ids.join(", ")}. Nenhum imóvel foi criado.`,
+          category: "business",
+        });
+      }
+
+      if (decision.kind === "reuse") {
+        externalId = decision.externalId;
+        await recordRemoteMatch(admin, publication.id, match, {
+          external_property_id: externalId,
+          create_state: null,
+          create_absent_checks: 0,
+        });
+      } else {
+        // Ausente: só cria se não houver criação ambígua pendente sem confirmação.
+        const absentChecks = Number(fresh["create_absent_checks"] ?? 0) + 1;
+        await recordRemoteMatch(admin, publication.id, match, {
+          create_absent_checks: absentChecks,
+        });
+        if (!canCreateAfterAmbiguity({
+          create_state: (fresh["create_state"] as string | null) ?? null,
+          create_absent_checks: absentChecks,
+        })) {
+          await releaseCreateLock(admin, publication.id, createLockWorker);
+          throw new ImobiApiError({
+            message:
+              "Criação anterior sem resposta confirmada: aguardando novas leituras do site antes de tentar criar de novo.",
+            category: "server",
+          });
+        }
+      }
+    }
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
@@ -542,17 +654,55 @@ export async function processJob(admin: Admin, job: SyncJob) {
       await logAttempt(admin, job, { step: "update", ok: true, httpStatus: response.httpStatus });
     }
   } else {
-    const response = await imobiRequest(job.provider, "/imovel/inserir", {
-      method: "POST",
-      json: payload,
-      allowRetry: false, // criação nunca sofre retry cego
-      correlationId: job.correlation_id,
-    });
+    let response: Awaited<ReturnType<typeof imobiRequest>>;
+    try {
+      response = await imobiRequest(job.provider, "/imovel/inserir", {
+        method: "POST",
+        json: payload,
+        allowRetry: false, // criação nunca sofre retry cego
+        correlationId: job.correlation_id,
+      });
+    } catch (error) {
+      const normalized = toImobiError(error);
+      // Timeout / rede / 5xx: o site pode ter criado o imóvel e perdido a
+      // resposta. Nunca repetimos o POST: marcamos para reconciliação por
+      // referência (somente GET) nas próximas execuções.
+      if (normalized.ambiguous || normalized.category === "network" || normalized.category === "server") {
+        await admin
+          .from("property_provider_publications")
+          .update({
+            create_state: "awaiting_create_reconcile",
+            create_ambiguous_at: new Date().toISOString(),
+            create_absent_checks: 0,
+            last_error_category: normalized.category,
+            last_error_message:
+              "Criação sem confirmação do site. Nenhuma nova criação será tentada antes da conferência por referência.",
+          })
+          .eq("id", publication.id);
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw new ImobiApiError({
+          message:
+            "Criação sem resposta confirmada do site. O imóvel será conferido por referência antes de qualquer nova tentativa.",
+          category: "server",
+        });
+      }
+      await releaseCreateLock(admin, publication.id, createLockWorker);
+      throw normalized;
+    }
     await logAttempt(admin, job, { step: "insert", ok: true, httpStatus: response.httpStatus });
     externalId =
       extractExternalId(response.data) ??
       (await findRemoteByReference(job.provider, reference, job.correlation_id));
     if (!externalId) {
+      await admin
+        .from("property_provider_publications")
+        .update({
+          create_state: "awaiting_create_reconcile",
+          create_ambiguous_at: new Date().toISOString(),
+          create_absent_checks: 0,
+        })
+        .eq("id", publication.id);
+      await releaseCreateLock(admin, publication.id, createLockWorker);
       throw new ImobiApiError({
         message: "O provedor não retornou o código do imóvel e a referência não foi localizada.",
         category: "protocol",
@@ -563,8 +713,39 @@ export async function processJob(admin: Admin, job: SyncJob) {
 
   await admin
     .from("property_provider_publications")
-    .update({ external_property_id: externalId, status: "partial" })
+    .update({
+      external_property_id: externalId,
+      status: "partial",
+      create_state: null,
+      create_absent_checks: 0,
+    })
     .eq("id", publication.id);
+  const createdNow = mode === "insert";
+  await releaseCreateLock(admin, publication.id, createLockWorker);
+  createLockWorker = null;
+
+  // Conferência pós-criação: se o site passou a ter mais de um anúncio com a
+  // mesma referência, o estado de duplicidade é registrado na hora (sem excluir
+  // nada) e nenhuma nova criação será permitida.
+  if (createdNow) {
+    try {
+      const { match } = await lookupByReference(job.provider, reference, job.correlation_id);
+      await recordRemoteMatch(
+        admin,
+        publication.id,
+        match,
+        match.count > 1
+          ? {
+              create_state: "remote_duplicate_detected",
+              last_error_category: "business",
+              last_error_message: `O site tem ${match.count} anúncios com a referência ${reference} (${match.ids.join(", ")}).`,
+            }
+          : {},
+      );
+    } catch {
+      // Conferência é complementar: falha aqui não invalida o cadastro criado.
+    }
+  }
 
   await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
 
@@ -630,13 +811,34 @@ export async function reconcilePublication(
   },
   correlationId: string,
 ) {
+  // Reconciliação SEMPRE lê a lista por referência: é assim que o sistema
+  // enxerga duplicidade remota e recupera um ID perdido sem criar nada.
+  const { match } = await lookupByReference(
+    publication.provider,
+    publication.external_reference,
+    correlationId,
+  );
+  const decision = decideFromMatches(match, publication.external_property_id);
+
+  if (decision.kind === "duplicate") {
+    await recordRemoteMatch(admin, publication.id, match, {
+      create_state: "remote_duplicate_detected",
+      status: "out_of_sync",
+      last_verified_at: new Date().toISOString(),
+      last_error_category: "business",
+      last_error_message: `O site tem ${match.count} anúncios com a referência ${publication.external_reference} (${match.ids.join(", ")}). Nenhuma criação nem exclusão automática será feita.`,
+    });
+    return {
+      status: "out_of_sync" as const,
+      duplicates: match.ids,
+      canonicalId: decision.canonicalId,
+    };
+  }
+
   const externalId =
-    publication.external_property_id ??
-    (await findRemoteByReference(
-      publication.provider,
-      publication.external_reference,
-      correlationId,
-    ));
+    publication.external_property_id ?? (decision.kind === "reuse" ? decision.externalId : null);
+
+  await recordRemoteMatch(admin, publication.id, match);
 
   if (!externalId) {
     await admin

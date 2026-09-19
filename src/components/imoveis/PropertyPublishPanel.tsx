@@ -197,6 +197,17 @@ export function PropertyPublishPanel({
                 <p className="mt-2 text-[11px] text-foreground/55">{mediaNote(row.media)}</p>
               )}
 
+              {/* Duplicidade no site: o sistema bloqueia novo cadastro e nunca
+                  exclui anúncio sozinho — a escolha do que fica é de uma pessoa. */}
+              {(row?.remote.matchCount ?? 0) > 1 && (
+                <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-destructive/8 p-2 text-[11px] text-destructive">
+                  <AlertTriangle className="mt-0.5 size-3 shrink-0" />
+                  O site tem {row?.remote.matchCount} anúncios com a referência{" "}
+                  {row?.externalReference} ({row?.remote.matchIds.join(", ")}). Nenhum novo cadastro
+                  será criado até que um deles seja removido manualmente no painel do site.
+                </p>
+              )}
+
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-foreground/45">
                 {row?.lastSyncedAt && (
                   <span>Última sincronização: {new Date(row.lastSyncedAt).toLocaleString("pt-BR")}</span>

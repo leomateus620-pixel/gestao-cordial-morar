@@ -12,6 +12,7 @@ import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
+import { RemoteDuplicatesCard } from "@/components/integracoes/RemoteDuplicatesCard";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
@@ -48,6 +49,8 @@ function Page() {
       <NfseStatusCard enabled={isAdmin} />
 
       <HotspotCleanupCard enabled={isAdmin} />
+
+      <RemoteDuplicatesCard enabled={isAdmin} />
 
       <section className="mb-5 grid grid-cols-3 gap-3">
 
