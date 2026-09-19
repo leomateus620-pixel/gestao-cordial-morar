@@ -811,13 +811,34 @@ export async function reconcilePublication(
   },
   correlationId: string,
 ) {
+  // Reconciliação SEMPRE lê a lista por referência: é assim que o sistema
+  // enxerga duplicidade remota e recupera um ID perdido sem criar nada.
+  const { match } = await lookupByReference(
+    publication.provider,
+    publication.external_reference,
+    correlationId,
+  );
+  const decision = decideFromMatches(match, publication.external_property_id);
+
+  if (decision.kind === "duplicate") {
+    await recordRemoteMatch(admin, publication.id, match, {
+      create_state: "remote_duplicate_detected",
+      status: "out_of_sync",
+      last_verified_at: new Date().toISOString(),
+      last_error_category: "business",
+      last_error_message: `O site tem ${match.count} anúncios com a referência ${publication.external_reference} (${match.ids.join(", ")}). Nenhuma criação nem exclusão automática será feita.`,
+    });
+    return {
+      status: "out_of_sync" as const,
+      duplicates: match.ids,
+      canonicalId: decision.canonicalId,
+    };
+  }
+
   const externalId =
-    publication.external_property_id ??
-    (await findRemoteByReference(
-      publication.provider,
-      publication.external_reference,
-      correlationId,
-    ));
+    publication.external_property_id ?? (decision.kind === "reuse" ? decision.externalId : null);
+
+  await recordRemoteMatch(admin, publication.id, match);
 
   if (!externalId) {
     await admin
