@@ -19,3 +19,13 @@
 - [x] NFS-e Aluguéis: dados fiscais gravados (Cordial 42.767.687/0001-35 "Cordial Imoveis LTDA"; Morar 35.080.386/0001-73 "Bruna Weremchuk"; NBS 1.1001.21.00, item 10.05, ISS 3%, Simples Nacional nas duas).
 - [bloqueado] Teste de emissão na prefeitura: as duas marcas retornaram "Acesso Negado" (401) — a senha do webservice salva não foi aceita. Precisa confirmar/regenerar a senha de webservice no Portal do Cidadão (menu NFS-e → Webservice), que não é a senha de acesso ao portal, e recadastrar nos segredos.
 - [ ] Completar CPF/CNPJ de 2 locatários ativos (Alice Dezotti Freitas — sala 704; Caroline Fagundes/Fagundes Estética e Saúde Ltda — sala 502, ambos Morar/Clínica Cordis).
+
+## Novo (19/09) — duplicação de anúncios e tempestade de fila de fotos
+- [x] Leitura da lista do site tolerante a todos os formatos reais (`resultSet.total_data`, `root.data`, `root.imoveis`, etc.) — antes um formato não reconhecido fazia o sistema "não ver" o anúncio existente e criar outro.
+- [x] Criação com trava por imóvel/site (lease de 180s no banco): dois processos simultâneos nunca chamam `/imovel/inserir` duas vezes.
+- [x] Criação sem resposta (timeout/rede/5xx) entra em conferência por leitura; só cria de novo após 3 leituras confirmando ausência, e nunca se houver mais de um anúncio na referência.
+- [x] Editar, adicionar ou reordenar fotos nunca cria anúncio: publicar em imóvel já publicado vira atualização, e sem código remoto com histórico vira reconciliação.
+- [x] Fila de fotos coalescida: no máximo um envio pendente por imóvel/site, sempre na última versão da galeria (índice único no banco + rotina de acompanhamento).
+- [x] Duplicidade registrada e exibida na tela de Integrações (somente leitura); enquanto existir, nenhum cadastro novo é criado.
+- [ ] Remover no painel dos sites as fotos repetidas dos imóveis 1381/3380, 1373/3372 e 1374/3373 (manter a versão com a foto aérea demarcada). Bloqueado: a API só permite listar e inserir fotos, e o sistema não tem o código remoto de cada imagem para apagar com segurança — a exclusão precisa ser manual, com conferência visual.
+- [ ] Teste final em imóvel controlado (editar + 3 fotos + reordenar) — aguardando o imóvel que pode ser usado.
