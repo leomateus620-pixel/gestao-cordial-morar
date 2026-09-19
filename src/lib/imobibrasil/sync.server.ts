@@ -26,6 +26,14 @@ import {
   type WorkerKind,
 } from "./queue-policy";
 import { providerExternalCode } from "./provider-code";
+import {
+  canCreateAfterAmbiguity,
+  decideFromMatches,
+  extractRemoteListItems,
+  matchByReference,
+  normalizeCadastralAction,
+  type ReferenceMatch,
+} from "./reference-lookup";
 
 
 
@@ -72,12 +80,16 @@ function backoffSeconds(attempts: number): number {
   return Math.min(3600, 60 * 2 ** Math.max(0, attempts - 1));
 }
 
-/** Procura a referência externa antes de qualquer criação — idempotência obrigatória. */
-async function findRemoteByReference(
+/**
+ * Procura a referência externa antes de qualquer criação — idempotência obrigatória.
+ * Toda forma de resposta da lista é reconhecida (ver `reference-lookup.ts`): um
+ * parser cego aqui significaria criar um segundo anúncio do mesmo imóvel.
+ */
+async function lookupByReference(
   provider: ImobiProvider,
   reference: string,
   correlationId: string,
-): Promise<string | null> {
+): Promise<{ match: ReferenceMatch; items: number }> {
   const response = await imobiRequest(
     provider,
     `/imovel/lista?referencia=${encodeURIComponent(reference)}`,
@@ -86,25 +98,35 @@ async function findRemoteByReference(
       correlationId,
     },
   );
-  const items = Array.isArray(response.data)
-    ? response.data
-    : ((response.data as Record<string, unknown>)?.["resultSet"] ??
-      (response.data as Record<string, unknown>)?.["data"] ??
-      []);
-  const list = Array.isArray(items)
-    ? items
-    : Array.isArray((items as Record<string, unknown>)?.["data"])
-      ? ((items as Record<string, unknown>)["data"] as unknown[])
-      : [];
-  for (const item of list) {
-    if (!item || typeof item !== "object") continue;
-    const record = item as Record<string, unknown>;
-    const remoteRef = String(record["referenciaImovel"] ?? record["referencia"] ?? "").trim();
-    if (remoteRef && remoteRef.toUpperCase() !== reference.toUpperCase()) continue;
-    const id = extractExternalId(record);
-    if (id) return id;
-  }
-  return null;
+  const items = extractRemoteListItems(response.data);
+  return { match: matchByReference(items, reference), items: items.length };
+}
+
+/** Grava o resultado da conferência remota na publicação (auditável na tela). */
+async function recordRemoteMatch(
+  admin: Admin,
+  publicationId: string,
+  match: ReferenceMatch,
+  extra: Record<string, unknown> = {},
+) {
+  await admin
+    .from("property_provider_publications")
+    .update({
+      remote_match_count: match.count,
+      remote_match_ids: match.ids,
+      remote_match_checked_at: new Date().toISOString(),
+      ...extra,
+    })
+    .eq("id", publicationId);
+}
+
+async function findRemoteByReference(
+  provider: ImobiProvider,
+  reference: string,
+  correlationId: string,
+): Promise<string | null> {
+  const { match } = await lookupByReference(provider, reference, correlationId);
+  return match.count === 1 ? match.ids[0]! : null;
 }
 
 async function verifyRemote(provider: ImobiProvider, externalId: string, correlationId: string) {
