@@ -253,6 +253,14 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         lastSyncedAt: row.last_media_synced_at ?? null,
         lastVerifiedAt: row.last_media_verified_at ?? null,
       },
+      remote: {
+        createState: row.create_state ?? null,
+        matchCount: row.remote_match_count ?? null,
+        matchIds: Array.isArray(row.remote_match_ids)
+          ? (row.remote_match_ids as string[]).map(String)
+          : [],
+        checkedAt: row.remote_match_checked_at ?? null,
+      },
     }));
   });
 
