@@ -24,55 +24,33 @@ async function enqueueUpdates(admin: Admin, keys: QueueKey[]): Promise<number> {
   if (!keys.length) return 0;
 
   const propertyIds = Array.from(new Set(keys.map((key) => key.property_id)));
-  const [{ data: properties }, { data: activeJobs }] = await Promise.all([
-    admin
-      .from("properties")
-      .select("id, gallery_revision, is_draft, archived_at")
-      .in("id", propertyIds),
-    admin
-      .from("property_sync_jobs")
-      .select("property_id, provider")
-      .in("property_id", propertyIds)
-      .eq("action", "media_sync")
-      .in("status", ["pending", "processing", "retry"]),
-  ]);
+  const { data: properties } = await admin
+    .from("properties")
+    .select("id, gallery_revision, is_draft, archived_at")
+    .in("id", propertyIds);
 
   const revisionById = new Map(
     (properties ?? [])
       .filter((row) => !row.is_draft && !row.archived_at)
       .map((row) => [row.id as string, Number(row.gallery_revision ?? 1)]),
   );
-  const busy = new Set(
-    (activeJobs ?? []).map((row) => `${row.property_id}:${row.provider}`),
-  );
 
-  const rows = keys
-    .filter((key) => revisionById.has(key.property_id))
-    .filter((key) => !busy.has(`${key.property_id}:${key.provider}`))
-    .map((key) => ({
-      property_id: key.property_id,
-      provider: key.provider,
-      action: "media_sync",
-      requested_revision: revisionById.get(key.property_id)!,
-      status: "pending",
-      attempts: 0,
-      next_run_at: new Date().toISOString(),
-      locked_at: null,
-      lock_expires_at: null,
-      locked_by: null,
-      last_error_message: null,
-      last_error_category: null,
-    }));
-  if (!rows.length) return 0;
-
-  const { error } = await admin
-    .from("property_sync_jobs")
-    .upsert(rows, {
-      onConflict: "property_id,provider,action,requested_revision",
-      ignoreDuplicates: false,
+  // Coalescido pela própria rotina do banco: no máximo um job pendente por
+  // (imóvel, site), sempre na versão mais recente da galeria.
+  let enqueued = 0;
+  for (const key of keys) {
+    const revision = revisionById.get(key.property_id);
+    if (!revision) continue;
+    const { error } = await admin.rpc("queue_media_sync_coalesced", {
+      _property_id: key.property_id,
+      _provider: key.provider,
+      _revision: revision,
+      _requested_by: null,
     });
-  if (error) throw new Error(error.message);
-  return rows.length;
+    if (error) throw new Error(error.message);
+    enqueued += 1;
+  }
+  return enqueued;
 }
 
 export type ImageSweepResult = {
