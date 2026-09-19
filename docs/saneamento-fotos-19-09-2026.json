@@ -1,0 +1,496 @@
+{
+ "antes": [
+  {
+   "provider": "cordial",
+   "referencia": "1381",
+   "external": "4355160",
+   "fotos": [
+    {
+     "codigoImagem": 91776905,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181816045319.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91775914,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181716149335.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91776946,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181818049656.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91776907,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181816109225.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91776906,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260918181608955.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91775879,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181714068818.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91775878,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260918171404139.jpg",
+     "destaque": false
+    }
+   ]
+  },
+  {
+   "provider": "morar",
+   "referencia": "3380",
+   "external": "4355161",
+   "fotos": [
+    {
+     "codigoImagem": 91776941,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181817021377.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91775880,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181714089025.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91776945,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181817075295.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91776944,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181817055425.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91776943,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181817041282.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91775882,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260918171410595.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91775881,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181714092777.jpg",
+     "destaque": false
+    }
+   ]
+  },
+  {
+   "provider": "cordial",
+   "referencia": "1373",
+   "external": "4350931",
+   "fotos": [
+    {
+     "codigoImagem": 91781572,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190939037957.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91781483,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190928152916.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91687037,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443123432.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91687035,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443123000.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91687033,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260915144311124.jpg",
+     "destaque": false
+    }
+   ]
+  },
+  {
+   "provider": "morar",
+   "referencia": "3372",
+   "external": "4350932",
+   "fotos": [
+    {
+     "codigoImagem": 91781482,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190928028864.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91687059,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443172465.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91687055,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443166663.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91687053,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443166468.jpg",
+     "destaque": false
+    }
+   ]
+  },
+  {
+   "provider": "cordial",
+   "referencia": "1374",
+   "external": "4350953",
+   "fotos": [
+    {
+     "codigoImagem": 91781515,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935036727.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91687406,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451251344.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91781673,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190949029867.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781603,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190943052940.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781520,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260919093514996.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781519,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935122901.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781518,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935104139.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781517,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935088855.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781516,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935068877.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91687407,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451256897.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91687408,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451256393.jpg",
+     "destaque": false
+    }
+   ]
+  },
+  {
+   "provider": "morar",
+   "referencia": "3373",
+   "external": "4350954",
+   "fotos": [
+    {
+     "codigoImagem": 91781528,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936023581.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91687409,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451282575.jpg",
+     "destaque": true
+    },
+    {
+     "codigoImagem": 91781535,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260919093613831.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781534,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936121738.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781533,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936102083.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781532,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936085266.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781531,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936078208.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781530,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936059710.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91781529,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936038189.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91687411,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451291370.jpg",
+     "destaque": false
+    },
+    {
+     "codigoImagem": 91687410,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451281718.jpg",
+     "destaque": false
+    }
+   ]
+  }
+ ],
+ "depois": [
+  {
+   "provider": "cordial",
+   "referencia": "1381",
+   "external": "4355160",
+   "cadastros": 0,
+   "fotos": [
+    {
+     "codigoImagem": 91776905,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181816045319.jpg"
+    },
+    {
+     "codigoImagem": 91775914,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181716149335.jpg"
+    },
+    {
+     "codigoImagem": 91776946,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181818049656.jpg"
+    },
+    {
+     "codigoImagem": 91776907,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181816109225.jpg"
+    },
+    {
+     "codigoImagem": 91776906,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260918181608955.jpg"
+    },
+    {
+     "codigoImagem": 91775879,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609181714068818.jpg"
+    },
+    {
+     "codigoImagem": 91775878,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260918171404139.jpg"
+    }
+   ]
+  },
+  {
+   "provider": "morar",
+   "referencia": "3380",
+   "external": "4355161",
+   "cadastros": 0,
+   "fotos": []
+  },
+  {
+   "provider": "cordial",
+   "referencia": "1373",
+   "external": "4350931",
+   "cadastros": 0,
+   "fotos": [
+    {
+     "codigoImagem": 91781483,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190928152916.jpg"
+    },
+    {
+     "codigoImagem": 91687037,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443123432.jpg"
+    },
+    {
+     "codigoImagem": 91687035,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443123000.jpg"
+    },
+    {
+     "codigoImagem": 91687033,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260915144311124.jpg"
+    }
+   ]
+  },
+  {
+   "provider": "morar",
+   "referencia": "3372",
+   "external": "4350932",
+   "cadastros": 0,
+   "fotos": [
+    {
+     "codigoImagem": 91781482,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190928028864.jpg"
+    },
+    {
+     "codigoImagem": 91687059,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443172465.jpg"
+    },
+    {
+     "codigoImagem": 91687055,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443166663.jpg"
+    },
+    {
+     "codigoImagem": 91687053,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151443166468.jpg"
+    }
+   ]
+  },
+  {
+   "provider": "cordial",
+   "referencia": "1374",
+   "external": "4350953",
+   "cadastros": 0,
+   "fotos": [
+    {
+     "codigoImagem": 91781515,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935036727.jpg"
+    },
+    {
+     "codigoImagem": 91687406,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451251344.jpg"
+    },
+    {
+     "codigoImagem": 91781603,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190943052940.jpg"
+    },
+    {
+     "codigoImagem": 91781520,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260919093514996.jpg"
+    },
+    {
+     "codigoImagem": 91781519,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935122901.jpg"
+    },
+    {
+     "codigoImagem": 91781518,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935104139.jpg"
+    },
+    {
+     "codigoImagem": 91781517,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935088855.jpg"
+    },
+    {
+     "codigoImagem": 91781516,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190935068877.jpg"
+    },
+    {
+     "codigoImagem": 91687407,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451256897.jpg"
+    },
+    {
+     "codigoImagem": 91687408,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451256393.jpg"
+    }
+   ]
+  },
+  {
+   "provider": "morar",
+   "referencia": "3373",
+   "external": "4350954",
+   "cadastros": 0,
+   "fotos": [
+    {
+     "codigoImagem": 91781528,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936023581.jpg"
+    },
+    {
+     "codigoImagem": 91687409,
+     "destaque": true,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451282575.jpg"
+    },
+    {
+     "codigoImagem": 91781535,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/20260919093613831.jpg"
+    },
+    {
+     "codigoImagem": 91781534,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936121738.jpg"
+    },
+    {
+     "codigoImagem": 91781533,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936102083.jpg"
+    },
+    {
+     "codigoImagem": 91781531,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936078208.jpg"
+    },
+    {
+     "codigoImagem": 91781530,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936059710.jpg"
+    },
+    {
+     "codigoImagem": 91781529,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609190936038189.jpg"
+    },
+    {
+     "codigoImagem": 91687411,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451291370.jpg"
+    },
+    {
+     "codigoImagem": 91687410,
+     "destaque": false,
+     "url": "https://imgs1.cdn-imobibrasil.com.br/imagens/imoveis/202609151451281718.jpg"
+    }
+   ]
+  }
+ ],
+ "geradoEm": "2026-09-19T17:09:58.278Z"
+}
