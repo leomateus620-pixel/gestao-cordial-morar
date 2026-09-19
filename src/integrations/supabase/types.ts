@@ -3069,6 +3069,11 @@ export type Database = {
         Row: {
           archived_at: string | null
           baseline_at: string | null
+          create_absent_checks: number
+          create_ambiguous_at: string | null
+          create_lock_expires_at: string | null
+          create_lock_worker: string | null
+          create_state: string | null
           created_at: string
           enabled: boolean
           external_property_id: string | null
@@ -3089,6 +3094,7 @@ export type Database = {
           last_synced_revision: number | null
           last_verified_at: string | null
           local_desired_hash: string | null
+          media_dirty_revision: number | null
           media_expected_count: number | null
           media_failed_count: number | null
           media_order_guarantee: string | null
@@ -3101,6 +3107,9 @@ export type Database = {
           remote_codigo_proprietario: string | null
           remote_codigo_usuario_adicional: string | null
           remote_links_synced_at: string | null
+          remote_match_checked_at: string | null
+          remote_match_count: number | null
+          remote_match_ids: string[] | null
           remote_observed_hash: string | null
           status: Database["public"]["Enums"]["property_publication_status"]
           synced_gallery_revision: number | null
@@ -3110,6 +3119,11 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           baseline_at?: string | null
+          create_absent_checks?: number
+          create_ambiguous_at?: string | null
+          create_lock_expires_at?: string | null
+          create_lock_worker?: string | null
+          create_state?: string | null
           created_at?: string
           enabled?: boolean
           external_property_id?: string | null
@@ -3130,6 +3144,7 @@ export type Database = {
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_dirty_revision?: number | null
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
@@ -3142,6 +3157,9 @@ export type Database = {
           remote_codigo_proprietario?: string | null
           remote_codigo_usuario_adicional?: string | null
           remote_links_synced_at?: string | null
+          remote_match_checked_at?: string | null
+          remote_match_count?: number | null
+          remote_match_ids?: string[] | null
           remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
           synced_gallery_revision?: number | null
@@ -3151,6 +3169,11 @@ export type Database = {
         Update: {
           archived_at?: string | null
           baseline_at?: string | null
+          create_absent_checks?: number
+          create_ambiguous_at?: string | null
+          create_lock_expires_at?: string | null
+          create_lock_worker?: string | null
+          create_state?: string | null
           created_at?: string
           enabled?: boolean
           external_property_id?: string | null
@@ -3171,6 +3194,7 @@ export type Database = {
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_dirty_revision?: number | null
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
@@ -3183,6 +3207,9 @@ export type Database = {
           remote_codigo_proprietario?: string | null
           remote_codigo_usuario_adicional?: string | null
           remote_links_synced_at?: string | null
+          remote_match_checked_at?: string | null
+          remote_match_count?: number | null
+          remote_match_ids?: string[] | null
           remote_observed_hash?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
           synced_gallery_revision?: number | null
@@ -5352,6 +5379,26 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_media_finish: {
+        Args: {
+          _processed_revision: number
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Returns: Json
+      }
+      property_publication_acquire_create_lock: {
+        Args: {
+          _lease_seconds?: number
+          _publication_id: string
+          _worker: string
+        }
+        Returns: Json
+      }
+      property_publication_release_create_lock: {
+        Args: { _publication_id: string; _worker: string }
+        Returns: undefined
+      }
       property_sync_claim_jobs: {
         Args: {
           _actions?: string[]
@@ -5391,6 +5438,15 @@ export type Database = {
       property_sync_reclaim_stale: { Args: never; Returns: number }
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
+        Returns: Json
+      }
+      queue_media_sync_coalesced: {
+        Args: {
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+          _requested_by?: string
+          _revision: number
+        }
         Returns: Json
       }
       read_email_batch: {
