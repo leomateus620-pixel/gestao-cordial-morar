@@ -102,6 +102,19 @@ async function lookupByReference(
   return { match: matchByReference(items, reference), items: items.length };
 }
 
+/** Devolve a trava de criação. Nunca lança: falhar aqui não pode travar a fila. */
+async function releaseCreateLock(admin: Admin, publicationId: string, worker: string | null) {
+  if (!worker) return;
+  try {
+    await admin.rpc("property_publication_release_create_lock", {
+      _publication_id: publicationId,
+      _worker: worker,
+    });
+  } catch {
+    // O lease expira sozinho.
+  }
+}
+
 /** Grava o resultado da conferência remota na publicação (auditável na tela). */
 async function recordRemoteMatch(
   admin: Admin,
@@ -641,17 +654,55 @@ export async function processJob(admin: Admin, job: SyncJob) {
       await logAttempt(admin, job, { step: "update", ok: true, httpStatus: response.httpStatus });
     }
   } else {
-    const response = await imobiRequest(job.provider, "/imovel/inserir", {
-      method: "POST",
-      json: payload,
-      allowRetry: false, // criação nunca sofre retry cego
-      correlationId: job.correlation_id,
-    });
+    let response: Awaited<ReturnType<typeof imobiRequest>>;
+    try {
+      response = await imobiRequest(job.provider, "/imovel/inserir", {
+        method: "POST",
+        json: payload,
+        allowRetry: false, // criação nunca sofre retry cego
+        correlationId: job.correlation_id,
+      });
+    } catch (error) {
+      const normalized = toImobiError(error);
+      // Timeout / rede / 5xx: o site pode ter criado o imóvel e perdido a
+      // resposta. Nunca repetimos o POST: marcamos para reconciliação por
+      // referência (somente GET) nas próximas execuções.
+      if (normalized.ambiguous || normalized.category === "network" || normalized.category === "server") {
+        await admin
+          .from("property_provider_publications")
+          .update({
+            create_state: "awaiting_create_reconcile",
+            create_ambiguous_at: new Date().toISOString(),
+            create_absent_checks: 0,
+            last_error_category: normalized.category,
+            last_error_message:
+              "Criação sem confirmação do site. Nenhuma nova criação será tentada antes da conferência por referência.",
+          })
+          .eq("id", publication.id);
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw new ImobiApiError({
+          message:
+            "Criação sem resposta confirmada do site. O imóvel será conferido por referência antes de qualquer nova tentativa.",
+          category: "server",
+        });
+      }
+      await releaseCreateLock(admin, publication.id, createLockWorker);
+      throw normalized;
+    }
     await logAttempt(admin, job, { step: "insert", ok: true, httpStatus: response.httpStatus });
     externalId =
       extractExternalId(response.data) ??
       (await findRemoteByReference(job.provider, reference, job.correlation_id));
     if (!externalId) {
+      await admin
+        .from("property_provider_publications")
+        .update({
+          create_state: "awaiting_create_reconcile",
+          create_ambiguous_at: new Date().toISOString(),
+          create_absent_checks: 0,
+        })
+        .eq("id", publication.id);
+      await releaseCreateLock(admin, publication.id, createLockWorker);
       throw new ImobiApiError({
         message: "O provedor não retornou o código do imóvel e a referência não foi localizada.",
         category: "protocol",
@@ -662,8 +713,15 @@ export async function processJob(admin: Admin, job: SyncJob) {
 
   await admin
     .from("property_provider_publications")
-    .update({ external_property_id: externalId, status: "partial" })
+    .update({
+      external_property_id: externalId,
+      status: "partial",
+      create_state: null,
+      create_absent_checks: 0,
+    })
     .eq("id", publication.id);
+  await releaseCreateLock(admin, publication.id, createLockWorker);
+  createLockWorker = null;
 
   await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
 
