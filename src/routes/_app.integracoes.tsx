@@ -12,6 +12,7 @@ import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
+import { RemoteDuplicatesCard } from "@/components/integracoes/RemoteDuplicatesCard";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
