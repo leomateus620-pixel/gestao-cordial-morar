@@ -36,3 +36,12 @@
 - [x] Destaque único: o envio lê a galeria do site antes de inserir; havendo qualquer destaque, toda foto nova entra sem destaque (era isso que fazia o site repetir o mesmo imóvel na listagem). 2+ destaques marcam `remote_multiple_covers`.
 - [x] Indicador de fotos nunca mostra "sincronizado" quando o site tem foto sobrando ou mais de um destaque (registros antigos corrigidos).
 - [ ] Limpeza manual no painel dos sites: fotos repetidas e destaques extras de 1381/3380, 1373/3372 e 1374/3373. A API não oferece excluir, reordenar nem remover destaque.
+
+## Saneamento manual de fotos (19/09) — concluído
+- [x] Snapshot GET dos 6 anúncios e confirmação de 1 cadastro remoto por referência.
+- [x] Exclusão das 3 duplicatas confirmadas pelo endpoint oficial de excluir imagem
+      (cordial 4350953 → 91781673; morar 4350954 → 91781532; cordial 4350931 → 91781572).
+- [x] Conferência por GET após cada exclusão; aérea demarcada preservada; external_property_id inalterados.
+- [x] Registro em docs/saneamento-fotos-19-09-2026.md + .json.
+- [ ] Destaques duplicados e fotos antigas órfãs: só no painel dos sites (a API não permite
+      tirar destaque nem substituir foto). Ver seção "Não saneado" do doc.
