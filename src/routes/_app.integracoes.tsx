@@ -50,6 +50,8 @@ function Page() {
 
       <HotspotCleanupCard enabled={isAdmin} />
 
+      <RemoteDuplicatesCard enabled={isAdmin} />
+
       <section className="mb-5 grid grid-cols-3 gap-3">
 
 
