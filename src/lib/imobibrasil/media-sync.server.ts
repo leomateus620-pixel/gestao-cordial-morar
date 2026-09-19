@@ -24,13 +24,17 @@ import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
 import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
 import { fetchDeliveryBytes } from "@/lib/imoveis/delivery.server";
 import {
+  analyzeRemoteGallery,
+  isAmbiguousDeliveryError,
   isExtensionError,
   isRateLimitError,
   planGalleryDelivery,
   safeDeliveryFileName,
+  shouldSendAsCover,
   sortGallery,
   type LocalGalleryImage,
   type RemoteGalleryRow,
+  type RemoteGallerySnapshot,
 } from "@/lib/imoveis/gallery-plan";
 
 type Admin = SupabaseClient;
@@ -51,10 +55,21 @@ export type MediaSyncResult = {
   failedCount: number;
   waitingCount: number;
   remoteCount: number | null;
+  remoteCoverCount: number | null;
+  multipleRemoteCovers: boolean;
+  unknownCount: number;
+  contentDriftCount: number;
   orderGuarantee: string;
   orderDrift: boolean;
   coverDrift: boolean;
-  status: "synced" | "partial" | "order_drift" | "waiting_watermark" | "not_published";
+  status:
+    | "synced"
+    | "partial"
+    | "order_drift"
+    | "waiting_watermark"
+    | "remote_multiple_covers"
+    | "delivery_unknown"
+    | "not_published";
   durationMs: number;
   order: Array<{ imageId: string; position: number; externalImageId?: string | null }>;
   errors: Array<{ imageId: string; message: string }>;
@@ -158,6 +173,41 @@ export async function deliverGallery(
   const order: MediaSyncResult["order"] = [];
   let sentCount = 0;
   let failedCount = 0;
+  let unknownCount = plan.unknown.length;
+
+  /**
+   * Leitura da galeria do site ANTES de inserir. Dois usos:
+   *  - saber se já existe destaque (2+ destaques fazem o site repetir o mesmo
+   *    imóvel na listagem — foi exatamente o sintoma relatado);
+   *  - ter a contagem conhecida para conferir entregas ambíguas por leitura.
+   */
+  async function readRemoteGallery(): Promise<RemoteGallerySnapshot | null> {
+    try {
+      await acquireProviderSlot(admin, provider);
+      const remote = await fetchPropertyImages(provider, externalId, correlationId);
+      return analyzeRemoteGallery(remote as unknown as Record<string, unknown>[]);
+    } catch {
+      return null;
+    }
+  }
+
+  let snapshot = await readRemoteGallery();
+  let knownRemoteCount = snapshot?.count ?? null;
+  let coversSentThisRun = 0;
+
+  // Fotos já sincronizadas cujo binário mudou depois do envio: registra a
+  // divergência, mas NUNCA reenvia (o site só insere — reenviar cria cópia).
+  for (const imageId of plan.contentDrift) {
+    await admin
+      .from("property_image_provider_publications")
+      .update({
+        error_class: "remote_content_drift",
+        last_error_message:
+          "O arquivo local mudou depois do envio. O site não permite substituir imagem, então a foto publicada continua a versão anterior.",
+      })
+      .eq("publication_id", publicationId)
+      .eq("image_id", imageId);
+  }
 
   // Envio SEQUENCIAL: a ordem remota é a ordem de inserção.
   for (const target of plan.toSend) {
@@ -165,24 +215,28 @@ export async function deliverGallery(
     if (!image) continue;
     const existing = (remoteRows ?? []).find((row) => row.image_id === image.id);
     const previousAttempts = Number(existing?.attempts ?? 0);
+    const fileName = safeDeliveryFileName(image.id, {
+      converted: Boolean(image.processed_storage_path),
+      originalName: image.file_name,
+      mimeType: image.processed_storage_path ? "image/jpeg" : image.mime_type,
+    });
+    const asCover = shouldSendAsCover({
+      remote: snapshot,
+      localIsCover: Boolean(image.is_cover),
+      coversSentThisRun,
+    });
 
     try {
       await acquireProviderSlot(admin, provider);
-      const converted = Boolean(image.processed_storage_path);
       const deliveryPath = image.processed_storage_path ?? image.storage_path;
       const delivery = await fetchDeliveryBytes(admin, BUCKET, deliveryPath);
-      const fileName = safeDeliveryFileName(image.id, {
-        converted,
-        originalName: image.file_name,
-        mimeType: converted ? "image/jpeg" : image.mime_type,
-      });
       const form = new FormData();
       form.append(
         "imagem",
         new Blob([await delivery.blob.arrayBuffer()], { type: "image/jpeg" }),
         fileName,
       );
-      form.append("destaque", boolToImageSimNao(Boolean(image.is_cover)));
+      form.append("destaque", boolToImageSimNao(asCover));
 
       const response = await imobiRequest(
         provider,
@@ -193,7 +247,8 @@ export async function deliverGallery(
           extraHeaders: { codigoImovel: externalId },
           correlationId,
           timeoutMs: 90_000,
-          retryOnNetwork: true,
+          // POST de imagem NÃO é idempotente: repetir cria cópia no site.
+          retryOnNetwork: false,
         },
       );
 
@@ -205,7 +260,7 @@ export async function deliverGallery(
           provider,
           external_image_id: externalImageId,
           content_hash: deliveredHash(image),
-          is_cover: Boolean(image.is_cover),
+          is_cover: asCover,
           synced_position: image.position,
           delivery_file_name: fileName,
           status: "synced",
@@ -218,11 +273,110 @@ export async function deliverGallery(
         { onConflict: "image_id,publication_id" },
       );
       sentCount += 1;
+      if (asCover) coversSentThisRun += 1;
+      if (knownRemoteCount !== null) knownRemoteCount += 1;
+      if (snapshot) {
+        snapshot = {
+          count: snapshot.count + 1,
+          coverCount: snapshot.coverCount + (asCover ? 1 : 0),
+          multipleCovers: snapshot.coverCount + (asCover ? 1 : 0) > 1,
+        };
+      }
       order.push({ imageId: image.id, position: image.position, externalImageId });
     } catch (error) {
-      failedCount += 1;
       const normalized = toImobiError(error);
       const attempts = previousAttempts + 1;
+
+      // Entrega AMBÍGUA (timeout/rede/5xx): o site pode ter aceitado a foto.
+      // Nunca repetimos o POST às cegas — conferimos por leitura.
+      if (
+        isAmbiguousDeliveryError({
+          category: normalized.category,
+          ambiguous: normalized.ambiguous,
+          status: normalized.httpStatus,
+        })
+      ) {
+        const after = await readRemoteGallery();
+        const delivered =
+          after !== null && knownRemoteCount !== null && after.count >= knownRemoteCount + 1;
+
+        if (delivered) {
+          // Confirmada por contagem: nenhum POST novo para esta foto.
+          await admin.from("property_image_provider_publications").upsert(
+            {
+              image_id: image.id,
+              publication_id: publicationId,
+              provider,
+              content_hash: deliveredHash(image),
+              is_cover: asCover,
+              synced_position: image.position,
+              delivery_file_name: fileName,
+              status: "synced",
+              error_class: "delivery_confirmed_by_count",
+              last_error_message:
+                "Envio sem resposta do site, confirmado pela contagem de fotos da galeria.",
+              attempts: 0,
+              next_retry_at: null,
+              synced_at: new Date().toISOString(),
+            },
+            { onConflict: "image_id,publication_id" },
+          );
+          sentCount += 1;
+          if (asCover) coversSentThisRun += 1;
+          snapshot = after;
+          knownRemoteCount = after.count;
+          continue;
+        }
+
+        if (after !== null && knownRemoteCount !== null) {
+          // Leitura comprova que não entrou: pode tentar de novo depois.
+          failedCount += 1;
+          const retryAt = nextImageRetryAt("rede", attempts);
+          errors.push({ imageId: image.id, message: normalized.message });
+          await admin.from("property_image_provider_publications").upsert(
+            {
+              image_id: image.id,
+              publication_id: publicationId,
+              provider,
+              content_hash: deliveredHash(image),
+              is_cover: false,
+              delivery_file_name: fileName,
+              status: "error",
+              last_error_message: normalized.message,
+              error_class: "rede",
+              attempts,
+              next_retry_at: retryAt,
+            },
+            { onConflict: "image_id,publication_id" },
+          );
+          snapshot = after;
+          knownRemoteCount = after.count;
+          continue;
+        }
+
+        // Leitura inconclusiva: estado explícito, sem reenvio às cegas.
+        unknownCount += 1;
+        errors.push({ imageId: image.id, message: normalized.message });
+        await admin.from("property_image_provider_publications").upsert(
+          {
+            image_id: image.id,
+            publication_id: publicationId,
+            provider,
+            content_hash: deliveredHash(image),
+            is_cover: false,
+            delivery_file_name: fileName,
+            status: "delivery_unknown",
+            last_error_message: normalized.message,
+            error_class: "entrega_ambigua",
+            attempts,
+            next_retry_at: null,
+          },
+          { onConflict: "image_id,publication_id" },
+        );
+        break;
+      }
+
+      failedCount += 1;
       // Erros de extensão e de limite são corrigíveis pelo próprio pipeline:
       // voltam à fila em vez de ficarem parados para sempre.
       const errorClass = isExtensionError(normalized.message)
@@ -238,8 +392,8 @@ export async function deliverGallery(
           publication_id: publicationId,
           provider,
           content_hash: deliveredHash(image),
-          is_cover: Boolean(image.is_cover),
-          delivery_file_name: safeDeliveryFileName(image.id, { converted: true }),
+          is_cover: false,
+          delivery_file_name: fileName,
           status: "error",
           last_error_message: normalized.message,
           error_class: errorClass,
@@ -253,45 +407,54 @@ export async function deliverGallery(
     }
   }
 
-  // Reconciliação: quantas fotos o site realmente tem agora.
-  let remoteCount: number | null = null;
+  // Reconciliação: quantas fotos e quantos destaques o site realmente tem.
   if (params.verifyRemote !== false) {
-    try {
-      await acquireProviderSlot(admin, provider);
-      const remote = await fetchPropertyImages(provider, externalId, correlationId);
-      remoteCount = remote.length;
-    } catch {
-      remoteCount = null;
-    }
+    const after = await readRemoteGallery();
+    if (after) snapshot = after;
   }
+  const remoteCount: number | null = snapshot?.count ?? null;
+  const multipleCovers = Boolean(snapshot?.multipleCovers);
 
   const syncedTotal = plan.syncedCount + sentCount;
-  const complete = syncedTotal === plan.expectedCount && failedCount === 0;
+  const extraRemote = remoteCount !== null && remoteCount > plan.expectedCount;
+  const complete =
+    syncedTotal === plan.expectedCount && failedCount === 0 && unknownCount === 0;
+  // Nunca "sincronizado" quando o site tem foto sobrando ou mais de um destaque:
+  // 2+ destaques fazem a listagem repetir o mesmo imóvel.
   const status: MediaSyncResult["status"] = inFlight
     ? "waiting_watermark"
-    : complete && (plan.orderDrift || plan.coverDrift)
-      ? "order_drift"
-      : complete
-        ? "synced"
-        : "partial";
+    : multipleCovers
+      ? "remote_multiple_covers"
+      : unknownCount > 0
+        ? "delivery_unknown"
+        : complete && (extraRemote || plan.orderDrift || plan.coverDrift)
+          ? "order_drift"
+          : complete
+            ? "synced"
+            : "partial";
 
   // Nível de garantia REAL, sem inventar confirmação: a API só permite listar e
   // inserir, então a ordem é garantida na inserção e a paridade é conferida por
   // quantidade — não há como reposicionar, trocar destaque nem excluir foto
   // remota. Cada limitação fica registrada com o próprio nome, para a tela nunca
   // sugerir que a alteração local chegou ao site.
-  const orderGuarantee =
-    remoteCount === null
-      ? "insercao_sem_verificacao"
-      : remoteCount > plan.expectedCount
-        ? "remote_delete_unsupported"
-        : plan.orderDrift
-          ? "remote_order_mismatch"
-          : plan.coverDrift
-            ? "remote_cover_mismatch"
-            : !complete
-              ? "pending"
-              : "insercao_verificada_por_quantidade";
+  const orderGuarantee = multipleCovers
+    ? "remote_multiple_covers"
+    : unknownCount > 0
+      ? "delivery_unknown"
+      : remoteCount === null
+        ? "insercao_sem_verificacao"
+        : extraRemote
+          ? "remote_delete_unsupported"
+          : plan.orderDrift
+            ? "remote_order_mismatch"
+            : plan.coverDrift
+              ? "remote_cover_mismatch"
+              : plan.contentDrift.length > 0
+                ? "remote_content_drift"
+              : !complete
+                ? "pending"
+                : "insercao_verificada_por_quantidade";
 
   await admin
     .from("property_provider_publications")
@@ -320,6 +483,10 @@ export async function deliverGallery(
     failedCount,
     waitingCount: plan.waiting.length,
     remoteCount,
+    remoteCoverCount: snapshot?.coverCount ?? null,
+    multipleRemoteCovers: multipleCovers,
+    unknownCount,
+    contentDriftCount: plan.contentDrift.length,
     orderGuarantee,
     orderDrift: plan.orderDrift,
     coverDrift: plan.coverDrift,
