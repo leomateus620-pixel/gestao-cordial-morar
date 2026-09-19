@@ -356,7 +356,7 @@ export async function syncPropertyMedia(
     return { status: "not_published" };
   }
 
-  return deliverGallery(admin, {
+  const result = await deliverGallery(admin, {
     propertyId: job.property_id,
     provider: job.provider,
     publicationId: publication.id as string,
@@ -364,11 +364,30 @@ export async function syncPropertyMedia(
     correlationId: job.correlation_id,
     galleryRevision: job.requested_revision,
   });
+
+  // Se a galeria mudou enquanto este job rodava, agenda UM único
+  // acompanhamento já na versão mais recente — nunca uma fila de versões.
+  try {
+    await admin.rpc("property_media_finish", {
+      _property_id: job.property_id,
+      _provider: job.provider,
+      _processed_revision: job.requested_revision,
+    });
+  } catch {
+    // A varredura de retry de imagens reenfileira sozinha.
+  }
+
+  return result;
 }
 
 /**
  * Enfileira sincronização de mídia para os sites em que o imóvel já está
- * publicado. Idempotente: um job por (imóvel, site, versão da galeria).
+ * publicado.
+ *
+ * Coalescido (19/09/2026): no máximo UM job pendente por (imóvel, site), sempre
+ * na versão mais recente da galeria. Antes, cada arrastar de foto criava uma
+ * versão nova e um job novo — 1374 chegou a 64 versões e 15 jobs por site, todos
+ * gastando leitura do limite de 20 requisições/minuto do provedor.
  */
 export async function queueMediaSync(
   admin: Admin,
@@ -397,24 +416,13 @@ export async function queueMediaSync(
   if (!targets.length) return { enqueued: [], galleryRevision };
 
   for (const provider of targets) {
-    await admin.from("property_sync_jobs").upsert(
-      {
-        property_id: propertyId,
-        provider,
-        action: "media_sync",
-        requested_revision: galleryRevision,
-        requested_by: options.requestedBy ?? null,
-        status: "pending",
-        attempts: 0,
-        next_run_at: new Date().toISOString(),
-        locked_at: null,
-        lock_expires_at: null,
-        locked_by: null,
-        last_error_message: null,
-        last_error_category: null,
-      },
-      { onConflict: "property_id,provider,action,requested_revision", ignoreDuplicates: false },
-    );
+    const { error } = await admin.rpc("queue_media_sync_coalesced", {
+      _property_id: propertyId,
+      _provider: provider,
+      _revision: galleryRevision,
+      _requested_by: options.requestedBy ?? null,
+    });
+    if (error) throw new Error(error.message);
   }
   return { enqueued: targets, galleryRevision };
 }
