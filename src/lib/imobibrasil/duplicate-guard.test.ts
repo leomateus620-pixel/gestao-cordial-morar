@@ -25,8 +25,8 @@ test("lista do site no formato resultSet.total_data é lida corretamente", () =>
 test("mais de um anúncio na mesma referência bloqueia criação", () => {
   const match = matchByReference(
     [
-      { externalId: "4355160", reference: "1381" },
-      { externalId: "4399999", reference: "1381" },
+      { externalId: "4355160", reference: "1381", raw: {} },
+      { externalId: "4399999", reference: "1381", raw: {} },
     ],
     "1381",
   );
