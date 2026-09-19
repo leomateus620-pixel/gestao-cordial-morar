@@ -29,3 +29,10 @@
 - [x] Duplicidade registrada e exibida na tela de Integrações (somente leitura); enquanto existir, nenhum cadastro novo é criado.
 - [ ] Remover no painel dos sites as fotos repetidas dos imóveis 1381/3380, 1373/3372 e 1374/3373 (manter a versão com a foto aérea demarcada). Bloqueado: a API só permite listar e inserir fotos, e o sistema não tem o código remoto de cada imagem para apagar com segurança — a exclusão precisa ser manual, com conferência visual.
 - [ ] Teste final em imóvel controlado (editar + 3 fotos + reordenar) — aguardando o imóvel que pode ser usado.
+
+## Novo (19/09, revisão pós-implementação) — fotos repetidas e destaque duplicado
+- [x] Foto já sincronizada nunca é enviada de novo, mesmo que o arquivo local mude (marca d'água/reprocessamento): a divergência é registrada como `remote_content_drift`. Substituição real exige nova foto no Gestão.
+- [x] Envio de foto sem repetição automática: timeout/rede/5xx passa a conferir a galeria do site por leitura — se a foto entrou, é confirmada pela contagem; se não entrou, volta à fila; se a leitura é inconclusiva, fica em `delivery_unknown` sem reenvio.
+- [x] Destaque único: o envio lê a galeria do site antes de inserir; havendo qualquer destaque, toda foto nova entra sem destaque (era isso que fazia o site repetir o mesmo imóvel na listagem). 2+ destaques marcam `remote_multiple_covers`.
+- [x] Indicador de fotos nunca mostra "sincronizado" quando o site tem foto sobrando ou mais de um destaque (registros antigos corrigidos).
+- [ ] Limpeza manual no painel dos sites: fotos repetidas e destaques extras de 1381/3380, 1373/3372 e 1374/3373. A API não oferece excluir, reordenar nem remover destaque.

@@ -56,6 +56,12 @@ function mediaNote(media: {
       return `Ordem salva no Gestão · o site não permite reordenar fotos já publicadas${counts}`;
     case "remote_cover_mismatch":
       return `Capa salva no Gestão · o site não permite trocar a foto de destaque já publicada${counts}`;
+    case "remote_multiple_covers":
+      return `O site tem mais de uma foto em destaque · isso pode repetir o imóvel na listagem e precisa ser corrigido no painel do site${counts}`;
+    case "remote_content_drift":
+      return `Foto editada no Gestão · o site não permite substituir foto já publicada${counts}`;
+    case "delivery_unknown":
+      return `Envio de foto sem confirmação do site · nada será reenviado antes de conferir a galeria${counts}`;
     case "remote_delete_unsupported":
       return `Foto removida no Gestão · o site não permite excluir foto já publicada${counts}`;
     case "pending":

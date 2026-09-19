@@ -36,6 +36,14 @@ export type GalleryPlan = {
   toSend: LocalGalleryImage[];
   /** Fotos com falha cuja espera programada ainda não venceu. */
   waiting: string[];
+  /** Fotos com entrega ambígua: só podem ser conferidas por leitura. */
+  unknown: string[];
+  /**
+   * Fotos já sincronizadas cujo binário local mudou depois do envio (marca
+   * d'água / reprocessamento). NUNCA são reenviadas: o site só insere, então
+   * reenviar criaria uma cópia permanente.
+   */
+  contentDrift: string[];
   expectedCount: number;
   syncedCount: number;
   failedCount: number;
@@ -60,6 +68,8 @@ export function planGalleryDelivery(
 
   const toSend: LocalGalleryImage[] = [];
   const waiting: string[] = [];
+  const unknown: string[] = [];
+  const contentDrift: string[] = [];
   let syncedCount = 0;
   let failedCount = 0;
 
@@ -69,11 +79,19 @@ export function planGalleryDelivery(
       toSend.push(image);
       continue;
     }
-    const synced = existing.status === "synced";
-    const sameFile = (existing.content_hash ?? null) === (image.deliveredHash ?? null);
-
-    if (synced && sameFile) {
+    // REGRA DURA (19/09/2026): uma foto já sincronizada NUNCA é inserida de
+    // novo — nem por mudança de checksum (marca d'água), nem por mudança de
+    // ordem ou de capa. A API só possui inserir, então qualquer reenvio vira
+    // cópia permanente no site. Substituição real = novo property_images.id.
+    if (existing.status === "synced") {
       syncedCount += 1;
+      const sameFile = (existing.content_hash ?? null) === (image.deliveredHash ?? null);
+      if (!sameFile) contentDrift.push(image.id);
+      continue;
+    }
+    // Entrega ambígua (timeout/rede depois do POST): só leitura resolve.
+    if (existing.status === "delivery_unknown") {
+      unknown.push(image.id);
       continue;
     }
     if (existing.status === "error") failedCount += 1;
@@ -115,6 +133,8 @@ export function planGalleryDelivery(
   return {
     toSend,
     waiting,
+    unknown,
+    contentDrift,
     expectedCount: ordered.length,
     syncedCount,
     failedCount,
@@ -159,4 +179,61 @@ export function isExtensionError(message: string | null | undefined): boolean {
 /** Erro de limite de requisições do site (20 por minuto). */
 export function isRateLimitError(message: string | null | undefined): boolean {
   return /m[aá]ximo de \d+ requisi|rate limit|too many requests|429/i.test(message ?? "");
+}
+
+/**
+ * Entrega ambígua: timeout, queda de rede ou 5xx DEPOIS de o POST sair. O site
+ * pode ter aceitado a foto, então repetir o POST criaria cópia.
+ */
+export function isAmbiguousDeliveryError(error: {
+  category?: string | null;
+  ambiguous?: boolean | null;
+  status?: number | null;
+}): boolean {
+  if (error.ambiguous) return true;
+  if (error.category === "network") return true;
+  if (error.category === "server") return true;
+  return typeof error.status === "number" && error.status >= 500;
+}
+
+/** Uma foto do site está marcada como destaque? Aceita boolean, "Sim", 1. */
+export function isRemoteCover(item: Record<string, unknown>): boolean {
+  for (const key of ["destaque", "imagemDestaque", "destaqueImagem", "is_cover", "principal"]) {
+    const value = item[key];
+    if (value === true || value === 1) return true;
+    if (typeof value === "string" && /^(sim|s|1|true)$/i.test(value.trim())) return true;
+  }
+  return false;
+}
+
+export type RemoteGallerySnapshot = {
+  count: number;
+  coverCount: number;
+  /** 2+ destaques fazem o site repetir o mesmo imóvel na listagem. */
+  multipleCovers: boolean;
+};
+
+export function analyzeRemoteGallery(
+  items: readonly Record<string, unknown>[] | null | undefined,
+): RemoteGallerySnapshot | null {
+  if (!items) return null;
+  const coverCount = items.filter((item) => isRemoteCover(item)).length;
+  return { count: items.length, coverCount, multipleCovers: coverCount > 1 };
+}
+
+/**
+ * Só pode existir UM destaque no site. A API não permite remover destaque, então
+ * o segundo `destaque=Sim` faria o imóvel aparecer duplicado na listagem.
+ * Destaque=Sim apenas quando está comprovado que a galeria remota não tem nenhum.
+ */
+export function shouldSendAsCover(params: {
+  remote: RemoteGallerySnapshot | null;
+  localIsCover: boolean;
+  coversSentThisRun: number;
+}): boolean {
+  const { remote, localIsCover, coversSentThisRun } = params;
+  if (!remote) return false; // leitura falhou: nunca arrisca um segundo destaque
+  if (remote.coverCount > 0) return false; // já existe destaque: nunca criar o segundo
+  if (coversSentThisRun > 0) return false;
+  return localIsCover;
 }
