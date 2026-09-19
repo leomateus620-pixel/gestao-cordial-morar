@@ -54,12 +54,22 @@ test("sem código remoto mas com histórico: primeiro reconcilia", () => {
 });
 
 test("criação sem resposta só pode ser repetida após leituras seguidas de ausência", () => {
-  assert.equal(canCreateAfterAmbiguity("awaiting_create_reconcile", 1), false);
   assert.equal(
-    canCreateAfterAmbiguity("awaiting_create_reconcile", AMBIGUOUS_ABSENT_CONFIRMATIONS),
+    canCreateAfterAmbiguity({ create_state: "awaiting_create_reconcile", create_absent_checks: 1 }),
+    false,
+  );
+  assert.equal(
+    canCreateAfterAmbiguity({
+      create_state: "awaiting_create_reconcile",
+      create_absent_checks: AMBIGUOUS_ABSENT_CONFIRMATIONS,
+    }),
     true,
   );
-  assert.equal(canCreateAfterAmbiguity(null, 0), true);
+  assert.equal(canCreateAfterAmbiguity({ create_state: null, create_absent_checks: 0 }), true);
+  assert.equal(
+    canCreateAfterAmbiguity({ create_state: "remote_duplicate_detected", create_absent_checks: 9 }),
+    false,
+  );
 });
 
 test("criação passa obrigatoriamente pela trava antes do inserir", () => {
