@@ -55,6 +55,16 @@ export async function enablePush(): Promise<PushResult> {
       { onConflict: "token" },
     );
     if (error) return { status: "error", message: error.message };
+
+    // Higiene: o mesmo aparelho/navegador pode ter trocado o token (reinstalação, limpeza de dados).
+    // Remove os tokens antigos deste mesmo user_agent para não enviar duas vezes ao mesmo aparelho.
+    await supabase
+      .from("user_push_tokens")
+      .delete()
+      .eq("user_id", userId)
+      .eq("user_agent", navigator.userAgent.slice(0, 300))
+      .neq("token", token);
+
     return { status: "registered" };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Falha no push" };
