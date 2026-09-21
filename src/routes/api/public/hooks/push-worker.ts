@@ -156,23 +156,14 @@ async function sendToToken(
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
+      // Payload data-only: quem exibe é APENAS o service worker.
+      // Incluir `webpush.notification` aqui faria o navegador mostrar uma segunda cópia.
       body: JSON.stringify({
         message: {
           token,
           data,
           webpush: {
             headers: { Urgency: "high" },
-            notification: {
-              title: presentation.title,
-              body: presentation.body,
-              icon: presentation.icon,
-              badge: presentation.badge,
-              tag: presentation.tag,
-              renotify: true,
-              requireInteraction: false,
-              actions: [{ action: "open", title: presentation.ctaLabel }],
-              data: { link, notification_id: notification.id },
-            },
             fcm_options: { link },
           },
         },
