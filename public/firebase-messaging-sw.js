@@ -15,12 +15,13 @@ if (config.apiKey && config.projectId && config.appId && config.messagingSenderI
     const title = data.title || payload.notification?.title || "Gestão Cordial";
     const body = data.body || payload.notification?.body || "";
     const link = data.link || "/";
+    // `renotify: false` + tag estável: o mesmo evento substitui a bolha em vez de empilhar.
     self.registration.showNotification(title, {
       body,
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       tag: data.tag || data.notification_id || undefined,
-      renotify: true,
+      renotify: false,
       actions: data.cta ? [{ action: "open", title: data.cta }] : undefined,
       data: { link, notification_id: data.notification_id },
     });
