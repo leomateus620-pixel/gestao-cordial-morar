@@ -283,17 +283,7 @@ export const Route = createFileRoute("/api/public/hooks/push-worker")({
         }
         const limit = Math.min(Math.max(body.limit ?? 25, 1), 100);
 
-        const { data: rows, error } = await admin
-          .from("push_outbox")
-          .select("id, notification_id, user_id, attempts")
-          .eq("status", "pending")
-          .lt("attempts", 3)
-          .order("created_at", { ascending: true })
-          .limit(limit);
-
-        if (error) return Response.json({ error: error.message }, { status: 500 });
-        if (!rows || rows.length === 0) return Response.json({ ok: true, processed: 0 });
-
+        // Autentica ANTES de reservar a fila: falha de auth não deve deixar rows presas.
         let accessToken: string;
         try {
           accessToken = await getAccessToken(account);
@@ -301,6 +291,12 @@ export const Route = createFileRoute("/api/public/hooks/push-worker")({
           console.error("FCM auth falhou:", tokenError);
           return Response.json({ ok: false, error: "FCM auth falhou" }, { status: 200 });
         }
+
+        // Claim atômico: só processa o que esta execução conseguiu reservar (pending -> processing).
+        // Execuções paralelas do worker não pegam a mesma row, então não há push repetido.
+        const { data: rows, error } = await admin.rpc("push_outbox_claim", { _limit: limit });
+        if (error) return Response.json({ error: error.message }, { status: 500 });
+        if (!rows || rows.length === 0) return Response.json({ ok: true, processed: 0 });
 
         const results = { sent: 0, skipped: 0, failed: 0 };
         for (const row of rows as OutboxRow[]) {
@@ -310,6 +306,16 @@ export const Route = createFileRoute("/api/public/hooks/push-worker")({
           } catch (rowError) {
             results.failed += 1;
             console.error("Push outbox row falhou:", rowError);
+            await admin
+              .from("push_outbox")
+              .update({
+                status: "failed",
+                attempts: row.attempts + 1,
+                processed_at: new Date().toISOString(),
+                last_error:
+                  rowError instanceof Error ? rowError.message.slice(0, 500) : "erro desconhecido",
+              })
+              .eq("id", row.id);
           }
         }
 
