@@ -45,3 +45,10 @@
 - [x] Registro em docs/saneamento-fotos-19-09-2026.md + .json.
 - [ ] Destaques duplicados e fotos antigas órfãs: só no painel dos sites (a API não permite
       tirar destaque nem substituir foto). Ver seção "Não saneado" do doc.
+
+## Push repetido no iPhone (21/09/2026)
+- [x] Envio data-only no FCM (removido `webpush.notification`): apenas o service worker exibe o aviso.
+- [x] `renotify: false` com tag estável por evento — o mesmo assunto substitui a bolha em vez de empilhar.
+- [x] Claim atômico da fila (`push_outbox_claim`, status `processing` + recuperação após 5 min): execuções paralelas não reenviam a mesma row.
+- [x] Higiene de tokens: ao registrar, remove tokens antigos do mesmo aparelho/navegador.
+- [x] Validado em produção: 1 aviso = 1 row em `notifications` + 1 em `push_outbox` (`sent`), com claim registrado.
