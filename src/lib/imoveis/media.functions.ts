@@ -216,7 +216,12 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ images: PropertyImage[]; duplicated: boolean; resumed: boolean }> => {
+    }): Promise<{
+      images: PropertyImage[];
+      duplicated: boolean;
+      resumed: boolean;
+      imageId: string | null;
+    }> => {
       const rows = await listRows(context.supabase, data.propertyId);
 
       // Versão com marca vinda do navegador: só vale se estiver mesmo no Storage.
@@ -273,6 +278,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           ),
           duplicated: true,
           resumed: incomplete && Boolean(ready),
+          imageId: (duplicate?.id as string) ?? null,
         };
       }
 
@@ -324,6 +330,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
         ),
         duplicated: false,
         resumed: false,
+        imageId: newId,
       };
     },
   );
