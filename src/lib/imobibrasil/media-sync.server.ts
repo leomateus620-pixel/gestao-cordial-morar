@@ -721,8 +721,6 @@ async function reconcileLinkCodes(
   );
   if (!free.length) return;
 
-  // Ordem remota = ordem de inserção: as fotos sem código recebem os códigos
-  // livres na mesma sequência em que foram enviadas.
   const pending = desired
     .map((image) => rows.find((row) => row.image_id === image.id))
     .filter(
@@ -730,9 +728,12 @@ async function reconcileLinkCodes(
         Boolean(row) && row!.status === "synced" && !row!.external_image_id,
     );
 
-  for (let index = 0; index < pending.length && index < free.length; index += 1) {
-    const row = pending[index]!;
-    const item = free[index]!;
+  // Identidade nunca por posição: só há vínculo seguro quando existe UMA foto
+  // nova sem código e UMA foto nova no site. Qualquer outro caso fica sem
+  // código e é marcado para conferência (sem reenviar e sem apagar).
+  if (pending.length === 1 && free.length === 1) {
+    const row = pending[0]!;
+    const item = free[0]!;
     await admin
       .from("property_image_provider_publications")
       .update({
@@ -740,8 +741,24 @@ async function reconcileLinkCodes(
         remote_url: item.url,
         is_cover: item.destaque,
         verified_at: new Date().toISOString(),
-        verification: { matched_by: "ordem_de_insercao" },
+        verification: { matched_by: "unica_foto_nova" },
         last_op_state: "confirmed_by_read",
+      })
+      .eq("publication_id", publicationId)
+      .eq("image_id", row.image_id);
+    return;
+  }
+  for (const row of pending) {
+    await admin
+      .from("property_image_provider_publications")
+      .update({
+        verification: {
+          matched_by: null,
+          ambiguous: true,
+          pending_without_code: pending.length,
+          remote_new: free.length,
+        },
+        last_op_state: "delivery_unknown",
       })
       .eq("publication_id", publicationId)
       .eq("image_id", row.image_id);
