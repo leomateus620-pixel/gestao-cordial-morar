@@ -3584,6 +3584,7 @@ export type Database = {
       push_outbox: {
         Row: {
           attempts: number
+          claimed_at: string | null
           created_at: string
           id: string
           last_error: string | null
@@ -3594,6 +3595,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          claimed_at?: string | null
           created_at?: string
           id?: string
           last_error?: string | null
@@ -3604,6 +3606,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          claimed_at?: string | null
           created_at?: string
           id?: string
           last_error?: string | null
@@ -5439,6 +5442,15 @@ export type Database = {
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
         Returns: Json
+      }
+      push_outbox_claim: {
+        Args: { _limit?: number }
+        Returns: {
+          attempts: number
+          id: string
+          notification_id: string
+          user_id: string
+        }[]
       }
       queue_media_sync_coalesced: {
         Args: {
