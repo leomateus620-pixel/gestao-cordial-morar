@@ -163,7 +163,6 @@ export const recheckHotspotCleanup = createServerFn({ method: "POST" })
 
     const checked: Array<{ id: string; state: string; ok: boolean; reasons: string[] }> = [];
     for (const row of (rows ?? []) as Array<Record<string, any>>) {
-      await acquireProviderSlot(supabaseAdmin, row["provider"]);
       try {
         const { result, record } = await recheckRemote({
           provider: row["provider"],
@@ -223,7 +222,6 @@ export const dryRunHotspotAlterarAudit = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Registro não encontrado.");
 
-    await acquireProviderSlot(supabaseAdmin, (row as Record<string, any>)["provider"]);
     return buildDryRunReport(
       supabaseAdmin as never,
       (row as Record<string, any>)["property_id"],

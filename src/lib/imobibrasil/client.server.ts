@@ -85,8 +85,27 @@ export type ImobiRequestOptions = {
    */
   retryOnNetwork?: boolean;
   correlationId?: string;
+  /** Somente para o próprio controle de limite (evita recursão). */
+  skipRateLimit?: boolean;
   onLog?: (entry: ImobiRequestLog) => void;
 };
+
+/**
+ * Limite de chamadas por site aplicado AQUI, em um único lugar: cadastro,
+ * fotos, catálogos e limpezas passam pelo mesmo teto (18/min por conta).
+ * Antes cada chamador precisava lembrar de pedir vaga — e o cadastro não pedia.
+ */
+async function waitForProviderSlot(provider: ImobiProvider) {
+  try {
+    const [{ supabaseAdmin }, { acquireProviderSlot }] = await Promise.all([
+      import("@/integrations/supabase/client.server"),
+      import("./rate-limit.server"),
+    ]);
+    await acquireProviderSlot(supabaseAdmin, provider);
+  } catch {
+    // O controle de limite nunca pode impedir o envio: segue sem espera.
+  }
+}
 
 export async function imobiRequest<T = unknown>(
   provider: ImobiProvider,
@@ -104,6 +123,8 @@ export async function imobiRequest<T = unknown>(
   const maxAttempts = allowRetry || networkOnlyRetry ? MAX_ATTEMPTS : 1;
   const canRetry = (error: ImobiApiError) =>
     allowRetry ? error.retryable : networkOnlyRetry && error.category === "network";
+
+  if (!options.skipRateLimit) await waitForProviderSlot(provider);
 
   let lastError: ImobiApiError | null = null;
 
