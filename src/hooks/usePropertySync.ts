@@ -5,14 +5,10 @@ import {
   getPropertySyncStatus,
   getProvidersHealth,
   listProviderCatalog,
-  reconcileProperty,
   refreshProviderCatalogs,
-  retryPropertySync,
   type EnqueueSyncInput,
   type PublicationStatusView,
 } from "@/lib/imoveis/publish.functions";
-
-const ACTIVE_STATUSES = new Set(["pending", "syncing", "partial"]);
 
 export function usePropertySyncStatus(propertyId: string | undefined) {
   const get = useServerFn(getPropertySyncStatus);
@@ -20,12 +16,9 @@ export function usePropertySyncStatus(propertyId: string | undefined) {
     queryKey: ["property-sync", propertyId],
     queryFn: () => get({ data: { propertyId: propertyId as string } }),
     enabled: !!propertyId,
-    // Enquanto houver job em andamento, acompanha em tempo quase real.
-    refetchInterval: (query) => {
-      const rows = query.state.data ?? [];
-      const busy = rows.some((row) => ACTIVE_STATUSES.has(row.status) || row.activeJob);
-      return busy ? 5_000 : false;
-    },
+    // O processamento não depende da tela. Enquanto aberta, ela acompanha
+    // inclusive a recuperação de um bloqueio corrigido após o último fetch.
+    refetchInterval: 15_000,
   });
 }
 
@@ -38,24 +31,6 @@ export function useEnqueuePropertySync(propertyId?: string) {
       qc.invalidateQueries({ queryKey: ["property-sync", propertyId] });
       qc.invalidateQueries({ queryKey: ["imoveis"] });
     },
-  });
-}
-
-export function useRetryPropertySync(propertyId?: string) {
-  const qc = useQueryClient();
-  const retry = useServerFn(retryPropertySync);
-  return useMutation({
-    mutationFn: (input: { propertyId: string; provider: string; component?: "cadastro" | "fotos" }) => retry({ data: input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["property-sync", propertyId] }),
-  });
-}
-
-export function useReconcileProperty(propertyId?: string) {
-  const qc = useQueryClient();
-  const reconcile = useServerFn(reconcileProperty);
-  return useMutation({
-    mutationFn: (input: { propertyId: string; provider: string }) => reconcile({ data: input }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["property-sync", propertyId] }),
   });
 }
 

@@ -12,7 +12,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { IMOBI_PROVIDER_KEYS, isImobiProvider, type ImobiProvider } from "./providers";
+import { IMOBI_PROVIDER_KEYS, type ImobiProvider } from "./providers";
 
 async function assertAdmin(context: { supabase: unknown; userId: string }) {
   const supabase = context.supabase as {
@@ -35,6 +35,11 @@ export type ProviderOpsSummary = {
   conflitos: number;
   tentativasAbertas: number;
   ultimaConfirmacao: string | null;
+  idadeFilaMinutos: number | null;
+  leasesVencidos: number;
+  resultadosAmbiguos: number;
+  midiaAtrasada: number;
+  circuitoAte: string | null;
 };
 
 export type ProviderOpsItem = {
@@ -78,17 +83,30 @@ export const getProviderOps = createServerFn({ method: "GET" })
       .limit(500);
     if (error) throw new Error(error.message);
 
-    const { data: settings } = await supabaseAdmin
+    const { data: settings, error: settingsError } = await supabaseAdmin
       .from("app_settings")
       .select("key, value")
       .eq("key", "imobi_update_sync_paused")
       .maybeSingle();
+    if (settingsError) throw new Error(settingsError.message);
+    const pauseUnknown = !settings || typeof (settings.value as { paused?: unknown } | null)?.paused !== "boolean";
     const pausado = Boolean((settings?.value as { paused?: boolean } | null)?.paused);
 
-    const { data: jobs } = await supabaseAdmin
+    const { data: jobs, error: jobsError } = await supabaseAdmin
       .from("property_sync_jobs")
       .select("provider, status")
       .in("status", ["pending", "processing", "retry"]);
+    if (jobsError) throw new Error(jobsError.message);
+    const { data: healthRows, error: healthError } = await supabaseAdmin
+      .from("property_integration_health" as never).select("*");
+    if (healthError) throw new Error(healthError.message);
+    const healthByProvider = new Map(
+      ((healthRows ?? []) as PublicationRow[]).map((row) => [String(row["provider"]), row]),
+    );
+    const { data: dispatch, error: dispatchError } = await supabaseAdmin
+      .from("property_worker_dispatch_health" as never)
+      .select("hook, last_dispatched_at, last_response_at, last_http_status, last_transport_error, last_config_error");
+    if (dispatchError) throw new Error(dispatchError.message);
 
     const items: ProviderOpsItem[] = (publications ?? []).map((row: PublicationRow) => {
       const property = (row["properties"] ?? {}) as Record<string, unknown>;
@@ -121,6 +139,7 @@ export const getProviderOps = createServerFn({ method: "GET" })
 
     const summaries: ProviderOpsSummary[] = IMOBI_PROVIDER_KEYS.map((provider) => {
       const rows = items.filter((item) => item.provider === provider);
+      const health = healthByProvider.get(provider) ?? {};
       const comErros = rows.filter((item) => item.motivo).length;
       const bloqueios = (publications ?? []).filter(
         (row: PublicationRow) =>
@@ -130,7 +149,9 @@ export const getProviderOps = createServerFn({ method: "GET" })
       const tentativas = (jobs ?? []).filter((job) => job.provider === provider).length;
       return {
         provider,
-        conexao: pausado
+        conexao: pauseUnknown
+          ? "com_erros"
+          : pausado
           ? "pausado"
           : bloqueios
             ? "sem_credencial"
@@ -145,10 +166,15 @@ export const getProviderOps = createServerFn({ method: "GET" })
         conflitos: rows.reduce((total, item) => total + item.conflitos, 0),
         tentativasAbertas: tentativas,
         ultimaConfirmacao: rows.find((item) => item.ultimaConfirmacao)?.ultimaConfirmacao ?? null,
+        idadeFilaMinutos: health["oldest_open_minutes"] == null ? null : Number(health["oldest_open_minutes"]),
+        leasesVencidos: Number(health["expired_leases"] ?? 0),
+        resultadosAmbiguos: Number(health["ambiguous_jobs"] ?? 0),
+        midiaAtrasada: Number(health["media_behind"] ?? 0),
+        circuitoAte: text(health["blocked_until"]),
       };
     });
 
-    return { summaries, items, pausado };
+    return { summaries, items, pausado, pauseUnknown, dispatch: dispatch ?? [] };
   });
 
 /** Divergências campo a campo aguardando conferência. */
@@ -181,90 +207,6 @@ export const listFieldConflicts = createServerFn({ method: "GET" })
         detectadoEm: text(row["created_at"]),
       };
     });
-  });
-
-/**
- * Registra a decisão do usuário sobre uma divergência.
- * `manter_site` só fecha o caso (o valor do site já está aplicado);
- * `reenviar_gestao` agenda uma alteração para reaplicar o valor do Gestão.
- */
-export const resolveFieldConflict = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => {
-    const input = (data ?? {}) as { id?: unknown; decisao?: unknown };
-    const id = typeof input.id === "string" ? input.id : "";
-    const decisao = input.decisao === "reenviar_gestao" ? "reenviar_gestao" : "manter_site";
-    if (!id) throw new Error("Divergência não informada.");
-    return { id, decisao } as const;
-  })
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context as never);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: conflict, error } = await supabaseAdmin
-      .from("property_field_conflicts")
-      .select("id, property_id, provider")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!conflict) throw new Error("Divergência não encontrada.");
-
-    await supabaseAdmin
-      .from("property_field_conflicts")
-      .update({
-        resolution: data.decisao,
-        resolved_by: (context as { userId: string }).userId,
-        resolved_at: new Date().toISOString(),
-      })
-      .eq("id", data.id);
-
-    if (data.decisao === "reenviar_gestao") {
-      // Reenvio é sempre alteração do anúncio existente: nunca cria outro.
-      await supabaseAdmin.from("property_sync_jobs").insert({
-        property_id: conflict.property_id,
-        provider: conflict.provider as ImobiProvider,
-        action: "update" as const,
-        status: "pending" as const,
-        idempotency_key: `conflict:${data.id}`,
-      } as never);
-    }
-
-    return { ok: true, decisao: data.decisao };
-  });
-
-/**
- * Recuperação: reenfileira a alteração de um anúncio já existente, reaproveitando
- * a identidade original (nunca publica de novo nem cria anúncio).
- */
-export const retryPublication = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => {
-    const input = (data ?? {}) as { publicationId?: unknown };
-    const publicationId = typeof input.publicationId === "string" ? input.publicationId : "";
-    if (!publicationId) throw new Error("Anúncio não informado.");
-    return { publicationId };
-  })
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context as never);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: publication, error } = await supabaseAdmin
-      .from("property_provider_publications")
-      .select("id, property_id, provider, external_property_id")
-      .eq("id", data.publicationId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!publication) throw new Error("Anúncio não encontrado.");
-    if (!isImobiProvider(publication.provider)) throw new Error("Imobiliária inválida.");
-
-    // Sem ID remoto a recuperação é reconciliação por referência — nunca inserção.
-    const action = publication.external_property_id ? "update" : "reconcile";
-    await supabaseAdmin.from("property_sync_jobs").insert({
-      property_id: publication.property_id,
-      provider: publication.provider,
-      action,
-      status: "pending" as const,
-      idempotency_key: `retry:${publication.id}:${Date.now()}`,
-    } as never);
-    return { ok: true, action };
   });
 
 export type DuplicateClass =
@@ -359,24 +301,4 @@ export const listDuplicateDiagnosis = createServerFn({ method: "GET" })
     }
 
     return diagnosis.filter((row) => row.classificacao !== "publicacao_legitima_nas_duas");
-  });
-
-/**
- * Atualiza a partir dos sites os códigos de proprietário/corretor guardados em
- * cada anúncio e completa, em lote pequeno, o contato do proprietário em fichas
- * vazias. Somente leitura nos sites; nunca apaga código nem sobrescreve contato.
- */
-export const refreshOwnerLinksFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => {
-    const provider = (data as { provider?: unknown })?.provider;
-    if (!isImobiProvider(provider)) throw new Error("Imobiliária inválida.");
-    return { provider };
-  })
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context as never);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { refreshOwnerLinks } = await import("./owner-links.server");
-    const report = await refreshOwnerLinks(supabaseAdmin as never, data.provider, { contactBatch: 15 });
-    return { ...report, semProprietarioNoSite: report.semProprietarioNoSite.slice(0, 200) };
   });

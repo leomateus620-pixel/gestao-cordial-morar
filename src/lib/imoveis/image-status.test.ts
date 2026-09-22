@@ -37,3 +37,14 @@ test("foto nova só publica quando está pronta e possui derivada marcada", () =
     true,
   );
 });
+
+test("derivada de outra escolha de destino não é confirmável", () => {
+  assert.equal(canPublishPropertyImage({
+    processing_status: "ready", processed_storage_path: "marcada.jpg",
+    destination_hash: "morar-cordial@v2", desired_destination_hash: "cordial@v2",
+  }), false);
+  assert.equal(canPublishPropertyImage({
+    processing_status: "ready", processed_storage_path: "marcada.jpg",
+    destination_hash: "cordial@v2", desired_destination_hash: "cordial@v2",
+  }), true);
+});

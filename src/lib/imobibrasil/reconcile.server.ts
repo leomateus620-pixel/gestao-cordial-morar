@@ -1,125 +1,121 @@
 /**
- * Reconciliação periódica READ-ONLY.
- *
- * Compara três hashes determinísticos — o observado no site, o último publicado
- * pelo sistema e o desejado localmente — e apenas CLASSIFICA. Nada do cadastro
- * local é sobrescrito: divergência vira alerta para o administrador decidir.
+ * Observação periódica por publicação. O plano de três estados decide campos
+ * seguros para importar; divergências permanecem explícitas. Uma leitura não
+ * altera disponibilidade nem transforma pendências em "published".
  */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchPropertyDetail } from "./read.server";
-import { normalizeRemoteProperty } from "./import-normalizers";
-import { extractPublicUrl } from "./public-url";
+import { normalizeRemoteProperty, toPropertyRow } from "./import-normalizers";
 import { sha256 } from "./import.server";
+import { applyRemoteChanges } from "./remote-changes.server";
 import { sanitizeMessage, toImobiError } from "./errors";
-import { isOwnEcho } from "./tri-state";
 import type { ImobiProvider } from "./providers";
 
 type Admin = SupabaseClient;
-
 export type ReconcileOutcome = "synced" | "out_of_sync" | "missing_remote" | "skipped";
+
+function comparableRemoteRow(remote: ReturnType<typeof normalizeRemoteProperty>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(toPropertyRow(remote)).filter(([, value]) => value !== null && value !== undefined));
+}
 
 export async function runReconcileSweep(admin: Admin, options: { limit?: number } = {}) {
   const limit = Math.min(200, Math.max(1, options.limit ?? 50));
-
   const { data: publications, error } = await admin
     .from("property_provider_publications")
-    .select(
-      "id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash, echo_payload_hash, echo_expires_at, status, last_field_verification",
-    )
+    .select("id, property_id, provider, external_property_id, enabled, status")
     .not("external_property_id", "is", null)
     .eq("enabled", true)
     .order("last_verified_at", { ascending: true, nullsFirst: true })
+    .order("id", { ascending: true })
     .limit(limit);
   if (error) throw new Error(error.message);
 
   const summary: Record<ReconcileOutcome, number> = {
-    synced: 0,
-    out_of_sync: 0,
-    missing_remote: 0,
-    skipped: 0,
+    synced: 0, out_of_sync: 0, missing_remote: 0, skipped: 0,
   };
-
-  for (const publication of publications ?? []) {
-    const provider = publication.provider as ImobiProvider;
-    const externalId = publication.external_property_id as string;
+  for (const candidate of publications ?? []) {
+    const provider = candidate.provider as ImobiProvider;
+    const externalId = candidate.external_property_id as string;
     const now = new Date().toISOString();
     try {
       const detail = await fetchPropertyDetail(provider, externalId);
-      if (!detail || Object.keys(detail).length === 0) {
-        // Ausência NUNCA remove nada do Gestão: pode ser imóvel inativo, filtro
-        // da consulta ou leitura parcial. Fica como suspeita para conferência.
-        summary.missing_remote += 1;
-        await admin
-          .from("property_provider_publications")
-          .update({
-            status: "out_of_sync",
-            last_verified_at: now,
-            remote_read_state: "missing_remote_suspeito",
-            last_error_category: "missing_remote",
-            last_error_message:
-              "O anúncio não apareceu na consulta ao site. Pode estar inativo ou fora do filtro — nada foi removido do Gestão.",
-          })
-          .eq("id", publication.id);
-        continue;
+      const remote = normalizeRemoteProperty(provider, externalId, detail);
+      const remoteHash = await sha256(JSON.stringify(remote));
+      let outcome: Awaited<ReturnType<typeof applyRemoteChanges>> | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const [{ data: local, error: localError }, { data: publication, error: pubError }] = await Promise.all([
+          admin.from("properties").select("*").eq("id", candidate.property_id).single(),
+          admin.from("property_provider_publications")
+            .select("id, property_id, provider, enabled, external_property_id, updated_at, confirmed_field_snapshot, echo_payload_hash, echo_expires_at, status")
+            .eq("id", candidate.id).single(),
+        ]);
+        if (localError || pubError || !local || !publication) {
+          throw new Error(localError?.message ?? pubError?.message ?? "Publicação indisponível.");
+        }
+        if (!publication.enabled || publication.external_property_id !== externalId) {
+          summary.skipped += 1;
+          break;
+        }
+        try {
+          outcome = await applyRemoteChanges(admin, {
+            publication: publication as never,
+            localRow: local as Record<string, unknown>,
+            remote,
+            remoteHash,
+            remoteObservedAt: now,
+            observeOther: async (otherProvider, otherExternalId) => {
+              const other = await fetchPropertyDetail(otherProvider as ImobiProvider, otherExternalId);
+              return comparableRemoteRow(normalizeRemoteProperty(otherProvider as ImobiProvider, otherExternalId, other));
+            },
+          });
+          break;
+        } catch (mergeError) {
+          if (attempt === 2 || !/revision_changed|publication_changed|other_publication_changed/.test(String(mergeError))) throw mergeError;
+        }
       }
-
-      const remoteHash = await sha256(
-        JSON.stringify(normalizeRemoteProperty(provider, externalId, detail)),
-      );
-      // `last_published_hash` vive no MESMO espaço normalizado de `remoteHash`
-      // (`normalizeRemoteProperty`). `last_payload_hash` é o hash do corpo
-      // enviado e não serve para essa comparação — ver docs/IMOBI-ESTADOS-SINCRONIZACAO.md.
-      const baseline = publication.last_published_hash as string | null;
-      const echo = isOwnEcho(remoteHash, {
-        hash: publication.echo_payload_hash as string | null,
-        expiresAt: publication.echo_expires_at as string | null,
-      });
-      const drifted = !echo && Boolean(baseline) && baseline !== remoteHash;
-      const publicUrl = extractPublicUrl(provider, detail, externalId);
-      // Existência no site não apaga pendência cadastral: campo divergente ou
-      // envio parcial continuam como estavam até um envio confirmá-los.
-      const verification = (publication.last_field_verification ?? null) as { divergent?: string[] } | null;
-      const hasPending =
-        (Array.isArray(verification?.divergent) && verification!.divergent!.length > 0) ||
-        publication.status === "partial";
-
-      await admin
-        .from("property_provider_publications")
-        .update({
-          remote_observed_hash: remoteHash,
-          remote_snapshot_at: now,
-          remote_read_state: "lido",
-          // Eco do próprio envio confirma a publicação em vez de virar "alterado fora".
-          ...(echo ? { last_published_hash: remoteHash, baseline_at: now } : {}),
-          status: drifted ? "out_of_sync" : hasPending ? "partial" : "published",
-          last_verified_at: now,
-          // Preenche o link canônico apenas quando o site o devolveu; nunca apaga um link válido.
-          ...(publicUrl ? { external_public_url: publicUrl } : {}),
-          last_error_category: drifted ? "drift" : null,
-          last_error_message: drifted
-            ? "O imóvel foi alterado no site fora do Gestão Cordial. Escolha reaplicar a versão do sistema ou importar a alteração."
-            : null,
-        })
-        .eq("id", publication.id);
-
-      if (drifted) summary.out_of_sync += 1;
-      else summary.synced += 1;
-    } catch (error) {
-      summary.skipped += 1;
-      const normalized = toImobiError(error);
-      await admin
-        .from("property_provider_publications")
+      if (!outcome) continue;
+      const repairFields = [...new Set([
+        ...outcome.report.localPending.map((field) => field.field),
+        ...outcome.report.localClears.map((field) => field.field),
+      ])];
+      if (repairFields.length) {
+        const { error: repairError } = await admin.rpc("property_sync_request_repair" as never, {
+          _property_id: candidate.property_id,
+          _provider: provider,
+          _fields: repairFields,
+        } as never);
+        if (repairError) throw new Error(repairError.message);
+      }
+      if (outcome.fullyConfirmed && outcome.conflicts.length === 0) {
+        summary.synced += 1;
+      } else {
+        summary.out_of_sync += 1;
+        // Uma publicação já sinalizada como pendente/parcial/bloqueada mantém
+        // seu estado. Só uma publicação antes considerada concluída muda.
+        if (candidate.status === "published") {
+          const { error: statusError } = await admin.from("property_provider_publications")
+            .update({ status: "out_of_sync" }).eq("id", candidate.id)
+            .eq("status", "published");
+          if (statusError) throw new Error(statusError.message);
+        }
+      }
+    } catch (failure) {
+      const normalized = toImobiError(failure);
+      const missing = normalized.httpStatus === 404;
+      if (missing) summary.missing_remote += 1;
+      else summary.skipped += 1;
+      const { error: updateError } = await admin.from("property_provider_publications")
         .update({
           last_verified_at: now,
-          // Falha de leitura é falha de leitura: não vira ausência nem remoção.
-          remote_read_state: "leitura_falhou",
-          last_error_category: normalized.category,
-          last_error_message: sanitizeMessage(normalized.message, 200),
+          remote_read_state: missing ? "missing_remote_suspeito" : "leitura_falhou",
+          last_error_category: missing ? "missing_remote" : normalized.category,
+          last_error_message: missing
+            ? "O anúncio não apareceu na leitura. Ausência não autoriza recriação nem exclusão."
+            : sanitizeMessage(normalized.message, 200),
         })
-        .eq("id", publication.id);
+        .eq("id", candidate.id);
+      if (updateError) throw new Error(updateError.message);
     }
   }
-
   return { checked: (publications ?? []).length, ...summary };
 }

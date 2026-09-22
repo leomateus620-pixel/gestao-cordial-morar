@@ -29,6 +29,7 @@ export type RemoteGalleryRow = {
   is_cover: boolean | null;
   attempts: number | null;
   next_retry_at: string | null;
+  last_op_state?: string | null;
 };
 
 export type GalleryPlan = {
@@ -83,6 +84,10 @@ export function planGalleryDelivery(
     // novo — nem por mudança de checksum (marca d'água), nem por mudança de
     // ordem ou de capa. A API só possui inserir, então qualquer reenvio vira
     // cópia permanente no site. Substituição real = novo property_images.id.
+    if (existing.status === "delivery_unknown" || existing.last_op_state === "delivery_unknown" || existing.last_op_state === "awaiting_code" || existing.last_op_state === "intent_persisted") {
+      unknown.push(image.id);
+      continue;
+    }
     if (existing.status === "synced") {
       syncedCount += 1;
       const sameFile = (existing.content_hash ?? null) === (image.deliveredHash ?? null);
@@ -90,10 +95,6 @@ export function planGalleryDelivery(
       continue;
     }
     // Entrega ambígua (timeout/rede depois do POST): só leitura resolve.
-    if (existing.status === "delivery_unknown") {
-      unknown.push(image.id);
-      continue;
-    }
     if (existing.status === "error") failedCount += 1;
 
     // Falha com nova tentativa programada: respeita a espera.

@@ -44,7 +44,7 @@ export function usePhotoSorting<T extends { id: string }>({
   enabled = true,
 }: {
   items: T[];
-  onReorder: (orderedIds: string[]) => void;
+  onReorder: (orderedIds: string[], movedId: string | null) => void;
   /** Chamado uma única vez ao soltar, para agrupar efeitos colaterais. */
   onDragEnd?: () => void;
   enabled?: boolean;
@@ -118,11 +118,11 @@ export function usePhotoSorting<T extends { id: string }>({
   const byId = new Map(items.map((item) => [item.id, item]));
   const ordered = order.map((id) => byId.get(id)).filter(Boolean) as T[];
 
-  const commit = useCallback(() => {
+  const commit = useCallback((movedId: string | null = null) => {
     const next = orderRef.current;
     const original = items.map((i) => i.id);
     if (next.length === original.length && next.every((id, i) => id === original[i])) return;
-    onReorder(next);
+    onReorder(next, movedId);
   }, [items, onReorder]);
 
   const moveTo = useCallback((from: number, to: number) => {
@@ -291,9 +291,10 @@ export function usePhotoSorting<T extends { id: string }>({
       onPointerUp: (event) => {
         event.currentTarget.releasePointerCapture?.(event.pointerId);
         const wasDragging = draggingRef.current;
+        const movedId = dragIdRef.current;
         stopDrag();
         if (!wasDragging) return;
-        commit();
+        commit(movedId);
         onDragEnd?.();
       },
       onPointerCancel: () => stopDrag(),
@@ -312,11 +313,12 @@ export function usePhotoSorting<T extends { id: string }>({
                   : 0;
         if (!delta) return;
         event.preventDefault();
+        const movedId = orderRef.current[index] ?? null;
         const target = Math.max(0, Math.min(orderRef.current.length - 1, index + delta));
         moveTo(index, target);
         // Teclado grava imediatamente: cada seta é uma decisão do usuário.
         setTimeout(() => {
-          commit();
+          commit(movedId);
           onDragEnd?.();
         }, 0);
       },

@@ -5,7 +5,7 @@
  * verificação remota. Nada é marcado como `published` sem confirmação por GET.
  */
 
-import { confirmedSnapshotAfterSend } from "./confirm-snapshot";
+import { confirmedLocalFieldsAfterSend, confirmedSnapshotAfterSend } from "./confirm-snapshot";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
@@ -47,7 +47,7 @@ import {
 } from "./payload-diff";
 import { providerExternalCode } from "./provider-code";
 import { sha256 } from "./import.server";
-import { normalizeRemoteProperty } from "./import-normalizers";
+import { normalizeRemoteProperty, toPropertyRow } from "./import-normalizers";
 import {
   canCreateAfterAmbiguity,
   classifyRemoteLookup,
@@ -73,6 +73,7 @@ export type SyncJob = {
   correlation_id: string;
   attempts: number;
   max_attempts: number;
+  publication_intent_revision?: number | null;
   /** Identificador exclusivo desta execução: só quem o tem pode concluir o job. */
   lease_token?: string | null;
   /** Campos locais que o usuário realmente alterou (contrato de alteração). */
@@ -94,13 +95,9 @@ async function finishJob(
     locked_by: null,
     ...fields,
   };
-  if (!job.lease_token) {
-    // Job antigo, reivindicado antes da posse existir: mantém o comportamento
-    // anterior para não deixar trabalho preso em `processing`.
-    const { error } = await admin.from("property_sync_jobs").update(cleaned).eq("id", job.id);
-    if (error) throw new Error(error.message);
-    return true;
-  }
+  // Toda confirmação precisa da posse atual. Um claim antigo sem token volta
+  // pelo watchdog; ele jamais pode finalizar o trabalho de outro executor.
+  if (!job.lease_token) return false;
   const { data, error } = await admin.rpc("property_sync_finish_job", {
     _job_id: job.id,
     _lease_token: job.lease_token,
@@ -117,9 +114,10 @@ async function finishJob(
  * executava.
  */
 async function finishMediaJob(admin: Admin, job: SyncJob): Promise<boolean> {
+  if (!job.lease_token) return false;
   const { data, error } = await admin.rpc("property_media_finish_job", {
     _job_id: job.id,
-    _lease_token: job.lease_token ?? null,
+    _lease_token: job.lease_token,
     _fields: {
       status: "succeeded",
       finished_at: new Date().toISOString(),
@@ -145,7 +143,7 @@ export class LeaseLostError extends Error {
 
 /** Renova o lease. Devolve false quando a posse foi perdida ou não pôde ser comprovada. */
 export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
-  if (!job.lease_token) return true;
+  if (!job.lease_token) return false;
   try {
     const { data, error } = await admin.rpc("property_sync_renew_lease", {
       _job_id: job.id,
@@ -162,7 +160,7 @@ export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): 
 
 /** Há envio cadastral mais novo (revisão maior) na fila para o mesmo imóvel e site? */
 export async function isSupersededJob(admin: Admin, job: SyncJob): Promise<boolean> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from("property_sync_jobs")
     .select("id")
     .eq("property_id", job.property_id)
@@ -171,12 +169,40 @@ export async function isSupersededJob(admin: Admin, job: SyncJob): Promise<boole
     .in("status", ["pending", "retry"])
     .gt("requested_revision", job.requested_revision ?? 0)
     .limit(1);
+  if (error) throw new Error(error.message);
   return (data ?? []).length > 0;
 }
 
 /** Confirma a posse antes de uma chamada externa; interrompe se foi perdida. */
 export async function assertJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<void> {
   if (!(await renewJobLease(admin, job, seconds))) throw new LeaseLostError(job.id);
+  const { data, error } = await admin
+    .from("property_provider_publications")
+    .select("desired_availability, publication_intent_revision")
+    .eq("property_id", job.property_id)
+    .eq("provider", job.provider)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new ObsoleteIntentError(job.id);
+  const desired = String(data.desired_availability ?? "visible");
+  if (
+    (job.publication_intent_revision != null &&
+      Number(data.publication_intent_revision ?? 0) !== Number(job.publication_intent_revision)) ||
+    (["publish", "update", "media_sync"].includes(job.action) && desired !== "visible") ||
+    (job.action === "unpublish" && desired !== "hidden") ||
+    (job.action === "delete" && desired !== "deleted")
+  ) throw new ObsoleteIntentError(job.id);
+  if (job.action === "media_sync") {
+    const { data: property, error: propertyError } = await admin
+      .from("properties")
+      .select("gallery_revision, archived_at")
+      .eq("id", job.property_id)
+      .single();
+    if (propertyError) throw new Error(propertyError.message);
+    if (property.archived_at || Number(property.gallery_revision) !== Number(job.requested_revision)) {
+      throw new ObsoleteIntentError(job.id);
+    }
+  }
 }
 
 
@@ -192,7 +218,7 @@ async function logAttempt(
     errorMessage?: string | null;
   },
 ) {
-  await admin.from("property_sync_attempts").insert({
+  const { error } = await admin.from("property_sync_attempts").insert({
     job_id: job.id,
     attempt_number: job.attempts,
     correlation_id: job.correlation_id,
@@ -203,6 +229,7 @@ async function logAttempt(
     error_category: entry.errorCategory ?? null,
     error_message: entry.errorMessage ? sanitizeMessage(entry.errorMessage, 300) : null,
   });
+  if (error) throw new Error(error.message);
 }
 
 function backoffSeconds(attempts: number): number {
@@ -326,7 +353,7 @@ async function recordRemoteMatch(
   match: ReferenceMatch,
   extra: Record<string, unknown> = {},
 ) {
-  await admin
+  const { error } = await admin
     .from("property_provider_publications")
     .update({
       remote_match_count: match.count,
@@ -335,6 +362,7 @@ async function recordRemoteMatch(
       ...extra,
     })
     .eq("id", publicationId);
+  if (error) throw new Error(error.message);
 }
 
 async function findRemoteByReference(
@@ -353,6 +381,59 @@ async function verifyRemote(provider: ImobiProvider, externalId: string, correla
     correlationId,
   });
   return response.data as Record<string, unknown>;
+}
+
+function verifiedRemoteRecord(remote: Record<string, unknown>, reference: string) {
+  const record = (remote["resultSet"] as Record<string, unknown> | undefined) ?? remote;
+  const source = Array.isArray(record) ? ((record[0] ?? {}) as Record<string, unknown>) : record;
+  const actual = String(source["referenciaImovel"] ?? source["referencia"] ?? "").trim();
+  if (!actual || actual.toUpperCase() !== reference.toUpperCase()) {
+    throw new ImobiApiError({
+      message: "A leitura do site não confirmou a identidade do anúncio; nenhuma alteração foi feita.",
+      category: "protocol",
+      ambiguous: true,
+    });
+  }
+  return source;
+}
+
+async function observeVisibility(
+  provider: ImobiProvider,
+  externalId: string,
+  reference: string,
+  correlationId: string,
+): Promise<"visible" | "hidden"> {
+  const record = verifiedRemoteRecord(await verifyRemote(provider, externalId, correlationId), reference);
+  const raw = record["exibirImovel"];
+  if (raw === true || ["sim", "s", "1", "true"].includes(String(raw).toLowerCase())) return "visible";
+  if (raw === false || ["nao", "não", "n", "0", "false"].includes(String(raw).toLowerCase())) return "hidden";
+  throw new ImobiApiError({
+    message: "O site não informou a visibilidade do anúncio; ocultação ainda não confirmada.",
+    category: "protocol",
+    ambiguous: true,
+  });
+}
+
+async function observeDeletion(
+  provider: ImobiProvider,
+  externalId: string,
+  reference: string,
+  correlationId: string,
+): Promise<"present" | "absent"> {
+  try {
+    verifiedRemoteRecord(await verifyRemote(provider, externalId, correlationId), reference);
+    return "present";
+  } catch (error) {
+    if (!(error instanceof ImobiApiError) || error.httpStatus !== 404) throw error;
+  }
+  const { lookup } = await lookupByReference(provider, reference, correlationId);
+  if (lookup.kind === "absent") return "absent";
+  if (lookup.kind === "inconclusive") throw inconclusiveError(reference, lookup.reason);
+  throw new ImobiApiError({
+    message: "A lista ainda contém anúncio com esta referência; exclusão não confirmada.",
+    category: "protocol",
+    ambiguous: true,
+  });
 }
 
 /**
@@ -566,15 +647,29 @@ async function queueMediaAfterCadastral(admin: Admin, job: SyncJob) {
     });
     return queued;
   } catch (error) {
-    // Falha ao enfileirar mídia nunca invalida o cadastro já confirmado: a
-    // varredura de retry de imagens reenfileira sozinha.
+    // O kick/enfileiramento é opcional apenas quando a intenção de galeria
+    // já está comprovadamente durável na publicação. Sem essa prova o job
+    // cadastral permanece pendente, e nunca finge entrega de mídia.
     await logAttempt(admin, job, {
       step: "media_enqueued",
       ok: false,
       errorCategory: toImobiError(error).category,
       errorMessage: toImobiError(error).message,
     });
-    return { enqueued: [] as string[], galleryRevision: 0 };
+    const [{ data: property, error: propertyError }, { data: publication, error: publicationError }] =
+      await Promise.all([
+        admin.from("properties").select("gallery_revision").eq("id", job.property_id).single(),
+        admin.from("property_provider_publications")
+          .select("media_dirty_revision")
+          .eq("property_id", job.property_id)
+          .eq("provider", job.provider)
+          .single(),
+      ]);
+    if (propertyError || publicationError ||
+      Number(publication?.media_dirty_revision ?? -1) < Number(property?.gallery_revision ?? 0)) {
+      throw error;
+    }
+    return { enqueued: [] as string[], galleryRevision: Number(property.gallery_revision), recoveredByOutbox: true };
   }
 }
 
@@ -601,12 +696,13 @@ async function ensurePublication(
   provider: ImobiProvider,
   providerCode: string | null,
 ) {
-  const { data } = await admin
+  const { data, error: lookupError } = await admin
     .from("property_provider_publications")
     .select("*")
     .eq("property_id", propertyId)
     .eq("provider", provider)
     .maybeSingle();
+  if (lookupError) throw new Error(lookupError.message);
   if (data) return data;
   const { data: created, error } = await admin
     .from("property_provider_publications")
@@ -680,6 +776,10 @@ export async function processJob(
   }
 
   const property = await loadProperty(admin, job.property_id);
+  if (
+    (job.action === "publish" || job.action === "update") &&
+    Number(property.revision ?? 1) > Number(job.requested_revision ?? 0)
+  ) throw new ObsoleteIntentError(job.id);
   // Um imóvel publicado numa imobiliária sem código próprio recebe agora um número
   // real da sequência daquela imobiliária — nunca mais a referência técnica `GC-…`.
   const providerCode = await ensureProviderCode(admin, job.property_id, job.provider, property);
@@ -727,10 +827,12 @@ export async function processJob(
     // Arquivamento pedido pelo usuário: conclui assim que todos os sites confirmam.
     const { finalizePendingArchive } = await import("@/lib/imoveis/purge.server");
     if (!publication.external_property_id) {
-      await admin
+      await assertJobLease(admin, job);
+      const { error: publicationError } = await admin
         .from("property_provider_publications")
         .update({ status: "unpublished", enabled: false, last_synced_at: new Date().toISOString() })
         .eq("id", publication.id);
+      if (publicationError) throw new Error(publicationError.message);
       await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
@@ -743,17 +845,32 @@ export async function processJob(
     );
     const payload = buildUnpublishPatch(full);
     assertWriteAllowed("unpublish", updatesPaused);
-    await assertJobLease(admin, job); // posse confirmada antes do efeito externo
-    await imobiRequest(
-      job.provider,
-      `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
-      {
-        method: "POST",
-        json: payload,
-        extraHeaders: { codigoImovel: publication.external_property_id },
-        correlationId: job.correlation_id,
-      },
+    const before = await observeVisibility(
+      job.provider, publication.external_property_id, reference, job.correlation_id,
     );
+    if (before !== "hidden") {
+      await assertJobLease(admin, job);
+      await imobiRequest(
+        job.provider,
+        `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
+        {
+          method: "POST",
+          json: payload,
+          extraHeaders: { codigoImovel: publication.external_property_id },
+          correlationId: job.correlation_id,
+        },
+      );
+    }
+    if (await observeVisibility(
+      job.provider, publication.external_property_id, reference, job.correlation_id,
+    ) !== "hidden") {
+      throw new ImobiApiError({
+        message: "O site ainda não confirmou que o anúncio foi ocultado.",
+        category: "protocol",
+        ambiguous: true,
+      });
+    }
+    await assertJobLease(admin, job);
     // O snapshot precisa registrar que o anúncio está OCULTO no site. Sem isso a
     // republicação não veria diferença em `exibirImovel` e o anúncio ficaria
     // escondido para sempre, mesmo com o imóvel desarquivado no Gestão.
@@ -761,7 +878,7 @@ export async function processJob(
       ...((publication["last_payload_snapshot"] as Record<string, unknown> | null | undefined) ?? {}),
       exibirImovel: "nao",
     };
-    await admin
+    const { error: publicationError } = await admin
       .from("property_provider_publications")
       .update({
         status: "unpublished",
@@ -770,24 +887,40 @@ export async function processJob(
         last_payload_snapshot: snapshotAfterUnpublish,
       })
       .eq("id", publication.id);
+    if (publicationError) throw new Error(publicationError.message);
     await finalizePendingArchive(admin, job.property_id);
     return { status: "unpublished" as const };
   }
 
   if (job.action === "delete") {
     if (publication.external_property_id) {
-      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
-      await imobiRequest(
-        job.provider,
-        `/imovel/excluir/${encodeURIComponent(publication.external_property_id)}`,
-        {
-          method: "POST",
-          extraHeaders: { codigoImovel: publication.external_property_id },
-          correlationId: job.correlation_id,
-        },
+      const before = await observeDeletion(
+        job.provider, publication.external_property_id, reference, job.correlation_id,
       );
+      if (before === "present") {
+        await assertJobLease(admin, job);
+        await imobiRequest(
+          job.provider,
+          `/imovel/excluir/${encodeURIComponent(publication.external_property_id)}`,
+          {
+            method: "POST",
+            extraHeaders: { codigoImovel: publication.external_property_id },
+            correlationId: job.correlation_id,
+          },
+        );
+      }
+      if (await observeDeletion(
+        job.provider, publication.external_property_id, reference, job.correlation_id,
+      ) !== "absent") {
+        throw new ImobiApiError({
+          message: "A exclusão ainda não foi confirmada pelo site.",
+          category: "protocol",
+          ambiguous: true,
+        });
+      }
     }
-    await admin
+    await assertJobLease(admin, job);
+    const { error: publicationError } = await admin
       .from("property_provider_publications")
       .update({
         status: "draft",
@@ -796,6 +929,7 @@ export async function processJob(
         last_synced_at: new Date().toISOString(),
       })
       .eq("id", publication.id);
+    if (publicationError) throw new Error(publicationError.message);
     // Exclusão pedida pelo usuário: apaga o cadastro assim que todos os sites confirmarem.
     const { finalizePendingRemoval } = await import("@/lib/imoveis/purge.server");
     await finalizePendingRemoval(admin, job.property_id);
@@ -980,6 +1114,7 @@ export async function processJob(
   let payload: Record<string, unknown> = fullPayload;
   let snapshotBase: PayloadSnapshot | null = null;
   let sentKeys: string[] = [];
+  let changedPayloadKeys: string[] = [];
 
   if (externalId) {
     const stored = (publication["last_payload_snapshot"] ?? null) as PayloadSnapshot | null;
@@ -1033,6 +1168,7 @@ export async function processJob(
     });
     payload = patch.payload;
     sentKeys = Object.keys(patch.payload);
+    changedPayloadKeys = patch.changedKeys;
     const minimal = patch;
 
     if (hasEffectivePatch(patch)) {
@@ -1106,6 +1242,7 @@ export async function processJob(
     // Inclusão: tudo que foi enviado precisa ser conferido na leitura.
     payload = fullPayload;
     sentKeys = Object.keys(fullPayload);
+    changedPayloadKeys = sentKeys;
     externalId =
       extractExternalId(response.data) ??
       (await findRemoteByReference(job.provider, reference, job.correlation_id));
@@ -1243,7 +1380,12 @@ export async function processJob(
   // Características com falha parcial também deixam o cadastro "parcial": só as
   // que faltaram voltam no próximo envio (o conjunto confirmado não as inclui).
   const finalStatus =
-    verified && !fieldVerification.divergent.length && !characteristics.incomplete ? "published" : "partial";
+    verified &&
+    !fieldVerification.divergent.length &&
+    !fieldVerification.unverifiable.length &&
+    !characteristics.incomplete
+      ? "published"
+      : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
@@ -1263,42 +1405,69 @@ export async function processJob(
     sentKeys,
     notConfirmed,
   });
-  const fullyConfirmed = finalStatus === "published" && fieldVerification.unverifiable.length === 0;
+  const fullyConfirmed = finalStatus === "published";
 
   // Eco do próprio envio: a leitura pós-envio é gravada no MESMO espaço
   // normalizado da importação/reconciliação. Assim o conteúdo que o Gestão
   // acabou de publicar nunca é lido depois como "edição externa".
-  const remoteNormalizedHash = await sha256(
-    JSON.stringify(normalizeRemoteProperty(job.provider, externalId, remote as Record<string, unknown>)),
-  );
+  const normalizedRemote = normalizeRemoteProperty(job.provider, externalId, remote as Record<string, unknown>);
+  const remoteNormalizedHash = await sha256(JSON.stringify(normalizedRemote));
+  const observedLocal = toPropertyRow(normalizedRemote) as Record<string, unknown>;
+  const confirmedLocalSnapshot = confirmedLocalFieldsAfterSend({
+    mode,
+    base: (publication["confirmed_field_snapshot"] ?? null) as PayloadSnapshot | null,
+    local: property as unknown as Record<string, unknown>,
+    observed: observedLocal,
+    confirmedPayloadKeys: fieldVerification.confirmed,
+    changedPayloadKeys,
+  });
   const nowIso = new Date().toISOString();
 
-  await admin
-    .from("property_provider_publications")
-    .update({
-      status: finalStatus,
+  // Uma edição posterior pode ter sido salva enquanto o HTTP estava em voo.
+  // Registra o que esta leitura comprovou, mas a publicação continua pendente
+  // para a revisão nova, que já está na outbox.
+  await assertJobLease(admin, job);
+  const { data: latestProperty, error: latestError } = await admin
+    .from("properties")
+    .select("revision")
+    .eq("id", job.property_id)
+    .single();
+  if (latestError) throw new Error(latestError.message);
+  const staleDesired = Number(latestProperty.revision ?? 1) > Number(job.requested_revision ?? 0);
+
+  const { data: publicationOwned, error: publicationUpdateError } = await admin.rpc(
+    "property_publication_update_if_owned" as never, {
+      _job_id: job.id,
+      _lease_token: job.lease_token,
+      _publication_id: publication.id,
+      _fields: {
+      status: staleDesired ? "pending" : finalStatus,
       echo_payload_hash: remoteNormalizedHash,
       echo_expires_at: new Date(Date.now() + 120 * 60_000).toISOString(),
       remote_observed_hash: remoteNormalizedHash,
+      remote_field_snapshot: Object.fromEntries(
+        Object.entries(observedLocal).filter(([, value]) => value !== null && value !== undefined),
+      ),
       remote_snapshot_at: nowIso,
       // Referência de comparação só avança quando o site confirmou os campos.
-      ...(finalStatus === "published"
+      ...(fullyConfirmed
         ? { last_published_hash: remoteNormalizedHash, baseline_at: nowIso }
         : {}),
       // Revisão só é dada como confirmada quando não sobrou pendência dela.
-      ...(fullyConfirmed ? { confirmed_revision: property.revision ?? 1 } : {}),
+      ...(fullyConfirmed ? { confirmed_revision: job.requested_revision } : {}),
       last_payload_hash: hashPayload(fullPayload as never),
       last_payload_snapshot: nextSnapshot,
+      confirmed_field_snapshot: confirmedLocalSnapshot,
       last_payload_synced_at: new Date().toISOString(),
       // Revisão sincronizada só avança sem nenhuma pendência.
-      ...(fullyConfirmed ? { last_synced_revision: property.revision ?? 1 } : {}),
+      ...(fullyConfirmed ? { last_synced_revision: job.requested_revision } : {}),
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
       last_field_verification: {
         ...fieldVerification,
         // Tentado ≠ confirmado: guarda o que foi enviado nesta revisão.
         attempted: sentPayload,
-        revision: property.revision ?? 1,
+        revision: job.requested_revision,
       } as never,
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
       last_error_category: finalStatus === "published" ? null : "protocol",
@@ -1312,14 +1481,17 @@ export async function processJob(
               : !verified
                 ? "A leitura do site não confirmou a referência do imóvel."
                 : "Verificação remota divergente.",
-    })
-    .eq("id", publication.id);
+      },
+    } as never,
+  );
+  if (publicationUpdateError) throw new Error(publicationUpdateError.message);
+  if (publicationOwned !== true) throw new LeaseLostError(job.id);
 
   // Fotos seguem de forma assíncrona, exclusivamente por `media_sync`.
   const media = await queueMediaAfterCadastral(admin, job);
 
   return {
-    status: finalStatus,
+    status: staleDesired ? "superseded" : finalStatus,
     externalId,
     media,
     unmapped: resolution.unmapped,
@@ -1397,19 +1569,22 @@ export async function reconcilePublication(
   }
 
   const remote = await verifyRemote(publication.provider, externalId, correlationId);
-  const found = remote && Object.keys(remote).length > 0;
+  const remoteSet = (remote?.["resultSet"] as Record<string, unknown> | undefined) ?? remote ?? {};
+  const remoteReference = String(remoteSet["referenciaImovel"] ?? remoteSet["referencia"] ?? "").trim();
+  const found = remoteReference.toUpperCase() === publication.external_reference.toUpperCase();
   // Existência não é confirmação: pendências cadastrais continuam pendentes.
-  const { data: pendingRow } = await admin
+  const { data: pendingRow, error: pendingError } = await admin
     .from("property_provider_publications")
     .select("status, last_field_verification")
     .eq("id", publication.id)
     .maybeSingle();
+  if (pendingError) throw new Error(pendingError.message);
   const pendingVerification = (pendingRow?.last_field_verification ?? null) as { divergent?: string[] } | null;
   const hasPending =
     pendingRow?.status === "partial" ||
     (Array.isArray(pendingVerification?.divergent) && pendingVerification!.divergent!.length > 0);
   const publicUrl = extractPublicUrl(publication.provider, remote, externalId);
-  await admin
+  const { error: updateError } = await admin
     .from("property_provider_publications")
     .update({
       external_property_id: externalId,
@@ -1423,8 +1598,9 @@ export async function reconcilePublication(
         : "Divergência detectada na reconciliação.",
     })
     .eq("id", publication.id);
+  if (updateError) throw new Error(updateError.message);
   // Reconciliação é read-only na direção externa: o cadastro local nunca é sobrescrito.
-  return { status: found ? ("published" as const) : ("out_of_sync" as const), externalId };
+  return { status: found ? (hasPending ? ("partial" as const) : ("published" as const)) : ("out_of_sync" as const), externalId };
 }
 
 /**
@@ -1434,13 +1610,27 @@ export async function reconcilePublication(
  * Imobi. Publicação, despublicação e exclusão continuam liberadas.
  */
 async function isUpdateSyncPaused(admin: Admin): Promise<boolean> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from("app_settings")
     .select("value")
     .eq("key", "imobi_update_sync_paused")
     .maybeSingle();
+  if (error || !data) {
+    throw new Error("Não foi possível confirmar a configuração de pausa da integração.");
+  }
   const value = (data?.value ?? null) as { paused?: boolean } | null;
+  if (typeof value?.paused !== "boolean") {
+    throw new Error("Configuração de pausa da integração inválida.");
+  }
   return value?.paused === true;
+}
+
+/** Uma decisão de publicação posterior tornou este efeito externo obsoleto. */
+export class ObsoleteIntentError extends Error {
+  constructor(jobId: string) {
+    super(`A decisão de publicação mudou durante o trabalho ${jobId}.`);
+    this.name = "ObsoleteIntentError";
+  }
 }
 
 /** Devolve para a fila jobs cujo lease expirou. Não depende de ação manual. */
@@ -1490,41 +1680,69 @@ export async function runSyncWorker(
         continue;
       }
       const outcome = await processJob(admin, job, { updatesPaused });
-      // Envio que só deu certo em parte não termina como sucesso genérico.
       const outcomeStatus = (outcome as { status?: string } | undefined)?.status;
-      const partial = outcomeStatus === "partial";
-      // Fotos com trabalho restante (reconstrução em andamento, exclusão
-      // pendente ou envio parcial) NUNCA terminam como concluídas: voltam para
-      // a fila e retomam sozinhas, relendo o site antes de cada passo.
-      const mediaUnfinished =
-        job.action === "media_sync" &&
-        ["rebuilding", "pending_delete", "partial", "waiting_watermark"].includes(String(outcomeStatus)) &&
-        job.attempts < job.max_attempts;
-      const owned =
-        job.action === "media_sync"
-          ? mediaUnfinished
-            ? await finishJob(admin, job, {
-                status: "retry",
-                next_run_at: new Date(Date.now() + 75_000).toISOString(),
-                last_error_category: "partial",
-                last_error_message: `Fotos ainda em andamento (${outcomeStatus}); retomada automática.`,
-              })
-            : await finishMediaJob(admin, job)
-          : await finishJob(admin, job, {
+      const converged = job.action === "media_sync"
+        ? outcomeStatus === "synced"
+        : ["published", "unpublished", "deleted"].includes(String(outcomeStatus));
+      const superseded = outcomeStatus === "superseded";
+      const blockedImage = job.action === "media_sync" && outcomeStatus === "blocked_image";
+      const businessConflict = outcomeStatus === "out_of_sync" &&
+        Array.isArray((outcome as { duplicates?: unknown } | undefined)?.duplicates);
+      const slowRecovery = ["delivery_unknown", "remote_read_unreliable", "out_of_sync", "waiting_watermark"].includes(String(outcomeStatus));
+      const nextDelay = slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
+      const owned = job.action === "media_sync" && converged
+        ? await finishMediaJob(admin, job)
+        : await finishJob(admin, job, converged
+          ? {
               status: "succeeded",
               finished_at: new Date().toISOString(),
-              last_error_category: partial ? "partial" : null,
-              last_error_message: partial ? "Envio parcial: há campos ainda sem confirmação no site." : null,
-              checkpoint: partial ? { partial: true } : null,
-            });
+              last_error_category: null,
+              last_error_message: null,
+            }
+          : superseded
+            ? {
+                status: "cancelled",
+                finished_at: new Date().toISOString(),
+                last_error_message: "Absorvido por decisão ou revisão mais recente.",
+              }
+            : blockedImage
+              ? {
+                  status: "failed",
+                  finished_at: new Date().toISOString(),
+                  last_error_category: "validation",
+                  last_error_message: "Uma foto ativa exige correção do arquivo ou processamento; uma nova revisão será retomada automaticamente.",
+                }
+            : businessConflict
+              ? {
+                  status: "failed",
+                  finished_at: new Date().toISOString(),
+                  last_error_category: "business",
+                  last_error_message: "Conflito de anúncios no site exige decisão administrativa.",
+                }
+              : {
+                  status: "retry",
+                  attempts: Math.min(job.attempts, Math.max(0, job.max_attempts - 1)),
+                  next_run_at: new Date(Date.now() + nextDelay * 1000).toISOString(),
+                  last_error_category: "partial",
+                  last_error_message: `Confirmação pendente (${outcomeStatus ?? "sem estado"}); retomada automática.`,
+                });
       await logAttempt(admin, job, {
         step: job.action,
-        ok: true,
+        ok: converged,
         durationMs: Date.now() - started,
         errorMessage: owned ? undefined : "Lease perdido: conclusão registrada por outra execução.",
       });
       results.push({ jobId: job.id, provider: job.provider, staleLease: !owned, ...outcome });
     } catch (error) {
+      if (error instanceof ObsoleteIntentError) {
+        const owned = await finishJob(admin, job, {
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+          last_error_message: error.message,
+        });
+        results.push({ jobId: job.id, provider: job.provider, status: owned ? "superseded" : "lease_lost" });
+        continue;
+      }
       // Posse perdida: outra execução é dona do trabalho. Nada é gravado aqui —
       // nem conclusão, nem erro na publicação — para não sobrescrever o estado atual.
       if (error instanceof LeaseLostError) {
@@ -1583,11 +1801,17 @@ export async function runSyncWorker(
       const waitSeconds = rateLimited
         ? Math.max(15, normalized.retryAfterSeconds ?? 30)
         : backoffSeconds(job.attempts);
-      const canRetry = rateLimited || (normalized.retryable && job.attempts < job.max_attempts);
+      // Depois do orçamento normal, falhas técnicas continuam em recuperação
+      // espaçada. 401/403, validação e conflito de negócio só acordam quando
+      // configuração/dado mudar (ou no probe controlado do watchdog).
+      const canRetry = rateLimited || normalized.retryable || normalized.ambiguous;
+      const recoveryDelay = job.attempts >= job.max_attempts ? 3600 : waitSeconds;
       const stillOwned = await finishJob(admin, job, {
         status: canRetry ? "retry" : "failed",
-        attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
-        next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
+        attempts: rateLimited || (canRetry && job.attempts >= job.max_attempts)
+          ? Math.min(Math.max(0, job.attempts - 1), Math.max(0, job.max_attempts - 1))
+          : job.attempts,
+        next_run_at: new Date(Date.now() + recoveryDelay * 1000).toISOString(),
         finished_at: canRetry ? null : new Date().toISOString(),
         last_http_status: normalized.httpStatus,
         last_error_category: normalized.category,
@@ -1599,7 +1823,7 @@ export async function runSyncWorker(
         continue;
       }
 
-      await admin
+      let publicationUpdate = admin
         .from("property_provider_publications")
         .update({
           // Esperando a vez (limite) ou nova tentativa agendada: continua
@@ -1607,11 +1831,16 @@ export async function runSyncWorker(
           status: canRetry ? "pending" : "error",
           last_error_category: normalized.category,
           last_error_message: canRetry
-            ? `${normalized.message} Nova tentativa às ${new Date(Date.now() + waitSeconds * 1000).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })}.`
-            : `${normalized.message} Tentativas esgotadas; use "Tentar de novo".`,
+            ? `${normalized.message} Recuperação automática agendada.`
+            : normalized.message,
         })
         .eq("property_id", job.property_id)
         .eq("provider", job.provider);
+      if (job.publication_intent_revision != null) {
+        publicationUpdate = publicationUpdate.eq("publication_intent_revision", job.publication_intent_revision);
+      }
+      const { error: publicationError } = await publicationUpdate;
+      if (publicationError) throw new Error(publicationError.message);
       await logAttempt(admin, job, {
         step: job.action,
         ok: false,

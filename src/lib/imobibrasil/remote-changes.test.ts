@@ -87,16 +87,29 @@ describe("planRemoteChanges", () => {
     assert.equal(plan.fullyConfirmed, false, "referência não avança com diferença preservada");
   });
 
-  it("em divergência aplica o valor do site e registra o caso", () => {
+  it("em divergência preserva o Gestão e registra o caso", () => {
     const plan = planRemoteChanges({
       publication,
       localRow: { ...localBase, valor: 460000 },
       remote: { ...remoteBase, valor: 480000 },
       remoteHash: "h-conflito",
     });
-    assert.equal(plan.patch["valor"], 480000);
+    assert.equal("valor" in plan.patch, false);
     assert.deepEqual(plan.conflicts.map((c) => c.field), ["valor"]);
     assert.equal(plan.conflicts[0]!.local, 460000);
+    assert.equal(plan.confirmed["valor"], 450000);
+  });
+
+  it("sem base confirmada não importa vazio local como mudança remota segura", () => {
+    const plan = planRemoteChanges({
+      publication: { ...publication, confirmed_field_snapshot: null },
+      localRow: { ...localBase, bairro: null },
+      remote: remoteBase,
+      remoteHash: "h-primeira-leitura",
+    });
+    assert.equal("bairro" in plan.patch, false);
+    assert.ok(plan.conflicts.some((field) => field.field === "bairro"));
+    assert.equal(plan.fullyConfirmed, false);
   });
 
   it("não altera nada quando a leitura é eco do próprio envio", () => {
