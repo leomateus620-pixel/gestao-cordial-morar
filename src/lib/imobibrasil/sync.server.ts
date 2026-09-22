@@ -9,6 +9,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
 import { resolveProviderCodes } from "./catalogs.server";
+import {
+  buildUnpublishPatch,
+  buildUpdatePatch,
+  hasEffectivePatch,
+  type UpdatePatch,
+} from "./update-contract";
 import { extractPublicUrl } from "./public-url";
 
 import {
@@ -62,6 +68,8 @@ export type SyncJob = {
   max_attempts: number;
   /** Identificador exclusivo desta execução: só quem o tem pode concluir o job. */
   lease_token?: string | null;
+  /** Campos locais que o usuário realmente alterou (contrato de alteração). */
+  changed_fields?: string[] | null;
 };
 
 /**
@@ -145,6 +153,18 @@ function backoffSeconds(attempts: number): number {
  * fila com nova data, nunca é cancelado — ao liberar, a intenção atual é
  * reprocessada sozinha.
  */
+/**
+ * Código obrigatório sem correspondência no catálogo do destino (tipo de imóvel,
+ * cidade). Nada é adivinhado: a alteração fica PENDENTE no Gestão com mensagem
+ * acionável e o trabalho volta para a fila — nunca é enviado pela metade.
+ */
+export class MappingPendingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MappingPendingError";
+  }
+}
+
 export class PausedWriteError extends Error {
   constructor(public readonly action: QueueAction) {
     super("Envio de alterações aos sites está pausado. O pedido ficou na fila aguardando liberação.");
@@ -380,34 +400,91 @@ async function hydrateOwnerContact(
   }
 }
 
+/**
+ * Características por DIFERENÇA: insere as novas, mantém as existentes e remove
+ * as retiradas usando o endpoint que desassocia a característica DAQUELE imóvel
+ * (`/imovel/{codigo}/caracteristica/excluir/{codigo}`). O endpoint que apaga a
+ * característica do catálogo global NUNCA é usado.
+ *
+ * Remoção só alcança o que o Gestão confirmou antes: associações feitas no
+ * painel do site não são tocadas. Falha de permissão, validação ou limite marca
+ * a etapa como INCOMPLETA — nunca como sucesso.
+ */
 async function syncCharacteristics(
   admin: Admin,
   job: SyncJob,
   externalId: string,
   desiredCodes: string[],
+  publication: { id: string; characteristic_codes?: unknown },
 ) {
-  if (!desiredCodes.length) return;
-  for (const code of desiredCodes) {
-    try {
-      await imobiRequest(
-        job.provider,
-        `/imovel/${encodeURIComponent(externalId)}/caracteristica/inserir/${encodeURIComponent(code)}`,
-        {
-          method: "POST",
-          extraHeaders: { codigoImovel: externalId, codigoCaracteristica: code },
-          correlationId: job.correlation_id,
-        },
-      );
-    } catch (error) {
-      // Característica já associada não invalida a publicação.
-      await logAttempt(admin, job, {
-        step: "characteristic",
-        ok: false,
-        errorCategory: toImobiError(error).category,
-        errorMessage: toImobiError(error).message,
-      });
-    }
+  const confirmed = Array.isArray(publication.characteristic_codes)
+    ? (publication.characteristic_codes as unknown[]).map((code) => String(code))
+    : [];
+  const desired = Array.from(new Set(desiredCodes.map((code) => String(code))));
+  const toInsert = desired.filter((code) => !confirmed.includes(code));
+  const toRemove = confirmed.filter((code) => !desired.includes(code));
+  if (!toInsert.length && !toRemove.length) {
+    return { inserted: [] as string[], removed: [] as string[], incomplete: false };
   }
+
+  const inserted: string[] = [];
+  const removed: string[] = [];
+  let incomplete = false;
+
+  const call = async (path: string, code: string, step: string) => {
+    try {
+      await imobiRequest(job.provider, path, {
+        method: "POST",
+        extraHeaders: { codigoImovel: externalId, codigoCaracteristica: code },
+        correlationId: job.correlation_id,
+      });
+      return true;
+    } catch (error) {
+      const normalized = toImobiError(error);
+      await logAttempt(admin, job, {
+        step,
+        ok: false,
+        errorCategory: normalized.category,
+        errorMessage: `${step} ${code}: ${normalized.message}`,
+      });
+      return false;
+    }
+  };
+
+  for (const code of toInsert) {
+    const ok = await call(
+      `/imovel/${encodeURIComponent(externalId)}/caracteristica/inserir/${encodeURIComponent(code)}`,
+      code,
+      "characteristic_insert",
+    );
+    if (ok) inserted.push(code);
+    else incomplete = true;
+  }
+
+  for (const code of toRemove) {
+    const ok = await call(
+      `/imovel/${encodeURIComponent(externalId)}/caracteristica/excluir/${encodeURIComponent(code)}`,
+      code,
+      "characteristic_remove",
+    );
+    if (ok) removed.push(code);
+    else incomplete = true;
+  }
+
+  // Conjunto confirmado = o que ficou de fato associado por decisão do Gestão.
+  const nextConfirmed = Array.from(
+    new Set([...confirmed.filter((code) => !removed.includes(code)), ...inserted]),
+  );
+  await admin
+    .from("property_provider_publications")
+    .update({
+      characteristic_codes: nextConfirmed as never,
+      characteristic_synced_at: new Date().toISOString(),
+      characteristic_sync_incomplete: incomplete,
+    })
+    .eq("id", publication.id);
+
+  return { inserted, removed, incomplete };
 }
 
 /**
@@ -596,10 +673,7 @@ export async function processJob(
       resolution.codes,
       { mode: "update" },
     );
-    const payload: Record<string, unknown> = {};
-    for (const key of ["finalidade", "codigoTipoImovel", "referencia", "exibirImovel"]) {
-      if (full[key] !== undefined) payload[key] = full[key];
-    }
+    const payload = buildUnpublishPatch(full);
     assertWriteAllowed("unpublish", updatesPaused);
     await imobiRequest(
       job.provider,
@@ -811,11 +885,19 @@ export async function processJob(
         category: "network",
       });
     }
-    const minimal = buildMinimalUpdate(fullPayload, snapshotBase, { personLinkChanges: [] });
-    payload = minimal.payload;
-    sentKeys = Object.keys(minimal.payload);
+    // Contrato de ALTERAÇÃO: conjunto explícito de mudanças, não cópia do
+    // formulário. Com a lista de campos tocados, limpeza intencional viaja vazia
+    // e campo intocado nem entra no corpo.
+    const patch: UpdatePatch = buildUpdatePatch({
+      full: fullPayload,
+      snapshot: snapshotBase,
+      changedFields: job.changed_fields ?? null,
+    });
+    payload = patch.payload;
+    sentKeys = Object.keys(patch.payload);
+    const minimal = patch;
 
-    if (hasEffectiveChange(minimal)) {
+    if (hasEffectivePatch(patch)) {
       assertWriteAllowed("update", updatesPaused);
       const response = await imobiRequest(
         job.provider,
@@ -831,7 +913,9 @@ export async function processJob(
         step: "update",
         ok: true,
         httpStatus: response.httpStatus,
-        errorMessage: `Alteração mínima: ${minimal.changedKeys.join(", ")}`,
+        errorMessage: `Alteração mínima: ${minimal.changedKeys.join(", ")}${
+          patch.clearedKeys.length ? ` · limpeza explícita: ${patch.clearedKeys.join(", ")}` : ""
+        }`,
       });
     } else {
       sentKeys = [];
@@ -957,7 +1041,13 @@ export async function processJob(
     }
   }
 
-  await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
+  const characteristics = await syncCharacteristics(
+    admin,
+    job,
+    externalId,
+    resolution.characteristicCodes,
+    publication as { id: string; characteristic_codes?: unknown },
+  );
 
   // Verificação remota obrigatória antes de marcar como publicado.
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
