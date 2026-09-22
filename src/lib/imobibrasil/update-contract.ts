@@ -10,7 +10,7 @@
  * Módulo puro, sem I/O — testável isoladamente.
  */
 
-import { buildMinimalUpdate, REQUIRED_UPDATE_KEYS, sameValue, type PayloadSnapshot } from "./payload-diff";
+import { buildMinimalUpdate, PERSON_LINK_KEYS, REQUIRED_UPDATE_KEYS, sameValue, type PayloadSnapshot } from "./payload-diff";
 import type { ImobiPayload } from "./serializers";
 
 export type RemoteFieldSpec = {
