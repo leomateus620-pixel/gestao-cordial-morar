@@ -105,13 +105,14 @@ test("POST de imagem não tem retry automático de rede", () => {
 
 test("erro ambíguo confere a galeria por leitura antes de qualquer novo envio", () => {
   assert.match(source, /isAmbiguousDeliveryError/);
-  assert.match(source, /delivery_confirmed_by_count/);
+  // Confirmação por IDENTIDADE (código novo na galeria), não só por contagem.
+  assert.match(source, /confirmed_by_read/);
   assert.match(source, /status: "delivery_unknown"/);
 });
 
 test("site com mais fotos que o esperado ou 2 destaques nunca fica sincronizado", () => {
   assert.match(source, /const extraRemote =[\s\S]*remoteCount > plan\.expectedCount/);
-  assert.match(source, /multipleCovers\s*\n?\s*\?\s*"remote_multiple_covers"/);
+  assert.match(source, /"remote_multiple_covers"/);
 });
 
 test("media_sync nunca chama o cadastro do imóvel", () => {

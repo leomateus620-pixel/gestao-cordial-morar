@@ -107,6 +107,31 @@ async function finishJob(
   return data === true;
 }
 
+/**
+ * Conclui um trabalho de FOTOS e agenda o acompanhamento na MESMA operação
+ * (`property_media_finish_job`). Antes o agendamento acontecia com o job ainda
+ * em `processing`: a alteração feita durante o envio ficava só marcada e nada a
+ * executava.
+ */
+async function finishMediaJob(admin: Admin, job: SyncJob): Promise<boolean> {
+  const { data, error } = await admin.rpc("property_media_finish_job", {
+    _job_id: job.id,
+    _lease_token: job.lease_token ?? null,
+    _fields: {
+      status: "succeeded",
+      finished_at: new Date().toISOString(),
+      last_error_category: null,
+      last_error_message: null,
+    },
+    _property_id: job.property_id,
+    _provider: job.provider,
+    _processed_revision: job.requested_revision,
+  });
+  if (error) throw new Error(error.message);
+  const payload = (data ?? {}) as { owned?: boolean };
+  return payload.owned !== false;
+}
+
 /** Renova o lease durante trabalhos longos. Falhar aqui nunca derruba o job. */
 export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
   if (!job.lease_token) return true;
@@ -608,7 +633,13 @@ export async function processJob(
       });
     }
     const { syncPropertyMedia } = await import("./media-sync.server");
-    return syncPropertyMedia(admin, job);
+    // Renovação de reserva entre passos: galeria grande é enviada em ciclos sem
+    // perder a posse do trabalho.
+    return syncPropertyMedia(admin, job, {
+      onProgress: async () => {
+        await renewJobLease(admin, job, 180);
+      },
+    });
   }
 
   const property = await loadProperty(admin, job.property_id);
@@ -1312,12 +1343,15 @@ export async function runSyncWorker(
       // do site (era o que devolvia o mesmo trabalho à fila sem concluir).
       await renewJobLease(admin, job, leaseSecondsFor(kind));
       const outcome = await processJob(admin, job, { updatesPaused });
-      const owned = await finishJob(admin, job, {
-        status: "succeeded",
-        finished_at: new Date().toISOString(),
-        last_error_category: null,
-        last_error_message: null,
-      });
+      const owned =
+        job.action === "media_sync"
+          ? await finishMediaJob(admin, job)
+          : await finishJob(admin, job, {
+              status: "succeeded",
+              finished_at: new Date().toISOString(),
+              last_error_category: null,
+              last_error_message: null,
+            });
       await logAttempt(admin, job, {
         step: job.action,
         ok: true,

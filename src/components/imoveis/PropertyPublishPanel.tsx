@@ -33,10 +33,13 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
 };
 
 /**
- * Aviso discreto sobre as FOTOS. O site só oferece listar e inserir imagem —
- * não há recurso para reordenar, trocar o destaque ou excluir foto já enviada.
- * Quando a organização interna não pode ser reproduzida lá, isso é dito com
- * clareza em vez de aparecer como "sincronizado".
+ * Aviso sobre as FOTOS, com estados distintos para cada etapa: salvo aqui,
+ * esperando a marca d'água, esperando envio, exclusão pendente, substituição em
+ * andamento, ordem sendo refeita, entrega sem confirmação e confirmado no site.
+ *
+ * Desde 22/09/2026 o site aceita excluir foto por código, então ordem e capa são
+ * refeitas automaticamente (apagando e reinserindo a partir dos arquivos
+ * guardados aqui). Só o que realmente não é possível aparece como limitação.
  */
 function mediaNote(media: {
   status: string | null;
@@ -51,29 +54,53 @@ function mediaNote(media: {
           media.remoteCount != null ? `, ${media.remoteCount} no site` : ""
         })`
       : "";
+
+  switch (media.status) {
+    case "waiting_watermark":
+      return `Fotos salvas aqui · esperando a marca d'água antes do envio${counts}`;
+    case "pending_delete":
+      return `Exclusão de foto pendente no site · a foto é mantida aqui até a remoção ser confirmada${counts}`;
+    case "rebuilding":
+      return `Refazendo a ordem das fotos no site · as fotos são reenviadas na sequência correta${counts}`;
+    case "remote_read_unreliable":
+      return `Não foi possível ler a galeria do site agora · nada é enviado nem apagado sem essa conferência${counts}`;
+    default:
+      break;
+  }
+
   switch (media.orderGuarantee) {
-    case "remote_order_mismatch":
-      return `Ordem salva no Gestão · o site não permite reordenar fotos já publicadas${counts}`;
-    case "remote_cover_mismatch":
-      return `Capa salva no Gestão · o site não permite trocar a foto de destaque já publicada${counts}`;
     case "remote_multiple_covers":
-      return `O site tem mais de uma foto em destaque · isso pode repetir o imóvel na listagem e precisa ser corrigido no painel do site${counts}`;
+      return `O site tem mais de uma foto em destaque · a correção é feita na próxima organização das fotos${counts}`;
     case "remote_content_drift":
-      return `Foto editada no Gestão · o site não permite substituir foto já publicada${counts}`;
+      return `Foto editada aqui · para trocar a imagem no site use "substituir foto"${counts}`;
     case "delivery_unknown":
       return `Envio de foto sem confirmação do site · nada será reenviado antes de conferir a galeria${counts}`;
-    case "remote_delete_unsupported":
-      return `Foto removida no Gestão · o site não permite excluir foto já publicada${counts}`;
+    case "exclusao_pendente":
+      return `Exclusão de foto ainda não confirmada pelo site · será repetida automaticamente${counts}`;
+    case "exclusao_nao_confirmada":
+      return `O site não confirmou a remoção de uma foto · nova tentativa em andamento${counts}`;
+    case "ordem_em_reconstrucao":
+    case "reinsercao_interrompida":
+      return `Ordem das fotos sendo refeita no site · continua de onde parou${counts}`;
+    case "fotos_antigas_sobrando":
+      return `Há fotos antigas no site além das atuais · elas ficam listadas para você decidir${counts}`;
+    case "formato_desconhecido":
+    case "paginacao_incompleta":
+    case "falha_consulta":
+    case "leitura_inconclusiva":
+      return `A galeria do site não pôde ser conferida agora · nada é apagado nesse caso${counts}`;
     case "pending":
       return `Envio de fotos em andamento${counts}`;
     case "insercao_sem_verificacao":
       return `Fotos enviadas · não foi possível conferir a galeria do site agora${counts}`;
+    case "ordem_confirmada_por_leitura":
     case "insercao_verificada_por_quantidade":
-      return `Fotos conferidas com o site${counts}`;
+      return `Fotos e ordem confirmadas no site${counts}`;
     default:
       return null;
   }
 }
+
 
 export function PropertyPublishPanel({
   propertyId,

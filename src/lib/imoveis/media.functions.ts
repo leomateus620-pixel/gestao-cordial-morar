@@ -99,10 +99,12 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
 }
 
 async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[]> {
+  // Foto em exclusão pendente nos sites já não faz parte da galeria do Gestão.
   const { data, error } = await supabase
     .from("property_images")
     .select(IMAGE_COLUMNS)
     .eq("property_id", propertyId)
+    .eq("pending_remote_delete", false)
     .order("position", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as ImageRow[];
@@ -214,7 +216,12 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ images: PropertyImage[]; duplicated: boolean; resumed: boolean }> => {
+    }): Promise<{
+      images: PropertyImage[];
+      duplicated: boolean;
+      resumed: boolean;
+      imageId: string | null;
+    }> => {
       const rows = await listRows(context.supabase, data.propertyId);
 
       // Versão com marca vinda do navegador: só vale se estiver mesmo no Storage.
@@ -271,6 +278,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           ),
           duplicated: true,
           resumed: incomplete && Boolean(ready),
+          imageId: (duplicate?.id as string) ?? null,
         };
       }
 
@@ -322,6 +330,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
         ),
         duplicated: false,
         resumed: false,
+        imageId: newId,
       };
     },
   );
@@ -556,8 +565,13 @@ export const reorderPropertyImages = createServerFn({ method: "POST" })
 
 
 /**
- * Remove a foto: o arquivo só sai do Storage depois que o registro é apagado,
- * e a capa é reatribuída para a primeira foto restante.
+ * Remove a foto.
+ *
+ * Correção 22/09/2026: quando a foto já foi enviada a algum site, o registro e o
+ * arquivo NÃO são apagados de imediato. A foto sai da galeria do Gestão, cada
+ * destino ganha um pedido de exclusão e só depois da confirmação em todos eles o
+ * registro e os arquivos são apagados (`purgeFullyDeletedImages`). Isso permite
+ * repetir a exclusão sem perder a referência da foto.
  */
 export const deletePropertyImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -567,28 +581,118 @@ export const deletePropertyImage = createServerFn({ method: "POST" })
     const target = rows.find((r) => r.id === data.imageId);
     if (!target) return signImages(context.supabase, rows);
 
-    const { error } = await context.supabase
-      .from("property_images")
-      .delete()
-      .eq("id", data.imageId)
-      .eq("property_id", data.propertyId);
-    if (error) throw new Error(error.message);
-    const removable = [
-      target.storage_path,
-      target.original_storage_path,
-      target.processed_storage_path,
-      target.thumbnail_storage_path,
-    ].filter((path, index, all): path is string => Boolean(path) && all.indexOf(path) === index);
-    await context.supabase.storage.from(BUCKET).remove(removable);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: links } = await supabaseAdmin
+      .from("property_image_provider_publications")
+      .select("id, publication_id, deleted_at")
+      .eq("image_id", data.imageId);
+    const pendingRemote = (links ?? []).filter((row) => !row.deleted_at);
+
+    if (pendingRemote.length > 0) {
+      await supabaseAdmin
+        .from("property_image_provider_publications")
+        .update({
+          desired_state: "absent",
+          pending_delete_at: new Date().toISOString(),
+          status: "pending_delete",
+          attempts: 0,
+          next_retry_at: null,
+        })
+        .in(
+          "id",
+          pendingRemote.map((row) => row.id as string),
+        );
+      await supabaseAdmin
+        .from("property_images")
+        .update({ pending_remote_delete: true, is_cover: false })
+        .eq("id", data.imageId)
+        .eq("property_id", data.propertyId);
+    } else {
+      const { error } = await context.supabase
+        .from("property_images")
+        .delete()
+        .eq("id", data.imageId)
+        .eq("property_id", data.propertyId);
+      if (error) throw new Error(error.message);
+      const removable = [
+        target.storage_path,
+        target.original_storage_path,
+        target.processed_storage_path,
+        target.thumbnail_storage_path,
+      ].filter((path, index, all): path is string => Boolean(path) && all.indexOf(path) === index);
+      await context.supabase.storage.from(BUCKET).remove(removable);
+    }
 
     // Renumera 0..N-1 e devolve a capa para a primeira foto restante.
     await context.supabase.rpc("property_images_normalize", { _property_id: data.propertyId });
-    // Exclusão local aciona a reconciliação da galeria nos sites. A API do
-    // provedor não oferece remoção de imagem: o que sobrar remotamente fica
-    // registrado como divergência de mídia na publicação.
+    // Exclusão local vira exclusão nos sites pelo endpoint oficial por código.
     await queueMedia(data.propertyId, context.userId);
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
+
+/**
+ * Substitui uma foto por outra já cadastrada (upload novo), em passos: a nova
+ * assume a posição da antiga e a antiga entra em exclusão pendente. A foto
+ * original é preservada até a confirmação da remoção em todos os sites.
+ */
+export const replacePropertyImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string; oldImageId: string; newImageId: string }) => data)
+  .handler(async ({ data, context }): Promise<PropertyImage[]> => {
+    const rows = await listRows(context.supabase, data.propertyId);
+    const old = rows.find((row) => row.id === data.oldImageId);
+    const fresh = rows.find((row) => row.id === data.newImageId);
+    if (!old || !fresh) return signImages(context.supabase, rows);
+
+    const orderedIds = rows
+      .map((row) => row.id as string)
+      .filter((id) => id !== data.newImageId)
+      .flatMap((id) => (id === data.oldImageId ? [data.newImageId, id] : [id]));
+    const { error: orderError } = await context.supabase.rpc("reorder_property_images", {
+      _property_id: data.propertyId,
+      _ids: orderedIds,
+    });
+    if (orderError) throw new Error(orderError.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: links } = await supabaseAdmin
+      .from("property_image_provider_publications")
+      .select("id, deleted_at")
+      .eq("image_id", data.oldImageId);
+    const pendingRemote = (links ?? []).filter((row) => !row.deleted_at);
+    if (pendingRemote.length > 0) {
+      await supabaseAdmin
+        .from("property_image_provider_publications")
+        .update({
+          desired_state: "absent",
+          pending_delete_at: new Date().toISOString(),
+          status: "pending_delete",
+          replacement_of_image_id: data.newImageId,
+          attempts: 0,
+          next_retry_at: null,
+        })
+        .in(
+          "id",
+          pendingRemote.map((row) => row.id as string),
+        );
+      await supabaseAdmin
+        .from("property_images")
+        .update({ pending_remote_delete: true, is_cover: false })
+        .eq("id", data.oldImageId)
+        .eq("property_id", data.propertyId);
+    } else {
+      await context.supabase
+        .from("property_images")
+        .delete()
+        .eq("id", data.oldImageId)
+        .eq("property_id", data.propertyId);
+    }
+
+    await context.supabase.rpc("property_images_normalize", { _property_id: data.propertyId });
+    await queueMedia(data.propertyId, context.userId);
+    return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
+  });
+
 
 /**
  * Prepara o reprocessamento das fotos travadas: o runtime publicado não pode

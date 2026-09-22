@@ -12,6 +12,7 @@ import {
   preparePropertyImageReprocess,
   registerPropertyImage,
   reorderPropertyImages,
+  replacePropertyImage,
   reportPropertyImageBatchFailure,
   setPropertyImageCover,
   setPropertyPublishTargets,
@@ -94,6 +95,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
   const removeFn = useServerFn(deletePropertyImage);
+  const replaceFn = useServerFn(replacePropertyImage);
   const prepareRetryFn = useServerFn(preparePropertyImageReprocess);
   const finalizeRetryFn = useServerFn(finalizePropertyImageReprocess);
   const targetsFn = useServerFn(setPropertyPublishTargets);
@@ -185,6 +187,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
         progress: 100,
         status: result.resumed ? "retomada" : result.duplicated ? "duplicada" : "pronta",
       });
+      return result.imageId;
     },
     [createUrl, patch, propertyId, register],
   );
@@ -472,6 +475,40 @@ export function usePropertyMedia(propertyId: string | undefined) {
   });
 
   /**
+   * Substitui uma foto: a nova sobe, assume a posição da antiga e a antiga entra
+   * em exclusão pendente nos sites (a original é preservada até a confirmação).
+   */
+  const replace = useMutation({
+    mutationFn: async ({ imageId, file }: { imageId: string; file: File }) => {
+      if (!propertyId) throw new Error("Salve o imóvel antes de trocar fotos.");
+      const key = `replace-${imageId}-${crypto.randomUUID().slice(0, 8)}`;
+      filesByKey.current.set(key, file);
+      setProgress((items) => [
+        ...items,
+        {
+          key,
+          name: file.name,
+          previewUrl: URL.createObjectURL(file),
+          status: "preparando" as UploadItemStatus,
+          progress: 0,
+        },
+      ]);
+      const newImageId = await sendOne(key, file);
+      if (!newImageId) throw new Error("A nova foto não pôde ser registrada.");
+      await replaceFn({
+        data: { propertyId, oldImageId: imageId, newImageId },
+      });
+      await runProviderSync(propertyId);
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Foto substituída. A troca nos sites acontece em seguida.");
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Não foi possível substituir a foto."),
+  });
+
+  /**
    * Refaz a marca-d'água no navegador a partir do original guardado.
    * O processador do servidor não pode rodar no ambiente publicado, então o
    * ajuste acontece aqui — automaticamente, sem o usuário pedir.
@@ -586,6 +623,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
 
 
     remove,
+    replace,
     retryWatermark,
     autoHealWatermarks,
     updateTargets,

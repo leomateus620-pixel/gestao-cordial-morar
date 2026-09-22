@@ -2616,64 +2616,88 @@ export type Database = {
           attempts: number
           content_hash: string | null
           created_at: string
+          deleted_at: string | null
           delivery_file_name: string | null
+          desired_state: string
           error_class: string | null
           external_image_id: string | null
           id: string
           image_id: string
           is_cover: boolean
           last_error_message: string | null
+          last_op: string | null
+          last_op_state: string | null
           next_retry_at: string | null
+          pending_delete_at: string | null
           provider: Database["public"]["Enums"]["imobi_provider"]
           publication_id: string
           remote_destaque: boolean | null
           remote_url: string | null
+          replacement_of_image_id: string | null
           status: string
           synced_at: string | null
           synced_position: number | null
           updated_at: string
+          verification: Json | null
+          verified_at: string | null
         }
         Insert: {
           attempts?: number
           content_hash?: string | null
           created_at?: string
+          deleted_at?: string | null
           delivery_file_name?: string | null
+          desired_state?: string
           error_class?: string | null
           external_image_id?: string | null
           id?: string
           image_id: string
           is_cover?: boolean
           last_error_message?: string | null
+          last_op?: string | null
+          last_op_state?: string | null
           next_retry_at?: string | null
+          pending_delete_at?: string | null
           provider: Database["public"]["Enums"]["imobi_provider"]
           publication_id: string
           remote_destaque?: boolean | null
           remote_url?: string | null
+          replacement_of_image_id?: string | null
           status?: string
           synced_at?: string | null
           synced_position?: number | null
           updated_at?: string
+          verification?: Json | null
+          verified_at?: string | null
         }
         Update: {
           attempts?: number
           content_hash?: string | null
           created_at?: string
+          deleted_at?: string | null
           delivery_file_name?: string | null
+          desired_state?: string
           error_class?: string | null
           external_image_id?: string | null
           id?: string
           image_id?: string
           is_cover?: boolean
           last_error_message?: string | null
+          last_op?: string | null
+          last_op_state?: string | null
           next_retry_at?: string | null
+          pending_delete_at?: string | null
           provider?: Database["public"]["Enums"]["imobi_provider"]
           publication_id?: string
           remote_destaque?: boolean | null
           remote_url?: string | null
+          replacement_of_image_id?: string | null
           status?: string
           synced_at?: string | null
           synced_position?: number | null
           updated_at?: string
+          verification?: Json | null
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -2707,6 +2731,7 @@ export type Database = {
           orientation_override: string | null
           original_checksum: string | null
           original_storage_path: string | null
+          pending_remote_delete: boolean
           position: number
           processed_at: string | null
           processed_checksum: string | null
@@ -2741,6 +2766,7 @@ export type Database = {
           orientation_override?: string | null
           original_checksum?: string | null
           original_storage_path?: string | null
+          pending_remote_delete?: boolean
           position?: number
           processed_at?: string | null
           processed_checksum?: string | null
@@ -2775,6 +2801,7 @@ export type Database = {
           orientation_override?: string | null
           original_checksum?: string | null
           original_storage_path?: string | null
+          pending_remote_delete?: boolean
           position?: number
           processed_at?: string | null
           processed_checksum?: string | null
@@ -3108,6 +3135,7 @@ export type Database = {
           media_expected_count: number | null
           media_failed_count: number | null
           media_order_guarantee: string | null
+          media_rebuild_state: Json | null
           media_remote_count: number | null
           media_status: string | null
           media_synced_count: number | null
@@ -3165,6 +3193,7 @@ export type Database = {
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
+          media_rebuild_state?: Json | null
           media_remote_count?: number | null
           media_status?: string | null
           media_synced_count?: number | null
@@ -3222,6 +3251,7 @@ export type Database = {
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
+          media_rebuild_state?: Json | null
           media_remote_count?: number | null
           media_status?: string | null
           media_synced_count?: number | null
@@ -5414,6 +5444,17 @@ export type Database = {
       }
       property_media_finish: {
         Args: {
+          _processed_revision: number
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Returns: Json
+      }
+      property_media_finish_job: {
+        Args: {
+          _fields: Json
+          _job_id: string
+          _lease_token: string
           _processed_revision: number
           _property_id: string
           _provider: Database["public"]["Enums"]["imobi_provider"]
