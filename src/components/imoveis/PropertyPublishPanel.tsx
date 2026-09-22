@@ -218,6 +218,22 @@ export function PropertyPublishPanel({
                 )}
               </div>
 
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {stateChips.map((chip) => (
+                  <span
+                    key={chip.label}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      chip.on ? chip.className : "bg-foreground/6 text-foreground/35"
+                    }`}
+                  >
+                    {chip.on ? "● " : "○ "}
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+
+
+
               {row?.lastErrorMessage && (
                 <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-destructive/8 p-2 text-[11px] text-destructive">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0" />
