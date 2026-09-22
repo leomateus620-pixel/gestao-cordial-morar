@@ -41,10 +41,25 @@ export function leaseSecondsFor(kind: WorkerKind): number {
   return kind === "media" ? 600 : 120;
 }
 
-/** Trava de segurança de 10/09/2026: alteração cadastral segue bloqueada. */
-export function shouldCancelForPause(action: QueueAction, updatesPaused: boolean): boolean {
-  return updatesPaused && action === "update";
+/**
+ * Trava de alterações: quando ligada, nenhuma alteração cadastral é escrita no
+ * site. A checagem é feita com a AÇÃO EFETIVA (um `publish` de imóvel que já
+ * existe é uma alteração) e imediatamente antes da escrita externa.
+ */
+export function isWriteBlockedByPause(action: QueueAction, updatesPaused: boolean): boolean {
+  return updatesPaused && (action === "update" || action === "unpublish");
 }
+
+/**
+ * Trabalho bloqueado pela pausa fica RETOMÁVEL (`retry`), nunca cancelado: ao
+ * liberar, a intenção atual de cada imóvel/destino volta sozinha para a fila.
+ */
+export function shouldDeferForPause(action: QueueAction, updatesPaused: boolean): boolean {
+  return isWriteBlockedByPause(action, updatesPaused);
+}
+
+/** Espera curta e previsível enquanto a pausa estiver ligada. */
+export const PAUSE_DEFER_SECONDS = 900;
 
 export function isLeaseExpired(
   job: { status: string; lock_expires_at: string | null },

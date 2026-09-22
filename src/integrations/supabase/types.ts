@@ -3089,6 +3089,8 @@ export type Database = {
           last_media_synced_at: string | null
           last_media_verified_at: string | null
           last_payload_hash: string | null
+          last_payload_snapshot: Json | null
+          last_payload_synced_at: string | null
           last_published_hash: string | null
           last_synced_at: string | null
           last_synced_revision: number | null
@@ -3139,6 +3141,8 @@ export type Database = {
           last_media_synced_at?: string | null
           last_media_verified_at?: string | null
           last_payload_hash?: string | null
+          last_payload_snapshot?: Json | null
+          last_payload_synced_at?: string | null
           last_published_hash?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
@@ -3189,6 +3193,8 @@ export type Database = {
           last_media_synced_at?: string | null
           last_media_verified_at?: string | null
           last_payload_hash?: string | null
+          last_payload_snapshot?: Json | null
+          last_payload_synced_at?: string | null
           last_published_hash?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
@@ -5437,6 +5443,13 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      property_sync_coalesce_resume: {
+        Args: never
+        Returns: {
+          dropped: number
+          kept: string
+        }[]
       }
       property_sync_reclaim_stale: { Args: never; Returns: number }
       provider_rate_acquire: {

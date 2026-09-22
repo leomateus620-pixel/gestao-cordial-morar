@@ -18,7 +18,6 @@ import { extractExternalId, imobiRequest } from "./client.server";
 import { toImobiError } from "./errors";
 import { boolToImageSimNao } from "./serializers";
 import { fetchPropertyImages } from "./read.server";
-import { acquireProviderSlot } from "./rate-limit.server";
 import type { ImobiProvider } from "./providers";
 import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
 import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
@@ -183,7 +182,6 @@ export async function deliverGallery(
    */
   async function readRemoteGallery(): Promise<RemoteGallerySnapshot | null> {
     try {
-      await acquireProviderSlot(admin, provider);
       const remote = await fetchPropertyImages(provider, externalId, correlationId);
       return analyzeRemoteGallery(remote as unknown as Record<string, unknown>[]);
     } catch {
@@ -227,7 +225,6 @@ export async function deliverGallery(
     });
 
     try {
-      await acquireProviderSlot(admin, provider);
       const deliveryPath = image.processed_storage_path ?? image.storage_path;
       const delivery = await fetchDeliveryBytes(admin, BUCKET, deliveryPath);
       const form = new FormData();

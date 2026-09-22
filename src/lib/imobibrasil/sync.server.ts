@@ -19,12 +19,21 @@ import {
 } from "./serializers";
 import type { ImobiProvider } from "./providers";
 import {
+  PAUSE_DEFER_SECONDS,
   claimActionsFor,
   claimLimitFor,
+  isWriteBlockedByPause,
   leaseSecondsFor,
-  shouldCancelForPause,
+  type QueueAction,
   type WorkerKind,
 } from "./queue-policy";
+import {
+  buildMinimalUpdate,
+  hasEffectiveChange,
+  isKnownLink,
+  remoteToPayloadSnapshot,
+  type PayloadSnapshot,
+} from "./payload-diff";
 import { providerExternalCode } from "./provider-code";
 import {
   canCreateAfterAmbiguity,
@@ -78,6 +87,32 @@ async function logAttempt(
 
 function backoffSeconds(attempts: number): number {
   return Math.min(3600, 60 * 2 ** Math.max(0, attempts - 1));
+}
+
+/**
+ * Pausa das alterações: sinalizada como ESTADO RETOMÁVEL. O job volta para a
+ * fila com nova data, nunca é cancelado — ao liberar, a intenção atual é
+ * reprocessada sozinha.
+ */
+export class PausedWriteError extends Error {
+  constructor(public readonly action: QueueAction) {
+    super("Envio de alterações aos sites está pausado. O pedido ficou na fila aguardando liberação.");
+    this.name = "PausedWriteError";
+  }
+}
+
+/**
+ * Última barreira antes de QUALQUER escrita externa, já com a ação efetiva
+ * resolvida (um `publish` de imóvel existente é alteração e também é barrado).
+ */
+/** Primeiro vínculo realmente conhecido. `0`, vazio ou ausente => nunca enviado. */
+function firstKnownLink(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) if (isKnownLink(value)) return String(value).trim();
+  return null;
+}
+
+function assertWriteAllowed(action: QueueAction, updatesPaused: boolean) {
+  if (isWriteBlockedByPause(action, updatesPaused)) throw new PausedWriteError(action);
 }
 
 /**
@@ -191,7 +226,7 @@ async function loadPersonLinks(
   externalId: string,
   publication: Record<string, unknown>,
   correlationId: string,
-): Promise<RemotePersonLinks> {
+): Promise<{ links: RemotePersonLinks; remote: Record<string, unknown> | null }> {
   const stored: RemotePersonLinks = {};
   const storedOwner = String(publication["remote_codigo_proprietario"] ?? "").trim();
   const storedBroker = String(publication["remote_codigo_corretor"] ?? "").trim();
@@ -201,9 +236,10 @@ async function loadPersonLinks(
   if (storedExtra) stored.codigoUsuarioAdicional = storedExtra;
 
   let remoteLinks: RemotePersonLinks = {};
+  let remoteState: Record<string, unknown> | null = null;
   try {
-    const remote = await verifyRemote(provider, externalId, correlationId);
-    remoteLinks = pickPersonLinks(remote);
+    remoteState = await verifyRemote(provider, externalId, correlationId);
+    remoteLinks = pickPersonLinks(remoteState);
   } catch {
     // Falha de leitura nunca trava o envio: seguimos com a cópia local.
   }
@@ -222,7 +258,7 @@ async function loadPersonLinks(
       .eq("id", publication["id"] as string);
   }
 
-  return merged;
+  return { links: merged, remote: remoteState };
 }
 
 /** Traz nome/telefone/e-mail do proprietário do site para a ficha interna, só em campos vazios. */
@@ -392,7 +428,12 @@ async function ensureProviderCode(
 }
 
 
-export async function processJob(admin: Admin, job: SyncJob) {
+export async function processJob(
+  admin: Admin,
+  job: SyncJob,
+  options: { updatesPaused?: boolean } = {},
+) {
+  const updatesPaused = options.updatesPaused === true;
   // Mídia é um caminho totalmente separado do cadastro: sai daqui antes de
   // qualquer leitura/gravação cadastral (código do provedor, catálogos,
   // vínculos de proprietário/corretor) e nunca chama `/imovel/alterar`.
@@ -451,26 +492,18 @@ export async function processJob(admin: Admin, job: SyncJob) {
       await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
-    const links = await loadPersonLinks(
-      admin,
-      job.provider,
-      publication.external_property_id,
-      publication,
-      job.correlation_id,
-    );
-    const payload = serializeProperty(
+    // Retirada do site é ALTERAÇÃO MÍNIMA: só o campo de exibição e os
+    // obrigatórios do contrato. Nada mais é reenviado — omitir preserva.
+    const full = serializeProperty(
       { ...property, referencia: reference, exibir_imovel: false },
-      {
-        ...resolution.codes,
-        codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
-        codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
-        codigoUsuarioAdicional:
-          resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
-      },
-      {
-        mode: "update",
-      },
+      resolution.codes,
+      { mode: "update" },
     );
+    const payload: Record<string, unknown> = {};
+    for (const key of ["finalidade", "codigoTipoImovel", "referencia", "exibirImovel"]) {
+      if (full[key] !== undefined) payload[key] = full[key];
+    }
+    assertWriteAllowed("unpublish", updatesPaused);
     await imobiRequest(
       job.provider,
       `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
@@ -607,11 +640,14 @@ export async function processJob(admin: Admin, job: SyncJob) {
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
-  // Antes de alterar, recupera os vínculos que já existem no site e devolve-os no
-  // mesmo envio — o provedor apaga tudo que não vier no corpo da alteração.
-  const links = externalId
+  // Leitura do estado remoto antes de alterar: serve para (a) conhecer os
+  // vínculos que o site já tem e (b) montar o ponto de partida do imóvel antigo
+  // que ainda não tem snapshot local. Vínculo nunca é reenviado por padrão:
+  // omitir preserva (contrato de alteração parcial).
+  const remoteBefore = externalId
     ? await loadPersonLinks(admin, job.provider, externalId, publication, job.correlation_id)
-    : {};
+    : { links: {} as RemotePersonLinks, remote: null };
+  const links = remoteBefore.links;
   await hydrateOwnerContact(
     admin,
     job.provider,
@@ -620,27 +656,55 @@ export async function processJob(admin: Admin, job: SyncJob) {
     links.codigoProprietario,
     job.correlation_id,
   );
-  const payload = serializeProperty(
+  // Na criação os vínculos vão no corpo (o imóvel ainda não existe no site).
+  // Na alteração eles ficam de fora: proprietário, corretor e usuário adicional
+  // só mudam por pedido explícito, e desconhecido nunca vira zero.
+  const fullPayload = serializeProperty(
     { ...property, referencia: reference },
-    {
-      ...resolution.codes,
-      codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
-      codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
-      codigoUsuarioAdicional:
-        resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
-    },
-    {
-      mode,
-    },
+    mode === "insert"
+      ? {
+          ...resolution.codes,
+          codigoProprietario: firstKnownLink(
+            resolution.codes.codigoProprietario,
+            links.codigoProprietario,
+          ),
+          codigoCorretor: firstKnownLink(resolution.codes.codigoCorretor, links.codigoCorretor),
+          codigoUsuarioAdicional: firstKnownLink(
+            resolution.codes.codigoUsuarioAdicional,
+            links.codigoUsuarioAdicional,
+          ),
+        }
+      : { ...resolution.codes, codigoProprietario: null, codigoCorretor: null, codigoUsuarioAdicional: null },
+    { mode },
   );
-  const payloadHash = hashPayload(payload);
+
+  let payload: Record<string, unknown> = fullPayload;
+  let snapshotBase: PayloadSnapshot | null = null;
+  let sentKeys: string[] = [];
 
   if (externalId) {
-    const unchanged =
-      publication.last_payload_hash === payloadHash &&
-      publication.last_synced_revision === (property.revision ?? 1) &&
-      publication.status === "published";
-    if (!unchanged) {
+    const stored = (publication["last_payload_snapshot"] ?? null) as PayloadSnapshot | null;
+    snapshotBase =
+      stored && Object.keys(stored).length
+        ? stored
+        : remoteBefore.remote
+          ? remoteToPayloadSnapshot(remoteBefore.remote)
+          : null;
+    if (!stored && !remoteBefore.remote) {
+      // Sem snapshot local e sem leitura do site: não há como saber o que mudou.
+      // Preferimos não escrever nada a arriscar sobrescrever o site.
+      throw new ImobiApiError({
+        message:
+          "Não foi possível ler o imóvel no site para comparar os campos. Nenhuma alteração foi enviada.",
+        category: "network",
+      });
+    }
+    const minimal = buildMinimalUpdate(fullPayload, snapshotBase, { personLinkChanges: [] });
+    payload = minimal.payload;
+    sentKeys = Object.keys(minimal.payload);
+
+    if (hasEffectiveChange(minimal)) {
+      assertWriteAllowed("update", updatesPaused);
       const response = await imobiRequest(
         job.provider,
         `/imovel/alterar/${encodeURIComponent(externalId)}`,
@@ -651,14 +715,27 @@ export async function processJob(admin: Admin, job: SyncJob) {
           correlationId: job.correlation_id,
         },
       );
-      await logAttempt(admin, job, { step: "update", ok: true, httpStatus: response.httpStatus });
+      await logAttempt(admin, job, {
+        step: "update",
+        ok: true,
+        httpStatus: response.httpStatus,
+        errorMessage: `Alteração mínima: ${minimal.changedKeys.join(", ")}`,
+      });
+    } else {
+      sentKeys = [];
+      await logAttempt(admin, job, {
+        step: "update",
+        ok: true,
+        errorMessage: "Nenhum campo mudou desde o último envio confirmado.",
+      });
     }
   } else {
     let response: Awaited<ReturnType<typeof imobiRequest>>;
     try {
+      assertWriteAllowed("publish", updatesPaused);
       response = await imobiRequest(job.provider, "/imovel/inserir", {
         method: "POST",
-        json: payload,
+        json: fullPayload,
         allowRetry: false, // criação nunca sofre retry cego
         correlationId: job.correlation_id,
       });
@@ -779,11 +856,23 @@ export async function processJob(admin: Admin, job: SyncJob) {
   const finalStatus = verified ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
+  // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
+  // Assim a próxima alteração volta a enviar somente a diferença real.
+  const nextSnapshot: PayloadSnapshot =
+    mode === "insert"
+      ? { ...(fullPayload as PayloadSnapshot) }
+      : {
+          ...(snapshotBase ?? {}),
+          ...Object.fromEntries(sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]])),
+        };
+
   await admin
     .from("property_provider_publications")
     .update({
       status: finalStatus,
-      last_payload_hash: payloadHash,
+      last_payload_hash: hashPayload(fullPayload as never),
+      last_payload_snapshot: nextSnapshot,
+      last_payload_synced_at: new Date().toISOString(),
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
@@ -915,26 +1004,8 @@ export async function runSyncWorker(
 
   for (const job of claimed) {
     const started = Date.now();
-    if (shouldCancelForPause(job.action, updatesPaused)) {
-
-      await admin
-        .from("property_sync_jobs")
-        .update({
-          status: "cancelled",
-          finished_at: new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_error_category: "config",
-          last_error_message:
-            "Envio de alterações aos sites temporariamente pausado (apuração do cadastro de proprietário).",
-        })
-        .eq("id", job.id);
-      results.push({ jobId: job.id, provider: job.provider, status: "skipped_paused" });
-      continue;
-    }
     try {
-      const outcome = await processJob(admin, job);
+      const outcome = await processJob(admin, job, { updatesPaused });
       await admin
         .from("property_sync_jobs")
         .update({
@@ -954,6 +1025,25 @@ export async function runSyncWorker(
       });
       results.push({ jobId: job.id, provider: job.provider, ...outcome });
     } catch (error) {
+      // Pausa: o trabalho VOLTA para a fila (retomável), sem consumir tentativa
+      // e sem marcar erro na publicação.
+      if (error instanceof PausedWriteError) {
+        await admin
+          .from("property_sync_jobs")
+          .update({
+            status: "retry",
+            attempts: Math.max(0, job.attempts - 1),
+            next_run_at: new Date(Date.now() + PAUSE_DEFER_SECONDS * 1000).toISOString(),
+            locked_at: null,
+            lock_expires_at: null,
+            locked_by: null,
+            last_error_category: "config",
+            last_error_message: error.message,
+          })
+          .eq("id", job.id);
+        results.push({ jobId: job.id, provider: job.provider, status: "deferred_paused" });
+        continue;
+      }
       const normalized = toImobiError(error);
       const canRetry = normalized.retryable && job.attempts < job.max_attempts;
       await admin
