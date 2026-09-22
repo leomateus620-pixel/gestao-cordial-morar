@@ -13,6 +13,7 @@ import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
 import { RemoteDuplicatesCard } from "@/components/integracoes/RemoteDuplicatesCard";
+import { ProviderOpsPanel } from "@/components/integracoes/ProviderOpsPanel";
 
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
@@ -51,6 +52,8 @@ function Page() {
       <HotspotCleanupCard enabled={isAdmin} />
 
       <RemoteDuplicatesCard enabled={isAdmin} />
+
+      <ProviderOpsPanel enabled={isAdmin} />
 
       <section className="mb-5 grid grid-cols-3 gap-3">
 
