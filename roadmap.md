@@ -104,3 +104,14 @@
 - [x] Varredura automática retoma exclusões pendentes, reconstruções e versões de galeria atrasadas.
 - [x] Estados distintos na tela de publicação, por imobiliária.
 - [ ] Fotos antigas sobrando no site (fora do escopo por decisão): ficam listadas para decisão do usuário, nunca apagadas automaticamente.
+
+## Fechamento da integração Cordial/Morar (22/09/2026)
+- [x] Reconciliação de três estados por campo (tri-state.ts) com a mesma normalização
+- [x] Referência de comparação só avança com confirmação real (fim dos três hashes iguais)
+- [x] Importação incremental preservando edição e limpeza locais; divergência mantém o site e registra o caso
+- [x] Eco do próprio envio (echo_payload_hash) impede ciclo importar → republicar
+- [x] Leitura completa por páginas (ativos/inativos) sem remoção por ausência
+- [x] Painel interno por imobiliária + diagnóstico classificado de duplicações
+- [x] Suíte completa no comando de testes (268 testes) e CI de tipos + testes
+- [x] Docs: IMOBI-ESTADOS-SINCRONIZACAO.md e RELATORIO-INTEGRACAO-FINAL.md
+- [ ] Validação real pendente de autorização: exclusão de foto, arquivamento e simulação de 429/timeout no imóvel de teste
