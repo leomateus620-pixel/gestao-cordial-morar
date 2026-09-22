@@ -193,12 +193,20 @@ export type CodeResolution = {
   codes: ResolvedProviderCodes;
   characteristicCodes: string[];
   unmapped: Array<{ domain: string; value: string }>;
+  /** Mais de um cadastro com o mesmo nome: homônimo nunca é escolhido sozinho. */
+  ambiguous: Array<{ domain: string; value: string; codes: string[] }>;
 };
 
 /**
- * Resolve códigos pelo mapa administrativo confirmado e, na ausência dele,
- * por correspondência normalizada no catálogo do destino. Nada é adivinhado:
- * o que não resolver entra em `unmapped` e o campo opcional é omitido.
+ * Resolve códigos pelo mapa administrativo confirmado e, para catálogos de
+ * domínio (tipo, cidade, característica), por correspondência normalizada no
+ * catálogo DAQUELE destino.
+ *
+ * PESSOAS (corretor e proprietário) são exceção: nunca resolvidas por nome.
+ * Um vínculo só vale com código confirmado no mapa administrativo daquela conta
+ * — homônimo é risco real e escolher "o primeiro parecido" já trocou pessoa
+ * vinculada no passado. Sem código confirmado, o vínculo fica desconhecido e o
+ * campo simplesmente não viaja (omitir preserva o que o site já tem).
  */
 export async function resolveProviderCodes(
   admin: SupabaseClient,
@@ -222,24 +230,36 @@ export async function resolveProviderCodes(
   for (const row of maps ?? []) {
     mapIndex.set(`${row.domain}:${normalizeLabel(row.local_key)}`, row.external_code);
   }
-  const catalogIndex = new Map<string, string>();
+  const ambiguous: CodeResolution["ambiguous"] = [];
+  const catalogIndex = new Map<string, string[]>();
   for (const row of catalog ?? []) {
     const key = `${row.kind}:${row.normalized_label}`;
-    if (!catalogIndex.has(key)) catalogIndex.set(key, row.external_code);
+    const codes = catalogIndex.get(key);
+    if (codes) {
+      if (!codes.includes(row.external_code)) codes.push(row.external_code);
+    } else {
+      catalogIndex.set(key, [row.external_code]);
+    }
   }
 
   const resolve = (
     domain: "property_type" | "city" | "characteristic" | "area_unit" | "broker" | "owner",
     value?: string | null,
+    options: { allowCatalogByName?: boolean } = {},
   ) => {
     const text = (value ?? "").trim();
     if (!text) return null;
     const normalized = normalizeLabel(text);
     const mapped = mapIndex.get(`${domain}:${normalized}`);
     if (mapped) return mapped;
-    if (domain !== "area_unit") {
-      const fromCatalog = catalogIndex.get(`${domain}:${normalized}`);
-      if (fromCatalog) return fromCatalog;
+    if (domain !== "area_unit" && options.allowCatalogByName !== false) {
+      const found = catalogIndex.get(`${domain}:${normalized}`) ?? [];
+      if (found.length === 1) return found[0]!;
+      if (found.length > 1) {
+        // Homônimo: identificação inequívoca é obrigatória.
+        ambiguous.push({ domain, value: text, codes: found });
+        return null;
+      }
     }
     unmapped.push({ domain, value: text });
     return null;
@@ -247,10 +267,11 @@ export async function resolveProviderCodes(
 
   const codigoTipoImovel = resolve("property_type", property.tipo);
   const codigoCidade = resolve("city", property.cidade);
-  // Controle interno do provedor: só o código do cadastro é aceito. Sem
-  // correspondência, o campo é omitido e a publicação segue normalmente.
-  const codigoCorretor = resolve("broker", property.corretor_nome);
-  const codigoProprietario = resolve("owner", property.proprietario_nome);
+  // Pessoas: apenas por código confirmado da conta correspondente.
+  const codigoCorretor = resolve("broker", property.corretor_nome, { allowCatalogByName: false });
+  const codigoProprietario = resolve("owner", property.proprietario_nome, {
+    allowCatalogByName: false,
+  });
   const areaUnit = (label?: string | null) => resolve("area_unit", label ?? "m2") ?? undefined;
 
   const characteristicCodes: string[] = [];
@@ -273,5 +294,6 @@ export async function resolveProviderCodes(
     },
     characteristicCodes,
     unmapped,
+    ambiguous,
   };
 }
