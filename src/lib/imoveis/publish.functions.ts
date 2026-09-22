@@ -2,11 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
-import { workerCallerSecret } from "@/lib/workers/hook-auth";
   IMOBI_PROVIDER_KEYS,
   isImobiProvider,
   type ImobiProvider,
 } from "@/lib/imobibrasil/providers";
+import { workerCallerSecret } from "@/lib/workers/hook-auth";
 
 export type SyncAction =
   | "publish"
