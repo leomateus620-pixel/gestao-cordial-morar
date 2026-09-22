@@ -156,7 +156,8 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
   });
 
   const fields = (input.changedFields ?? []).map(normalizeLocalField).filter(Boolean);
-  if (!fields.length) {
+  // Sem campos tocados e sem pendência: diferença pura contra o snapshot.
+  if (!fields.length && !(input.pendingKeys ?? []).length) {
     return {
       payload: base.payload,
       changedKeys: base.changedKeys,
