@@ -15,6 +15,6 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - name: Tipos
-        run: bunx tsgo --noEmit -p tsconfig.json
+        run: bun run typecheck
       - name: Testes
         run: bun run test
