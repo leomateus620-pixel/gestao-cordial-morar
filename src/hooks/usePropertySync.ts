@@ -45,7 +45,7 @@ export function useRetryPropertySync(propertyId?: string) {
   const qc = useQueryClient();
   const retry = useServerFn(retryPropertySync);
   return useMutation({
-    mutationFn: (input: { propertyId: string; provider: string }) => retry({ data: input }),
+    mutationFn: (input: { propertyId: string; provider: string; component?: "cadastro" | "fotos" }) => retry({ data: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["property-sync", propertyId] }),
   });
 }

@@ -73,11 +73,11 @@ test("publish/update não aguarda a entrega da galeria", () => {
 });
 
 test("status cadastral não depende de falha de foto", () => {
-  assert.ok(
-    syncSource.includes(
-      'const finalStatus = verified && !fieldVerification.divergent.length ? "published" : "partial";',
-    ),
-  );
+  const match = syncSource.match(/const finalStatus =([\s\S]*?);/);
+  assert.ok(match);
+  // Depende de cadastro e características, nunca das fotos.
+  assert.equal(/media|image|foto/i.test(match![1]!), false);
+  assert.ok(match![1]!.includes("characteristics.incomplete"));
 });
 
 const stripComments = (source: string) =>

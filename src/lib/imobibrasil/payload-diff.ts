@@ -228,6 +228,11 @@ export function remoteToPayloadSnapshot(remote: unknown): PayloadSnapshot {
     put(payloadKey, value > 0 ? String(value) : "");
   }
 
+  // Descrição: a leitura devolve HTML; guardamos a forma comparável.
+  if (typeof source["descricaoImovel"] === "string" || source["descricaoImovel"] === null) {
+    put("descricaoImovel", normalizeRichText(source["descricaoImovel"]));
+  }
+
   const endereco = (source["endereco"] ?? {}) as Record<string, unknown>;
   for (const key of ADDRESS_KEYS) {
     if (!(key in endereco)) continue;
@@ -250,6 +255,43 @@ export function remoteToPayloadSnapshot(remote: unknown): PayloadSnapshot {
   }
 
   return snapshot;
+}
+
+/** Campos de texto rico que o site devolve em HTML (e às vezes com acentos em dupla codificação). */
+export const RICH_TEXT_KEYS = new Set(["descricaoImovel"]);
+
+/**
+ * Texto comparável da descrição: quebras e `<br>` viram quebra única, entidades
+ * numéricas/nomeadas são decodificadas, acentos em dupla codificação (UTF-8 lido
+ * como Latin-1, ex.: "localizaÃ§Ã£o") são reparados e espaços são consolidados.
+ * Só serve para COMPARAR — nunca para gravar.
+ */
+export function normalizeRichText(value: unknown): string {
+  let text = String(value ?? "");
+  if (/Ã.|Â./.test(text)) {
+    try {
+      const bytes = Uint8Array.from(Array.from(text, (ch) => ch.charCodeAt(0) & 0xff));
+      const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      text = repaired;
+    } catch {
+      // não era dupla codificação; mantém
+    }
+  }
+  text = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** Vínculo confiável? `0`, vazio ou ausente significa desconhecido — nunca zero. */

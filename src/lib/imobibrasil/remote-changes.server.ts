@@ -8,6 +8,11 @@
  *  - divergência (os dois lados mudaram) aplica o valor do site (decisão do
  *    usuário em 22/09/2026) e registra o caso em `property_field_conflicts`
  *    com o valor anterior do Gestão, para conferência;
+ *  - divergência ENTRE contas (Cordial e Morar mudaram o mesmo campo de jeitos
+ *    diferentes) mantém o valor do Gestão e registra o caso (scope
+ *    "cross_account"); a ordem das importações não decide;
+ *  - a gravação no imóvel exige a revisão lida: edição salva durante a
+ *    importação nunca é sobrescrita;
  *  - a referência de comparação só avança nos campos realmente iguais;
  *  - eco do próprio envio nunca é tratado como edição externa;
  *  - proprietário, corretor, códigos, fotos, agenda e pontos fortes ficam fora.
@@ -23,6 +28,7 @@ import {
   type TriStateReport,
 } from "./tri-state";
 import type { PayloadSnapshot } from "./payload-diff";
+import { findCrossAccountConflicts } from "./cross-account";
 import type { ImobiProvider } from "./providers";
 
 type Admin = SupabaseClient;
@@ -134,46 +140,118 @@ export async function applyRemoteChanges(
 ): Promise<RemoteChangePlan & { applied: string[] }> {
   const plan = planRemoteChanges(input);
   const now = input.remoteObservedAt ?? new Date().toISOString();
+
+  // Outra conta do mesmo imóvel: divergência entre Cordial e Morar.
+  const { data: others, error: othersError } = await admin
+    .from("property_provider_publications")
+    .select("provider, remote_field_snapshot")
+    .eq("property_id", input.publication.property_id)
+    .neq("provider", input.publication.provider);
+  if (othersError) throw new Error(othersError.message);
+  const other = (others ?? [])[0] as { provider: string; remote_field_snapshot: PayloadSnapshot | null } | undefined;
+  const thisRemote: PayloadSnapshot = Object.fromEntries(
+    plan.report.fields
+      .filter((f) => f.remote !== undefined && f.remote !== null)
+      .map((f) => [f.field, f.remote]),
+  );
+  const cross = plan.echo
+    ? []
+    : findCrossAccountConflicts({
+        fields: Object.keys(plan.patch),
+        thisConfirmed: input.publication.confirmed_field_snapshot,
+        thisRemote,
+        otherRemote: other?.remote_field_snapshot ?? null,
+        local: input.localRow as PayloadSnapshot,
+      });
+  const crossFields = new Set(cross.map((c) => c.field));
+  for (const field of crossFields) {
+    delete plan.patch[field];
+    // Sem confirmação: a referência deste campo continua a anterior.
+    const previous = input.publication.confirmed_field_snapshot?.[field];
+    if (previous === undefined) delete plan.confirmed[field];
+    else plan.confirmed[field] = previous;
+    plan.fullyConfirmed = false;
+  }
+  // Campo em divergência entre contas não entra também como divergência simples.
+  plan.conflicts = plan.conflicts.filter((c) => !crossFields.has(c.field));
   const applied = Object.keys(plan.patch);
 
   if (applied.length) {
-    const { error } = await admin
-      .from("properties")
-      .update(plan.patch)
-      .eq("id", input.publication.property_id);
+    // Controle de revisão: só grava se o imóvel continua na revisão lida.
+    const expectedRevision = input.localRow["revision"];
+    let query = admin.from("properties").update(plan.patch).eq("id", input.publication.property_id);
+    if (typeof expectedRevision === "number") query = query.eq("revision", expectedRevision);
+    const { data: updatedRows, error } = await query.select("id");
     if (error) throw new Error(error.message);
+    if (!updatedRows?.length) {
+      // Alguém salvou no Gestão durante a leitura: nada é gravado e a
+      // importação é repetida com o conteúdo novo.
+      throw new Error("revision_changed: o imóvel foi alterado no Gestão durante a importação; será relido.");
+    }
   }
+
+  const records = [
+    ...plan.conflicts.map((conflict) => ({
+      field: conflict.field,
+      scope: "field",
+      classification: "conflito",
+      confirmed: conflict.confirmed ?? null,
+      local: conflict.local ?? null,
+      remote: conflict.remote ?? null,
+      applied: conflict.remote ?? null,
+    })),
+    ...cross.map((c) => ({
+      field: c.field,
+      scope: "cross_account",
+      classification: "conflito_entre_contas",
+      confirmed: input.publication.confirmed_field_snapshot?.[c.field] ?? null,
+      local: c.local ?? null,
+      remote: { [input.publication.provider]: c.thisRemote, [other?.provider ?? "outra"]: c.otherRemote },
+      applied: c.local ?? null,
+    })),
+  ];
 
   // O índice único só vale para divergências pendentes; resolvidas ficam como
   // histórico. Por isso: atualiza a pendente se existir, senão insere nova.
-  for (const conflict of plan.conflicts) {
+  // O índice único só vale para divergências pendentes; resolvidas ficam como
+  // histórico. Atualiza a pendente se existir, senão insere; corrida com outro
+  // processo (23505) vira atualização da pendente criada por ele.
+  for (const record of records) {
     const values = {
       publication_id: input.publication.id,
-      confirmed_value: (conflict.confirmed ?? null) as never,
-      local_value: (conflict.local ?? null) as never,
-      remote_value: (conflict.remote ?? null) as never,
-      applied_value: (conflict.remote ?? null) as never,
-      classification: "conflito",
+      confirmed_value: record.confirmed as never,
+      local_value: record.local as never,
+      remote_value: record.remote as never,
+      applied_value: record.applied as never,
+      classification: record.classification,
+      detected_revision: typeof input.localRow["revision"] === "number" ? (input.localRow["revision"] as number) : null,
     };
-    const { data: updated, error: updateError } = await admin
-      .from("property_field_conflicts")
-      .update(values)
-      .eq("property_id", input.publication.property_id)
-      .eq("provider", input.publication.provider)
-      .eq("field", conflict.field)
-      .eq("scope", "field")
-      .eq("resolution", "pending")
-      .select("id");
+    const updatePending = () =>
+      admin
+        .from("property_field_conflicts")
+        .update(values)
+        .eq("property_id", input.publication.property_id)
+        .eq("provider", input.publication.provider)
+        .eq("field", record.field)
+        .eq("scope", record.scope)
+        .eq("resolution", "pending")
+        .select("id");
+    const { data: updated, error: updateError } = await updatePending();
     if (updateError) throw new Error(updateError.message);
     if (updated?.length) continue;
     const { error: insertError } = await admin.from("property_field_conflicts").insert({
       ...values,
       property_id: input.publication.property_id,
       provider: input.publication.provider,
-      field: conflict.field,
-      scope: "field",
+      field: record.field,
+      scope: record.scope,
       resolution: "pending",
     });
+    if (insertError && insertError.code === "23505") {
+      const retry = await updatePending();
+      if (retry.error) throw new Error(retry.error.message);
+      continue;
+    }
     if (insertError) throw new Error(insertError.message);
   }
 
@@ -193,10 +271,15 @@ export async function applyRemoteChanges(
             baseline_at: now,
           }
         : { confirmed_field_snapshot: plan.confirmed as never }),
-      conflict_count: plan.conflicts.length,
+      conflict_count: records.length,
       last_imported_at: now,
       last_verified_at: now,
-      ...(plan.conflicts.length
+      ...(cross.length
+        ? {
+            last_error_category: "business",
+            last_error_message: `Cordial e Morar mudaram de jeitos diferentes: ${cross.map((c) => c.field).join(", ")}. O valor do Gestão foi mantido e a diferença está registrada.`,
+          }
+        : plan.conflicts.length
         ? {
             last_error_category: "business",
             last_error_message: `Divergência em: ${plan.conflicts.map((c) => c.field).join(", ")}. O valor da imobiliária foi mantido e a diferença está registrada.`,

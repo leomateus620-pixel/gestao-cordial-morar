@@ -8,6 +8,7 @@
 import { imobiRequest } from "./client.server";
 import { extractList, extractPage, extractRecord, type RemotePage, type RemoteRecord } from "./read-parsers";
 import type { ImobiProvider } from "./providers";
+import { fetchAllPropertyPagesWith, type FullListResult } from "./list-all";
 
 export type { RemotePage, RemoteRecord };
 export { extractList, extractPage, extractRecord };
@@ -31,45 +32,35 @@ export async function fetchPropertyPage(
   return extractPage(response.data, page, perPage);
 }
 
-export type FullListResult = {
-  /** Só é confiável quando TODAS as páginas foram lidas sem falha. */
-  reliable: boolean;
-  reason: "ok" | "paginacao_incompleta" | "falha_consulta";
-  items: RemoteRecord[];
-  pagesRead: number;
-  totalPages: number | null;
-};
-
-const MAX_LIST_PAGES = 200;
+export type { FullListResult } from "./list-all";
 
 /**
  * Lê a lista COMPLETA. Ausência de um imóvel só pode ser considerada real
  * quando `reliable` é verdadeiro — leitura parcial nunca justifica remoção local.
+ * Com `status: "todos"` lê ativos e depois inativos, e só é confiável se as
+ * duas leituras forem completas.
  */
 export async function fetchAllPropertyPages(
   provider: ImobiProvider,
-  options: { perPage?: number; status?: RemoteListStatus; correlationId?: string } = {},
+  options: { perPage?: number; status?: RemoteListStatus | "ativos_e_inativos"; correlationId?: string } = {},
 ): Promise<FullListResult> {
   const perPage = options.perPage ?? 50;
-  const items: RemoteRecord[] = [];
-  let page = 1;
-  let totalPages: number | null = null;
-
-  while (page <= MAX_LIST_PAGES) {
-    let result: RemotePage;
-    try {
-      result = await fetchPropertyPage(provider, page, perPage, options.correlationId, options.status ?? "ativo");
-    } catch {
-      return { reliable: false, reason: "falha_consulta", items, pagesRead: page - 1, totalPages };
-    }
-    items.push(...result.items);
-    totalPages = result.totalPages ?? totalPages;
-    const last = totalPages !== null ? page >= totalPages : result.items.length < perPage;
-    if (last) return { reliable: true, reason: "ok", items, pagesRead: page, totalPages };
-    page += 1;
-  }
-
-  return { reliable: false, reason: "paginacao_incompleta", items, pagesRead: page - 1, totalPages };
+  const readOne = (status: RemoteListStatus) =>
+    fetchAllPropertyPagesWith(
+      (page) => fetchPropertyPage(provider, page, perPage, options.correlationId, status),
+      perPage,
+    );
+  if (options.status !== "ativos_e_inativos") return readOne(options.status ?? "ativo");
+  const ativos = await readOne("ativo");
+  if (!ativos.reliable) return ativos;
+  const inativos = await readOne("inativo");
+  return {
+    reliable: inativos.reliable,
+    reason: inativos.reason,
+    items: [...ativos.items, ...inativos.items],
+    pagesRead: ativos.pagesRead + inativos.pagesRead,
+    totalPages: (ativos.totalPages ?? 0) + (inativos.totalPages ?? 0),
+  };
 }
 
 export async function fetchPropertyDetail(

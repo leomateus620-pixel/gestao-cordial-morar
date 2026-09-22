@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { extractExternalId, hasProviderToken } from "./client.server";
 import { sanitizeMessage, toImobiError } from "./errors";
+import { nextListStep, type ListStatus } from "./list-plan";
 import { fetchPropertyDetail, fetchPropertyImages, fetchPropertyPage } from "./read.server";
 import { buildStablePublicUrl } from "./public-url";
 import {
@@ -182,7 +183,10 @@ export async function startImportRun(
 
 async function processFetchPage(admin: Admin, job: ImportJob) {
   const page = job.page ?? 1;
-  const result = await fetchPropertyPage(job.provider, page, PER_PAGE, job.correlation_id);
+  // Ativos primeiro, depois inativos. Falha na leitura lança erro e o job é
+  // repetido — nunca avança nem conclui ausência.
+  const status: ListStatus = job.payload?.["status"] === "inativo" ? "inativo" : "ativo";
+  const result = await fetchPropertyPage(job.provider, page, PER_PAGE, job.correlation_id, status);
 
   let discovered = 0;
   for (const item of result.items) {
@@ -195,17 +199,20 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
       type: "hydrate_property",
       idempotencyKey: `hydrate:${externalId}`,
       externalPropertyId: externalId,
+      payload: { listStatus: status },
     });
   }
 
   const totalPages = Math.max(result.totalPages, page);
-  if (page < totalPages) {
+  const next = nextListStep({ status, page, totalPages });
+  if (next.kind === "page") {
     await enqueueJob(admin, {
       runId: job.run_id,
       provider: job.provider,
       type: "fetch_page",
-      idempotencyKey: `page:${page + 1}`,
-      page: page + 1,
+      idempotencyKey: next.key,
+      page: next.page,
+      payload: { status: next.status },
     });
   } else {
     await enqueueJob(admin, {
@@ -218,11 +225,11 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
 
   await admin
     .from("property_import_runs")
-    .update({ pages_discovered: totalPages, checkpoint: { lastPage: page, perPage: result.perPage } })
+    .update({ pages_discovered: totalPages, checkpoint: { lastPage: page, status, perPage: result.perPage } })
     .eq("id", job.run_id);
   await bumpRun(admin, job.run_id, { pages_processed: 1, properties_discovered: discovered });
 
-  return { page, discovered, totalPages };
+  return { page, status, discovered, totalPages };
 }
 
 async function loadLocalCandidates(

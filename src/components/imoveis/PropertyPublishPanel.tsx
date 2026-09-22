@@ -102,6 +102,72 @@ function mediaNote(media: {
 }
 
 
+type Row = import("@/lib/imoveis/publish.functions").PublicationStatusView;
+const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR") : null);
+
+/** Cadastro, características e fotos com estados separados por destino. */
+function componentStates(row: Row, running: boolean) {
+  const ok = "text-emerald-700";
+  const warn = "text-amber-700";
+  const bad = "text-destructive";
+  const c = row.cadastro;
+  let cad: [string, string];
+  if (running) cad = ["Em processamento", warn];
+  else if (row.status === "error") cad = ["Com erro", bad];
+  else if (c.conflictCount > 0) cad = [`Divergente (${c.conflictCount})`, bad];
+  else if (c.divergent.length) cad = ["Parcial", warn];
+  else if (c.unverifiable.length) cad = ["Não verificável", warn];
+  else if (c.confirmedRevision != null && c.localRevision != null && c.confirmedRevision >= c.localRevision)
+    cad = ["Confirmado", ok];
+  else if (!row.externalPropertyId) cad = ["Pendente", warn];
+  else cad = ["Pendente", warn];
+  const cadDetail = [
+    c.savedAt ? `Salvo aqui: ${fmt(c.savedAt)}` : null,
+    row.lastVerifiedAt ? `Confirmado no site: ${fmt(row.lastVerifiedAt)}` : null,
+    c.divergent.length ? `Não confirmados: ${c.divergent.join(", ")}` : null,
+    c.unverifiable.length ? `Sem como conferir: ${c.unverifiable.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const ch = row.characteristics;
+  const chState: [string, string] = running
+    ? ["Em processamento", warn]
+    : ch.incomplete
+      ? ["Parcial", warn]
+      : ch.syncedAt
+        ? ["Confirmado", ok]
+        : ["Pendente", warn];
+
+  const m = row.media;
+  const mState: [string, string] =
+    m.status === "failed" || m.status === "error" || (m.failedCount ?? 0) > 0
+      ? ["Com erro", bad]
+      : m.status === "synced" || m.orderGuarantee === "ordem_confirmada_por_leitura"
+        ? ["Confirmado", ok]
+        : m.status === "delivery_unknown" || m.status === "remote_read_unreliable" || m.orderGuarantee === "delivery_unknown" || m.orderGuarantee === "insercao_sem_verificacao"
+          ? ["Não verificável", warn]
+          : m.status
+            ? ["Em processamento", warn]
+            : ["Pendente", warn];
+
+  return [
+    { label: "Cadastro", state: cad[0], tone: cad[1], detail: cadDetail },
+    {
+      label: "Características",
+      state: chState[0],
+      tone: chState[1],
+      detail: ch.syncedAt ? `${ch.count} no site · ${fmt(ch.syncedAt)}` : "",
+    },
+    {
+      label: "Fotos",
+      state: mState[0],
+      tone: mState[1],
+      detail: m.lastVerifiedAt ? `Conferidas: ${fmt(m.lastVerifiedAt)}` : "",
+    },
+  ];
+}
+
 export function PropertyPublishPanel({
   propertyId,
   canPublish,
@@ -261,6 +327,18 @@ export function PropertyPublishPanel({
 
 
 
+              {row && (
+                <div className="mt-2 grid gap-1 text-[11px] sm:grid-cols-3">
+                  {componentStates(row, !!job).map((c) => (
+                    <div key={c.label} className="rounded-xl bg-foreground/4 px-2 py-1.5">
+                      <div className="font-semibold text-foreground/70">{c.label}</div>
+                      <div className={c.tone}>{c.state}</div>
+                      {c.detail && <div className="text-[10px] text-foreground/45">{c.detail}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {row?.lastErrorMessage && (
                 <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-destructive/8 p-2 text-[11px] text-destructive">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0" />
@@ -306,21 +384,34 @@ export function PropertyPublishPanel({
                     <button
                       onClick={() =>
                         retry
-                          .mutateAsync({ propertyId, provider: provider.key })
+                          .mutateAsync({ propertyId, provider: provider.key, component: "cadastro" })
                           .then(() => toast.success("Reprocessamento solicitado."))
                           .catch((error: Error) => toast.error(error.message))
                       }
                       className="inline-flex items-center gap-1.5 rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold"
                     >
-                      <RotateCcw className="size-3" /> Reprocessar
+                      <RotateCcw className="size-3" /> Tentar cadastro de novo
                     </button>
                   )}
+                  {row.media.status === "error" || (row.media.failedCount ?? 0) > 0 ? (
+                    <button
+                      onClick={() =>
+                        retry
+                          .mutateAsync({ propertyId, provider: provider.key, component: "fotos" })
+                          .then(() => toast.success("Envio das fotos retomado."))
+                          .catch((error: Error) => toast.error(error.message))
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold"
+                    >
+                      <RotateCcw className="size-3" /> Tentar fotos de novo
+                    </button>
+                  ) : null}
                   {row.status === "published" && (
                     <button
                       onClick={() => run("unpublish", [provider.key])}
                       className="rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold"
                     >
-                      Despublicar
+                      Ocultar do site
                     </button>
                   )}
                   {isAdmin && (
