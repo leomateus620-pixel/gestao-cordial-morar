@@ -718,9 +718,21 @@ export async function processJob(
         correlationId: job.correlation_id,
       },
     );
+    // O snapshot precisa registrar que o anúncio está OCULTO no site. Sem isso a
+    // republicação não veria diferença em `exibirImovel` e o anúncio ficaria
+    // escondido para sempre, mesmo com o imóvel desarquivado no Gestão.
+    const snapshotAfterUnpublish = {
+      ...((publication["last_payload_snapshot"] as Record<string, unknown> | null | undefined) ?? {}),
+      exibirImovel: "nao",
+    };
     await admin
       .from("property_provider_publications")
-      .update({ status: "unpublished", enabled: false, last_synced_at: new Date().toISOString() })
+      .update({
+        status: "unpublished",
+        enabled: false,
+        last_synced_at: new Date().toISOString(),
+        last_payload_snapshot: snapshotAfterUnpublish,
+      })
       .eq("id", publication.id);
     await finalizePendingArchive(admin, job.property_id);
     return { status: "unpublished" as const };
@@ -949,13 +961,30 @@ export async function processJob(
         category: "network",
       });
     }
+    // A exibição no site é verdade observável: quando a leitura mostra o anúncio
+    // oculto e o Gestão o quer visível (ou o contrário), a comparação usa o
+    // estado REAL do site. Sem isso, um anúncio retirado e depois republicado
+    // ficaria escondido para sempre, porque o retrato local diria "sim".
+    const remoteExibir = remoteBefore.remote
+      ? ((remoteBefore.remote as Record<string, unknown>)["exibirImovel"] ?? null)
+      : null;
+    if (snapshotBase && typeof remoteExibir === "boolean") {
+      snapshotBase = { ...snapshotBase, exibirImovel: remoteExibir ? "sim" : "nao" };
+    }
     // Contrato de ALTERAÇÃO: conjunto explícito de mudanças, não cópia do
     // formulário. Com a lista de campos tocados, limpeza intencional viaja vazia
     // e campo intocado nem entra no corpo.
+    const wantsVisibilityFix =
+      typeof remoteExibir === "boolean" &&
+      remoteExibir !== ((property.exibir_imovel ?? true) as boolean);
+    const changedFields = job.changed_fields ?? null;
     const patch: UpdatePatch = buildUpdatePatch({
       full: fullPayload,
       snapshot: snapshotBase,
-      changedFields: job.changed_fields ?? null,
+      changedFields:
+        changedFields && wantsVisibilityFix && !changedFields.includes("exibirImovel")
+          ? [...changedFields, "exibirImovel"]
+          : changedFields,
     });
     payload = patch.payload;
     sentKeys = Object.keys(patch.payload);
