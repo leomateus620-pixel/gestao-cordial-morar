@@ -47,6 +47,22 @@ function toFormValues(detail: PropertyDetail): PropertyFormValues {
   return values;
 }
 
+/** Campos realmente tocados: base do contrato de alteração enviado aos sites. */
+function diffFields(before: PropertyFormValues, after: PropertyFormValues): string[] {
+  const keys = Object.keys(after) as Array<keyof PropertyFormValues>;
+  const changed: string[] = [];
+  for (const key of keys) {
+    const a = before[key] ?? null;
+    const b = after[key] ?? null;
+    const same =
+      Array.isArray(a) && Array.isArray(b)
+        ? a.length === b.length && a.every((item, index) => item === b[index])
+        : a === b;
+    if (!same) changed.push(String(key));
+  }
+  return changed;
+}
+
 function EditarImovelPage() {
   const { imovelId } = Route.useParams();
   const navigate = useNavigate();
@@ -96,13 +112,17 @@ function EditarImovelPage() {
     ]),
   );
 
+  const initialValues = toFormValues(detail);
+
   async function handleSubmit(values: PropertyFormValues) {
     try {
+      const changedFields = diffFields(initialValues, values);
       // Versão que estava aberta na tela: se alguém salvou no meio, o servidor
       // devolve conflito em vez de sobrescrever a alteração do outro.
       const result = await update.mutateAsync({
         id: imovelId,
         expectedRevision: detail.revision ?? null,
+        changedFields,
         ...values,
       });
       const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
@@ -150,7 +170,7 @@ function EditarImovelPage() {
       </div>
 
       <PropertyForm
-        initial={toFormValues(detail)}
+        initial={initialValues}
         submitLabel="Salvar alterações"
         pending={update.isPending}
         showDestinos={false}
