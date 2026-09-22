@@ -68,6 +68,10 @@ function NovoImovelPage() {
   const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
   const [draftId, setDraftId] = useState<string | null>(null);
+  /** Chave da intenção de cadastro: vale para todo este formulário aberto. */
+  const intentKey = useRef<string>(crypto.randomUUID());
+  /** Criação em andamento: duplo clique reaproveita a mesma chamada. */
+  const draftPromise = useRef<Promise<string | null> | null>(null);
   const images = usePropertyImages(draftId ?? undefined);
   const fotosProntas = (images.data ?? []).filter(
     (image) => image.processingStatus === "ready" || image.processingStatus === "legacy",
