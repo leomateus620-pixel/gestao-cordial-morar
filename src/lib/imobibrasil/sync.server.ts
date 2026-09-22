@@ -220,7 +220,7 @@ async function loadPersonLinks(
   externalId: string,
   publication: Record<string, unknown>,
   correlationId: string,
-): Promise<RemotePersonLinks> {
+): Promise<{ links: RemotePersonLinks; remote: Record<string, unknown> | null }> {
   const stored: RemotePersonLinks = {};
   const storedOwner = String(publication["remote_codigo_proprietario"] ?? "").trim();
   const storedBroker = String(publication["remote_codigo_corretor"] ?? "").trim();
@@ -230,9 +230,10 @@ async function loadPersonLinks(
   if (storedExtra) stored.codigoUsuarioAdicional = storedExtra;
 
   let remoteLinks: RemotePersonLinks = {};
+  let remoteState: Record<string, unknown> | null = null;
   try {
-    const remote = await verifyRemote(provider, externalId, correlationId);
-    remoteLinks = pickPersonLinks(remote);
+    remoteState = await verifyRemote(provider, externalId, correlationId);
+    remoteLinks = pickPersonLinks(remoteState);
   } catch {
     // Falha de leitura nunca trava o envio: seguimos com a cópia local.
   }
@@ -251,7 +252,7 @@ async function loadPersonLinks(
       .eq("id", publication["id"] as string);
   }
 
-  return merged;
+  return { links: merged, remote: remoteState };
 }
 
 /** Traz nome/telefone/e-mail do proprietário do site para a ficha interna, só em campos vazios. */
@@ -421,7 +422,12 @@ async function ensureProviderCode(
 }
 
 
-export async function processJob(admin: Admin, job: SyncJob) {
+export async function processJob(
+  admin: Admin,
+  job: SyncJob,
+  options: { updatesPaused?: boolean } = {},
+) {
+  const updatesPaused = options.updatesPaused === true;
   // Mídia é um caminho totalmente separado do cadastro: sai daqui antes de
   // qualquer leitura/gravação cadastral (código do provedor, catálogos,
   // vínculos de proprietário/corretor) e nunca chama `/imovel/alterar`.
@@ -480,26 +486,18 @@ export async function processJob(admin: Admin, job: SyncJob) {
       await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
-    const links = await loadPersonLinks(
-      admin,
-      job.provider,
-      publication.external_property_id,
-      publication,
-      job.correlation_id,
-    );
-    const payload = serializeProperty(
+    // Retirada do site é ALTERAÇÃO MÍNIMA: só o campo de exibição e os
+    // obrigatórios do contrato. Nada mais é reenviado — omitir preserva.
+    const full = serializeProperty(
       { ...property, referencia: reference, exibir_imovel: false },
-      {
-        ...resolution.codes,
-        codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
-        codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
-        codigoUsuarioAdicional:
-          resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
-      },
-      {
-        mode: "update",
-      },
+      resolution.codes,
+      { mode: "update" },
     );
+    const payload: Record<string, unknown> = {};
+    for (const key of ["finalidade", "codigoTipoImovel", "referencia", "exibirImovel"]) {
+      if (full[key] !== undefined) payload[key] = full[key];
+    }
+    assertWriteAllowed("unpublish", updatesPaused);
     await imobiRequest(
       job.provider,
       `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
