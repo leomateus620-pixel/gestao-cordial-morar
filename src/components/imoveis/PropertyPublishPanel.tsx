@@ -385,7 +385,11 @@ export function PropertyPublishPanel({
                       onClick={() =>
                         retry
                           .mutateAsync({ propertyId, provider: provider.key, component: "cadastro" })
-                          .then(() => toast.success("Reprocessamento solicitado."))
+                          .then((result: { scheduled?: number; message?: string } | undefined) =>
+                            result?.scheduled === 0
+                              ? toast.info(result.message ?? "Nada pendente para repetir.")
+                              : toast.success(result?.message ?? "Nova tentativa agendada."),
+                          )
                           .catch((error: Error) => toast.error(error.message))
                       }
                       className="inline-flex items-center gap-1.5 rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold"
