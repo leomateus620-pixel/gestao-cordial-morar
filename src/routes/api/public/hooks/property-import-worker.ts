@@ -14,13 +14,6 @@ export const Route = createFileRoute("/api/public/hooks/property-import-worker")
       POST: async ({ request }) => {
         const denied = authorizeWorkerRequest(request);
         if (denied) return denied;
-        const provided =
-          request.headers.get("apikey") ??
-          request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
-          "";
-        if (!accepted.includes(provided)) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
 
         let limit = 4;
         let chain = true;
