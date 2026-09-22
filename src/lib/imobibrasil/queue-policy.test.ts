@@ -8,7 +8,8 @@ import {
   claimLimitFor,
   isLeaseExpired,
   leaseSecondsFor,
-  shouldCancelForPause,
+  isWriteBlockedByPause,
+  shouldDeferForPause,
 } from "./queue-policy";
 
 const syncSource = readFileSync("src/lib/imobibrasil/sync.server.ts", "utf8");
@@ -51,11 +52,18 @@ test("job com lease expirado é reconhecido para voltar a retry", () => {
   assert.equal(isLeaseExpired({ status: "succeeded", lock_expires_at: null }, now), false);
 });
 
-test("com a pausa ligada, só update é bloqueado; publish continua permitido", () => {
-  assert.equal(shouldCancelForPause("update", true), true);
-  assert.equal(shouldCancelForPause("publish", true), false);
-  assert.equal(shouldCancelForPause("media_sync", true), false);
-  assert.equal(shouldCancelForPause("update", false), false);
+test("com a pausa ligada, alteração e retirada esperam; criação e fotos seguem", () => {
+  assert.equal(isWriteBlockedByPause("update", true), true);
+  assert.equal(isWriteBlockedByPause("unpublish", true), true);
+  assert.equal(isWriteBlockedByPause("publish", true), false);
+  assert.equal(isWriteBlockedByPause("media_sync", true), false);
+  assert.equal(isWriteBlockedByPause("update", false), false);
+});
+
+test("bloqueio pela pausa é retomável, nunca cancelamento definitivo", () => {
+  assert.equal(shouldDeferForPause("update", true), true);
+  assert.equal(syncSource.includes("PausedWriteError"), true);
+  assert.equal(/status:\s*"cancelled"/.test(syncSource), false);
 });
 
 test("publish/update não aguarda a entrega da galeria", () => {
