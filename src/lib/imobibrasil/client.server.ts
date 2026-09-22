@@ -203,19 +203,25 @@ export async function imobiRequest<T = unknown>(
         log(false, category);
         const providerMessage =
           extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`;
+        // `Retry-After` é respeitado: espera curta dentro do request, espera
+        // longa devolve o job para o worker reagendar.
+        const retryAfterSeconds = parseRetryAfter(response.headers.get("retry-after"));
         const error = new ImobiApiError({
           message: explainProviderMessage(providerMessage, response.status),
           category,
           httpStatus: response.status,
+          retryAfterSeconds,
         });
 
-        if (canRetry(error) && attempt < maxAttempts) {
+        const waitMs = retryAfterSeconds !== null ? retryAfterSeconds * 1000 : backoffMs(attempt);
+        if (canRetry(error) && attempt < maxAttempts && waitMs <= SLOT_MAX_WAIT_MS) {
           lastError = error;
-          await delay(backoffMs(attempt));
+          await delay(waitMs);
           continue;
         }
         throw error;
       }
+
 
       if (parseFailed) {
         log(false, "protocol");
