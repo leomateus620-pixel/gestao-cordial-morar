@@ -105,6 +105,12 @@ export class PausedWriteError extends Error {
  * Última barreira antes de QUALQUER escrita externa, já com a ação efetiva
  * resolvida (um `publish` de imóvel existente é alteração e também é barrado).
  */
+/** Primeiro vínculo realmente conhecido. `0`, vazio ou ausente => nunca enviado. */
+function firstKnownLink(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) if (isKnownLink(value)) return String(value).trim();
+  return null;
+}
+
 function assertWriteAllowed(action: QueueAction, updatesPaused: boolean) {
   if (isWriteBlockedByPause(action, updatesPaused)) throw new PausedWriteError(action);
 }
@@ -658,11 +664,15 @@ export async function processJob(
     mode === "insert"
       ? {
           ...resolution.codes,
-          codigoProprietario:
-            resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
-          codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
-          codigoUsuarioAdicional:
-            resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
+          codigoProprietario: firstKnownLink(
+            resolution.codes.codigoProprietario,
+            links.codigoProprietario,
+          ),
+          codigoCorretor: firstKnownLink(resolution.codes.codigoCorretor, links.codigoCorretor),
+          codigoUsuarioAdicional: firstKnownLink(
+            resolution.codes.codigoUsuarioAdicional,
+            links.codigoUsuarioAdicional,
+          ),
         }
       : { ...resolution.codes, codigoProprietario: null, codigoCorretor: null, codigoUsuarioAdicional: null },
     { mode },
@@ -994,26 +1004,8 @@ export async function runSyncWorker(
 
   for (const job of claimed) {
     const started = Date.now();
-    if (shouldCancelForPause(job.action, updatesPaused)) {
-
-      await admin
-        .from("property_sync_jobs")
-        .update({
-          status: "cancelled",
-          finished_at: new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_error_category: "config",
-          last_error_message:
-            "Envio de alterações aos sites temporariamente pausado (apuração do cadastro de proprietário).",
-        })
-        .eq("id", job.id);
-      results.push({ jobId: job.id, provider: job.provider, status: "skipped_paused" });
-      continue;
-    }
     try {
-      const outcome = await processJob(admin, job);
+      const outcome = await processJob(admin, job, { updatesPaused });
       await admin
         .from("property_sync_jobs")
         .update({
@@ -1033,6 +1025,25 @@ export async function runSyncWorker(
       });
       results.push({ jobId: job.id, provider: job.provider, ...outcome });
     } catch (error) {
+      // Pausa: o trabalho VOLTA para a fila (retomável), sem consumir tentativa
+      // e sem marcar erro na publicação.
+      if (error instanceof PausedWriteError) {
+        await admin
+          .from("property_sync_jobs")
+          .update({
+            status: "retry",
+            attempts: Math.max(0, job.attempts - 1),
+            next_run_at: new Date(Date.now() + PAUSE_DEFER_SECONDS * 1000).toISOString(),
+            locked_at: null,
+            lock_expires_at: null,
+            locked_by: null,
+            last_error_category: "config",
+            last_error_message: error.message,
+          })
+          .eq("id", job.id);
+        results.push({ jobId: job.id, provider: job.provider, status: "deferred_paused" });
+        continue;
+      }
       const normalized = toImobiError(error);
       const canRetry = normalized.retryable && job.attempts < job.max_attempts;
       await admin
