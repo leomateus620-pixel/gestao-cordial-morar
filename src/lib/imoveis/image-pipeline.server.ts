@@ -164,6 +164,7 @@ const PERMANENT_CODES = [
   "too_many_pixels",
   "empty_file",
   "decode_failed",
+  "checksum_mismatch",
 ];
 
 export async function processImageJob(admin: Admin, job: Job): Promise<void> {
@@ -171,7 +172,7 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
   const { data: image, error: imageError } = await admin
     .from("property_images")
     .select(
-      "id, property_id, storage_path, original_storage_path, destination_hash, desired_destination_hash, processed_checksum",
+      "id, property_id, storage_path, original_storage_path, content_hash, destination_hash, desired_destination_hash, processed_checksum",
     )
     .eq("id", job.image_id)
     .maybeSingle();
@@ -206,6 +207,13 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     throw new WatermarkError("download_failed", "Foto original indisponível.");
 
   const bytes = new Uint8Array(await download.data.arrayBuffer());
+  if (typeof image.content_hash === "string" && /^[a-f0-9]{64}$/i.test(image.content_hash)) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const actual = Array.from(new Uint8Array(digest), (part) => part.toString(16).padStart(2, "0")).join("");
+    if (actual !== image.content_hash.toLowerCase()) {
+      throw new WatermarkError("checksum_mismatch", "O original recebido não corresponde ao arquivo selecionado.");
+    }
+  }
   const result = await applyWatermark(bytes, job.watermark_variant);
   const paths = derivedPaths(job.property_id, job.image_id, job.destination_hash);
 
@@ -291,6 +299,10 @@ export async function runImageWorker(
 ): Promise<{ claimed: number; processed: number; failed: number; pending: number }> {
   const limit = Math.min(3, Math.max(1, options.limit ?? 2));
   const worker = `image-worker-${crypto.randomUUID().slice(0, 8)}`;
+  const { recoverPersistedOriginalUploads, cleanupDuplicateOriginalUploads } =
+    await import("./image-upload-recovery.server");
+  await recoverPersistedOriginalUploads(admin, 5);
+  await cleanupDuplicateOriginalUploads(admin, 3);
   await recoverMissingImageJobs(admin);
   // Trabalhos travados (lease vencido) voltam para a fila antes de reivindicar.
   const { error: reclaimError } = await admin.rpc("property_image_reclaim_stale", { _max: 50 });

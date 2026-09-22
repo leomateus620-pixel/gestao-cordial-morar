@@ -166,13 +166,35 @@ export const getPropertyGallerySnapshot = createServerFn({ method: "GET" })
     return { images: await signImages(context.supabase, snapshot.rows), revision: snapshot.revision };
   });
 
+export type PropertyImageUploadIssue = {
+  fileName: string;
+  reason: string;
+  createdAt: string;
+};
+
+export const listPropertyImageUploadIssues = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string }) => data)
+  .handler(async ({ data, context }): Promise<PropertyImageUploadIssue[]> => {
+    const { data: issues, error } = await context.supabase.rpc(
+      "property_image_upload_issues" as never,
+      { _property_id: data.propertyId } as never,
+    );
+    if (error) throw new Error(error.message);
+    return Array.isArray(issues) ? issues as PropertyImageUploadIssue[] : [];
+  });
+
 /**
  * URLs assinadas de upload — os arquivos vão direto do navegador para o bucket
  * privado: o original preservado, a versão com a marca e a miniatura.
  */
 export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; fileName: string }) => data)
+  .inputValidator((data: {
+    propertyId: string; fileName: string;
+    contentHash?: string; sizeBytes?: number; mimeType?: string | null;
+    replacementFor?: string | null; batchId?: string | null;
+  }) => data)
   .handler(
     async ({
       data,
@@ -180,11 +202,13 @@ export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
     }): Promise<{
       path: string;
       token: string;
+      reservationId: string | null;
       processed: { path: string; token: string };
       thumbnail: { path: string; token: string };
     }> => {
       const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
       const id = crypto.randomUUID();
+      const originalPath = `${data.propertyId}/originais/${id}-${safe}`;
       const sign = async (path: string) => {
         const { data: signed, error } = await context.supabase.storage
           .from(BUCKET)
@@ -192,10 +216,27 @@ export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
         if (error || !signed) throw new Error(error?.message ?? "Falha ao preparar o envio.");
         return { path: signed.path as string, token: signed.token as string };
       };
-      const original = await sign(`${data.propertyId}/originais/${id}-${safe}`);
+      const original = await sign(originalPath);
       const processed = await sign(`${data.propertyId}/marcadas/${id}.jpg`);
       const thumbnail = await sign(`${data.propertyId}/marcadas/${id}-thumb.jpg`);
-      return { path: original.path, token: original.token, processed, thumbnail };
+      // Os tokens só saem desta função depois do commit da reserva. Se a
+      // assinatura falhar, nenhum arquivo foi enviado nem há reserva órfã.
+      let reservationId: string | null = null;
+      if (data.contentHash && data.sizeBytes) {
+        const { data: reserved, error: reserveError } = await context.supabase.rpc(
+          "property_image_upload_reserve" as never, {
+            _property_id: data.propertyId, _storage_path: originalPath,
+            _file_name: data.fileName, _mime_type: data.mimeType ?? null,
+            _size_bytes: data.sizeBytes, _content_hash: data.contentHash,
+            _replacement_for: data.replacementFor ?? null,
+            _batch_id: data.batchId ?? null,
+          } as never,
+        );
+        if (reserveError) throw new Error(reserveError.message);
+        if (typeof reserved !== "string") throw new Error("A intenção de upload não foi persistida.");
+        reservationId = reserved;
+      }
+      return { path: original.path, token: original.token, reservationId, processed, thumbnail };
     },
   );
 
@@ -226,6 +267,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       mimeType?: string | null;
       sizeBytes?: number | null;
       contentHash: string;
+      reservationId?: string | null;
       replacementFor?: string | null;
       batchId?: string | null;
       processedPath?: string | null;
@@ -251,6 +293,50 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       const rows = await listRows(context.supabase, data.propertyId);
       if (!(await storedSize(context.supabase, data.storagePath))) {
         throw new Error("O arquivo ainda não chegou ao servidor. Selecione este arquivo novamente.");
+      }
+
+      if (data.reservationId) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: reservation, error: reservationError } = await (supabaseAdmin as Client)
+          .from("property_image_upload_reservations")
+          .select("property_id, storage_path, uploaded_by")
+          .eq("id", data.reservationId).maybeSingle();
+        if (reservationError) throw new Error(reservationError.message);
+        if (!reservation || reservation.property_id !== data.propertyId ||
+            reservation.storage_path !== data.storagePath ||
+            reservation.uploaded_by !== context.userId) {
+          throw new Error("Reserva de upload não corresponde a este arquivo.");
+        }
+        const { data: finalized, error: finalizeError } = await supabaseAdmin.rpc(
+          "property_image_upload_finalize" as never,
+          { _reservation_id: data.reservationId } as never,
+        );
+        if (finalizeError) throw new Error(finalizeError.message);
+        const outcome = finalized as { status?: string; imageId?: string; reason?: string } | null;
+        if (outcome?.status === "blocked") {
+          throw new Error(outcome.reason === "foto_substituida_foi_removida"
+            ? "A foto substituída foi removida durante o envio. O arquivo original foi preservado."
+            : "O imóvel não está disponível para receber esta foto.");
+        }
+        if (!outcome?.imageId) throw new Error("A foto chegou, mas o registro ainda não foi confirmado.");
+        if (outcome.status === "registered") {
+          const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+          try {
+            await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [outcome.imageId] });
+            await kickImageWorker(2);
+          } catch (enqueueError) {
+            console.error("[image_enqueue_deferred]", JSON.stringify({
+              propertyId: data.propertyId, imageId: outcome.imageId,
+              error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+            }));
+          }
+        }
+        return {
+          images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
+          duplicated: outcome.status === "duplicated",
+          resumed: false,
+          imageId: outcome.imageId,
+        };
       }
 
       // Versão com marca vinda do navegador: só vale se estiver mesmo no Storage.

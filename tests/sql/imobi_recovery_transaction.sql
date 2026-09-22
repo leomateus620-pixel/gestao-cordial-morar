@@ -14,6 +14,12 @@ DECLARE
   media_job_id uuid;
   create_job_id uuid;
   availability_job_id uuid;
+  upload_fixture_id uuid;
+  upload_reservation_id uuid;
+  upload_image_id uuid;
+  upload_publication_id uuid;
+  upload_batch_id uuid;
+  replacement_reservation_id uuid;
   token uuid := gen_random_uuid();
   next_token uuid := gen_random_uuid();
   initial_gallery integer;
@@ -297,6 +303,83 @@ BEGIN
   IF result->>'started' <> 'true' THEN
     RAISE EXCEPTION 'Importação Cordial bloqueou a conta Morar';
   END IF;
+
+  -- O navegador desapareceu após o PUT. O watchdog confirma a reserva, e
+  -- duas confirmações simultâneas/retomadas não criam outra linha local.
+  INSERT INTO public.properties (source, source_property_id, carteira)
+  VALUES ('test_fixture', gen_random_uuid()::text, 'cordial')
+  RETURNING id INTO upload_fixture_id;
+  INSERT INTO public.property_image_upload_reservations
+    (property_id, storage_path, file_name, size_bytes, content_hash, uploaded_by)
+  VALUES (upload_fixture_id, upload_fixture_id::text || '/originais/a.jpg',
+          'a.jpg', 100, repeat('a', 64), gen_random_uuid())
+  RETURNING id INTO upload_reservation_id;
+  SELECT public.property_image_upload_finalize(upload_reservation_id) INTO result;
+  upload_image_id := (result->>'imageId')::uuid;
+  IF result->>'status' <> 'registered' OR NOT EXISTS (
+    SELECT 1 FROM public.property_images WHERE id = upload_image_id
+      AND property_id = upload_fixture_id AND NOT pending_remote_delete
+  ) THEN RAISE EXCEPTION 'Original persistido não foi recuperado'; END IF;
+  SELECT public.property_image_upload_finalize(upload_reservation_id) INTO result;
+  IF (result->>'imageId')::uuid <> upload_image_id OR (
+    SELECT count(*) FROM public.property_images WHERE property_id = upload_fixture_id
+  ) <> 1 THEN RAISE EXCEPTION 'Retomada duplicou foto local'; END IF;
+  INSERT INTO public.property_provider_publications
+    (property_id, provider, external_property_id, external_reference, status, enabled)
+  VALUES (upload_fixture_id, 'cordial', 'fixture-upload-' || upload_fixture_id::text,
+          'GC-UPLOAD-' || left(upload_fixture_id::text, 8), 'published', true)
+  RETURNING id INTO upload_publication_id;
+  INSERT INTO public.property_image_provider_publications
+    (image_id, publication_id, provider, external_image_id, status)
+  VALUES (upload_image_id, upload_publication_id, 'cordial', 'fixture-photo', 'synced');
+
+  INSERT INTO public.property_image_upload_reservations
+    (property_id, storage_path, file_name, size_bytes, content_hash,
+     replacement_for, uploaded_by)
+  VALUES (upload_fixture_id, upload_fixture_id::text || '/originais/b.jpg',
+          'b.jpg', 100, repeat('b', 64), upload_image_id, gen_random_uuid())
+  RETURNING id INTO replacement_reservation_id;
+  SELECT public.property_image_upload_finalize(replacement_reservation_id) INTO result;
+  IF result->>'status' <> 'registered' OR NOT EXISTS (
+    SELECT 1 FROM public.property_images WHERE id = upload_image_id
+      AND pending_remote_delete
+  ) OR (SELECT count(*) FROM public.property_images
+        WHERE property_id = upload_fixture_id
+          AND NOT COALESCE(pending_remote_delete, false)) <> 1 THEN
+    RAISE EXCEPTION 'Substituição recuperada não preservou galeria e tombstone';
+  END IF;
+  INSERT INTO public.property_image_batches (property_id, expected_count)
+  VALUES (upload_fixture_id, 1) RETURNING id INTO upload_batch_id;
+  INSERT INTO public.property_image_upload_reservations
+    (property_id, storage_path, file_name, size_bytes, content_hash,
+     uploaded_by, created_at, attempts, batch_id)
+  VALUES (upload_fixture_id, upload_fixture_id::text || '/originais/never.jpg',
+          'never.jpg', 100, repeat('c', 64), gen_random_uuid(),
+          now() - interval '25 hours', 2, upload_batch_id)
+  RETURNING id INTO upload_reservation_id;
+  SELECT public.property_image_upload_mark_missing(upload_reservation_id) INTO owned;
+  IF NOT owned OR NOT EXISTS (
+    SELECT 1 FROM public.property_image_upload_reservations
+     WHERE id = upload_reservation_id AND status = 'missing'
+       AND error_code = 'original_nao_chegou'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM public.property_image_batches
+     WHERE id = upload_batch_id AND failed_count = 1
+  ) THEN RAISE EXCEPTION 'Original nunca enviado não deixou impedimento específico'; END IF;
+  SELECT public.property_image_upload_mark_missing(upload_reservation_id) INTO owned;
+  IF owned OR (SELECT failed_count FROM public.property_image_batches
+                WHERE id = upload_batch_id) <> 1 THEN
+    RAISE EXCEPTION 'Ausência do mesmo arquivo foi contabilizada duas vezes';
+  END IF;
+  -- Simula o worker após confirmar no Storage que o objeto apareceu tardiamente.
+  SELECT public.property_image_upload_finalize(upload_reservation_id) INTO result;
+  IF result->>'status' <> 'registered' OR EXISTS (
+    SELECT 1 FROM public.property_image_upload_reservations
+     WHERE id = upload_reservation_id AND status = 'missing'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM public.property_image_batches
+     WHERE id = upload_batch_id AND failed_count = 0 AND registered_count = 1
+  ) THEN RAISE EXCEPTION 'Original tardio não retomou reserva e contador'; END IF;
 END
 $test$;
 ROLLBACK;

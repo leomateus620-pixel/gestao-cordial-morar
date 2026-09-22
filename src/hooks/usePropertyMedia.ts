@@ -7,10 +7,11 @@ import {
   deletePropertyImage,
   getPropertyImageBatch,
   getPropertyGallerySnapshot,
+  listPropertyImageUploadIssues,
+  type PropertyImageUploadIssue,
   openPropertyImageBatch,
   registerPropertyImage,
   reorderPropertyImages,
-  replacePropertyImage,
   reportPropertyImageBatchFailure,
   setPropertyImageCover,
   setPropertyPublishTargets,
@@ -44,6 +45,13 @@ export type UploadItem = {
   progress: number;
   error?: string;
 };
+
+class UploadRecoveryPendingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UploadRecoveryPendingError";
+  }
+}
 
 /**
  * Ordem escolhida pelo usuário que ainda não foi confirmada pelo servidor.
@@ -90,10 +98,10 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const qc = useQueryClient();
   const createUrl = useServerFn(createPropertyImageUploadUrl);
   const register = useServerFn(registerPropertyImage);
+  const loadUploadIssues = useServerFn(listPropertyImageUploadIssues);
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
   const removeFn = useServerFn(deletePropertyImage);
-  const replaceFn = useServerFn(replacePropertyImage);
   const targetsFn = useServerFn(setPropertyPublishTargets);
   const openBatchFn = useServerFn(openPropertyImageBatch);
   const batchFailureFn = useServerFn(reportPropertyImageBatchFailure);
@@ -103,9 +111,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
   // "Salvando ordem…" / "Ordem salva" / "Sincronizando com os sites".
   const [orderState, setOrderState] = useState<OrderSaveState>("idle");
   const activeBatch = useRef<string | null>(null);
+  const uploadIssues = useQuery<PropertyImageUploadIssue[]>({
+    queryKey: ["property-image-upload-issues", propertyId],
+    queryFn: () => loadUploadIssues({ data: { propertyId: propertyId as string } }),
+    enabled: !!propertyId,
+    refetchInterval: 60_000,
+  });
 
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["property-images", propertyId] });
+    qc.invalidateQueries({ queryKey: ["property-image-upload-issues", propertyId] });
     qc.invalidateQueries({ queryKey: ["imovel-detalhe", propertyId] });
     qc.invalidateQueries({ queryKey: ["property-drive", propertyId] });
     qc.invalidateQueries({ queryKey: ["imoveis"] });
@@ -122,26 +137,41 @@ export function usePropertyMedia(propertyId: string | undefined) {
       // marca depois, inclusive se o navegador for fechado imediatamente.
       patch(key, { status: "preparando", progress: 0, error: undefined });
       const hash = await sha256Hex(file);
-      const target = await createUrl({ data: { propertyId, fileName: file.name } });
-      patch(key, { status: "enviando" });
-      await uploadSignedWithProgress({
-        bucket: BUCKET, path: target.path, token: target.token, blob: file,
-        contentType: file.type || "application/octet-stream",
-        onProgress: (ratio) => patch(key, { progress: Math.min(99, Math.round(ratio * 100)) }),
-      });
+      const target = await createUrl({ data: {
+        propertyId, fileName: file.name, contentHash: hash,
+        sizeBytes: file.size, mimeType: file.type || null,
+        replacementFor: replacementFor ?? null, batchId: activeBatch.current,
+      } });
+      if (!target.reservationId) throw new Error("A intenção de upload não foi persistida.");
+      let result: Awaited<ReturnType<typeof register>>;
+      try {
+        patch(key, { status: "enviando" });
+        await uploadSignedWithProgress({
+          bucket: BUCKET, path: target.path, token: target.token, blob: file,
+          contentType: file.type || "application/octet-stream",
+          onProgress: (ratio) => patch(key, { progress: Math.min(99, Math.round(ratio * 100)) }),
+        });
 
-      const result = await register({
-        data: {
-          propertyId,
-          storagePath: target.path,
-          fileName: file.name,
-          mimeType: file.type || null,
-          sizeBytes: file.size,
-          contentHash: hash,
-          replacementFor: replacementFor ?? null,
-          batchId: activeBatch.current,
-        },
-      });
+        result = await register({
+          data: {
+            propertyId,
+            storagePath: target.path,
+            fileName: file.name,
+            mimeType: file.type || null,
+            sizeBytes: file.size,
+            contentHash: hash,
+            reservationId: target.reservationId,
+            replacementFor: replacementFor ?? null,
+            batchId: activeBatch.current,
+          },
+        });
+      } catch (error) {
+        // O PUT pode ter sido aceito apesar de a conexão cair. A reserva
+        // permite ao worker conferir o Storage; não contar falha terminal agora.
+        throw new UploadRecoveryPendingError(
+          error instanceof Error ? error.message : "Confirmação do arquivo pendente.",
+        );
+      }
       patch(key, {
         progress: 100,
         status: result.resumed ? "retomada" : result.duplicated ? "duplicada" : "pronta",
@@ -181,11 +211,14 @@ export function usePropertyMedia(propertyId: string | undefined) {
             try {
               await sendOne(entry.key, entry.file);
             } catch (err) {
+              const recovering = err instanceof UploadRecoveryPendingError;
               patch(entry.key, {
-                status: "erro",
-                error: (err as Error)?.message ?? "Não foi possível enviar esta foto.",
+                status: recovering ? "processando" : "erro",
+                error: recovering
+                  ? "Conferindo o arquivo automaticamente no servidor."
+                  : (err as Error)?.message ?? "Não foi possível enviar esta foto.",
               });
-              if (batchId) {
+              if (batchId && !recovering) {
                 try {
                   await batchFailureFn({ data: { batchId } });
                 } catch {
@@ -412,16 +445,23 @@ export function usePropertyMedia(propertyId: string | undefined) {
           progress: 0,
         },
       ]);
-      const expectedGalleryRevision = galleryRevisionByProperty.get(propertyId);
-      const newImageId = await sendOne(key, file, imageId);
+      let newImageId: string | null;
+      try {
+        newImageId = await sendOne(key, file, imageId);
+      } catch (error) {
+        if (error instanceof UploadRecoveryPendingError) {
+          patch(key, { status: "processando", progress: 100,
+            error: "Conferindo o original automaticamente no servidor." });
+          return { pending: true };
+        }
+        throw error;
+      }
       if (!newImageId) throw new Error("A nova foto não pôde ser registrada.");
-      await replaceFn({
-        data: { propertyId, oldImageId: imageId, newImageId, expectedGalleryRevision },
-      });
+      return { pending: false };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidate();
-      toast.success("Foto substituída. A troca nos sites acontece em seguida.");
+      if (!result.pending) toast.success("Foto substituída. A troca nos sites acontece em seguida.");
     },
     onError: (error: unknown) =>
       toast.error(error instanceof Error ? error.message : "Não foi possível substituir a foto."),
@@ -453,6 +493,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
     replace,
     updateTargets,
     progress,
+    uploadIssues: uploadIssues.data ?? [],
     clearProgress,
   };
 }

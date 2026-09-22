@@ -195,13 +195,30 @@ export function PropertyPhotosStep({
                   ) : item.status === "pronta" ? (
                     "Enviada"
                   ) : item.status === "processando" ? (
-                    "Aplicando marca"
+                    item.error ?? "Aplicando marca"
                   ) : item.status === "enviando" ? (
                     `${item.progress}%`
                   ) : (
                     "Preparando"
                   )}
                 </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {media.uploadIssues.length > 0 && (
+        <div className="rounded-2xl bg-amber-500/10 p-3 text-[11px] text-amber-800">
+          <p className="font-semibold">Arquivos que precisam de atenção</p>
+          <ul className="mt-1 space-y-1">
+            {media.uploadIssues.map((issue, index) => (
+              <li key={`${issue.createdAt}-${index}`}>
+                <strong>{issue.fileName}</strong>: {issue.reason === "original_nao_chegou"
+                  ? "o original não chegou ao servidor. Selecione somente este arquivo novamente."
+                  : issue.reason === "foto_substituida_foi_removida"
+                    ? "a foto que seria substituída foi removida durante o envio. O original foi preservado."
+                    : "o imóvel deixou de aceitar esta foto durante o envio."}
               </li>
             ))}
           </ul>
