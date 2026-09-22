@@ -7,6 +7,7 @@ import {
   listDuplicateDiagnosis,
   resolveFieldConflict,
   retryPublication,
+  refreshOwnerLinksFn,
 } from "@/lib/imobibrasil/ops.functions";
 
 const CONEXAO: Record<string, string> = {
@@ -77,6 +78,11 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["provider-ops"] }),
   });
 
+  const refreshOwners = useServerFn(refreshOwnerLinksFn);
+  const ownersMutation = useMutation({
+    mutationFn: (provider: "cordial" | "morar") => refreshOwners({ data: { provider } }),
+  });
+
   if (!enabled) return null;
 
   const summaries = ops.data?.summaries ?? [];
@@ -128,6 +134,30 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
                   : "—"}
               </li>
             </ul>
+            <button
+              type="button"
+              className="mt-2 rounded-lg border border-border/60 px-2 py-1 text-[10px] font-medium hover:bg-foreground/5 disabled:opacity-50"
+              disabled={ownersMutation.isPending}
+              onClick={() => ownersMutation.mutate(resumo.provider)}
+            >
+              {ownersMutation.isPending && ownersMutation.variables === resumo.provider
+                ? "Conferindo proprietários…"
+                : "Atualizar proprietários do site"}
+            </button>
+            {ownersMutation.data?.provider === resumo.provider && (
+              <p className="mt-1 text-[10px] text-foreground/60">
+                {ownersMutation.data.comProprietarioNoSite} de {ownersMutation.data.lidosNoSite} com
+                proprietário no site · {ownersMutation.data.anunciosAtualizados} atualizados ·{" "}
+                {ownersMutation.data.contatosPreenchidos} contatos preenchidos
+                {ownersMutation.data.contatosPendentes > 0
+                  ? ` · ${ownersMutation.data.contatosPendentes} contatos na próxima rodada`
+                  : ""}
+                {!ownersMutation.data.leituraCompleta ? " · leitura incompleta, nada foi apagado" : ""}
+              </p>
+            )}
+            {ownersMutation.isError && ownersMutation.variables === resumo.provider && (
+              <p className="mt-1 text-[10px] text-destructive">Não foi possível conferir agora.</p>
+            )}
           </article>
         ))}
       </div>
