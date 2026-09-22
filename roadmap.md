@@ -4,11 +4,11 @@
 
 - [x] Organizar fotos (arrastar/ordenar): eliminar demora e fotos que voltam para o lugar antigo; validar para corretor, secretaria e admin.
 
-- [bloqueado] Importar contato de proprietário do Imobi — API não expõe o vínculo imóvel↔cliente (codigoProprietario sempre 0). Evidência: docs/IMOBI-PROPRIETARIO-CONTATO.md. Depende do suporte ImobiBrasil liberar o campo no token.
+- [x] (22/09 liberado) Importar contato de proprietário do Imobi — API não expõe o vínculo imóvel↔cliente (codigoProprietario sempre 0). Evidência: docs/IMOBI-PROPRIETARIO-CONTATO.md. Depende do suporte ImobiBrasil liberar o campo no token.
 
 ## Novo (10/09)
 - [x] Proprietário sumido nos painéis Cordial/Morar: fila de alterações cancelada (278 jobs) e trava `imobi_update_sync_paused` ligada. Evidência e pedido ao suporte em docs/IMOBI-PROPRIETARIO-SUMICO-10-09-2026.md + lista de 543 imóveis alterados.
-- [ ] Aguardando suporte ImobiBrasil: restaurar vínculos de proprietário e liberar `codigoProprietario` no GET. Só depois religar as alterações automáticas.
+- [x] Suporte restaurou os vínculos (22/09): 259/288 Cordial e 232/255 Morar; códigos gravados no Gestão. Ver docs/IMOBI-PROPRIETARIO-RESTAURACAO.md.
 
 ## Novo (11/09)
 - [x] Suporte confirmou que `POST /imovel/alterar` zera campos omitidos. Envio agora lê o imóvel antes de alterar e reenvia proprietário/corretor; códigos guardados em `property_provider_publications`. Novo `GET /pessoa/dados/{codigo}` alimenta contato do proprietário na ficha interna.
@@ -139,3 +139,9 @@
 - [x] F: limitador antes de cada tentativa, Retry-After longo, limitador indisponível
 - [x] G: estado por destino/componente na tela
 - [x] H: validação no imóvel de teste + relatório final
+
+## Proprietários restaurados (22/09)
+- [x] Levantamento completo e gravação dos códigos
+- [x] Contato do proprietário em fichas vazias (em lotes)
+- [ ] Teste de edição mínima em 1 imóvel com proprietário por site — aguardando autorização do imóvel
+- [ ] 50 imóveis ainda sem proprietário no site — devolver lista ao suporte
