@@ -12,6 +12,7 @@ import { normalizeRemoteProperty } from "./import-normalizers";
 import { extractPublicUrl } from "./public-url";
 import { sha256 } from "./import.server";
 import { sanitizeMessage, toImobiError } from "./errors";
+import { isOwnEcho } from "./tri-state";
 import type { ImobiProvider } from "./providers";
 
 type Admin = SupabaseClient;
@@ -23,7 +24,9 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
 
   const { data: publications, error } = await admin
     .from("property_provider_publications")
-    .select("id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash")
+    .select(
+      "id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash, echo_payload_hash, echo_expires_at",
+    )
     .not("external_property_id", "is", null)
     .eq("enabled", true)
     .order("last_verified_at", { ascending: true, nullsFirst: true })
@@ -44,14 +47,18 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
     try {
       const detail = await fetchPropertyDetail(provider, externalId);
       if (!detail || Object.keys(detail).length === 0) {
+        // Ausência NUNCA remove nada do Gestão: pode ser imóvel inativo, filtro
+        // da consulta ou leitura parcial. Fica como suspeita para conferência.
         summary.missing_remote += 1;
         await admin
           .from("property_provider_publications")
           .update({
             status: "out_of_sync",
             last_verified_at: now,
+            remote_read_state: "missing_remote_suspeito",
             last_error_category: "missing_remote",
-            last_error_message: "Imóvel não localizado no site.",
+            last_error_message:
+              "O anúncio não apareceu na consulta ao site. Pode estar inativo ou fora do filtro — nada foi removido do Gestão.",
           })
           .eq("id", publication.id);
         continue;
@@ -60,14 +67,25 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
       const remoteHash = await sha256(
         JSON.stringify(normalizeRemoteProperty(provider, externalId, detail)),
       );
+      // `last_published_hash` vive no MESMO espaço normalizado de `remoteHash`
+      // (`normalizeRemoteProperty`). `last_payload_hash` é o hash do corpo
+      // enviado e não serve para essa comparação — ver docs/IMOBI-ESTADOS-SINCRONIZACAO.md.
       const baseline = publication.last_published_hash as string | null;
-      const drifted = Boolean(baseline) && baseline !== remoteHash;
+      const echo = isOwnEcho(remoteHash, {
+        hash: publication.echo_payload_hash as string | null,
+        expiresAt: publication.echo_expires_at as string | null,
+      });
+      const drifted = !echo && Boolean(baseline) && baseline !== remoteHash;
       const publicUrl = extractPublicUrl(provider, detail, externalId);
 
       await admin
         .from("property_provider_publications")
         .update({
           remote_observed_hash: remoteHash,
+          remote_snapshot_at: now,
+          remote_read_state: "lido",
+          // Eco do próprio envio confirma a publicação em vez de virar "alterado fora".
+          ...(echo ? { last_published_hash: remoteHash, baseline_at: now } : {}),
           status: drifted ? "out_of_sync" : "published",
           last_verified_at: now,
           // Preenche o link canônico apenas quando o site o devolveu; nunca apaga um link válido.
@@ -88,6 +106,8 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
         .from("property_provider_publications")
         .update({
           last_verified_at: now,
+          // Falha de leitura é falha de leitura: não vira ausência nem remoção.
+          remote_read_state: "leitura_falhou",
           last_error_category: normalized.category,
           last_error_message: sanitizeMessage(normalized.message, 200),
         })

@@ -20,6 +20,7 @@ import {
   type NormalizedProperty,
 } from "./import-normalizers";
 import { matchProperty, type LocalCandidate } from "./dedupe";
+import { applyRemoteChanges } from "./remote-changes.server";
 import { buildExternalReference } from "./serializers";
 import type { ImobiProvider } from "./providers";
 
@@ -256,6 +257,16 @@ async function loadLocalCandidates(
 }
 
 /** Preenche apenas colunas ainda vazias — importação nunca sobrescreve dado local. */
+/** Snapshot do que o site descreve, no espaço de colunas do Gestão. */
+export function remoteRowSnapshot(remote: NormalizedProperty): Record<string, unknown> {
+  const row = toPropertyRow(remote) as Record<string, unknown>;
+  const snapshot: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (value !== null && value !== undefined) snapshot[key] = value;
+  }
+  return snapshot;
+}
+
 function enrichmentPatch(row: Record<string, unknown>, local: Record<string, unknown>) {
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(row)) {
@@ -275,6 +286,9 @@ async function upsertPublication(
     externalReference: string | null;
     remoteHash: string;
     runId: string;
+    /** O cadastro local ficou REALMENTE igual ao remoto? Só então a referência avança. */
+    localMatchesRemote: boolean;
+    remoteSnapshot?: Record<string, unknown>;
   },
 ) {
   const now = new Date().toISOString();
@@ -289,10 +303,21 @@ async function upsertPublication(
          external_public_url: buildStablePublicUrl(input.provider, input.externalId),
         external_reference: input.externalReference ?? buildExternalReference(input.propertyId),
         status: "published",
+        // `remote_observed_hash` = o que o site tem agora (sempre gravado).
         remote_observed_hash: input.remoteHash,
-        last_published_hash: input.remoteHash,
-        local_desired_hash: input.remoteHash,
-        baseline_at: now,
+        ...(input.remoteSnapshot ? { remote_field_snapshot: input.remoteSnapshot } : {}),
+        remote_snapshot_at: now,
+        // `last_published_hash`/`confirmed_field_snapshot` = referência de
+        // comparação. NUNCA avança quando a importação preservou dado local
+        // diferente: registrar os três estados como iguais mascara divergência.
+        ...(input.localMatchesRemote
+          ? {
+              last_published_hash: input.remoteHash,
+              local_desired_hash: input.remoteHash,
+              confirmed_field_snapshot: input.remoteSnapshot ?? null,
+              baseline_at: now,
+            }
+          : {}),
         last_imported_at: now,
         last_verified_at: now,
         import_run_id: input.runId,
@@ -362,14 +387,23 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
 
   const row = toPropertyRow(remote);
   let propertyId = match.propertyId;
+  // Imóvel novo: o cadastro local nasce igual ao site, então a referência de
+  // comparação pode nascer confirmada. Imóvel já existente: nunca — o conteúdo
+  // local pode diferir, e a conferência campo a campo é feita abaixo.
+  let localMatchesRemote = false;
+  let localRow: Record<string, unknown> | null = null;
 
   if (propertyId) {
     const { data: local } = await admin.from("properties").select("*").eq("id", propertyId).maybeSingle();
+    localRow = (local ?? {}) as Record<string, unknown>;
     const patch = enrichmentPatch(
       { ...row, source_property_id: externalId },
-      (local ?? {}) as Record<string, unknown>,
+      localRow,
     );
-    if (Object.keys(patch).length) await admin.from("properties").update(patch).eq("id", propertyId);
+    if (Object.keys(patch).length) {
+      await admin.from("properties").update(patch).eq("id", propertyId);
+      localRow = { ...localRow, ...patch };
+    }
     await bumpRun(admin, job.run_id, { properties_linked: 1 });
   } else {
     const { data: created, error } = await admin
@@ -385,6 +419,7 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
       .single();
     if (error) throw new Error(error.message);
     propertyId = created.id as string;
+    localMatchesRemote = true;
     await bumpRun(admin, job.run_id, { properties_created: 1 });
   }
 
@@ -395,7 +430,27 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
     externalReference: remote.externalReference,
     remoteHash,
     runId: job.run_id,
+    localMatchesRemote,
+    remoteSnapshot: remoteRowSnapshot(remote),
   });
+
+  // Importação incremental: aplica o que mudou só no site, preserva edição e
+  // limpeza locais e registra divergência quando os dois lados mudaram.
+  if (localRow) {
+    const { data: pub } = await admin
+      .from("property_provider_publications")
+      .select("id, property_id, provider, confirmed_field_snapshot, echo_payload_hash, echo_expires_at")
+      .eq("id", publicationId)
+      .maybeSingle();
+    if (pub) {
+      await applyRemoteChanges(admin, {
+        publication: pub as never,
+        localRow,
+        remote,
+        remoteHash,
+      });
+    }
+  }
 
   await admin
     .from("property_import_candidates")
@@ -702,6 +757,9 @@ export async function commitCandidate(
     externalReference: (candidate.external_reference as string | null) ?? null,
     remoteHash: (candidate.remote_hash as string | null) ?? "",
     runId: candidate.run_id as string,
+    // `link_only` mantém o conteúdo local: a referência NÃO pode nascer confirmada.
+    localMatchesRemote: resolution !== "link_only",
+    remoteSnapshot: remoteRowSnapshot(remote),
   });
 
   const remoteImages = await fetchPropertyImages(provider, externalId).catch(() => []);
