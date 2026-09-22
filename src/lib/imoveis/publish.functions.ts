@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
+import { workerCallerSecret } from "@/lib/workers/hook-auth";
   IMOBI_PROVIDER_KEYS,
   isImobiProvider,
   type ImobiProvider,
@@ -83,7 +84,7 @@ async function assertProviderScope(
 async function kickWorker() {
   try {
     const secret =
-      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+      workerCallerSecret();
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;

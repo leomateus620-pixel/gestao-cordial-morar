@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { IMOBI_PROVIDER_KEYS, isImobiProvider, type ImobiProvider } from "@/lib/imobibrasil/providers";
+import { workerCallerSecret } from "@/lib/workers/hook-auth";
 
 export type ImportMode = "dry_run" | "commit" | "incremental";
 export type ConflictResolution = "link_only" | "update_local" | "create_separate" | "ignore";
@@ -46,7 +47,7 @@ async function assertAdmin(context: { supabase: { rpc: Function }; userId: strin
 
 async function kickImportWorker() {
   try {
-    const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const secret = workerCallerSecret();
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
@@ -317,7 +318,7 @@ export const removeProperty = createServerFn({ method: "POST" })
 
     // Dispara o worker de saída já existente (publicação/remoção).
     try {
-      const secret = process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+      const secret = workerCallerSecret();
       const request = getRequest();
       const origin = request?.url ? new URL(request.url).origin : null;
       if (secret && origin) {
