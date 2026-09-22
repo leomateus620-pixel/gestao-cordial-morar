@@ -187,6 +187,10 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
   // repetido — nunca avança nem conclui ausência.
   const status: ListStatus = job.payload?.["status"] === "inativo" ? "inativo" : "ativo";
   const result = await fetchPropertyPage(job.provider, page, PER_PAGE, job.correlation_id, status);
+  if (result.recognized === false) {
+    // Resposta sem lista reconhecível: repete a página em vez de concluir "vazio".
+    throw new Error("Resposta do site sem lista reconhecível; a página será lida de novo.");
+  }
 
   let discovered = 0;
   for (const item of result.items) {
@@ -203,7 +207,13 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
     });
   }
 
-  const totalPages = Math.max(result.totalPages, page);
+  // Sem total informado, página cheia indica que pode haver a próxima.
+  const totalPages =
+    result.totalPagesKnown === false
+      ? result.items.length >= PER_PAGE
+        ? page + 1
+        : page
+      : Math.max(result.totalPages, page);
   const next = nextListStep({ status, page, totalPages });
   if (next.kind === "page") {
     await enqueueJob(admin, {
