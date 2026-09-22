@@ -797,6 +797,30 @@ async function rebuildRemoteOrder(
   let deleted = 0;
   let reinserted = 0;
 
+  // 0) Antes de QUALQUER exclusão: todos os arquivos que serão reinseridos
+  //    precisam existir e ser válidos. Sem isso, apagar deixaria a galeria menor.
+  //    (Só na primeira fase; em retomada a exclusão já aconteceu.)
+  if (plan.deleteRemoteIds.length) {
+    for (const imageId of plan.reinsertImageIds) {
+      const image = params.byId.get(imageId);
+      const problem = image ? await preflightDelivery(admin, image) : "foto local ausente";
+      if (problem) {
+        return {
+          deleted: 0,
+          reinserted: 0,
+          pending: true,
+          reason: "arquivo_indisponivel",
+          checkpoint: {
+            state: "blocked",
+            reason: `arquivo_indisponivel: ${imageId} (${problem})`,
+            at: new Date().toISOString(),
+          },
+          gallery,
+        };
+      }
+    }
+  }
+
   // 1) Remove a cauda divergente (uma por uma, conferindo por leitura).
   for (const code of plan.deleteRemoteIds) {
     if (params.outOfBudget()) {
