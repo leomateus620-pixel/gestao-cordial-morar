@@ -192,7 +192,9 @@ async function logAttempt(
 }
 
 function backoffSeconds(attempts: number): number {
-  return Math.min(3600, 60 * 2 ** Math.max(0, attempts - 1));
+  // Espera crescente com variação (evita que várias filas voltem juntas).
+  const base = Math.min(3600, 60 * 2 ** Math.max(0, attempts - 1));
+  return Math.round(base * (0.8 + Math.random() * 0.4));
 }
 
 /**
@@ -486,6 +488,8 @@ async function syncCharacteristics(
       });
       return true;
     } catch (error) {
+      // Posse perdida interrompe tudo: nenhum outro efeito externo.
+      if (error instanceof LeaseLostError) throw error;
       const normalized = toImobiError(error);
       await logAttempt(admin, job, {
         step,
@@ -1219,7 +1223,10 @@ export async function processJob(
 
   // Cadastro concluído não depende das fotos: o estado da mídia vive em
   // `media_status` e é atualizado pelo caminho `media_sync`.
-  const finalStatus = verified && !fieldVerification.divergent.length ? "published" : "partial";
+  // Características com falha parcial também deixam o cadastro "parcial": só as
+  // que faltaram voltam no próximo envio (o conjunto confirmado não as inclui).
+  const finalStatus =
+    verified && !fieldVerification.divergent.length && !characteristics.incomplete ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
@@ -1282,7 +1289,11 @@ export async function processJob(
           ? null
           : fieldVerification.divergent.length
             ? `O site não confirmou os campos: ${fieldVerification.divergent.join(", ")}.`
-            : "Verificação remota divergente.",
+            : characteristics.incomplete
+              ? "Algumas características não foram gravadas no site; serão reenviadas."
+              : !verified
+                ? "A leitura do site não confirmou a referência do imóvel."
+                : "Verificação remota divergente.",
     })
     .eq("id", publication.id);
 
@@ -1521,9 +1532,13 @@ export async function runSyncWorker(
       await admin
         .from("property_provider_publications")
         .update({
-          status: "error",
+          // Esperando a vez (limite) ou nova tentativa agendada: continua
+          // pendente, não "erro". Erro só quando as tentativas acabaram.
+          status: canRetry ? "pending" : "error",
           last_error_category: normalized.category,
-          last_error_message: normalized.message,
+          last_error_message: canRetry
+            ? `${normalized.message} Nova tentativa às ${new Date(Date.now() + waitSeconds * 1000).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })}.`
+            : `${normalized.message} Tentativas esgotadas; use "Tentar de novo".`,
         })
         .eq("property_id", job.property_id)
         .eq("provider", job.provider);

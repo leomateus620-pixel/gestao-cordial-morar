@@ -89,6 +89,8 @@ export type ImobiRequestOptions = {
   correlationId?: string;
   /** Somente para o próprio controle de limite (evita recursão). */
   skipRateLimit?: boolean;
+  /** Substitui o limitador (testes). Deve lançar ImobiApiError quando não há vaga. */
+  acquireSlot?: (provider: ImobiProvider) => Promise<void>;
   onLog?: (entry: ImobiRequestLog) => void;
 };
 
@@ -106,27 +108,27 @@ const SLOT_DEFER_SECONDS = 30;
  * devolvemos erro de limite com `retryAfterSeconds` para o worker reagendar.
  */
 async function waitForProviderSlot(provider: ImobiProvider) {
+  let result: { granted: boolean; unavailable?: boolean };
   try {
     const [{ supabaseAdmin }, { acquireProviderSlot }] = await Promise.all([
       import("@/integrations/supabase/client.server"),
       import("./rate-limit.server"),
     ]);
-    const result = await acquireProviderSlot(supabaseAdmin, provider, {
-      maxWaitMs: SLOT_MAX_WAIT_MS,
+    result = await acquireProviderSlot(supabaseAdmin, provider, { maxWaitMs: SLOT_MAX_WAIT_MS });
+  } catch {
+    result = { granted: false, unavailable: true };
+  }
+  if (!result.granted) {
+    // Sem vaga (ou controle indisponível): não chama o site; o worker reagenda.
+    throw new ImobiApiError({
+      message: result.unavailable
+        ? "Controle de limite indisponível; envio adiado por segurança."
+        : "Limite de requisições do site atingido; reagendado.",
+      category: "rate_limit",
+      retryAfterSeconds: SLOT_DEFER_SECONDS,
     });
-    if (!result.granted) {
-      throw new ImobiApiError({
-        message: "Limite de requisições do site atingido; reagendado.",
-        category: "rate_limit",
-        retryAfterSeconds: SLOT_DEFER_SECONDS,
-      });
-    }
-  } catch (error) {
-    // Falta de vaga é decisão deliberada e sobe; falha do próprio controle não bloqueia.
-    if (error instanceof ImobiApiError) throw error;
   }
 }
-
 
 export async function imobiRequest<T = unknown>(
   provider: ImobiProvider,
@@ -145,11 +147,15 @@ export async function imobiRequest<T = unknown>(
   const canRetry = (error: ImobiApiError) =>
     allowRetry ? error.retryable : networkOnlyRetry && error.category === "network";
 
-  if (!options.skipRateLimit) await waitForProviderSlot(provider);
-
+  const acquire = options.acquireSlot ?? waitForProviderSlot;
   let lastError: ImobiApiError | null = null;
+  // Erros que já têm destino definido (espera longa, sem vaga) não podem ser
+  // repetidos antes da hora pelo catch genérico.
+  const final = new WeakSet<object>();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    // Vaga do limitador ANTES DE CADA tentativa, inclusive nas repetições.
+    if (!options.skipRateLimit) await acquire(provider);
     const started = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -221,6 +227,7 @@ export async function imobiRequest<T = unknown>(
           await delay(waitMs);
           continue;
         }
+        final.add(error);
         throw error;
       }
 
@@ -252,6 +259,7 @@ export async function imobiRequest<T = unknown>(
       log(true);
       return { data: (parsed ?? {}) as T, httpStatus: response.status, durationMs };
     } catch (error) {
+      if (error && typeof error === "object" && final.has(error)) throw error;
       const normalized = toImobiError(error);
       options.onLog?.({
         provider,

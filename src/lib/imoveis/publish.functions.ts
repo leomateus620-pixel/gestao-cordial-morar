@@ -48,6 +48,17 @@ export type PublicationStatusView = {
     lastSyncedAt: string | null;
     lastVerifiedAt: string | null;
   };
+  /** Cadastro por destino: revisão salva aqui x confirmada no site. */
+  cadastro: {
+    localRevision: number | null;
+    savedAt: string | null;
+    confirmedRevision: number | null;
+    divergent: string[];
+    unverifiable: string[];
+    conflictCount: number;
+  };
+  /** Características por destino, separadas do cadastro. */
+  characteristics: { syncedAt: string | null; incomplete: boolean; count: number };
   /** Conferência da referência no site: quantos anúncios respondem por ela. */
   remote: {
     createState: string | null;
@@ -229,7 +240,7 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string }) => data)
   .handler(async ({ data, context }): Promise<PublicationStatusView[]> => {
-    const [{ data: publications }, { data: jobs }] = await Promise.all([
+    const [{ data: publications }, { data: jobs }, { data: prop }] = await Promise.all([
       context.supabase
         .from("property_provider_publications")
         .select("*")
@@ -239,7 +250,13 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         .select("id, provider, action, status, attempts, last_error_category, next_run_at")
         .eq("property_id", data.propertyId)
         .in("status", ["pending", "processing", "retry"]),
+      context.supabase
+        .from("properties")
+        .select("revision, updated_at")
+        .eq("id", data.propertyId)
+        .maybeSingle(),
     ]);
+    const list = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
 
     const jobIndex = new Map(
       (jobs ?? []).map((job) => [
@@ -276,6 +293,19 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         lastSyncedAt: row.last_media_synced_at ?? null,
         lastVerifiedAt: row.last_media_verified_at ?? null,
       },
+      cadastro: {
+        localRevision: (prop as { revision?: number } | null)?.revision ?? null,
+        savedAt: (prop as { updated_at?: string } | null)?.updated_at ?? null,
+        confirmedRevision: row.confirmed_revision ?? null,
+        divergent: list((row.last_field_verification as { divergent?: unknown } | null)?.divergent),
+        unverifiable: list((row.last_field_verification as { unverifiable?: unknown } | null)?.unverifiable),
+        conflictCount: row.conflict_count ?? 0,
+      },
+      characteristics: {
+        syncedAt: row.characteristic_synced_at ?? null,
+        incomplete: row.characteristic_sync_incomplete === true,
+        count: Array.isArray(row.characteristic_codes) ? row.characteristic_codes.length : 0,
+      },
       remote: {
         createState: row.create_state ?? null,
         matchCount: row.remote_match_count ?? null,
@@ -289,18 +319,25 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
 
 export const retryPropertySync = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; provider: string }) => data)
+  .inputValidator(
+    (data: { propertyId: string; provider: string; component?: "cadastro" | "fotos" }) => data,
+  )
   .handler(async ({ data, context }) => {
     const providers = sanitizeProviders([data.provider]);
     if (!providers.length) throw new Error("Destino inválido.");
     await assertProviderScope(context.supabase as never, context.userId, providers);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
+    // Repetir só retoma o trabalho pendente DESTE destino/componente. O job
+    // reaproveita o anúncio existente (nunca cria outro imóvel).
+    let query = supabaseAdmin
       .from("property_sync_jobs")
       .update({ status: "retry", next_run_at: new Date().toISOString(), attempts: 0 })
       .eq("property_id", data.propertyId)
       .eq("provider", providers[0]!)
       .in("status", ["failed", "retry", "cancelled"]);
+    if (data.component === "fotos") query = query.eq("action", "media_sync");
+    else if (data.component === "cadastro") query = query.neq("action", "media_sync");
+    await query;
     await kickWorker();
     return { ok: true };
   });

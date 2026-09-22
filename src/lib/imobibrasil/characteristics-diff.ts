@@ -1,3 +1,4 @@
+import { normalizeRichText, RICH_TEXT_KEYS } from "./payload-diff";
 /**
  * Características por diferença (puro, sem I/O).
  *
@@ -67,7 +68,10 @@ export function verifyFields(
       result.unverifiable.push(key);
       continue;
     }
-    if (same(remoteSnapshot[key], sent[key])) result.confirmed.push(key);
+    const ok = RICH_TEXT_KEYS.has(key)
+      ? normalizeRichText(remoteSnapshot[key]) === normalizeRichText(sent[key])
+      : same(remoteSnapshot[key], sent[key]);
+    if (ok) result.confirmed.push(key);
     else result.divergent.push(key);
   }
   return result;

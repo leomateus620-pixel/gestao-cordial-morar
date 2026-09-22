@@ -122,20 +122,20 @@
 - [x] Comparação numérica por formato conhecido (10.5 ≠ 105; "10,50" = 10.5; zero ≠ vazio)
 - [x] Importação não preenche mais campos vazios do Gestão (limpeza preservada)
 - [x] Registro de divergências compatível com histórico (sem upsert no índice parcial)
-- [ ] Posse/lease antes de cada chamada externa e finalização condicionada
-- [ ] Quatro estados (desejado/tentado/observado/confirmado) por campo
-- [ ] Fotos: plano persistido, validação de arquivos antes de excluir, ID só com evidência
-- [ ] Conflito Cordial x Morar preserva o Gestão; importação com revisão esperada
-- [ ] Paginação completa ativos/inativos; características parciais
-- [ ] Limitador antes de cada tentativa; Retry-After longo reagenda o job
-- [ ] Estados por destino/componente na tela; testes restantes; validação no imóvel 1381/3380
+- [x] Posse/lease antes de cada chamada externa e finalização condicionada
+- [x] Quatro estados (desejado/tentado/observado/confirmado) por campo
+- [x] Fotos: plano persistido, validação de arquivos antes de excluir, ID só com evidência
+- [x] Conflito Cordial x Morar preserva o Gestão; importação com revisão esperada
+- [x] Paginação completa ativos/inativos; características parciais
+- [x] Limitador antes de cada tentativa; Retry-After longo reagenda o job
+- [x] Estados por destino/componente na tela; testes restantes; validação no imóvel 1381/3380
 
 ## Consistência ImobiBrasil — andamento
 - [x] A–C: posse/lease, followup só com posse, pré-checagem de arquivos antes de excluir fotos
 - [x] Confirmação campo a campo: referência só avança com campos confirmados; divergentes voltam no próximo envio; revisão só confirmada sem pendências; leitura sem referência não conta como confirmação
 - [x] Foto enviada sem código só é ligada quando aparece exatamente uma foto nova na galeria
-- [ ] D: conflito Cordial x Morar preserva o Gestão; importação com revisão esperada
-- [ ] E: paginação ativos/inativos, características por conta, ocultar/retirar/excluir
-- [ ] F: limitador antes de cada tentativa, Retry-After longo, limitador indisponível
-- [ ] G: estado por destino/componente na tela
-- [ ] H: validação no imóvel de teste + relatório final
+- [x] D: conflito Cordial x Morar preserva o Gestão; importação com revisão esperada
+- [x] E: paginação ativos/inativos, características por conta, ocultar/retirar/excluir
+- [x] F: limitador antes de cada tentativa, Retry-After longo, limitador indisponível
+- [x] G: estado por destino/componente na tela
+- [x] H: validação no imóvel de teste + relatório final
