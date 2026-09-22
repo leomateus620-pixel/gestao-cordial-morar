@@ -81,3 +81,40 @@ Data: 22/09/2026
 Não foram executados nesta rodada, para não alterar dados reais sem seu aval:
 exclusão de foto no imóvel de teste, arquivamento, e simulação de 429/timeout
 contra os sites em produção.
+
+## Etapas D–H (22/09/2026) — consistência final
+
+### Problemas confirmados no código anterior
+- `changed_fields` sobrescrito em todos os jobs pendentes; `sameValue(10.5,105)` verdadeiro; `enrichmentPatch` repunha campos limpos antes da comparação; upsert de conflitos incompatível com índice parcial.
+- Vaga do limitador pedida só uma vez (repetições sem vaga); limitador indisponível liberava envio; o `catch` genérico repetia antes da hora erros com Retry-After longo.
+- Falha parcial de características não impedia "publicado"; posse perdida podia ser engolida no envio de características.
+- Descrição nunca era conferida (site devolve HTML e acentos em dupla codificação).
+
+### Correções (arquivos)
+- `client.server.ts`: vaga ANTES DE CADA tentativa; erros com destino definido não são repetidos pelo `catch`; limitador indisponível = adiar (não chamar o site).
+- `rate-limit.server.ts`: erro do controle devolve `unavailable`, sem liberar envio.
+- `sync.server.ts`: backoff com variação; publicação fica "pendente" com horário da próxima tentativa (erro só quando esgota); características parciais → cadastro "parcial"; `LeaseLostError` propaga.
+- `payload-diff.ts` / `characteristics-diff.ts`: `normalizeRichText` para conferir a descrição.
+- `cross-account.ts`, `remote-changes.server.ts`: divergência Cordial x Morar mantém o valor do Gestão e registra conflito; importação com revisão esperada.
+- `list-plan.ts`, `read.server.ts`, `import.server.ts`: leitura paginada de ativos e inativos; página com falha nunca prova ausência.
+- `publish.functions.ts`, `PropertyPublishPanel.tsx`: cadastro, características e fotos separados por imobiliária; "salvo aqui" x "confirmado no site"; campos não confirmados/não verificáveis listados; "Tentar cadastro de novo" / "Tentar fotos de novo" por destino (reaproveitam o anúncio); "Despublicar" renomeado para "Ocultar do site" (só oculta; não há exclusão de cadastro remoto).
+
+### Testes
+292 testes passando (`bun run test`), typecheck limpo. Novos: `client-retry.test.ts` (vaga por tentativa, Retry-After longo, limitador indisponível, POST sem repetição cega, isolamento por conta), `rich-text.test.ts`, `cross-account.test.ts`, `list-plan.test.ts`, `confirm-snapshot.test.ts`.
+
+### Validação real — imóvel de teste 1381 (Cordial 4355160) / 3380 (Morar 4355161)
+| Prova | Cordial | Morar |
+|---|---|---|
+| Preço e descrição salvos em sequência (rev. 9 e 10) | 181000 + frase no site | 181000 + frase no site |
+| Edição com revisão antiga | recusada (conflito) | recusada |
+| Reversão (rev. 11) | site respondeu 523; ficou pendente com horário; posse expirada recuperada; 3ª tentativa confirmou | confirmada na 1ª |
+| Descrição conferida por leitura | confirmada | confirmada |
+| IDs do anúncio | preservados | preservados |
+
+Finalidade e tipo continuam "não verificáveis" (a leitura devolve o nome, não o código): por isso a revisão não é marcada como 100% confirmada — comportamento intencional.
+
+### Limitações reais da API
+- Inserção de foto sem ID documentado na resposta; sem idempotência de criação; sem alteração de destaque/ordem (só apagar e reinserir).
+- Leitura não devolve códigos de finalidade/tipo.
+- Webhooks de imóveis não confirmados pelo fornecedor (não usados).
+- Descrição volta com acentos em dupla codificação (comparação corrige; exibição no site não foi alterada).
