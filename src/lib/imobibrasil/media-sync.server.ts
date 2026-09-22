@@ -368,7 +368,22 @@ export async function deliverGallery(
       // Código da FOTO: só chave de imagem é aceita (o leitor genérico de imóvel
       // devolveria o código do imóvel). Sem código, a reconciliação por leitura
       // preenche depois.
-      const externalImageId = extractInsertedImageId(response.data);
+      let externalImageId = extractInsertedImageId(response.data);
+      // Resposta sem código: associa só com evidência — exatamente UMA foto
+      // nova na galeria completa. Nunca pela posição.
+      if (!externalImageId) {
+        const beforeCodes = new Set(
+          gallery.items.map((item) => item.codigoImagem ?? item.url ?? "").filter(Boolean),
+        );
+        const after = await fetchRemoteGallery(provider, externalId, correlationId);
+        if (after.reliable) {
+          const fresh = after.items.filter(
+            (item) => !beforeCodes.has(item.codigoImagem ?? item.url ?? ""),
+          );
+          if (fresh.length === 1 && fresh[0].codigoImagem) externalImageId = fresh[0].codigoImagem;
+          gallery = after;
+        }
+      }
       await admin.from("property_image_provider_publications").upsert(
         {
           image_id: image.id,
