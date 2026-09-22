@@ -134,19 +134,34 @@ async function finishMediaJob(admin: Admin, job: SyncJob): Promise<boolean> {
   return payload.owned !== false;
 }
 
-/** Renova o lease durante trabalhos longos. Falhar aqui nunca derruba o job. */
+/** A rotina perdeu a posse do trabalho: nenhum efeito externo nem gravação pode seguir. */
+export class LeaseLostError extends Error {
+  constructor(jobId: string) {
+    super(`Posse do trabalho ${jobId} perdida; outra execução assumiu.`);
+    this.name = "LeaseLostError";
+  }
+}
+
+/** Renova o lease. Devolve false quando a posse foi perdida ou não pôde ser comprovada. */
 export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
   if (!job.lease_token) return true;
   try {
-    const { data } = await admin.rpc("property_sync_renew_lease", {
+    const { data, error } = await admin.rpc("property_sync_renew_lease", {
       _job_id: job.id,
       _lease_token: job.lease_token,
       _seconds: seconds,
     });
+    if (error) return false;
     return data === true;
   } catch {
-    return true;
+    // Sem confirmação de posse, parar é o seguro: o trabalho volta à fila.
+    return false;
   }
+}
+
+/** Confirma a posse antes de uma chamada externa; interrompe se foi perdida. */
+export async function assertJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<void> {
+  if (!(await renewJobLease(admin, job, seconds))) throw new LeaseLostError(job.id);
 }
 
 
@@ -639,7 +654,7 @@ export async function processJob(
     // perder a posse do trabalho.
     return syncPropertyMedia(admin, job, {
       onProgress: async () => {
-        await renewJobLease(admin, job, 180);
+        await assertJobLease(admin, job, 180);
       },
     });
   }
@@ -1389,7 +1404,7 @@ export async function runSyncWorker(
       // Reserva renovada imediatamente antes de cada trabalho: num lote, os
       // últimos jobs não podem perder a posse enquanto esperam a vez no limite
       // do site (era o que devolvia o mesmo trabalho à fila sem concluir).
-      await renewJobLease(admin, job, leaseSecondsFor(kind));
+      await assertJobLease(admin, job, leaseSecondsFor(kind));
       const outcome = await processJob(admin, job, { updatesPaused });
       const owned =
         job.action === "media_sync"
@@ -1408,6 +1423,12 @@ export async function runSyncWorker(
       });
       results.push({ jobId: job.id, provider: job.provider, staleLease: !owned, ...outcome });
     } catch (error) {
+      // Posse perdida: outra execução é dona do trabalho. Nada é gravado aqui —
+      // nem conclusão, nem erro na publicação — para não sobrescrever o estado atual.
+      if (error instanceof LeaseLostError) {
+        results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
+        continue;
+      }
       // Pausa: o trabalho VOLTA para a fila (retomável), sem consumir tentativa
       // e sem marcar erro na publicação.
       if (error instanceof PausedWriteError) {
