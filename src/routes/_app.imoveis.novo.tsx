@@ -114,21 +114,29 @@ function NovoImovelPage() {
 
   async function ensureDraft(): Promise<string | null> {
     if (draftId) return draftId;
-    try {
-      // O rascunho existe só para anexar fotos/arquivos: ele nunca guarda o
-      // código da imobiliária, senão um cadastro abandonado queimaria o número.
-      const property = await create.mutateAsync({
-        ...latestValues.current,
-        codigoCordial: null,
-        codigoMorar: null,
-      });
-      setDraftId(property.id);
-      toast.info("Rascunho salvo para receber as fotos.");
-      return property.id;
-    } catch (err) {
-      toast.error((err as Error)?.message ?? "Não foi possível salvar o rascunho.");
-      return null;
-    }
+    // Uma única promessa em andamento: dois cliques compartilham a mesma criação.
+    if (draftPromise.current) return draftPromise.current;
+    draftPromise.current = (async () => {
+      try {
+        // O rascunho existe só para anexar fotos/arquivos: ele nunca guarda o
+        // código da imobiliária, senão um cadastro abandonado queimaria o número.
+        // `clientIntentKey` garante que retry/repetição devolva o MESMO imóvel.
+        const property = await create.mutateAsync({
+          ...latestValues.current,
+          codigoCordial: null,
+          codigoMorar: null,
+          clientIntentKey: intentKey.current,
+        });
+        setDraftId(property.id);
+        toast.info("Rascunho salvo para receber as fotos.");
+        return property.id;
+      } catch (err) {
+        toast.error((err as Error)?.message ?? "Não foi possível salvar o rascunho.");
+        draftPromise.current = null;
+        return null;
+      }
+    })();
+    return draftPromise.current;
   }
 
   async function handleSubmit(values: PropertyFormValues) {
