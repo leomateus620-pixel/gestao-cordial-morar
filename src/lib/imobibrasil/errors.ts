@@ -28,6 +28,8 @@ export class ImobiApiError extends Error {
   readonly code: string | null;
   readonly retryable: boolean;
   readonly ambiguous: boolean;
+  /** Quando o provedor (ou o controle de limite) pede espera, em segundos. */
+  readonly retryAfterSeconds: number | null;
 
   constructor(params: {
     message: string;
@@ -35,6 +37,7 @@ export class ImobiApiError extends Error {
     httpStatus?: number | null;
     code?: string | null;
     ambiguous?: boolean;
+    retryAfterSeconds?: number | null;
   }) {
     super(sanitizeMessage(params.message));
     this.name = "ImobiApiError";
@@ -43,8 +46,21 @@ export class ImobiApiError extends Error {
     this.code = params.code ?? null;
     this.retryable = RETRYABLE_CATEGORIES.has(params.category);
     this.ambiguous = params.ambiguous ?? false;
+    this.retryAfterSeconds = params.retryAfterSeconds ?? null;
   }
 }
+
+/** Lê o header `Retry-After` (segundos ou data HTTP). */
+export function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value.trim());
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(3600, Math.round(seconds));
+  const when = Date.parse(value);
+  if (Number.isNaN(when)) return null;
+  const diff = Math.round((when - Date.now()) / 1000);
+  return diff > 0 ? Math.min(3600, diff) : 0;
+}
+
 
 const SENSITIVE_PATTERNS: Array<[RegExp, string]> = [
   [/("?token"?\s*[:=]\s*")[^"]*(")/gi, "$1[redacted]$2"],
