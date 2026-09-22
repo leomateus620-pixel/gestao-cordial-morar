@@ -316,6 +316,19 @@ export function PropertyPhotosStep({
                     className={`size-3.5 ${image.isCover ? "text-primary" : "text-foreground/60"}`}
                   />
                 </button>
+                <label className="cursor-pointer" aria-label="Substituir foto" title="Substituir foto">
+                  <Replace className="size-3.5 text-foreground/60" />
+                  <input
+                    type="file"
+                    accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) media.replace.mutate({ imageId: image.id, file });
+                    }}
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => media.remove.mutate(image.id)}
