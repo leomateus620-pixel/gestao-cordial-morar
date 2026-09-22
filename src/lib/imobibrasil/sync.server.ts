@@ -107,6 +107,31 @@ async function finishJob(
   return data === true;
 }
 
+/**
+ * Conclui um trabalho de FOTOS e agenda o acompanhamento na MESMA operação
+ * (`property_media_finish_job`). Antes o agendamento acontecia com o job ainda
+ * em `processing`: a alteração feita durante o envio ficava só marcada e nada a
+ * executava.
+ */
+async function finishMediaJob(admin: Admin, job: SyncJob): Promise<boolean> {
+  const { data, error } = await admin.rpc("property_media_finish_job", {
+    _job_id: job.id,
+    _lease_token: job.lease_token ?? null,
+    _fields: {
+      status: "succeeded",
+      finished_at: new Date().toISOString(),
+      last_error_category: null,
+      last_error_message: null,
+    },
+    _property_id: job.property_id,
+    _provider: job.provider,
+    _processed_revision: job.requested_revision,
+  });
+  if (error) throw new Error(error.message);
+  const payload = (data ?? {}) as { owned?: boolean };
+  return payload.owned !== false;
+}
+
 /** Renova o lease durante trabalhos longos. Falhar aqui nunca derruba o job. */
 export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
   if (!job.lease_token) return true;
