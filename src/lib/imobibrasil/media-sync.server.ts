@@ -902,7 +902,7 @@ async function rebuildRemoteOrder(
   //      nada é apagado: a galeria continua completa e o envio fica pendente.
   if (plan.deleteRemoteIds.length) {
     const calls = plan.deleteRemoteIds.length + plan.reinsertImageIds.length + 3;
-    const neededMs = Math.ceil(calls / 18) * 60_000;
+    const neededMs = (Math.ceil(calls / 18) - 1) * 60_000 + 20_000;
     if (params.remainingMs() < neededMs) {
       return {
         deleted: 0,
