@@ -1142,41 +1142,30 @@ export async function runSyncWorker(
     const started = Date.now();
     try {
       const outcome = await processJob(admin, job, { updatesPaused });
-      await admin
-        .from("property_sync_jobs")
-        .update({
-          status: "succeeded",
-          finished_at: new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_error_category: null,
-          last_error_message: null,
-        })
-        .eq("id", job.id);
+      const owned = await finishJob(admin, job, {
+        status: "succeeded",
+        finished_at: new Date().toISOString(),
+        last_error_category: null,
+        last_error_message: null,
+      });
       await logAttempt(admin, job, {
         step: job.action,
         ok: true,
         durationMs: Date.now() - started,
+        errorMessage: owned ? undefined : "Lease perdido: conclusão registrada por outra execução.",
       });
-      results.push({ jobId: job.id, provider: job.provider, ...outcome });
+      results.push({ jobId: job.id, provider: job.provider, staleLease: !owned, ...outcome });
     } catch (error) {
       // Pausa: o trabalho VOLTA para a fila (retomável), sem consumir tentativa
       // e sem marcar erro na publicação.
       if (error instanceof PausedWriteError) {
-        await admin
-          .from("property_sync_jobs")
-          .update({
-            status: "retry",
-            attempts: Math.max(0, job.attempts - 1),
-            next_run_at: new Date(Date.now() + PAUSE_DEFER_SECONDS * 1000).toISOString(),
-            locked_at: null,
-            lock_expires_at: null,
-            locked_by: null,
-            last_error_category: "config",
-            last_error_message: error.message,
-          })
-          .eq("id", job.id);
+        await finishJob(admin, job, {
+          status: "retry",
+          attempts: Math.max(0, job.attempts - 1),
+          next_run_at: new Date(Date.now() + PAUSE_DEFER_SECONDS * 1000).toISOString(),
+          last_error_category: "config",
+          last_error_message: error.message,
+        });
         results.push({ jobId: job.id, provider: job.provider, status: "deferred_paused" });
         continue;
       }
@@ -1188,21 +1177,15 @@ export async function runSyncWorker(
         ? Math.max(15, normalized.retryAfterSeconds ?? 30)
         : backoffSeconds(job.attempts);
       const canRetry = rateLimited || (normalized.retryable && job.attempts < job.max_attempts);
-      await admin
-        .from("property_sync_jobs")
-        .update({
-          status: canRetry ? "retry" : "failed",
-          attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
-          next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
-          finished_at: canRetry ? null : new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_http_status: normalized.httpStatus,
-          last_error_category: normalized.category,
-          last_error_message: normalized.message,
-        })
-        .eq("id", job.id);
+      await finishJob(admin, job, {
+        status: canRetry ? "retry" : "failed",
+        attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
+        next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
+        finished_at: canRetry ? null : new Date().toISOString(),
+        last_http_status: normalized.httpStatus,
+        last_error_category: normalized.category,
+        last_error_message: normalized.message,
+      });
 
       await admin
         .from("property_provider_publications")
