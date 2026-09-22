@@ -98,7 +98,13 @@ function EditarImovelPage() {
 
   async function handleSubmit(values: PropertyFormValues) {
     try {
-      const result = await update.mutateAsync({ id: imovelId, ...values });
+      // Versão que estava aberta na tela: se alguém salvou no meio, o servidor
+      // devolve conflito em vez de sobrescrever a alteração do outro.
+      const result = await update.mutateAsync({
+        id: imovelId,
+        expectedRevision: detail.revision ?? null,
+        ...values,
+      });
       const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
       if (ids.length) {
         try {
