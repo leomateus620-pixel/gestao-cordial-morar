@@ -1499,7 +1499,7 @@ export async function runSyncWorker(
       const mediaUnfinished =
         job.action === "media_sync" &&
         ["rebuilding", "pending_delete", "partial", "waiting_watermark"].includes(String(outcomeStatus)) &&
-        job.attempts < Math.max(job.max_attempts, 8);
+        job.attempts < job.max_attempts;
       const owned =
         job.action === "media_sync"
           ? mediaUnfinished
