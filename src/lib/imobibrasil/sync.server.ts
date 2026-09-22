@@ -160,6 +160,20 @@ export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): 
   }
 }
 
+/** Há envio cadastral mais novo (revisão maior) na fila para o mesmo imóvel e site? */
+export async function isSupersededJob(admin: Admin, job: SyncJob): Promise<boolean> {
+  const { data } = await admin
+    .from("property_sync_jobs")
+    .select("id")
+    .eq("property_id", job.property_id)
+    .eq("provider", job.provider)
+    .eq("action", "update")
+    .in("status", ["pending", "retry"])
+    .gt("requested_revision", job.requested_revision ?? 0)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
 /** Confirma a posse antes de uma chamada externa; interrompe se foi perdida. */
 export async function assertJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<void> {
   if (!(await renewJobLease(admin, job, seconds))) throw new LeaseLostError(job.id);
@@ -1464,15 +1478,29 @@ export async function runSyncWorker(
       // últimos jobs não podem perder a posse enquanto esperam a vez no limite
       // do site (era o que devolvia o mesmo trabalho à fila sem concluir).
       await assertJobLease(admin, job, leaseSecondsFor(kind));
+      // Job superado: uma versão mais nova do imóvel já tem envio na fila e
+      // levará o conteúdo atual. Este não é enviado (nada chega fora de ordem).
+      if (job.action === "update" && (await isSupersededJob(admin, job))) {
+        await finishJob(admin, job, {
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+          last_error_message: "Absorvido por versão mais nova do imóvel.",
+        });
+        results.push({ jobId: job.id, provider: job.provider, status: "superseded" });
+        continue;
+      }
       const outcome = await processJob(admin, job, { updatesPaused });
+      // Envio que só deu certo em parte não termina como sucesso genérico.
+      const partial = (outcome as { status?: string } | undefined)?.status === "partial";
       const owned =
         job.action === "media_sync"
           ? await finishMediaJob(admin, job)
           : await finishJob(admin, job, {
               status: "succeeded",
               finished_at: new Date().toISOString(),
-              last_error_category: null,
-              last_error_message: null,
+              last_error_category: partial ? "partial" : null,
+              last_error_message: partial ? "Envio parcial: há campos ainda sem confirmação no site." : null,
+              checkpoint: partial ? { partial: true } : null,
             });
       await logAttempt(admin, job, {
         step: job.action,
@@ -1504,13 +1532,17 @@ export async function runSyncWorker(
       // Mapeamento pendente: estado retomável com mensagem acionável. O trabalho
       // espera a correspondência ser definida, sem consumir tentativa.
       if (error instanceof MappingPendingError) {
-        await finishJob(admin, job, {
+        const mappingOwned = await finishJob(admin, job, {
           status: "retry",
           attempts: Math.max(0, job.attempts - 1),
           next_run_at: new Date(Date.now() + 3600 * 1000).toISOString(),
           last_error_category: "mapping",
           last_error_message: error.message,
         });
+        if (!mappingOwned) {
+          results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
+          continue;
+        }
         await admin
           .from("property_provider_publications")
           .update({
@@ -1537,7 +1569,7 @@ export async function runSyncWorker(
         ? Math.max(15, normalized.retryAfterSeconds ?? 30)
         : backoffSeconds(job.attempts);
       const canRetry = rateLimited || (normalized.retryable && job.attempts < job.max_attempts);
-      await finishJob(admin, job, {
+      const stillOwned = await finishJob(admin, job, {
         status: canRetry ? "retry" : "failed",
         attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
         next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
@@ -1546,6 +1578,11 @@ export async function runSyncWorker(
         last_error_category: normalized.category,
         last_error_message: normalized.message,
       });
+      // Sem posse, outra execução é dona do estado: não sobrescreve a publicação.
+      if (!stillOwned) {
+        results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
+        continue;
+      }
 
       await admin
         .from("property_provider_publications")

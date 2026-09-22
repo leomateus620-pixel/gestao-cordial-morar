@@ -329,17 +329,85 @@ export const retryPropertySync = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Repetir só retoma o trabalho pendente DESTE destino/componente. O job
     // reaproveita o anúncio existente (nunca cria outro imóvel).
+    const provider = providers[0]!;
     let query = supabaseAdmin
       .from("property_sync_jobs")
       .update({ status: "retry", next_run_at: new Date().toISOString(), attempts: 0 })
       .eq("property_id", data.propertyId)
-      .eq("provider", providers[0]!)
+      .eq("provider", provider)
+      .is("superseded_by", null)
       .in("status", ["failed", "retry", "cancelled"]);
     if (data.component === "fotos") query = query.eq("action", "media_sync");
     else if (data.component === "cadastro") query = query.neq("action", "media_sync");
-    await query;
-    await kickWorker();
-    return { ok: true };
+    const { data: reopened } = await query.select("id");
+    let scheduled = (reopened ?? []).length;
+
+    // Nada a reabrir: agenda a parte que continua pendente na publicação
+    // (envio parcial terminou como concluído e não aparecia para repetir).
+    if (!scheduled) {
+      const { data: pub } = await supabaseAdmin
+        .from("property_provider_publications")
+        .select("status, media_status, last_field_verification, characteristic_sync_incomplete, external_property_id")
+        .eq("property_id", data.propertyId)
+        .eq("provider", provider)
+        .maybeSingle();
+      const { data: property } = await supabaseAdmin
+        .from("properties")
+        .select("revision, gallery_revision")
+        .eq("id", data.propertyId)
+        .maybeSingle();
+      if (pub && property) {
+        const verification = (pub.last_field_verification ?? {}) as { divergent?: unknown; unverifiable?: unknown };
+        const divergent = Array.isArray(verification.divergent) ? (verification.divergent as string[]) : [];
+        const wantsCadastro =
+          data.component !== "fotos" &&
+          (["partial", "error", "pending", "out_of_sync"].includes(String(pub.status)) ||
+            divergent.length > 0 ||
+            pub.characteristic_sync_incomplete === true);
+        const wantsFotos =
+          data.component !== "cadastro" &&
+          Boolean(pub.external_property_id) &&
+          pub.media_status !== null &&
+          pub.media_status !== "synced";
+        if (wantsCadastro) {
+          const { error } = await supabaseAdmin.from("property_sync_jobs").upsert(
+            {
+              property_id: data.propertyId,
+              provider,
+              action: pub.external_property_id ? "update" : "publish",
+              requested_revision: property.revision ?? 1,
+              requested_by: context.userId,
+              changed_fields: divergent.length ? divergent : null,
+              status: "pending",
+              attempts: 0,
+              next_run_at: new Date().toISOString(),
+              superseded_by: null,
+            },
+            { onConflict: "property_id,provider,action,requested_revision" },
+          );
+          if (error) throw new Error(error.message);
+          scheduled += 1;
+        }
+        if (wantsFotos) {
+          const { error } = await supabaseAdmin.rpc("queue_media_sync_coalesced", {
+            _property_id: data.propertyId,
+            _provider: provider,
+            _revision: Number(property.gallery_revision ?? 1),
+            _requested_by: context.userId,
+          });
+          if (error) throw new Error(error.message);
+          scheduled += 1;
+        }
+      }
+    }
+    if (scheduled) await kickWorker();
+    return {
+      ok: true,
+      scheduled,
+      message: scheduled
+        ? "Nova tentativa agendada."
+        : "Não há nada pendente para repetir neste site.",
+    };
   });
 
 export const reconcileProperty = createServerFn({ method: "POST" })

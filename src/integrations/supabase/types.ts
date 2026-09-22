@@ -3455,6 +3455,7 @@ export type Database = {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts: number
           changed_fields: string[] | null
+          checkpoint: Json | null
           correlation_id: string
           created_at: string
           finished_at: string | null
@@ -3473,12 +3474,14 @@ export type Database = {
           requested_by: string | null
           requested_revision: number
           status: Database["public"]["Enums"]["property_sync_job_status"]
+          superseded_by: string | null
           updated_at: string
         }
         Insert: {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts?: number
           changed_fields?: string[] | null
+          checkpoint?: Json | null
           correlation_id?: string
           created_at?: string
           finished_at?: string | null
@@ -3497,12 +3500,14 @@ export type Database = {
           requested_by?: string | null
           requested_revision?: number
           status?: Database["public"]["Enums"]["property_sync_job_status"]
+          superseded_by?: string | null
           updated_at?: string
         }
         Update: {
           action?: Database["public"]["Enums"]["property_sync_action"]
           attempts?: number
           changed_fields?: string[] | null
+          checkpoint?: Json | null
           correlation_id?: string
           created_at?: string
           finished_at?: string | null
@@ -3521,6 +3526,7 @@ export type Database = {
           requested_by?: string | null
           requested_revision?: number
           status?: Database["public"]["Enums"]["property_sync_job_status"]
+          superseded_by?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5579,6 +5585,17 @@ export type Database = {
         Args: { _publication_id: string; _worker: string }
         Returns: undefined
       }
+      property_remote_merge: {
+        Args: {
+          _conflicts: Json
+          _expected_revision: number
+          _patch: Json
+          _property_id: string
+          _publication_fields: Json
+          _publication_id: string
+        }
+        Returns: number
+      }
       property_save_revision_enqueue: {
         Args: {
           _action?: string
@@ -5613,6 +5630,7 @@ export type Database = {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts: number
           changed_fields: string[] | null
+          checkpoint: Json | null
           correlation_id: string
           created_at: string
           finished_at: string | null
@@ -5631,6 +5649,7 @@ export type Database = {
           requested_by: string | null
           requested_revision: number
           status: Database["public"]["Enums"]["property_sync_job_status"]
+          superseded_by: string | null
           updated_at: string
         }[]
         SetofOptions: {

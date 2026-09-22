@@ -214,20 +214,6 @@ export async function applyRemoteChanges(
   plan.conflicts = plan.conflicts.filter((c) => !crossFields.has(c.field));
   const applied = Object.keys(plan.patch);
 
-  if (applied.length) {
-    // Controle de revisão: só grava se o imóvel continua na revisão lida.
-    const expectedRevision = input.localRow["revision"];
-    let query = admin.from("properties").update(plan.patch).eq("id", input.publication.property_id);
-    if (typeof expectedRevision === "number") query = query.eq("revision", expectedRevision);
-    const { data: updatedRows, error } = await query.select("id");
-    if (error) throw new Error(error.message);
-    if (!updatedRows?.length) {
-      // Alguém salvou no Gestão durante a leitura: nada é gravado e a
-      // importação é repetida com o conteúdo novo.
-      throw new Error("revision_changed: o imóvel foi alterado no Gestão durante a importação; será relido.");
-    }
-  }
-
   const records = [
     ...plan.conflicts.map((conflict) => ({
       field: conflict.field,
@@ -249,53 +235,10 @@ export async function applyRemoteChanges(
     })),
   ];
 
-  // O índice único só vale para divergências pendentes; resolvidas ficam como
-  // histórico. Por isso: atualiza a pendente se existir, senão insere nova.
-  // O índice único só vale para divergências pendentes; resolvidas ficam como
-  // histórico. Atualiza a pendente se existir, senão insere; corrida com outro
-  // processo (23505) vira atualização da pendente criada por ele.
-  for (const record of records) {
-    const values = {
-      publication_id: input.publication.id,
-      confirmed_value: record.confirmed as never,
-      local_value: record.local as never,
-      remote_value: record.remote as never,
-      applied_value: record.applied as never,
-      classification: record.classification,
-      detected_revision: typeof input.localRow["revision"] === "number" ? (input.localRow["revision"] as number) : null,
-    };
-    const updatePending = () =>
-      admin
-        .from("property_field_conflicts")
-        .update(values)
-        .eq("property_id", input.publication.property_id)
-        .eq("provider", input.publication.provider)
-        .eq("field", record.field)
-        .eq("scope", record.scope)
-        .eq("resolution", "pending")
-        .select("id");
-    const { data: updated, error: updateError } = await updatePending();
-    if (updateError) throw new Error(updateError.message);
-    if (updated?.length) continue;
-    const { error: insertError } = await admin.from("property_field_conflicts").insert({
-      ...values,
-      property_id: input.publication.property_id,
-      provider: input.publication.provider,
-      field: record.field,
-      scope: record.scope,
-      resolution: "pending",
-    });
-    if (insertError && insertError.code === "23505") {
-      const retry = await updatePending();
-      if (retry.error) throw new Error(retry.error.message);
-      continue;
-    }
-    if (insertError) throw new Error(insertError.message);
-  }
-
-  await admin
-    .from("property_provider_publications")
-    .update({
+  // Tudo numa só transação no banco: imóvel (com revisão +1), divergências e
+  // publicação. Se o imóvel mudou no Gestão durante a leitura, nada é gravado.
+  const expectedRevision = input.localRow["revision"];
+  const publicationFields = {
       remote_field_snapshot: Object.fromEntries(
         plan.report.fields.map((field) => [field.field, field.remote ?? null]),
       ) as never,
@@ -309,7 +252,6 @@ export async function applyRemoteChanges(
             baseline_at: now,
           }
         : { confirmed_field_snapshot: plan.confirmed as never }),
-      conflict_count: records.length,
       last_imported_at: now,
       last_verified_at: now,
       ...(cross.length
@@ -323,8 +265,30 @@ export async function applyRemoteChanges(
             last_error_message: `Divergência em: ${plan.conflicts.map((c) => c.field).join(", ")}. O valor da imobiliária foi mantido e a diferença está registrada.`,
           }
         : {}),
-    })
-    .eq("id", input.publication.id);
+  };
+  const { error: mergeError } = await admin.rpc("property_remote_merge" as never, {
+    _property_id: input.publication.property_id,
+    _expected_revision: typeof expectedRevision === "number" ? expectedRevision : null,
+    _patch: plan.patch,
+    _publication_id: input.publication.id,
+    _publication_fields: publicationFields,
+    _conflicts: records.map((record) => ({
+      provider: input.publication.provider,
+      field: record.field,
+      scope: record.scope,
+      classification: record.classification,
+      confirmed_value: record.confirmed,
+      local_value: record.local,
+      remote_value: record.remote,
+      applied_value: record.applied,
+    })),
+  } as never);
+  if (mergeError) {
+    if (/revision_changed/.test(mergeError.message)) {
+      throw new Error("revision_changed: o imóvel foi alterado no Gestão durante a importação; será relido.");
+    }
+    throw new Error(mergeError.message);
+  }
 
   return { ...plan, applied };
 }
