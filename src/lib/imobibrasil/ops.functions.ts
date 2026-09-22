@@ -221,11 +221,11 @@ export const resolveFieldConflict = createServerFn({ method: "POST" })
       // Reenvio é sempre alteração do anúncio existente: nunca cria outro.
       await supabaseAdmin.from("property_sync_jobs").insert({
         property_id: conflict.property_id,
-        provider: conflict.provider,
-        action: "update",
-        status: "pending",
+        provider: conflict.provider as ImobiProvider,
+        action: "update" as const,
+        status: "pending" as const,
         idempotency_key: `conflict:${data.id}`,
-      });
+      } as never);
     }
 
     return { ok: true, decisao: data.decisao };
@@ -261,9 +261,9 @@ export const retryPublication = createServerFn({ method: "POST" })
       property_id: publication.property_id,
       provider: publication.provider,
       action,
-      status: "pending",
+      status: "pending" as const,
       idempotency_key: `retry:${publication.id}:${Date.now()}`,
-    });
+    } as never);
     return { ok: true, action };
   });
 
