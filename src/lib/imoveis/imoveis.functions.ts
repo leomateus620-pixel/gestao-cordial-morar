@@ -571,7 +571,12 @@ export const createImovel = createServerFn({ method: "POST" })
     return mapRow(row as Row);
   });
 
-export type UpdateImovelInput = { id: string; expectedRevision?: number | null } & Partial<PropertyWriteInput>;
+export type UpdateImovelInput = {
+  id: string;
+  expectedRevision?: number | null;
+  /** Campos que o usuário realmente alterou: só eles viajam para os sites. */
+  changedFields?: string[] | null;
+} & Partial<PropertyWriteInput>;
 
 /** Erro de edição concorrente: a versão do imóvel mudou antes de salvar. */
 export const REVISION_CONFLICT = "REVISION_CONFLICT";
@@ -587,7 +592,7 @@ export const updateImovel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: UpdateImovelInput) => data)
   .handler(async ({ data, context }): Promise<{ property: PropertyDetail | null; queued: string[] }> => {
-    const { id, expectedRevision, ...rest } = data;
+    const { id, expectedRevision, changedFields, ...rest } = data;
     const payload = toDbPayload(rest);
     if (rest.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
@@ -637,6 +642,17 @@ export const updateImovel = createServerFn({ method: "POST" })
       );
     }
     if (!result.ok) throw new Error("Não foi possível salvar o imóvel.");
+
+    // Contrato de alteração: o trabalho leva a lista de campos tocados, para que
+    // a escrita externa envie somente eles (e os obrigatórios).
+    if (targets.length && changedFields?.length) {
+      await supabaseAdmin
+        .from("property_sync_jobs")
+        .update({ changed_fields: changedFields })
+        .eq("property_id", id)
+        .eq("action", "update")
+        .in("status", ["pending", "retry"]);
+    }
 
     const { data: row, error } = await context.supabase
       .from("properties")

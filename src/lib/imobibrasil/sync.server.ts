@@ -9,7 +9,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
 import { resolveProviderCodes } from "./catalogs.server";
+import {
+  buildUnpublishPatch,
+  buildUpdatePatch,
+  hasEffectivePatch,
+  type UpdatePatch,
+} from "./update-contract";
 import { extractPublicUrl } from "./public-url";
+import {
+  diffCharacteristics,
+  nextConfirmedSet,
+  verifyFields,
+} from "./characteristics-diff";
 
 import {
   buildExternalReference,
@@ -17,7 +28,7 @@ import {
   serializeProperty,
   type LocalPropertyForSync,
 } from "./serializers";
-import type { ImobiProvider } from "./providers";
+import { providerLabel, type ImobiProvider } from "./providers";
 import {
   PAUSE_DEFER_SECONDS,
   claimActionsFor,
@@ -28,10 +39,9 @@ import {
   type WorkerKind,
 } from "./queue-policy";
 import {
-  buildMinimalUpdate,
-  hasEffectiveChange,
   isKnownLink,
   remoteToPayloadSnapshot,
+  sameValue,
   type PayloadSnapshot,
 } from "./payload-diff";
 import { providerExternalCode } from "./provider-code";
@@ -62,6 +72,8 @@ export type SyncJob = {
   max_attempts: number;
   /** Identificador exclusivo desta execução: só quem o tem pode concluir o job. */
   lease_token?: string | null;
+  /** Campos locais que o usuário realmente alterou (contrato de alteração). */
+  changed_fields?: string[] | null;
 };
 
 /**
@@ -145,6 +157,18 @@ function backoffSeconds(attempts: number): number {
  * fila com nova data, nunca é cancelado — ao liberar, a intenção atual é
  * reprocessada sozinha.
  */
+/**
+ * Código obrigatório sem correspondência no catálogo do destino (tipo de imóvel,
+ * cidade). Nada é adivinhado: a alteração fica PENDENTE no Gestão com mensagem
+ * acionável e o trabalho volta para a fila — nunca é enviado pela metade.
+ */
+export class MappingPendingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MappingPendingError";
+  }
+}
+
 export class PausedWriteError extends Error {
   constructor(public readonly action: QueueAction) {
     super("Envio de alterações aos sites está pausado. O pedido ficou na fila aguardando liberação.");
@@ -380,34 +404,87 @@ async function hydrateOwnerContact(
   }
 }
 
+/**
+ * Características por DIFERENÇA: insere as novas, mantém as existentes e remove
+ * as retiradas usando o endpoint que desassocia a característica DAQUELE imóvel
+ * (`/imovel/{codigo}/caracteristica/excluir/{codigo}`). O endpoint que apaga a
+ * característica do catálogo global NUNCA é usado.
+ *
+ * Remoção só alcança o que o Gestão confirmou antes: associações feitas no
+ * painel do site não são tocadas. Falha de permissão, validação ou limite marca
+ * a etapa como INCOMPLETA — nunca como sucesso.
+ */
 async function syncCharacteristics(
   admin: Admin,
   job: SyncJob,
   externalId: string,
   desiredCodes: string[],
+  publication: { id: string; characteristic_codes?: unknown },
 ) {
-  if (!desiredCodes.length) return;
-  for (const code of desiredCodes) {
-    try {
-      await imobiRequest(
-        job.provider,
-        `/imovel/${encodeURIComponent(externalId)}/caracteristica/inserir/${encodeURIComponent(code)}`,
-        {
-          method: "POST",
-          extraHeaders: { codigoImovel: externalId, codigoCaracteristica: code },
-          correlationId: job.correlation_id,
-        },
-      );
-    } catch (error) {
-      // Característica já associada não invalida a publicação.
-      await logAttempt(admin, job, {
-        step: "characteristic",
-        ok: false,
-        errorCategory: toImobiError(error).category,
-        errorMessage: toImobiError(error).message,
-      });
-    }
+  const confirmed = Array.isArray(publication.characteristic_codes)
+    ? (publication.characteristic_codes as unknown[])
+    : [];
+  const { toInsert, toRemove } = diffCharacteristics(confirmed, desiredCodes);
+  if (!toInsert.length && !toRemove.length) {
+    return { inserted: [] as string[], removed: [] as string[], incomplete: false };
   }
+
+  const inserted: string[] = [];
+  const removed: string[] = [];
+  let incomplete = false;
+
+  const call = async (path: string, code: string, step: string) => {
+    try {
+      await imobiRequest(job.provider, path, {
+        method: "POST",
+        extraHeaders: { codigoImovel: externalId, codigoCaracteristica: code },
+        correlationId: job.correlation_id,
+      });
+      return true;
+    } catch (error) {
+      const normalized = toImobiError(error);
+      await logAttempt(admin, job, {
+        step,
+        ok: false,
+        errorCategory: normalized.category,
+        errorMessage: `${step} ${code}: ${normalized.message}`,
+      });
+      return false;
+    }
+  };
+
+  for (const code of toInsert) {
+    const ok = await call(
+      `/imovel/${encodeURIComponent(externalId)}/caracteristica/inserir/${encodeURIComponent(code)}`,
+      code,
+      "characteristic_insert",
+    );
+    if (ok) inserted.push(code);
+    else incomplete = true;
+  }
+
+  for (const code of toRemove) {
+    const ok = await call(
+      `/imovel/${encodeURIComponent(externalId)}/caracteristica/excluir/${encodeURIComponent(code)}`,
+      code,
+      "characteristic_remove",
+    );
+    if (ok) removed.push(code);
+    else incomplete = true;
+  }
+
+  // Conjunto confirmado = o que ficou de fato associado por decisão do Gestão.
+  const nextConfirmed = nextConfirmedSet(confirmed, inserted, removed);
+  await admin
+    .from("property_provider_publications")
+    .update({
+      characteristic_codes: nextConfirmed as never,
+      characteristic_synced_at: new Date().toISOString(),
+      characteristic_sync_incomplete: incomplete,
+    })
+    .eq("id", publication.id);
+
+  return { inserted, removed, incomplete };
 }
 
 /**
@@ -596,10 +673,7 @@ export async function processJob(
       resolution.codes,
       { mode: "update" },
     );
-    const payload: Record<string, unknown> = {};
-    for (const key of ["finalidade", "codigoTipoImovel", "referencia", "exibirImovel"]) {
-      if (full[key] !== undefined) payload[key] = full[key];
-    }
+    const payload = buildUnpublishPatch(full);
     assertWriteAllowed("unpublish", updatesPaused);
     await imobiRequest(
       job.provider,
@@ -652,6 +726,37 @@ export async function processJob(
   }
 
   // ---- publish / update ----
+  // Campos realmente tocados nesta edição: o claim não os devolve, então são
+  // lidos do próprio trabalho. Sem a lista, a alteração cai na diferença contra
+  // o último envio confirmado e nunca limpa nada por conta.
+  if (job.changed_fields === undefined) {
+    const { data: jobRow } = await admin
+      .from("property_sync_jobs")
+      .select("changed_fields")
+      .eq("id", job.id)
+      .maybeSingle();
+    job.changed_fields = (jobRow?.changed_fields as string[] | null) ?? null;
+  }
+
+  // Códigos obrigatórios do contrato: nada é adivinhado. Sem correspondência no
+  // catálogo DAQUELE destino, a alteração fica pendente com mensagem acionável.
+  if (!resolution.codes.codigoTipoImovel) {
+    throw new MappingPendingError(
+      `O tipo "${property.tipo ?? "(não informado)"}" não tem correspondência no catálogo da ${providerLabel(job.provider)}. Escolha o tipo equivalente para que a alteração possa ser enviada.`,
+    );
+  }
+  const ambiguousPerson = resolution.ambiguous.filter(
+    (item) => item.domain === "broker" || item.domain === "owner",
+  );
+  if (ambiguousPerson.length) {
+    await logAttempt(admin, job, {
+      step: "mapping",
+      ok: false,
+      errorCategory: "mapping",
+      errorMessage: `Homônimo em ${ambiguousPerson.map((item) => `${item.domain}:${item.value}`).join(", ")} — vínculo mantido como desconhecido.`,
+    });
+  }
+
   // Imóvel que já existe no site NUNCA volta ao caminho de criação: `publish`
   // vira alteração; sem ID guardado mas com histórico publicado, vira reconciliação.
   const effectiveAction = normalizeCadastralAction(
@@ -811,11 +916,19 @@ export async function processJob(
         category: "network",
       });
     }
-    const minimal = buildMinimalUpdate(fullPayload, snapshotBase, { personLinkChanges: [] });
-    payload = minimal.payload;
-    sentKeys = Object.keys(minimal.payload);
+    // Contrato de ALTERAÇÃO: conjunto explícito de mudanças, não cópia do
+    // formulário. Com a lista de campos tocados, limpeza intencional viaja vazia
+    // e campo intocado nem entra no corpo.
+    const patch: UpdatePatch = buildUpdatePatch({
+      full: fullPayload,
+      snapshot: snapshotBase,
+      changedFields: job.changed_fields ?? null,
+    });
+    payload = patch.payload;
+    sentKeys = Object.keys(patch.payload);
+    const minimal = patch;
 
-    if (hasEffectiveChange(minimal)) {
+    if (hasEffectivePatch(patch)) {
       assertWriteAllowed("update", updatesPaused);
       const response = await imobiRequest(
         job.provider,
@@ -831,7 +944,9 @@ export async function processJob(
         step: "update",
         ok: true,
         httpStatus: response.httpStatus,
-        errorMessage: `Alteração mínima: ${minimal.changedKeys.join(", ")}`,
+        errorMessage: `Alteração mínima: ${minimal.changedKeys.join(", ")}${
+          patch.clearedKeys.length ? ` · limpeza explícita: ${patch.clearedKeys.join(", ")}` : ""
+        }`,
       });
     } else {
       sentKeys = [];
@@ -957,7 +1072,13 @@ export async function processJob(
     }
   }
 
-  await syncCharacteristics(admin, job, externalId, resolution.characteristicCodes);
+  const characteristics = await syncCharacteristics(
+    admin,
+    job,
+    externalId,
+    resolution.characteristicCodes,
+    publication as { id: string; characteristic_codes?: unknown },
+  );
 
   // Verificação remota obrigatória antes de marcar como publicado.
   const remote = await verifyRemote(job.provider, externalId, job.correlation_id);
@@ -984,9 +1105,29 @@ export async function processJob(
       .eq("id", publication.id);
   }
 
+  // Conferência campo a campo: resposta HTTP 200 e JSON não vazio não provam
+  // nada. Cada campo enviado é comparado com a leitura do site; o que a leitura
+  // não descreve fica explicitamente como "não verificável".
+  const remoteSnapshot = remoteToPayloadSnapshot(remote);
+  const sentPayload = Object.fromEntries(
+    sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]]),
+  );
+  const fieldVerification = {
+    checked_at: new Date().toISOString(),
+    ...verifyFields(sentPayload, remoteSnapshot, sameValue),
+  };
+  if (sentKeys.length) {
+    await logAttempt(admin, job, {
+      step: "verify_fields",
+      ok: fieldVerification.divergent.length === 0,
+      errorCategory: fieldVerification.divergent.length ? "protocol" : null,
+      errorMessage: `confirmados: ${fieldVerification.confirmed.join(", ") || "-"} · divergentes: ${fieldVerification.divergent.join(", ") || "-"} · não verificáveis: ${fieldVerification.unverifiable.join(", ") || "-"}`,
+    });
+  }
+
   // Cadastro concluído não depende das fotos: o estado da mídia vive em
   // `media_status` e é atualizado pelo caminho `media_sync`.
-  const finalStatus = verified ? "published" : "partial";
+  const finalStatus = verified && !fieldVerification.divergent.length ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
@@ -1009,16 +1150,30 @@ export async function processJob(
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
+      last_field_verification: fieldVerification as never,
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
       last_error_category: finalStatus === "published" ? null : "protocol",
-      last_error_message: finalStatus === "published" ? null : "Verificação remota divergente.",
+      last_error_message:
+        finalStatus === "published"
+          ? null
+          : fieldVerification.divergent.length
+            ? `O site não confirmou os campos: ${fieldVerification.divergent.join(", ")}.`
+            : "Verificação remota divergente.",
     })
     .eq("id", publication.id);
 
   // Fotos seguem de forma assíncrona, exclusivamente por `media_sync`.
   const media = await queueMediaAfterCadastral(admin, job);
 
-  return { status: finalStatus, externalId, media, unmapped: resolution.unmapped };
+  return {
+    status: finalStatus,
+    externalId,
+    media,
+    unmapped: resolution.unmapped,
+    ambiguous: resolution.ambiguous,
+    characteristics,
+    verification: fieldVerification,
+  };
 
 }
 
@@ -1178,6 +1333,34 @@ export async function runSyncWorker(
           last_error_message: error.message,
         });
         results.push({ jobId: job.id, provider: job.provider, status: "deferred_paused" });
+        continue;
+      }
+      // Mapeamento pendente: estado retomável com mensagem acionável. O trabalho
+      // espera a correspondência ser definida, sem consumir tentativa.
+      if (error instanceof MappingPendingError) {
+        await finishJob(admin, job, {
+          status: "retry",
+          attempts: Math.max(0, job.attempts - 1),
+          next_run_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+          last_error_category: "mapping",
+          last_error_message: error.message,
+        });
+        await admin
+          .from("property_provider_publications")
+          .update({
+            status: "pending",
+            last_error_category: "mapping",
+            last_error_message: error.message,
+          })
+          .eq("property_id", job.property_id)
+          .eq("provider", job.provider);
+        await logAttempt(admin, job, {
+          step: job.action,
+          ok: false,
+          errorCategory: "mapping",
+          errorMessage: error.message,
+        });
+        results.push({ jobId: job.id, provider: job.provider, status: "pending_mapping" });
         continue;
       }
       const normalized = toImobiError(error);

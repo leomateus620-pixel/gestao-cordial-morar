@@ -492,9 +492,10 @@ export function serializeProperty(
     ? truncateSanitized(split.overflow, Math.max(200, IMOBI_DESCRICAO_MAX - reserva))
     : "";
   const pontosFortes = joinSanitized(overflow, pontosProprios);
-  // Único campo que envia string vazia de propósito: sem isto a API preserva o
-  // texto antigo do site (recados internos publicados antes da separação).
-  payload["pontosFortesImovel"] = pontosFortes ? truncateSanitized(pontosFortes) : "";
+  // Não envia mais `""` incondicionalmente: limpar pontos fortes é decisão
+  // explícita da alteração (ver `update-contract.ts`), nunca efeito colateral
+  // de mexer em outro campo.
+  assign(payload, "pontosFortesImovel", pontosFortes ? truncateSanitized(pontosFortes) : undefined);
 
 
 

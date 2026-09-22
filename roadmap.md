@@ -76,3 +76,15 @@
 - Busca remota com quatro respostas (ausente/único/duplicado/inconclusivo), paginação percorrida; formato desconhecido ou falha nunca vira ausência.
 - Fotos e edição nunca caem em `/imovel/inserir`: ID remoto ausente pede reconciliação.
 - Trabalho com posse exclusiva por imóvel+destino (lease com token, renovação e verificação na conclusão).
+
+## Edição confiável de todos os campos (22/09/2026) — implementado
+- Contratos separados: inclusão monta o cadastro completo; alteração recebe o conjunto explícito de campos tocados (`src/lib/imobibrasil/update-contract.ts`).
+- Três estados por campo (intocado / definido / limpeza intencional) em `src/lib/imobibrasil/field-state.ts`; `0` e `false` são valores, não ausência.
+- Fim do `pontosFortesImovel: ""` automático: descrição e pontos fortes viajam juntos e só quando um dos dois é editado.
+- Limpeza explícita habilitada para vídeo, tour, observação de valor, IPTU, condomínio, taxas, áreas, textos e demais campos editáveis — sempre exigindo que o usuário tenha tocado o campo.
+- Pessoas vinculadas só por código confirmado da conta (sem escolha pelo primeiro nome parecido); homônimo vira ambiguidade registrada e vínculo desconhecido.
+- Características por diferença (inserir/manter/remover) com o endpoint que desassocia só daquele imóvel; falha marca a etapa como incompleta (`characteristic_sync_incomplete`).
+- Conferência campo a campo após cada escrita (`last_field_verification`): confirmado / divergente / não verificável; divergência impede o status "publicado".
+- Tipo sem correspondência no catálogo do destino vira pendência acionável e retomável (`MappingPendingError`), sem adivinhar código.
+- Retirada do site usa apenas identidade + `exibirImovel`; exclusão continua caminho próprio.
+- Mapa de campos e limitações comprovadas em `docs/IMOBI-CONTRATO-ALTERACAO-CAMPOS.md`.

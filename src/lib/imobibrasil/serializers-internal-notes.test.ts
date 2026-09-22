@@ -44,8 +44,9 @@ for (const mode of ["insert", "update"] as const) {
       "Chaves com corretor",
       "Ricardo",
     ]);
-    // Caso 5: campo público vazio precisa limpar o texto antigo do site.
-    assert.equal(payload["pontosFortesImovel"], "");
+    // Caso 5: sem conteúdo público o campo NÃO viaja (omitir preserva). Limpar é
+    // decisão explícita da alteração — ver `update-contract.ts`.
+    assert.equal(payload["pontosFortesImovel"], undefined);
   });
 }
 
