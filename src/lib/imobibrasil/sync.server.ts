@@ -996,9 +996,17 @@ export async function processJob(
       typeof remoteExibir === "boolean" &&
       remoteExibir !== ((property.exibir_imovel ?? true) as boolean);
     const changedFields = job.changed_fields ?? null;
+    // Campos que o envio anterior não conseguiu confirmar continuam pendentes.
+    const previousVerification = (publication["last_field_verification"] ?? null) as {
+      divergent?: string[];
+    } | null;
+    const pendingKeys = Array.isArray(previousVerification?.divergent)
+      ? previousVerification!.divergent!
+      : [];
     const patch: UpdatePatch = buildUpdatePatch({
       full: fullPayload,
       snapshot: snapshotBase,
+      pendingKeys,
       changedFields:
         changedFields && wantsVisibilityFix && !changedFields.includes("exibirImovel")
           ? [...changedFields, "exibirImovel"]
@@ -1171,7 +1179,8 @@ export async function processJob(
       remote?.["referencia"] ??
       "") as string,
   ).trim();
-  const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
+  // Leitura sem referência não comprova que é o mesmo imóvel.
+  const verified = Boolean(remoteReference) && remoteReference.toUpperCase() === reference.toUpperCase();
 
   // Guarda a cópia mais recente dos vínculos que o site tem agora.
   const remoteLinksAfter = pickPersonLinks(remote);
@@ -1214,13 +1223,22 @@ export async function processJob(
 
   // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
   // Assim a próxima alteração volta a enviar somente a diferença real.
-  const nextSnapshot: PayloadSnapshot =
-    mode === "insert"
-      ? { ...(fullPayload as PayloadSnapshot) }
-      : {
-          ...(snapshotBase ?? {}),
-          ...Object.fromEntries(sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]])),
-        };
+  // Só o que o site CONFIRMOU entra na referência. Divergente e não
+  // verificável ficam fora: a próxima comparação volta a tratá-los como
+  // pendentes em vez de concluir que "nada mudou".
+  const notConfirmed = new Set<string>([
+    ...fieldVerification.divergent,
+    ...fieldVerification.unverifiable,
+  ]);
+  const nextSnapshot = confirmedSnapshotAfterSend({
+    mode,
+    base: snapshotBase,
+    full: fullPayload as PayloadSnapshot,
+    sent: payload as PayloadSnapshot,
+    sentKeys,
+    notConfirmed,
+  });
+  const fullyConfirmed = finalStatus === "published" && fieldVerification.unverifiable.length === 0;
 
   // Eco do próprio envio: a leitura pós-envio é gravada no MESMO espaço
   // normalizado da importação/reconciliação. Assim o conteúdo que o Gestão
@@ -1242,14 +1260,20 @@ export async function processJob(
       ...(finalStatus === "published"
         ? { last_published_hash: remoteNormalizedHash, baseline_at: nowIso }
         : {}),
-      confirmed_revision: property.revision ?? 1,
+      // Revisão só é dada como confirmada quando não sobrou pendência dela.
+      ...(fullyConfirmed ? { confirmed_revision: property.revision ?? 1 } : {}),
       last_payload_hash: hashPayload(fullPayload as never),
       last_payload_snapshot: nextSnapshot,
       last_payload_synced_at: new Date().toISOString(),
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
-      last_field_verification: fieldVerification as never,
+      last_field_verification: {
+        ...fieldVerification,
+        // Tentado ≠ confirmado: guarda o que foi enviado nesta revisão.
+        attempted: sentPayload,
+        revision: property.revision ?? 1,
+      } as never,
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
       last_error_category: finalStatus === "published" ? null : "protocol",
       last_error_message:
@@ -1274,6 +1298,31 @@ export async function processJob(
     verification: fieldVerification,
   };
 
+}
+
+/**
+ * Referência de comparação após um envio: parte do que já estava confirmado e
+ * acrescenta só os campos que a leitura do site comprovou.
+ */
+export function confirmedSnapshotAfterSend(input: {
+  mode: string;
+  base: PayloadSnapshot | null;
+  full: PayloadSnapshot;
+  sent: PayloadSnapshot;
+  sentKeys: string[];
+  notConfirmed: Set<string>;
+}): PayloadSnapshot {
+  const source = input.mode === "insert" ? input.full : input.sent;
+  const keys = input.mode === "insert" ? Object.keys(input.full) : input.sentKeys;
+  const next: PayloadSnapshot = input.mode === "insert" ? {} : { ...(input.base ?? {}) };
+  for (const key of keys) {
+    if (input.notConfirmed.has(key)) {
+      delete next[key];
+      continue;
+    }
+    next[key] = source[key];
+  }
+  return next;
 }
 
 export async function reconcilePublication(

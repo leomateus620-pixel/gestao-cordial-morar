@@ -137,6 +137,11 @@ export type BuildUpdatePatchInput = {
   changedFields?: string[] | null;
   /** Vínculos de pessoas com alteração explícita. */
   personLinkChanges?: string[];
+  /**
+   * Chaves do corpo que ficaram pendentes em envio anterior (o site recusou ou
+   * não confirmou). Continuam no próximo envio até serem confirmadas.
+   */
+  pendingKeys?: string[];
 };
 
 /**
@@ -164,6 +169,9 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
   const allowed = new Set<string>(required);
   // Vínculo de pessoa só entra com alteração explícita pedida pelo usuário.
   for (const key of input.personLinkChanges ?? []) allowed.add(key);
+  for (const key of input.pendingKeys ?? []) {
+    if (!(PERSON_LINK_KEYS as readonly string[]).includes(key)) allowed.add(key);
+  }
   const ignoredFields: string[] = [];
   const clearableKeys = new Set<string>();
 
