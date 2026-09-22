@@ -8,6 +8,7 @@ import {
   parseDriveFolderId,
   type DriveCategory,
 } from "./naming";
+import { workerCallerSecret } from "@/lib/workers/hook-auth";
 
 const VIDEO_BUCKET = "property-videos";
 export const ACCEPTED_VIDEO_MIME = ["video/mp4", "video/quicktime", "video/webm"];
@@ -87,7 +88,7 @@ function categoryState(
 async function kickDriveWorker() {
   try {
     const secret =
-      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+      workerCallerSecret();
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;

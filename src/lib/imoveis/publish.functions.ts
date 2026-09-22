@@ -6,6 +6,7 @@ import {
   isImobiProvider,
   type ImobiProvider,
 } from "@/lib/imobibrasil/providers";
+import { workerCallerSecret } from "@/lib/workers/hook-auth";
 
 export type SyncAction =
   | "publish"
@@ -26,7 +27,16 @@ export type PublicationStatusView = {
   lastSyncedAt: string | null;
   lastVerifiedAt: string | null;
   lastErrorMessage: string | null;
-  activeJob: { id: string; action: string; status: string; attempts: number } | null;
+  activeJob: {
+    id: string;
+    action: string;
+    status: string;
+    attempts: number;
+    errorCategory: string | null;
+    nextRunAt: string | null;
+  } | null;
+  /** Categoria do último erro (config = bloqueado por pausa/credencial). */
+  lastErrorCategory: string | null;
   /** Estado só das fotos, independente do cadastro. */
   media: {
     status: string | null;
@@ -83,7 +93,7 @@ async function assertProviderScope(
 async function kickWorker() {
   try {
     const secret =
-      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+      workerCallerSecret();
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
@@ -226,12 +236,24 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         .eq("property_id", data.propertyId),
       context.supabase
         .from("property_sync_jobs")
-        .select("id, provider, action, status, attempts")
+        .select("id, provider, action, status, attempts, last_error_category, next_run_at")
         .eq("property_id", data.propertyId)
         .in("status", ["pending", "processing", "retry"]),
     ]);
 
-    const jobIndex = new Map((jobs ?? []).map((job) => [job.provider, job]));
+    const jobIndex = new Map(
+      (jobs ?? []).map((job) => [
+        job.provider,
+        {
+          id: job.id,
+          action: job.action,
+          status: job.status,
+          attempts: job.attempts,
+          errorCategory: job.last_error_category ?? null,
+          nextRunAt: job.next_run_at ?? null,
+        },
+      ]),
+    );
     return (publications ?? []).map((row) => ({
       provider: row.provider as ImobiProvider,
       enabled: row.enabled,
@@ -242,6 +264,7 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
       lastSyncedAt: row.last_synced_at,
       lastVerifiedAt: row.last_verified_at,
       lastErrorMessage: row.last_error_message,
+      lastErrorCategory: row.last_error_category ?? null,
       activeJob: jobIndex.get(row.provider) ?? null,
       media: {
         status: row.media_status ?? null,

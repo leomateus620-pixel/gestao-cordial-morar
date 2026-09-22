@@ -8,6 +8,7 @@ import {
   type WatermarkVariant,
 } from "@/lib/imoveis/watermark-config";
 import type { PropertyImage } from "@/types/property";
+import { workerCallerSecret } from "@/lib/workers/hook-auth";
 
 const BUCKET = "property-images";
 
@@ -115,7 +116,7 @@ async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[
 async function kickImageWorker(limit = 2) {
   try {
     const secret =
-      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+      workerCallerSecret();
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;
@@ -424,7 +425,7 @@ async function queueMedia(propertyId: string, userId?: string) {
 async function kickSyncWorker() {
   try {
     const secret =
-      process.env["PROPERTY_SYNC_WORKER_SECRET"] ?? process.env["SUPABASE_PUBLISHABLE_KEY"];
+      workerCallerSecret();
     if (!secret) return;
     const request = getRequest();
     const origin = request?.url ? new URL(request.url).origin : null;

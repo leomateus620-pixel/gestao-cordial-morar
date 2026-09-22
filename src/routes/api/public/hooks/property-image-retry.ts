@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { authorizeWorkerRequest } from "@/lib/workers/hook-auth";
 
 /**
  * Reenvio automático das fotos que falharam e retomada das publicações
@@ -9,20 +10,8 @@ export const Route = createFileRoute("/api/public/hooks/property-image-retry")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const accepted = [
-          process.env["PROPERTY_SYNC_WORKER_SECRET"],
-          process.env["SUPABASE_PUBLISHABLE_KEY"],
-        ].filter((value): value is string => Boolean(value));
-        if (!accepted.length) {
-          return Response.json({ error: "Worker credentials not configured" }, { status: 503 });
-        }
-        const provided =
-          request.headers.get("apikey") ??
-          request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
-          "";
-        if (!accepted.includes(provided)) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const denied = authorizeWorkerRequest(request);
+        if (denied) return denied;
 
         let limit = 25;
         let backfillLimit = 25;

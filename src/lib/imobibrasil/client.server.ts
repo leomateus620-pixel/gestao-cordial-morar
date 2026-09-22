@@ -10,6 +10,8 @@ import {
   categoryForHttpStatus,
   explainProviderMessage,
   extractProviderMessage,
+  parseRetryAfter,
+
   sanitizeMessage,
   toImobiError,
 } from "./errors";
@@ -90,10 +92,18 @@ export type ImobiRequestOptions = {
   onLog?: (entry: ImobiRequestLog) => void;
 };
 
+/** Espera máxima dentro do request; além disso o job é reagendado. */
+const SLOT_MAX_WAIT_MS = 5_000;
+/** Espera padrão pedida ao worker quando não há vaga. */
+const SLOT_DEFER_SECONDS = 30;
+
 /**
- * Limite de chamadas por site aplicado AQUI, em um único lugar: cadastro,
- * fotos, catálogos e limpezas passam pelo mesmo teto (18/min por conta).
- * Antes cada chamador precisava lembrar de pedir vaga — e o cadastro não pedia.
+ * Limite de chamadas por site aplicado AQUI, em um único lugar: leitura,
+ * cadastro, catálogos, características, fotos, importação e retries passam
+ * pelo mesmo teto (18/min por conta, sob o limite de 20/min do contrato).
+ *
+ * Sem vaga NÃO enviamos e NÃO ficamos esperando minutos dentro do request:
+ * devolvemos erro de limite com `retryAfterSeconds` para o worker reagendar.
  */
 async function waitForProviderSlot(provider: ImobiProvider) {
   try {
@@ -101,11 +111,22 @@ async function waitForProviderSlot(provider: ImobiProvider) {
       import("@/integrations/supabase/client.server"),
       import("./rate-limit.server"),
     ]);
-    await acquireProviderSlot(supabaseAdmin, provider);
-  } catch {
-    // O controle de limite nunca pode impedir o envio: segue sem espera.
+    const result = await acquireProviderSlot(supabaseAdmin, provider, {
+      maxWaitMs: SLOT_MAX_WAIT_MS,
+    });
+    if (!result.granted) {
+      throw new ImobiApiError({
+        message: "Limite de requisições do site atingido; reagendado.",
+        category: "rate_limit",
+        retryAfterSeconds: SLOT_DEFER_SECONDS,
+      });
+    }
+  } catch (error) {
+    // Falta de vaga é decisão deliberada e sobe; falha do próprio controle não bloqueia.
+    if (error instanceof ImobiApiError) throw error;
   }
 }
+
 
 export async function imobiRequest<T = unknown>(
   provider: ImobiProvider,
@@ -184,19 +205,25 @@ export async function imobiRequest<T = unknown>(
         log(false, category);
         const providerMessage =
           extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`;
+        // `Retry-After` é respeitado: espera curta dentro do request, espera
+        // longa devolve o job para o worker reagendar.
+        const retryAfterSeconds = parseRetryAfter(response.headers.get("retry-after"));
         const error = new ImobiApiError({
           message: explainProviderMessage(providerMessage, response.status),
           category,
           httpStatus: response.status,
+          retryAfterSeconds,
         });
 
-        if (canRetry(error) && attempt < maxAttempts) {
+        const waitMs = retryAfterSeconds !== null ? retryAfterSeconds * 1000 : backoffMs(attempt);
+        if (canRetry(error) && attempt < maxAttempts && waitMs <= SLOT_MAX_WAIT_MS) {
           lastError = error;
-          await delay(backoffMs(attempt));
+          await delay(waitMs);
           continue;
         }
         throw error;
       }
+
 
       if (parseFailed) {
         log(false, "protocol");

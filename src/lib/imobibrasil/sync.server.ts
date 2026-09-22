@@ -1045,12 +1045,19 @@ export async function runSyncWorker(
         continue;
       }
       const normalized = toImobiError(error);
-      const canRetry = normalized.retryable && job.attempts < job.max_attempts;
+      // Limite de requisições não consome tentativa: reagenda respeitando
+      // `Retry-After` (ou a espera pedida pelo controle de limite).
+      const rateLimited = normalized.category === "rate_limit";
+      const waitSeconds = rateLimited
+        ? Math.max(15, normalized.retryAfterSeconds ?? 30)
+        : backoffSeconds(job.attempts);
+      const canRetry = rateLimited || (normalized.retryable && job.attempts < job.max_attempts);
       await admin
         .from("property_sync_jobs")
         .update({
           status: canRetry ? "retry" : "failed",
-          next_run_at: new Date(Date.now() + backoffSeconds(job.attempts) * 1000).toISOString(),
+          attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
+          next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
           finished_at: canRetry ? null : new Date().toISOString(),
           locked_at: null,
           lock_expires_at: null,
@@ -1060,6 +1067,7 @@ export async function runSyncWorker(
           last_error_message: normalized.message,
         })
         .eq("id", job.id);
+
       await admin
         .from("property_provider_publications")
         .update({

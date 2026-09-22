@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { workerCallerSecret } from '@/lib/workers/hook-auth';
 
 const WORKER_URL =
   "https://project--feb646c9-c19a-4360-8cc9-bec5237532ea.lovable.app/api/public/hooks/push-worker";
@@ -37,7 +38,7 @@ export const getPushDiagnostics = createServerFn({ method: "GET" })
   });
 
 async function wakeWorker(): Promise<void> {
-  const apikey = process.env['SUPABASE_PUBLISHABLE_KEY'] ?? process.env['NOTIFICATION_HOOK_SECRET'];
+  const apikey = process.env['NOTIFICATION_HOOK_SECRET'] ?? workerCallerSecret();
   if (!apikey) return;
   try {
     await fetch(WORKER_URL, {

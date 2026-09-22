@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { workerSecrets } from "@/lib/workers/hook-auth";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildPushPresentation } from "@/lib/push/push-presentation";
 
@@ -252,16 +253,17 @@ export const Route = createFileRoute("/api/public/hooks/push-worker")({
       POST: async ({ request }) => {
         const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
         const supabaseUrl = process.env['SUPABASE_URL'];
-        const publishableKey = process.env['SUPABASE_PUBLISHABLE_KEY'];
         const hookSecret = process.env['NOTIFICATION_HOOK_SECRET'];
         if (!serviceRoleKey || !supabaseUrl) {
           return Response.json({ error: "Server configuration error" }, { status: 500 });
         }
 
         const apikey = request.headers.get("apikey") ?? request.headers.get("x-api-key");
-        const authorized =
-          (!!publishableKey && apikey === publishableKey) ||
-          (!!hookSecret && apikey === hookSecret);
+        // Credenciais exclusivas de servidor: a chave pública do app não vale aqui.
+        const accepted = [hookSecret, ...workerSecrets()].filter(
+          (value): value is string => Boolean(value),
+        );
+        const authorized = !!apikey && accepted.includes(apikey);
         if (!authorized) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
         const admin = createClient(supabaseUrl, serviceRoleKey, {

@@ -62,3 +62,9 @@
 - [x] Trabalho barrado pela pausa fica retomável (`retry` em 15 min), nunca cancelado. Rotina de retomada mantém só a intenção atual por imóvel/site (`property_sync_coalesce_resume`) — revisões antigas e históricos não são reproduzidos.
 - [x] Limite de 18 chamadas/minuto por site centralizado no cliente HTTP: cadastro, fotos, catálogos e limpezas passam pelo mesmo controle.
 - [x] Pausa desligada em `app_settings.imobi_update_sync_paused` (configuração usada pelo ambiente publicado) e validada com imóvel real: só 5 campos enviados na primeira alteração, nenhum reenvio quando nada muda, proprietário/corretor/preço/endereço/pontos fortes intactos e página pública respondendo.
+
+## Reativação do envio de alterações — itens 7 a 9 (22/09/2026)
+- Limite por site centralizado no cliente HTTP (leitura, cadastro, catálogo, mídia, importação e retries); `Retry-After` respeitado, sem espera longa dentro do request (reagenda).
+- Workers protegidos por credencial exclusiva de servidor (`WORKER_HOOK_SECRET`); chave publicável não é mais aceita. Rotinas automáticas de imóveis reconfiguradas para a nova credencial (guardada em `app_settings.worker_hook_token`).
+- Painel de publicação mostra separadamente: Salvo no Gestão, Aguardando sincronização, Bloqueado e Confirmado na imobiliária.
+- Validação controlada no imóvel 1381/3380: duas edições seguidas no campo interno "local da chave" chegaram à Cordial (4355160) e à Morar (4355161); nenhum outro campo mudou; IDs remotos preservados; texto de teste removido depois.
