@@ -1491,10 +1491,25 @@ export async function runSyncWorker(
       }
       const outcome = await processJob(admin, job, { updatesPaused });
       // Envio que só deu certo em parte não termina como sucesso genérico.
-      const partial = (outcome as { status?: string } | undefined)?.status === "partial";
+      const outcomeStatus = (outcome as { status?: string } | undefined)?.status;
+      const partial = outcomeStatus === "partial";
+      // Fotos com trabalho restante (reconstrução em andamento, exclusão
+      // pendente ou envio parcial) NUNCA terminam como concluídas: voltam para
+      // a fila e retomam sozinhas, relendo o site antes de cada passo.
+      const mediaUnfinished =
+        job.action === "media_sync" &&
+        ["rebuilding", "pending_delete", "partial", "waiting_watermark"].includes(String(outcomeStatus)) &&
+        job.attempts < job.max_attempts;
       const owned =
         job.action === "media_sync"
-          ? await finishMediaJob(admin, job)
+          ? mediaUnfinished
+            ? await finishJob(admin, job, {
+                status: "retry",
+                next_run_at: new Date(Date.now() + 75_000).toISOString(),
+                last_error_category: "partial",
+                last_error_message: `Fotos ainda em andamento (${outcomeStatus}); retomada automática.`,
+              })
+            : await finishMediaJob(admin, job)
           : await finishJob(admin, job, {
               status: "succeeded",
               finished_at: new Date().toISOString(),

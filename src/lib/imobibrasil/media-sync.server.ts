@@ -567,6 +567,7 @@ export async function deliverGallery(
     gallery,
     byId,
     outOfBudget,
+    remainingMs: () => budgetMs - (Date.now() - started),
     progress,
   });
   rebuiltCount = rebuild.reinserted;
@@ -811,6 +812,7 @@ async function rebuildRemoteOrder(
     gallery: RemoteGallery;
     byId: Map<string, ImageRow>;
     outOfBudget: () => boolean;
+    remainingMs: () => number;
     progress: () => Promise<void>;
   },
 ): Promise<{
@@ -892,6 +894,28 @@ async function rebuildRemoteOrder(
           gallery,
         };
       }
+    }
+  }
+
+  // 0.1) Só começa a apagar se couber, no tempo desta rodada e no limite de
+  //      requisições do site (~18/min), apagar E reenviar tudo. Se não couber,
+  //      nada é apagado: a galeria continua completa e o envio fica pendente.
+  if (plan.deleteRemoteIds.length) {
+    const calls = plan.deleteRemoteIds.length + plan.reinsertImageIds.length + 3;
+    const neededMs = (Math.ceil(calls / 18) - 1) * 60_000 + 20_000;
+    if (params.remainingMs() < neededMs) {
+      return {
+        deleted: 0,
+        reinserted: 0,
+        pending: true,
+        reason: "aguardando_janela_de_envio",
+        checkpoint: {
+          state: "blocked",
+          reason: `aguardando_janela_de_envio: ${calls} chamadas`,
+          at: new Date().toISOString(),
+        },
+        gallery,
+      };
     }
   }
 
