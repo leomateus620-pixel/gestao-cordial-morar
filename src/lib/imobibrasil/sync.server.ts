@@ -16,6 +16,11 @@ import {
   type UpdatePatch,
 } from "./update-contract";
 import { extractPublicUrl } from "./public-url";
+import {
+  diffCharacteristics,
+  nextConfirmedSet,
+  verifyFields,
+} from "./characteristics-diff";
 
 import {
   buildExternalReference,
@@ -417,11 +422,9 @@ async function syncCharacteristics(
   publication: { id: string; characteristic_codes?: unknown },
 ) {
   const confirmed = Array.isArray(publication.characteristic_codes)
-    ? (publication.characteristic_codes as unknown[]).map((code) => String(code))
+    ? (publication.characteristic_codes as unknown[])
     : [];
-  const desired = Array.from(new Set(desiredCodes.map((code) => String(code))));
-  const toInsert = desired.filter((code) => !confirmed.includes(code));
-  const toRemove = confirmed.filter((code) => !desired.includes(code));
+  const { toInsert, toRemove } = diffCharacteristics(confirmed, desiredCodes);
   if (!toInsert.length && !toRemove.length) {
     return { inserted: [] as string[], removed: [] as string[], incomplete: false };
   }
@@ -471,9 +474,7 @@ async function syncCharacteristics(
   }
 
   // Conjunto confirmado = o que ficou de fato associado por decisão do Gestão.
-  const nextConfirmed = Array.from(
-    new Set([...confirmed.filter((code) => !removed.includes(code)), ...inserted]),
-  );
+  const nextConfirmed = nextConfirmedSet(confirmed, inserted, removed);
   await admin
     .from("property_provider_publications")
     .update({
@@ -1108,22 +1109,13 @@ export async function processJob(
   // nada. Cada campo enviado é comparado com a leitura do site; o que a leitura
   // não descreve fica explicitamente como "não verificável".
   const remoteSnapshot = remoteToPayloadSnapshot(remote);
+  const sentPayload = Object.fromEntries(
+    sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]]),
+  );
   const fieldVerification = {
     checked_at: new Date().toISOString(),
-    sent: sentKeys,
-    confirmed: [] as string[],
-    divergent: [] as string[],
-    unverifiable: [] as string[],
+    ...verifyFields(sentPayload, remoteSnapshot, sameValue),
   };
-  for (const key of sentKeys) {
-    const sent = (payload as PayloadSnapshot)[key];
-    if (!(key in remoteSnapshot)) {
-      fieldVerification.unverifiable.push(key);
-      continue;
-    }
-    if (sameValue(remoteSnapshot[key], sent)) fieldVerification.confirmed.push(key);
-    else fieldVerification.divergent.push(key);
-  }
   if (sentKeys.length) {
     await logAttempt(admin, job, {
       step: "verify_fields",
