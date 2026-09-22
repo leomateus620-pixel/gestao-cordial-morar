@@ -145,9 +145,9 @@ function NovoImovelPage() {
 
   async function handleSubmit(values: PropertyFormValues) {
     try {
-      // Sem rascunho, a criação usa a mesma chave de intenção do formulário:
-      // reenviar o cadastro nunca gera um segundo imóvel.
-      const existing = draftId ?? (await ensureDraft());
+      // A criação usa a mesma chave de intenção do formulário: reenviar o
+      // cadastro (duplo clique, retry) nunca gera um segundo imóvel.
+      const existing = draftId;
       const propertyId = existing
         ? ((await update.mutateAsync({ id: existing, ...values })).property?.id ?? existing)
         : (await create.mutateAsync({ ...values, clientIntentKey: intentKey.current })).id;
