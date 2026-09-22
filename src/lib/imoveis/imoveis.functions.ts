@@ -518,17 +518,33 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
 export type CreateImovelInput = Partial<PropertyWriteInput> & {
   carteira: "cordial" | "morar";
   operacao: "venda" | "aluguel";
+  /** Chave da intenção de cadastro: repetir a mesma chave devolve o mesmo imóvel. */
+  clientIntentKey?: string | null;
 };
 
 export const createImovel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: CreateImovelInput) => data)
   .handler(async ({ data, context }): Promise<Property> => {
+    const intentKey = String(data.clientIntentKey ?? "").trim() || null;
+
+    // Idempotência: duplo clique, retry de rede ou repetição da mesma
+    // solicitação recuperam o imóvel já criado em vez de criar outro.
+    if (intentKey) {
+      const { data: existing } = await context.supabase
+        .from("properties")
+        .select("*")
+        .eq("client_intent_key", intentKey)
+        .maybeSingle();
+      if (existing) return mapRow(existing as Row);
+    }
+
     const payload: Record<string, unknown> = {
       ...toDbPayload(data),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
       source: "gestao_cordial",
       source_property_id: crypto.randomUUID(),
+      ...(intentKey ? { client_intent_key: intentKey } : {}),
     };
     if (data.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
@@ -539,7 +555,19 @@ export const createImovel = createServerFn({ method: "POST" })
       .insert(payload as never)
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Corrida entre dois envios simultâneos: a restrição de unicidade da chave
+      // de intenção garante um único imóvel — devolvemos o que venceu a corrida.
+      if (intentKey && /duplicate key|unique/i.test(error.message)) {
+        const { data: raced } = await context.supabase
+          .from("properties")
+          .select("*")
+          .eq("client_intent_key", intentKey)
+          .maybeSingle();
+        if (raced) return mapRow(raced as Row);
+      }
+      throw new Error(error.message);
+    }
     return mapRow(row as Row);
   });
 
