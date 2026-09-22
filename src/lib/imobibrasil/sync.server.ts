@@ -632,10 +632,24 @@ export async function processJob(
     externalId = (fresh["external_property_id"] as string | null) ?? null;
 
     if (!externalId) {
-      const { match } = await lookupByReference(job.provider, reference, job.correlation_id);
-      const decision = decideFromMatches(match, null);
+      const { lookup, match } = await lookupByReference(job.provider, reference, job.correlation_id);
 
-      if (decision.kind === "duplicate") {
+      if (lookup.kind === "inconclusive") {
+        // Leitura inconclusiva NUNCA autoriza criação: o trabalho volta à fila.
+        await admin
+          .from("property_provider_publications")
+          .update({
+            create_state: "awaiting_create_reconcile",
+            remote_match_checked_at: new Date().toISOString(),
+            last_error_category: "protocol",
+            last_error_message: describeInconclusive(lookup.reason),
+          })
+          .eq("id", publication.id);
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw inconclusiveError(reference, lookup.reason);
+      }
+
+      if (lookup.kind === "duplicate") {
         await recordRemoteMatch(admin, publication.id, match, {
           create_state: "remote_duplicate_detected",
           status: "error",
@@ -649,15 +663,16 @@ export async function processJob(
         });
       }
 
-      if (decision.kind === "reuse") {
-        externalId = decision.externalId;
+      if (lookup.kind === "unique") {
+        externalId = lookup.externalId;
         await recordRemoteMatch(admin, publication.id, match, {
           external_property_id: externalId,
           create_state: null,
           create_absent_checks: 0,
         });
       } else {
-        // Ausente: só cria se não houver criação ambígua pendente sem confirmação.
+        // Ausência COMPROVADA (paginação esgotada): só cria se não houver
+        // criação ambígua pendente sem confirmação.
         const absentChecks = Number(fresh["create_absent_checks"] ?? 0) + 1;
         await recordRemoteMatch(admin, publication.id, match, {
           create_absent_checks: absentChecks,
