@@ -36,16 +36,39 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return normalizeScalar(a) === normalizeScalar(b);
 }
 
+/**
+ * Lê número em formato CONHECIDO, sem adivinhar:
+ *  - número nativo: preserva a parte decimal (10.5 continua 10.5);
+ *  - "1.500,50" / "1500,5" → vírgula decimal (padrão brasileiro);
+ *  - "1.500" / "1.500.000" → ponto de milhar (grupos de 3);
+ *  - "1500.50" → ponto decimal (1 ou 2 casas, sem vírgula);
+ *  - identificadores com zero à esquerda ("0123") NÃO viram número.
+ * Qualquer outro texto retorna null e é comparado como texto.
+ */
+export function parseKnownNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const text = value.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  if (!text) return null;
+  if (/^-?0\d/.test(text)) return null;
+  let normalized: string | null = null;
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(text)) normalized = text.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d+,\d+$/.test(text)) normalized = text.replace(",", ".");
+  else if (/^-?\d+(\.\d{1,2})?$/.test(text)) normalized = text;
+  else if (/^-?\d+\.\d+$/.test(text)) normalized = text;
+  if (normalized === null) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function normalizeScalar(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "boolean") return value ? "sim" : "nao";
   const text = String(value).trim();
   if (!text) return "";
-  const numeric = text.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
-  if (/^-?\d+(\.\d+)?$/.test(numeric)) {
-    const parsed = Number(numeric);
-    if (Number.isFinite(parsed)) return String(parsed);
-  }
+  const parsed = parseKnownNumber(value);
+  // Centavos inteiros evitam erro de ponto flutuante em valores monetários.
+  if (parsed !== null) return `#${Math.round(parsed * 100)}`;
   return text.toLowerCase();
 }
 

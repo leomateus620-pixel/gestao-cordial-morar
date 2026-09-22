@@ -144,23 +144,37 @@ export async function applyRemoteChanges(
     if (error) throw new Error(error.message);
   }
 
+  // O índice único só vale para divergências pendentes; resolvidas ficam como
+  // histórico. Por isso: atualiza a pendente se existir, senão insere nova.
   for (const conflict of plan.conflicts) {
-    await admin.from("property_field_conflicts").upsert(
-      {
-        property_id: input.publication.property_id,
-        provider: input.publication.provider,
-        publication_id: input.publication.id,
-        field: conflict.field,
-        scope: "field",
-        confirmed_value: conflict.confirmed ?? null,
-        local_value: conflict.local ?? null,
-        remote_value: conflict.remote ?? null,
-        applied_value: conflict.remote ?? null,
-        classification: "conflito",
-        resolution: "pending",
-      },
-      { onConflict: "property_id,provider,field,scope", ignoreDuplicates: false },
-    );
+    const values = {
+      publication_id: input.publication.id,
+      confirmed_value: (conflict.confirmed ?? null) as never,
+      local_value: (conflict.local ?? null) as never,
+      remote_value: (conflict.remote ?? null) as never,
+      applied_value: (conflict.remote ?? null) as never,
+      classification: "conflito",
+    };
+    const { data: updated, error: updateError } = await admin
+      .from("property_field_conflicts")
+      .update(values)
+      .eq("property_id", input.publication.property_id)
+      .eq("provider", input.publication.provider)
+      .eq("field", conflict.field)
+      .eq("scope", "field")
+      .eq("resolution", "pending")
+      .select("id");
+    if (updateError) throw new Error(updateError.message);
+    if (updated?.length) continue;
+    const { error: insertError } = await admin.from("property_field_conflicts").insert({
+      ...values,
+      property_id: input.publication.property_id,
+      provider: input.publication.provider,
+      field: conflict.field,
+      scope: "field",
+      resolution: "pending",
+    });
+    if (insertError) throw new Error(insertError.message);
   }
 
   await admin

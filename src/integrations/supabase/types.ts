@@ -5590,6 +5590,18 @@ export type Database = {
         }
         Returns: Json
       }
+      property_save_revision_enqueue_v2: {
+        Args: {
+          _action?: string
+          _changed_fields?: string[]
+          _expected_revision: number
+          _payload: Json
+          _property_id: string
+          _requested_by: string
+          _targets: string[]
+        }
+        Returns: Json
+      }
       property_sync_claim_jobs: {
         Args: {
           _actions?: string[]

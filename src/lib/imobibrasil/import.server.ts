@@ -267,15 +267,6 @@ export function remoteRowSnapshot(remote: NormalizedProperty): Record<string, un
   return snapshot;
 }
 
-function enrichmentPatch(row: Record<string, unknown>, local: Record<string, unknown>) {
-  const patch: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(row)) {
-    if (value === null || value === undefined) continue;
-    const current = local[key];
-    if (current === null || current === undefined || current === "") patch[key] = value;
-  }
-  return patch;
-}
 
 async function upsertPublication(
   admin: Admin,
@@ -396,13 +387,17 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
   if (propertyId) {
     const { data: local } = await admin.from("properties").select("*").eq("id", propertyId).maybeSingle();
     localRow = (local ?? {}) as Record<string, unknown>;
-    const patch = enrichmentPatch(
-      { ...row, source_property_id: externalId },
-      localRow,
-    );
-    if (Object.keys(patch).length) {
-      await admin.from("properties").update(patch).eq("id", propertyId);
-      localRow = { ...localRow, ...patch };
+    // Conteúdo NÃO é preenchido aqui: campo vazio no Gestão pode ser limpeza
+    // intencional. A decisão por campo acontece na comparação de três estados.
+    // Só a identidade de origem é registrada, quando ainda não existe.
+    if (!localRow.source_property_id) {
+      const { error: linkError } = await admin
+        .from("properties")
+        .update({ source_property_id: externalId })
+        .eq("id", propertyId)
+        .is("source_property_id", null);
+      if (linkError) throw new Error(linkError.message);
+      localRow = { ...localRow, source_property_id: externalId };
     }
     await bumpRun(admin, job.run_id, { properties_linked: 1 });
   } else {

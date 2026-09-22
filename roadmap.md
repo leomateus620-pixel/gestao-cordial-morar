@@ -116,3 +116,16 @@
 - [x] Docs: IMOBI-ESTADOS-SINCRONIZACAO.md e RELATORIO-INTEGRACAO-FINAL.md
 - [x] Validação real autorizada concluída no imóvel de teste 1381/3380: exclusão de foto pelo endpoint oficial (galeria conferida, original intacta), arquivamento/desarquivamento sem recriar anúncio (IDs preservados) e simulação de 429/timeout (sem retry cego em POST)
 - [x] Correção: republicação voltava com o anúncio oculto. A comparação passou a usar o estado real de exibição lido no site; anúncios de teste voltaram a aparecer nas duas imobiliárias
+
+## Consistência ImobiBrasil (plano 22/09)
+- [x] Salvamento + fila numa transação, com união dos campos alterados (preço + descrição)
+- [x] Comparação numérica por formato conhecido (10.5 ≠ 105; "10,50" = 10.5; zero ≠ vazio)
+- [x] Importação não preenche mais campos vazios do Gestão (limpeza preservada)
+- [x] Registro de divergências compatível com histórico (sem upsert no índice parcial)
+- [ ] Posse/lease antes de cada chamada externa e finalização condicionada
+- [ ] Quatro estados (desejado/tentado/observado/confirmado) por campo
+- [ ] Fotos: plano persistido, validação de arquivos antes de excluir, ID só com evidência
+- [ ] Conflito Cordial x Morar preserva o Gestão; importação com revisão esperada
+- [ ] Paginação completa ativos/inativos; características parciais
+- [ ] Limitador antes de cada tentativa; Retry-After longo reagenda o job
+- [ ] Estados por destino/componente na tela; testes restantes; validação no imóvel 1381/3380

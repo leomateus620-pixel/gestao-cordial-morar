@@ -623,15 +623,20 @@ export const updateImovel = createServerFn({ method: "POST" })
       .map((link) => link.provider) as Array<"cordial" | "morar">;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: saved, error: saveError } = await supabaseAdmin.rpc(
-      "property_save_revision_enqueue",
+    // Imóvel, revisão, destinos e campos alterados numa única transação. Os
+    // campos do trabalho novo são a UNIÃO com os ainda não enviados de edições
+    // anteriores — nenhum trabalho antigo tem a intenção sobrescrita.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: saved, error: saveError } = await (supabaseAdmin.rpc as any)(
+      "property_save_revision_enqueue_v2",
       {
         _property_id: id,
-        _expected_revision: (expectedRevision ?? null) as never,
-        _payload: payload as never,
+        _expected_revision: expectedRevision ?? null,
+        _payload: payload,
         _targets: targets,
         _requested_by: context.userId,
         _action: "update",
+        _changed_fields: changedFields?.length ? changedFields : null,
       },
     );
     if (saveError) throw new Error(saveError.message);
@@ -642,17 +647,6 @@ export const updateImovel = createServerFn({ method: "POST" })
       );
     }
     if (!result.ok) throw new Error("Não foi possível salvar o imóvel.");
-
-    // Contrato de alteração: o trabalho leva a lista de campos tocados, para que
-    // a escrita externa envie somente eles (e os obrigatórios).
-    if (targets.length && changedFields?.length) {
-      await supabaseAdmin
-        .from("property_sync_jobs")
-        .update({ changed_fields: changedFields })
-        .eq("property_id", id)
-        .eq("action", "update")
-        .in("status", ["pending", "retry"]);
-    }
 
     const { data: row, error } = await context.supabase
       .from("properties")
