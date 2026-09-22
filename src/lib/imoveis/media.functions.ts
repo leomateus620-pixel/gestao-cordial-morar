@@ -99,10 +99,12 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
 }
 
 async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[]> {
+  // Foto em exclusão pendente nos sites já não faz parte da galeria do Gestão.
   const { data, error } = await supabase
     .from("property_images")
     .select(IMAGE_COLUMNS)
     .eq("property_id", propertyId)
+    .eq("pending_remote_delete", false)
     .order("position", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as ImageRow[];
