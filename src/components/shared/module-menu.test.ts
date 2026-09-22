@@ -59,6 +59,7 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",
+    "/imoveis",
     "/atendimentos",
     "/vendas",
   ]);
