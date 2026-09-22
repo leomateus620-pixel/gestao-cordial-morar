@@ -517,6 +517,22 @@ export async function syncPropertyMedia(
     .maybeSingle();
 
   if (!publication?.external_property_id || publication.enabled === false) {
+    // Foto NUNCA cria imóvel no site. Se o vínculo existe mas o código remoto
+    // está ausente, pedimos reconciliação (somente leitura por referência).
+    if (publication && publication.enabled !== false) {
+      await admin.from("property_sync_jobs").upsert(
+        {
+          property_id: job.property_id,
+          provider: job.provider,
+          action: "reconcile",
+          requested_revision: job.requested_revision,
+          status: "pending",
+          next_run_at: new Date().toISOString(),
+        },
+        { onConflict: "property_id,provider,action,requested_revision" },
+      );
+      return { status: "not_published" };
+    }
     return { status: "not_published" };
   }
 

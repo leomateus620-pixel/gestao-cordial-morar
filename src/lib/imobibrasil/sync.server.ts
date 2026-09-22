@@ -37,11 +37,14 @@ import {
 import { providerExternalCode } from "./provider-code";
 import {
   canCreateAfterAmbiguity,
-  decideFromMatches,
-  extractRemoteListItems,
+  classifyRemoteLookup,
+  describeInconclusive,
+  extractRemoteList,
   matchByReference,
   normalizeCadastralAction,
   type ReferenceMatch,
+  type RemoteListRead,
+  type RemoteLookupResult,
 } from "./reference-lookup";
 
 
@@ -57,7 +60,55 @@ export type SyncJob = {
   correlation_id: string;
   attempts: number;
   max_attempts: number;
+  /** Identificador exclusivo desta execução: só quem o tem pode concluir o job. */
+  lease_token?: string | null;
 };
+
+/**
+ * Conclui o trabalho SOMENTE se a posse ainda for desta execução. Um worker
+ * antigo (lease expirado e job já reivindicado por outro) não finaliza nada.
+ */
+async function finishJob(
+  admin: Admin,
+  job: SyncJob,
+  fields: Record<string, unknown>,
+): Promise<boolean> {
+  const cleaned = {
+    locked_at: null,
+    lock_expires_at: null,
+    locked_by: null,
+    ...fields,
+  };
+  if (!job.lease_token) {
+    // Job antigo, reivindicado antes da posse existir: mantém o comportamento
+    // anterior para não deixar trabalho preso em `processing`.
+    const { error } = await admin.from("property_sync_jobs").update(cleaned).eq("id", job.id);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+  const { data, error } = await admin.rpc("property_sync_finish_job", {
+    _job_id: job.id,
+    _lease_token: job.lease_token,
+    _fields: cleaned,
+  });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+/** Renova o lease durante trabalhos longos. Falhar aqui nunca derruba o job. */
+export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
+  if (!job.lease_token) return true;
+  try {
+    const { data } = await admin.rpc("property_sync_renew_lease", {
+      _job_id: job.id,
+      _lease_token: job.lease_token,
+      _seconds: seconds,
+    });
+    return data === true;
+  } catch {
+    return true;
+  }
+}
 
 
 async function logAttempt(
@@ -115,26 +166,61 @@ function assertWriteAllowed(action: QueueAction, updatesPaused: boolean) {
   if (isWriteBlockedByPause(action, updatesPaused)) throw new PausedWriteError(action);
 }
 
+const LOOKUP_PER_PAGE = 50;
+const LOOKUP_MAX_PAGES = 20;
+
 /**
  * Procura a referência externa antes de qualquer criação — idempotência obrigatória.
- * Toda forma de resposta da lista é reconhecida (ver `reference-lookup.ts`): um
- * parser cego aqui significaria criar um segundo anúncio do mesmo imóvel.
+ *
+ * A paginação é percorrida até esgotar. Formato desconhecido, falha de consulta ou
+ * paginação truncada devolvem `inconclusive`: nunca "não existe". Um parser cego
+ * aqui significaria criar um segundo anúncio do mesmo imóvel.
  */
 async function lookupByReference(
   provider: ImobiProvider,
   reference: string,
   correlationId: string,
-): Promise<{ match: ReferenceMatch; items: number }> {
-  const response = await imobiRequest(
-    provider,
-    `/imovel/lista?referencia=${encodeURIComponent(reference)}`,
-    {
-      method: "GET",
-      correlationId,
-    },
-  );
-  const items = extractRemoteListItems(response.data);
-  return { match: matchByReference(items, reference), items: items.length };
+): Promise<{ lookup: RemoteLookupResult; match: ReferenceMatch; items: number }> {
+  const reads: RemoteListRead[] = [];
+  let complete = false;
+  let failed = false;
+
+  for (let page = 1; page <= LOOKUP_MAX_PAGES; page += 1) {
+    let response: Awaited<ReturnType<typeof imobiRequest>>;
+    try {
+      response = await imobiRequest(
+        provider,
+        `/imovel/lista?referencia=${encodeURIComponent(reference)}&page=${page}&per_page=${LOOKUP_PER_PAGE}`,
+        { method: "GET", correlationId },
+      );
+    } catch {
+      failed = true;
+      break;
+    }
+    const read = extractRemoteList(response.data);
+    reads.push(read);
+    if (!read.recognized) break;
+    if (read.items.length < LOOKUP_PER_PAGE) {
+      complete = true;
+      break;
+    }
+  }
+
+  const items = reads.flatMap((read) => read.items);
+  return {
+    lookup: classifyRemoteLookup({ reads, reference, complete, failed }),
+    match: matchByReference(items, reference),
+    items: items.length,
+  };
+}
+
+/** Resultado inconclusivo nunca autoriza criação: o trabalho volta para a fila. */
+function inconclusiveError(reference: string, reason: string): ImobiApiError {
+  return new ImobiApiError({
+    message: `${describeInconclusive(reason)} A referência ${reference} não pôde ser confirmada; nenhuma criação foi feita.`,
+    category: "protocol",
+    ambiguous: true,
+  });
 }
 
 /** Devolve a trava de criação. Nunca lança: falhar aqui não pode travar a fila. */
@@ -464,6 +550,17 @@ export async function processJob(
       .eq("id", publication.id);
   }
 
+  // Referência comercial é POR CONTA: o número da Cordial nunca vale na Morar.
+  // Guardamos o código daquela imobiliária no próprio vínculo do destino.
+  if (providerCode && publication["commercial_reference"] !== providerCode) {
+    await admin
+      .from("property_provider_publications")
+      .update({ commercial_reference: providerCode })
+      .eq("id", publication.id);
+  }
+
+
+
   if (!hasProviderToken(job.provider)) {
     throw new ImobiApiError({
       message: `Token do provedor ${job.provider} não configurado.`,
@@ -594,10 +691,24 @@ export async function processJob(
     externalId = (fresh["external_property_id"] as string | null) ?? null;
 
     if (!externalId) {
-      const { match } = await lookupByReference(job.provider, reference, job.correlation_id);
-      const decision = decideFromMatches(match, null);
+      const { lookup, match } = await lookupByReference(job.provider, reference, job.correlation_id);
 
-      if (decision.kind === "duplicate") {
+      if (lookup.kind === "inconclusive") {
+        // Leitura inconclusiva NUNCA autoriza criação: o trabalho volta à fila.
+        await admin
+          .from("property_provider_publications")
+          .update({
+            create_state: "awaiting_create_reconcile",
+            remote_match_checked_at: new Date().toISOString(),
+            last_error_category: "protocol",
+            last_error_message: describeInconclusive(lookup.reason),
+          })
+          .eq("id", publication.id);
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw inconclusiveError(reference, lookup.reason);
+      }
+
+      if (lookup.kind === "duplicate") {
         await recordRemoteMatch(admin, publication.id, match, {
           create_state: "remote_duplicate_detected",
           status: "error",
@@ -611,15 +722,16 @@ export async function processJob(
         });
       }
 
-      if (decision.kind === "reuse") {
-        externalId = decision.externalId;
+      if (lookup.kind === "unique") {
+        externalId = lookup.externalId;
         await recordRemoteMatch(admin, publication.id, match, {
           external_property_id: externalId,
           create_state: null,
           create_absent_checks: 0,
         });
       } else {
-        // Ausente: só cria se não houver criação ambígua pendente sem confirmação.
+        // Ausência COMPROVADA (paginação esgotada): só cria se não houver
+        // criação ambígua pendente sem confirmação.
         const absentChecks = Number(fresh["create_absent_checks"] ?? 0) + 1;
         await recordRemoteMatch(admin, publication.id, match, {
           create_absent_checks: absentChecks,
@@ -788,7 +900,9 @@ export async function processJob(
     }
   }
 
-  await admin
+  // Gravação do ID remoto: se ela falhar, o imóvel existe no site e o Gestão não
+  // sabe. Isso vira pendência explícita de reconciliação — nunca nova criação.
+  const { error: linkError } = await admin
     .from("property_provider_publications")
     .update({
       external_property_id: externalId,
@@ -797,6 +911,25 @@ export async function processJob(
       create_absent_checks: 0,
     })
     .eq("id", publication.id);
+  if (linkError) {
+    await admin
+      .from("property_provider_publications")
+      .update({
+        create_state: "awaiting_create_reconcile",
+        create_ambiguous_at: new Date().toISOString(),
+        create_absent_checks: 0,
+        last_error_category: "protocol",
+        last_error_message: `Falha ao guardar o código ${externalId} recebido do site: ${sanitizeMessage(linkError.message)}`,
+      })
+      .eq("id", publication.id);
+    await releaseCreateLock(admin, publication.id, createLockWorker);
+    throw new ImobiApiError({
+      message:
+        "O site respondeu, mas o código do imóvel não pôde ser guardado. Será reconciliado por referência antes de qualquer nova tentativa.",
+      category: "protocol",
+      ambiguous: true,
+    });
+  }
   const createdNow = mode === "insert";
   await releaseCreateLock(admin, publication.id, createLockWorker);
   createLockWorker = null;
@@ -902,14 +1035,28 @@ export async function reconcilePublication(
 ) {
   // Reconciliação SEMPRE lê a lista por referência: é assim que o sistema
   // enxerga duplicidade remota e recupera um ID perdido sem criar nada.
-  const { match } = await lookupByReference(
+  const { lookup, match } = await lookupByReference(
     publication.provider,
     publication.external_reference,
     correlationId,
   );
-  const decision = decideFromMatches(match, publication.external_property_id);
 
-  if (decision.kind === "duplicate") {
+  if (lookup.kind === "inconclusive") {
+    // Pendência explícita: nada é decidido a partir de leitura inconclusiva.
+    await admin
+      .from("property_provider_publications")
+      .update({
+        status: "out_of_sync",
+        remote_match_checked_at: new Date().toISOString(),
+        last_error_category: "protocol",
+        last_error_message: describeInconclusive(lookup.reason),
+      })
+      .eq("id", publication.id);
+    throw inconclusiveError(publication.external_reference, lookup.reason);
+  }
+
+  if (lookup.kind === "duplicate") {
+    const current = String(publication.external_property_id ?? "").trim();
     await recordRemoteMatch(admin, publication.id, match, {
       create_state: "remote_duplicate_detected",
       status: "out_of_sync",
@@ -920,12 +1067,12 @@ export async function reconcilePublication(
     return {
       status: "out_of_sync" as const,
       duplicates: match.ids,
-      canonicalId: decision.canonicalId,
+      canonicalId: current && match.ids.includes(current) ? current : null,
     };
   }
 
   const externalId =
-    publication.external_property_id ?? (decision.kind === "reuse" ? decision.externalId : null);
+    publication.external_property_id ?? (lookup.kind === "unique" ? lookup.externalId : null);
 
   await recordRemoteMatch(admin, publication.id, match);
 
@@ -1006,41 +1153,30 @@ export async function runSyncWorker(
     const started = Date.now();
     try {
       const outcome = await processJob(admin, job, { updatesPaused });
-      await admin
-        .from("property_sync_jobs")
-        .update({
-          status: "succeeded",
-          finished_at: new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_error_category: null,
-          last_error_message: null,
-        })
-        .eq("id", job.id);
+      const owned = await finishJob(admin, job, {
+        status: "succeeded",
+        finished_at: new Date().toISOString(),
+        last_error_category: null,
+        last_error_message: null,
+      });
       await logAttempt(admin, job, {
         step: job.action,
         ok: true,
         durationMs: Date.now() - started,
+        errorMessage: owned ? undefined : "Lease perdido: conclusão registrada por outra execução.",
       });
-      results.push({ jobId: job.id, provider: job.provider, ...outcome });
+      results.push({ jobId: job.id, provider: job.provider, staleLease: !owned, ...outcome });
     } catch (error) {
       // Pausa: o trabalho VOLTA para a fila (retomável), sem consumir tentativa
       // e sem marcar erro na publicação.
       if (error instanceof PausedWriteError) {
-        await admin
-          .from("property_sync_jobs")
-          .update({
-            status: "retry",
-            attempts: Math.max(0, job.attempts - 1),
-            next_run_at: new Date(Date.now() + PAUSE_DEFER_SECONDS * 1000).toISOString(),
-            locked_at: null,
-            lock_expires_at: null,
-            locked_by: null,
-            last_error_category: "config",
-            last_error_message: error.message,
-          })
-          .eq("id", job.id);
+        await finishJob(admin, job, {
+          status: "retry",
+          attempts: Math.max(0, job.attempts - 1),
+          next_run_at: new Date(Date.now() + PAUSE_DEFER_SECONDS * 1000).toISOString(),
+          last_error_category: "config",
+          last_error_message: error.message,
+        });
         results.push({ jobId: job.id, provider: job.provider, status: "deferred_paused" });
         continue;
       }
@@ -1052,21 +1188,15 @@ export async function runSyncWorker(
         ? Math.max(15, normalized.retryAfterSeconds ?? 30)
         : backoffSeconds(job.attempts);
       const canRetry = rateLimited || (normalized.retryable && job.attempts < job.max_attempts);
-      await admin
-        .from("property_sync_jobs")
-        .update({
-          status: canRetry ? "retry" : "failed",
-          attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
-          next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
-          finished_at: canRetry ? null : new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_http_status: normalized.httpStatus,
-          last_error_category: normalized.category,
-          last_error_message: normalized.message,
-        })
-        .eq("id", job.id);
+      await finishJob(admin, job, {
+        status: canRetry ? "retry" : "failed",
+        attempts: rateLimited ? Math.max(0, job.attempts - 1) : job.attempts,
+        next_run_at: new Date(Date.now() + waitSeconds * 1000).toISOString(),
+        finished_at: canRetry ? null : new Date().toISOString(),
+        last_http_status: normalized.httpStatus,
+        last_error_category: normalized.category,
+        last_error_message: normalized.message,
+      });
 
       await admin
         .from("property_provider_publications")

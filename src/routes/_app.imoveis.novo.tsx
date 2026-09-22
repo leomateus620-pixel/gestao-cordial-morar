@@ -68,6 +68,10 @@ function NovoImovelPage() {
   const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
   const [draftId, setDraftId] = useState<string | null>(null);
+  /** Chave da intenção de cadastro: vale para todo este formulário aberto. */
+  const intentKey = useRef<string>(crypto.randomUUID());
+  /** Criação em andamento: duplo clique reaproveita a mesma chamada. */
+  const draftPromise = useRef<Promise<string | null> | null>(null);
   const images = usePropertyImages(draftId ?? undefined);
   const fotosProntas = (images.data ?? []).filter(
     (image) => image.processingStatus === "ready" || image.processingStatus === "legacy",
@@ -114,29 +118,39 @@ function NovoImovelPage() {
 
   async function ensureDraft(): Promise<string | null> {
     if (draftId) return draftId;
-    try {
-      // O rascunho existe só para anexar fotos/arquivos: ele nunca guarda o
-      // código da imobiliária, senão um cadastro abandonado queimaria o número.
-      const property = await create.mutateAsync({
-        ...latestValues.current,
-        codigoCordial: null,
-        codigoMorar: null,
-      });
-      setDraftId(property.id);
-      toast.info("Rascunho salvo para receber as fotos.");
-      return property.id;
-    } catch (err) {
-      toast.error((err as Error)?.message ?? "Não foi possível salvar o rascunho.");
-      return null;
-    }
+    // Uma única promessa em andamento: dois cliques compartilham a mesma criação.
+    if (draftPromise.current) return draftPromise.current;
+    draftPromise.current = (async () => {
+      try {
+        // O rascunho existe só para anexar fotos/arquivos: ele nunca guarda o
+        // código da imobiliária, senão um cadastro abandonado queimaria o número.
+        // `clientIntentKey` garante que retry/repetição devolva o MESMO imóvel.
+        const property = await create.mutateAsync({
+          ...latestValues.current,
+          codigoCordial: null,
+          codigoMorar: null,
+          clientIntentKey: intentKey.current,
+        });
+        setDraftId(property.id);
+        toast.info("Rascunho salvo para receber as fotos.");
+        return property.id;
+      } catch (err) {
+        toast.error((err as Error)?.message ?? "Não foi possível salvar o rascunho.");
+        draftPromise.current = null;
+        return null;
+      }
+    })();
+    return draftPromise.current;
   }
 
   async function handleSubmit(values: PropertyFormValues) {
     try {
+      // A criação usa a mesma chave de intenção do formulário: reenviar o
+      // cadastro (duplo clique, retry) nunca gera um segundo imóvel.
       const existing = draftId;
       const propertyId = existing
         ? ((await update.mutateAsync({ id: existing, ...values })).property?.id ?? existing)
-        : (await create.mutateAsync({ ...values })).id;
+        : (await create.mutateAsync({ ...values, clientIntentKey: intentKey.current })).id;
 
       await commitCodes(propertyId);
 

@@ -1732,6 +1732,7 @@ export type Database = {
           carteira: string
           cep: string | null
           cidade: string | null
+          client_intent_key: string | null
           codigo: string | null
           codigo_cordial: string | null
           codigo_morar: string | null
@@ -1859,6 +1860,7 @@ export type Database = {
           carteira?: string
           cep?: string | null
           cidade?: string | null
+          client_intent_key?: string | null
           codigo?: string | null
           codigo_cordial?: string | null
           codigo_morar?: string | null
@@ -1986,6 +1988,7 @@ export type Database = {
           carteira?: string
           cep?: string | null
           cidade?: string | null
+          client_intent_key?: string | null
           codigo?: string | null
           codigo_cordial?: string | null
           codigo_morar?: string | null
@@ -3069,6 +3072,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           baseline_at: string | null
+          commercial_reference: string | null
           create_absent_checks: number
           create_ambiguous_at: string | null
           create_lock_expires_at: string | null
@@ -3121,6 +3125,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           baseline_at?: string | null
+          commercial_reference?: string | null
           create_absent_checks?: number
           create_ambiguous_at?: string | null
           create_lock_expires_at?: string | null
@@ -3173,6 +3178,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           baseline_at?: string | null
+          commercial_reference?: string | null
           create_absent_checks?: number
           create_ambiguous_at?: string | null
           create_lock_expires_at?: string | null
@@ -3307,6 +3313,7 @@ export type Database = {
           last_error_category: string | null
           last_error_message: string | null
           last_http_status: number | null
+          lease_token: string | null
           lock_expires_at: string | null
           locked_at: string | null
           locked_by: string | null
@@ -3329,6 +3336,7 @@ export type Database = {
           last_error_category?: string | null
           last_error_message?: string | null
           last_http_status?: number | null
+          lease_token?: string | null
           lock_expires_at?: string | null
           locked_at?: string | null
           locked_by?: string | null
@@ -3351,6 +3359,7 @@ export type Database = {
           last_error_category?: string | null
           last_error_message?: string | null
           last_http_status?: number | null
+          lease_token?: string | null
           lock_expires_at?: string | null
           locked_at?: string | null
           locked_by?: string | null
@@ -5408,6 +5417,17 @@ export type Database = {
         Args: { _publication_id: string; _worker: string }
         Returns: undefined
       }
+      property_save_revision_enqueue: {
+        Args: {
+          _action?: string
+          _expected_revision: number
+          _payload: Json
+          _property_id: string
+          _requested_by: string
+          _targets: string[]
+        }
+        Returns: Json
+      }
       property_sync_claim_jobs: {
         Args: {
           _actions?: string[]
@@ -5425,6 +5445,7 @@ export type Database = {
           last_error_category: string | null
           last_error_message: string | null
           last_http_status: number | null
+          lease_token: string | null
           lock_expires_at: string | null
           locked_at: string | null
           locked_by: string | null
@@ -5451,7 +5472,15 @@ export type Database = {
           kept: string
         }[]
       }
+      property_sync_finish_job: {
+        Args: { _fields: Json; _job_id: string; _lease_token: string }
+        Returns: boolean
+      }
       property_sync_reclaim_stale: { Args: never; Returns: number }
+      property_sync_renew_lease: {
+        Args: { _job_id: string; _lease_token: string; _seconds?: number }
+        Returns: boolean
+      }
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
         Returns: Json

@@ -518,17 +518,33 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
 export type CreateImovelInput = Partial<PropertyWriteInput> & {
   carteira: "cordial" | "morar";
   operacao: "venda" | "aluguel";
+  /** Chave da intenção de cadastro: repetir a mesma chave devolve o mesmo imóvel. */
+  clientIntentKey?: string | null;
 };
 
 export const createImovel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: CreateImovelInput) => data)
   .handler(async ({ data, context }): Promise<Property> => {
+    const intentKey = String(data.clientIntentKey ?? "").trim() || null;
+
+    // Idempotência: duplo clique, retry de rede ou repetição da mesma
+    // solicitação recuperam o imóvel já criado em vez de criar outro.
+    if (intentKey) {
+      const { data: existing } = await context.supabase
+        .from("properties")
+        .select("*")
+        .eq("client_intent_key", intentKey)
+        .maybeSingle();
+      if (existing) return mapRow(existing as Row);
+    }
+
     const payload: Record<string, unknown> = {
       ...toDbPayload(data),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
       source: "gestao_cordial",
       source_property_id: crypto.randomUUID(),
+      ...(intentKey ? { client_intent_key: intentKey } : {}),
     };
     if (data.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
@@ -539,21 +555,39 @@ export const createImovel = createServerFn({ method: "POST" })
       .insert(payload as never)
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Corrida entre dois envios simultâneos: a restrição de unicidade da chave
+      // de intenção garante um único imóvel — devolvemos o que venceu a corrida.
+      if (intentKey && /duplicate key|unique/i.test(error.message)) {
+        const { data: raced } = await context.supabase
+          .from("properties")
+          .select("*")
+          .eq("client_intent_key", intentKey)
+          .maybeSingle();
+        if (raced) return mapRow(raced as Row);
+      }
+      throw new Error(error.message);
+    }
     return mapRow(row as Row);
   });
 
-export type UpdateImovelInput = { id: string } & Partial<PropertyWriteInput>;
+export type UpdateImovelInput = { id: string; expectedRevision?: number | null } & Partial<PropertyWriteInput>;
+
+/** Erro de edição concorrente: a versão do imóvel mudou antes de salvar. */
+export const REVISION_CONFLICT = "REVISION_CONFLICT";
 
 /**
  * Salva a edição local, incrementa a revisão e enfileira `update` apenas para
  * provedores já vinculados — nunca cria publicação nova a partir da edição.
+ *
+ * Gravar, versionar e enfileirar acontecem numa única operação no banco: se a
+ * gravação falha, nada é enfileirado; se a versão mudou no meio, devolve conflito.
  */
 export const updateImovel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: UpdateImovelInput) => data)
   .handler(async ({ data, context }): Promise<{ property: PropertyDetail | null; queued: string[] }> => {
-    const { id, ...rest } = data;
+    const { id, expectedRevision, ...rest } = data;
     const payload = toDbPayload(rest);
     if (rest.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
@@ -561,6 +595,7 @@ export const updateImovel = createServerFn({ method: "POST" })
     }
     if (!Object.keys(payload).length) throw new Error("Nada para salvar.");
 
+    // Autorização: a leitura passa pelas regras de acesso do usuário.
     const { data: current, error: readError } = await context.supabase
       .from("properties")
       .select("revision")
@@ -568,15 +603,6 @@ export const updateImovel = createServerFn({ method: "POST" })
       .maybeSingle();
     if (readError) throw new Error(readError.message);
     if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
-
-    const revision = Number((current as { revision?: number }).revision ?? 1) + 1;
-    const { data: row, error } = await context.supabase
-      .from("properties")
-      .update({ ...payload, revision, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
 
     const { data: links } = await context.supabase
       .from("property_provider_publications")
@@ -591,26 +617,33 @@ export const updateImovel = createServerFn({ method: "POST" })
       .filter((link) => link.enabled && link.external_property_id)
       .map((link) => link.provider) as Array<"cordial" | "morar">;
 
-    if (targets.length) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("property_sync_jobs").upsert(
-        targets.map((provider) => ({
-          property_id: id,
-          provider,
-          action: "update" as const,
-          requested_revision: revision,
-          requested_by: context.userId,
-          status: "pending" as const,
-          next_run_at: new Date().toISOString(),
-        })),
-        { onConflict: "property_id,provider,action,requested_revision" },
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: saved, error: saveError } = await supabaseAdmin.rpc(
+      "property_save_revision_enqueue",
+      {
+        _property_id: id,
+        _expected_revision: (expectedRevision ?? null) as never,
+        _payload: payload as never,
+        _targets: targets,
+        _requested_by: context.userId,
+        _action: "update",
+      },
+    );
+    if (saveError) throw new Error(saveError.message);
+    const result = (saved ?? {}) as { ok?: boolean; conflict?: boolean; revision?: number };
+    if (result.conflict) {
+      throw new Error(
+        `${REVISION_CONFLICT}: este imóvel foi alterado por outra pessoa enquanto você editava. Recarregue a página para ver a versão atual antes de salvar.`,
       );
-      await supabaseAdmin
-        .from("property_provider_publications")
-        .update({ status: "pending" })
-        .eq("property_id", id)
-        .in("provider", targets);
     }
+    if (!result.ok) throw new Error("Não foi possível salvar o imóvel.");
+
+    const { data: row, error } = await context.supabase
+      .from("properties")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error) throw new Error(error.message);
 
     return {
       property: mapDetail(row as Record<string, any>, {

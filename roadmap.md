@@ -68,3 +68,11 @@
 - Workers protegidos por credencial exclusiva de servidor (`WORKER_HOOK_SECRET`); chave publicável não é mais aceita. Rotinas automáticas de imóveis reconfiguradas para a nova credencial (guardada em `app_settings.worker_hook_token`).
 - Painel de publicação mostra separadamente: Salvo no Gestão, Aguardando sincronização, Bloqueado e Confirmado na imobiliária.
 - Validação controlada no imóvel 1381/3380: duas edições seguidas no campo interno "local da chave" chegaram à Cordial (4355160) e à Morar (4355161); nenhum outro campo mudou; IDs remotos preservados; texto de teste removido depois.
+
+## Identidade do imóvel por destino (22/09/2026) — concluído
+- Chave de intenção de cadastro (`client_intent_key`) + uma única criação em andamento no formulário: duplo clique/retry devolve o mesmo imóvel.
+- Gravação, versão e fila de sincronização numa única operação no banco (`property_save_revision_enqueue`); sem gravação, nada é enfileirado.
+- Conflito de versão tratável (`expected_revision`) em vez de sobrescrita silenciosa.
+- Busca remota com quatro respostas (ausente/único/duplicado/inconclusivo), paginação percorrida; formato desconhecido ou falha nunca vira ausência.
+- Fotos e edição nunca caem em `/imovel/inserir`: ID remoto ausente pede reconciliação.
+- Trabalho com posse exclusiva por imóvel+destino (lease com token, renovação e verificação na conclusão).

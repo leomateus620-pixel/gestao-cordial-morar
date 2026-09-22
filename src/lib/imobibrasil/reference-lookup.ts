@@ -158,3 +158,85 @@ export function canCreateAfterAmbiguity(
   if (publication.create_state !== "awaiting_create_reconcile") return true;
   return Number(publication.create_absent_checks ?? 0) >= AMBIGUOUS_ABSENT_CONFIRMATIONS;
 }
+
+// ---------------------------------------------------------------------------
+// Leitura com quatro respostas possíveis
+// ---------------------------------------------------------------------------
+
+/**
+ * Uma página de `/imovel/lista`. `recognized = false` significa que o corpo não
+ * trouxe nenhuma coleção reconhecível — o que NUNCA pode ser lido como "não existe".
+ */
+export type RemoteListRead = { items: RemoteListItem[]; recognized: boolean };
+
+const LIST_ARRAY_KEYS = ["data", "total_data", "imoveis"];
+
+export function extractRemoteList(payload: unknown): RemoteListRead {
+  const rows: unknown[] | null = Array.isArray(payload)
+    ? payload
+    : (() => {
+        const root = asRecord(payload);
+        if (!root) return null;
+        const resultSet = root["resultSet"];
+        if (Array.isArray(resultSet)) return resultSet;
+        const inner = asRecord(resultSet);
+        return (
+          (inner && firstArray(inner, LIST_ARRAY_KEYS)) ?? firstArray(root, LIST_ARRAY_KEYS) ?? null
+        );
+      })();
+
+  if (rows === null) return { items: [], recognized: false };
+
+  const items: RemoteListItem[] = [];
+  for (const row of rows) {
+    const record = asRecord(row);
+    if (!record) continue;
+    items.push({
+      externalId: readExternalId(record),
+      reference: readReference(record),
+      raw: record,
+    });
+  }
+  return { items, recognized: true };
+}
+
+export type RemoteLookupResult =
+  | { kind: "absent" }
+  | { kind: "unique"; externalId: string }
+  | { kind: "duplicate"; ids: string[] }
+  | {
+      kind: "inconclusive";
+      reason: "formato_desconhecido" | "falha_consulta" | "paginacao_incompleta";
+    };
+
+/**
+ * Classifica a leitura remota. Formato desconhecido, falha de consulta e
+ * paginação não esgotada JAMAIS equivalem a ausência: viram `inconclusive`,
+ * e o caminho de criação fica bloqueado.
+ */
+export function classifyRemoteLookup(input: {
+  reads: readonly RemoteListRead[];
+  reference: string;
+  complete: boolean;
+  failed?: boolean;
+}): RemoteLookupResult {
+  if (input.failed) return { kind: "inconclusive", reason: "falha_consulta" };
+  if (!input.reads.length || input.reads.some((read) => !read.recognized)) {
+    return { kind: "inconclusive", reason: "formato_desconhecido" };
+  }
+  const items = input.reads.flatMap((read) => read.items);
+  const match = matchByReference(items, input.reference);
+  if (match.count > 1) return { kind: "duplicate", ids: match.ids };
+  if (match.count === 1) return { kind: "unique", externalId: match.ids[0]! };
+  if (!input.complete) return { kind: "inconclusive", reason: "paginacao_incompleta" };
+  return { kind: "absent" };
+}
+
+/** Mensagem curta para registro/exibição do resultado inconclusivo. */
+export function describeInconclusive(reason: string): string {
+  if (reason === "formato_desconhecido") {
+    return "O site respondeu a lista em formato não reconhecido.";
+  }
+  if (reason === "paginacao_incompleta") return "A lista do site não pôde ser percorrida até o fim.";
+  return "A consulta da lista no site falhou.";
+}
