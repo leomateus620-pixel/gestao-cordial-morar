@@ -633,7 +633,13 @@ export async function processJob(
       });
     }
     const { syncPropertyMedia } = await import("./media-sync.server");
-    return syncPropertyMedia(admin, job);
+    // Renovação de reserva entre passos: galeria grande é enviada em ciclos sem
+    // perder a posse do trabalho.
+    return syncPropertyMedia(admin, job, {
+      onProgress: async () => {
+        await renewJobLease(admin, job, 180);
+      },
+    });
   }
 
   const property = await loadProperty(admin, job.property_id);
