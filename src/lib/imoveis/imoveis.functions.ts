@@ -622,8 +622,8 @@ export const updateImovel = createServerFn({ method: "POST" })
       "property_save_revision_enqueue",
       {
         _property_id: id,
-        _expected_revision: expectedRevision ?? null,
-        _payload: payload,
+        _expected_revision: (expectedRevision ?? null) as never,
+        _payload: payload as never,
         _targets: targets,
         _requested_by: context.userId,
         _action: "update",
