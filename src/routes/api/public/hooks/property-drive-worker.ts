@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authorizeWorkerRequest } from "@/lib/workers/hook-auth";
+import { authorizeWorkerRequest, workerCallerSecret } from "@/lib/workers/hook-auth";
 
 /**
  * Worker da fila do Google Drive (Etapa 8).
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/hooks/property-drive-worker")(
           if ((count ?? 0) > 0 && result.claimed > 0) {
             void fetch(new URL(request.url).toString(), {
               method: "POST",
-              headers: { "Content-Type": "application/json", apikey: provided },
+              headers: { "Content-Type": "application/json", apikey: workerCallerSecret() ?? "" },
               body: JSON.stringify({ limit }),
               signal: AbortSignal.timeout(1000),
             }).catch(() => undefined);

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { authorizeWorkerRequest } from "@/lib/workers/hook-auth";
+import { authorizeWorkerRequest, workerCallerSecret } from "@/lib/workers/hook-auth";
 
 /**
  * Worker da fila de importação dos catálogos ImobiBrasil.
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/hooks/property-import-worker")
             // Continuação assíncrona: mantém a fila andando sem prender esta requisição.
             void fetch(`${origin}/api/public/hooks/property-import-worker`, {
               method: "POST",
-              headers: { "Content-Type": "application/json", apikey: provided },
+              headers: { "Content-Type": "application/json", apikey: workerCallerSecret() ?? "" },
               body: JSON.stringify({ limit, chain: true }),
             }).catch(() => undefined);
           }
