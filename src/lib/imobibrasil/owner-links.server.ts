@@ -33,6 +33,14 @@ export type OwnerLinksReport = {
   divergenciasContato: Array<{ codigoImovel: string; campo: string; gestao: string; site: string }>;
 };
 
+function firstFilled(source: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
 /** Espera a vez da conta (limite compartilhado com os workers) antes de desistir. */
 async function readPersonPatiently<T>(read: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
@@ -123,9 +131,10 @@ export async function refreshOwnerLinks(
         personCache.set(owner, person);
       }
       const site = {
-        proprietario_nome: String(person["nome"] ?? person["razaoSocial"] ?? person["nomeFantasia"] ?? "").trim(),
-        proprietario_telefone: String(person["telefone1"] ?? person["telefone2"] ?? "").trim(),
-        proprietario_email: String(person["email"] ?? "").trim(),
+        // A API devolve o nome em "nomeResponsavel" (pessoa física) ou razão social/fantasia.
+        proprietario_nome: firstFilled(person, ["nomeResponsavel", "nome", "razaoSocial", "nomeFantasia"]),
+        proprietario_telefone: firstFilled(person, ["telefone1", "telefone2", "telefone3"]),
+        proprietario_email: firstFilled(person, ["email", "email1", "email2"]),
       };
       const prop = pub["properties"] ?? {};
       const patch: Record<string, string> = {};
