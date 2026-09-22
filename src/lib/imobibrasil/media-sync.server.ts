@@ -25,7 +25,7 @@ import type { ImobiProvider } from "./providers";
 import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
 import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
 import { fetchDeliveryBytes } from "@/lib/imoveis/delivery.server";
-import { planGalleryRebuild, type RebuildRemoteItem } from "@/lib/imoveis/gallery-rebuild";
+import { galleryMatchesExactly, planGalleryRebuild, type RebuildRemoteItem } from "@/lib/imoveis/gallery-rebuild";
 import {
   isAmbiguousDeliveryError,
   isExtensionError,
