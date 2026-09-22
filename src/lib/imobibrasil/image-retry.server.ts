@@ -158,7 +158,7 @@ export async function runImageDeliverySweep(
   }
 
   const seen = new Set<string>();
-  const keys = [...retryKeys, ...resumeKeys].filter((key) => {
+  const keys = [...retryKeys, ...deleteKeys, ...resumeKeys].filter((key) => {
     const id = `${key.property_id}:${key.provider}`;
     if (seen.has(id)) return false;
     seen.add(id);
