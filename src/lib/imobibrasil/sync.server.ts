@@ -115,26 +115,61 @@ function assertWriteAllowed(action: QueueAction, updatesPaused: boolean) {
   if (isWriteBlockedByPause(action, updatesPaused)) throw new PausedWriteError(action);
 }
 
+const LOOKUP_PER_PAGE = 50;
+const LOOKUP_MAX_PAGES = 20;
+
 /**
  * Procura a referência externa antes de qualquer criação — idempotência obrigatória.
- * Toda forma de resposta da lista é reconhecida (ver `reference-lookup.ts`): um
- * parser cego aqui significaria criar um segundo anúncio do mesmo imóvel.
+ *
+ * A paginação é percorrida até esgotar. Formato desconhecido, falha de consulta ou
+ * paginação truncada devolvem `inconclusive`: nunca "não existe". Um parser cego
+ * aqui significaria criar um segundo anúncio do mesmo imóvel.
  */
 async function lookupByReference(
   provider: ImobiProvider,
   reference: string,
   correlationId: string,
-): Promise<{ match: ReferenceMatch; items: number }> {
-  const response = await imobiRequest(
-    provider,
-    `/imovel/lista?referencia=${encodeURIComponent(reference)}`,
-    {
-      method: "GET",
-      correlationId,
-    },
-  );
-  const items = extractRemoteListItems(response.data);
-  return { match: matchByReference(items, reference), items: items.length };
+): Promise<{ lookup: RemoteLookupResult; match: ReferenceMatch; items: number }> {
+  const reads: RemoteListRead[] = [];
+  let complete = false;
+  let failed = false;
+
+  for (let page = 1; page <= LOOKUP_MAX_PAGES; page += 1) {
+    let response: Awaited<ReturnType<typeof imobiRequest>>;
+    try {
+      response = await imobiRequest(
+        provider,
+        `/imovel/lista?referencia=${encodeURIComponent(reference)}&page=${page}&per_page=${LOOKUP_PER_PAGE}`,
+        { method: "GET", correlationId },
+      );
+    } catch {
+      failed = true;
+      break;
+    }
+    const read = extractRemoteList(response.data);
+    reads.push(read);
+    if (!read.recognized) break;
+    if (read.items.length < LOOKUP_PER_PAGE) {
+      complete = true;
+      break;
+    }
+  }
+
+  const items = reads.flatMap((read) => read.items);
+  return {
+    lookup: classifyRemoteLookup({ reads, reference, complete, failed }),
+    match: matchByReference(items, reference),
+    items: items.length,
+  };
+}
+
+/** Resultado inconclusivo nunca autoriza criação: o trabalho volta para a fila. */
+function inconclusiveError(reference: string, reason: string): ImobiApiError {
+  return new ImobiApiError({
+    message: `${describeInconclusive(reason)} A referência ${reference} não pôde ser confirmada; nenhuma criação foi feita.`,
+    category: "protocol",
+    ambiguous: true,
+  });
 }
 
 /** Devolve a trava de criação. Nunca lança: falhar aqui não pode travar a fila. */
