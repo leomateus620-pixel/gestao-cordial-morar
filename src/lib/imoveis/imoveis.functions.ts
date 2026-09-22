@@ -609,19 +609,6 @@ export const updateImovel = createServerFn({ method: "POST" })
     if (readError) throw new Error(readError.message);
     if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
 
-    const { data: links } = await context.supabase
-      .from("property_provider_publications")
-      .select("provider, enabled, status, external_property_id")
-      .eq("property_id", id);
-
-    const targets = ((links ?? []) as Array<{
-      provider: string;
-      enabled: boolean;
-      external_property_id: string | null;
-    }>)
-      .filter((link) => link.enabled && link.external_property_id)
-      .map((link) => link.provider) as Array<"cordial" | "morar">;
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Imóvel, revisão, destinos e campos alterados numa única transação. Os
     // campos do trabalho novo são a UNIÃO com os ainda não enviados de edições
@@ -633,14 +620,18 @@ export const updateImovel = createServerFn({ method: "POST" })
         _property_id: id,
         _expected_revision: expectedRevision ?? null,
         _payload: payload,
-        _targets: targets,
+        // A RPC descobre os destinos sob a trava da transação. A lista lida no
+        // navegador/servidor poderia ficar obsoleta antes da gravação.
+        _targets: null,
         _requested_by: context.userId,
         _action: "update",
-        _changed_fields: changedFields?.length ? changedFields : null,
+        // [] significa que nenhum campo foi tocado; NULL significa escopo
+        // completo. São intenções diferentes e não podem ser coalescidas.
+        _changed_fields: changedFields === undefined ? null : changedFields,
       },
     );
     if (saveError) throw new Error(saveError.message);
-    const result = (saved ?? {}) as { ok?: boolean; conflict?: boolean; revision?: number };
+    const result = (saved ?? {}) as { ok?: boolean; conflict?: boolean; revision?: number; providers?: string[] };
     if (result.conflict) {
       throw new Error(
         `${REVISION_CONFLICT}: este imóvel foi alterado por outra pessoa enquanto você editava. Recarregue a página para ver a versão atual antes de salvar.`,
@@ -661,7 +652,7 @@ export const updateImovel = createServerFn({ method: "POST" })
         publications: [],
         images: [],
       }),
-      queued: targets,
+      queued: result.providers ?? [],
     };
   });
 
@@ -681,7 +672,6 @@ export const deleteImovel = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data, context }): Promise<DeleteImovelResult> => {
     const { id } = data;
-
     const { data: current, error: readError } = await context.supabase
       .from("properties")
       .select("id, revision")
@@ -689,48 +679,22 @@ export const deleteImovel = createServerFn({ method: "POST" })
       .maybeSingle();
     if (readError) throw new Error(readError.message);
     if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
-
-    const { data: links } = await context.supabase
-      .from("property_provider_publications")
-      .select("provider, enabled, external_property_id")
-      .eq("property_id", id);
-
-    const live = ((links ?? []) as Array<{
-      provider: string;
-      enabled: boolean;
-      external_property_id: string | null;
-    }>).filter((link) => link.external_property_id) as Array<{
-      provider: "cordial" | "morar";
-      enabled: boolean;
-      external_property_id: string | null;
-    }>;
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    if (live.length) {
-      const revision = Number((current as { revision?: number }).revision ?? 1);
-      await supabaseAdmin.from("property_sync_jobs").upsert(
-        live.map((link) => ({
-          property_id: id,
-          provider: link.provider,
-          action: "delete" as const,
-          requested_revision: revision,
-          requested_by: context.userId,
-          status: "pending" as const,
-          next_run_at: new Date().toISOString(),
-        })),
-        { onConflict: "property_id,provider,action,requested_revision" },
-      );
-      await supabaseAdmin
-        .from("properties")
-        .update({ removal_state: "pending_removal", updated_at: new Date().toISOString() })
-        .eq("id", id);
-      return { status: "pending_removal", providers: live.map((link) => link.provider) };
+    const { data: requested, error } = await supabaseAdmin.rpc("property_retire_request" as never, {
+      _property_id: id, _requested_by: context.userId, _action: "delete",
+      _expected_revision: current.revision,
+    } as never);
+    if (error) throw new Error(error.message);
+    const result = (requested ?? {}) as { ok?: boolean; conflict?: boolean; providers?: string[] };
+    if (result.conflict) throw new Error(`${REVISION_CONFLICT}: o imóvel mudou durante a exclusão.`);
+    if (!result.ok) throw new Error("Não foi possível registrar a exclusão.");
+    const providers = result.providers ?? [];
+    if (!providers.length) {
+      const { finalizePendingRemoval } = await import("@/lib/imoveis/purge.server");
+      await finalizePendingRemoval(supabaseAdmin, id);
+      return { status: "deleted", providers };
     }
-
-    const { purgeProperty } = await import("@/lib/imoveis/purge.server");
-    await purgeProperty(supabaseAdmin, id);
-    return { status: "deleted", providers: [] };
+    return { status: "pending_removal", providers };
   });
 
 export type ArchiveImovelResult = {
@@ -758,49 +722,22 @@ export const archiveImovel = createServerFn({ method: "POST" })
     if (readError) throw new Error(readError.message);
     if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
 
-    const { data: links } = await context.supabase
-      .from("property_provider_publications")
-      .select("provider, enabled, status, external_property_id")
-      .eq("property_id", id);
-
-    const live = ((links ?? []) as Array<{
-      provider: "cordial" | "morar";
-      enabled: boolean;
-      status: string | null;
-      external_property_id: string | null;
-    }>).filter((link) => link.external_property_id && link.status !== "unpublished");
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const now = new Date().toISOString();
-
-    if (live.length) {
-      const revision = Number((current as { revision?: number }).revision ?? 1);
-      await supabaseAdmin.from("property_sync_jobs").upsert(
-        live.map((link) => ({
-          property_id: id,
-          provider: link.provider,
-          action: "unpublish" as const,
-          requested_revision: revision,
-          requested_by: context.userId,
-          status: "pending" as const,
-          next_run_at: now,
-        })),
-        { onConflict: "property_id,provider,action,requested_revision" },
-      );
-      const { error } = await supabaseAdmin
-        .from("properties")
-        .update({ removal_state: "pending_archive", updated_at: now })
-        .eq("id", id);
-      if (error) throw new Error(error.message);
-      return { status: "pending_archive", providers: live.map((link) => link.provider) };
-    }
-
-    const { error } = await supabaseAdmin
-      .from("properties")
-      .update({ archived_at: now, removal_state: "archived", updated_at: now })
-      .eq("id", id);
+    const { data: requested, error } = await supabaseAdmin.rpc("property_retire_request" as never, {
+      _property_id: id, _requested_by: context.userId, _action: "unpublish",
+      _expected_revision: current.revision,
+    } as never);
     if (error) throw new Error(error.message);
-    return { status: "archived", providers: [] };
+    const result = (requested ?? {}) as { ok?: boolean; conflict?: boolean; providers?: string[] };
+    if (result.conflict) throw new Error(`${REVISION_CONFLICT}: o imóvel mudou durante o arquivamento.`);
+    if (!result.ok) throw new Error("Não foi possível registrar o arquivamento.");
+    const providers = result.providers ?? [];
+    if (!providers.length) {
+      const { finalizePendingArchive } = await import("@/lib/imoveis/purge.server");
+      await finalizePendingArchive(supabaseAdmin, id);
+      return { status: "archived", providers };
+    }
+    return { status: "pending_archive", providers };
   });
 
 /** Reativa um imóvel arquivado: volta ao catálogo, sem republicar automaticamente. */

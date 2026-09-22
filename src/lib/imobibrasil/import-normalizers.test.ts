@@ -24,6 +24,13 @@ test("parseDecimal não inventa zero para vazio ou inválido", () => {
   assert.equal(parseInteger(undefined), null);
 });
 
+test("área ambígua não é interpretada como milhar nem como fração", () => {
+  assert.equal(parseDecimal("1.234", "area"), null);
+  assert.equal(parseDecimal("1.234", "unknown"), null);
+  assert.equal(parseDecimal("1.234", "money"), 1234);
+  assert.equal(parseDecimal("1,234", "area"), 1.234);
+});
+
 test("normalizeRemoteProperty achata endereço em array e mapeia campos essenciais", () => {
   const normalized = normalizeRemoteProperty("cordial", "3584808", {
     codigoImovel: "3584808",

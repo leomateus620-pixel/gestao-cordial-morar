@@ -286,12 +286,16 @@ export const getProvidersHealth = createServerFn({ method: "GET" })
     if (isAdmin !== true) throw new Error("Acesso restrito a administradores.");
 
     const { fetchAccountStatus } = await import("@/lib/imobibrasil/catalogs.server");
-    const accounts = await Promise.all(
+    const accountChecks = await Promise.allSettled(
       IMOBI_PROVIDER_KEYS.map((provider) => fetchAccountStatus(provider)),
     );
+    const accounts = accountChecks.map((check, index) => check.status === "fulfilled"
+      ? check.value
+      : { provider: IMOBI_PROVIDER_KEYS[index], ok: false, configured: null,
+          message: "Não foi possível consultar a conta neste momento." });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ count: pending }, { count: failed }, { data: recent }] = await Promise.all([
+    const [pendingRows, failedRows, recentRows] = await Promise.all([
       supabaseAdmin
         .from("property_sync_jobs")
         .select("id", { count: "exact", head: true })
@@ -308,11 +312,13 @@ export const getProvidersHealth = createServerFn({ method: "GET" })
         .order("updated_at", { ascending: false })
         .limit(10),
     ]);
+    const queueError = pendingRows.error ?? failedRows.error ?? recentRows.error;
+    if (queueError) throw new Error(queueError.message);
 
     return {
       accounts,
-      queue: { pending: pending ?? 0, failed: failed ?? 0 },
-      recent: recent ?? [],
+      queue: { pending: pendingRows.count ?? 0, failed: failedRows.count ?? 0 },
+      recent: recentRows.data ?? [],
     };
   });
 

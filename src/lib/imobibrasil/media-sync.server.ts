@@ -124,7 +124,7 @@ const IMAGE_COLUMNS =
   "id, storage_path, processed_storage_path, processed_checksum, content_hash, file_name, mime_type, is_cover, position, processing_status, processing_error_code, processing_started_at, destination_hash, desired_destination_hash, updated_at, pending_remote_delete";
 
 const LINK_COLUMNS =
-  "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at";
+  "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at";
 
 async function persistLink(
   admin: Admin,
@@ -215,6 +215,16 @@ export async function deliverGallery(
     await assertMediaStillAllowed(admin, params.propertyId, params.publicationId, galleryRevision);
   };
   const { propertyId, provider, publicationId, externalId, correlationId } = params;
+
+  const { data: priorState, error: priorStateError } = await admin
+    .from("property_provider_publications")
+    .select("media_rebuild_state")
+    .eq("id", publicationId).single();
+  if (priorStateError) throw new Error(priorStateError.message);
+  const priorCheckpoint = priorState.media_rebuild_state as Record<string, unknown> | null;
+  const rebuildingFromCheckpoint = Boolean(priorCheckpoint &&
+    Array.isArray(priorCheckpoint.deleteRemoteIds) &&
+    Array.isArray(priorCheckpoint.reinsertImageIds));
 
   let galleryRevision = params.galleryRevision ?? 0;
   if (!galleryRevision) {
@@ -312,7 +322,7 @@ export async function deliverGallery(
   await purgeFullyDeletedImages(admin, propertyId);
 
   // -------------------------------------------------------------- inserções
-  for (const target of plan.toSend) {
+  for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : plan.toSend) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000 || !gallery.reliable) break;
     const image = byId.get(target.id);
@@ -344,6 +354,11 @@ export async function deliverGallery(
       const form = new FormData();
       form.append("imagem", new Blob([buffer], { type: mime }), fileName);
       form.append("destaque", boolToImageSimNao(asCover));
+
+      // A leitura do Storage também consome o deadline. Verifique orçamento e
+      // posse imediatamente antes de persistir a intenção e iniciar o POST.
+      await progress();
+      if (remainingMs() < 95_000) break;
 
       // Intenção e conjunto anterior ficam duráveis ANTES do POST. Se o processo
       // cair entre o efeito remoto e a confirmação local, a próxima execução
@@ -492,7 +507,10 @@ export async function deliverGallery(
   await reconcileLinkCodes(admin, params, publishable, gallery);
 
   // ------------------------------------------------------- ordem e capa
-  const rebuild = await rebuildRemoteOrderDurable(admin, {
+  const rebuild = unknownCount > 0 && !rebuildingFromCheckpoint
+    ? { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown",
+        checkpoint: null, gallery }
+    : await rebuildRemoteOrderDurable(admin, {
     propertyId,
     provider,
     publicationId,
@@ -532,7 +550,7 @@ export async function deliverGallery(
     const link = finalLinks.find((row) => row.image_id === image.id && row.desired_state !== "absent");
     return link?.status === "synced" && Boolean(link.external_image_id) &&
       link.content_hash != null && link.content_hash === image.deliveredHash;
-  });
+    });
 
   const extraRemote = remoteCount !== null && remoteCount > plan.expectedCount;
   // Conferência completa pela leitura: quantidade, fotos, ordem e capa.

@@ -64,12 +64,18 @@ export function text(value: unknown): string | null {
   return trimmed.length ? trimmed : null;
 }
 
-/** Aceita "1.234,56", "1234.56", "1234", 1234 — retorna null para vazio/inválido. */
-export function parseDecimal(value: unknown): number | null {
+/**
+ * Formato numérico conhecido na origem. A API envia valores monetários em
+ * formato brasileiro; áreas sem marcação explícita não podem inferir se
+ * "1.234" significa 1,234 ou 1234.
+ */
+export function parseDecimal(value: unknown, field: "money" | "area" | "unknown" = "unknown"): number | null {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value !== "string") return null;
-  const cleaned = value.replace(/[^\d,.-]/g, "").trim();
+  const markedCurrency = /^\s*R\$\s*/i.test(value);
+  const cleaned = value.replace(/^\s*R\$\s*/i, "").replace(/\s/g, "").trim();
+  if (!/^-?[\d.,]+$/.test(cleaned)) return null;
   if (!cleaned || cleaned === "-" || cleaned === "." || cleaned === ",") return null;
   const hasComma = cleaned.includes(",");
   const hasDot = cleaned.includes(".");
@@ -81,7 +87,8 @@ export function parseDecimal(value: unknown): number | null {
   } else if (hasComma) {
     normalized = cleaned.replace(/\./g, "").replace(",", ".");
   } else if (hasDot && /^-?\d{1,3}(\.\d{3})+$/.test(cleaned)) {
-    // "320.000" é separador de milhar, não decimal.
+    // Sem origem monetária conhecida, o ponto com três casas é ambíguo.
+    if (field !== "money" && !markedCurrency) return null;
     normalized = cleaned.replace(/\./g, "");
   }
 
@@ -227,15 +234,15 @@ export function normalizeRemoteProperty(
   const areaGroup = (raw["area"] ?? {}) as RemoteRecord;
   const areaOf = (key: string) => {
     const entry = areaGroup[key];
-    if (entry && typeof entry === "object") return parseDecimal((entry as RemoteRecord)["valor"]);
+    if (entry && typeof entry === "object") return parseDecimal((entry as RemoteRecord)["valor"], "area");
     return null;
   };
   const areaPrivativa =
-    areaOf("privativa") ?? parseDecimal(pick(record, ["areaPrivativa", "area_privativa", "areaUtil"]));
-  const areaTotal = areaOf("total") ?? parseDecimal(pick(record, ["areaTotal", "area_total"]));
-  const areaTerreno = areaOf("terreno") ?? parseDecimal(pick(record, ["areaTerreno", "area_terreno"]));
+    areaOf("privativa") ?? parseDecimal(pick(record, ["areaPrivativa", "area_privativa", "areaUtil"]), "area");
+  const areaTotal = areaOf("total") ?? parseDecimal(pick(record, ["areaTotal", "area_total"]), "area");
+  const areaTerreno = areaOf("terreno") ?? parseDecimal(pick(record, ["areaTerreno", "area_terreno"]), "area");
   const areaConstruida =
-    areaOf("construida") ?? parseDecimal(pick(record, ["areaConstruida", "area_construida"]));
+    areaOf("construida") ?? parseDecimal(pick(record, ["areaConstruida", "area_construida"]), "area");
   const areaPrincipal = areaPrivativa ?? areaTotal ?? areaConstruida ?? areaTerreno;
   const areaTipo =
     areaPrivativa !== null
@@ -269,9 +276,10 @@ export function normalizeRemoteProperty(
     localizacaoExibida: [bairro, [cidade, uf].filter(Boolean).join(" / ")].filter(Boolean).join(" · ") || null,
     valor: parseDecimal(
       pick(record, ["valorEsperado", "valorImovel", "valor", "valorVenda", "valorLocacao", "preco"]),
+      "money",
     ),
-    valorCondominio: parseDecimal(pick(record, ["valorCondominio", "condominio"])),
-    valorIptu: parseDecimal(pick(record, ["valorIPTU", "valorIptu", "iptu"])),
+    valorCondominio: parseDecimal(pick(record, ["valorCondominio", "condominio"]), "money"),
+    valorIptu: parseDecimal(pick(record, ["valorIPTU", "valorIptu", "iptu"]), "money"),
     dormitorios: parseInteger(pick(record, ["dormitorios", "quartos", "dormitorio"])),
     suites: parseInteger(pick(record, ["suites", "suite"])),
     banheiros: parseInteger(pick(record, ["banheiros", "banheiro", "wc"])),

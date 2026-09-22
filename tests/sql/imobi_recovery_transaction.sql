@@ -12,6 +12,8 @@ DECLARE
   job_id uuid;
   image_job_id uuid;
   media_job_id uuid;
+  create_job_id uuid;
+  availability_job_id uuid;
   token uuid := gen_random_uuid();
   next_token uuid := gen_random_uuid();
   initial_gallery integer;
@@ -34,6 +36,30 @@ BEGIN
     (property_id, provider, external_property_id, external_reference, status, enabled)
   VALUES (fixture_id, 'cordial', 'fixture-' || fixture_id::text, reference, 'published', true)
   RETURNING id INTO publication_id;
+
+  -- O servidor pode chegar com uma lista de destinos vazia/obsoleta. A RPC
+  -- deve descobrir a publicação habilitada sob a trava e gravar a outbox junto
+  -- da revisão. Lista de campos vazia não significa envio completo.
+  SELECT public.property_save_revision_enqueue_v2(
+    fixture_id, 1, '{"bairro":"Centro"}'::jsonb, '{}'::text[],
+    gen_random_uuid(), 'update', ARRAY['bairro']) INTO result;
+  IF result->>'ok' <> 'true' OR result->'providers' <> '["cordial"]'::jsonb
+     OR NOT EXISTS (
+       SELECT 1 FROM public.property_sync_jobs WHERE property_id = fixture_id
+         AND provider = 'cordial' AND action = 'update'
+         AND requested_revision = (result->>'revision')::integer
+         AND changed_fields = ARRAY['bairro']
+     ) THEN RAISE EXCEPTION 'Edição não deixou intenção transacional para destino habilitado'; END IF;
+  UPDATE public.property_sync_jobs SET status = 'succeeded'
+   WHERE property_id = fixture_id AND provider = 'cordial' AND action = 'update';
+  SELECT public.property_save_revision_enqueue_v2(
+    fixture_id, (result->>'revision')::integer, '{"bairro":"Centro"}'::jsonb,
+    '{}'::text[], gen_random_uuid(), 'update', '{}'::text[]) INTO result;
+  IF result->'providers' <> '[]'::jsonb OR EXISTS (
+    SELECT 1 FROM public.property_sync_jobs WHERE property_id = fixture_id
+      AND provider = 'cordial' AND action = 'update'
+      AND requested_revision = (result->>'revision')::integer
+  ) THEN RAISE EXCEPTION 'Lista vazia de campos virou envio completo'; END IF;
 
   INSERT INTO public.property_images
     (property_id, storage_path, original_storage_path, file_name, position, is_cover)
@@ -110,6 +136,10 @@ BEGIN
   SELECT public.property_publication_update_if_owned(job_id, next_token,
     publication_id, jsonb_build_object('confirmed_revision', property_revision)) INTO owned;
   IF NOT owned THEN RAISE EXCEPTION 'Worker novo não conseguiu confirmar'; END IF;
+  UPDATE public.properties SET revision = revision + 1 WHERE id = fixture_id;
+  SELECT public.property_publication_update_if_owned(job_id, next_token,
+    publication_id, '{"confirmed_revision": 999}'::jsonb) INTO owned;
+  IF owned THEN RAISE EXCEPTION 'Edição concorrente aceitou confirmação cadastral antiga'; END IF;
 
   -- O destino selecionado muda a marca desejada na transação local. Um
   -- processamento antigo não pode confirmar a derivada anterior.
@@ -173,6 +203,35 @@ BEGIN
        AND l.status = 'synced'
   ) THEN RAISE EXCEPTION 'Lease vencido alterou confirmação da foto'; END IF;
 
+  -- O checkpoint de criação precede o POST e exige token da reivindicação,
+  -- intenção atual e revisão cadastral exata. Um worker atrasado não prepara
+  -- uma segunda criação após outra edição local.
+  SELECT revision INTO property_revision FROM public.properties WHERE id = fixture_id;
+  UPDATE public.property_provider_publications
+     SET external_property_id = NULL, create_lock_worker = token::text,
+         create_lock_expires_at = now() + interval '2 minutes'
+   WHERE id = publication_id;
+  INSERT INTO public.property_sync_jobs
+    (property_id, provider, action, requested_revision, status, lease_token,
+     lock_expires_at, publication_intent_revision)
+  SELECT fixture_id, 'cordial', 'publish', property_revision, 'processing', token,
+         now() + interval '2 minutes', p.publication_intent_revision
+    FROM public.property_provider_publications p WHERE p.id = publication_id
+  RETURNING id INTO create_job_id;
+  SELECT public.property_publication_prepare_create(create_job_id, next_token,
+    publication_id, next_token::text) INTO owned;
+  IF owned THEN RAISE EXCEPTION 'Token incorreto preparou criação'; END IF;
+  SELECT public.property_publication_prepare_create(create_job_id, token,
+    publication_id, token::text) INTO owned;
+  IF NOT owned OR NOT EXISTS (
+    SELECT 1 FROM public.property_provider_publications WHERE id = publication_id
+      AND create_state = 'awaiting_create_reconcile'
+  ) THEN RAISE EXCEPTION 'Criação sem intenção anterior ao POST'; END IF;
+  UPDATE public.properties SET revision = revision + 1 WHERE id = fixture_id;
+  SELECT public.property_publication_prepare_create(create_job_id, token,
+    publication_id, token::text) INTO owned;
+  IF owned THEN RAISE EXCEPTION 'Criação antiga passou após edição nova'; END IF;
+
   SELECT public.property_publication_request(fixture_id, ARRAY['cordial'],
     'unpublish', NULL, reference, NULL) INTO result;
   IF result->>'availability' <> 'hidden' OR NOT EXISTS (
@@ -182,6 +241,62 @@ BEGIN
   SELECT public.property_publication_update_if_owned(job_id, next_token,
     publication_id, '{"confirmed_revision": 999}'::jsonb) INTO owned;
   IF owned THEN RAISE EXCEPTION 'Job antigo confirmou após decisão de ocultar'; END IF;
+
+  SELECT id INTO availability_job_id FROM public.property_sync_jobs
+   WHERE property_id = fixture_id AND provider = 'cordial' AND action = 'unpublish'
+   ORDER BY created_at DESC LIMIT 1;
+  UPDATE public.property_sync_jobs
+     SET status = 'processing', lease_token = token,
+         lock_expires_at = now() + interval '2 minutes'
+   WHERE id = availability_job_id;
+  SELECT public.property_publication_finish_availability_if_owned(
+    availability_job_id, next_token, publication_id, 'unpublish') INTO owned;
+  IF owned THEN RAISE EXCEPTION 'Token errado ocultou publicação'; END IF;
+  SELECT public.property_publication_finish_availability_if_owned(
+    availability_job_id, token, publication_id, 'unpublish') INTO owned;
+  IF NOT owned OR NOT EXISTS (
+    SELECT 1 FROM public.property_provider_publications WHERE id = publication_id
+      AND status = 'unpublished' AND NOT enabled
+  ) THEN RAISE EXCEPTION 'Ocultação válida não foi confirmada'; END IF;
+  SELECT public.property_publication_request(fixture_id, ARRAY['cordial'],
+    'publish', NULL, reference, NULL) INTO result;
+  SELECT public.property_publication_finish_availability_if_owned(
+    availability_job_id, token, publication_id, 'unpublish') INTO owned;
+  IF owned OR NOT EXISTS (
+    SELECT 1 FROM public.property_provider_publications WHERE id = publication_id
+      AND desired_availability = 'visible' AND enabled
+  ) THEN RAISE EXCEPTION 'Worker de ocultação desfez nova publicação'; END IF;
+
+  SELECT revision INTO property_revision FROM public.properties WHERE id = fixture_id;
+  SELECT public.property_retire_request(fixture_id, gen_random_uuid(),
+    'delete', property_revision) INTO result;
+  IF result->>'ok' <> 'true' OR result->'providers' <> '["cordial"]'::jsonb
+     OR NOT EXISTS (
+       SELECT 1 FROM public.properties WHERE id = fixture_id
+         AND removal_state = 'pending_removal' AND revision = property_revision + 1
+     ) OR NOT EXISTS (
+       SELECT 1 FROM public.property_sync_jobs WHERE property_id = fixture_id
+         AND provider = 'cordial' AND action = 'delete'
+         AND publication_intent_revision = (
+           SELECT publication_intent_revision FROM public.property_provider_publications
+            WHERE id = publication_id)
+  ) THEN RAISE EXCEPTION 'Exclusão não persistiu decisão e job na mesma transação'; END IF;
+
+  SELECT public.property_import_seed_incremental('cordial') INTO result;
+  IF result->>'started' <> 'true' OR NOT EXISTS (
+    SELECT 1 FROM public.property_import_jobs j
+    JOIN public.property_import_runs r ON r.id = j.run_id
+    WHERE r.provider = 'cordial' AND r.mode = 'incremental'
+      AND j.job_type = 'fetch_page' AND j.page = 1
+  ) THEN RAISE EXCEPTION 'Importação incremental não iniciou o cursor'; END IF;
+  SELECT public.property_import_seed_incremental('cordial') INTO result;
+  IF result->>'reason' <> 'active_run' THEN
+    RAISE EXCEPTION 'Cron duplicado iniciou outra importação da mesma conta';
+  END IF;
+  SELECT public.property_import_seed_incremental('morar') INTO result;
+  IF result->>'started' <> 'true' THEN
+    RAISE EXCEPTION 'Importação Cordial bloqueou a conta Morar';
+  END IF;
 END
 $test$;
 ROLLBACK;

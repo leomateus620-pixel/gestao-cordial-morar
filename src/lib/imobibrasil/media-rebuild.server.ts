@@ -63,6 +63,20 @@ type Result = {
   gallery: RemoteGallery | null;
 };
 
+// The provider upload may use its entire 90-second timeout. Keep enough time
+// to commit the returned code; a later worker can perform the gallery reread.
+const UPLOAD_TIMEOUT_MS = 90_000;
+const UPLOAD_CHECKPOINT_MARGIN_MS = 10_000;
+// A delete includes the POST and a paginated confirmation read in image-ops.
+const DELETE_CONFIRMATION_BUDGET_MS = 80_000;
+const READ_CONFIRMATION_MARGIN_MS = 15_000;
+
+export function canStartRebuildEffect(remainingMs: number, kind: "delete" | "insert"): boolean {
+  return remainingMs >= (kind === "insert"
+    ? UPLOAD_TIMEOUT_MS + UPLOAD_CHECKPOINT_MARGIN_MS
+    : DELETE_CONFIRMATION_BUDGET_MS);
+}
+
 async function persistCheckpoint(admin: Admin, params: Params, checkpoint: Checkpoint | null): Promise<void> {
   const { data, error } = await admin.rpc("property_publication_update_if_owned" as never, {
     _job_id: params.jobId, _lease_token: params.leaseToken,
@@ -198,7 +212,8 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
   let deleted = 0;
   let reinserted = 0;
   while (checkpoint.phase === "deleting" && checkpoint.deleteIndex < checkpoint.deleteRemoteIds.length) {
-    if (params.remainingMs() < 20_000) return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+    if (!canStartRebuildEffect(params.remainingMs(), "delete"))
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
     const code = checkpoint.deleteRemoteIds[checkpoint.deleteIndex]!;
     const imageId = codeToImage.get(code) ?? null;
     await params.progress();
@@ -208,6 +223,11 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
     }
     if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, gallery };
     if (gallery.items.some((item) => item.codigoImagem === code)) {
+      // Check the lease and the real deadline *after* the checkpoint write,
+      // immediately before starting another remote effect.
+      await params.progress();
+      if (!canStartRebuildEffect(params.remainingMs(), "delete"))
+        return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
       const result = await deleteRemoteImage(params.provider, params.externalId, code, params.correlationId);
       if (!result.confirmed) return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, gallery };
     }
@@ -230,13 +250,18 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
   await persistCheckpoint(admin, params, checkpoint);
 
   while (checkpoint.insertIndex < checkpoint.reinsertImageIds.length) {
-    if (params.remainingMs() < 95_000) return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+    if (!canStartRebuildEffect(params.remainingMs(), "insert"))
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
     const imageId = checkpoint.reinsertImageIds[checkpoint.insertIndex]!;
     const image = params.byId.get(imageId);
     if (!image) return { deleted, reinserted, pending: true, reason: "arquivo_indisponivel", checkpoint, gallery };
     if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, gallery };
     await params.progress();
     const prepared = await source(admin, image);
+    // Storage download and image preparation consume the same request budget.
+    // No intent is written until there is enough time to perform the POST.
+    if (!canStartRebuildEffect(params.remainingMs(), "insert"))
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
     const asCover = checkpoint.insertIndex === 0 && checkpoint.keptPrefix === 0 && gallery.items.every((item) => !item.destaque);
     const form = new FormData();
     form.append("imagem", new Blob([prepared.bytes], { type: prepared.mime }), prepared.fileName);
@@ -249,6 +274,19 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
       last_op_state: "intent_persisted", content_hash: image.processed_checksum ?? image.content_hash,
       delivery_file_name: prepared.fileName,
     });
+    await params.progress();
+    if (!canStartRebuildEffect(params.remainingMs(), "insert")) {
+      // We have explicitly not sent the POST. Reset this prepared intent under
+      // the lease so the next execution can safely prepare it again.
+      delete checkpoint.operation;
+      await persistCheckpoint(admin, params, checkpoint);
+      await persistLink(admin, params, {
+        image_id: imageId, publication_id: params.publicationId, provider: params.provider,
+        desired_state: "present", status: "pending", last_op: "rebuild_insert",
+        last_op_state: "deferred_no_post", error_class: null, last_error_message: null,
+      });
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+    }
     try {
       const response = await imobiRequest(params.provider,
         `/imovel/${encodeURIComponent(params.externalId)}/imagem/inserir`, {
@@ -258,13 +296,16 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
       const code = extractInsertedImageId(response.data);
       if (code) {
         checkpoint.operation.externalImageId = code;
-        await params.progress();
+        // This RPC itself fences the lease and revision. Persist the returned
+        // identity before spending time on another provider read.
         await persistCheckpoint(admin, params, checkpoint);
       }
     } catch (error) {
       // The POST may have been accepted. Keep the pre-call checkpoint and stop.
       return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, gallery };
     }
+    if (params.remainingMs() < READ_CONFIRMATION_MARGIN_MS)
+      return { deleted, reinserted, pending: true, reason: "confirmacao_agendada", checkpoint, gallery };
     gallery = await fetchRemoteGallery(params.provider, params.externalId, params.correlationId);
     if (!(await confirmInsert(admin, params, checkpoint, gallery)))
       return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, gallery };

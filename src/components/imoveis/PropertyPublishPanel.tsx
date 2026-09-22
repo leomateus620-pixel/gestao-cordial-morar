@@ -129,7 +129,7 @@ export function PropertyPublishPanel({
                 {row?.externalPropertyId && (
                   <span className="font-mono text-[10px] text-foreground/45">#{row.externalPropertyId}</span>
                 )}
-                {row?.externalPublicUrl && (
+                {row?.externalPublicUrl && row.enabled && row.status === "published" && (
                   <a href={row.externalPublicUrl} target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
                     Ver anúncio <ExternalLink className="size-3" />

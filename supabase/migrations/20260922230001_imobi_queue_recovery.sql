@@ -11,7 +11,20 @@ DECLARE
   target text;
   merged text[];
   _intent_revision integer;
+  _enabled_targets text[];
+  _queued_targets text[] := '{}'::text[];
 BEGIN
+  -- A RPC usa service_role, então a RLS do chamador não se aplica aqui.
+  -- A autorização acompanha o usuário autenticado que iniciou a edição.
+  IF _requested_by IS NULL OR NOT (
+    public.has_role(_requested_by, 'admin'::public.app_role) OR
+    public.has_role(_requested_by, 'secretaria'::public.app_role)
+  ) THEN
+    RAISE EXCEPTION 'sem_permissao_para_editar_imovel';
+  END IF;
+  IF _action IS DISTINCT FROM 'update' THEN
+    RAISE EXCEPTION 'acao_de_edicao_invalida';
+  END IF;
   SELECT revision INTO current_revision FROM public.properties
    WHERE id = _property_id FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok', false, 'notFound', true); END IF;
@@ -36,9 +49,19 @@ BEGIN
      WHERE id = _property_id;
   END IF;
 
-  IF _targets IS NOT NULL THEN
-    FOREACH target IN ARRAY _targets LOOP
-      IF target NOT IN ('cordial', 'morar') THEN RAISE EXCEPTION 'destino_invalido'; END IF;
+  -- _targets era lido antes da transação pelo servidor. Uma publicação pode
+  -- ter sido habilitada/desabilitada entre essa leitura e o SAVE. O conjunto
+  -- efetivo vem das linhas de publicação sob a mesma transação da revisão.
+  -- Inclui uma criação explícita ainda pendente de ID remoto; sua edição
+  -- posterior não pode cancelar o POST original e deixar o destino sem job.
+  SELECT COALESCE(array_agg(p.provider::text ORDER BY p.provider::text), '{}'::text[])
+    INTO _enabled_targets
+    FROM public.property_provider_publications p
+   WHERE p.property_id = _property_id AND p.enabled
+     AND p.desired_availability = 'visible'
+     AND p.status NOT IN ('draft', 'unpublished');
+  IF cardinality(_enabled_targets) > 0 THEN
+    FOREACH target IN ARRAY _enabled_targets LOOP
       SELECT publication_intent_revision INTO _intent_revision
         FROM public.property_provider_publications
        WHERE property_id = _property_id AND provider = target::public.imobi_provider;
@@ -85,9 +108,11 @@ BEGIN
 
       UPDATE public.property_provider_publications SET status = 'pending', updated_at = now()
        WHERE property_id = _property_id AND provider = target::public.imobi_provider;
+      _queued_targets := array_append(_queued_targets, target);
     END LOOP;
   END IF;
-  RETURN jsonb_build_object('ok', true, 'conflict', false, 'revision', next_revision);
+  RETURN jsonb_build_object('ok', true, 'conflict', false,
+                            'revision', next_revision, 'providers', to_jsonb(_queued_targets));
 END $$;
 
 REVOKE ALL ON FUNCTION public.property_save_revision_enqueue_v2(uuid, integer, jsonb, text[], uuid, text, text[])

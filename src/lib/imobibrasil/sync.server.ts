@@ -370,8 +370,26 @@ async function findRemoteByReference(
   reference: string,
   correlationId: string,
 ): Promise<string | null> {
-  const { match } = await lookupByReference(provider, reference, correlationId);
-  return match.count === 1 ? match.ids[0]! : null;
+  const { lookup } = await lookupByReference(provider, reference, correlationId);
+  // Uma lista incompleta ou com duplicatas pode ter um único item legível.
+  // Isso não comprova a identidade nem autoriza associar o código remoto.
+  return lookup.kind === "unique" ? lookup.externalId : null;
+}
+
+async function finishAvailabilityIfOwned(
+  admin: Admin, job: SyncJob, publicationId: string,
+  action: "unpublish" | "delete",
+): Promise<void> {
+  if (!job.lease_token) throw new LeaseLostError(job.id);
+  const { data, error } = await admin.rpc(
+    "property_publication_finish_availability_if_owned" as never,
+    {
+      _job_id: job.id, _lease_token: job.lease_token,
+      _publication_id: publicationId, _action: action,
+    } as never,
+  );
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new LeaseLostError(job.id);
 }
 
 async function verifyRemote(provider: ImobiProvider, externalId: string, correlationId: string) {
@@ -786,8 +804,9 @@ export async function processJob(
   const publication = await ensurePublication(admin, job.property_id, job.provider, providerCode);
   // Enquanto o imóvel não existe no site, a referência acompanha o código do provedor.
   let reference = publication.external_reference ?? buildExternalReference(job.property_id);
-  const referenceIsSynthetic = /^GC-/i.test(reference);
-  if (providerCode && reference !== providerCode && (!publication.external_property_id || referenceIsSynthetic)) {
+  if (providerCode && reference !== providerCode &&
+      !publication.external_property_id && !publication.create_state &&
+      !publication.last_synced_at) {
     reference = providerCode;
     await admin
       .from("property_provider_publications")
@@ -813,10 +832,59 @@ export async function processJob(
     });
   }
 
-  await admin
+  if ((job.action === "unpublish" || job.action === "delete") &&
+      !publication.external_property_id &&
+      (publication.create_state || publication.last_synced_at)) {
+    // Um POST de criação pode ter sido aceito sem resposta antes da decisão de
+    // retirar. Sem esta leitura, a ausência de ID local deixaria o anúncio no site.
+    await assertJobLease(admin, job);
+    const { lookup, match } = await lookupByReference(job.provider, reference, job.correlation_id);
+    if (lookup.kind === "inconclusive") throw inconclusiveError(reference, lookup.reason);
+    if (lookup.kind === "duplicate") {
+      await recordRemoteMatch(admin, publication.id, match, {
+        create_state: "remote_duplicate_detected", status: "out_of_sync",
+        last_error_category: "business",
+        last_error_message: "Há mais de um anúncio com esta referência; retirada automática bloqueada.",
+      });
+      throw new ImobiApiError({ message: "Duplicidade remota exige decisão administrativa.", category: "business" });
+    }
+    if (lookup.kind === "unique") {
+      const { data: attached, error: attachError } = await admin
+        .from("property_provider_publications")
+        .update({ external_property_id: lookup.externalId, create_state: null,
+          create_absent_checks: 0, remote_match_count: 1, remote_match_ids: [lookup.externalId] })
+        .eq("id", publication.id)
+        .eq("publication_intent_revision", job.publication_intent_revision ?? 0)
+        .select("id").maybeSingle();
+      if (attachError) throw new Error(attachError.message);
+      if (!attached) throw new ObsoleteIntentError(job.id);
+      publication.external_property_id = lookup.externalId;
+    } else {
+      const absentChecks = Number(publication.create_absent_checks ?? 0) + 1;
+      const { data: recorded, error: recordError } = await admin
+        .from("property_provider_publications")
+        .update({ create_state: "awaiting_create_reconcile",
+          create_absent_checks: absentChecks, remote_match_checked_at: new Date().toISOString() })
+        .eq("id", publication.id)
+        .eq("publication_intent_revision", job.publication_intent_revision ?? 0)
+        .select("id").maybeSingle();
+      if (recordError) throw new Error(recordError.message);
+      if (!recorded) throw new ObsoleteIntentError(job.id);
+      if (!canCreateAfterAmbiguity({ create_state: "awaiting_create_reconcile", create_absent_checks: absentChecks })) {
+        throw new ImobiApiError({
+          message: "Criação anterior sem resposta: aguardando novas leituras antes de retirar o cadastro.",
+          category: "protocol", ambiguous: true,
+        });
+      }
+    }
+  }
+
+  const { error: syncingError } = await admin
     .from("property_provider_publications")
     .update({ status: "syncing", last_error_message: null })
-    .eq("id", publication.id);
+    .eq("id", publication.id)
+    .eq("publication_intent_revision", job.publication_intent_revision ?? 0);
+  if (syncingError) throw new Error(syncingError.message);
 
   const resolution = await resolveProviderCodes(admin, job.provider, {
     ...property,
@@ -828,11 +896,7 @@ export async function processJob(
     const { finalizePendingArchive } = await import("@/lib/imoveis/purge.server");
     if (!publication.external_property_id) {
       await assertJobLease(admin, job);
-      const { error: publicationError } = await admin
-        .from("property_provider_publications")
-        .update({ status: "unpublished", enabled: false, last_synced_at: new Date().toISOString() })
-        .eq("id", publication.id);
-      if (publicationError) throw new Error(publicationError.message);
+      await finishAvailabilityIfOwned(admin, job, publication.id, "unpublish");
       await finalizePendingArchive(admin, job.property_id);
       return { status: "unpublished" as const };
     }
@@ -871,23 +935,7 @@ export async function processJob(
       });
     }
     await assertJobLease(admin, job);
-    // O snapshot precisa registrar que o anúncio está OCULTO no site. Sem isso a
-    // republicação não veria diferença em `exibirImovel` e o anúncio ficaria
-    // escondido para sempre, mesmo com o imóvel desarquivado no Gestão.
-    const snapshotAfterUnpublish = {
-      ...((publication["last_payload_snapshot"] as Record<string, unknown> | null | undefined) ?? {}),
-      exibirImovel: "nao",
-    };
-    const { error: publicationError } = await admin
-      .from("property_provider_publications")
-      .update({
-        status: "unpublished",
-        enabled: false,
-        last_synced_at: new Date().toISOString(),
-        last_payload_snapshot: snapshotAfterUnpublish,
-      })
-      .eq("id", publication.id);
-    if (publicationError) throw new Error(publicationError.message);
+    await finishAvailabilityIfOwned(admin, job, publication.id, "unpublish");
     await finalizePendingArchive(admin, job.property_id);
     return { status: "unpublished" as const };
   }
@@ -920,16 +968,7 @@ export async function processJob(
       }
     }
     await assertJobLease(admin, job);
-    const { error: publicationError } = await admin
-      .from("property_provider_publications")
-      .update({
-        status: "draft",
-        enabled: false,
-        external_property_id: null,
-        last_synced_at: new Date().toISOString(),
-      })
-      .eq("id", publication.id);
-    if (publicationError) throw new Error(publicationError.message);
+    await finishAvailabilityIfOwned(admin, job, publication.id, "delete");
     // Exclusão pedida pelo usuário: apaga o cadastro assim que todos os sites confirmarem.
     const { finalizePendingRemoval } = await import("@/lib/imoveis/purge.server");
     await finalizePendingRemoval(admin, job.property_id);
@@ -980,7 +1019,11 @@ export async function processJob(
     publication as { external_property_id?: string | null; status?: string | null; last_synced_at?: string | null },
   );
   if (effectiveAction === "reconcile") {
-    return reconcilePublication(admin, publication, job.correlation_id);
+    const observed = await reconcilePublication(admin, publication, job.correlation_id);
+    // A referência recupera a identidade; ela não confirma os campos desta
+    // revisão. Com ID único, prosseguimos no caminho normal de alteração.
+    if (!observed.externalId || observed.status === "out_of_sync") return observed;
+    publication.external_property_id = observed.externalId;
   }
 
   let externalId = publication.external_property_id as string | null;
@@ -989,7 +1032,10 @@ export async function processJob(
   // Resultado ambíguo anterior ou primeira publicação: single-flight + leitura
   // remota obrigatória antes de qualquer criação.
   if (!externalId) {
-    const workerTag = `job-${job.id}`;
+    // O token muda em toda reivindicação. O job-id é reutilizado após lease
+    // vencido e permitiria dois executores assumirem a mesma trava de criação.
+    if (!job.lease_token) throw new LeaseLostError(job.id);
+    const workerTag = job.lease_token;
     const { data: lockData, error: lockError } = await admin.rpc(
       "property_publication_acquire_create_lock",
       { _publication_id: publication.id, _worker: workerTag, _lease_seconds: 180 },
@@ -1205,6 +1251,17 @@ export async function processJob(
     try {
       assertWriteAllowed("publish", updatesPaused);
       await assertJobLease(admin, job); // posse confirmada antes do efeito externo
+      const { data: prepared, error: prepareError } = await admin.rpc(
+        "property_publication_prepare_create" as never,
+        {
+          _job_id: job.id, _lease_token: job.lease_token,
+          _publication_id: publication.id, _worker: createLockWorker,
+        } as never,
+      );
+      if (prepareError) throw new Error(prepareError.message);
+      if (prepared !== true) throw new LeaseLostError(job.id);
+      // O checkpoint acima existe ANTES do POST. Se o processo morrer depois
+      // do efeito remoto, a retomada só poderá ler por referência primeiro.
       response = await imobiRequest(job.provider, "/imovel/inserir", {
         method: "POST",
         json: fullPayload,
@@ -1212,12 +1269,13 @@ export async function processJob(
         correlationId: job.correlation_id,
       });
     } catch (error) {
+      if (error instanceof LeaseLostError) throw error;
       const normalized = toImobiError(error);
       // Timeout / rede / 5xx: o site pode ter criado o imóvel e perdido a
       // resposta. Nunca repetimos o POST: marcamos para reconciliação por
       // referência (somente GET) nas próximas execuções.
       if (normalized.ambiguous || normalized.category === "network" || normalized.category === "server") {
-        await admin
+        const { error: ambiguousError } = await admin
           .from("property_provider_publications")
           .update({
             create_state: "awaiting_create_reconcile",
@@ -1228,6 +1286,7 @@ export async function processJob(
               "Criação sem confirmação do site. Nenhuma nova criação será tentada antes da conferência por referência.",
           })
           .eq("id", publication.id);
+        if (ambiguousError) throw new Error(ambiguousError.message);
         await releaseCreateLock(admin, publication.id, createLockWorker);
         throw new ImobiApiError({
           message:
@@ -1247,7 +1306,7 @@ export async function processJob(
       extractExternalId(response.data) ??
       (await findRemoteByReference(job.provider, reference, job.correlation_id));
     if (!externalId) {
-      await admin
+      const { error: ambiguousError } = await admin
         .from("property_provider_publications")
         .update({
           create_state: "awaiting_create_reconcile",
@@ -1255,6 +1314,7 @@ export async function processJob(
           create_absent_checks: 0,
         })
         .eq("id", publication.id);
+      if (ambiguousError) throw new Error(ambiguousError.message);
       await releaseCreateLock(admin, publication.id, createLockWorker);
       throw new ImobiApiError({
         message: "O provedor não retornou o código do imóvel e a referência não foi localizada.",
@@ -1506,6 +1566,7 @@ export async function reconcilePublication(
   admin: Admin,
   publication: {
     id: string;
+    property_id: string;
     provider: ImobiProvider;
     external_property_id: string | null;
     external_reference: string;
@@ -1573,15 +1634,21 @@ export async function reconcilePublication(
   const remoteReference = String(remoteSet["referenciaImovel"] ?? remoteSet["referencia"] ?? "").trim();
   const found = remoteReference.toUpperCase() === publication.external_reference.toUpperCase();
   // Existência não é confirmação: pendências cadastrais continuam pendentes.
-  const { data: pendingRow, error: pendingError } = await admin
+  const [{ data: pendingRow, error: pendingError }, { data: localRow, error: localError }] = await Promise.all([
+    admin
     .from("property_provider_publications")
-    .select("status, last_field_verification")
+    .select("status, last_field_verification, confirmed_revision, desired_availability, enabled")
     .eq("id", publication.id)
-    .maybeSingle();
-  if (pendingError) throw new Error(pendingError.message);
+    .maybeSingle(),
+    admin.from("properties").select("revision").eq("id", publication.property_id).single(),
+  ]);
+  if (pendingError || localError) throw new Error(pendingError?.message ?? localError?.message);
   const pendingVerification = (pendingRow?.last_field_verification ?? null) as { divergent?: string[] } | null;
   const hasPending =
-    pendingRow?.status === "partial" ||
+    pendingRow?.status !== "published" ||
+    pendingRow?.desired_availability !== "visible" ||
+    pendingRow?.enabled !== true ||
+    Number(pendingRow?.confirmed_revision ?? 0) < Number(localRow?.revision ?? 0) ||
     (Array.isArray(pendingVerification?.divergent) && pendingVerification!.divergent!.length > 0);
   const publicUrl = extractPublicUrl(publication.provider, remote, externalId);
   const { error: updateError } = await admin

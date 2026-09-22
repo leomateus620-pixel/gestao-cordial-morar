@@ -96,7 +96,8 @@ BEGIN
     WHERE jobname IN (
       'property-sync-worker', 'property-media-worker', 'property-image-worker',
       'property-image-retry', 'property-import-worker', 'property-sync-reconcile',
-      'property-integration-watchdog'
+       'property-integration-watchdog', 'property-sync-reclaim-stale',
+       'property-import-seed-cordial', 'property-import-seed-morar'
     )
   LOOP
     PERFORM cron.unschedule(_job.jobid);

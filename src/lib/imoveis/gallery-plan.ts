@@ -1,13 +1,13 @@
 /**
  * Regras (puras) da galeria enviada aos sites.
  *
- * Contexto verificado na integração ImobiBrasil (17/09/2026): existem apenas
- * dois recursos de imagem — listar e inserir. Não há recurso oficial de
- * excluir, reordenar ou definir destaque isoladamente. Logo:
+ * O contrato técnico atual expõe listar, inserir e excluir uma foto pelo ID.
+ * Não há recurso específico comprovado para reordenar ou definir destaque.
+ * Logo:
  *
  *  - a ordem remota é a ordem de inserção;
- *  - reenviar uma foto já enviada criaria uma cópia no site, então nunca
- *    reenviamos por mudança de ordem/capa — a divergência é registrada;
+ *  - reenviar uma foto já enviada criaria uma cópia no site, então a
+ *    reconstrução com exclusão confirmada é responsabilidade de outro plano;
  *  - o sistema reconhece a divergência (posição 7 → 2 conta como mudança de
  *    mídia) e informa o nível de garantia possível.
  *
@@ -29,6 +29,7 @@ export type RemoteGalleryRow = {
   is_cover: boolean | null;
   attempts: number | null;
   next_retry_at: string | null;
+  last_op?: string | null;
   last_op_state?: string | null;
 };
 
@@ -86,6 +87,12 @@ export function planGalleryDelivery(
     // cópia permanente no site. Substituição real = novo property_images.id.
     if (existing.status === "delivery_unknown" || existing.last_op_state === "delivery_unknown" || existing.last_op_state === "awaiting_code" || existing.last_op_state === "intent_persisted") {
       unknown.push(image.id);
+      continue;
+    }
+    if (existing.last_op === "rebuild_delete" && existing.status === "pending") {
+      // A reconstrução durável é a única dona dessa reinserção. O envio
+      // comum nunca antecipa nem duplica um passo do checkpoint.
+      waiting.push(image.id);
       continue;
     }
     if (existing.status === "synced") {

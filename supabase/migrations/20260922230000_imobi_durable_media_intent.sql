@@ -338,11 +338,14 @@ BEGIN
     || '(SELECT %s, now(), NULL::uuid FROM jsonb_populate_record(NULL::public.property_sync_jobs, $1)) '
     || 'WHERE j.id = $2 AND j.lease_token = $3 AND j.status = ''processing'' '
     || 'AND j.lock_expires_at > now() '
-    || 'AND (COALESCE($1->>''status'', '''') NOT IN (''succeeded'', ''retry'') '
-    || 'OR j.publication_intent_revision IS NULL OR EXISTS ('
-    || 'SELECT 1 FROM public.property_provider_publications p '
-    || 'WHERE p.property_id = j.property_id AND p.provider = j.provider '
-    || 'AND p.publication_intent_revision = j.publication_intent_revision))', cols, cols
+     || 'AND (COALESCE($1->>''status'', '''') NOT IN (''succeeded'', ''retry'') '
+     || 'OR EXISTS ('
+     || 'SELECT 1 FROM public.property_provider_publications p '
+     || 'JOIN public.properties x ON x.id = p.property_id '
+     || 'WHERE p.property_id = j.property_id AND p.provider = j.provider '
+     || 'AND p.publication_intent_revision = COALESCE(j.publication_intent_revision, 0) '
+     || 'AND (j.action NOT IN (''publish'', ''update'') '
+     || 'OR x.revision = j.requested_revision)))', cols, cols
   ) USING _fields, _job_id, _lease_token;
   GET DIAGNOSTICS updated = ROW_COUNT;
   RETURN updated > 0;
@@ -395,8 +398,12 @@ BEGIN
      AND status = 'processing' AND lock_expires_at > now() FOR UPDATE;
   IF NOT FOUND OR _job.property_id <> _property_id
      OR _job.provider <> _publication.provider
-     OR (_job.publication_intent_revision IS NOT NULL AND
-         _job.publication_intent_revision <> _publication.publication_intent_revision)
+      -- Jobs antigos com NULL pertencem somente à intenção inicial (0).
+      -- Uma decisão nova nunca herda confirmação de um job legado.
+      OR COALESCE(_job.publication_intent_revision, 0) <>
+         _publication.publication_intent_revision
+      OR (_job.action IN ('publish', 'update') AND
+          _property.revision <> _job.requested_revision)
      OR (_job.action IN ('publish', 'update', 'media_sync') AND
          (_publication.desired_availability <> 'visible' OR NOT _publication.enabled))
      OR (_job.action = 'media_sync' AND
@@ -546,6 +553,8 @@ BEGIN
   UPDATE public.properties
      SET revision = _revision, publish_targets = _targets,
          is_draft = CASE WHEN _enabled THEN false ELSE is_draft END,
+         removal_state = CASE WHEN _enabled AND removal_state IN ('pending_archive', 'pending_removal')
+                              THEN NULL ELSE removal_state END,
          updated_at = now()
    WHERE id = _property_id;
   -- A troca de destinos pode tornar outra variante de marca pendente e

@@ -74,10 +74,12 @@ export const getProviderOps = createServerFn({ method: "GET" })
     await assertAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: publications, error } = await supabaseAdmin
-      .from("property_provider_publications")
+    // As colunas novas entram pela migração; os tipos Supabase versionados são
+    // anteriores a ela e serão regenerados somente após aplicação no projeto.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: publications, error } = await (supabaseAdmin.from("property_provider_publications") as any)
       .select(
-        "id, property_id, provider, enabled, status, external_property_id, external_reference, external_public_url, media_status, media_expected_count, media_synced_count, media_failed_count, conflict_count, last_error_category, last_error_message, last_verified_at, last_synced_at, last_field_verification, properties(titulo, codigo, exibir_imovel)",
+        "id, property_id, provider, enabled, desired_availability, status, confirmed_revision, external_property_id, external_reference, external_public_url, media_status, media_expected_count, media_synced_count, media_failed_count, conflict_count, last_error_category, last_error_message, last_verified_at, last_synced_at, last_field_verification, properties(titulo, codigo, exibir_imovel, revision)",
       )
       .order("last_verified_at", { ascending: false, nullsFirst: false })
       .limit(500);
@@ -111,10 +113,14 @@ export const getProviderOps = createServerFn({ method: "GET" })
     const items: ProviderOpsItem[] = (publications ?? []).map((row: PublicationRow) => {
       const property = (row["properties"] ?? {}) as Record<string, unknown>;
       const verification = (row["last_field_verification"] ?? null) as
-        | { divergent?: string[] }
+        | { divergent?: string[]; unverifiable?: string[] }
         | null;
       const registradoNaApi =
-        row["status"] === "published" && (verification?.divergent?.length ?? 0) === 0;
+        row["status"] === "published" && row["enabled"] === true &&
+        row["desired_availability"] === "visible" &&
+        Number(row["confirmed_revision"] ?? 0) >= Number(property["revision"] ?? 1) &&
+        (verification?.divergent?.length ?? 0) === 0 &&
+        (verification?.unverifiable?.length ?? 0) === 0;
       const publicUrl = text(row["external_public_url"]);
       return {
         publicationId: String(row["id"]),
@@ -128,7 +134,7 @@ export const getProviderOps = createServerFn({ method: "GET" })
         status: String(row["status"] ?? "draft"),
         registradoNaApi,
         // Exibição pública é outra coisa: precisa de link e do imóvel marcado para exibir.
-        exibidoPublicamente: Boolean(publicUrl) && property["exibir_imovel"] !== false,
+        exibidoPublicamente: registradoNaApi && Boolean(publicUrl) && property["exibir_imovel"] !== false,
         midia: text(row["media_status"]),
         conflitos: Number(row["conflict_count"] ?? 0),
         tentativas: 0,

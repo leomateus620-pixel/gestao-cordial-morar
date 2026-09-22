@@ -251,8 +251,13 @@ async function failJob(admin: Admin, job: Job, error: unknown) {
   const message = wasmBlocked
     ? "Processamento da marca indisponível no servidor; aguardando correção da configuração."
     : raw.slice(0, 400);
-  const terminal = !wasmBlocked && (job.attempts >= job.max_attempts || PERMANENT_CODES.includes(code));
-  const delaySeconds = wasmBlocked ? 21_600 : Math.min(3600, 2 ** job.attempts * 15);
+  // O orçamento de tentativas só muda a cadência. Rede, Storage e runtime
+  // voltam após correção; apenas um arquivo comprovadamente inválido bloqueia.
+  const terminal = PERMANENT_CODES.includes(code);
+  const baseDelay = wasmBlocked ? 21_600 :
+    Math.min(job.attempts >= job.max_attempts ? 21_600 : 3_600,
+      2 ** Math.min(job.attempts, 11) * 15);
+  const delaySeconds = baseDelay + Math.floor(Math.random() * Math.min(300, baseDelay * 0.15));
   const { data: persisted, error: persistError } = await admin.rpc("property_image_fail_job", {
     _job_id: job.id, _worker: job.locked_by,
     _failure: { code, message, terminal, run_after: new Date(Date.now() + delaySeconds * 1000).toISOString() },
