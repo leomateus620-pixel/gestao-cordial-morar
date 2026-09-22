@@ -90,10 +90,18 @@ export type ImobiRequestOptions = {
   onLog?: (entry: ImobiRequestLog) => void;
 };
 
+/** Espera máxima dentro do request; além disso o job é reagendado. */
+const SLOT_MAX_WAIT_MS = 5_000;
+/** Espera padrão pedida ao worker quando não há vaga. */
+const SLOT_DEFER_SECONDS = 30;
+
 /**
- * Limite de chamadas por site aplicado AQUI, em um único lugar: cadastro,
- * fotos, catálogos e limpezas passam pelo mesmo teto (18/min por conta).
- * Antes cada chamador precisava lembrar de pedir vaga — e o cadastro não pedia.
+ * Limite de chamadas por site aplicado AQUI, em um único lugar: leitura,
+ * cadastro, catálogos, características, fotos, importação e retries passam
+ * pelo mesmo teto (18/min por conta, sob o limite de 20/min do contrato).
+ *
+ * Sem vaga NÃO enviamos e NÃO ficamos esperando minutos dentro do request:
+ * devolvemos erro de limite com `retryAfterSeconds` para o worker reagendar.
  */
 async function waitForProviderSlot(provider: ImobiProvider) {
   try {
@@ -101,11 +109,22 @@ async function waitForProviderSlot(provider: ImobiProvider) {
       import("@/integrations/supabase/client.server"),
       import("./rate-limit.server"),
     ]);
-    await acquireProviderSlot(supabaseAdmin, provider);
-  } catch {
-    // O controle de limite nunca pode impedir o envio: segue sem espera.
+    const result = await acquireProviderSlot(supabaseAdmin, provider, {
+      maxWaitMs: SLOT_MAX_WAIT_MS,
+    });
+    if (!result.granted) {
+      throw new ImobiApiError({
+        message: "Limite de requisições do site atingido; reagendado.",
+        category: "rate_limit",
+        retryAfterSeconds: SLOT_DEFER_SECONDS,
+      });
+    }
+  } catch (error) {
+    // Falta de vaga é decisão deliberada e sobe; falha do próprio controle não bloqueia.
+    if (error instanceof ImobiApiError) throw error;
   }
 }
+
 
 export async function imobiRequest<T = unknown>(
   provider: ImobiProvider,
