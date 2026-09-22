@@ -1498,13 +1498,13 @@ export async function runSyncWorker(
       // a fila e retomam sozinhas, relendo o site antes de cada passo.
       const mediaUnfinished =
         job.action === "media_sync" &&
-        ["rebuilding", "pending_delete", "partial", "waiting_watermark"].includes(String(outcomeStatus));
+        ["rebuilding", "pending_delete", "partial", "waiting_watermark"].includes(String(outcomeStatus)) &&
+        job.attempts < Math.max(job.max_attempts, 8);
       const owned =
         job.action === "media_sync"
           ? mediaUnfinished
             ? await finishJob(admin, job, {
                 status: "retry",
-                attempts: Math.max(0, job.attempts - 1),
                 next_run_at: new Date(Date.now() + 75_000).toISOString(),
                 last_error_category: "partial",
                 last_error_message: `Fotos ainda em andamento (${outcomeStatus}); retomada automática.`,
