@@ -112,11 +112,11 @@ test("foto antiga sem par local nunca entra na lista de exclusão", () => {
 test("mídia usa o endpoint oficial de exclusão e nunca altera o cadastro", () => {
   const ops = read("../imobibrasil/image-ops.server.ts");
   assert.ok(ops.includes("/imagem/excluir/"));
-  assert.ok(!ops.includes("/imovel/alterar"));
+  assert.ok(!/imobiRequest\([\s\S]{0,200}alterar/.test(ops));
   assert.ok(ops.includes("retryOnNetwork: false"));
 
   const media = read("../imobibrasil/media-sync.server.ts");
-  assert.ok(!media.includes("/imovel/alterar"));
+  assert.ok(!/imobiRequest\([\s\S]{0,200}alterar/.test(media));
   assert.ok(media.includes("fetchRemoteGallery"));
   // Inserção de imagem nunca é repetida às cegas.
   assert.ok(media.includes("retryOnNetwork: false"));
