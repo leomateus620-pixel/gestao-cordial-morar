@@ -129,3 +129,13 @@
 - [ ] Paginação completa ativos/inativos; características parciais
 - [ ] Limitador antes de cada tentativa; Retry-After longo reagenda o job
 - [ ] Estados por destino/componente na tela; testes restantes; validação no imóvel 1381/3380
+
+## Consistência ImobiBrasil — andamento
+- [x] A–C: posse/lease, followup só com posse, pré-checagem de arquivos antes de excluir fotos
+- [x] Confirmação campo a campo: referência só avança com campos confirmados; divergentes voltam no próximo envio; revisão só confirmada sem pendências; leitura sem referência não conta como confirmação
+- [x] Foto enviada sem código só é ligada quando aparece exatamente uma foto nova na galeria
+- [ ] D: conflito Cordial x Morar preserva o Gestão; importação com revisão esperada
+- [ ] E: paginação ativos/inativos, características por conta, ocultar/retirar/excluir
+- [ ] F: limitador antes de cada tentativa, Retry-After longo, limitador indisponível
+- [ ] G: estado por destino/componente na tela
+- [ ] H: validação no imóvel de teste + relatório final

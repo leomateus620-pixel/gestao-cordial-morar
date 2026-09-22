@@ -155,6 +155,19 @@ function validateDelivery(bytes: number, mime: string): string | null {
   return null;
 }
 
+/** Confere se o arquivo de entrega existe e é aceito, sem enviar nada. */
+async function preflightDelivery(admin: Admin, image: ImageRow): Promise<string | null> {
+  try {
+    const path = image.processed_storage_path ?? image.storage_path;
+    if (!path) return "sem arquivo";
+    const delivery = await fetchDeliveryBytes(admin, BUCKET, path);
+    const mime = image.processed_storage_path ? "image/jpeg" : (image.mime_type ?? "image/jpeg");
+    return validateDelivery(delivery.blob.size, mime);
+  } catch (error) {
+    return error instanceof Error ? error.message : "falha ao ler o arquivo";
+  }
+}
+
 /**
  * Envia a galeria ao site e registra as métricas.
  * Usado tanto pelo job de mídia quanto pelo publish/update (na etapa de fotos).
@@ -355,7 +368,22 @@ export async function deliverGallery(
       // Código da FOTO: só chave de imagem é aceita (o leitor genérico de imóvel
       // devolveria o código do imóvel). Sem código, a reconciliação por leitura
       // preenche depois.
-      const externalImageId = extractInsertedImageId(response.data);
+      let externalImageId = extractInsertedImageId(response.data);
+      // Resposta sem código: associa só com evidência — exatamente UMA foto
+      // nova na galeria completa. Nunca pela posição.
+      if (!externalImageId) {
+        const beforeCodes = new Set(
+          gallery.items.map((item) => item.codigoImagem ?? item.url ?? "").filter(Boolean),
+        );
+        const after = await fetchRemoteGallery(provider, externalId, correlationId);
+        if (after.reliable) {
+          const fresh = after.items.filter(
+            (item) => !beforeCodes.has(item.codigoImagem ?? item.url ?? ""),
+          );
+          if (fresh.length === 1 && fresh[0].codigoImagem) externalImageId = fresh[0].codigoImagem;
+          gallery = after;
+        }
+      }
       await admin.from("property_image_provider_publications").upsert(
         {
           image_id: image.id,
@@ -796,6 +824,30 @@ async function rebuildRemoteOrder(
 
   let deleted = 0;
   let reinserted = 0;
+
+  // 0) Antes de QUALQUER exclusão: todos os arquivos que serão reinseridos
+  //    precisam existir e ser válidos. Sem isso, apagar deixaria a galeria menor.
+  //    (Só na primeira fase; em retomada a exclusão já aconteceu.)
+  if (plan.deleteRemoteIds.length) {
+    for (const imageId of plan.reinsertImageIds) {
+      const image = params.byId.get(imageId);
+      const problem = image ? await preflightDelivery(admin, image) : "foto local ausente";
+      if (problem) {
+        return {
+          deleted: 0,
+          reinserted: 0,
+          pending: true,
+          reason: "arquivo_indisponivel",
+          checkpoint: {
+            state: "blocked",
+            reason: `arquivo_indisponivel: ${imageId} (${problem})`,
+            at: new Date().toISOString(),
+          },
+          gallery,
+        };
+      }
+    }
+  }
 
   // 1) Remove a cauda divergente (uma por uma, conferindo por leitura).
   for (const code of plan.deleteRemoteIds) {

@@ -5,6 +5,7 @@
  * verificação remota. Nada é marcado como `published` sem confirmação por GET.
  */
 
+import { confirmedSnapshotAfterSend } from "./confirm-snapshot";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
@@ -134,19 +135,34 @@ async function finishMediaJob(admin: Admin, job: SyncJob): Promise<boolean> {
   return payload.owned !== false;
 }
 
-/** Renova o lease durante trabalhos longos. Falhar aqui nunca derruba o job. */
+/** A rotina perdeu a posse do trabalho: nenhum efeito externo nem gravação pode seguir. */
+export class LeaseLostError extends Error {
+  constructor(jobId: string) {
+    super(`Posse do trabalho ${jobId} perdida; outra execução assumiu.`);
+    this.name = "LeaseLostError";
+  }
+}
+
+/** Renova o lease. Devolve false quando a posse foi perdida ou não pôde ser comprovada. */
 export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
   if (!job.lease_token) return true;
   try {
-    const { data } = await admin.rpc("property_sync_renew_lease", {
+    const { data, error } = await admin.rpc("property_sync_renew_lease", {
       _job_id: job.id,
       _lease_token: job.lease_token,
       _seconds: seconds,
     });
+    if (error) return false;
     return data === true;
   } catch {
-    return true;
+    // Sem confirmação de posse, parar é o seguro: o trabalho volta à fila.
+    return false;
   }
+}
+
+/** Confirma a posse antes de uma chamada externa; interrompe se foi perdida. */
+export async function assertJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<void> {
+  if (!(await renewJobLease(admin, job, seconds))) throw new LeaseLostError(job.id);
 }
 
 
@@ -462,6 +478,7 @@ async function syncCharacteristics(
 
   const call = async (path: string, code: string, step: string) => {
     try {
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       await imobiRequest(job.provider, path, {
         method: "POST",
         extraHeaders: { codigoImovel: externalId, codigoCaracteristica: code },
@@ -639,7 +656,7 @@ export async function processJob(
     // perder a posse do trabalho.
     return syncPropertyMedia(admin, job, {
       onProgress: async () => {
-        await renewJobLease(admin, job, 180);
+        await assertJobLease(admin, job, 180);
       },
     });
   }
@@ -708,6 +725,7 @@ export async function processJob(
     );
     const payload = buildUnpublishPatch(full);
     assertWriteAllowed("unpublish", updatesPaused);
+    await assertJobLease(admin, job); // posse confirmada antes do efeito externo
     await imobiRequest(
       job.provider,
       `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
@@ -740,6 +758,7 @@ export async function processJob(
 
   if (job.action === "delete") {
     if (publication.external_property_id) {
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       await imobiRequest(
         job.provider,
         `/imovel/excluir/${encodeURIComponent(publication.external_property_id)}`,
@@ -978,9 +997,17 @@ export async function processJob(
       typeof remoteExibir === "boolean" &&
       remoteExibir !== ((property.exibir_imovel ?? true) as boolean);
     const changedFields = job.changed_fields ?? null;
+    // Campos que o envio anterior não conseguiu confirmar continuam pendentes.
+    const previousVerification = (publication["last_field_verification"] ?? null) as {
+      divergent?: string[];
+    } | null;
+    const pendingKeys = Array.isArray(previousVerification?.divergent)
+      ? previousVerification!.divergent!
+      : [];
     const patch: UpdatePatch = buildUpdatePatch({
       full: fullPayload,
       snapshot: snapshotBase,
+      pendingKeys,
       changedFields:
         changedFields && wantsVisibilityFix && !changedFields.includes("exibirImovel")
           ? [...changedFields, "exibirImovel"]
@@ -992,6 +1019,7 @@ export async function processJob(
 
     if (hasEffectivePatch(patch)) {
       assertWriteAllowed("update", updatesPaused);
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       const response = await imobiRequest(
         job.provider,
         `/imovel/alterar/${encodeURIComponent(externalId)}`,
@@ -1022,6 +1050,7 @@ export async function processJob(
     let response: Awaited<ReturnType<typeof imobiRequest>>;
     try {
       assertWriteAllowed("publish", updatesPaused);
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       response = await imobiRequest(job.provider, "/imovel/inserir", {
         method: "POST",
         json: fullPayload,
@@ -1151,7 +1180,8 @@ export async function processJob(
       remote?.["referencia"] ??
       "") as string,
   ).trim();
-  const verified = !remoteReference || remoteReference.toUpperCase() === reference.toUpperCase();
+  // Leitura sem referência não comprova que é o mesmo imóvel.
+  const verified = Boolean(remoteReference) && remoteReference.toUpperCase() === reference.toUpperCase();
 
   // Guarda a cópia mais recente dos vínculos que o site tem agora.
   const remoteLinksAfter = pickPersonLinks(remote);
@@ -1194,13 +1224,22 @@ export async function processJob(
 
   // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
   // Assim a próxima alteração volta a enviar somente a diferença real.
-  const nextSnapshot: PayloadSnapshot =
-    mode === "insert"
-      ? { ...(fullPayload as PayloadSnapshot) }
-      : {
-          ...(snapshotBase ?? {}),
-          ...Object.fromEntries(sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]])),
-        };
+  // Só o que o site CONFIRMOU entra na referência. Divergente e não
+  // verificável ficam fora: a próxima comparação volta a tratá-los como
+  // pendentes em vez de concluir que "nada mudou".
+  const notConfirmed = new Set<string>([
+    ...fieldVerification.divergent,
+    ...fieldVerification.unverifiable,
+  ]);
+  const nextSnapshot = confirmedSnapshotAfterSend({
+    mode,
+    base: snapshotBase,
+    full: fullPayload as PayloadSnapshot,
+    sent: payload as PayloadSnapshot,
+    sentKeys,
+    notConfirmed,
+  });
+  const fullyConfirmed = finalStatus === "published" && fieldVerification.unverifiable.length === 0;
 
   // Eco do próprio envio: a leitura pós-envio é gravada no MESMO espaço
   // normalizado da importação/reconciliação. Assim o conteúdo que o Gestão
@@ -1222,14 +1261,20 @@ export async function processJob(
       ...(finalStatus === "published"
         ? { last_published_hash: remoteNormalizedHash, baseline_at: nowIso }
         : {}),
-      confirmed_revision: property.revision ?? 1,
+      // Revisão só é dada como confirmada quando não sobrou pendência dela.
+      ...(fullyConfirmed ? { confirmed_revision: property.revision ?? 1 } : {}),
       last_payload_hash: hashPayload(fullPayload as never),
       last_payload_snapshot: nextSnapshot,
       last_payload_synced_at: new Date().toISOString(),
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
-      last_field_verification: fieldVerification as never,
+      last_field_verification: {
+        ...fieldVerification,
+        // Tentado ≠ confirmado: guarda o que foi enviado nesta revisão.
+        attempted: sentPayload,
+        revision: property.revision ?? 1,
+      } as never,
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
       last_error_category: finalStatus === "published" ? null : "protocol",
       last_error_message:
@@ -1389,7 +1434,7 @@ export async function runSyncWorker(
       // Reserva renovada imediatamente antes de cada trabalho: num lote, os
       // últimos jobs não podem perder a posse enquanto esperam a vez no limite
       // do site (era o que devolvia o mesmo trabalho à fila sem concluir).
-      await renewJobLease(admin, job, leaseSecondsFor(kind));
+      await assertJobLease(admin, job, leaseSecondsFor(kind));
       const outcome = await processJob(admin, job, { updatesPaused });
       const owned =
         job.action === "media_sync"
@@ -1408,6 +1453,12 @@ export async function runSyncWorker(
       });
       results.push({ jobId: job.id, provider: job.provider, staleLease: !owned, ...outcome });
     } catch (error) {
+      // Posse perdida: outra execução é dona do trabalho. Nada é gravado aqui —
+      // nem conclusão, nem erro na publicação — para não sobrescrever o estado atual.
+      if (error instanceof LeaseLostError) {
+        results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
+        continue;
+      }
       // Pausa: o trabalho VOLTA para a fila (retomável), sem consumir tentativa
       // e sem marcar erro na publicação.
       if (error instanceof PausedWriteError) {
