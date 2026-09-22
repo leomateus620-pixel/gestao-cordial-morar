@@ -1307,6 +1307,10 @@ export async function runSyncWorker(
   for (const job of claimed) {
     const started = Date.now();
     try {
+      // Reserva renovada imediatamente antes de cada trabalho: num lote, os
+      // últimos jobs não podem perder a posse enquanto esperam a vez no limite
+      // do site (era o que devolvia o mesmo trabalho à fila sem concluir).
+      await renewJobLease(admin, job, leaseSecondsFor(kind));
       const outcome = await processJob(admin, job, { updatesPaused });
       const owned = await finishJob(admin, job, {
         status: "succeeded",
