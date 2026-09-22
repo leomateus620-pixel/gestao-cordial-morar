@@ -31,3 +31,22 @@ test("lista vazia válida é confiável", async () => {
   assert.equal(result.reliable, true);
   assert.equal(result.items.length, 0);
 });
+
+import { extractPage } from "./read-parsers";
+
+test("formato desconhecido não vira lista vazia confiável", async () => {
+  const page = extractPage({ unexpected: "response" }, 1, 50);
+  assert.equal(page.recognized, false);
+  const result = await fetchAllPropertyPagesWith(async () => page, 50);
+  assert.equal(result.reliable, false);
+  assert.equal(result.reason, "formato_desconhecido");
+});
+
+test("array cheio sem metadados não encerra a leitura na 1ª página", async () => {
+  const full = Array.from({ length: 50 }, (_, i) => ({ codigo: i }));
+  const pages = [full, full.slice(0, 3)];
+  const result = await fetchAllPropertyPagesWith(async (n) => extractPage(pages[n - 1], n, 50), 50);
+  assert.equal(result.reliable, true);
+  assert.equal(result.pagesRead, 2);
+  assert.equal(result.items.length, 53);
+});

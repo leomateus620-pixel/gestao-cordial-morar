@@ -25,7 +25,7 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
   const { data: publications, error } = await admin
     .from("property_provider_publications")
     .select(
-      "id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash, echo_payload_hash, echo_expires_at",
+      "id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash, echo_payload_hash, echo_expires_at, status, last_field_verification",
     )
     .not("external_property_id", "is", null)
     .eq("enabled", true)
@@ -77,6 +77,12 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
       });
       const drifted = !echo && Boolean(baseline) && baseline !== remoteHash;
       const publicUrl = extractPublicUrl(provider, detail, externalId);
+      // Existência no site não apaga pendência cadastral: campo divergente ou
+      // envio parcial continuam como estavam até um envio confirmá-los.
+      const verification = (publication.last_field_verification ?? null) as { divergent?: string[] } | null;
+      const hasPending =
+        (Array.isArray(verification?.divergent) && verification!.divergent!.length > 0) ||
+        publication.status === "partial";
 
       await admin
         .from("property_provider_publications")
@@ -86,7 +92,7 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
           remote_read_state: "lido",
           // Eco do próprio envio confirma a publicação em vez de virar "alterado fora".
           ...(echo ? { last_published_hash: remoteHash, baseline_at: now } : {}),
-          status: drifted ? "out_of_sync" : "published",
+          status: drifted ? "out_of_sync" : hasPending ? "partial" : "published",
           last_verified_at: now,
           // Preenche o link canônico apenas quando o site o devolveu; nunca apaga um link válido.
           ...(publicUrl ? { external_public_url: publicUrl } : {}),

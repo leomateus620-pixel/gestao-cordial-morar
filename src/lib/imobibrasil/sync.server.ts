@@ -1089,6 +1089,9 @@ export async function processJob(
       throw normalized;
     }
     await logAttempt(admin, job, { step: "insert", ok: true, httpStatus: response.httpStatus });
+    // Inclusão: tudo que foi enviado precisa ser conferido na leitura.
+    payload = fullPayload;
+    sentKeys = Object.keys(fullPayload);
     externalId =
       extractExternalId(response.data) ??
       (await findRemoteByReference(job.provider, reference, job.correlation_id));
@@ -1273,7 +1276,8 @@ export async function processJob(
       last_payload_hash: hashPayload(fullPayload as never),
       last_payload_snapshot: nextSnapshot,
       last_payload_synced_at: new Date().toISOString(),
-      last_synced_revision: property.revision ?? 1,
+      // Revisão sincronizada só avança sem nenhuma pendência.
+      ...(fullyConfirmed ? { last_synced_revision: property.revision ?? 1 } : {}),
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
       last_field_verification: {
@@ -1380,15 +1384,29 @@ export async function reconcilePublication(
 
   const remote = await verifyRemote(publication.provider, externalId, correlationId);
   const found = remote && Object.keys(remote).length > 0;
+  // Existência não é confirmação: pendências cadastrais continuam pendentes.
+  const { data: pendingRow } = await admin
+    .from("property_provider_publications")
+    .select("status, last_field_verification")
+    .eq("id", publication.id)
+    .maybeSingle();
+  const pendingVerification = (pendingRow?.last_field_verification ?? null) as { divergent?: string[] } | null;
+  const hasPending =
+    pendingRow?.status === "partial" ||
+    (Array.isArray(pendingVerification?.divergent) && pendingVerification!.divergent!.length > 0);
   const publicUrl = extractPublicUrl(publication.provider, remote, externalId);
   await admin
     .from("property_provider_publications")
     .update({
       external_property_id: externalId,
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
-      status: found ? "published" : "out_of_sync",
+      status: found ? (hasPending ? "partial" : "published") : "out_of_sync",
       last_verified_at: new Date().toISOString(),
-      last_error_message: found ? null : "Divergência detectada na reconciliação.",
+      last_error_message: found
+        ? hasPending
+          ? "Imóvel existe no site, mas ainda há campos sem confirmação."
+          : null
+        : "Divergência detectada na reconciliação.",
     })
     .eq("id", publication.id);
   // Reconciliação é read-only na direção externa: o cadastro local nunca é sobrescrito.

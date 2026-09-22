@@ -27,7 +27,7 @@ import {
   type TriStateField,
   type TriStateReport,
 } from "./tri-state";
-import type { PayloadSnapshot } from "./payload-diff";
+import { sameValue, type PayloadSnapshot } from "./payload-diff";
 import { findCrossAccountConflicts } from "./cross-account";
 import type { ImobiProvider } from "./providers";
 
@@ -136,6 +136,12 @@ export async function applyRemoteChanges(
     remote: NormalizedProperty;
     remoteHash: string;
     remoteObservedAt?: string;
+    /**
+     * Leitura ATUAL da outra conta (Cordial x Morar). A comparação usa o que
+     * está no site agora — não a última importação — para que a ordem das
+     * importações nunca decida o valor. Nulo = leitura indisponível.
+     */
+    observeOther?: (provider: string, externalId: string) => Promise<PayloadSnapshot | null>;
   },
 ): Promise<RemoteChangePlan & { applied: string[] }> {
   const plan = planRemoteChanges(input);
@@ -144,11 +150,28 @@ export async function applyRemoteChanges(
   // Outra conta do mesmo imóvel: divergência entre Cordial e Morar.
   const { data: others, error: othersError } = await admin
     .from("property_provider_publications")
-    .select("provider, remote_field_snapshot")
+    .select("provider, external_property_id, remote_field_snapshot, confirmed_field_snapshot")
     .eq("property_id", input.publication.property_id)
     .neq("provider", input.publication.provider);
   if (othersError) throw new Error(othersError.message);
-  const other = (others ?? [])[0] as { provider: string; remote_field_snapshot: PayloadSnapshot | null } | undefined;
+  const other = (others ?? [])[0] as
+    | {
+        provider: string;
+        external_property_id: string | null;
+        remote_field_snapshot: PayloadSnapshot | null;
+        confirmed_field_snapshot: PayloadSnapshot | null;
+      }
+    | undefined;
+  let otherLive: PayloadSnapshot | null = null;
+  let otherLiveFailed = false;
+  if (other?.external_property_id && input.observeOther && !plan.echo && Object.keys(plan.patch).length) {
+    try {
+      otherLive = await input.observeOther(other.provider, other.external_property_id);
+      if (!otherLive) otherLiveFailed = true;
+    } catch {
+      otherLiveFailed = true;
+    }
+  }
   const thisRemote: PayloadSnapshot = Object.fromEntries(
     plan.report.fields
       .filter((f) => f.remote !== undefined && f.remote !== null)
@@ -160,9 +183,24 @@ export async function applyRemoteChanges(
         fields: Object.keys(plan.patch),
         thisConfirmed: input.publication.confirmed_field_snapshot,
         thisRemote,
-        otherRemote: other?.remote_field_snapshot ?? null,
+        otherRemote: otherLive ?? other?.remote_field_snapshot ?? null,
+        otherConfirmed: other?.confirmed_field_snapshot ?? null,
         local: input.localRow as PayloadSnapshot,
       });
+  // Outra conta não pôde ser lida agora: campos compartilhados que diferem do
+  // último valor visto nela ficam para a próxima rodada (nada é aplicado às cegas).
+  if (otherLiveFailed && other?.remote_field_snapshot) {
+    for (const field of Object.keys(plan.patch)) {
+      const seen = other.remote_field_snapshot[field];
+      if (seen !== undefined && !sameValue(seen, plan.patch[field], field)) {
+        delete plan.patch[field];
+        const previous = input.publication.confirmed_field_snapshot?.[field];
+        if (previous === undefined) delete plan.confirmed[field];
+        else plan.confirmed[field] = previous;
+        plan.fullyConfirmed = false;
+      }
+    }
+  }
   const crossFields = new Set(cross.map((c) => c.field));
   for (const field of crossFields) {
     delete plan.patch[field];

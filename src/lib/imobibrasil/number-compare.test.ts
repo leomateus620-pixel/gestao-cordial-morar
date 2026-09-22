@@ -22,3 +22,23 @@ test("zero é distinto de vazio e nulo", () => {
 test("identificador com zero à esquerda não vira número", () => {
   assert.equal(sameValue("0123", 123), false);
 });
+
+test("área e medidas não são arredondadas para centavos", () => {
+  assert.equal(sameValue(1.001, 1.004, "areaTotal"), false);
+  assert.equal(sameValue(1.001, 1.001, "areaTotal"), true);
+});
+
+test("dinheiro compara em centavos", () => {
+  assert.equal(sameValue("1.500,50", 1500.5, "valor"), true);
+  assert.equal(sameValue(1500.504, 1500.5, "valor"), true);
+});
+
+test("'1.234' ao lado de número nativo aceita leitura decimal", () => {
+  assert.equal(sameValue("1.234", 1.234, "areaTotal"), true);
+  assert.equal(sameValue("1.234", 1234, "areaTotal"), true);
+});
+
+test("código é texto: zero à esquerda e formato importam", () => {
+  assert.equal(sameValue("0123", "123", "codigoProprietario"), false);
+  assert.equal(sameValue("R1", "r1", "referencia"), true);
+});

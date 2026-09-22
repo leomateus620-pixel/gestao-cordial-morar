@@ -49,3 +49,12 @@ test("resultado não depende da ordem das importações", () => {
   assert.equal(cordialFirst.length, 1);
   assert.equal(morarFirst.length, 1);
 });
+
+test("Cordial→200 e Morar→300: a ordem das importações não decide", () => {
+  const confirmed = { valor: 100 };
+  const local = { valor: 100 };
+  const a = findCrossAccountConflicts({ fields: ["valor"], thisConfirmed: confirmed, thisRemote: { valor: 200 }, otherRemote: { valor: 300 }, otherConfirmed: confirmed, local });
+  const b = findCrossAccountConflicts({ fields: ["valor"], thisConfirmed: confirmed, thisRemote: { valor: 300 }, otherRemote: { valor: 200 }, otherConfirmed: confirmed, local });
+  assert.equal(a.length, 1);
+  assert.equal(b.length, 1);
+});
