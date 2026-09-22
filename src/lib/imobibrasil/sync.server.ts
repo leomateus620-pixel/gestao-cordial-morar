@@ -477,6 +477,7 @@ async function syncCharacteristics(
 
   const call = async (path: string, code: string, step: string) => {
     try {
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       await imobiRequest(job.provider, path, {
         method: "POST",
         extraHeaders: { codigoImovel: externalId, codigoCaracteristica: code },
@@ -723,6 +724,7 @@ export async function processJob(
     );
     const payload = buildUnpublishPatch(full);
     assertWriteAllowed("unpublish", updatesPaused);
+    await assertJobLease(admin, job); // posse confirmada antes do efeito externo
     await imobiRequest(
       job.provider,
       `/imovel/alterar/${encodeURIComponent(publication.external_property_id)}`,
@@ -755,6 +757,7 @@ export async function processJob(
 
   if (job.action === "delete") {
     if (publication.external_property_id) {
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       await imobiRequest(
         job.provider,
         `/imovel/excluir/${encodeURIComponent(publication.external_property_id)}`,
@@ -1007,6 +1010,7 @@ export async function processJob(
 
     if (hasEffectivePatch(patch)) {
       assertWriteAllowed("update", updatesPaused);
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       const response = await imobiRequest(
         job.provider,
         `/imovel/alterar/${encodeURIComponent(externalId)}`,
@@ -1037,6 +1041,7 @@ export async function processJob(
     let response: Awaited<ReturnType<typeof imobiRequest>>;
     try {
       assertWriteAllowed("publish", updatesPaused);
+      await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       response = await imobiRequest(job.provider, "/imovel/inserir", {
         method: "POST",
         json: fullPayload,
