@@ -90,3 +90,17 @@
 - Mapa de campos e limitações comprovadas em `docs/IMOBI-CONTRATO-ALTERACAO-CAMPOS.md`.
 - Correção crítica achada na validação: a rotina que conclui o trabalho no banco falhava ao liberar a reserva (tipo do token), deixando os pedidos presos em "processando" e repetidos a cada minuto. Corrigida; reserva do lote também é renovada antes de cada trabalho (300s).
 - Evidência (22/09, imóvel 1381/4355160 e 3380/4355161): edição do campo interno "local da chave" e depois limpeza explícita chegaram aos dois sites; conferência campo a campo confirmou referência e o campo alterado; valor, proprietário, corretor, finalidade, tipo, vídeo e pontos fortes intactos; IDs remotos preservados.
+
+## Fotos ponta a ponta (22/09/2026)
+
+- [x] Leitor próprio de imagem (`image-parsers.ts`): código da foto nunca vem do código do imóvel; formato desconhecido nunca é lido como galeria vazia.
+- [x] Leitura COMPLETA da galeria com paginação (`image-ops.server.ts`), com estados `formato_desconhecido`, `paginacao_incompleta`, `falha_consulta`.
+- [x] Exclusão pelo endpoint oficial por código, uma foto por vez, sempre conferida por leitura.
+- [x] Exclusão local vira exclusão pendente por destino: registro e arquivos só saem depois da confirmação em todos os sites (`purgeFullyDeletedImages`).
+- [x] Substituição de foto em passos (`replacePropertyImage` + botão na galeria): a nova assume a posição, a antiga só sai após confirmação.
+- [x] Ordem e capa refeitas automaticamente (`gallery-rebuild.ts`): apaga a cauda divergente e reinsere na ordem correta, com checkpoint retomável.
+- [x] Encerramento do trabalho e agendamento do seguinte na mesma operação (`property_media_finish_job`) — alteração feita durante o envio agora é processada.
+- [x] Renovação de reserva e orçamento de tempo: galeria grande conclui em ciclos sem perder progresso.
+- [x] Varredura automática retoma exclusões pendentes, reconstruções e versões de galeria atrasadas.
+- [x] Estados distintos na tela de publicação, por imobiliária.
+- [ ] Fotos antigas sobrando no site (fora do escopo por decisão): ficam listadas para decisão do usuário, nunca apagadas automaticamente.
