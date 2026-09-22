@@ -38,7 +38,7 @@ export function claimLimitFor(kind: WorkerKind, requested: number): number {
 
 /** Lease generoso para mídia (upload sequencial) e curto para cadastro. */
 export function leaseSecondsFor(kind: WorkerKind): number {
-  return kind === "media" ? 600 : 120;
+  return kind === "media" ? 600 : 300;
 }
 
 /**
