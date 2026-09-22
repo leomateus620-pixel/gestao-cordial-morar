@@ -153,7 +153,6 @@ export const recheckHotspotCleanup = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { recheckRemote } = await import("./hotspot-cleanup.server");
-    const { acquireProviderSlot } = await import("./rate-limit.server");
 
     const { data: rows, error } = await supabaseAdmin
       .from("property_hotspot_cleanup")
@@ -212,7 +211,6 @@ export const dryRunHotspotAlterarAudit = createServerFn({ method: "POST" })
     await assertAdmin(context as never);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildDryRunReport } = await import("./hotspot-cleanup.server");
-    const { acquireProviderSlot } = await import("./rate-limit.server");
 
     const { data: row, error } = await supabaseAdmin
       .from("property_hotspot_cleanup")
