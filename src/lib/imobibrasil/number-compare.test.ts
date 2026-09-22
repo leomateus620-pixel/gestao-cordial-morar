@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { parseKnownNumber, sameValue } from "./payload-diff";
 
 describe("comparação numérica por formato conhecido", () => {
