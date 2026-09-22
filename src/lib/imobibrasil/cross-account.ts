@@ -21,6 +21,8 @@ export function findCrossAccountConflicts(input: {
   thisConfirmed: PayloadSnapshot | null | undefined;
   thisRemote: PayloadSnapshot;
   otherRemote: PayloadSnapshot | null | undefined;
+  /** Referência confirmada da OUTRA conta; sem ela, usa a deste site. */
+  otherConfirmed?: PayloadSnapshot | null;
   local: PayloadSnapshot;
 }): CrossAccountConflict[] {
   const out: CrossAccountConflict[] = [];
@@ -32,7 +34,8 @@ export function findCrossAccountConflicts(input: {
     const mine = input.thisRemote[field];
     const other = input.otherRemote[field];
     if (sameValue(base, mine, field)) continue; // este site não mudou
-    if (sameValue(base, other, field)) continue; // a outra conta não mudou
+    const otherBase = input.otherConfirmed?.[field] ?? base;
+    if (sameValue(otherBase, other, field)) continue; // a outra conta não mudou
     if (sameValue(mine, other, field)) continue; // mudaram igual: convergência
     out.push({ field, local: input.local[field], thisRemote: mine, otherRemote: other });
   }

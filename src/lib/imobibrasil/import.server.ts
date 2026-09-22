@@ -460,6 +460,17 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
         localRow,
         remote,
         remoteHash,
+        observeOther: async (otherProvider, otherExternalId) => {
+          const detail = await fetchPropertyDetail(
+            otherProvider as ImobiProvider,
+            otherExternalId,
+            job.correlation_id,
+          );
+          if (!detail) return null;
+          const otherRemote = normalizeRemoteProperty(otherProvider as ImobiProvider, otherExternalId, detail);
+          const row = toPropertyRow(otherRemote) as Record<string, unknown>;
+          return Object.fromEntries(Object.entries(row).filter(([, v]) => v !== null && v !== undefined));
+        },
       });
     }
   }
