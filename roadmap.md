@@ -52,3 +52,13 @@
 - [x] Claim atômico da fila (`push_outbox_claim`, status `processing` + recuperação após 5 min): execuções paralelas não reenviam a mesma row.
 - [x] Higiene de tokens: ao registrar, remove tokens antigos do mesmo aparelho/navegador.
 - [x] Validado em produção: 1 aviso = 1 row em `notifications` + 1 em `push_outbox` (`sent`), com claim registrado.
+
+## Reativação do envio de alterações aos sites (22/09/2026)
+- [x] Alteração mínima: o Gestão envia só os campos que mudaram + os obrigatórios do contrato (`finalidade`, `codigoTipoImovel`, `referencia`). O cadastro inteiro nunca mais é reenviado (`src/lib/imobibrasil/payload-diff.ts`).
+- [x] Semântica confirmada por conta na API (22/09, imóvel 1381/4355160): alteração só com os obrigatórios não mexeu em nenhum campo além de `atualizadoEm` — omitir preserva, vazio limpa.
+- [x] Proprietário, corretor e usuário adicional ficam FORA do corpo da alteração; só entram por pedido explícito. `0`, vazio ou ausente = desconhecido, nunca enviado como zero.
+- [x] Retrato por campo do último envio confirmado (`property_provider_publications.last_payload_snapshot/_synced_at`); imóvel antigo sem retrato usa a leitura do próprio site como ponto de partida, jamais valores padrão.
+- [x] Trava de pausa aplicada imediatamente antes de cada escrita externa e com a ação efetiva (publicação que virou alteração também é barrada). Retirada do site usa alteração mínima (só o campo de exibição).
+- [x] Trabalho barrado pela pausa fica retomável (`retry` em 15 min), nunca cancelado. Rotina de retomada mantém só a intenção atual por imóvel/site (`property_sync_coalesce_resume`) — revisões antigas e históricos não são reproduzidos.
+- [x] Limite de 18 chamadas/minuto por site centralizado no cliente HTTP: cadastro, fotos, catálogos e limpezas passam pelo mesmo controle.
+- [x] Pausa desligada em `app_settings.imobi_update_sync_paused` (configuração usada pelo ambiente publicado) e validada com imóvel real: só 5 campos enviados na primeira alteração, nenhum reenvio quando nada muda, proprietário/corretor/preço/endereço/pontos fortes intactos e página pública respondendo.
