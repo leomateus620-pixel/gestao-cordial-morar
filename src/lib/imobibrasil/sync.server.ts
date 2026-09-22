@@ -60,7 +60,55 @@ export type SyncJob = {
   correlation_id: string;
   attempts: number;
   max_attempts: number;
+  /** Identificador exclusivo desta execução: só quem o tem pode concluir o job. */
+  lease_token?: string | null;
 };
+
+/**
+ * Conclui o trabalho SOMENTE se a posse ainda for desta execução. Um worker
+ * antigo (lease expirado e job já reivindicado por outro) não finaliza nada.
+ */
+async function finishJob(
+  admin: Admin,
+  job: SyncJob,
+  fields: Record<string, unknown>,
+): Promise<boolean> {
+  const cleaned = {
+    locked_at: null,
+    lock_expires_at: null,
+    locked_by: null,
+    ...fields,
+  };
+  if (!job.lease_token) {
+    // Job antigo, reivindicado antes da posse existir: mantém o comportamento
+    // anterior para não deixar trabalho preso em `processing`.
+    const { error } = await admin.from("property_sync_jobs").update(cleaned).eq("id", job.id);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+  const { data, error } = await admin.rpc("property_sync_finish_job", {
+    _job_id: job.id,
+    _lease_token: job.lease_token,
+    _fields: cleaned,
+  });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+/** Renova o lease durante trabalhos longos. Falhar aqui nunca derruba o job. */
+export async function renewJobLease(admin: Admin, job: SyncJob, seconds = 120): Promise<boolean> {
+  if (!job.lease_token) return true;
+  try {
+    const { data } = await admin.rpc("property_sync_renew_lease", {
+      _job_id: job.id,
+      _lease_token: job.lease_token,
+      _seconds: seconds,
+    });
+    return data === true;
+  } catch {
+    return true;
+  }
+}
 
 
 async function logAttempt(
