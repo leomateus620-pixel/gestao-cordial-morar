@@ -63,7 +63,9 @@ test("com a pausa ligada, alteração e retirada esperam; criação e fotos segu
 test("bloqueio pela pausa é retomável, nunca cancelamento definitivo", () => {
   assert.equal(shouldDeferForPause("update", true), true);
   assert.equal(syncSource.includes("PausedWriteError"), true);
-  assert.equal(/status:\s*"cancelled"/.test(syncSource), false);
+  // O único cancelamento permitido é o de versão antiga absorvida por outra.
+  const cancels = syncSource.match(/status:\s*"cancelled"[\s\S]{0,160}/g) ?? [];
+  assert.ok(cancels.every((snippet) => snippet.includes("Absorvido por versão mais nova")));
 });
 
 test("publish/update não aguarda a entrega da galeria", () => {

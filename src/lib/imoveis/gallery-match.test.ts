@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { test as it } from "node:test";
+import assert from "node:assert/strict";
+const describe = (_: string, fn: () => void) => fn();
+const expect = (v: unknown) => ({ toBe: (e: unknown) => assert.equal(v, e) });
 import { galleryMatchesExactly } from "./gallery-rebuild";
 
 const item = (imageId: string | null, destaque = false) => ({ codigoImagem: imageId ? `c-${imageId}` : "x", imageId, destaque });
