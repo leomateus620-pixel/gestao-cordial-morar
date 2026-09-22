@@ -550,6 +550,17 @@ export async function processJob(
       .eq("id", publication.id);
   }
 
+  // Referência comercial é POR CONTA: o número da Cordial nunca vale na Morar.
+  // Guardamos o código daquela imobiliária no próprio vínculo do destino.
+  if (providerCode && publication["commercial_reference"] !== providerCode) {
+    await admin
+      .from("property_provider_publications")
+      .update({ commercial_reference: providerCode })
+      .eq("id", publication.id);
+  }
+
+
+
   if (!hasProviderToken(job.provider)) {
     throw new ImobiApiError({
       message: `Token do provedor ${job.provider} não configurado.`,
