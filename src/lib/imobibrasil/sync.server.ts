@@ -19,12 +19,21 @@ import {
 } from "./serializers";
 import type { ImobiProvider } from "./providers";
 import {
+  PAUSE_DEFER_SECONDS,
   claimActionsFor,
   claimLimitFor,
+  isWriteBlockedByPause,
   leaseSecondsFor,
-  shouldCancelForPause,
+  type QueueAction,
   type WorkerKind,
 } from "./queue-policy";
+import {
+  buildMinimalUpdate,
+  hasEffectiveChange,
+  isKnownLink,
+  remoteToPayloadSnapshot,
+  type PayloadSnapshot,
+} from "./payload-diff";
 import { providerExternalCode } from "./provider-code";
 import {
   canCreateAfterAmbiguity,
@@ -78,6 +87,26 @@ async function logAttempt(
 
 function backoffSeconds(attempts: number): number {
   return Math.min(3600, 60 * 2 ** Math.max(0, attempts - 1));
+}
+
+/**
+ * Pausa das alterações: sinalizada como ESTADO RETOMÁVEL. O job volta para a
+ * fila com nova data, nunca é cancelado — ao liberar, a intenção atual é
+ * reprocessada sozinha.
+ */
+export class PausedWriteError extends Error {
+  constructor(public readonly action: QueueAction) {
+    super("Envio de alterações aos sites está pausado. O pedido ficou na fila aguardando liberação.");
+    this.name = "PausedWriteError";
+  }
+}
+
+/**
+ * Última barreira antes de QUALQUER escrita externa, já com a ação efetiva
+ * resolvida (um `publish` de imóvel existente é alteração e também é barrado).
+ */
+function assertWriteAllowed(action: QueueAction, updatesPaused: boolean) {
+  if (isWriteBlockedByPause(action, updatesPaused)) throw new PausedWriteError(action);
 }
 
 /**
