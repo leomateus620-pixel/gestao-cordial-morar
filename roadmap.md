@@ -114,4 +114,5 @@
 - [x] Painel interno por imobiliária + diagnóstico classificado de duplicações
 - [x] Suíte completa no comando de testes (268 testes) e CI de tipos + testes
 - [x] Docs: IMOBI-ESTADOS-SINCRONIZACAO.md e RELATORIO-INTEGRACAO-FINAL.md
-- [ ] Validação real pendente de autorização: exclusão de foto, arquivamento e simulação de 429/timeout no imóvel de teste
+- [x] Validação real autorizada concluída no imóvel de teste 1381/3380: exclusão de foto pelo endpoint oficial (galeria conferida, original intacta), arquivamento/desarquivamento sem recriar anúncio (IDs preservados) e simulação de 429/timeout (sem retry cego em POST)
+- [x] Correção: republicação voltava com o anúncio oculto. A comparação passou a usar o estado real de exibição lido no site; anúncios de teste voltaram a aparecer nas duas imobiliárias
