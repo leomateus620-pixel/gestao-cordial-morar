@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ImagePlus, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ImagePlus, Loader2, RefreshCw, Replace, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   ACCEPTED_IMAGE_TYPES,
