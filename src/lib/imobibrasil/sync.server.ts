@@ -841,7 +841,9 @@ export async function processJob(
     }
   }
 
-  await admin
+  // Gravação do ID remoto: se ela falhar, o imóvel existe no site e o Gestão não
+  // sabe. Isso vira pendência explícita de reconciliação — nunca nova criação.
+  const { error: linkError } = await admin
     .from("property_provider_publications")
     .update({
       external_property_id: externalId,
@@ -850,6 +852,25 @@ export async function processJob(
       create_absent_checks: 0,
     })
     .eq("id", publication.id);
+  if (linkError) {
+    await admin
+      .from("property_provider_publications")
+      .update({
+        create_state: "awaiting_create_reconcile",
+        create_ambiguous_at: new Date().toISOString(),
+        create_absent_checks: 0,
+        last_error_category: "protocol",
+        last_error_message: `Falha ao guardar o código ${externalId} recebido do site: ${sanitizeMessage(linkError.message)}`,
+      })
+      .eq("id", publication.id);
+    await releaseCreateLock(admin, publication.id, createLockWorker);
+    throw new ImobiApiError({
+      message:
+        "O site respondeu, mas o código do imóvel não pôde ser guardado. Será reconciliado por referência antes de qualquer nova tentativa.",
+      category: "protocol",
+      ambiguous: true,
+    });
+  }
   const createdNow = mode === "insert";
   await releaseCreateLock(admin, publication.id, createLockWorker);
   createLockWorker = null;
