@@ -150,8 +150,36 @@ export function PropertyPublishPanel({
                 ? { label: "Reenviando", className: "bg-amber-500/15 text-amber-700" }
                 : { label: "Na fila", className: "bg-amber-500/12 text-amber-700" }
             : meta;
+          // Quatro estados separados, sem misturar: o que está salvo aqui,
+          // o que espera envio, o que está bloqueado e o que a imobiliária
+          // já confirmou no site.
+          const waiting = !!job || row?.status === "pending" || row?.status === "syncing";
+          const blocked =
+            job?.errorCategory === "config" ||
+            row?.lastErrorCategory === "config" ||
+            (row?.remote.matchCount ?? 0) > 1;
+          const confirmed = !!row?.externalPropertyId && !!row?.lastVerifiedAt;
+          const stateChips: Array<{ label: string; on: boolean; className: string }> = [
+            {
+              label: "Salvo no Gestão",
+              on: true,
+              className: "bg-emerald-500/12 text-emerald-700",
+            },
+            {
+              label: "Aguardando sincronização",
+              on: waiting,
+              className: "bg-amber-500/12 text-amber-700",
+            },
+            { label: "Bloqueado", on: blocked, className: "bg-destructive/12 text-destructive" },
+            {
+              label: "Confirmado na imobiliária",
+              on: confirmed,
+              className: "bg-sky-500/12 text-sky-700",
+            },
+          ];
           return (
             <div key={provider.key} className="rounded-2xl bg-white/50 p-3">
+
               <div className="flex flex-wrap items-center gap-2">
                 {canPublish && (
                   <input
