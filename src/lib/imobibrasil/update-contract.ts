@@ -162,6 +162,8 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
 
   const required = new Set<string>(REQUIRED_UPDATE_KEYS);
   const allowed = new Set<string>(required);
+  // Vínculo de pessoa só entra com alteração explícita pedida pelo usuário.
+  for (const key of input.personLinkChanges ?? []) allowed.add(key);
   const ignoredFields: string[] = [];
   const clearableKeys = new Set<string>();
 
@@ -197,11 +199,12 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
       continue;
     }
 
-    // Campo tocado ficou sem valor local: limpeza intencional. Só vale a escrita
-    // se o site ainda tem conteúdo (ou se o estado remoto é desconhecido).
+    // Campo tocado ficou sem valor local: limpeza intencional. Sem snapshot o
+    // estado remoto é desconhecido — não se limpa no escuro. E se o site já
+    // está vazio, a escrita não vale nada.
     if (!clearableKeys.has(key)) continue;
-    const remote = snapshot ? snapshot[key] : undefined;
-    if (snapshot && sameValue(remote, "")) continue;
+    if (!snapshot) continue;
+    if (sameValue(snapshot[key], "")) continue;
     payload[key] = "";
     changedKeys.push(key);
     clearedKeys.push(key);
