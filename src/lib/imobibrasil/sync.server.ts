@@ -45,6 +45,8 @@ import {
   type PayloadSnapshot,
 } from "./payload-diff";
 import { providerExternalCode } from "./provider-code";
+import { sha256 } from "./import.server";
+import { normalizeRemoteProperty } from "./import-normalizers";
 import {
   canCreateAfterAmbiguity,
   classifyRemoteLookup,
@@ -1171,10 +1173,27 @@ export async function processJob(
           ...Object.fromEntries(sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]])),
         };
 
+  // Eco do próprio envio: a leitura pós-envio é gravada no MESMO espaço
+  // normalizado da importação/reconciliação. Assim o conteúdo que o Gestão
+  // acabou de publicar nunca é lido depois como "edição externa".
+  const remoteNormalizedHash = await sha256(
+    JSON.stringify(normalizeRemoteProperty(job.provider, externalId, remote as Record<string, unknown>)),
+  );
+  const nowIso = new Date().toISOString();
+
   await admin
     .from("property_provider_publications")
     .update({
       status: finalStatus,
+      echo_payload_hash: remoteNormalizedHash,
+      echo_expires_at: new Date(Date.now() + 120 * 60_000).toISOString(),
+      remote_observed_hash: remoteNormalizedHash,
+      remote_snapshot_at: nowIso,
+      // Referência de comparação só avança quando o site confirmou os campos.
+      ...(finalStatus === "published"
+        ? { last_published_hash: remoteNormalizedHash, baseline_at: nowIso }
+        : {}),
+      confirmed_revision: property.revision ?? 1,
       last_payload_hash: hashPayload(fullPayload as never),
       last_payload_snapshot: nextSnapshot,
       last_payload_synced_at: new Date().toISOString(),

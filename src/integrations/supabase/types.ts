@@ -2399,6 +2399,88 @@ export type Database = {
           },
         ]
       }
+      property_field_conflicts: {
+        Row: {
+          applied_value: Json | null
+          classification: string
+          confirmed_value: Json | null
+          created_at: string
+          detected_revision: number | null
+          field: string
+          id: string
+          local_value: Json | null
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_id: string | null
+          remote_value: Json | null
+          resolution: string
+          resolved_at: string | null
+          resolved_by: string | null
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          applied_value?: Json | null
+          classification: string
+          confirmed_value?: Json | null
+          created_at?: string
+          detected_revision?: number | null
+          field: string
+          id?: string
+          local_value?: Json | null
+          property_id: string
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_id?: string | null
+          remote_value?: Json | null
+          resolution?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_value?: Json | null
+          classification?: string
+          confirmed_value?: Json | null
+          created_at?: string
+          detected_revision?: number | null
+          field?: string
+          id?: string
+          local_value?: Json | null
+          property_id?: string
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+          publication_id?: string | null
+          remote_value?: Json | null
+          resolution?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_field_conflicts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_field_conflicts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_field_conflicts_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "property_provider_publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_hotspot_cleanup: {
         Row: {
           check_result: Json | null
@@ -3103,12 +3185,17 @@ export type Database = {
           characteristic_sync_incomplete: boolean
           characteristic_synced_at: string | null
           commercial_reference: string | null
+          confirmed_field_snapshot: Json | null
+          confirmed_revision: number | null
+          conflict_count: number
           create_absent_checks: number
           create_ambiguous_at: string | null
           create_lock_expires_at: string | null
           create_lock_worker: string | null
           create_state: string | null
           created_at: string
+          echo_expires_at: string | null
+          echo_payload_hash: string | null
           enabled: boolean
           external_property_id: string | null
           external_public_url: string | null
@@ -3144,11 +3231,14 @@ export type Database = {
           remote_codigo_corretor: string | null
           remote_codigo_proprietario: string | null
           remote_codigo_usuario_adicional: string | null
+          remote_field_snapshot: Json | null
           remote_links_synced_at: string | null
           remote_match_checked_at: string | null
           remote_match_count: number | null
           remote_match_ids: string[] | null
           remote_observed_hash: string | null
+          remote_read_state: string | null
+          remote_snapshot_at: string | null
           status: Database["public"]["Enums"]["property_publication_status"]
           synced_gallery_revision: number | null
           system_managed: boolean
@@ -3161,12 +3251,17 @@ export type Database = {
           characteristic_sync_incomplete?: boolean
           characteristic_synced_at?: string | null
           commercial_reference?: string | null
+          confirmed_field_snapshot?: Json | null
+          confirmed_revision?: number | null
+          conflict_count?: number
           create_absent_checks?: number
           create_ambiguous_at?: string | null
           create_lock_expires_at?: string | null
           create_lock_worker?: string | null
           create_state?: string | null
           created_at?: string
+          echo_expires_at?: string | null
+          echo_payload_hash?: string | null
           enabled?: boolean
           external_property_id?: string | null
           external_public_url?: string | null
@@ -3202,11 +3297,14 @@ export type Database = {
           remote_codigo_corretor?: string | null
           remote_codigo_proprietario?: string | null
           remote_codigo_usuario_adicional?: string | null
+          remote_field_snapshot?: Json | null
           remote_links_synced_at?: string | null
           remote_match_checked_at?: string | null
           remote_match_count?: number | null
           remote_match_ids?: string[] | null
           remote_observed_hash?: string | null
+          remote_read_state?: string | null
+          remote_snapshot_at?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
           synced_gallery_revision?: number | null
           system_managed?: boolean
@@ -3219,12 +3317,17 @@ export type Database = {
           characteristic_sync_incomplete?: boolean
           characteristic_synced_at?: string | null
           commercial_reference?: string | null
+          confirmed_field_snapshot?: Json | null
+          confirmed_revision?: number | null
+          conflict_count?: number
           create_absent_checks?: number
           create_ambiguous_at?: string | null
           create_lock_expires_at?: string | null
           create_lock_worker?: string | null
           create_state?: string | null
           created_at?: string
+          echo_expires_at?: string | null
+          echo_payload_hash?: string | null
           enabled?: boolean
           external_property_id?: string | null
           external_public_url?: string | null
@@ -3260,11 +3363,14 @@ export type Database = {
           remote_codigo_corretor?: string | null
           remote_codigo_proprietario?: string | null
           remote_codigo_usuario_adicional?: string | null
+          remote_field_snapshot?: Json | null
           remote_links_synced_at?: string | null
           remote_match_checked_at?: string | null
           remote_match_count?: number | null
           remote_match_ids?: string[] | null
           remote_observed_hash?: string | null
+          remote_read_state?: string | null
+          remote_snapshot_at?: string | null
           status?: Database["public"]["Enums"]["property_publication_status"]
           synced_gallery_revision?: number | null
           system_managed?: boolean

@@ -12,6 +12,7 @@ import { normalizeRemoteProperty } from "./import-normalizers";
 import { extractPublicUrl } from "./public-url";
 import { sha256 } from "./import.server";
 import { sanitizeMessage, toImobiError } from "./errors";
+import { isOwnEcho } from "./tri-state";
 import type { ImobiProvider } from "./providers";
 
 type Admin = SupabaseClient;
@@ -23,7 +24,9 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
 
   const { data: publications, error } = await admin
     .from("property_provider_publications")
-    .select("id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash")
+    .select(
+      "id, property_id, provider, external_property_id, external_public_url, last_published_hash, remote_observed_hash, echo_payload_hash, echo_expires_at",
+    )
     .not("external_property_id", "is", null)
     .eq("enabled", true)
     .order("last_verified_at", { ascending: true, nullsFirst: true })
@@ -60,14 +63,24 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
       const remoteHash = await sha256(
         JSON.stringify(normalizeRemoteProperty(provider, externalId, detail)),
       );
+      // `last_published_hash` vive no MESMO espaço normalizado de `remoteHash`
+      // (`normalizeRemoteProperty`). `last_payload_hash` é o hash do corpo
+      // enviado e não serve para essa comparação — ver docs/IMOBI-ESTADOS-SINCRONIZACAO.md.
       const baseline = publication.last_published_hash as string | null;
-      const drifted = Boolean(baseline) && baseline !== remoteHash;
+      const echo = isOwnEcho(remoteHash, {
+        hash: publication.echo_payload_hash as string | null,
+        expiresAt: publication.echo_expires_at as string | null,
+      });
+      const drifted = !echo && Boolean(baseline) && baseline !== remoteHash;
       const publicUrl = extractPublicUrl(provider, detail, externalId);
 
       await admin
         .from("property_provider_publications")
         .update({
           remote_observed_hash: remoteHash,
+          remote_snapshot_at: now,
+          // Eco do próprio envio confirma a publicação em vez de virar "alterado fora".
+          ...(echo ? { last_published_hash: remoteHash, baseline_at: now } : {}),
           status: drifted ? "out_of_sync" : "published",
           last_verified_at: now,
           // Preenche o link canônico apenas quando o site o devolveu; nunca apaga um link válido.
