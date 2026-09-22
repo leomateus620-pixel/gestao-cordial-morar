@@ -23,7 +23,7 @@ import {
   serializeProperty,
   type LocalPropertyForSync,
 } from "./serializers";
-import type { ImobiProvider } from "./providers";
+import { providerLabel, type ImobiProvider } from "./providers";
 import {
   PAUSE_DEFER_SECONDS,
   claimActionsFor,
@@ -34,10 +34,9 @@ import {
   type WorkerKind,
 } from "./queue-policy";
 import {
-  buildMinimalUpdate,
-  hasEffectiveChange,
   isKnownLink,
   remoteToPayloadSnapshot,
+  sameValue,
   type PayloadSnapshot,
 } from "./payload-diff";
 import { providerExternalCode } from "./provider-code";
