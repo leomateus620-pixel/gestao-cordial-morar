@@ -955,14 +955,28 @@ export async function reconcilePublication(
 ) {
   // Reconciliação SEMPRE lê a lista por referência: é assim que o sistema
   // enxerga duplicidade remota e recupera um ID perdido sem criar nada.
-  const { match } = await lookupByReference(
+  const { lookup, match } = await lookupByReference(
     publication.provider,
     publication.external_reference,
     correlationId,
   );
-  const decision = decideFromMatches(match, publication.external_property_id);
 
-  if (decision.kind === "duplicate") {
+  if (lookup.kind === "inconclusive") {
+    // Pendência explícita: nada é decidido a partir de leitura inconclusiva.
+    await admin
+      .from("property_provider_publications")
+      .update({
+        status: "out_of_sync",
+        remote_match_checked_at: new Date().toISOString(),
+        last_error_category: "protocol",
+        last_error_message: describeInconclusive(lookup.reason),
+      })
+      .eq("id", publication.id);
+    throw inconclusiveError(publication.external_reference, lookup.reason);
+  }
+
+  if (lookup.kind === "duplicate") {
+    const current = String(publication.external_property_id ?? "").trim();
     await recordRemoteMatch(admin, publication.id, match, {
       create_state: "remote_duplicate_detected",
       status: "out_of_sync",
@@ -973,12 +987,12 @@ export async function reconcilePublication(
     return {
       status: "out_of_sync" as const,
       duplicates: match.ids,
-      canonicalId: decision.canonicalId,
+      canonicalId: current && match.ids.includes(current) ? current : null,
     };
   }
 
   const externalId =
-    publication.external_property_id ?? (decision.kind === "reuse" ? decision.externalId : null);
+    publication.external_property_id ?? (lookup.kind === "unique" ? lookup.externalId : null);
 
   await recordRemoteMatch(admin, publication.id, match);
 
