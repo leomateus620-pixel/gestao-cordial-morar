@@ -47,14 +47,18 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
     try {
       const detail = await fetchPropertyDetail(provider, externalId);
       if (!detail || Object.keys(detail).length === 0) {
+        // Ausência NUNCA remove nada do Gestão: pode ser imóvel inativo, filtro
+        // da consulta ou leitura parcial. Fica como suspeita para conferência.
         summary.missing_remote += 1;
         await admin
           .from("property_provider_publications")
           .update({
             status: "out_of_sync",
             last_verified_at: now,
+            remote_read_state: "missing_remote_suspeito",
             last_error_category: "missing_remote",
-            last_error_message: "Imóvel não localizado no site.",
+            last_error_message:
+              "O anúncio não apareceu na consulta ao site. Pode estar inativo ou fora do filtro — nada foi removido do Gestão.",
           })
           .eq("id", publication.id);
         continue;
@@ -79,6 +83,7 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
         .update({
           remote_observed_hash: remoteHash,
           remote_snapshot_at: now,
+          remote_read_state: "lido",
           // Eco do próprio envio confirma a publicação em vez de virar "alterado fora".
           ...(echo ? { last_published_hash: remoteHash, baseline_at: now } : {}),
           status: drifted ? "out_of_sync" : "published",
@@ -101,6 +106,8 @@ export async function runReconcileSweep(admin: Admin, options: { limit?: number 
         .from("property_provider_publications")
         .update({
           last_verified_at: now,
+          // Falha de leitura é falha de leitura: não vira ausência nem remoção.
+          remote_read_state: "leitura_falhou",
           last_error_category: normalized.category,
           last_error_message: sanitizeMessage(normalized.message, 200),
         })
