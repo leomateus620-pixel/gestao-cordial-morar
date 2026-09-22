@@ -104,3 +104,23 @@ export function planGalleryRebuild(params: {
     keptPrefix,
   };
 }
+
+/**
+ * Galeria do site bate EXATAMENTE com a escolhida no Gestão: mesma quantidade,
+ * mesmas fotos, mesma ordem e uma só capa (a primeira). Galeria vazia nunca
+ * conta como concluída quando há fotos a publicar.
+ */
+export function galleryMatchesExactly(params: {
+  desiredImageIds: readonly string[];
+  remote: readonly RebuildRemoteItem[];
+}): boolean {
+  const desired = params.desiredImageIds;
+  const remote = params.remote;
+  if (!desired.length) return remote.length === 0;
+  if (remote.length !== desired.length) return false;
+  for (let index = 0; index < desired.length; index += 1) {
+    if (remote[index]!.imageId !== desired[index]) return false;
+  }
+  const covers = remote.filter((item) => item.destaque);
+  return covers.length === 1 && covers[0]!.imageId === desired[0];
+}

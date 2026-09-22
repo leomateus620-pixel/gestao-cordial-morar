@@ -590,6 +590,22 @@ export async function deliverGallery(
   ).length;
 
   const extraRemote = remoteCount !== null && remoteCount > plan.expectedCount;
+  // Conferência completa pela leitura: quantidade, fotos, ordem e capa.
+  const codeToImage = new Map(
+    finalLinks
+      .filter((row) => row.external_image_id && row.desired_state !== "absent")
+      .map((row) => [row.external_image_id as string, row.image_id]),
+  );
+  const exactMatch =
+    gallery.reliable &&
+    galleryMatchesExactly({
+      desiredImageIds: publishable.map((image) => image.id),
+      remote: gallery.items.map((item) => ({
+        codigoImagem: item.codigoImagem,
+        imageId: item.codigoImagem ? (codeToImage.get(item.codigoImagem) ?? null) : null,
+        destaque: item.destaque,
+      })),
+    });
   const rebuildPending = rebuild.pending;
   const complete =
     syncedTotal === plan.expectedCount &&
@@ -599,7 +615,8 @@ export async function deliverGallery(
     !rebuildPending &&
     gallery.reliable &&
     !multipleCovers &&
-    !extraRemote;
+    !extraRemote &&
+    exactMatch;
 
   const status: MediaSyncResult["status"] = inFlight
     ? "waiting_watermark"
@@ -770,6 +787,18 @@ async function reconcileLinkCodes(
  * divergente para frente e reinserir na ordem correta, com checkpoint para
  * retomar de onde parou.
  */
+/** Grava o passo da reconstrução logo após cada operação confirmada. */
+async function persistRebuildStep(
+  admin: Admin,
+  publicationId: string,
+  step: Record<string, unknown>,
+): Promise<void> {
+  await admin
+    .from("property_provider_publications")
+    .update({ media_rebuild_state: { ...step, at: new Date().toISOString() } as never })
+    .eq("id", publicationId);
+}
+
 async function rebuildRemoteOrder(
   admin: Admin,
   params: {
@@ -896,6 +925,7 @@ async function rebuildRemoteOrder(
       };
     }
     deleted += 1;
+    await persistRebuildStep(admin, publicationId, { state: "deleting", lastDeleted: code, deleted });
     const imageId = imageIdByCode.get(code);
     if (imageId) {
       // O vínculo volta a "não enviada": a foto será reinserida na ordem certa.
@@ -993,8 +1023,55 @@ async function rebuildRemoteOrder(
       );
       reinserted += 1;
       if (asCover) coverCount += 1;
+      await persistRebuildStep(admin, publicationId, {
+        state: "reinserting",
+        lastInserted: image.id,
+        reinserted,
+        deleted,
+      });
     } catch (error) {
       const normalized = toImobiError(error);
+      // Resposta perdida não prova que a foto não entrou: relê a galeria e
+      // vincula só se houver exatamente uma foto nova. A próxima rodada planeja
+      // a partir do que está REALMENTE no site, sem reenviar às cegas.
+      const reread = await fetchRemoteGallery(provider, externalId, correlationId).catch(() => null);
+      if (reread?.reliable) {
+        const before = new Set(gallery.items.map((item) => item.codigoImagem).filter(Boolean));
+        const fresh = reread.items.filter((item) => item.codigoImagem && !before.has(item.codigoImagem));
+        if (fresh.length === 1) {
+          await admin.from("property_image_provider_publications").upsert(
+            {
+              image_id: image.id,
+              publication_id: publicationId,
+              provider,
+              external_image_id: fresh[0]!.codigoImagem,
+              remote_url: fresh[0]!.url,
+              is_cover: fresh[0]!.destaque,
+              desired_state: "present",
+              status: "synced",
+              last_op: "rebuild_insert",
+              last_op_state: "confirmed_by_read",
+              verification: { matched_by: "releitura_apos_erro" },
+              synced_at: new Date().toISOString(),
+            },
+            { onConflict: "image_id,publication_id" },
+          );
+          reinserted += 1;
+        } else if (fresh.length > 1) {
+          await admin
+            .from("property_image_provider_publications")
+            .update({ last_op_state: "delivery_unknown", status: "pending" })
+            .eq("publication_id", publicationId)
+            .eq("image_id", image.id);
+        }
+        gallery = reread;
+      }
+      await persistRebuildStep(admin, publicationId, {
+        state: "reinserting",
+        failedImageId: image.id,
+        reinserted,
+        deleted,
+      });
       return {
         deleted,
         reinserted,
