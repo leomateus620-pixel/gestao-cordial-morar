@@ -88,3 +88,5 @@
 - Tipo sem correspondência no catálogo do destino vira pendência acionável e retomável (`MappingPendingError`), sem adivinhar código.
 - Retirada do site usa apenas identidade + `exibirImovel`; exclusão continua caminho próprio.
 - Mapa de campos e limitações comprovadas em `docs/IMOBI-CONTRATO-ALTERACAO-CAMPOS.md`.
+- Correção crítica achada na validação: a rotina que conclui o trabalho no banco falhava ao liberar a reserva (tipo do token), deixando os pedidos presos em "processando" e repetidos a cada minuto. Corrigida; reserva do lote também é renovada antes de cada trabalho (300s).
+- Evidência (22/09, imóvel 1381/4355160 e 3380/4355161): edição do campo interno "local da chave" e depois limpeza explícita chegaram aos dois sites; conferência campo a campo confirmou referência e o campo alterado; valor, proprietário, corretor, finalidade, tipo, vídeo e pontos fortes intactos; IDs remotos preservados.
