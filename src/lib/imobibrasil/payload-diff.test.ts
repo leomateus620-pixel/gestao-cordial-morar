@@ -100,7 +100,7 @@ test("obrigatórios do contrato conferem com a documentação", () => {
 });
 
 test("a alteração no worker usa o corpo mínimo, não o cadastro inteiro", () => {
-  assert.ok(syncSource.includes("buildMinimalUpdate"));
+  assert.ok(syncSource.includes("buildUpdatePatch"));
   assert.ok(syncSource.includes("last_payload_snapshot"));
   assert.ok(syncSource.includes('assertWriteAllowed("update"'));
   assert.ok(syncSource.includes('assertWriteAllowed("unpublish"'));

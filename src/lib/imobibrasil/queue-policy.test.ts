@@ -73,7 +73,11 @@ test("publish/update não aguarda a entrega da galeria", () => {
 });
 
 test("status cadastral não depende de falha de foto", () => {
-  assert.ok(syncSource.includes('const finalStatus = verified ? "published" : "partial";'));
+  assert.ok(
+    syncSource.includes(
+      'const finalStatus = verified && !fieldVerification.divergent.length ? "published" : "partial";',
+    ),
+  );
 });
 
 const stripComments = (source: string) =>
