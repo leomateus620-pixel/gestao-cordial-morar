@@ -5709,7 +5709,11 @@ export type Database = {
       region_normalized_key: { Args: { _raw: string }; Returns: string }
       release_expired_provider_codes: { Args: never; Returns: number }
       reorder_property_images: {
-        Args: { _ids: string[]; _property_id: string }
+        Args: {
+          _expected_gallery_revision?: number
+          _ids: string[]
+          _property_id: string
+        }
         Returns: Json
       }
       reserve_provider_code: {
