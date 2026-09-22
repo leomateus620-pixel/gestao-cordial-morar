@@ -360,3 +360,23 @@ export const listDuplicateDiagnosis = createServerFn({ method: "GET" })
 
     return diagnosis.filter((row) => row.classificacao !== "publicacao_legitima_nas_duas");
   });
+
+/**
+ * Atualiza a partir dos sites os códigos de proprietário/corretor guardados em
+ * cada anúncio e completa, em lote pequeno, o contato do proprietário em fichas
+ * vazias. Somente leitura nos sites; nunca apaga código nem sobrescreve contato.
+ */
+export const refreshOwnerLinksFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => {
+    const provider = (data as { provider?: unknown })?.provider;
+    if (!isImobiProvider(provider)) throw new Error("Imobiliária inválida.");
+    return { provider };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context as never);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { refreshOwnerLinks } = await import("./owner-links.server");
+    const report = await refreshOwnerLinks(supabaseAdmin as never, data.provider, { contactBatch: 15 });
+    return { ...report, semProprietarioNoSite: report.semProprietarioNoSite.slice(0, 200) };
+  });
