@@ -389,7 +389,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
           if (latestOrder.current === orderedIds) latestOrder.current = null;
           if (previous) qc.setQueryData(key, previous);
           setOrderState("idle");
-          toast.error((err as Error)?.message ?? "Não foi possível salvar a nova ordem das fotos.");
+          const message = (err as Error)?.message ?? "";
+          if (/galeria_desatualizada|incompleta|outro imóvel|aguardando exclusão/i.test(message)) {
+            // Lista desatualizada: recarrega a galeria atual e pede para repetir.
+            invalidate();
+            toast.warning(
+              "A galeria mudou enquanto você organizava. A lista foi atualizada; repita a ordenação.",
+            );
+          } else {
+            toast.error(message || "Não foi possível salvar a nova ordem das fotos.");
+          }
           throw err;
         }
       })();
