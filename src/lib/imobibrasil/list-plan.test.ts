@@ -33,7 +33,6 @@ test("lista vazia válida é confiável", async () => {
 });
 
 import { extractPage } from "./read-parsers";
-import { fetchAllPropertyPagesWith } from "./list-all";
 
 test("formato desconhecido não vira lista vazia confiável", async () => {
   const page = extractPage({ unexpected: "response" }, 1, 50);
