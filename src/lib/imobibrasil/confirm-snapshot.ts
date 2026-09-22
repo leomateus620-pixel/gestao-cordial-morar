@@ -17,7 +17,9 @@ export function confirmedSnapshotAfterSend(input: {
   const next: PayloadSnapshot = input.mode === "insert" ? {} : { ...(input.base ?? {}) };
   for (const key of keys) {
     if (input.notConfirmed.has(key)) {
-      delete next[key];
+      // Não confirmado: mantém a ÚLTIMA confirmação conhecida (alteração) ou
+      // fica fora (inclusão). Nunca apaga a referência — sem ela uma limpeza
+      // recusada deixaria de ser reenviada.
       continue;
     }
     next[key] = source[key];

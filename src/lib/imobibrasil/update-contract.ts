@@ -172,6 +172,12 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
   for (const key of input.pendingKeys ?? []) {
     if (!(PERSON_LINK_KEYS as readonly string[]).includes(key)) allowed.add(key);
   }
+  // Pendência de envio anterior (valor ou LIMPEZA recusada): sempre reenviada,
+  // mesmo que a referência local pareça igual — a referência guarda o último
+  // valor confirmado, não o tentado.
+  const pendingSet = new Set<string>(
+    (input.pendingKeys ?? []).filter((key) => !(PERSON_LINK_KEYS as readonly string[]).includes(key)),
+  );
   const ignoredFields: string[] = [];
   const clearableKeys = new Set<string>();
 
@@ -201,7 +207,7 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
       payload[key] = value;
       if (required.has(key)) {
         if (snapshot && !sameValue(snapshot[key], value)) changedKeys.push(key);
-      } else if (!snapshot || !sameValue(snapshot[key], value)) {
+      } else if (pendingSet.has(key) || !snapshot || !sameValue(snapshot[key], value)) {
         changedKeys.push(key);
       }
       continue;
@@ -210,6 +216,13 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
     // Campo tocado ficou sem valor local: limpeza intencional. Sem snapshot o
     // estado remoto é desconhecido — não se limpa no escuro. E se o site já
     // está vazio, a escrita não vale nada.
+    if (pendingSet.has(key) && snapshot) {
+      // Limpeza pendente: reenviada independentemente da referência.
+      payload[key] = "";
+      changedKeys.push(key);
+      clearedKeys.push(key);
+      continue;
+    }
     if (!clearableKeys.has(key)) continue;
     if (!snapshot) continue;
     if (sameValue(snapshot[key], "")) continue;

@@ -1089,6 +1089,9 @@ export async function processJob(
       throw normalized;
     }
     await logAttempt(admin, job, { step: "insert", ok: true, httpStatus: response.httpStatus });
+    // Inclusão: tudo que foi enviado precisa ser conferido na leitura.
+    payload = fullPayload;
+    sentKeys = Object.keys(fullPayload);
     externalId =
       extractExternalId(response.data) ??
       (await findRemoteByReference(job.provider, reference, job.correlation_id));
@@ -1273,7 +1276,8 @@ export async function processJob(
       last_payload_hash: hashPayload(fullPayload as never),
       last_payload_snapshot: nextSnapshot,
       last_payload_synced_at: new Date().toISOString(),
-      last_synced_revision: property.revision ?? 1,
+      // Revisão sincronizada só avança sem nenhuma pendência.
+      ...(fullyConfirmed ? { last_synced_revision: property.revision ?? 1 } : {}),
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
       last_field_verification: {
