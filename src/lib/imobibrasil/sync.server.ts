@@ -726,6 +726,37 @@ export async function processJob(
   }
 
   // ---- publish / update ----
+  // Campos realmente tocados nesta edição: o claim não os devolve, então são
+  // lidos do próprio trabalho. Sem a lista, a alteração cai na diferença contra
+  // o último envio confirmado e nunca limpa nada por conta.
+  if (job.changed_fields === undefined) {
+    const { data: jobRow } = await admin
+      .from("property_sync_jobs")
+      .select("changed_fields")
+      .eq("id", job.id)
+      .maybeSingle();
+    job.changed_fields = (jobRow?.changed_fields as string[] | null) ?? null;
+  }
+
+  // Códigos obrigatórios do contrato: nada é adivinhado. Sem correspondência no
+  // catálogo DAQUELE destino, a alteração fica pendente com mensagem acionável.
+  if (!resolution.codes.codigoTipoImovel) {
+    throw new MappingPendingError(
+      `O tipo "${property.tipo ?? "(não informado)"}" não tem correspondência no catálogo da ${providerLabel(job.provider)}. Escolha o tipo equivalente para que a alteração possa ser enviada.`,
+    );
+  }
+  const ambiguousPerson = resolution.ambiguous.filter(
+    (item) => item.domain === "broker" || item.domain === "owner",
+  );
+  if (ambiguousPerson.length) {
+    await logAttempt(admin, job, {
+      step: "mapping",
+      ok: false,
+      errorCategory: "mapping",
+      errorMessage: `Homônimo em ${ambiguousPerson.map((item) => `${item.domain}:${item.value}`).join(", ")} — vínculo mantido como desconhecido.`,
+    });
+  }
+
   // Imóvel que já existe no site NUNCA volta ao caminho de criação: `publish`
   // vira alteração; sem ID guardado mas com histórico publicado, vira reconciliação.
   const effectiveAction = normalizeCadastralAction(
@@ -1074,9 +1105,38 @@ export async function processJob(
       .eq("id", publication.id);
   }
 
+  // Conferência campo a campo: resposta HTTP 200 e JSON não vazio não provam
+  // nada. Cada campo enviado é comparado com a leitura do site; o que a leitura
+  // não descreve fica explicitamente como "não verificável".
+  const remoteSnapshot = remoteToPayloadSnapshot(remote);
+  const fieldVerification = {
+    checked_at: new Date().toISOString(),
+    sent: sentKeys,
+    confirmed: [] as string[],
+    divergent: [] as string[],
+    unverifiable: [] as string[],
+  };
+  for (const key of sentKeys) {
+    const sent = (payload as PayloadSnapshot)[key];
+    if (!(key in remoteSnapshot)) {
+      fieldVerification.unverifiable.push(key);
+      continue;
+    }
+    if (sameValue(remoteSnapshot[key], sent)) fieldVerification.confirmed.push(key);
+    else fieldVerification.divergent.push(key);
+  }
+  if (sentKeys.length) {
+    await logAttempt(admin, job, {
+      step: "verify_fields",
+      ok: fieldVerification.divergent.length === 0,
+      errorCategory: fieldVerification.divergent.length ? "protocol" : null,
+      errorMessage: `confirmados: ${fieldVerification.confirmed.join(", ") || "-"} · divergentes: ${fieldVerification.divergent.join(", ") || "-"} · não verificáveis: ${fieldVerification.unverifiable.join(", ") || "-"}`,
+    });
+  }
+
   // Cadastro concluído não depende das fotos: o estado da mídia vive em
   // `media_status` e é atualizado pelo caminho `media_sync`.
-  const finalStatus = verified ? "published" : "partial";
+  const finalStatus = verified && !fieldVerification.divergent.length ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
   // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
@@ -1099,16 +1159,30 @@ export async function processJob(
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
+      last_field_verification: fieldVerification as never,
       ...(publicUrl ? { external_public_url: publicUrl } : {}),
       last_error_category: finalStatus === "published" ? null : "protocol",
-      last_error_message: finalStatus === "published" ? null : "Verificação remota divergente.",
+      last_error_message:
+        finalStatus === "published"
+          ? null
+          : fieldVerification.divergent.length
+            ? `O site não confirmou os campos: ${fieldVerification.divergent.join(", ")}.`
+            : "Verificação remota divergente.",
     })
     .eq("id", publication.id);
 
   // Fotos seguem de forma assíncrona, exclusivamente por `media_sync`.
   const media = await queueMediaAfterCadastral(admin, job);
 
-  return { status: finalStatus, externalId, media, unmapped: resolution.unmapped };
+  return {
+    status: finalStatus,
+    externalId,
+    media,
+    unmapped: resolution.unmapped,
+    ambiguous: resolution.ambiguous,
+    characteristics,
+    verification: fieldVerification,
+  };
 
 }
 
@@ -1268,6 +1342,34 @@ export async function runSyncWorker(
           last_error_message: error.message,
         });
         results.push({ jobId: job.id, provider: job.provider, status: "deferred_paused" });
+        continue;
+      }
+      // Mapeamento pendente: estado retomável com mensagem acionável. O trabalho
+      // espera a correspondência ser definida, sem consumir tentativa.
+      if (error instanceof MappingPendingError) {
+        await finishJob(admin, job, {
+          status: "retry",
+          attempts: Math.max(0, job.attempts - 1),
+          next_run_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+          last_error_category: "mapping",
+          last_error_message: error.message,
+        });
+        await admin
+          .from("property_provider_publications")
+          .update({
+            status: "pending",
+            last_error_category: "mapping",
+            last_error_message: error.message,
+          })
+          .eq("property_id", job.property_id)
+          .eq("provider", job.provider);
+        await logAttempt(admin, job, {
+          step: job.action,
+          ok: false,
+          errorCategory: "mapping",
+          errorMessage: error.message,
+        });
+        results.push({ jobId: job.id, provider: job.provider, status: "pending_mapping" });
         continue;
       }
       const normalized = toImobiError(error);
