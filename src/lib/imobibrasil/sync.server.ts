@@ -1312,12 +1312,15 @@ export async function runSyncWorker(
       // do site (era o que devolvia o mesmo trabalho à fila sem concluir).
       await renewJobLease(admin, job, leaseSecondsFor(kind));
       const outcome = await processJob(admin, job, { updatesPaused });
-      const owned = await finishJob(admin, job, {
-        status: "succeeded",
-        finished_at: new Date().toISOString(),
-        last_error_category: null,
-        last_error_message: null,
-      });
+      const owned =
+        job.action === "media_sync"
+          ? await finishMediaJob(admin, job)
+          : await finishJob(admin, job, {
+              status: "succeeded",
+              finished_at: new Date().toISOString(),
+              last_error_category: null,
+              last_error_message: null,
+            });
       await logAttempt(admin, job, {
         step: job.action,
         ok: true,
