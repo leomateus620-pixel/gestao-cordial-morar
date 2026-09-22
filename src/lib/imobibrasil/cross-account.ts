@@ -31,9 +31,9 @@ export function findCrossAccountConflicts(input: {
     if (base === undefined) continue;
     const mine = input.thisRemote[field];
     const other = input.otherRemote[field];
-    if (sameValue(base, mine)) continue; // este site não mudou
-    if (sameValue(base, other)) continue; // a outra conta não mudou
-    if (sameValue(mine, other)) continue; // mudaram igual: convergência
+    if (sameValue(base, mine, field)) continue; // este site não mudou
+    if (sameValue(base, other, field)) continue; // a outra conta não mudou
+    if (sameValue(mine, other, field)) continue; // mudaram igual: convergência
     out.push({ field, local: input.local[field], thisRemote: mine, otherRemote: other });
   }
   return out;

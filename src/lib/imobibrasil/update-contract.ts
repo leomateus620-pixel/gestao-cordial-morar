@@ -207,8 +207,8 @@ export function buildUpdatePatch(input: BuildUpdatePatchInput): UpdatePatch {
     if (value !== undefined) {
       payload[key] = value;
       if (required.has(key)) {
-        if (snapshot && !sameValue(snapshot[key], value)) changedKeys.push(key);
-      } else if (pendingSet.has(key) || !snapshot || !sameValue(snapshot[key], value)) {
+        if (snapshot && !sameValue(snapshot[key], value, key)) changedKeys.push(key);
+      } else if (pendingSet.has(key) || !snapshot || !sameValue(snapshot[key], value, key)) {
         changedKeys.push(key);
       }
       continue;

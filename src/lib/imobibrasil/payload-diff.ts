@@ -27,13 +27,44 @@ export const PERSON_LINK_KEYS = [
 export type PayloadSnapshot = Record<string, unknown>;
 
 /** Comparação tolerante: "1.500" == "1500", "10,00" == "10", "Sim" == "sim". */
-export function sameValue(a: unknown, b: unknown): boolean {
+/** Campos monetários: comparados em centavos. Demais números: valor exato. */
+const MONEY_KEY = /^(valor|preco)/i;
+/** Identificadores/códigos: sempre texto, nunca número. */
+const ID_KEY = /^(codigo|referencia|cep|cpf|cnpj|telefone)/i;
+
+export function sameValue(a: unknown, b: unknown, key?: string): boolean {
   if (Array.isArray(a) || Array.isArray(b)) {
     const left = (Array.isArray(a) ? a : [a]).map((item) => String(item ?? "").trim());
     const right = (Array.isArray(b) ? b : [b]).map((item) => String(item ?? "").trim());
     return left.length === right.length && left.every((item, index) => item === right[index]);
   }
+  if (key && ID_KEY.test(key)) return textOf(a) === textOf(b);
+  const scale = key && MONEY_KEY.test(key) ? 100 : 1_000_000;
+  const left = numberCandidates(a);
+  const right = numberCandidates(b);
+  if (left.length && right.length) {
+    return left.some((x) => right.some((y) => Math.round(x * scale) === Math.round(y * scale)));
+  }
   return normalizeScalar(a) === normalizeScalar(b);
+}
+
+function textOf(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value).trim().toLowerCase();
+}
+
+/**
+ * Interpretações numéricas possíveis. "1.234" é ambíguo (milhar ou decimal):
+ * só aceita a leitura decimal quando o outro lado é número nativo.
+ */
+function numberCandidates(value: unknown): number[] {
+  const parsed = parseKnownNumber(value);
+  if (parsed === null) return [];
+  if (typeof value === "string" && /^-?\d{1,3}\.\d{3}$/.test(value.trim())) {
+    const decimal = Number(value.trim());
+    return Number.isFinite(decimal) ? [parsed, decimal] : [parsed];
+  }
+  return [parsed];
 }
 
 /**
@@ -115,11 +146,11 @@ export function buildMinimalUpdate(
 
     if (required.has(key)) {
       payload[key] = value;
-      if (snapshot && !sameValue(snapshot[key], value)) changedKeys.push(key);
+      if (snapshot && !sameValue(snapshot[key], value, key)) changedKeys.push(key);
       continue;
     }
 
-    if (snapshot && sameValue(snapshot[key], value)) continue;
+    if (snapshot && sameValue(snapshot[key], value, key)) continue;
 
     payload[key] = value;
     changedKeys.push(key);

@@ -58,7 +58,7 @@ export type FieldVerification = {
 export function verifyFields(
   sent: Record<string, unknown>,
   remoteSnapshot: Record<string, unknown>,
-  same: (a: unknown, b: unknown) => boolean,
+  same: (a: unknown, b: unknown, key?: string) => boolean,
 ): FieldVerification {
   const result: FieldVerification = { sent: [], confirmed: [], divergent: [], unverifiable: [] };
   for (const key of Object.keys(sent)) {
@@ -70,7 +70,7 @@ export function verifyFields(
     }
     const ok = RICH_TEXT_KEYS.has(key)
       ? normalizeRichText(remoteSnapshot[key]) === normalizeRichText(sent[key])
-      : same(remoteSnapshot[key], sent[key]);
+      : same(remoteSnapshot[key], sent[key], key);
     if (ok) result.confirmed.push(key);
     else result.divergent.push(key);
   }
