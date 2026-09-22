@@ -155,6 +155,19 @@ function validateDelivery(bytes: number, mime: string): string | null {
   return null;
 }
 
+/** Confere se o arquivo de entrega existe e é aceito, sem enviar nada. */
+async function preflightDelivery(admin: Admin, image: ImageRow): Promise<string | null> {
+  try {
+    const path = image.processed_storage_path ?? image.storage_path;
+    if (!path) return "sem arquivo";
+    const delivery = await fetchDeliveryBytes(admin, BUCKET, path);
+    const mime = image.processed_storage_path ? "image/jpeg" : (image.mime_type ?? "image/jpeg");
+    return validateDelivery(delivery.blob.size, mime);
+  } catch (error) {
+    return error instanceof Error ? error.message : "falha ao ler o arquivo";
+  }
+}
+
 /**
  * Envia a galeria ao site e registra as métricas.
  * Usado tanto pelo job de mídia quanto pelo publish/update (na etapa de fotos).
