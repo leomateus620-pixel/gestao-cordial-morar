@@ -3072,6 +3072,9 @@ export type Database = {
         Row: {
           archived_at: string | null
           baseline_at: string | null
+          characteristic_codes: Json | null
+          characteristic_sync_incomplete: boolean
+          characteristic_synced_at: string | null
           commercial_reference: string | null
           create_absent_checks: number
           create_ambiguous_at: string | null
@@ -3089,6 +3092,7 @@ export type Database = {
           last_error_category: string | null
           last_error_code: string | null
           last_error_message: string | null
+          last_field_verification: Json | null
           last_imported_at: string | null
           last_media_synced_at: string | null
           last_media_verified_at: string | null
@@ -3125,6 +3129,9 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           baseline_at?: string | null
+          characteristic_codes?: Json | null
+          characteristic_sync_incomplete?: boolean
+          characteristic_synced_at?: string | null
           commercial_reference?: string | null
           create_absent_checks?: number
           create_ambiguous_at?: string | null
@@ -3142,6 +3149,7 @@ export type Database = {
           last_error_category?: string | null
           last_error_code?: string | null
           last_error_message?: string | null
+          last_field_verification?: Json | null
           last_imported_at?: string | null
           last_media_synced_at?: string | null
           last_media_verified_at?: string | null
@@ -3178,6 +3186,9 @@ export type Database = {
         Update: {
           archived_at?: string | null
           baseline_at?: string | null
+          characteristic_codes?: Json | null
+          characteristic_sync_incomplete?: boolean
+          characteristic_synced_at?: string | null
           commercial_reference?: string | null
           create_absent_checks?: number
           create_ambiguous_at?: string | null
@@ -3195,6 +3206,7 @@ export type Database = {
           last_error_category?: string | null
           last_error_code?: string | null
           last_error_message?: string | null
+          last_field_verification?: Json | null
           last_imported_at?: string | null
           last_media_synced_at?: string | null
           last_media_verified_at?: string | null
@@ -3306,6 +3318,7 @@ export type Database = {
         Row: {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts: number
+          changed_fields: string[] | null
           correlation_id: string
           created_at: string
           finished_at: string | null
@@ -3329,6 +3342,7 @@ export type Database = {
         Insert: {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts?: number
+          changed_fields?: string[] | null
           correlation_id?: string
           created_at?: string
           finished_at?: string | null
@@ -3352,6 +3366,7 @@ export type Database = {
         Update: {
           action?: Database["public"]["Enums"]["property_sync_action"]
           attempts?: number
+          changed_fields?: string[] | null
           correlation_id?: string
           created_at?: string
           finished_at?: string | null
@@ -5438,6 +5453,7 @@ export type Database = {
         Returns: {
           action: Database["public"]["Enums"]["property_sync_action"]
           attempts: number
+          changed_fields: string[] | null
           correlation_id: string
           created_at: string
           finished_at: string | null
