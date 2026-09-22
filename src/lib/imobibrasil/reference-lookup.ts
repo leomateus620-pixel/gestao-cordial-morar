@@ -132,6 +132,61 @@ export function decideFromMatches(
   };
 }
 
+/** Uma leitura de página: itens e se o formato foi reconhecido. */
+export type RemoteListRead = { items: RemoteListItem[]; recognized: boolean };
+
+/**
+ * Leitura de página com aviso explícito de formato desconhecido. Sem isso, um
+ * corpo inesperado viraria "lista vazia" — e lista vazia autorizaria criação.
+ */
+export function extractRemoteList(payload: unknown): RemoteListRead {
+  const items = extractRemoteListItems(payload);
+  if (items.length) return { items, recognized: true };
+  if (Array.isArray(payload)) return { items, recognized: true };
+  const root = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+  if (!root) return { items, recognized: false };
+  const resultSet = root["resultSet"];
+  const inner =
+    resultSet && typeof resultSet === "object" && !Array.isArray(resultSet)
+      ? (resultSet as Record<string, unknown>)
+      : null;
+  const recognized =
+    Array.isArray(resultSet) ||
+    ["data", "total_data", "imoveis"].some(
+      (key) => Array.isArray(root[key]) || (inner ? Array.isArray(inner[key]) : false),
+    );
+  return { items, recognized };
+}
+
+export type RemoteLookup =
+  | { kind: "absent" }
+  | { kind: "unique"; externalId: string }
+  | { kind: "duplicate"; ids: string[] }
+  | { kind: "inconclusive"; reason: "formato_desconhecido" | "falha_consulta" | "paginacao_incompleta" };
+
+/**
+ * Quatro resultados possíveis. "Ausente" exige formato reconhecido, consulta
+ * bem-sucedida e paginação esgotada — qualquer dúvida vira inconclusivo, que
+ * NUNCA autoriza criar anúncio novo.
+ */
+export function classifyRemoteLookup(input: {
+  reads: readonly RemoteListRead[];
+  reference: string;
+  complete: boolean;
+  failed?: boolean;
+}): RemoteLookup {
+  if (input.reads.some((read) => !read.recognized)) {
+    return { kind: "inconclusive", reason: "formato_desconhecido" };
+  }
+  if (input.failed) return { kind: "inconclusive", reason: "falha_consulta" };
+  const items = input.reads.flatMap((read) => read.items);
+  const match = matchByReference(items, input.reference);
+  if (match.count === 1) return { kind: "unique", externalId: match.ids[0]! };
+  if (match.count > 1) return { kind: "duplicate", ids: match.ids };
+  if (!input.complete) return { kind: "inconclusive", reason: "paginacao_incompleta" };
+  return { kind: "absent" };
+}
+
 /** Publicação já existente no site: `publish` nunca pode virar criação. */
 export function normalizeCadastralAction(
   action: "publish" | "update" | "reconcile" | "unpublish" | "delete",
