@@ -634,11 +634,14 @@ export async function processJob(
   }
 
   const mode: "insert" | "update" = externalId ? "update" : "insert";
-  // Antes de alterar, recupera os vínculos que já existem no site e devolve-os no
-  // mesmo envio — o provedor apaga tudo que não vier no corpo da alteração.
-  const links = externalId
+  // Leitura do estado remoto antes de alterar: serve para (a) conhecer os
+  // vínculos que o site já tem e (b) montar o ponto de partida do imóvel antigo
+  // que ainda não tem snapshot local. Vínculo nunca é reenviado por padrão:
+  // omitir preserva (contrato de alteração parcial).
+  const remoteBefore = externalId
     ? await loadPersonLinks(admin, job.provider, externalId, publication, job.correlation_id)
-    : {};
+    : { links: {} as RemotePersonLinks, remote: null };
+  const links = remoteBefore.links;
   await hydrateOwnerContact(
     admin,
     job.provider,
@@ -647,27 +650,51 @@ export async function processJob(
     links.codigoProprietario,
     job.correlation_id,
   );
-  const payload = serializeProperty(
+  // Na criação os vínculos vão no corpo (o imóvel ainda não existe no site).
+  // Na alteração eles ficam de fora: proprietário, corretor e usuário adicional
+  // só mudam por pedido explícito, e desconhecido nunca vira zero.
+  const fullPayload = serializeProperty(
     { ...property, referencia: reference },
-    {
-      ...resolution.codes,
-      codigoProprietario: resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
-      codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
-      codigoUsuarioAdicional:
-        resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
-    },
-    {
-      mode,
-    },
+    mode === "insert"
+      ? {
+          ...resolution.codes,
+          codigoProprietario:
+            resolution.codes.codigoProprietario ?? links.codigoProprietario ?? null,
+          codigoCorretor: resolution.codes.codigoCorretor ?? links.codigoCorretor ?? null,
+          codigoUsuarioAdicional:
+            resolution.codes.codigoUsuarioAdicional ?? links.codigoUsuarioAdicional ?? null,
+        }
+      : { ...resolution.codes, codigoProprietario: null, codigoCorretor: null, codigoUsuarioAdicional: null },
+    { mode },
   );
-  const payloadHash = hashPayload(payload);
+
+  let payload: Record<string, unknown> = fullPayload;
+  let snapshotBase: PayloadSnapshot | null = null;
+  let sentKeys: string[] = [];
 
   if (externalId) {
-    const unchanged =
-      publication.last_payload_hash === payloadHash &&
-      publication.last_synced_revision === (property.revision ?? 1) &&
-      publication.status === "published";
-    if (!unchanged) {
+    const stored = (publication["last_payload_snapshot"] ?? null) as PayloadSnapshot | null;
+    snapshotBase =
+      stored && Object.keys(stored).length
+        ? stored
+        : remoteBefore.remote
+          ? remoteToPayloadSnapshot(remoteBefore.remote)
+          : null;
+    if (!stored && !remoteBefore.remote) {
+      // Sem snapshot local e sem leitura do site: não há como saber o que mudou.
+      // Preferimos não escrever nada a arriscar sobrescrever o site.
+      throw new ImobiApiError({
+        message:
+          "Não foi possível ler o imóvel no site para comparar os campos. Nenhuma alteração foi enviada.",
+        category: "network",
+      });
+    }
+    const minimal = buildMinimalUpdate(fullPayload, snapshotBase, { personLinkChanges: [] });
+    payload = minimal.payload;
+    sentKeys = Object.keys(minimal.payload);
+
+    if (hasEffectiveChange(minimal)) {
+      assertWriteAllowed("update", updatesPaused);
       const response = await imobiRequest(
         job.provider,
         `/imovel/alterar/${encodeURIComponent(externalId)}`,
@@ -678,14 +705,27 @@ export async function processJob(
           correlationId: job.correlation_id,
         },
       );
-      await logAttempt(admin, job, { step: "update", ok: true, httpStatus: response.httpStatus });
+      await logAttempt(admin, job, {
+        step: "update",
+        ok: true,
+        httpStatus: response.httpStatus,
+        errorMessage: `Alteração mínima: ${minimal.changedKeys.join(", ")}`,
+      });
+    } else {
+      sentKeys = [];
+      await logAttempt(admin, job, {
+        step: "update",
+        ok: true,
+        errorMessage: "Nenhum campo mudou desde o último envio confirmado.",
+      });
     }
   } else {
     let response: Awaited<ReturnType<typeof imobiRequest>>;
     try {
+      assertWriteAllowed("publish", updatesPaused);
       response = await imobiRequest(job.provider, "/imovel/inserir", {
         method: "POST",
-        json: payload,
+        json: fullPayload,
         allowRetry: false, // criação nunca sofre retry cego
         correlationId: job.correlation_id,
       });
@@ -806,11 +846,23 @@ export async function processJob(
   const finalStatus = verified ? "published" : "partial";
   const publicUrl = extractPublicUrl(job.provider, remote, externalId);
 
+  // Novo ponto de partida: o que o site tinha + o que acabou de ser gravado.
+  // Assim a próxima alteração volta a enviar somente a diferença real.
+  const nextSnapshot: PayloadSnapshot =
+    mode === "insert"
+      ? { ...(fullPayload as PayloadSnapshot) }
+      : {
+          ...(snapshotBase ?? {}),
+          ...Object.fromEntries(sentKeys.map((key) => [key, (payload as PayloadSnapshot)[key]])),
+        };
+
   await admin
     .from("property_provider_publications")
     .update({
       status: finalStatus,
-      last_payload_hash: payloadHash,
+      last_payload_hash: hashPayload(fullPayload as never),
+      last_payload_snapshot: nextSnapshot,
+      last_payload_synced_at: new Date().toISOString(),
       last_synced_revision: property.revision ?? 1,
       last_synced_at: new Date().toISOString(),
       last_verified_at: new Date().toISOString(),
