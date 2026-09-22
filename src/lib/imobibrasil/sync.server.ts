@@ -37,11 +37,14 @@ import {
 import { providerExternalCode } from "./provider-code";
 import {
   canCreateAfterAmbiguity,
-  decideFromMatches,
-  extractRemoteListItems,
+  classifyRemoteLookup,
+  describeInconclusive,
+  extractRemoteList,
   matchByReference,
   normalizeCadastralAction,
   type ReferenceMatch,
+  type RemoteListRead,
+  type RemoteLookupResult,
 } from "./reference-lookup";
 
 
