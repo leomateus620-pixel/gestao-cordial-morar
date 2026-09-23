@@ -26,11 +26,11 @@ export const PERSON_LINK_KEYS = [
 
 export type PayloadSnapshot = Record<string, unknown>;
 
-/** Comparação tolerante: "1.500" == "1500", "10,00" == "10", "Sim" == "sim". */
 /** Campos monetários: comparados em centavos. Demais números: valor exato. */
 const MONEY_KEY = /^(valor|preco)/i;
 /** Identificadores/códigos: sempre texto, nunca número. */
 const ID_KEY = /^(codigo|referencia|cep|cpf|cnpj|telefone)/i;
+const INTEGER_KEY = /^(dormitorios|suites|banheiros|salas|garagem|vagas|acomodacoes|anoConstrucao)$/i;
 
 export function sameValue(a: unknown, b: unknown, key?: string): boolean {
   if (Array.isArray(a) || Array.isArray(b)) {
@@ -40,11 +40,13 @@ export function sameValue(a: unknown, b: unknown, key?: string): boolean {
   }
   if (key && ID_KEY.test(key)) return textOf(a) === textOf(b);
   const scale = key && MONEY_KEY.test(key) ? 100 : 1_000_000;
-  const left = numberCandidates(a);
-  const right = numberCandidates(b);
-  if (left.length && right.length) {
-    return left.some((x) => right.some((y) => Math.round(x * scale) === Math.round(y * scale)));
+  const left = parseKnownNumber(a, key);
+  const right = parseKnownNumber(b, key);
+  if (left !== null && right !== null) {
+    return Math.round(left * scale) === Math.round(right * scale);
   }
+  // Um lado numérico e outro ambíguo não autorizam confirmação de entrega.
+  if ((left === null) !== (right === null)) return false;
   return normalizeScalar(a) === normalizeScalar(b);
 }
 
@@ -54,21 +56,9 @@ function textOf(value: unknown): string {
 }
 
 /**
- * Interpretações numéricas possíveis. "1.234" é ambíguo (milhar ou decimal):
- * só aceita a leitura decimal quando o outro lado é número nativo.
- */
-function numberCandidates(value: unknown): number[] {
-  const parsed = parseKnownNumber(value);
-  if (parsed === null) return [];
-  if (typeof value === "string" && /^-?\d{1,3}\.\d{3}$/.test(value.trim())) {
-    const decimal = Number(value.trim());
-    return Number.isFinite(decimal) ? [parsed, decimal] : [parsed];
-  }
-  return [parsed];
-}
-
-/**
- * Lê número em formato CONHECIDO, sem adivinhar:
+ * Lê número em formato conhecido. Um ponto com três dígitos finais pode ser
+ * milhar ou decimal; só é resolvido quando o campo restringe a interpretação
+ * (dinheiro tem centavos, contagens são inteiras) ou há marcador R$/vírgula.
  *  - número nativo: preserva a parte decimal (10.5 continua 10.5);
  *  - "1.500,50" / "1500,5" → vírgula decimal (padrão brasileiro);
  *  - "1.500" / "1.500.000" → ponto de milhar (grupos de 3);
@@ -76,14 +66,20 @@ function numberCandidates(value: unknown): number[] {
  *  - identificadores com zero à esquerda ("0123") NÃO viram número.
  * Qualquer outro texto retorna null e é comparado como texto.
  */
-export function parseKnownNumber(value: unknown): number | null {
+export function parseKnownNumber(value: unknown, key?: string): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value !== "string") return null;
+  const currencyMarked = /^\s*R\$/i.test(value);
   const text = value.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
   if (!text) return null;
   if (/^-?0\d/.test(text)) return null;
   let normalized: string | null = null;
-  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(text)) normalized = text.replace(/\./g, "").replace(",", ".");
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(text)) {
+    if (!text.includes(",") && !currencyMarked && !(key && (MONEY_KEY.test(key) || INTEGER_KEY.test(key)))) {
+      return null;
+    }
+    normalized = text.replace(/\./g, "").replace(",", ".");
+  }
   else if (/^-?\d+,\d+$/.test(text)) normalized = text.replace(",", ".");
   else if (/^-?\d+(\.\d{1,2})?$/.test(text)) normalized = text;
   else if (/^-?\d+\.\d+$/.test(text)) normalized = text;

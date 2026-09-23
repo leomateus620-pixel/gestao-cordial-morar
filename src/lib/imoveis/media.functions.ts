@@ -9,6 +9,7 @@ import {
 } from "@/lib/imoveis/watermark-config";
 import type { PropertyImage } from "@/types/property";
 import { workerCallerSecret } from "@/lib/workers/hook-auth";
+import { rebaseGalleryMove, type GalleryMove } from "@/lib/imoveis/gallery-move";
 
 const BUCKET = "property-images";
 
@@ -104,10 +105,25 @@ async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[
     .from("property_images")
     .select(IMAGE_COLUMNS)
     .eq("property_id", propertyId)
-    .eq("pending_remote_delete", false)
+    .or("pending_remote_delete.is.null,pending_remote_delete.eq.false")
     .order("position", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as ImageRow[];
+}
+
+async function stableGallery(supabase: Client, propertyId: string): Promise<{ rows: ImageRow[]; revision: number }> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const readRevision = async () => {
+      const { data, error } = await supabase.from("properties").select("gallery_revision").eq("id", propertyId).single();
+      if (error) throw new Error(error.message);
+      return Number(data.gallery_revision ?? 1);
+    };
+    const before = await readRevision();
+    const rows = await listRows(supabase, propertyId);
+    const after = await readRevision();
+    if (before === after) return { rows, revision: after };
+  }
+  throw new Error("A galeria está sendo alterada. Aguarde um instante.");
 }
 
 /**
@@ -142,13 +158,43 @@ export const listPropertyImages = createServerFn({ method: "GET" })
       signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
   );
 
+export const getPropertyGallerySnapshot = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string }) => data)
+  .handler(async ({ data, context }): Promise<{ images: PropertyImage[]; revision: number }> => {
+    const snapshot = await stableGallery(context.supabase, data.propertyId);
+    return { images: await signImages(context.supabase, snapshot.rows), revision: snapshot.revision };
+  });
+
+export type PropertyImageUploadIssue = {
+  fileName: string;
+  reason: string;
+  createdAt: string;
+};
+
+export const listPropertyImageUploadIssues = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string }) => data)
+  .handler(async ({ data, context }): Promise<PropertyImageUploadIssue[]> => {
+    const { data: issues, error } = await context.supabase.rpc(
+      "property_image_upload_issues" as never,
+      { _property_id: data.propertyId } as never,
+    );
+    if (error) throw new Error(error.message);
+    return Array.isArray(issues) ? issues as PropertyImageUploadIssue[] : [];
+  });
+
 /**
  * URLs assinadas de upload — os arquivos vão direto do navegador para o bucket
  * privado: o original preservado, a versão com a marca e a miniatura.
  */
 export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; fileName: string }) => data)
+  .inputValidator((data: {
+    propertyId: string; fileName: string;
+    contentHash?: string; sizeBytes?: number; mimeType?: string | null;
+    replacementFor?: string | null; batchId?: string | null;
+  }) => data)
   .handler(
     async ({
       data,
@@ -156,11 +202,13 @@ export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
     }): Promise<{
       path: string;
       token: string;
+      reservationId: string | null;
       processed: { path: string; token: string };
       thumbnail: { path: string; token: string };
     }> => {
       const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
       const id = crypto.randomUUID();
+      const originalPath = `${data.propertyId}/originais/${id}-${safe}`;
       const sign = async (path: string) => {
         const { data: signed, error } = await context.supabase.storage
           .from(BUCKET)
@@ -168,10 +216,27 @@ export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
         if (error || !signed) throw new Error(error?.message ?? "Falha ao preparar o envio.");
         return { path: signed.path as string, token: signed.token as string };
       };
-      const original = await sign(`${data.propertyId}/originais/${id}-${safe}`);
+      const original = await sign(originalPath);
       const processed = await sign(`${data.propertyId}/marcadas/${id}.jpg`);
       const thumbnail = await sign(`${data.propertyId}/marcadas/${id}-thumb.jpg`);
-      return { path: original.path, token: original.token, processed, thumbnail };
+      // Os tokens só saem desta função depois do commit da reserva. Se a
+      // assinatura falhar, nenhum arquivo foi enviado nem há reserva órfã.
+      let reservationId: string | null = null;
+      if (data.contentHash && data.sizeBytes) {
+        const { data: reserved, error: reserveError } = await context.supabase.rpc(
+          "property_image_upload_reserve" as never, {
+            _property_id: data.propertyId, _storage_path: originalPath,
+            _file_name: data.fileName, _mime_type: data.mimeType ?? null,
+            _size_bytes: data.sizeBytes, _content_hash: data.contentHash,
+            _replacement_for: data.replacementFor ?? null,
+            _batch_id: data.batchId ?? null,
+          } as never,
+        );
+        if (reserveError) throw new Error(reserveError.message);
+        if (typeof reserved !== "string") throw new Error("A intenção de upload não foi persistida.");
+        reservationId = reserved;
+      }
+      return { path: original.path, token: original.token, reservationId, processed, thumbnail };
     },
   );
 
@@ -180,7 +245,8 @@ async function storedSize(supabase: Client, path: string): Promise<number> {
   const slash = path.lastIndexOf("/");
   const dir = slash > 0 ? path.slice(0, slash) : "";
   const name = path.slice(slash + 1);
-  const { data } = await supabase.storage.from(BUCKET).list(dir, { search: name, limit: 100 });
+  const { data, error } = await supabase.storage.from(BUCKET).list(dir, { search: name, limit: 100 });
+  if (error) throw new Error(error.message);
   const found = ((data ?? []) as Array<{ name: string; metadata?: { size?: number } }>).find(
     (f) => f.name === name,
   );
@@ -201,6 +267,8 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       mimeType?: string | null;
       sizeBytes?: number | null;
       contentHash: string;
+      reservationId?: string | null;
+      replacementFor?: string | null;
       batchId?: string | null;
       processedPath?: string | null;
       thumbnailPath?: string | null;
@@ -223,6 +291,53 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       imageId: string | null;
     }> => {
       const rows = await listRows(context.supabase, data.propertyId);
+      if (!(await storedSize(context.supabase, data.storagePath))) {
+        throw new Error("O arquivo ainda não chegou ao servidor. Selecione este arquivo novamente.");
+      }
+
+      if (data.reservationId) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: reservation, error: reservationError } = await (supabaseAdmin as Client)
+          .from("property_image_upload_reservations")
+          .select("property_id, storage_path, uploaded_by")
+          .eq("id", data.reservationId).maybeSingle();
+        if (reservationError) throw new Error(reservationError.message);
+        if (!reservation || reservation.property_id !== data.propertyId ||
+            reservation.storage_path !== data.storagePath ||
+            reservation.uploaded_by !== context.userId) {
+          throw new Error("Reserva de upload não corresponde a este arquivo.");
+        }
+        const { data: finalized, error: finalizeError } = await supabaseAdmin.rpc(
+          "property_image_upload_finalize" as never,
+          { _reservation_id: data.reservationId } as never,
+        );
+        if (finalizeError) throw new Error(finalizeError.message);
+        const outcome = finalized as { status?: string; imageId?: string; reason?: string } | null;
+        if (outcome?.status === "blocked") {
+          throw new Error(outcome.reason === "foto_substituida_foi_removida"
+            ? "A foto substituída foi removida durante o envio. O arquivo original foi preservado."
+            : "O imóvel não está disponível para receber esta foto.");
+        }
+        if (!outcome?.imageId) throw new Error("A foto chegou, mas o registro ainda não foi confirmado.");
+        if (outcome.status === "registered") {
+          const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+          try {
+            await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [outcome.imageId] });
+            await kickImageWorker(2);
+          } catch (enqueueError) {
+            console.error("[image_enqueue_deferred]", JSON.stringify({
+              propertyId: data.propertyId, imageId: outcome.imageId,
+              error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+            }));
+          }
+        }
+        return {
+          images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
+          duplicated: outcome.status === "duplicated",
+          resumed: false,
+          imageId: outcome.imageId,
+        };
+      }
 
       // Versão com marca vinda do navegador: só vale se estiver mesmo no Storage.
       const buildReady = async () => {
@@ -247,19 +362,22 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       };
       const ready = await buildReady();
 
-      const duplicate = rows.find((r) => r.content_hash && r.content_hash === data.contentHash);
+      const duplicate = data.replacementFor
+        ? null
+        : rows.find((r) => r.content_hash && r.content_hash === data.contentHash);
       if (duplicate) {
         const incomplete =
           duplicate.processing_status !== "ready" && duplicate.processing_status !== "legacy";
         if (incomplete && ready) {
           // Foto que estava presa na fila: adota a marca recém-gerada.
-          await context.supabase.storage.from(BUCKET).remove([data.storagePath]);
           const { error } = await context.supabase
             .from("property_images")
             .update(ready)
             .eq("id", duplicate.id)
             .eq("property_id", data.propertyId);
           if (error) throw new Error(error.message);
+          const { error: cleanupError } = await context.supabase.storage.from(BUCKET).remove([data.storagePath]);
+          if (cleanupError) console.warn("[duplicate_image_cleanup]", JSON.stringify({ propertyId: data.propertyId, error: cleanupError.message }));
         } else {
           await context.supabase.storage
             .from(BUCKET)
@@ -284,8 +402,10 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
 
       // Posição e capa são atribuídas dentro do banco, com bloqueio por imóvel:
       // 30 fotos enviadas ao mesmo tempo recebem 30 posições distintas.
-      const { data: insertedId, error } = await context.supabase.rpc("property_image_register", {
+      const { data: insertedId, error } = await (context.supabase as Client).rpc(
+        data.replacementFor ? "property_image_stage_replacement" : "property_image_register", {
         _property_id: data.propertyId,
+        ...(data.replacementFor ? { _old_image_id: data.replacementFor } : {}),
         _payload: {
           storage_path: data.storagePath,
           original_storage_path: data.storagePath,
@@ -315,12 +435,21 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
 
       if (data.batchId) await bumpBatch(context.supabase, data.batchId, "registered_count");
 
-      if (!ready) {
+      if (!ready && !data.replacementFor) {
         // Caminho de exceção (navegador sem canvas): a fila do servidor assume.
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-        await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [newId] });
-        await kickImageWorker(2);
+        try {
+          await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [newId] });
+          await kickImageWorker(2);
+        } catch (enqueueError) {
+          // O original e a linha da foto já estão duráveis. O watchdog do worker
+          // encontra linhas pendentes sem job e recupera a entrega.
+          console.error("[image_enqueue_deferred]", JSON.stringify({
+            propertyId: data.propertyId, imageId: newId,
+            error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+          }));
+        }
       }
 
       return {
@@ -415,22 +544,6 @@ export const getPropertyImageBatch = createServerFn({ method: "GET" })
     };
   });
 
-/** Enfileira a sincronização de fotos dos sites já publicados (nunca o cadastro). */
-async function queueMedia(propertyId: string, userId?: string) {
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { queueMediaSync } = await import("@/lib/imobibrasil/media-sync.server");
-    const result = await queueMediaSync(supabaseAdmin, propertyId, {
-      requestedBy: userId ?? null,
-    });
-    if (result.enqueued.length) await kickSyncWorker();
-    return result;
-  } catch {
-    // A fila persistente e o pg_cron garantem o reenvio.
-    return { enqueued: [] as string[], galleryRevision: 0 };
-  }
-}
-
 async function kickSyncWorker() {
   try {
     const secret =
@@ -452,28 +565,34 @@ async function kickSyncWorker() {
   }
 }
 
-/** Sincroniza a galeria com os sites sob demanda (fotos apenas). */
-export const syncPropertyGallery = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string }) => data)
-  .handler(async ({ data, context }) => queueMedia(data.propertyId, context.userId));
-
 /** Persiste os destinos do imóvel e regenera as marcas quando eles mudam. */
 export const setPropertyPublishTargets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string; targets: string[] }) => data)
   .handler(async ({ data, context }): Promise<{ images: PropertyImage[]; variant: string }> => {
     const targets = normalizeTargets(data.targets);
-    const { error } = await context.supabase
+    const { data: saved, error } = await context.supabase
       .from("properties")
       .update({ publish_targets: targets })
-      .eq("id", data.propertyId);
+      .eq("id", data.propertyId)
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!saved) throw new Error("Imóvel não encontrado ou sem permissão para alterar destinos.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-    const result = await enqueueImageJobs(supabaseAdmin, data.propertyId, { targets });
-    if (result.enqueued) await kickImageWorker(4);
+    try {
+      const result = await enqueueImageJobs(supabaseAdmin, data.propertyId, { targets });
+      if (result.enqueued) await kickImageWorker(4);
+    } catch (enqueueError) {
+      // O gatilho de publish_targets deixou a derivação pendente na mesma
+      // transação da escolha. O worker recupera fotos sem job.
+      console.error("[image_targets_enqueue_deferred]", JSON.stringify({
+        propertyId: data.propertyId,
+        error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+      }));
+    }
 
     return {
       images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
@@ -481,60 +600,28 @@ export const setPropertyPublishTargets = createServerFn({ method: "POST" })
     };
   });
 
-/** Reprocessa fotos com falha (ou uma foto específica) a partir do original. */
-export const retryPropertyImageWatermark = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; imageId?: string }) => data)
-  .handler(async ({ data, context }): Promise<PropertyImage[]> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-    const rows = await listRows(context.supabase, data.propertyId);
-    const retryable = ["failed", "failed_retryable", "failed_permanent", "pending", "processing"];
-    const ids = data.imageId
-      ? [data.imageId]
-      : rows.filter((r) => retryable.includes(r.processing_status)).map((r) => r.id);
-    if (ids.length) {
-      await supabaseAdmin
-        .from("property_image_jobs")
-        .update({ status: "cancelled", last_error_code: "manual_retry" })
-        .in("image_id", ids)
-        .in("status", ["pending", "processing", "retry", "failed"]);
-      await supabaseAdmin
-        .from("property_images")
-        .update({
-          destination_hash: null,
-          processing_status: "pending",
-          processing_error_message: null,
-        })
-        .in("id", ids);
-      await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: ids });
-      await kickImageWorker(2);
-    }
-
-    return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
-  });
-
 export const setPropertyImageCover = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; imageId: string }) => data)
+  .inputValidator((data: { propertyId: string; imageId: string; expectedGalleryRevision?: number }) => data)
   .handler(async ({ data, context }): Promise<PropertyImage[]> => {
     // Invariante do sistema: a capa é sempre a posição 0. Marcar is_cover em
     // outra posição era desfeito pela normalização, então definir capa move a
     // foto para o início da galeria — uma única fonte de verdade.
-    const rows = await listRows(context.supabase, data.propertyId);
-    if (!rows.some((row) => row.id === data.imageId)) return signImages(context.supabase, rows);
-    const orderedIds = [
-      data.imageId,
-      ...rows.map((row) => row.id as string).filter((id) => id !== data.imageId),
-    ];
-    const { error } = await context.supabase.rpc("reorder_property_images", {
-      _property_id: data.propertyId,
-      _ids: orderedIds,
-    });
-    if (error) throw new Error(error.message);
-    // Fotos apenas: nunca reenvia a mesma imagem só por causa do destaque (o
-    // site não tem recurso de alterar destaque e criaria uma cópia).
-    await queueMedia(data.propertyId, context.userId);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const snapshot = await stableGallery(context.supabase, data.propertyId);
+      if (!snapshot.rows.some((row) => row.id === data.imageId))
+        throw new Error("A foto escolhida para capa foi removida da galeria.");
+      const orderedIds = [data.imageId, ...snapshot.rows.map((row) => row.id).filter((id) => id !== data.imageId)];
+      const { error } = await context.supabase.rpc("reorder_property_images", {
+        _property_id: data.propertyId,
+        _ids: orderedIds,
+        _expected_gallery_revision: attempt === 0 ? data.expectedGalleryRevision ?? snapshot.revision : snapshot.revision,
+      });
+      if (!error) break;
+      if (!/galeria_desatualizada/i.test(error.message) || attempt === 2) throw new Error(error.message);
+    }
+    // O gatilho da galeria grava a intenção de mídia na mesma transação.
+    await kickSyncWorker();
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
@@ -544,21 +631,37 @@ export const setPropertyImageCover = createServerFn({ method: "POST" })
  */
 export const reorderPropertyImages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; orderedIds: string[] }) => data)
+  .inputValidator((data: { propertyId: string; orderedIds: string[]; expectedGalleryRevision?: number; move?: GalleryMove | null }) => data)
   .handler(
     async ({ data, context }): Promise<{ ok: true; changed: number; coverId: string | null }> => {
-      const { data: result, error } = await context.supabase.rpc("reorder_property_images", {
-        _property_id: data.propertyId,
-        _ids: data.orderedIds,
-      });
-      if (error) throw new Error(error.message);
+      let ids = data.orderedIds;
+      let expected = data.expectedGalleryRevision;
+      let result: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (expected == null) expected = (await stableGallery(context.supabase, data.propertyId)).revision;
+        const response = await context.supabase.rpc("reorder_property_images", {
+          _property_id: data.propertyId,
+          _ids: ids,
+          _expected_gallery_revision: expected,
+        });
+        if (!response.error) {
+          result = response.data;
+          break;
+        }
+        if (!/galeria_desatualizada/i.test(response.error.message) || !data.move || attempt === 2)
+          throw new Error(response.error.message);
+        const snapshot = await stableGallery(context.supabase, data.propertyId);
+        const rebased = rebaseGalleryMove(snapshot.rows.map((row) => row.id), data.move);
+        if (!rebased.ok) throw new Error(`conflito_ordenacao: ${rebased.reason}`);
+        ids = rebased.orderedIds;
+        expected = snapshot.revision;
+      }
       const payload = (result ?? {}) as { changed?: number; coverId?: string | null };
-      // A nova ordem é uma mudança de mídia: entra na fila só de fotos.
-      if (Number(payload.changed ?? 0) > 0) await queueMedia(data.propertyId, context.userId);
+      await kickSyncWorker();
       return {
         ok: true,
         changed: Number(payload.changed ?? 0),
-        coverId: payload.coverId ?? data.orderedIds[0] ?? null,
+        coverId: payload.coverId ?? ids[0] ?? null,
       };
     },
   );
@@ -575,58 +678,22 @@ export const reorderPropertyImages = createServerFn({ method: "POST" })
  */
 export const deletePropertyImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; imageId: string }) => data)
+  .inputValidator((data: { propertyId: string; imageId: string; expectedGalleryRevision?: number }) => data)
   .handler(async ({ data, context }): Promise<PropertyImage[]> => {
-    const rows = await listRows(context.supabase, data.propertyId);
-    const target = rows.find((r) => r.id === data.imageId);
-    if (!target) return signImages(context.supabase, rows);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: links } = await supabaseAdmin
-      .from("property_image_provider_publications")
-      .select("id, publication_id, deleted_at")
-      .eq("image_id", data.imageId);
-    const pendingRemote = (links ?? []).filter((row) => !row.deleted_at);
-
-    if (pendingRemote.length > 0) {
-      await supabaseAdmin
-        .from("property_image_provider_publications")
-        .update({
-          desired_state: "absent",
-          pending_delete_at: new Date().toISOString(),
-          status: "pending_delete",
-          attempts: 0,
-          next_retry_at: null,
-        })
-        .in(
-          "id",
-          pendingRemote.map((row) => row.id as string),
-        );
-      await supabaseAdmin
-        .from("property_images")
-        .update({ pending_remote_delete: true, is_cover: false })
-        .eq("id", data.imageId)
-        .eq("property_id", data.propertyId);
-    } else {
-      const { error } = await context.supabase
-        .from("property_images")
-        .delete()
-        .eq("id", data.imageId)
-        .eq("property_id", data.propertyId);
-      if (error) throw new Error(error.message);
-      const removable = [
-        target.storage_path,
-        target.original_storage_path,
-        target.processed_storage_path,
-        target.thumbnail_storage_path,
-      ].filter((path, index, all): path is string => Boolean(path) && all.indexOf(path) === index);
-      await context.supabase.storage.from(BUCKET).remove(removable);
+    const snapshot = await stableGallery(context.supabase, data.propertyId);
+    if (!snapshot.rows.some((row) => row.id === data.imageId)) return signImages(context.supabase, snapshot.rows);
+    const { data: result, error } = await (context.supabase as Client).rpc("property_image_delete_atomic", {
+      _property_id: data.propertyId,
+      _image_id: data.imageId,
+      _expected_gallery_revision: data.expectedGalleryRevision ?? snapshot.revision,
+    });
+    if (error) throw new Error(error.message);
+    const orphanPaths = ((result as { orphanStoragePaths?: string[] } | null)?.orphanStoragePaths ?? []).filter(Boolean);
+    if (orphanPaths.length) {
+      const removed = await context.supabase.storage.from(BUCKET).remove(orphanPaths);
+      if (removed.error) console.warn("[image_storage_cleanup]", JSON.stringify({ propertyId: data.propertyId, imageId: data.imageId, error: removed.error.message }));
     }
-
-    // Renumera 0..N-1 e devolve a capa para a primeira foto restante.
-    await context.supabase.rpc("property_images_normalize", { _property_id: data.propertyId });
-    // Exclusão local vira exclusão nos sites pelo endpoint oficial por código.
-    await queueMedia(data.propertyId, context.userId);
+    await kickSyncWorker();
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
@@ -637,183 +704,43 @@ export const deletePropertyImage = createServerFn({ method: "POST" })
  */
 export const replacePropertyImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; oldImageId: string; newImageId: string }) => data)
+  .inputValidator((data: { propertyId: string; oldImageId: string; newImageId: string; expectedGalleryRevision?: number }) => data)
   .handler(async ({ data, context }): Promise<PropertyImage[]> => {
-    const rows = await listRows(context.supabase, data.propertyId);
-    const old = rows.find((row) => row.id === data.oldImageId);
-    const fresh = rows.find((row) => row.id === data.newImageId);
-    if (!old || !fresh) return signImages(context.supabase, rows);
-
-    const orderedIds = rows
-      .map((row) => row.id as string)
-      .filter((id) => id !== data.newImageId)
-      .flatMap((id) => (id === data.oldImageId ? [data.newImageId, id] : [id]));
-    const { error: orderError } = await context.supabase.rpc("reorder_property_images", {
-      _property_id: data.propertyId,
-      _ids: orderedIds,
-    });
-    if (orderError) throw new Error(orderError.message);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: links } = await supabaseAdmin
-      .from("property_image_provider_publications")
-      .select("id, deleted_at")
-      .eq("image_id", data.oldImageId);
-    const pendingRemote = (links ?? []).filter((row) => !row.deleted_at);
-    if (pendingRemote.length > 0) {
-      await supabaseAdmin
-        .from("property_image_provider_publications")
-        .update({
-          desired_state: "absent",
-          pending_delete_at: new Date().toISOString(),
-          status: "pending_delete",
-          replacement_of_image_id: data.newImageId,
-          attempts: 0,
-          next_retry_at: null,
-        })
-        .in(
-          "id",
-          pendingRemote.map((row) => row.id as string),
-        );
-      await supabaseAdmin
-        .from("property_images")
-        .update({ pending_remote_delete: true, is_cover: false })
-        .eq("id", data.oldImageId)
-        .eq("property_id", data.propertyId);
-    } else {
-      await context.supabase
-        .from("property_images")
-        .delete()
-        .eq("id", data.oldImageId)
-        .eq("property_id", data.propertyId);
+    let result: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const snapshot = await stableGallery(context.supabase, data.propertyId);
+      if (!snapshot.rows.some((row) => row.id === data.oldImageId))
+        throw new Error("A foto substituída foi removida durante a edição.");
+      const response = await (context.supabase as Client).rpc("property_image_replace_atomic", {
+        _property_id: data.propertyId,
+        _old_image_id: data.oldImageId,
+        _new_image_id: data.newImageId,
+        _expected_gallery_revision: attempt === 0
+          ? data.expectedGalleryRevision ?? snapshot.revision
+          : snapshot.revision,
+      });
+      if (!response.error) { result = response.data; break; }
+      if (!/galeria_desatualizada/i.test(response.error.message) || attempt === 2)
+        throw new Error(response.error.message);
     }
-
-    await context.supabase.rpc("property_images_normalize", { _property_id: data.propertyId });
-    await queueMedia(data.propertyId, context.userId);
-    return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
-  });
-
-
-/**
- * Prepara o reprocessamento das fotos travadas: o runtime publicado não pode
- * compilar WebAssembly, então a marca é refeita no navegador a partir do
- * original já guardado no Storage.
- */
-export const preparePropertyImageReprocess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; imageId?: string }) => data)
-  .handler(
-    async ({
-      data,
-      context,
-    }): Promise<
-      Array<{
-        imageId: string;
-        fileName: string;
-        downloadUrl: string;
-        processed: { path: string; token: string };
-        thumbnail: { path: string; token: string };
-      }>
-    > => {
-      const rows = await listRows(context.supabase, data.propertyId);
-      const stuck = ["pending", "processing", "failed", "failed_retryable", "failed_permanent"];
-      const targets = rows.filter(
-        (row) =>
-          (data.imageId ? row.id === data.imageId : true) && stuck.includes(row.processing_status),
-      );
-      if (!targets.length) return [];
-
-      const sourcePaths = targets.map((row) => row.original_storage_path ?? row.storage_path);
-      const { data: signed } = await context.supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(sourcePaths, 1800);
-      const byPath = new Map(
-        ((signed ?? []) as Array<{ path?: string | null; signedUrl: string }>).map((item) => [
-          item.path ?? "",
-          item.signedUrl,
-        ]),
-      );
-
-      const sign = async (path: string) => {
-        const { data: upload, error } = await context.supabase.storage
-          .from(BUCKET)
-          .createSignedUploadUrl(path);
-        if (error || !upload) throw new Error(error?.message ?? "Falha ao preparar o reenvio.");
-        return { path: upload.path as string, token: upload.token as string };
-      };
-
-      const out: Array<{
-        imageId: string;
-        fileName: string;
-        downloadUrl: string;
-        processed: { path: string; token: string };
-        thumbnail: { path: string; token: string };
-      }> = [];
-      for (const row of targets) {
-        const source = row.original_storage_path ?? row.storage_path;
-        const downloadUrl = byPath.get(source);
-        if (!downloadUrl) continue;
-        const stamp = `${row.id}-${Date.now()}`;
-        out.push({
-          imageId: row.id,
-          fileName: row.file_name,
-          downloadUrl,
-          processed: await sign(`${data.propertyId}/marcadas/${stamp}.jpg`),
-          thumbnail: await sign(`${data.propertyId}/marcadas/${stamp}-thumb.jpg`),
-        });
-      }
-      return out;
-    },
-  );
-
-/** Registra a foto remarcada no navegador e libera a publicação nos sites. */
-export const finalizePropertyImageReprocess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (data: {
-      propertyId: string;
-      imageId: string;
-      processedPath: string;
-      thumbnailPath: string;
-      processedChecksum: string;
-      watermarkVariant: string;
-      watermarkVersion: string;
-      destinationHash: string;
-      width: number;
-      height: number;
-    }) => data,
-  )
-  .handler(async ({ data, context }): Promise<PropertyImage[]> => {
-    const size = await storedSize(context.supabase, data.processedPath);
-    if (!size) throw new Error("A foto com a marca não pôde ser confirmada. Tente de novo.");
-
-    const { error } = await context.supabase
-      .from("property_images")
-      .update({
-        processed_storage_path: data.processedPath,
-        thumbnail_storage_path: data.thumbnailPath,
-        processed_checksum: data.processedChecksum,
-        watermark_variant: data.watermarkVariant,
-        watermark_version: data.watermarkVersion,
-        destination_hash: data.destinationHash,
-        processing_status: "ready",
-        processing_error_code: null,
-        processing_error_message: null,
-        processed_at: new Date().toISOString(),
-        processing_finished_at: new Date().toISOString(),
-        width: data.width,
-        height: data.height,
-      })
-      .eq("id", data.imageId)
-      .eq("property_id", data.propertyId);
-    if (error) throw new Error(error.message);
-
+    const orphanPaths = ((result as { orphanStoragePaths?: string[] } | null)?.orphanStoragePaths ?? []).filter(Boolean);
+    if (orphanPaths.length) {
+      const removed = await context.supabase.storage.from(BUCKET).remove(orphanPaths);
+      if (removed.error) console.warn("[image_storage_cleanup]", JSON.stringify({ propertyId: data.propertyId, imageId: data.oldImageId, error: removed.error.message }));
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("property_image_jobs")
-      .update({ status: "cancelled", last_error_code: "reprocessado_no_navegador" })
-      .eq("image_id", data.imageId)
-      .in("status", ["pending", "processing", "retry", "failed"]);
-
+    const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+    try {
+      await enqueueImageJobs(supabaseAdmin, data.propertyId, { imageIds: [data.newImageId] });
+      await kickImageWorker(1);
+    } catch (enqueueError) {
+      // O original e a intenção de galeria sobreviveram; o watchdog encontra
+      // a foto ativa pendente caso este kick ou o enfileiramento falhem.
+      console.error("[replacement_image_enqueue_deferred]", JSON.stringify({
+        propertyId: data.propertyId, imageId: data.newImageId,
+        error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError),
+      }));
+    }
+    await kickSyncWorker();
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });

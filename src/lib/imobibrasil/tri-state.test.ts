@@ -5,7 +5,7 @@ import { classifyField, buildTriStateReport, nextConfirmedSnapshot, isOwnEcho } 
 describe("classifyField", () => {
   it("trata formatos diferentes do mesmo valor como iguais", () => {
     assert.equal(
-      classifyField({ confirmed: "450000", local: 450000, remote: "450.000", remoteKnown: true }),
+      classifyField({ field: "valor", confirmed: "450000", local: 450000, remote: "450.000", remoteKnown: true }),
       "igual",
     );
   });

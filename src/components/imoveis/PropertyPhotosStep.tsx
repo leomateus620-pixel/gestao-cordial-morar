@@ -51,14 +51,6 @@ export function PropertyPhotosStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId, targetsKey]);
 
-  // Fotos que ficaram sem marca são refeitas sozinhas, sem clique nenhum.
-  const autoHeal = media.autoHealWatermarks;
-  useEffect(() => {
-    if (!propertyId || falhas === 0) return;
-    const timer = setTimeout(() => void autoHeal(), 1200);
-    return () => clearTimeout(timer);
-  }, [propertyId, falhas, autoHeal]);
-
   async function pickFiles() {
     if (!propertyId && onRequestSave) {
       setPreparing(true);
@@ -77,7 +69,7 @@ export function PropertyPhotosStep({
 
   const sorting = usePhotoSorting({
     items: rows,
-    onReorder: (orderedIds) => media.reorderPhotos(orderedIds),
+    onReorder: (orderedIds, movedId) => media.reorderPhotos(orderedIds, movedId),
   });
   const sortedRows = sorting.ordered;
 
@@ -91,8 +83,9 @@ export function PropertyPhotosStep({
   }, []);
 
   function move(index: number, delta: number) {
+    const movedId = sortedRows[index]?.id ?? null;
     sorting.moveTo(index, index + delta);
-    setTimeout(sorting.commit, 0);
+    setTimeout(() => sorting.commit(movedId), 0);
   }
 
 
@@ -194,13 +187,7 @@ export function PropertyPhotosStep({
                   }`}
                 >
                   {item.status === "erro" ? (
-                    <button
-                      type="button"
-                      onClick={() => media.retryUpload(item.key)}
-                      className="inline-flex items-center gap-1 font-semibold text-rose-600"
-                    >
-                      <RefreshCw className="size-3" /> Tentar novamente
-                    </button>
+                    "Arquivo não confirmado. Se não aparecer na galeria, selecione-o novamente."
                   ) : item.status === "duplicada" ? (
                     "Já estava pronta"
                   ) : item.status === "retomada" ? (
@@ -208,13 +195,30 @@ export function PropertyPhotosStep({
                   ) : item.status === "pronta" ? (
                     "Enviada"
                   ) : item.status === "processando" ? (
-                    "Aplicando marca"
+                    item.error ?? "Aplicando marca"
                   ) : item.status === "enviando" ? (
                     `${item.progress}%`
                   ) : (
                     "Preparando"
                   )}
                 </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {media.uploadIssues.length > 0 && (
+        <div className="rounded-2xl bg-amber-500/10 p-3 text-[11px] text-amber-800">
+          <p className="font-semibold">Arquivos que precisam de atenção</p>
+          <ul className="mt-1 space-y-1">
+            {media.uploadIssues.map((issue, index) => (
+              <li key={`${issue.createdAt}-${index}`}>
+                <strong>{issue.fileName}</strong>: {issue.reason === "original_nao_chegou"
+                  ? "o original não chegou ao servidor. Selecione somente este arquivo novamente."
+                  : issue.reason === "foto_substituida_foi_removida"
+                    ? "a foto que seria substituída foi removida durante o envio. O original foi preservado."
+                    : "o imóvel deixou de aceitar esta foto durante o envio."}
               </li>
             ))}
           </ul>
@@ -288,14 +292,11 @@ export function PropertyPhotosStep({
                 </span>
               )}
               {image.processingStatus.startsWith("failed") && (
-                <button
-                  type="button"
-                  onClick={() => media.remove.mutate(image.id)}
-                  className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-rose-900/60 px-2 text-center text-[10px] font-bold text-white"
-                >
-                  <Trash2 className="size-3.5" />
-                  Marca não aplicada — remover e enviar de novo
-                </button>
+                <span className="absolute inset-0 flex items-center justify-center bg-foreground/55 px-2 text-center text-[10px] font-bold text-white">
+                  {image.processingStatus === "failed_permanent"
+                    ? "Arquivo indisponível para processamento; substitua esta foto."
+                    : "Foto salva; processamento será retomado automaticamente."}
+                </span>
               )}
 
               {image.processingStatus === "ready" && image.watermarkLabel && (

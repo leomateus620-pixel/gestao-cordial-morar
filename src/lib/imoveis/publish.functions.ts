@@ -40,6 +40,8 @@ export type PublicationStatusView = {
   /** Estado só das fotos, independente do cadastro. */
   media: {
     status: string | null;
+    desiredRevision: number | null;
+    confirmedRevision: number | null;
     orderGuarantee: string | null;
     expectedCount: number | null;
     syncedCount: number | null;
@@ -157,82 +159,30 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     if (propertyError) throw new Error(propertyError.message);
     if (!property) throw new Error("Imóvel não encontrado.");
 
-    // Foto nunca segura os dados do imóvel: o publish sobe já, e apenas
-    // contamos quantas fotos ficam de fora (em processamento ou com falha)
-    // para a UI avisar o usuário em vez de falhar em silêncio.
-    let skippedImages = 0;
-    let pendingImages = 0;
-    if (action === "publish" || action === "update") {
-      const [{ count: inFlight }, { count: failed }] = await Promise.all([
-        context.supabase
-          .from("property_images")
-          .select("id", { count: "exact", head: true })
-          .eq("property_id", property.id)
-          .in("processing_status", ["pending", "processing"]),
-        context.supabase
-          .from("property_images")
-          .select("id", { count: "exact", head: true })
-          .eq("property_id", property.id)
-          .in("processing_status", ["failed", "failed_retryable", "failed_permanent"]),
-      ]);
-      pendingImages = inFlight ?? 0;
-      skippedImages = failed ?? 0;
-    }
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
-
-    if (action === "publish" || action === "update") {
-      await supabaseAdmin
-        .from("properties")
-        .update({ publish_targets: providers })
-        .eq("id", property.id);
+    if (!["publish", "update", "unpublish", "delete"].includes(action)) {
+      throw new Error("Ação de publicação inválida.");
     }
-
-
-    for (const provider of providers) {
-      await supabaseAdmin.from("property_provider_publications").upsert(
-        {
-          property_id: property.id,
-          provider,
-          enabled: action !== "unpublish" && action !== "delete",
-          external_reference: buildExternalReference(property.id),
-          status: action === "unpublish" ? "pending" : "pending",
-        },
-        { onConflict: "property_id,provider", ignoreDuplicates: true },
-      );
-      await supabaseAdmin.from("property_sync_jobs").upsert(
-        {
-          property_id: property.id,
-          provider,
-          action,
-          requested_revision: property.revision ?? 1,
-          requested_by: context.userId,
-          status: "pending",
-          next_run_at: new Date().toISOString(),
-        },
-        { onConflict: "property_id,provider,action,requested_revision", ignoreDuplicates: false },
-      );
+    // Uma única transação fixa a decisão de disponibilidade, a revisão e as
+    // intenções por destino. O request HTTP abaixo só acelera o worker.
+    const { data: requested, error: requestError } = await supabaseAdmin.rpc(
+      "property_publication_request" as never,
+      {
+        _property_id: property.id,
+        _providers: providers,
+        _action: action,
+        _requested_by: context.userId,
+        _external_reference: buildExternalReference(property.id),
+        _expected_revision: null,
+      } as never,
+    );
+    if (requestError) throw new Error(requestError.message);
+    if (!(requested as { ok?: boolean } | null)?.ok) {
+      throw new Error("Não foi possível persistir a decisão de publicação.");
     }
-
-    await supabaseAdmin.from("properties").update({ is_draft: false }).eq("id", property.id);
-
-    // Fotos entram depois dos jobs: qualquer falha na fila de imagem não pode
-    // impedir o envio dos dados do imóvel para as imobiliárias.
-    if (action === "publish" || action === "update") {
-      try {
-        const { enqueueImageJobs, runImageWorker } = await import(
-          "@/lib/imoveis/image-pipeline.server"
-        );
-        const queued = await enqueueImageJobs(supabaseAdmin, property.id, { targets: providers });
-        if (queued.enqueued) await runImageWorker(supabaseAdmin, { limit: 6 });
-      } catch {
-        // a fila persistente garante o reprocessamento
-      }
-    }
-
     await kickWorker();
-    return { enqueued: providers, skippedImages, pendingImages };
+    return { enqueued: providers, durable: true };
 
   });
 
@@ -240,7 +190,7 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string }) => data)
   .handler(async ({ data, context }): Promise<PublicationStatusView[]> => {
-    const [{ data: publications }, { data: jobs }, { data: prop }] = await Promise.all([
+    const [publicationResult, jobResult, propertyResult] = await Promise.all([
       context.supabase
         .from("property_provider_publications")
         .select("*")
@@ -252,10 +202,16 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         .in("status", ["pending", "processing", "retry"]),
       context.supabase
         .from("properties")
-        .select("revision, updated_at")
+        .select("revision, gallery_revision, updated_at")
         .eq("id", data.propertyId)
         .maybeSingle(),
     ]);
+    for (const result of [publicationResult, jobResult, propertyResult]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    const publications = publicationResult.data;
+    const jobs = jobResult.data;
+    const prop = propertyResult.data;
     const list = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
 
     const jobIndex = new Map(
@@ -285,6 +241,8 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
       activeJob: jobIndex.get(row.provider) ?? null,
       media: {
         status: row.media_status ?? null,
+        desiredRevision: (prop as { gallery_revision?: number } | null)?.gallery_revision ?? null,
+        confirmedRevision: row.synced_gallery_revision ?? null,
         orderGuarantee: row.media_order_guarantee ?? null,
         expectedCount: row.media_expected_count ?? null,
         syncedCount: row.media_synced_count ?? null,
@@ -317,132 +275,6 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
     }));
   });
 
-export const retryPropertySync = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (data: { propertyId: string; provider: string; component?: "cadastro" | "fotos" }) => data,
-  )
-  .handler(async ({ data, context }) => {
-    const providers = sanitizeProviders([data.provider]);
-    if (!providers.length) throw new Error("Destino inválido.");
-    await assertProviderScope(context.supabase as never, context.userId, providers);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Repetir só retoma o trabalho pendente DESTE destino/componente. O job
-    // reaproveita o anúncio existente (nunca cria outro imóvel).
-    const provider = providers[0]!;
-    let query = supabaseAdmin
-      .from("property_sync_jobs")
-      .update({ status: "retry", next_run_at: new Date().toISOString(), attempts: 0 })
-      .eq("property_id", data.propertyId)
-      .eq("provider", provider)
-      .is("superseded_by", null)
-      .in("status", ["failed", "retry", "cancelled"]);
-    if (data.component === "fotos") query = query.eq("action", "media_sync");
-    else if (data.component === "cadastro") query = query.neq("action", "media_sync");
-    const { data: reopened } = await query.select("id");
-    let scheduled = (reopened ?? []).length;
-
-    // Nada a reabrir: agenda a parte que continua pendente na publicação
-    // (envio parcial terminou como concluído e não aparecia para repetir).
-    if (!scheduled) {
-      const { data: pub } = await supabaseAdmin
-        .from("property_provider_publications")
-        .select("status, media_status, last_field_verification, characteristic_sync_incomplete, external_property_id")
-        .eq("property_id", data.propertyId)
-        .eq("provider", provider)
-        .maybeSingle();
-      const { data: property } = await supabaseAdmin
-        .from("properties")
-        .select("revision, gallery_revision")
-        .eq("id", data.propertyId)
-        .maybeSingle();
-      if (pub && property) {
-        const verification = (pub.last_field_verification ?? {}) as { divergent?: unknown; unverifiable?: unknown };
-        const divergent = Array.isArray(verification.divergent) ? (verification.divergent as string[]) : [];
-        const wantsCadastro =
-          data.component !== "fotos" &&
-          (["partial", "error", "pending", "out_of_sync"].includes(String(pub.status)) ||
-            divergent.length > 0 ||
-            pub.characteristic_sync_incomplete === true);
-        const wantsFotos =
-          data.component !== "cadastro" &&
-          Boolean(pub.external_property_id) &&
-          pub.media_status !== null &&
-          pub.media_status !== "synced";
-        if (wantsCadastro) {
-          const { error } = await supabaseAdmin.from("property_sync_jobs").upsert(
-            {
-              property_id: data.propertyId,
-              provider,
-              action: pub.external_property_id ? "update" : "publish",
-              requested_revision: property.revision ?? 1,
-              requested_by: context.userId,
-              changed_fields: divergent.length ? divergent : null,
-              status: "pending",
-              attempts: 0,
-              next_run_at: new Date().toISOString(),
-              superseded_by: null,
-            },
-            { onConflict: "property_id,provider,action,requested_revision" },
-          );
-          if (error) throw new Error(error.message);
-          scheduled += 1;
-        }
-        if (wantsFotos) {
-          const { error } = await supabaseAdmin.rpc("queue_media_sync_coalesced", {
-            _property_id: data.propertyId,
-            _provider: provider,
-            _revision: Number(property.gallery_revision ?? 1),
-            _requested_by: context.userId,
-          });
-          if (error) throw new Error(error.message);
-          scheduled += 1;
-        }
-      }
-    }
-    if (scheduled) await kickWorker();
-    return {
-      ok: true,
-      scheduled,
-      message: scheduled
-        ? "Nova tentativa agendada."
-        : "Não há nada pendente para repetir neste site.",
-    };
-  });
-
-export const reconcileProperty = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; provider: string }) => data)
-  .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (isAdmin !== true) throw new Error("Apenas administradores podem reconciliar publicações.");
-    const providers = sanitizeProviders([data.provider]);
-    if (!providers.length) throw new Error("Destino inválido.");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: property } = await supabaseAdmin
-      .from("properties")
-      .select("revision")
-      .eq("id", data.propertyId)
-      .maybeSingle();
-    await supabaseAdmin.from("property_sync_jobs").upsert(
-      {
-        property_id: data.propertyId,
-        provider: providers[0]!,
-        action: "reconcile",
-        requested_revision: property?.revision ?? 1,
-        requested_by: context.userId,
-        status: "pending",
-        next_run_at: new Date().toISOString(),
-      },
-      { onConflict: "property_id,provider,action,requested_revision" },
-    );
-    await kickWorker();
-    return { ok: true };
-  });
-
 /** Painel de saúde: `/account/status` dos provedores + fila. Somente administradores. */
 export const getProvidersHealth = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -454,12 +286,16 @@ export const getProvidersHealth = createServerFn({ method: "GET" })
     if (isAdmin !== true) throw new Error("Acesso restrito a administradores.");
 
     const { fetchAccountStatus } = await import("@/lib/imobibrasil/catalogs.server");
-    const accounts = await Promise.all(
+    const accountChecks = await Promise.allSettled(
       IMOBI_PROVIDER_KEYS.map((provider) => fetchAccountStatus(provider)),
     );
+    const accounts = accountChecks.map((check, index) => check.status === "fulfilled"
+      ? check.value
+      : { provider: IMOBI_PROVIDER_KEYS[index], ok: false, configured: null,
+          message: "Não foi possível consultar a conta neste momento." });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ count: pending }, { count: failed }, { data: recent }] = await Promise.all([
+    const [pendingRows, failedRows, recentRows] = await Promise.all([
       supabaseAdmin
         .from("property_sync_jobs")
         .select("id", { count: "exact", head: true })
@@ -476,11 +312,13 @@ export const getProvidersHealth = createServerFn({ method: "GET" })
         .order("updated_at", { ascending: false })
         .limit(10),
     ]);
+    const queueError = pendingRows.error ?? failedRows.error ?? recentRows.error;
+    if (queueError) throw new Error(queueError.message);
 
     return {
       accounts,
-      queue: { pending: pending ?? 0, failed: failed ?? 0 },
-      recent: recent ?? [],
+      queue: { pending: pendingRows.count ?? 0, failed: failedRows.count ?? 0 },
+      recent: recentRows.data ?? [],
     };
   });
 

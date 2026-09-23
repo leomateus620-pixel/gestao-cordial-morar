@@ -19,7 +19,7 @@ export async function acquireProviderSlot(
   admin: Admin,
   provider: string,
   options: { maxWaitMs?: number } = {},
-): Promise<{ granted: boolean; waitedMs: number; unavailable?: boolean }> {
+): Promise<{ granted: boolean; waitedMs: number; unavailable?: boolean; blocked?: boolean }> {
   const maxWait = options.maxWaitMs ?? 75_000;
   const started = Date.now();
 
@@ -32,8 +32,9 @@ export async function acquireProviderSlot(
         _window_seconds: WINDOW_SECONDS,
       });
       if (error) return { granted: false, waitedMs: Date.now() - started, unavailable: true };
-      const result = (data ?? {}) as { granted?: boolean; waitMs?: number };
+      const result = (data ?? {}) as { granted?: boolean; waitMs?: number; blocked?: boolean };
       if (result.granted) return { granted: true, waitedMs: Date.now() - started };
+      if (result.blocked) return { granted: false, waitedMs: Date.now() - started, blocked: true };
       waitMs = Math.max(500, Math.min(15_000, Number(result.waitMs ?? 2000)));
     } catch {
       // Controle indisponível: postura conservadora — NÃO chama o site sem vaga

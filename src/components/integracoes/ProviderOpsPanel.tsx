@@ -1,13 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Activity, AlertTriangle, Camera, Copy, RotateCcw, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, Camera, Copy, ShieldCheck } from "lucide-react";
 import {
   getProviderOps,
   listFieldConflicts,
   listDuplicateDiagnosis,
-  resolveFieldConflict,
-  retryPublication,
-  refreshOwnerLinksFn,
 } from "@/lib/imobibrasil/ops.functions";
 
 const CONEXAO: Record<string, string> = {
@@ -23,6 +20,10 @@ const CLASSES: Record<string, string> = {
   repeticao_visual: "Repetição só na exibição",
   publicacao_legitima_nas_duas: "Publicação nas duas imobiliárias",
 };
+const WORKER_HOOKS = [
+  "property-sync-worker", "property-media-worker", "property-image-worker",
+  "property-import-worker", "property-sync-reconcile",
+] as const;
 
 function nomeImobiliaria(provider: string) {
   return provider === "cordial" ? "Cordial" : "Morar";
@@ -38,12 +39,9 @@ function valor(value: unknown) {
  * pública: fica em Integrações e somente para administradores.
  */
 export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
-  const queryClient = useQueryClient();
   const loadOps = useServerFn(getProviderOps);
   const loadConflicts = useServerFn(listFieldConflicts);
   const loadDuplicates = useServerFn(listDuplicateDiagnosis);
-  const resolver = useServerFn(resolveFieldConflict);
-  const retry = useServerFn(retryPublication);
 
   const ops = useQuery({
     queryKey: ["provider-ops"],
@@ -64,31 +62,17 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
     staleTime: 60_000,
   });
 
-  const resolverMutation = useMutation({
-    mutationFn: (input: { id: string; decisao: "manter_site" | "reenviar_gestao" }) =>
-      resolver({ data: input }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["provider-ops-conflicts"] });
-      queryClient.invalidateQueries({ queryKey: ["provider-ops"] });
-    },
-  });
-
-  const retryMutation = useMutation({
-    mutationFn: (publicationId: string) => retry({ data: { publicationId } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["provider-ops"] }),
-  });
-
-  const refreshOwners = useServerFn(refreshOwnerLinksFn);
-  const ownersMutation = useMutation({
-    mutationFn: (provider: "cordial" | "morar") => refreshOwners({ data: { provider } }),
-  });
-
   if (!enabled) return null;
 
   const summaries = ops.data?.summaries ?? [];
   const items = ops.data?.items ?? [];
   const conflictRows = conflicts.data ?? [];
   const duplicateRows = duplicates.data ?? [];
+  const dispatch = (ops.data?.dispatch ?? []) as Array<{
+    hook: string; last_dispatched_at: string | null; last_response_at: string | null;
+    last_http_status: number | null; last_transport_error: string | null;
+    last_config_error: string | null;
+  }>;
 
   return (
     <section className="mb-5 rounded-2xl border border-border/60 bg-card p-4">
@@ -127,6 +111,11 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
               <li>Bloqueios: {resumo.bloqueios}</li>
               <li>Divergências: {resumo.conflitos}</li>
               <li>Envios na fila: {resumo.tentativasAbertas}</li>
+              <li>Pendência mais antiga: {resumo.idadeFilaMinutos == null ? "—" : `${resumo.idadeFilaMinutos} min`}</li>
+              <li>Leases vencidos: {resumo.leasesVencidos}</li>
+              <li>Resultados ambíguos: {resumo.resultadosAmbiguos}</li>
+              <li>Galerias atrasadas: {resumo.midiaAtrasada}</li>
+              {resumo.circuitoAte && <li>Conta em espera até: {new Date(resumo.circuitoAte).toLocaleString("pt-BR")}</li>}
               <li>
                 Última confirmação:{" "}
                 {resumo.ultimaConfirmacao
@@ -134,33 +123,30 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
                   : "—"}
               </li>
             </ul>
-            <button
-              type="button"
-              className="mt-2 rounded-lg border border-border/60 px-2 py-1 text-[10px] font-medium hover:bg-foreground/5 disabled:opacity-50"
-              disabled={ownersMutation.isPending}
-              onClick={() => ownersMutation.mutate(resumo.provider)}
-            >
-              {ownersMutation.isPending && ownersMutation.variables === resumo.provider
-                ? "Conferindo proprietários…"
-                : "Atualizar proprietários do site"}
-            </button>
-            {ownersMutation.data?.provider === resumo.provider && (
-              <p className="mt-1 text-[10px] text-foreground/60">
-                {ownersMutation.data.comProprietarioNoSite} de {ownersMutation.data.lidosNoSite} com
-                proprietário no site · {ownersMutation.data.anunciosAtualizados} atualizados ·{" "}
-                {ownersMutation.data.contatosPreenchidos} contatos preenchidos
-                {ownersMutation.data.contatosPendentes > 0
-                  ? ` · ${ownersMutation.data.contatosPendentes} contatos na próxima rodada`
-                  : ""}
-                {!ownersMutation.data.leituraCompleta ? " · leitura incompleta, nada foi apagado" : ""}
-              </p>
-            )}
-            {ownersMutation.isError && ownersMutation.variables === resumo.provider && (
-              <p className="mt-1 text-[10px] text-destructive">Não foi possível conferir agora.</p>
-            )}
           </article>
         ))}
       </div>
+
+      <details className="mt-3 rounded-xl bg-foreground/4 p-3 text-[11px]">
+        <summary className="cursor-pointer font-semibold">Diagnóstico dos workers</summary>
+        <ul className="mt-2 space-y-1 text-foreground/70">
+          {WORKER_HOOKS.map((hook) => {
+            const state = dispatch.find((row) => row.hook === hook);
+            const stale = !state?.last_dispatched_at ||
+              Date.now() - new Date(state.last_dispatched_at).getTime() >
+                (hook === "property-sync-reconcile" ? 26 * 60 * 60_000 : 5 * 60_000);
+            const failed = Boolean(state?.last_config_error || state?.last_transport_error ||
+              (state?.last_http_status != null &&
+                (state.last_http_status < 200 || state.last_http_status >= 300)));
+            return <li key={hook} className={stale || failed ? "text-destructive" : ""}>
+              {hook}: {stale ? "sem batimento recente" :
+                failed ? `falha ${state?.last_http_status ?? state?.last_config_error ?? state?.last_transport_error}` :
+                  `HTTP ${state?.last_http_status ?? "aguardando resposta"}`}
+            </li>;
+          })}
+        </ul>
+        {ops.data?.pauseUnknown && <p className="mt-2 text-destructive">Configuração de pausa ausente ou inválida; escritas protegidas estão bloqueadas.</p>}
+      </details>
 
       {conflictRows.length > 0 && (
         <div className="mt-4">
@@ -178,26 +164,9 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
                 <p className="text-foreground/70">
                   Na imobiliária está (mantido): {valor(row.valorSite)}
                 </p>
-                <div className="mt-1.5 flex gap-2">
-                  <button
-                    onClick={() =>
-                      resolverMutation.mutate({ id: row.id, decisao: "manter_site" })
-                    }
-                    disabled={resolverMutation.isPending}
-                    className="rounded-full bg-primary/15 px-2.5 py-1 font-medium text-primary"
-                  >
-                    Manter o da imobiliária
-                  </button>
-                  <button
-                    onClick={() =>
-                      resolverMutation.mutate({ id: row.id, decisao: "reenviar_gestao" })
-                    }
-                    disabled={resolverMutation.isPending}
-                    className="rounded-full bg-foreground/8 px-2.5 py-1 font-medium"
-                  >
-                    Reenviar o do Gestão
-                  </button>
-                </div>
+                <p className="mt-1.5 text-foreground/60">
+                  Decida o valor de negócio na edição normal do imóvel. A conferência automática acompanha a alteração.
+                </p>
               </li>
             ))}
           </ul>
@@ -267,14 +236,6 @@ export function ProviderOpsPanel({ enabled }: { enabled: boolean }) {
                       </p>
                       {item.motivo && <p className="text-destructive">{item.motivo}</p>}
                     </div>
-                    <button
-                      onClick={() => retryMutation.mutate(item.publicationId)}
-                      disabled={retryMutation.isPending}
-                      className="flex shrink-0 items-center gap-1 rounded-full bg-foreground/8 px-2.5 py-1 font-medium"
-                    >
-                      <RotateCcw className="size-3" />
-                      Tentar de novo
-                    </button>
                   </div>
                 </li>
               ))}

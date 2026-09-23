@@ -108,7 +108,7 @@ const SLOT_DEFER_SECONDS = 30;
  * devolvemos erro de limite com `retryAfterSeconds` para o worker reagendar.
  */
 async function waitForProviderSlot(provider: ImobiProvider) {
-  let result: { granted: boolean; unavailable?: boolean };
+  let result: { granted: boolean; unavailable?: boolean; blocked?: boolean };
   try {
     const [{ supabaseAdmin }, { acquireProviderSlot }] = await Promise.all([
       import("@/integrations/supabase/client.server"),
@@ -119,6 +119,12 @@ async function waitForProviderSlot(provider: ImobiProvider) {
     result = { granted: false, unavailable: true };
   }
   if (!result.granted) {
+    if (result.blocked) {
+      throw new ImobiApiError({
+        message: "Chamadas desta conta aguardam verificação da credencial; a outra conta continua ativa.",
+        category: "config", retryAfterSeconds: 300,
+      });
+    }
     // Sem vaga (ou controle indisponível): não chama o site; o worker reagenda.
     throw new ImobiApiError({
       message: result.unavailable
@@ -209,6 +215,18 @@ export async function imobiRequest<T = unknown>(
       if (!response.ok) {
         const category = categoryForHttpStatus(response.status);
         log(false, category);
+        if (response.status === 401 || response.status === 403) {
+          try {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { error: circuitError } = await supabaseAdmin.rpc("property_provider_auth_failure" as never, {
+              _provider: provider, _status: response.status,
+            } as never);
+            if (circuitError) throw circuitError;
+          } catch {
+            // O erro de credencial original continua visível ao worker. A
+            // persistência do circuito é monitorada separadamente no banco.
+          }
+        }
         const providerMessage =
           extractProviderMessage(parsed, rawText) ?? `Falha HTTP ${response.status} no provedor.`;
         // `Retry-After` é respeitado: espera curta dentro do request, espera

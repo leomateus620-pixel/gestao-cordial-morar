@@ -21,11 +21,12 @@ import { toImobiError } from "./errors";
 import { boolToImageSimNao } from "./serializers";
 import { extractInsertedImageId } from "./image-parsers";
 import { deleteRemoteImage, fetchRemoteGallery, type RemoteGallery } from "./image-ops.server";
+import { rebuildRemoteOrderDurable } from "./media-rebuild.server";
 import type { ImobiProvider } from "./providers";
 import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
 import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
 import { fetchDeliveryBytes } from "@/lib/imoveis/delivery.server";
-import { galleryMatchesExactly, planGalleryRebuild, type RebuildRemoteItem } from "@/lib/imoveis/gallery-rebuild";
+import { galleryMatchesExactly } from "@/lib/imoveis/gallery-rebuild";
 import {
   isAmbiguousDeliveryError,
   isExtensionError,
@@ -40,9 +41,6 @@ import {
 type Admin = SupabaseClient;
 
 const BUCKET = "property-images";
-
-/** Foto travada há mais tempo que isso não segura mais o envio da galeria. */
-const STUCK_IMAGE_WINDOW_MS = 15 * 60 * 1000;
 
 /** Orçamento de execução: galeria grande é concluída em ciclos, sem perder progresso. */
 const DEFAULT_BUDGET_MS = 110_000;
@@ -83,6 +81,7 @@ export type MediaSyncResult = {
     | "partial"
     | "order_drift"
     | "waiting_watermark"
+    | "blocked_image"
     | "remote_multiple_covers"
     | "delivery_unknown"
     | "remote_read_unreliable"
@@ -105,7 +104,10 @@ type ImageRow = {
   is_cover: boolean;
   position: number;
   processing_status: string;
+  processing_error_code: string | null;
   processing_started_at: string | null;
+  destination_hash: string | null;
+  desired_destination_hash: string | null;
   updated_at: string | null;
   pending_remote_delete: boolean | null;
 };
@@ -119,10 +121,38 @@ type LinkRow = RemoteGalleryRow & {
 };
 
 const IMAGE_COLUMNS =
-  "id, storage_path, processed_storage_path, processed_checksum, content_hash, file_name, mime_type, is_cover, position, processing_status, processing_started_at, updated_at, pending_remote_delete";
+  "id, storage_path, processed_storage_path, processed_checksum, content_hash, file_name, mime_type, is_cover, position, processing_status, processing_error_code, processing_started_at, destination_hash, desired_destination_hash, updated_at, pending_remote_delete";
 
 const LINK_COLUMNS =
-  "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at";
+  "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at";
+
+async function persistLink(
+  admin: Admin,
+  ownership: { jobId: string; leaseToken: string; publicationId: string },
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const { data, error } = await admin.rpc("property_media_link_write_if_owned" as never, {
+    _job_id: ownership.jobId, _lease_token: ownership.leaseToken,
+    _publication_id: ownership.publicationId, _image_id: payload.image_id,
+    _fields: payload,
+  } as never);
+  if (error || data !== true)
+    throw new Error(`media_link_persist_failed: ${error?.message ?? "lease lost"}`);
+}
+
+async function assertMediaStillAllowed(admin: Admin, propertyId: string, publicationId: string, revision: number): Promise<void> {
+  const [{ data: property, error: propertyError }, { data: publication, error: publicationError }] = await Promise.all([
+    admin.from("properties").select("gallery_revision, archived_at").eq("id", propertyId).single(),
+    admin.from("property_provider_publications")
+      .select("enabled, desired_availability, external_property_id")
+      .eq("id", publicationId).single(),
+  ]);
+  if (propertyError || publicationError) throw new Error(propertyError?.message ?? publicationError?.message);
+  if (property.archived_at || publication.enabled === false ||
+      publication.desired_availability !== "visible" || !publication.external_property_id)
+    throw new Error("media_publication_disabled");
+  if (Number(property.gallery_revision ?? 0) !== revision) throw new Error("media_revision_superseded");
+}
 
 async function loadImages(admin: Admin, propertyId: string): Promise<ImageRow[]> {
   const { data, error } = await admin
@@ -155,19 +185,6 @@ function validateDelivery(bytes: number, mime: string): string | null {
   return null;
 }
 
-/** Confere se o arquivo de entrega existe e é aceito, sem enviar nada. */
-async function preflightDelivery(admin: Admin, image: ImageRow): Promise<string | null> {
-  try {
-    const path = image.processed_storage_path ?? image.storage_path;
-    if (!path) return "sem arquivo";
-    const delivery = await fetchDeliveryBytes(admin, BUCKET, path);
-    const mime = image.processed_storage_path ? "image/jpeg" : (image.mime_type ?? "image/jpeg");
-    return validateDelivery(delivery.blob.size, mime);
-  } catch (error) {
-    return error instanceof Error ? error.message : "falha ao ler o arquivo";
-  }
-}
-
 /**
  * Envia a galeria ao site e registra as métricas.
  * Usado tanto pelo job de mídia quanto pelo publish/update (na etapa de fotos).
@@ -180,6 +197,8 @@ export async function deliverGallery(
     publicationId: string;
     externalId: string;
     correlationId: string;
+    jobId: string;
+    leaseToken: string;
     galleryRevision?: number;
     verifyRemote?: boolean;
     /** Renovação de reserva/checkpoint entre passos longos. */
@@ -189,41 +208,51 @@ export async function deliverGallery(
 ): Promise<MediaSyncResult> {
   const started = Date.now();
   const budgetMs = params.budgetMs ?? DEFAULT_BUDGET_MS;
-  const outOfBudget = () => Date.now() - started > budgetMs;
+  const remainingMs = () => budgetMs - (Date.now() - started);
+  const outOfBudget = () => remainingMs() < 15_000;
   const progress = async () => {
     if (params.onProgress) await params.onProgress();
+    await assertMediaStillAllowed(admin, params.propertyId, params.publicationId, galleryRevision);
   };
   const { propertyId, provider, publicationId, externalId, correlationId } = params;
 
+  const { data: priorState, error: priorStateError } = await admin
+    .from("property_provider_publications")
+    .select("media_rebuild_state")
+    .eq("id", publicationId).single();
+  if (priorStateError) throw new Error(priorStateError.message);
+  const priorCheckpoint = priorState.media_rebuild_state as Record<string, unknown> | null;
+  const rebuildingFromCheckpoint = Boolean(priorCheckpoint &&
+    Array.isArray(priorCheckpoint.deleteRemoteIds) &&
+    Array.isArray(priorCheckpoint.reinsertImageIds));
+
   let galleryRevision = params.galleryRevision ?? 0;
   if (!galleryRevision) {
-    const { data: property } = await admin
+    const { data: property, error: propertyError } = await admin
       .from("properties")
       .select("gallery_revision")
       .eq("id", propertyId)
       .maybeSingle();
+    if (propertyError) throw new Error(propertyError.message);
     galleryRevision = Number(property?.gallery_revision ?? 1);
   }
 
   const all = await loadImages(admin, propertyId);
   const now = Date.now();
-  const inFlight = all.filter((image) => {
-    if (image.pending_remote_delete) return false;
-    if (!["pending", "processing"].includes(String(image.processing_status))) return false;
-    const since = image.processing_started_at ?? image.updated_at;
-    const age = since ? now - new Date(since).getTime() : 0;
-    return age < STUCK_IMAGE_WINDOW_MS;
-  }).length;
 
   // Foto marcada para remoção sai da galeria desejada imediatamente.
   const active = all.filter((image) => !image.pending_remote_delete);
+  const unready = active.filter((image) => !canPublishPropertyImage(image));
+  const blockedImage = unready.find((image) =>
+    ["failed_permanent", "failed"].includes(image.processing_status));
   const publishable = sortGallery(active.filter(canPublishPropertyImage).map(toLocal));
   const byId = new Map(all.map((image) => [image.id, image]));
 
-  const { data: linkRows } = await admin
+  const { data: linkRows, error: linkError } = await admin
     .from("property_image_provider_publications")
     .select(LINK_COLUMNS)
     .eq("publication_id", publicationId);
+  if (linkError) throw new Error(linkError.message);
   const links = (linkRows ?? []) as unknown as LinkRow[];
 
   const presentLinks = links.filter(
@@ -254,61 +283,36 @@ export async function deliverGallery(
   const toDelete = links.filter(
     (row) => row.desired_state === "absent" && !row.deleted_at && row.external_image_id,
   );
-  // Sem código remoto não há como excluir por ID: registra o impedimento.
-  const deleteWithoutCode = links.filter(
-    (row) => row.desired_state === "absent" && !row.deleted_at && !row.external_image_id,
-  );
-  for (const row of deleteWithoutCode) {
-    const match = gallery.reliable
-      ? gallery.items.find((item) => item.url && item.url === row.remote_url)
-      : undefined;
-    if (match?.codigoImagem) {
-      row.external_image_id = match.codigoImagem;
-      await admin
-        .from("property_image_provider_publications")
-        .update({ external_image_id: match.codigoImagem })
-        .eq("publication_id", publicationId)
-        .eq("image_id", row.image_id);
-      toDelete.push(row);
-    }
-  }
-
   for (const row of toDelete) {
     if (outOfBudget()) break;
     await progress();
-    const result = await deleteRemoteImage(
-      provider,
-      externalId,
-      row.external_image_id as string,
-      correlationId,
-    );
+    if (!gallery.reliable) break;
+    const code = row.external_image_id as string;
+    await persistLink(admin, params, {
+      ...row, image_id: row.image_id, publication_id: publicationId, provider,
+      last_op: "delete", last_op_state: "intent_persisted", desired_state: "absent",
+    });
+    const result = gallery.items.some((item) => item.codigoImagem === code)
+      ? await deleteRemoteImage(provider, externalId, code, correlationId)
+      : { confirmed: true, alreadyAbsent: true, message: null };
     if (result.confirmed) {
       deletedCount += 1;
-      await admin
-        .from("property_image_provider_publications")
-        .update({
-          status: "deleted",
-          deleted_at: new Date().toISOString(),
-          last_op: "delete",
-          last_op_state: result.alreadyAbsent ? "already_absent" : "confirmed",
-          last_error_message: null,
-          error_class: null,
-        })
-        .eq("publication_id", publicationId)
-        .eq("image_id", row.image_id);
+      await persistLink(admin, params, {
+        image_id: row.image_id, publication_id: publicationId, provider,
+        status: "deleted", deleted_at: new Date().toISOString(),
+        last_op: "delete",
+        last_op_state: result.alreadyAbsent ? "already_absent" : "confirmed",
+        last_error_message: null, error_class: null,
+      });
     } else {
-      await admin
-        .from("property_image_provider_publications")
-        .update({
-          last_op: "delete",
-          last_op_state: "pending",
-          error_class: "exclusao_pendente",
-          last_error_message: result.message ?? "Exclusão não confirmada pelo site.",
-          attempts: Number(row.attempts ?? 0) + 1,
-          next_retry_at: nextImageRetryAt("rede", Number(row.attempts ?? 0) + 1),
-        })
-        .eq("publication_id", publicationId)
-        .eq("image_id", row.image_id);
+      await persistLink(admin, params, {
+        image_id: row.image_id, publication_id: publicationId, provider,
+        last_op: "delete", last_op_state: "pending",
+        error_class: "exclusao_pendente",
+        last_error_message: result.message ?? "Exclusão não confirmada pelo site.",
+        attempts: Number(row.attempts ?? 0) + 1,
+        next_retry_at: nextImageRetryAt("rede", Number(row.attempts ?? 0) + 1),
+      });
     }
     gallery = await fetchRemoteGallery(provider, externalId, correlationId);
   }
@@ -318,9 +322,9 @@ export async function deliverGallery(
   await purgeFullyDeletedImages(admin, propertyId);
 
   // -------------------------------------------------------------- inserções
-  const remoteCoverCountBefore = snapshotOf(gallery).coverCount;
-  for (const target of plan.toSend) {
-    if (outOfBudget()) break;
+  for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : plan.toSend) {
+    // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
+    if (remainingMs() < 95_000 || !gallery.reliable) break;
     const image = byId.get(target.id);
     if (!image) continue;
     await progress();
@@ -334,11 +338,11 @@ export async function deliverGallery(
     // Capa: só um destaque pode existir. Destaque=Sim apenas quando está
     // comprovado que o site não tem nenhum e esta é a primeira foto desejada.
     const asCover =
-      gallery.reliable &&
-      remoteCoverCountBefore === 0 &&
+      gallery.items.every((item) => !item.destaque) &&
       coversSentThisRun === 0 &&
       publishable[0]?.id === image.id;
 
+    let postReturned = false;
     try {
       const deliveryPath = image.processed_storage_path ?? image.storage_path;
       const delivery = await fetchDeliveryBytes(admin, BUCKET, deliveryPath);
@@ -350,6 +354,23 @@ export async function deliverGallery(
       const form = new FormData();
       form.append("imagem", new Blob([buffer], { type: mime }), fileName);
       form.append("destaque", boolToImageSimNao(asCover));
+
+      // A leitura do Storage também consome o deadline. Verifique orçamento e
+      // posse imediatamente antes de persistir a intenção e iniciar o POST.
+      await progress();
+      if (remainingMs() < 95_000) break;
+
+      // Intenção e conjunto anterior ficam duráveis ANTES do POST. Se o processo
+      // cair entre o efeito remoto e a confirmação local, a próxima execução
+      // reconhece delivery_unknown e nunca repete o upload às cegas.
+      const beforeCodes = gallery.items.map((item) => item.codigoImagem).filter(Boolean);
+      await persistLink(admin, params, {
+        image_id: image.id, publication_id: publicationId, provider,
+        content_hash: deliveredHash(image), delivery_file_name: fileName,
+        desired_state: "present", status: "delivery_unknown",
+        last_op: "insert", last_op_state: "intent_persisted",
+        verification: { before_codes: beforeCodes, correlation_id: correlationId, at: new Date().toISOString() },
+      });
 
       const response = await imobiRequest(
         provider,
@@ -365,57 +386,58 @@ export async function deliverGallery(
         },
       );
 
-      // Código da FOTO: só chave de imagem é aceita (o leitor genérico de imóvel
-      // devolveria o código do imóvel). Sem código, a reconciliação por leitura
-      // preenche depois.
-      let externalImageId = extractInsertedImageId(response.data);
-      // Resposta sem código: associa só com evidência — exatamente UMA foto
-      // nova na galeria completa. Nunca pela posição.
-      if (!externalImageId) {
-        const beforeCodes = new Set(
-          gallery.items.map((item) => item.codigoImagem ?? item.url ?? "").filter(Boolean),
-        );
-        const after = await fetchRemoteGallery(provider, externalId, correlationId);
-        if (after.reliable) {
-          const fresh = after.items.filter(
-            (item) => !beforeCodes.has(item.codigoImagem ?? item.url ?? ""),
-          );
-          if (fresh.length === 1 && fresh[0].codigoImagem) externalImageId = fresh[0].codigoImagem;
-          gallery = after;
-        }
+      const externalImageId = extractInsertedImageId(response.data);
+      const after = await fetchRemoteGallery(provider, externalId, correlationId);
+      const confirmedItem = externalImageId && after.reliable
+        ? after.items.find((item) => item.codigoImagem === externalImageId)
+        : null;
+      gallery = after;
+      if (!confirmedItem) {
+        unknownCount += 1;
+        await persistLink(admin, params, {
+          image_id: image.id, publication_id: publicationId, provider,
+          content_hash: deliveredHash(image), delivery_file_name: fileName,
+          desired_state: "present", status: "delivery_unknown", last_op: "insert",
+          last_op_state: "delivery_unknown", error_class: "entrega_ambigua",
+          last_error_message: "O site não devolveu um código de imagem verificável; envio mantido inconclusivo.",
+          next_retry_at: null,
+        });
+        break;
       }
-      await admin.from("property_image_provider_publications").upsert(
+      await persistLink(admin, params,
         {
           image_id: image.id,
           publication_id: publicationId,
           provider,
           external_image_id: externalImageId,
+          remote_url: confirmedItem.url,
           content_hash: deliveredHash(image),
-          is_cover: asCover,
+          is_cover: confirmedItem.destaque,
           synced_position: image.position,
           delivery_file_name: fileName,
           desired_state: "present",
           status: "synced",
           last_op: "insert",
-          last_op_state: externalImageId ? "confirmed" : "awaiting_code",
+          last_op_state: "confirmed_by_read",
           last_error_message: null,
           error_class: null,
           attempts: 0,
           next_retry_at: null,
           synced_at: new Date().toISOString(),
         },
-        { onConflict: "image_id,publication_id" },
       );
+      postReturned = true;
       sentCount += 1;
-      if (asCover) coversSentThisRun += 1;
+      if (confirmedItem.destaque) coversSentThisRun += 1;
       order.push({ imageId: image.id, position: image.position, externalImageId });
     } catch (error) {
+      if (postReturned || (error instanceof Error && error.message.startsWith("media_link_persist_failed"))) throw error;
       const normalized = toImobiError(error);
       const attempts = previousAttempts + 1;
 
       // Entrega AMBÍGUA (timeout/rede/5xx): o site pode ter aceitado a foto.
-      // Nunca repetimos o POST às cegas — conferimos por leitura e por
-      // IDENTIDADE (código novo na galeria), não só por contagem.
+      // Sem código devolvido pela operação, uma única foto nova na lista não
+      // prova identidade: outro operador pode ter enviado uma foto ao mesmo tempo.
       if (
         isAmbiguousDeliveryError({
           category: normalized.category,
@@ -423,81 +445,11 @@ export async function deliverGallery(
           status: normalized.httpStatus,
         })
       ) {
-        const before = new Set(
-          gallery.items.map((item) => item.codigoImagem ?? item.url ?? "").filter(Boolean),
-        );
         const after = await fetchRemoteGallery(provider, externalId, correlationId);
-        const appeared = after.reliable
-          ? after.items.filter(
-              (item) => !before.has(item.codigoImagem ?? item.url ?? ""),
-            )
-          : [];
-
-        if (after.reliable && appeared.length === 1) {
-          // Entrega confirmada por identidade: a foto nova está identificada.
-          const arrived = appeared[0]!;
-          await admin.from("property_image_provider_publications").upsert(
-            {
-              image_id: image.id,
-              publication_id: publicationId,
-              provider,
-              external_image_id: arrived.codigoImagem,
-              remote_url: arrived.url,
-              content_hash: deliveredHash(image),
-              is_cover: arrived.destaque,
-              synced_position: image.position,
-              delivery_file_name: fileName,
-              desired_state: "present",
-              status: "synced",
-              last_op: "insert",
-              last_op_state: "confirmed_by_read",
-              error_class: null,
-              last_error_message:
-                "Envio sem resposta do site, confirmado pela leitura da galeria.",
-              attempts: 0,
-              next_retry_at: null,
-              synced_at: new Date().toISOString(),
-            },
-            { onConflict: "image_id,publication_id" },
-          );
-          sentCount += 1;
-          if (arrived.destaque) coversSentThisRun += 1;
-          gallery = after;
-          continue;
-        }
-
-        if (after.reliable && appeared.length === 0) {
-          // Leitura confiável comprova que não entrou: pode tentar de novo.
-          failedCount += 1;
-          const retryAt = nextImageRetryAt("rede", attempts);
-          errors.push({ imageId: image.id, message: normalized.message });
-          await admin.from("property_image_provider_publications").upsert(
-            {
-              image_id: image.id,
-              publication_id: publicationId,
-              provider,
-              content_hash: deliveredHash(image),
-              is_cover: false,
-              delivery_file_name: fileName,
-              desired_state: "present",
-              status: "error",
-              last_op: "insert",
-              last_op_state: "not_delivered",
-              last_error_message: normalized.message,
-              error_class: "rede",
-              attempts,
-              next_retry_at: retryAt,
-            },
-            { onConflict: "image_id,publication_id" },
-          );
-          gallery = after;
-          continue;
-        }
-
-        // Inconclusivo: estado explícito, sem reenvio às cegas.
+        gallery = after;
         unknownCount += 1;
         errors.push({ imageId: image.id, message: normalized.message });
-        await admin.from("property_image_provider_publications").upsert(
+        await persistLink(admin, params,
           {
             image_id: image.id,
             publication_id: publicationId,
@@ -508,13 +460,12 @@ export async function deliverGallery(
             desired_state: "present",
             status: "delivery_unknown",
             last_op: "insert",
-            last_op_state: "unknown",
+            last_op_state: "delivery_unknown",
             last_error_message: normalized.message,
             error_class: "entrega_ambigua",
             attempts,
             next_retry_at: null,
           },
-          { onConflict: "image_id,publication_id" },
         );
         break;
       }
@@ -527,7 +478,7 @@ export async function deliverGallery(
           : classifyImageDeliveryError(normalized.message);
       const retryAt = nextImageRetryAt(errorClass, attempts);
       errors.push({ imageId: image.id, message: normalized.message });
-      await admin.from("property_image_provider_publications").upsert(
+      await persistLink(admin, params,
         {
           image_id: image.id,
           publication_id: publicationId,
@@ -544,7 +495,6 @@ export async function deliverGallery(
           attempts,
           next_retry_at: retryAt,
         },
-        { onConflict: "image_id,publication_id" },
       );
       if (isRateLimitError(normalized.message)) break;
     }
@@ -554,20 +504,26 @@ export async function deliverGallery(
   if (params.verifyRemote !== false || sentCount > 0) {
     gallery = await fetchRemoteGallery(provider, externalId, correlationId);
   }
-  await reconcileLinkCodes(admin, publicationId, publishable, gallery);
+  await reconcileLinkCodes(admin, params, publishable, gallery);
 
   // ------------------------------------------------------- ordem e capa
-  const rebuild = await rebuildRemoteOrder(admin, {
+  const rebuild = unknownCount > 0 && !rebuildingFromCheckpoint
+    ? { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown",
+        checkpoint: null, gallery }
+    : await rebuildRemoteOrderDurable(admin, {
     propertyId,
     provider,
     publicationId,
     externalId,
     correlationId,
+    jobId: params.jobId,
+    leaseToken: params.leaseToken,
+    galleryRevision,
     desiredImageIds: publishable.map((image) => image.id),
+    contentDrift: plan.contentDrift,
     gallery,
     byId,
-    outOfBudget,
-    remainingMs: () => budgetMs - (Date.now() - started),
+    remainingMs,
     progress,
   });
   rebuiltCount = rebuild.reinserted;
@@ -578,10 +534,11 @@ export async function deliverGallery(
   const remoteCount = gallery.reliable ? snapshot.count : null;
   const multipleCovers = gallery.reliable && snapshot.coverCount > 1;
 
-  const { data: afterLinks } = await admin
+  const { data: afterLinks, error: afterLinksError } = await admin
     .from("property_image_provider_publications")
     .select(LINK_COLUMNS)
     .eq("publication_id", publicationId);
+  if (afterLinksError) throw new Error(afterLinksError.message);
   const finalLinks = (afterLinks ?? []) as unknown as LinkRow[];
   const pendingDeleteCount = finalLinks.filter(
     (row) => row.desired_state === "absent" && !row.deleted_at,
@@ -589,6 +546,11 @@ export async function deliverGallery(
   const syncedTotal = finalLinks.filter(
     (row) => row.desired_state !== "absent" && row.status === "synced",
   ).length;
+  const confirmedContent = publishable.every((image) => {
+    const link = finalLinks.find((row) => row.image_id === image.id && row.desired_state !== "absent");
+    return link?.status === "synced" && Boolean(link.external_image_id) &&
+      link.content_hash != null && link.content_hash === image.deliveredHash;
+    });
 
   const extraRemote = remoteCount !== null && remoteCount > plan.expectedCount;
   // Conferência completa pela leitura: quantidade, fotos, ordem e capa.
@@ -610,6 +572,8 @@ export async function deliverGallery(
   const rebuildPending = rebuild.pending;
   const complete =
     syncedTotal === plan.expectedCount &&
+    confirmedContent &&
+    unready.length === 0 &&
     failedCount === 0 &&
     unknownCount === 0 &&
     pendingDeleteCount === 0 &&
@@ -619,8 +583,10 @@ export async function deliverGallery(
     !extraRemote &&
     exactMatch;
 
-  const status: MediaSyncResult["status"] = inFlight
-    ? "waiting_watermark"
+  const status: MediaSyncResult["status"] = blockedImage
+    ? "blocked_image"
+    : unready.length
+      ? "waiting_watermark"
     : pendingDeleteCount > 0
       ? "pending_delete"
       : !gallery.reliable
@@ -639,6 +605,10 @@ export async function deliverGallery(
 
   const orderGuarantee = !gallery.reliable
     ? gallery.reason ?? "leitura_inconclusiva"
+    : blockedImage
+      ? blockedImage.processing_error_code ?? "image_processing_blocked"
+      : unready.length
+        ? "marca_em_processamento"
     : multipleCovers
       ? "remote_multiple_covers"
       : unknownCount > 0
@@ -655,9 +625,13 @@ export async function deliverGallery(
                   ? "pending"
                   : "ordem_confirmada_por_leitura";
 
-  await admin
-    .from("property_provider_publications")
-    .update({
+  await progress();
+  const { data: publicationOwned, error: publicationUpdateError } = await admin.rpc(
+    "property_publication_update_if_owned" as never, {
+      _job_id: params.jobId,
+      _lease_token: params.leaseToken,
+      _publication_id: publicationId,
+      _fields: {
       gallery_revision: galleryRevision,
       ...(status === "synced" ? { synced_gallery_revision: galleryRevision } : {}),
       media_expected_count: plan.expectedCount,
@@ -669,8 +643,11 @@ export async function deliverGallery(
       media_rebuild_state: rebuild.checkpoint,
       last_media_synced_at: new Date().toISOString(),
       ...(remoteCount !== null ? { last_media_verified_at: new Date().toISOString() } : {}),
-    })
-    .eq("id", publicationId);
+      },
+    } as never,
+  );
+  if (publicationUpdateError) throw new Error(publicationUpdateError.message);
+  if (publicationOwned !== true) throw new Error("media_lease_lost: confirmação obsoleta recusada.");
 
   const result: MediaSyncResult = {
     propertyId,
@@ -707,22 +684,20 @@ export async function deliverGallery(
   return result;
 }
 
-/**
- * Casa vínculo local ↔ `codigoImagem` do site. Quando o código chegou vazio na
- * inserção, o endereço da foto e a ordem de inserção resolvem — sem isso não há
- * como excluir nem reordenar depois.
- */
+/** Uma lista de fotos não fornece identidade suficiente para vincular uma foto sem código. */
 async function reconcileLinkCodes(
   admin: Admin,
-  publicationId: string,
+  ownership: { jobId: string; leaseToken: string; publicationId: string },
   desired: readonly LocalGalleryImage[],
   gallery: RemoteGallery,
 ): Promise<void> {
   if (!gallery.reliable) return;
-  const { data } = await admin
+  const publicationId = ownership.publicationId;
+  const { data, error } = await admin
     .from("property_image_provider_publications")
     .select("image_id, external_image_id, remote_url, status, desired_state")
     .eq("publication_id", publicationId);
+  if (error) throw new Error(error.message);
   const rows = (data ?? []) as Array<{
     image_id: string;
     external_image_id: string | null;
@@ -731,14 +706,6 @@ async function reconcileLinkCodes(
     desired_state: string | null;
   }>;
 
-  const taken = new Set(
-    rows.map((row) => row.external_image_id).filter((id): id is string => Boolean(id)),
-  );
-  const free = gallery.items.filter(
-    (item) => item.codigoImagem && !taken.has(item.codigoImagem),
-  );
-  if (!free.length) return;
-
   const pending = desired
     .map((image) => rows.find((row) => row.image_id === image.id))
     .filter(
@@ -746,385 +713,14 @@ async function reconcileLinkCodes(
         Boolean(row) && row!.status === "synced" && !row!.external_image_id,
     );
 
-  // Identidade nunca por posição: só há vínculo seguro quando existe UMA foto
-  // nova sem código e UMA foto nova no site. Qualquer outro caso fica sem
-  // código e é marcado para conferência (sem reenviar e sem apagar).
-  if (pending.length === 1 && free.length === 1) {
-    const row = pending[0]!;
-    const item = free[0]!;
-    await admin
-      .from("property_image_provider_publications")
-      .update({
-        external_image_id: item.codigoImagem,
-        remote_url: item.url,
-        is_cover: item.destaque,
-        verified_at: new Date().toISOString(),
-        verification: { matched_by: "unica_foto_nova" },
-        last_op_state: "confirmed_by_read",
-      })
-      .eq("publication_id", publicationId)
-      .eq("image_id", row.image_id);
-    return;
-  }
   for (const row of pending) {
-    await admin
-      .from("property_image_provider_publications")
-      .update({
-        verification: {
-          matched_by: null,
-          ambiguous: true,
-          pending_without_code: pending.length,
-          remote_new: free.length,
-        },
-        last_op_state: "delivery_unknown",
-      })
-      .eq("publication_id", publicationId)
-      .eq("image_id", row.image_id);
-  }
-}
-
-/**
- * Corrige ordem e capa pelo único caminho suportado: excluir do primeiro ponto
- * divergente para frente e reinserir na ordem correta, com checkpoint para
- * retomar de onde parou.
- */
-/** Grava o passo da reconstrução logo após cada operação confirmada. */
-async function persistRebuildStep(
-  admin: Admin,
-  publicationId: string,
-  step: Record<string, unknown>,
-): Promise<void> {
-  await admin
-    .from("property_provider_publications")
-    .update({ media_rebuild_state: { ...step, at: new Date().toISOString() } as never })
-    .eq("id", publicationId);
-}
-
-async function rebuildRemoteOrder(
-  admin: Admin,
-  params: {
-    propertyId: string;
-    provider: ImobiProvider;
-    publicationId: string;
-    externalId: string;
-    correlationId: string;
-    desiredImageIds: string[];
-    gallery: RemoteGallery;
-    byId: Map<string, ImageRow>;
-    outOfBudget: () => boolean;
-    remainingMs: () => number;
-    progress: () => Promise<void>;
-  },
-): Promise<{
-  deleted: number;
-  reinserted: number;
-  pending: boolean;
-  reason: string | null;
-  checkpoint: Record<string, unknown> | null;
-  gallery: RemoteGallery | null;
-}> {
-  const { provider, publicationId, externalId, correlationId, desiredImageIds } = params;
-  let gallery = params.gallery;
-  if (!gallery.reliable) {
-    return { deleted: 0, reinserted: 0, pending: false, reason: null, checkpoint: null, gallery: null };
-  }
-
-  const { data } = await admin
-    .from("property_image_provider_publications")
-    .select("image_id, external_image_id, status, desired_state")
-    .eq("publication_id", publicationId);
-  const rows = (data ?? []) as Array<{
-    image_id: string;
-    external_image_id: string | null;
-    status: string | null;
-    desired_state: string | null;
-  }>;
-  const imageIdByCode = new Map(
-    rows
-      .filter((row) => row.external_image_id && row.desired_state !== "absent")
-      .map((row) => [row.external_image_id as string, row.image_id]),
-  );
-
-  const remote: RebuildRemoteItem[] = gallery.items.map((item) => ({
-    codigoImagem: item.codigoImagem,
-    imageId: item.codigoImagem ? (imageIdByCode.get(item.codigoImagem) ?? null) : null,
-    destaque: item.destaque,
-  }));
-
-  const plan = planGalleryRebuild({ desiredImageIds, remote });
-  if (!plan.needed) {
-    await admin
-      .from("property_provider_publications")
-      .update({ media_rebuild_state: null })
-      .eq("id", publicationId);
-    return { deleted: 0, reinserted: 0, pending: false, reason: null, checkpoint: null, gallery };
-  }
-  if (!plan.feasible) {
-    return {
-      deleted: 0,
-      reinserted: 0,
-      pending: true,
-      reason: plan.reason,
-      checkpoint: { state: "blocked", reason: plan.reason, at: new Date().toISOString() },
-      gallery,
-    };
-  }
-
-  let deleted = 0;
-  let reinserted = 0;
-
-  // 0) Antes de QUALQUER exclusão: todos os arquivos que serão reinseridos
-  //    precisam existir e ser válidos. Sem isso, apagar deixaria a galeria menor.
-  //    (Só na primeira fase; em retomada a exclusão já aconteceu.)
-  if (plan.deleteRemoteIds.length) {
-    for (const imageId of plan.reinsertImageIds) {
-      const image = params.byId.get(imageId);
-      const problem = image ? await preflightDelivery(admin, image) : "foto local ausente";
-      if (problem) {
-        return {
-          deleted: 0,
-          reinserted: 0,
-          pending: true,
-          reason: "arquivo_indisponivel",
-          checkpoint: {
-            state: "blocked",
-            reason: `arquivo_indisponivel: ${imageId} (${problem})`,
-            at: new Date().toISOString(),
-          },
-          gallery,
-        };
-      }
-    }
-  }
-
-  // 0.1) Só começa a apagar se couber, no tempo desta rodada e no limite de
-  //      requisições do site (~18/min), apagar E reenviar tudo. Se não couber,
-  //      nada é apagado: a galeria continua completa e o envio fica pendente.
-  if (plan.deleteRemoteIds.length) {
-    const calls = plan.deleteRemoteIds.length + plan.reinsertImageIds.length + 3;
-    const neededMs = (Math.ceil(calls / 18) - 1) * 60_000 + 20_000;
-    if (params.remainingMs() < neededMs) {
-      return {
-        deleted: 0,
-        reinserted: 0,
-        pending: true,
-        reason: "aguardando_janela_de_envio",
-        checkpoint: {
-          state: "blocked",
-          reason: `aguardando_janela_de_envio: ${calls} chamadas`,
-          at: new Date().toISOString(),
-        },
-        gallery,
-      };
-    }
-  }
-
-  // 1) Remove a cauda divergente (uma por uma, conferindo por leitura).
-  for (const code of plan.deleteRemoteIds) {
-    if (params.outOfBudget()) {
-      return {
-        deleted,
-        reinserted,
-        pending: true,
-        reason: "ordem_em_reconstrucao",
-        checkpoint: {
-          state: "deleting",
-          keptPrefix: plan.keptPrefix,
-          remaining: plan.deleteRemoteIds.length - deleted,
-          at: new Date().toISOString(),
-        },
-        gallery,
-      };
-    }
-    await params.progress();
-    const result = await deleteRemoteImage(provider, externalId, code, correlationId);
-    if (!result.confirmed) {
-      return {
-        deleted,
-        reinserted,
-        pending: true,
-        reason: "exclusao_nao_confirmada",
-        checkpoint: { state: "deleting", at: new Date().toISOString() },
-        gallery,
-      };
-    }
-    deleted += 1;
-    await persistRebuildStep(admin, publicationId, { state: "deleting", lastDeleted: code, deleted });
-    const imageId = imageIdByCode.get(code);
-    if (imageId) {
-      // O vínculo volta a "não enviada": a foto será reinserida na ordem certa.
-      await admin
-        .from("property_image_provider_publications")
-        .update({
-          status: "pending",
-          external_image_id: null,
-          remote_url: null,
-          is_cover: false,
-          synced_position: null,
-          last_op: "rebuild_delete",
-          last_op_state: "confirmed",
-          attempts: 0,
-          next_retry_at: null,
-        })
-        .eq("publication_id", publicationId)
-        .eq("image_id", imageId);
-    }
-  }
-  gallery = await fetchRemoteGallery(provider, externalId, correlationId);
-
-  // 2) Reinsere na ordem correta. O primeiro item vai como destaque somente
-  //    quando o site ficou sem nenhum destaque.
-  let coverCount = gallery.items.filter((item) => item.destaque).length;
-  for (const imageId of plan.reinsertImageIds) {
-    if (params.outOfBudget()) {
-      return {
-        deleted,
-        reinserted,
-        pending: true,
-        reason: "ordem_em_reconstrucao",
-        checkpoint: {
-          state: "reinserting",
-          remaining: plan.reinsertImageIds.length - reinserted,
-          at: new Date().toISOString(),
-        },
-        gallery,
-      };
-    }
-    const image = params.byId.get(imageId);
-    if (!image) continue;
-    await params.progress();
-
-    const fileName = safeDeliveryFileName(image.id, {
-      converted: Boolean(image.processed_storage_path),
-      originalName: image.file_name,
-      mimeType: image.processed_storage_path ? "image/jpeg" : image.mime_type,
+    await persistLink(admin, ownership, {
+      image_id: row.image_id, publication_id: publicationId,
+      status: "delivery_unknown",
+      verification: { matched_by: null, ambiguous: true, reason: "codigo_da_operacao_ausente" },
+      last_op_state: "delivery_unknown",
     });
-    const asCover = coverCount === 0 && desiredImageIds[0] === imageId;
-    try {
-      const deliveryPath = image.processed_storage_path ?? image.storage_path;
-      const delivery = await fetchDeliveryBytes(admin, BUCKET, deliveryPath);
-      const buffer = await delivery.blob.arrayBuffer();
-      const mime = image.processed_storage_path ? "image/jpeg" : (image.mime_type ?? "image/jpeg");
-      const invalid = validateDelivery(buffer.byteLength, mime);
-      if (invalid) throw new Error(invalid);
-      const form = new FormData();
-      form.append("imagem", new Blob([buffer], { type: mime }), fileName);
-      form.append("destaque", boolToImageSimNao(asCover));
-      const response = await imobiRequest(
-        provider,
-        `/imovel/${encodeURIComponent(externalId)}/imagem/inserir`,
-        {
-          method: "POST",
-          formData: form,
-          extraHeaders: { codigoImovel: externalId },
-          correlationId,
-          timeoutMs: 90_000,
-          retryOnNetwork: false,
-        },
-      );
-      const externalImageId = extractInsertedImageId(response.data);
-      await admin.from("property_image_provider_publications").upsert(
-        {
-          image_id: image.id,
-          publication_id: publicationId,
-          provider,
-          external_image_id: externalImageId,
-          content_hash: image.processed_checksum ?? image.content_hash ?? null,
-          is_cover: asCover,
-          synced_position: image.position,
-          delivery_file_name: fileName,
-          desired_state: "present",
-          status: "synced",
-          last_op: "rebuild_insert",
-          last_op_state: externalImageId ? "confirmed" : "awaiting_code",
-          last_error_message: null,
-          error_class: null,
-          attempts: 0,
-          next_retry_at: null,
-          synced_at: new Date().toISOString(),
-        },
-        { onConflict: "image_id,publication_id" },
-      );
-      reinserted += 1;
-      if (asCover) coverCount += 1;
-      await persistRebuildStep(admin, publicationId, {
-        state: "reinserting",
-        lastInserted: image.id,
-        reinserted,
-        deleted,
-      });
-    } catch (error) {
-      const normalized = toImobiError(error);
-      // Resposta perdida não prova que a foto não entrou: relê a galeria e
-      // vincula só se houver exatamente uma foto nova. A próxima rodada planeja
-      // a partir do que está REALMENTE no site, sem reenviar às cegas.
-      const reread = await fetchRemoteGallery(provider, externalId, correlationId).catch(() => null);
-      if (reread?.reliable) {
-        const before = new Set(gallery.items.map((item) => item.codigoImagem).filter(Boolean));
-        const fresh = reread.items.filter((item) => item.codigoImagem && !before.has(item.codigoImagem));
-        if (fresh.length === 1) {
-          await admin.from("property_image_provider_publications").upsert(
-            {
-              image_id: image.id,
-              publication_id: publicationId,
-              provider,
-              external_image_id: fresh[0]!.codigoImagem,
-              remote_url: fresh[0]!.url,
-              is_cover: fresh[0]!.destaque,
-              desired_state: "present",
-              status: "synced",
-              last_op: "rebuild_insert",
-              last_op_state: "confirmed_by_read",
-              verification: { matched_by: "releitura_apos_erro" },
-              synced_at: new Date().toISOString(),
-            },
-            { onConflict: "image_id,publication_id" },
-          );
-          reinserted += 1;
-        } else if (fresh.length > 1) {
-          await admin
-            .from("property_image_provider_publications")
-            .update({ last_op_state: "delivery_unknown", status: "pending" })
-            .eq("publication_id", publicationId)
-            .eq("image_id", image.id);
-        }
-        gallery = reread;
-      }
-      await persistRebuildStep(admin, publicationId, {
-        state: "reinserting",
-        failedImageId: image.id,
-        reinserted,
-        deleted,
-      });
-      return {
-        deleted,
-        reinserted,
-        pending: true,
-        reason: "reinsercao_interrompida",
-        checkpoint: {
-          state: "reinserting",
-          remaining: plan.reinsertImageIds.length - reinserted,
-          error: normalized.message,
-          at: new Date().toISOString(),
-        },
-        gallery,
-      };
-    }
   }
-
-  gallery = await fetchRemoteGallery(provider, externalId, correlationId);
-  await reconcileLinkCodes(
-    admin,
-    publicationId,
-    desiredImageIds.map((id) => ({
-      id,
-      position: 0,
-      isCover: false,
-      deliveredHash: null,
-    })),
-    gallery,
-  );
-  return { deleted, reinserted, pending: false, reason: null, checkpoint: null, gallery };
 }
 
 /**
@@ -1133,23 +729,26 @@ async function rebuildRemoteOrder(
  * permitir a recuperação.
  */
 export async function purgeFullyDeletedImages(admin: Admin, propertyId: string): Promise<number> {
-  const { data: pendingImages } = await admin
+  const { data: pendingImages, error: pendingImagesError } = await admin
     .from("property_images")
     .select(
       "id, storage_path, original_storage_path, processed_storage_path, thumbnail_storage_path",
     )
     .eq("property_id", propertyId)
-    .eq("pending_remote_delete", true);
+    .eq("pending_remote_delete", true)
+    .is("replacement_target_image_id", null);
+  if (pendingImagesError) throw new Error(pendingImagesError.message);
   const rows = (pendingImages ?? []) as Array<Record<string, string | null>>;
   if (!rows.length) return 0;
 
   let purged = 0;
   for (const row of rows) {
     const imageId = row["id"] as string;
-    const { data: links } = await admin
+    const { data: links, error: linksError } = await admin
       .from("property_image_provider_publications")
       .select("id, desired_state, deleted_at")
       .eq("image_id", imageId);
+    if (linksError) throw new Error(linksError.message);
     const stillPending = (links ?? []).some(
       (link) => (link as { desired_state?: string; deleted_at?: string }).deleted_at === null,
     );
@@ -1164,10 +763,16 @@ export async function purgeFullyDeletedImages(admin: Admin, propertyId: string):
 
     const { error } = await admin.from("property_images").delete().eq("id", imageId);
     if (error) continue;
-    if (paths.length) await admin.storage.from(BUCKET).remove(paths);
+    if (paths.length) {
+      const { error: storageError } = await admin.storage.from(BUCKET).remove(paths);
+      if (storageError) throw new Error(storageError.message);
+    }
     purged += 1;
   }
-  if (purged) await admin.rpc("property_images_normalize", { _property_id: propertyId });
+  if (purged) {
+    const { error: normalizeError } = await admin.rpc("property_images_normalize", { _property_id: propertyId });
+    if (normalizeError) throw new Error(normalizeError.message);
+  }
   return purged;
 }
 
@@ -1180,21 +785,23 @@ export async function syncPropertyMedia(
     provider: ImobiProvider;
     correlation_id: string;
     requested_revision: number;
+    lease_token?: string | null;
   },
   options: { onProgress?: () => Promise<void> } = {},
 ): Promise<MediaSyncResult | { status: "not_published" }> {
-  const { data: publication } = await admin
+  const { data: publication, error: publicationError } = await admin
     .from("property_provider_publications")
     .select("id, external_property_id, enabled, status")
     .eq("property_id", job.property_id)
     .eq("provider", job.provider)
     .maybeSingle();
+  if (publicationError) throw new Error(publicationError.message);
 
   if (!publication?.external_property_id || publication.enabled === false) {
     // Foto NUNCA cria imóvel no site. Se o vínculo existe mas o código remoto
     // está ausente, pedimos reconciliação (somente leitura por referência).
     if (publication && publication.enabled !== false) {
-      await admin.from("property_sync_jobs").upsert(
+      const { error: reconcileError } = await admin.from("property_sync_jobs").upsert(
         {
           property_id: job.property_id,
           provider: job.provider,
@@ -1205,6 +812,7 @@ export async function syncPropertyMedia(
         },
         { onConflict: "property_id,provider,action,requested_revision" },
       );
+      if (reconcileError) throw new Error(reconcileError.message);
       return { status: "not_published" };
     }
     return { status: "not_published" };
@@ -1213,12 +821,15 @@ export async function syncPropertyMedia(
   // O agendamento do acompanhamento acontece junto do encerramento do job
   // (`property_media_finish_job`), para que uma alteração feita DURANTE o envio
   // gere processamento efetivo em vez de ficar apenas marcada.
+  if (!job.lease_token) throw new Error("media_lease_lost: sem token de posse.");
   return deliverGallery(admin, {
     propertyId: job.property_id,
     provider: job.provider,
     publicationId: publication.id as string,
     externalId: publication.external_property_id as string,
     correlationId: job.correlation_id,
+    jobId: job.id,
+    leaseToken: job.lease_token,
     galleryRevision: job.requested_revision,
     ...(options.onProgress ? { onProgress: options.onProgress } : {}),
   });
@@ -1236,20 +847,22 @@ export async function queueMediaSync(
   propertyId: string,
   options: { providers?: string[]; requestedBy?: string | null } = {},
 ): Promise<{ enqueued: string[]; galleryRevision: number }> {
-  const { data: property } = await admin
+  const { data: property, error: propertyError } = await admin
     .from("properties")
     .select("gallery_revision, is_draft, archived_at")
     .eq("id", propertyId)
     .maybeSingle();
+  if (propertyError) throw new Error(propertyError.message);
   if (!property || property.is_draft || property.archived_at) {
     return { enqueued: [], galleryRevision: Number(property?.gallery_revision ?? 1) };
   }
   const galleryRevision = Number(property.gallery_revision ?? 1);
 
-  const { data: publications } = await admin
+  const { data: publications, error: publicationsError } = await admin
     .from("property_provider_publications")
     .select("provider, external_property_id, enabled")
     .eq("property_id", propertyId);
+  if (publicationsError) throw new Error(publicationsError.message);
 
   const targets = (publications ?? [])
     .filter((row) => row.enabled !== false && row.external_property_id)

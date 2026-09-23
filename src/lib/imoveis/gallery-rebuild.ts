@@ -51,6 +51,8 @@ export function planGalleryRebuild(params: {
   desiredImageIds: readonly string[];
   /** Galeria do site na ordem de inserção. */
   remote: readonly RebuildRemoteItem[];
+  /** Conteúdo alterado sob o mesmo ID exige reconstrução a partir desta foto. */
+  rebuildFromImageId?: string | null;
 }): GalleryRebuildPlan {
   const desired = [...params.desiredImageIds];
   // Somente as fotos do site que têm par local entram na comparação de ordem.
@@ -77,6 +79,11 @@ export function planGalleryRebuild(params: {
     ) {
       keptPrefix += 1;
     }
+  }
+
+  if (params.rebuildFromImageId) {
+    const changedAt = desired.indexOf(params.rebuildFromImageId);
+    if (changedAt >= 0) keptPrefix = Math.min(keptPrefix, changedAt);
   }
 
   const tail = mapped.slice(keptPrefix);

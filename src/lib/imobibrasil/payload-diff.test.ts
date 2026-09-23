@@ -61,8 +61,9 @@ test("campo local vazio e desconhecido no retrato não é enviado (vazio limpari
   assert.equal("video" in update.payload, false);
 });
 
-test("comparação tolerante evita reenvio por formatação", () => {
-  assert.equal(sameValue("1.500", "1500"), true);
+test("comparação numérica exige formato ou campo conhecido", () => {
+  assert.equal(sameValue("1.500", "1500"), false);
+  assert.equal(sameValue("1.500", "1500", "valor"), true);
   assert.equal(sameValue("10,00", "10"), true);
   assert.equal(sameValue("Sim", "sim"), true);
   assert.equal(sameValue(null, ""), true);

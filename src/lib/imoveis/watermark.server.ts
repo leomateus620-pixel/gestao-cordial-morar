@@ -3,7 +3,7 @@
  * Sempre parte do arquivo original privado e devolve derivadas novas —
  * o original nunca é sobrescrito.
  */
-import type { PhotonImage as PhotonImageType } from "@cf-wasm/photon/node";
+import type { PhotonImage as PhotonImageType } from "@cf-wasm/photon";
 import {
   WATERMARK_GEOMETRY,
   WATERMARK_LIMITS,
@@ -106,14 +106,14 @@ export function readExifOrientation(bytes: Uint8Array): number {
   return 1;
 }
 
-type PhotonModule = typeof import("@cf-wasm/photon/node");
+type PhotonModule = typeof import("@cf-wasm/photon");
 let photonModulePromise: Promise<PhotonModule> | null = null;
 
-/** A distribuição node incorpora os bytes do WASM; o import padrão depende de
- * um arquivo externo que não existe no pacote publicado do Worker. O import
- * tardio também evita compilar WebAssembly durante a avaliação global. */
+/** A exportação condicional escolhe WASM pré-compilado em workerd e a variante
+ * Node no desenvolvimento local. Forçar /node no Worker exige compilação WASM
+ * dinâmica, que o runtime publicado bloqueia. */
 function loadPhoton(): Promise<PhotonModule> {
-  photonModulePromise ??= import("@cf-wasm/photon/node");
+  photonModulePromise ??= import("@cf-wasm/photon");
   return photonModulePromise;
 }
 

@@ -9,8 +9,9 @@ test("aceita vírgula decimal brasileira", () => {
   assert.equal(sameValue(10.5, "10,50"), true);
   assert.equal(sameValue("1.500,00", 1500), true);
 });
-test("ponto de milhar e ponto decimal", () => {
-  assert.equal(parseKnownNumber("1.500"), 1500);
+test("ponto de milhar só é interpretado com campo ou marcador conhecido", () => {
+  assert.equal(parseKnownNumber("1.500"), null);
+  assert.equal(parseKnownNumber("1.500", "valor"), 1500);
   assert.equal(parseKnownNumber("1500.50"), 1500.5);
   assert.equal(sameValue("R$ 450.000", "450000,00"), true);
 });
@@ -33,9 +34,11 @@ test("dinheiro compara em centavos", () => {
   assert.equal(sameValue(1500.504, 1500.5, "valor"), true);
 });
 
-test("'1.234' ao lado de número nativo aceita leitura decimal", () => {
-  assert.equal(sameValue("1.234", 1.234, "areaTotal"), true);
-  assert.equal(sameValue("1.234", 1234, "areaTotal"), true);
+test("'1.234' ambíguo não confirma área de 1,234 nem 1234", () => {
+  assert.equal(sameValue("1.234", 1.234, "areaTotal"), false);
+  assert.equal(sameValue("1.234", 1234, "areaTotal"), false);
+  assert.equal(sameValue("1.234", 1234, "valor"), true);
+  assert.equal(sameValue("1.234", 1.234, "valor"), false);
 });
 
 test("código é texto: zero à esquerda e formato importam", () => {

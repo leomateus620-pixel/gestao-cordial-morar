@@ -8,9 +8,16 @@
 
 /** Segredos aceitos pelos ganchos internos, na ordem de preferência. */
 export function workerSecrets(): string[] {
-  return [process.env["WORKER_HOOK_SECRET"], process.env["PROPERTY_SYNC_WORKER_SECRET"]].filter(
-    (value): value is string => Boolean(value),
-  );
+  const publicKeys = new Set([
+    process.env["SUPABASE_ANON_KEY"],
+    process.env["SUPABASE_PUBLISHABLE_KEY"],
+    process.env["VITE_SUPABASE_ANON_KEY"],
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
+  ].filter(Boolean));
+  return [process.env["WORKER_HOOK_SECRET"], process.env["PROPERTY_SYNC_WORKER_SECRET"]]
+    .filter((value): value is string =>
+      typeof value === "string" && value.length > 0 &&
+      !value.startsWith("sb_publishable_") && !publicKeys.has(value));
 }
 
 /** Credencial usada pelo próprio app ao acordar um worker. */

@@ -5,9 +5,8 @@
  * Regras fixas:
  *  - só entra automaticamente o que mudou SOMENTE no site (`mudou_remoto`);
  *  - edição local pendente e limpeza intencional local NUNCA são desfeitas;
- *  - divergência (os dois lados mudaram) aplica o valor do site (decisão do
- *    usuário em 22/09/2026) e registra o caso em `property_field_conflicts`
- *    com o valor anterior do Gestão, para conferência;
+ *  - divergência (os dois lados mudaram) preserva o Gestão e registra os três
+ *    valores para decisão administrativa;
  *  - divergência ENTRE contas (Cordial e Morar mudaram o mesmo campo de jeitos
  *    diferentes) mantém o valor do Gestão e registra o caso (scope
  *    "cross_account"); a ordem das importações não decide;
@@ -40,12 +39,17 @@ export const IMPORT_PROTECTED_COLUMNS = [
   "pontos_fortes",
   "carteira",
   "valor_modo",
+  "exibir_imovel",
+  "observacao_imovel",
+  "localizacao_exibida",
 ] as const;
 
 export type PublicationState = {
   id: string;
   property_id: string;
   provider: ImobiProvider;
+  external_property_id?: string | null;
+  updated_at?: string;
   confirmed_field_snapshot: PayloadSnapshot | null;
   echo_payload_hash: string | null;
   echo_expires_at: string | null;
@@ -101,10 +105,14 @@ export function planRemoteChanges(input: {
   );
 
   const patch: Record<string, unknown> = {};
+  const withoutBaseline = !input.publication.confirmed_field_snapshot ||
+    Object.keys(input.publication.confirmed_field_snapshot).length === 0;
   if (!echo) {
-    for (const field of report.importable) patch[field.field] = field.remote;
-    // Divergência: o site prevalece, mas o caso fica registrado.
-    for (const field of report.conflicts) patch[field.field] = field.remote;
+    // Sem base confirmada não sabemos se o vazio local é intencional. Uma
+    // leitura inicial não autoriza sobrescrever o Gestão.
+    if (!withoutBaseline) {
+      for (const field of report.importable) patch[field.field] = field.remote;
+    }
   }
 
   const localAfter: PayloadSnapshot = { ...localSnapshot, ...patch };
@@ -117,9 +125,13 @@ export function planRemoteChanges(input: {
   return {
     report,
     patch,
-    conflicts: echo ? [] : report.conflicts,
+    conflicts: echo
+      ? []
+      : withoutBaseline
+        ? report.fields.filter((field) => field.remote !== null && field.remote !== undefined && !sameValue(field.local, field.remote, field.field))
+        : report.conflicts,
     confirmed: snapshot,
-    fullyConfirmed,
+    fullyConfirmed: fullyConfirmed && report.unverifiable.length === 0 && !withoutBaseline && report.conflicts.length === 0,
     echo,
   };
 }
@@ -150,16 +162,18 @@ export async function applyRemoteChanges(
   // Outra conta do mesmo imóvel: divergência entre Cordial e Morar.
   const { data: others, error: othersError } = await admin
     .from("property_provider_publications")
-    .select("provider, external_property_id, remote_field_snapshot, confirmed_field_snapshot")
+    .select("id, provider, external_property_id, remote_field_snapshot, confirmed_field_snapshot, updated_at")
     .eq("property_id", input.publication.property_id)
     .neq("provider", input.publication.provider);
   if (othersError) throw new Error(othersError.message);
   const other = (others ?? [])[0] as
     | {
-        provider: string;
-        external_property_id: string | null;
-        remote_field_snapshot: PayloadSnapshot | null;
-        confirmed_field_snapshot: PayloadSnapshot | null;
+      provider: string;
+      id: string;
+      external_property_id: string | null;
+      remote_field_snapshot: PayloadSnapshot | null;
+      confirmed_field_snapshot: PayloadSnapshot | null;
+      updated_at: string;
       }
     | undefined;
   let otherLive: PayloadSnapshot | null = null;
@@ -180,25 +194,24 @@ export async function applyRemoteChanges(
   const cross = plan.echo
     ? []
     : findCrossAccountConflicts({
-        fields: Object.keys(plan.patch),
+        fields: [...new Set([...Object.keys(plan.patch), ...plan.conflicts.map((field) => field.field)])],
         thisConfirmed: input.publication.confirmed_field_snapshot,
         thisRemote,
-        otherRemote: otherLive ?? other?.remote_field_snapshot ?? null,
+        otherRemote: otherLiveFailed ? null : otherLive ?? other?.remote_field_snapshot ?? null,
         otherConfirmed: other?.confirmed_field_snapshot ?? null,
         local: input.localRow as PayloadSnapshot,
       });
   // Outra conta não pôde ser lida agora: campos compartilhados que diferem do
   // último valor visto nela ficam para a próxima rodada (nada é aplicado às cegas).
-  if (otherLiveFailed && other?.remote_field_snapshot) {
+  const otherUnverified: string[] = [];
+  if (otherLiveFailed && other?.external_property_id) {
     for (const field of Object.keys(plan.patch)) {
-      const seen = other.remote_field_snapshot[field];
-      if (seen !== undefined && !sameValue(seen, plan.patch[field], field)) {
-        delete plan.patch[field];
-        const previous = input.publication.confirmed_field_snapshot?.[field];
-        if (previous === undefined) delete plan.confirmed[field];
-        else plan.confirmed[field] = previous;
-        plan.fullyConfirmed = false;
-      }
+      otherUnverified.push(field);
+      delete plan.patch[field];
+      const previous = input.publication.confirmed_field_snapshot?.[field];
+      if (previous === undefined) delete plan.confirmed[field];
+      else plan.confirmed[field] = previous;
+      plan.fullyConfirmed = false;
     }
   }
   const crossFields = new Set(cross.map((c) => c.field));
@@ -222,7 +235,7 @@ export async function applyRemoteChanges(
       confirmed: conflict.confirmed ?? null,
       local: conflict.local ?? null,
       remote: conflict.remote ?? null,
-      applied: conflict.remote ?? null,
+      applied: conflict.local ?? null,
     })),
     ...cross.map((c) => ({
       field: c.field,
@@ -239,11 +252,10 @@ export async function applyRemoteChanges(
   // publicação. Se o imóvel mudou no Gestão durante a leitura, nada é gravado.
   const expectedRevision = input.localRow["revision"];
   const publicationFields = {
-      remote_field_snapshot: Object.fromEntries(
-        plan.report.fields.map((field) => [field.field, field.remote ?? null]),
-      ) as never,
+      remote_field_snapshot: thisRemote as never,
       remote_snapshot_at: now,
       remote_observed_hash: input.remoteHash,
+      remote_read_state: "lido",
       // A referência só avança quando local e site ficaram realmente iguais.
       ...(plan.fullyConfirmed
         ? {
@@ -259,13 +271,31 @@ export async function applyRemoteChanges(
             last_error_category: "business",
             last_error_message: `Cordial e Morar mudaram de jeitos diferentes: ${cross.map((c) => c.field).join(", ")}. O valor do Gestão foi mantido e a diferença está registrada.`,
           }
+        : otherUnverified.length
+        ? {
+            last_error_category: "read_inconclusive",
+            last_error_message: `A outra conta não pôde ser conferida; importação dos campos ${otherUnverified.join(", ")} aguarda nova leitura.`,
+          }
         : plan.conflicts.length
         ? {
             last_error_category: "business",
-            last_error_message: `Divergência em: ${plan.conflicts.map((c) => c.field).join(", ")}. O valor da imobiliária foi mantido e a diferença está registrada.`,
+            last_error_message: `Divergência em: ${plan.conflicts.map((c) => c.field).join(", ")}. O valor do Gestão foi mantido para decisão administrativa.`,
           }
         : {}),
   };
+  if (!Number.isInteger(expectedRevision)) throw new Error("revision_unavailable: a importação exige revisão local conhecida.");
+  if (!input.publication.external_property_id || !input.publication.updated_at) {
+    throw new Error("publication_guard_unavailable: vínculo remoto sem identidade ou versão.");
+  }
+  Object.assign(publicationFields, {
+    __guard: {
+      provider: input.publication.provider,
+      external_property_id: input.publication.external_property_id,
+      publication_updated_at: input.publication.updated_at,
+      other_publication_id: other?.id ?? null,
+      other_publication_updated_at: other?.updated_at ?? null,
+    },
+  });
   const { error: mergeError } = await admin.rpc("property_remote_merge" as never, {
     _property_id: input.publication.property_id,
     _expected_revision: typeof expectedRevision === "number" ? expectedRevision : null,
@@ -303,11 +333,12 @@ export async function markOwnEcho(
   remoteHash: string,
   ttlMinutes = 120,
 ) {
-  await admin
+  const { error } = await admin
     .from("property_provider_publications")
     .update({
       echo_payload_hash: remoteHash,
       echo_expires_at: new Date(Date.now() + ttlMinutes * 60_000).toISOString(),
     })
     .eq("id", publicationId);
+  if (error) throw new Error(error.message);
 }

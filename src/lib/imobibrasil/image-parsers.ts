@@ -96,22 +96,25 @@ export function parseRemoteImagePage(
     totalItems: 0,
   };
 
-  const collect = (items: unknown[]): RemoteImage[] =>
-    items
-      .map((item) => asRecord(item))
-      .filter((record): record is Record<string, unknown> => !!record && looksLikeImage(record))
-      .map(toRemoteImage);
+  // Uma linha desconhecida não pode simplesmente desaparecer da leitura:
+  // isso faria uma exclusão parecer confirmada mesmo com a foto ainda no site.
+  const collect = (items: unknown[]): RemoteImage[] | null => {
+    const records = items.map(asRecord);
+    if (records.some((record) => !record || !looksLikeImage(record))) return null;
+    return (records as Record<string, unknown>[]).map(toRemoteImage);
+  };
 
   if (Array.isArray(payload)) {
     const items = collect(payload);
     // Array vazio é resposta legítima: galeria sem fotos.
     return {
-      recognized: payload.length === 0 || items.length > 0,
-      items,
+      recognized: items !== null,
+      items: items ?? [],
       page: requestedPage,
       perPage: requestedPerPage,
-      totalPages: requestedPage,
-      totalItems: items.length,
+      // Sem metadados não há prova de que a página cheia foi a última.
+      totalPages: 0,
+      totalItems: 0,
     };
   }
 
@@ -130,17 +133,17 @@ export function parseRemoteImagePage(
 
   if (rawArray) {
     const items = collect(rawArray);
-    const recognized = rawArray.length === 0 || items.length > 0;
+    const recognized = items !== null;
     return {
       recognized,
-      items,
+      items: items ?? [],
       page: toPositiveInt(holder["page"] ?? root["page"], requestedPage),
       perPage: toPositiveInt(holder["per_page"] ?? root["per_page"], requestedPerPage),
       totalPages: toPositiveInt(
         holder["total_pages"] ?? root["total_pages"],
-        items.length ? requestedPage : 0,
+        0,
       ),
-      totalItems: toPositiveInt(holder["total_items"] ?? root["total_items"], items.length),
+      totalItems: toPositiveInt(holder["total_items"] ?? root["total_items"], 0),
     };
   }
 

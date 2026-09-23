@@ -25,7 +25,7 @@ export type RemoteGallery = {
   /** Formato reconhecido e paginação percorrida até o fim? */
   reliable: boolean;
   /** Motivo quando não é confiável: usado para o estado "não sei". */
-  reason: "formato_desconhecido" | "paginacao_incompleta" | "falha_consulta" | null;
+  reason: "formato_desconhecido" | "identidade_incompleta" | "paginacao_incompleta" | "falha_consulta" | null;
   items: RemoteImage[];
 };
 
@@ -37,36 +37,64 @@ export async function fetchRemoteGallery(
   provider: ImobiProvider,
   externalId: string,
   correlationId?: string,
+  requestPage?: (page: number) => Promise<unknown>,
 ): Promise<RemoteGallery> {
   const items: RemoteImage[] = [];
+  const codes = new Set<string>();
   let page = 1;
+  let expectedPages: number | null = null;
+  let expectedItems: number | null = null;
 
   while (page <= MAX_PAGES) {
     let payload: unknown;
     try {
-      const response = await imobiRequest(
-        provider,
-        `/imovel/${encodeURIComponent(externalId)}/imagem/lista?page=${page}&per_page=${PER_PAGE}`,
-        {
-          method: "GET",
-          extraHeaders: { codigoImovel: externalId },
-          ...(correlationId ? { correlationId } : {}),
-        },
-      );
-      payload = response.data;
+      if (requestPage) payload = await requestPage(page);
+      else {
+        const response = await imobiRequest(
+          provider,
+          `/imovel/${encodeURIComponent(externalId)}/imagem/lista?page=${page}&per_page=${PER_PAGE}`,
+          {
+            method: "GET",
+            extraHeaders: { codigoImovel: externalId },
+            ...(correlationId ? { correlationId } : {}),
+          },
+        );
+        payload = response.data;
+      }
     } catch {
       return { reliable: false, reason: "falha_consulta", items };
     }
 
     const parsed = parseRemoteImagePage(payload, page, PER_PAGE);
     if (!parsed.recognized) return { reliable: false, reason: "formato_desconhecido", items };
+    if (parsed.page !== page || (parsed.totalPages > 0 && page > parsed.totalPages))
+      return { reliable: false, reason: "paginacao_incompleta", items };
+    if (parsed.totalPages > 0) {
+      if (expectedPages !== null && expectedPages !== parsed.totalPages)
+        return { reliable: false, reason: "paginacao_incompleta", items };
+      expectedPages = parsed.totalPages;
+    }
+    if (parsed.totalItems > 0) {
+      if (expectedItems !== null && expectedItems !== parsed.totalItems)
+        return { reliable: false, reason: "paginacao_incompleta", items };
+      expectedItems = parsed.totalItems;
+    }
+    for (const item of parsed.items) {
+      if (!item.codigoImagem || codes.has(item.codigoImagem))
+        return { reliable: false, reason: "identidade_incompleta", items };
+      codes.add(item.codigoImagem);
+    }
     items.push(...parsed.items);
-
-    const lastPage =
-      parsed.items.length < parsed.perPage ||
-      (parsed.totalPages > 0 && page >= parsed.totalPages) ||
-      (parsed.totalItems > 0 && items.length >= parsed.totalItems);
-    if (lastPage) return { reliable: true, reason: null, items };
+    if (expectedItems !== null && items.length > expectedItems)
+      return { reliable: false, reason: "paginacao_incompleta", items };
+    if (parsed.items.length === 0 ||
+        (expectedPages !== null && page >= expectedPages) ||
+        (expectedItems !== null && items.length >= expectedItems)) {
+      if ((expectedItems !== null && items.length !== expectedItems) ||
+          (expectedPages !== null && page < expectedPages))
+        return { reliable: false, reason: "paginacao_incompleta", items };
+      return { reliable: true, reason: null, items };
+    }
     page += 1;
   }
 
@@ -118,5 +146,9 @@ export async function deleteRemoteImage(
     return { confirmed: false, alreadyAbsent: false, message: message ?? "A foto continua no site." };
   }
 
-  return { confirmed, alreadyAbsent: false, message };
+  // Resposta positiva da operação sem releitura completa ainda pode ocultar
+  // uma imagem remanescente. Mantemos o tombstone e a intenção para a próxima
+  // conferência, sem repetir a exclusão antes de ler novamente.
+  return { confirmed: false, alreadyAbsent: false,
+    message: message ?? (confirmed ? "Exclusão aceita; conferência da galeria pendente." : "Exclusão não confirmada.") };
 }

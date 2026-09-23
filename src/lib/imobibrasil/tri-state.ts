@@ -29,6 +29,7 @@ export type FieldClassification =
   | "nao_verificavel";
 
 export type FieldStateInput = {
+  field?: string;
   confirmed: unknown;
   local: unknown;
   remote: unknown;
@@ -44,17 +45,17 @@ function isEmpty(value: unknown): boolean {
 
 export function classifyField(state: FieldStateInput): FieldClassification {
   if (!state.remoteKnown) return "nao_verificavel";
-  if (state.localKnown === false) return sameValue(state.confirmed, state.remote) ? "igual" : "mudou_remoto";
+  if (state.localKnown === false) return sameValue(state.confirmed, state.remote, state.field) ? "igual" : "mudou_remoto";
 
-  const localChanged = !sameValue(state.confirmed, state.local);
-  const remoteChanged = !sameValue(state.confirmed, state.remote);
+  const localChanged = !sameValue(state.confirmed, state.local, state.field);
+  const remoteChanged = !sameValue(state.confirmed, state.remote, state.field);
 
   if (!localChanged && !remoteChanged) return "igual";
   if (localChanged && !remoteChanged) {
     return isEmpty(state.local) && !isEmpty(state.remote) ? "limpeza_local" : "mudou_local";
   }
   if (!localChanged && remoteChanged) return "mudou_remoto";
-  if (sameValue(state.local, state.remote)) return "igual";
+  if (sameValue(state.local, state.remote, state.field)) return "igual";
   return "conflito";
 }
 
@@ -126,6 +127,7 @@ export function buildTriStateReport(
     const entry: TriStateField = {
       field,
       classification: classifyField({
+        field,
         confirmed: confirmedSnapshot[field],
         local: local[field],
         remote: remoteSnapshot[field],
@@ -181,7 +183,7 @@ export function nextConfirmedSnapshot(
       snapshot[field] = remoteValue;
       continue;
     }
-    if (sameValue(localAfterImport[field], remoteValue)) {
+    if (sameValue(localAfterImport[field], remoteValue, field)) {
       snapshot[field] = remoteValue;
       continue;
     }

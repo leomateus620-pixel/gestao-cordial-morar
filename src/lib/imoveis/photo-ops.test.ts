@@ -124,9 +124,10 @@ test("mídia usa o endpoint oficial de exclusão e nunca altera o cadastro", () 
 });
 
 test("exclusão local só apaga arquivos depois da confirmação em todos os sites", () => {
+  const migration = read("../../../supabase/migrations/20260922230000_imobi_durable_media_intent.sql");
+  assert.ok(migration.includes("pending_remote_delete = true"));
+  assert.ok(migration.includes("desired_state = 'absent'"));
   const functions = read("./media.functions.ts");
-  assert.ok(functions.includes("pending_remote_delete: true"));
-  assert.ok(functions.includes("desired_state: \"absent\""));
   assert.ok(functions.includes("replacePropertyImage"));
 
   const media = read("../imobibrasil/media-sync.server.ts");

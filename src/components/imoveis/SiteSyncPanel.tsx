@@ -6,7 +6,6 @@ import {
   Pause,
   Play,
   RefreshCw,
-  RotateCcw,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -208,14 +207,6 @@ export function SiteSyncPanel({ isAdmin }: { isAdmin: boolean }) {
                       <Play className="size-3" /> Retomar
                     </button>
                   ) : null}
-                  {run.failedJobs > 0 && (
-                    <button
-                      onClick={() => control.mutate({ runId: run.id, action: "retry_errors" })}
-                      className="flex items-center gap-1 rounded-full bg-foreground/[0.06] px-2.5 py-1 text-[11px] font-semibold"
-                    >
-                      <RotateCcw className="size-3" /> Tentar erros novamente ({run.failedJobs})
-                    </button>
-                  )}
                   <span className="self-center text-[10px] text-foreground/45">
                     {run.pendingJobs} tarefa(s) na fila
                   </span>

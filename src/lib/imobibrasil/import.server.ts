@@ -15,6 +15,7 @@ import { nextListStep, type ListStatus } from "./list-plan";
 import { fetchPropertyDetail, fetchPropertyImages, fetchPropertyPage } from "./read.server";
 import { buildStablePublicUrl } from "./public-url";
 import {
+  normalizeKey,
   normalizeRemoteImages,
   normalizeRemoteProperty,
   toPropertyRow,
@@ -42,6 +43,7 @@ export type ImportMode = "dry_run" | "commit" | "incremental";
 
 export type ImportJob = {
   id: string;
+  lease_token: string | null;
   run_id: string;
   provider: ImobiProvider;
   job_type: "fetch_page" | "hydrate_property" | "download_image" | "finalize";
@@ -96,15 +98,43 @@ function backoffSeconds(attempts: number): number {
 }
 
 async function bumpRun(admin: Admin, runId: string, deltas: Record<string, number>) {
-  const keys = Object.keys(deltas);
-  if (!keys.length) return;
-  const { data } = await admin.from("property_import_runs").select(keys.join(",")).eq("id", runId).maybeSingle();
-  if (!data) return;
-  const patch: Record<string, number> = {};
-  for (const key of keys) {
-    patch[key] = Number((data as unknown as Record<string, unknown>)[key] ?? 0) + (deltas[key] ?? 0);
+  if (!Object.keys(deltas).length) return;
+  const { data, error } = await admin.rpc("property_import_bump_run" as never, {
+    _run_id: runId, _deltas: deltas,
+  } as never);
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new Error("Importação não encontrada ao atualizar contadores.");
+}
+
+class ImportLeaseLostError extends Error {
+  constructor(jobId: string) {
+    super(`A execução ${jobId} perdeu a posse do trabalho de importação.`);
+    this.name = "ImportLeaseLostError";
   }
-  await admin.from("property_import_runs").update(patch).eq("id", runId);
+}
+
+async function assertImportLease(admin: Admin, job: ImportJob): Promise<void> {
+  if (!job.lease_token) throw new ImportLeaseLostError(job.id);
+  const { data, error } = await admin.rpc("property_import_renew_lease" as never, {
+    _job_id: job.id, _lease_token: job.lease_token, _seconds: 180,
+  } as never);
+  if (error || data !== true) throw new ImportLeaseLostError(job.id);
+}
+
+async function finishImportJob(
+  admin: Admin, job: ImportJob, status: "succeeded" | "retry" | "failed",
+  options: { nextRunAt?: string; attempts?: number; category?: string; message?: string } = {},
+): Promise<void> {
+  if (!job.lease_token) throw new ImportLeaseLostError(job.id);
+  const { data, error } = await admin.rpc("property_import_finish_job" as never, {
+    _job_id: job.id, _lease_token: job.lease_token, _status: status,
+    _next_run_at: options.nextRunAt ?? null,
+    _attempts: options.attempts ?? null,
+    _error_category: options.category ?? null,
+    _error_message: options.message ?? null,
+  } as never);
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new ImportLeaseLostError(job.id);
 }
 
 async function enqueueJob(
@@ -119,7 +149,7 @@ async function enqueueJob(
     payload?: Record<string, unknown>;
   },
 ) {
-  await admin.from("property_import_jobs").upsert(
+  const { error } = await admin.from("property_import_jobs").upsert(
     {
       run_id: job.runId,
       provider: job.provider,
@@ -133,6 +163,7 @@ async function enqueueJob(
     },
     { onConflict: "run_id,idempotency_key", ignoreDuplicates: true },
   );
+  if (error) throw new Error(error.message);
 }
 
 // --------------------------------------------------------------- comando
@@ -145,12 +176,13 @@ export async function startImportRun(
     throw new Error(`Token do provedor ${options.provider} não configurado.`);
   }
 
-  const { data: active } = await admin
+  const { data: active, error: activeError } = await admin
     .from("property_import_runs")
     .select("id, status, mode")
     .eq("provider", options.provider)
     .in("status", ["queued", "running", "paused"])
     .maybeSingle();
+  if (activeError) throw new Error(activeError.message);
   if (active) {
     throw new Error("Já existe uma importação em andamento para este site. Pause ou aguarde a conclusão.");
   }
@@ -191,11 +223,15 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
     // Resposta sem lista reconhecível: repete a página em vez de concluir "vazio".
     throw new Error("Resposta do site sem lista reconhecível; a página será lida de novo.");
   }
+  if (result.page !== page || result.items.some((item) => !extractExternalId(item))) {
+    throw new Error("Página de imóveis incompleta ou sem identidade estável; cursor preservado para nova leitura.");
+  }
 
   let discovered = 0;
+  await assertImportLease(admin, job);
   for (const item of result.items) {
     const externalId = extractExternalId(item);
-    if (!externalId) continue;
+    if (!externalId) throw new Error("Imóvel da página sem código externo.");
     discovered += 1;
     await enqueueJob(admin, {
       runId: job.run_id,
@@ -215,6 +251,7 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
         : page
       : Math.max(result.totalPages, page);
   const next = nextListStep({ status, page, totalPages });
+  await assertImportLease(admin, job);
   if (next.kind === "page") {
     await enqueueJob(admin, {
       runId: job.run_id,
@@ -233,10 +270,12 @@ async function processFetchPage(admin: Admin, job: ImportJob) {
     });
   }
 
-  await admin
+  const { error: checkpointError } = await admin
     .from("property_import_runs")
     .update({ pages_discovered: totalPages, checkpoint: { lastPage: page, status, perPage: result.perPage } })
     .eq("id", job.run_id);
+  if (checkpointError) throw new Error(checkpointError.message);
+  await assertImportLease(admin, job);
   await bumpRun(admin, job.run_id, { pages_processed: 1, properties_discovered: discovered });
 
   return { page, status, discovered, totalPages };
@@ -254,23 +293,70 @@ async function loadLocalCandidates(
   if (remote.externalReference) filters.push(`referencia.eq.${remote.externalReference}`);
 
   const [direct, contextual] = await Promise.all([
-    admin.from("properties").select(columns).eq("carteira", provider).or(filters.join(",")).limit(20),
+    admin.from("properties").select(columns).or(filters.join(",")).limit(20),
     remote.cidade
       ? admin
           .from("properties")
           .select(columns)
-          .eq("carteira", provider)
           .eq("cidade", remote.cidade)
           .eq("operacao", remote.operacao)
           .limit(300)
       : Promise.resolve({ data: [] as unknown[] }),
   ]);
+  if (direct.error) throw new Error(direct.error.message);
+  if ("error" in contextual && contextual.error) throw new Error(contextual.error.message);
 
   const map = new Map<string, LocalCandidate>();
   for (const row of [...((direct.data ?? []) as LocalCandidate[]), ...(((contextual as { data?: unknown[] }).data ?? []) as LocalCandidate[])]) {
     map.set(row.id, row);
   }
   return Array.from(map.values());
+}
+
+/** Uma conta diferente só é vinculada automaticamente pela referência GC
+ * derivada do UUID local. Similaridade de endereço/referência comercial exige
+ * revisão e jamais cria outra cópia local por omissão do matcher. */
+async function crossAccountMatch(
+  admin: Admin,
+  provider: ImobiProvider,
+  remote: NormalizedProperty,
+  candidates: LocalCandidate[],
+): Promise<{ propertyId: string | null; status: "exact_match" | "probable_match" | "ambiguous"; confidence: number; reason: string; alternatives: string[] } | null> {
+  if (remote.externalReference) {
+    const { data, error } = await admin.from("property_provider_publications")
+      .select("property_id, external_reference")
+      .neq("provider", provider)
+      .eq("external_reference", remote.externalReference);
+    if (error) throw new Error(error.message);
+    const canonical = [...new Set((data ?? [])
+      .filter((row) => buildExternalReference(row.property_id as string) === remote.externalReference)
+      .map((row) => row.property_id as string))];
+    if (canonical.length === 1) {
+      return { propertyId: canonical[0]!, status: "exact_match", confidence: 1,
+        reason: "Referência GC estável do mesmo imóvel local na outra conta.", alternatives: [] };
+    }
+    if (canonical.length > 1) {
+      return { propertyId: null, status: "ambiguous", confidence: 0,
+        reason: "Referência GC aponta para mais de um imóvel local.", alternatives: canonical };
+    }
+  }
+  const foreign = candidates.filter((candidate) => candidate.carteira !== provider);
+  const plausible = foreign.filter((candidate) =>
+    (Boolean(remote.externalReference) && normalizeKey(candidate.referencia) === normalizeKey(remote.externalReference)) ||
+    (Boolean(remote.logradouro && remote.numero && remote.cidade) &&
+      normalizeKey(candidate.logradouro) === normalizeKey(remote.logradouro) &&
+      normalizeKey(candidate.numero) === normalizeKey(remote.numero) &&
+      normalizeKey(candidate.cidade) === normalizeKey(remote.cidade) &&
+      normalizeKey(candidate.tipo) === normalizeKey(remote.tipo)),
+  );
+  if (!plausible.length) return null;
+  return {
+    propertyId: plausible.length === 1 ? plausible[0]!.id : null,
+    status: plausible.length === 1 ? "probable_match" : "ambiguous",
+    confidence: 0.7,
+    reason: "Há imóvel semelhante já vinculado à outra conta; identidade precisa de confirmação.",
+    alternatives: plausible.map((candidate) => candidate.id),
+  };
 }
 
 /** Preenche apenas colunas ainda vazias — importação nunca sobrescreve dado local. */
@@ -285,7 +371,7 @@ export function remoteRowSnapshot(remote: NormalizedProperty): Record<string, un
 }
 
 
-async function upsertPublication(
+async function ensurePublication(
   admin: Admin,
   input: {
     propertyId: string;
@@ -299,43 +385,48 @@ async function upsertPublication(
     remoteSnapshot?: Record<string, unknown>;
   },
 ) {
-  const now = new Date().toISOString();
-  const { data, error } = await admin
+  const { data: existing, error: readError } = await admin
     .from("property_provider_publications")
-    .upsert(
-      {
-        property_id: input.propertyId,
-        provider: input.provider,
-        enabled: true,
-        external_property_id: input.externalId,
-         external_public_url: buildStablePublicUrl(input.provider, input.externalId),
-        external_reference: input.externalReference ?? buildExternalReference(input.propertyId),
-        status: "published",
-        // `remote_observed_hash` = o que o site tem agora (sempre gravado).
-        remote_observed_hash: input.remoteHash,
-        ...(input.remoteSnapshot ? { remote_field_snapshot: input.remoteSnapshot } : {}),
-        remote_snapshot_at: now,
-        // `last_published_hash`/`confirmed_field_snapshot` = referência de
-        // comparação. NUNCA avança quando a importação preservou dado local
-        // diferente: registrar os três estados como iguais mascara divergência.
-        ...(input.localMatchesRemote
-          ? {
-              last_published_hash: input.remoteHash,
-              local_desired_hash: input.remoteHash,
-              confirmed_field_snapshot: input.remoteSnapshot ?? null,
-              baseline_at: now,
-            }
-          : {}),
-        last_imported_at: now,
-        last_verified_at: now,
-        import_run_id: input.runId,
-      },
-      { onConflict: "property_id,provider" },
-    )
-    .select("id")
-    .single();
+    .select("id, external_property_id, enabled")
+    .eq("property_id", input.propertyId)
+    .eq("provider", input.provider)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (existing) {
+    if (existing.external_property_id !== input.externalId) {
+      throw new Error("Vínculo da conta já aponta para outro código remoto; exige decisão administrativa.");
+    }
+    // Leitura/importação não reativa uma publicação desabilitada nem marca
+    // pendências como published. O merge posterior grava somente observações.
+    return { id: existing.id as string, enabled: Boolean(existing.enabled) };
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await admin.from("property_provider_publications").insert({
+    property_id: input.propertyId,
+    provider: input.provider,
+    enabled: true,
+    external_property_id: input.externalId,
+    external_public_url: buildStablePublicUrl(input.provider, input.externalId),
+    external_reference: input.externalReference ?? buildExternalReference(input.propertyId),
+    status: input.localMatchesRemote ? "published" : "out_of_sync",
+    remote_observed_hash: input.remoteHash,
+    ...(input.remoteSnapshot ? { remote_field_snapshot: input.remoteSnapshot } : {}),
+    remote_snapshot_at: now,
+    ...(input.localMatchesRemote
+      ? {
+          last_published_hash: input.remoteHash,
+          local_desired_hash: input.remoteHash,
+          confirmed_field_snapshot: input.remoteSnapshot ?? null,
+          baseline_at: now,
+        }
+      : {}),
+    last_imported_at: now,
+    last_verified_at: now,
+    import_run_id: input.runId,
+  }).select("id").single();
   if (error) throw new Error(error.message);
-  return data.id as string;
+  return { id: data.id as string, enabled: true };
 }
 
 async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
@@ -346,22 +437,28 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
   const remote = normalizeRemoteProperty(job.provider, externalId, detail);
   const remoteHash = await sha256(JSON.stringify(remote));
 
-  const { data: existingLink } = await admin
+  const { data: existingLink, error: linkReadError } = await admin
     .from("property_provider_publications")
-    .select("id, property_id")
+    .select("id, property_id, enabled")
     .eq("provider", job.provider)
     .eq("external_property_id", externalId)
     .maybeSingle();
+  if (linkReadError) throw new Error(linkReadError.message);
 
   const candidates = await loadLocalCandidates(admin, job.provider, remote);
+  const localMatch = matchProperty(job.provider, remote, candidates);
+  const crossMatch = existingLink ? null : await crossAccountMatch(admin, job.provider, remote, candidates);
   const match = existingLink
     ? { propertyId: existingLink.property_id as string, status: "exact_match" as const, confidence: 1, reason: "Vínculo já existente.", alternatives: [] as string[] }
-    : matchProperty(job.provider, remote, candidates);
+    : crossMatch?.status === "exact_match" ? crossMatch
+    : localMatch.status === "new" && crossMatch ? crossMatch : localMatch;
 
-  const remoteImages = await fetchPropertyImages(job.provider, externalId, job.correlation_id).catch(() => []);
+  const remoteImages = await fetchPropertyImages(job.provider, externalId, job.correlation_id);
   const images = normalizeRemoteImages(remoteImages);
 
-  await admin.from("property_import_candidates").upsert(
+  await assertImportLease(admin, job);
+
+  const { error: candidateError } = await admin.from("property_import_candidates").upsert(
     {
       run_id: job.run_id,
       provider: job.provider,
@@ -378,6 +475,7 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
     },
     { onConflict: "run_id,provider,external_property_id" },
   );
+  if (candidateError) throw new Error(candidateError.message);
 
   await bumpRun(admin, job.run_id, {
     images_discovered: images.length,
@@ -392,6 +490,13 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
     // Nunca decide sozinho: fica aguardando o administrador na tela de conflitos.
     return { mode, match: match.status, externalId, pendingReview: true };
   }
+  if (existingLink && !existingLink.enabled) {
+    const { error: inactiveError } = await admin.from("property_import_candidates")
+      .update({ status: "external_discovered", match_property_id: existingLink.property_id })
+      .eq("run_id", job.run_id).eq("provider", job.provider).eq("external_property_id", externalId);
+    if (inactiveError) throw new Error(inactiveError.message);
+    return { mode, match: match.status, externalId, disabledPublication: true };
+  }
 
   const row = toPropertyRow(remote);
   let propertyId = match.propertyId;
@@ -402,22 +507,15 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
   let localRow: Record<string, unknown> | null = null;
 
   if (propertyId) {
-    const { data: local } = await admin.from("properties").select("*").eq("id", propertyId).maybeSingle();
-    localRow = (local ?? {}) as Record<string, unknown>;
-    // Conteúdo NÃO é preenchido aqui: campo vazio no Gestão pode ser limpeza
-    // intencional. A decisão por campo acontece na comparação de três estados.
-    // Só a identidade de origem é registrada, quando ainda não existe.
-    if (!localRow.source_property_id) {
-      const { error: linkError } = await admin
-        .from("properties")
-        .update({ source_property_id: externalId })
-        .eq("id", propertyId)
-        .is("source_property_id", null);
-      if (linkError) throw new Error(linkError.message);
-      localRow = { ...localRow, source_property_id: externalId };
-    }
+    const { data: local, error: localError } = await admin.from("properties").select("*").eq("id", propertyId).maybeSingle();
+    if (localError) throw new Error(localError.message);
+    if (!local) throw new Error("Imóvel vinculado deixou de existir; importação será recalculada.");
+    localRow = local as Record<string, unknown>;
+    // source_property_id é legado de UMA conta. O vínculo correto para Cordial
+    // e Morar vive na tabela de publicações e não substitui o da outra conta.
     await bumpRun(admin, job.run_id, { properties_linked: 1 });
   } else {
+    await assertImportLease(admin, job);
     const { data: created, error } = await admin
       .from("properties")
       .insert({
@@ -435,7 +533,7 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
     await bumpRun(admin, job.run_id, { properties_created: 1 });
   }
 
-  const publicationId = await upsertPublication(admin, {
+  const publication = await ensurePublication(admin, {
     propertyId,
     provider: job.provider,
     externalId,
@@ -445,43 +543,56 @@ async function processHydrate(admin: Admin, job: ImportJob, mode: ImportMode) {
     localMatchesRemote,
     remoteSnapshot: remoteRowSnapshot(remote),
   });
+  const publicationId = publication.id;
+  if (!publication.enabled) {
+    return { mode, match: match.status, externalId, disabledPublication: true };
+  }
 
   // Importação incremental: aplica o que mudou só no site, preserva edição e
   // limpeza locais e registra divergência quando os dois lados mudaram.
   if (localRow) {
-    const { data: pub } = await admin
-      .from("property_provider_publications")
-      .select("id, property_id, provider, confirmed_field_snapshot, echo_payload_hash, echo_expires_at")
-      .eq("id", publicationId)
-      .maybeSingle();
-    if (pub) {
-      await applyRemoteChanges(admin, {
-        publication: pub as never,
-        localRow,
-        remote,
-        remoteHash,
-        observeOther: async (otherProvider, otherExternalId) => {
-          const detail = await fetchPropertyDetail(
-            otherProvider as ImobiProvider,
-            otherExternalId,
-            job.correlation_id,
-          );
-          if (!detail) return null;
-          const otherRemote = normalizeRemoteProperty(otherProvider as ImobiProvider, otherExternalId, detail);
-          const row = toPropertyRow(otherRemote) as Record<string, unknown>;
-          return Object.fromEntries(Object.entries(row).filter(([, v]) => v !== null && v !== undefined));
-        },
-      });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const [{ data: currentLocal, error: localError }, { data: pub, error: pubError }] = await Promise.all([
+        admin.from("properties").select("*").eq("id", propertyId).single(),
+        admin.from("property_provider_publications")
+          .select("id, property_id, provider, external_property_id, updated_at, confirmed_field_snapshot, echo_payload_hash, echo_expires_at")
+          .eq("id", publicationId).single(),
+      ]);
+      if (localError || pubError || !currentLocal || !pub) {
+        throw new Error(localError?.message ?? pubError?.message ?? "Vínculo local indisponível durante a importação.");
+      }
+      try {
+        await assertImportLease(admin, job);
+        await applyRemoteChanges(admin, {
+          publication: pub as never,
+          localRow: currentLocal as Record<string, unknown>,
+          remote,
+          remoteHash,
+          observeOther: async (otherProvider, otherExternalId) => {
+            const detail = await fetchPropertyDetail(
+              otherProvider as ImobiProvider, otherExternalId, job.correlation_id,
+            );
+            if (!detail || Object.keys(detail).length === 0) return null;
+            const otherRemote = normalizeRemoteProperty(otherProvider as ImobiProvider, otherExternalId, detail);
+            return remoteRowSnapshot(otherRemote);
+          },
+        });
+        break;
+      } catch (error) {
+        if (attempt === 2 || !/revision_changed|publication_changed|other_publication_changed/.test(String(error))) throw error;
+      }
     }
   }
 
-  await admin
+  const { error: commitError } = await admin
     .from("property_import_candidates")
     .update({ status: "committed", match_property_id: propertyId })
     .eq("run_id", job.run_id)
     .eq("provider", job.provider)
     .eq("external_property_id", externalId);
+  if (commitError) throw new Error(commitError.message);
 
+  await assertImportLease(admin, job);
   for (const image of images) {
     await enqueueJob(admin, {
       runId: job.run_id,
@@ -527,12 +638,15 @@ async function processImage(admin: Admin, job: ImportJob) {
 
   const hash = await sha256(buffer);
 
-  const { data: duplicate } = await admin
+  await assertImportLease(admin, job);
+
+  const { data: duplicate, error: duplicateError } = await admin
     .from("property_images")
     .select("id")
     .eq("property_id", payload.propertyId)
     .eq("content_hash", hash)
     .maybeSingle();
+  if (duplicateError) throw new Error(duplicateError.message);
 
   let imageId = duplicate?.id as string | undefined;
 
@@ -543,6 +657,8 @@ async function processImage(admin: Admin, job: ImportJob) {
       .from("property-images")
       .upload(storagePath, buffer, { contentType: mime, upsert: true });
     if (upload.error) throw new Error(upload.error.message);
+
+    await assertImportLease(admin, job);
 
     const { data: inserted, error } = await admin
       .from("property_images")
@@ -562,7 +678,8 @@ async function processImage(admin: Admin, job: ImportJob) {
     imageId = inserted.id as string;
   }
 
-  await admin.from("property_image_provider_publications").upsert(
+  await assertImportLease(admin, job);
+  const { error: linkError } = await admin.from("property_image_provider_publications").upsert(
     {
       image_id: imageId,
       publication_id: payload.publicationId,
@@ -576,43 +693,23 @@ async function processImage(admin: Admin, job: ImportJob) {
     },
     { onConflict: "image_id,publication_id" },
   );
+  if (linkError) throw new Error(linkError.message);
 
   await bumpRun(admin, job.run_id, { images_imported: 1 });
   return { imageId, hash, reused: Boolean(duplicate) };
 }
 
 async function processFinalize(admin: Admin, job: ImportJob) {
-  const { count: pending } = await admin
-    .from("property_import_jobs")
-    .select("id", { count: "exact", head: true })
-    .eq("run_id", job.run_id)
-    .neq("job_type", "finalize")
-    .in("status", ["pending", "processing", "retry"]);
-
-  if ((pending ?? 0) > 0) {
-    // Ainda há trabalho: reagenda a finalização.
-    await admin
-      .from("property_import_jobs")
-      .update({ status: "retry", next_run_at: new Date(Date.now() + 15_000).toISOString(), attempts: 0 })
-      .eq("id", job.id);
-    return { finalized: false, pending };
-  }
-
-  const { count: failed } = await admin
-    .from("property_import_jobs")
-    .select("id", { count: "exact", head: true })
-    .eq("run_id", job.run_id)
-    .eq("status", "failed");
-
-  await admin
-    .from("property_import_runs")
-    .update({
-      status: (failed ?? 0) > 0 ? "completed_with_errors" : "completed",
-      finished_at: new Date().toISOString(),
-    })
-    .eq("id", job.run_id);
-
-  return { finalized: true, failed: failed ?? 0 };
+  const { data, error } = await admin.rpc("property_import_finalize_if_owned" as never, {
+    _job_id: job.id, _lease_token: job.lease_token,
+  } as never);
+  if (error) throw new Error(error.message);
+  const result = (data ?? {}) as { state?: string; pending?: number; failed?: number; recoverable?: number };
+  if (result.state === "lease_lost") throw new ImportLeaseLostError(job.id);
+  if (result.state === "run_changed") throw new Error("A importação mudou de estado durante a conclusão.");
+  if (result.state === "waiting") return { finalized: false, pending: result.pending ?? 0, recoverable: result.recoverable ?? 0 };
+  if (result.state !== "completed") throw new Error("Conclusão da importação sem confirmação do banco.");
+  return { finalized: true, failed: result.failed ?? 0 };
 }
 
 // --------------------------------------------------------------- worker
@@ -634,11 +731,15 @@ export async function runImportWorker(
 
   for (const job of jobs) {
     try {
-      const { data: run } = await admin
+      const { data: run, error: runError } = await admin
         .from("property_import_runs")
         .select("mode, status")
         .eq("id", job.run_id)
         .maybeSingle();
+      if (runError) throw new Error(runError.message);
+      if (!run || !["queued", "running"].includes(run.status)) {
+        throw new ImportLeaseLostError(job.id);
+      }
       const mode = (run?.mode ?? "dry_run") as ImportMode;
 
       let outcome: Record<string, unknown>;
@@ -648,38 +749,36 @@ export async function runImportWorker(
       else outcome = await processFinalize(admin, job);
 
       const stillQueued = job.job_type === "finalize" && outcome["finalized"] === false;
-      if (!stillQueued) {
-        await admin
-          .from("property_import_jobs")
-          .update({
-            status: "succeeded",
-            finished_at: new Date().toISOString(),
-            locked_at: null,
-            lock_expires_at: null,
-            locked_by: null,
-            last_error_category: null,
-            last_error_message: null,
-          })
-          .eq("id", job.id);
-      }
+      if (!stillQueued && job.job_type !== "finalize")
+        await finishImportJob(admin, job, "succeeded");
       results.push({ jobId: job.id, type: job.job_type, ...outcome });
     } catch (error) {
+      if (error instanceof ImportLeaseLostError) {
+        results.push({ jobId: job.id, type: job.job_type, status: "lease_lost" });
+        continue;
+      }
       const normalized = toImobiError(error);
-      const canRetry = normalized.retryable && job.attempts < job.max_attempts;
-      await admin
-        .from("property_import_jobs")
-        .update({
-          status: canRetry ? "retry" : "failed",
-          next_run_at: new Date(Date.now() + backoffSeconds(job.attempts) * 1000).toISOString(),
-          finished_at: canRetry ? null : new Date().toISOString(),
-          locked_at: null,
-          lock_expires_at: null,
-          locked_by: null,
-          last_error_category: normalized.category,
-          last_error_message: sanitizeMessage(normalized.message, 300),
-        })
-        .eq("id", job.id);
-      if (!canRetry) {
+      const recoverable = normalized.retryable || normalized.ambiguous ||
+        ["config", "auth", "rate_limit", "server", "network", "protocol", "unknown"].includes(normalized.category);
+      const canRetry = recoverable && job.attempts < job.max_attempts;
+      const nextDelay = normalized.category === "rate_limit"
+        ? Math.max(normalized.retryAfterSeconds ?? 30, 15)
+        : canRetry ? backoffSeconds(job.attempts) : recoverable ? 3600 : 0;
+      try {
+        await finishImportJob(admin, job, canRetry ? "retry" : "failed", {
+          nextRunAt: new Date(Date.now() + nextDelay * 1000).toISOString(),
+          attempts: normalized.category === "rate_limit" ? Math.max(0, job.attempts - 1) : undefined,
+          category: normalized.category,
+          message: sanitizeMessage(normalized.message, 300),
+        });
+      } catch (finishError) {
+        if (finishError instanceof ImportLeaseLostError) {
+          results.push({ jobId: job.id, type: job.job_type, status: "lease_lost" });
+          continue;
+        }
+        throw finishError;
+      }
+      if (!recoverable) {
         await bumpRun(admin, job.run_id, {
           ...(job.job_type === "download_image" ? { images_errored: 1 } : { properties_errored: 1 }),
         });
@@ -690,19 +789,21 @@ export async function runImportWorker(
 
   // "remaining" precisa refletir apenas o que o claim consegue pegar (runs ativas e jobs vencidos),
   // senão jobs órfãos de runs concluídas fazem o worker se reencadear infinitamente sem processar nada.
-  const { data: activeRuns } = await admin
+  const { data: activeRuns, error: activeRunsError } = await admin
     .from("property_import_runs")
     .select("id")
     .in("status", ["queued", "running"]);
+  if (activeRunsError) throw new Error(activeRunsError.message);
   const activeIds = (activeRuns ?? []).map((run) => run.id);
   let remaining = 0;
   if (activeIds.length) {
-    const { count } = await admin
+    const { count, error: countError } = await admin
       .from("property_import_jobs")
       .select("id", { count: "exact", head: true })
       .in("run_id", activeIds)
       .in("status", ["pending", "retry"])
       .lte("next_run_at", new Date().toISOString());
+    if (countError) throw new Error(countError.message);
     remaining = count ?? 0;
   }
 
@@ -738,10 +839,11 @@ export async function commitCandidate(
   const remote = candidate.normalized as unknown as NormalizedProperty;
 
   if (resolution === "ignore") {
-    await admin
+    const { error: ignoreError } = await admin
       .from("property_import_candidates")
       .update({ status: "ignored", resolution, resolved_by: actorId, resolved_at: now })
       .eq("id", candidateId);
+    if (ignoreError) throw new Error(ignoreError.message);
     return { status: "ignored" as const };
   }
 
@@ -763,17 +865,18 @@ export async function commitCandidate(
     if (insertError) throw new Error(insertError.message);
     propertyId = created.id as string;
   } else if (resolution === "update_local") {
-    const { error: updateError } = await admin
+    const { data: current, error: readError } = await admin.from("properties")
+      .select("revision").eq("id", propertyId).single();
+    if (readError) throw new Error(readError.message);
+    const { data: updated, error: updateError } = await admin
       .from("properties")
-      .update({ ...row, source_property_id: externalId })
-      .eq("id", propertyId);
+      .update({ ...row, revision: Number(current.revision) + 1 })
+      .eq("id", propertyId).eq("revision", current.revision).select("id").maybeSingle();
     if (updateError) throw new Error(updateError.message);
-  } else {
-    // link_only: apenas garante o código externo, sem alterar o conteúdo local.
-    await admin.from("properties").update({ source_property_id: externalId }).eq("id", propertyId);
+    if (!updated) throw new Error("revision_changed: o imóvel mudou durante a decisão administrativa.");
   }
 
-  const publicationId = await upsertPublication(admin, {
+  const publication = await ensurePublication(admin, {
     propertyId: propertyId!,
     provider,
     externalId,
@@ -784,8 +887,10 @@ export async function commitCandidate(
     localMatchesRemote: resolution !== "link_only",
     remoteSnapshot: remoteRowSnapshot(remote),
   });
+  const publicationId = publication.id;
+  if (!publication.enabled) throw new Error("Publicação desabilitada; importação não pode reativá-la.");
 
-  const remoteImages = await fetchPropertyImages(provider, externalId).catch(() => []);
+  const remoteImages = await fetchPropertyImages(provider, externalId);
   for (const image of normalizeRemoteImages(remoteImages)) {
     await enqueueJob(admin, {
       runId: candidate.run_id as string,
@@ -797,7 +902,7 @@ export async function commitCandidate(
     });
   }
 
-  await admin
+  const { error: commitError } = await admin
     .from("property_import_candidates")
     .update({
       status: "committed",
@@ -807,6 +912,7 @@ export async function commitCandidate(
       match_property_id: propertyId,
     })
     .eq("id", candidateId);
+  if (commitError) throw new Error(commitError.message);
 
   return { status: "committed" as const, propertyId };
 }

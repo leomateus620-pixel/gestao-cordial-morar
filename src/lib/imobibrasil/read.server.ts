@@ -6,9 +6,10 @@
  */
 
 import { imobiRequest } from "./client.server";
-import { extractList, extractPage, extractRecord, type RemotePage, type RemoteRecord } from "./read-parsers";
+import { extractList, extractPage, extractImagePage, extractRecord, hasPropertyDetail, type RemotePage, type RemoteRecord } from "./read-parsers";
 import type { ImobiProvider } from "./providers";
 import { fetchAllPropertyPagesWith, type FullListResult } from "./list-all";
+import { fetchAllImagePagesWith } from "./image-list";
 
 export type { RemotePage, RemoteRecord };
 export { extractList, extractPage, extractRecord };
@@ -74,7 +75,11 @@ export async function fetchPropertyDetail(
     extraHeaders: { codigoImovel: externalId },
     ...(correlationId ? { correlationId } : {}),
   });
-  return extractRecord(response.data);
+  const record = extractRecord(response.data);
+  if (!hasPropertyDetail(record)) {
+    throw new Error("Detalhes do imóvel sem campos reconhecíveis; leitura inconclusiva.");
+  }
+  return record;
 }
 
 /**
@@ -98,14 +103,17 @@ export async function fetchPropertyImages(
   externalId: string,
   correlationId?: string,
 ): Promise<RemoteRecord[]> {
-  const response = await imobiRequest(
-    provider,
-    `/imovel/${encodeURIComponent(externalId)}/imagem/lista`,
-    {
-      method: "GET",
-      extraHeaders: { codigoImovel: externalId },
-      ...(correlationId ? { correlationId } : {}),
-    },
-  );
-  return extractList(response.data);
+  const perPage = 50;
+  return fetchAllImagePagesWith(async (page) => {
+    const response = await imobiRequest(
+      provider,
+      `/imovel/${encodeURIComponent(externalId)}/imagem/lista?page=${page}&per_page=${perPage}`,
+      {
+        method: "GET",
+        extraHeaders: { codigoImovel: externalId },
+        ...(correlationId ? { correlationId } : {}),
+      },
+    );
+    return extractImagePage(response.data, page, perPage);
+  });
 }
