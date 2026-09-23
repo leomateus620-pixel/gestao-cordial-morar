@@ -350,17 +350,18 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  // Foto nova/reordenada ANTES de fotos já no site: o site mostra a nova logo
-  // após a capa. Retira (com confirmação) as fotos já enviadas que ficam depois
-  // dela e reenvia tudo em ordem. Falha numa retirada = não envia nada agora.
+  // O site mostra cada foto nova logo após a capa. Se uma foto pendente deve
+  // ficar DEPOIS de fotos já no site (ex.: acrescentada no fim), retira (com
+  // confirmação) as já enviadas que ficam antes dela e reenvia tudo em ordem.
+  // Falha numa retirada = não envia nada agora.
   const coverId = publishable[0]?.id;
   const positionOf = new Map(publishable.map((image) => [image.id, image.position]));
   const pendingPositions = plan.toSend.filter((i) => i.id !== coverId).map((i) => i.position);
-  const firstPending = pendingPositions.length ? Math.min(...pendingPositions) : Infinity;
+  const lastPending = pendingPositions.length ? Math.max(...pendingPositions) : -Infinity;
   const displaced = links.filter((row) =>
     row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" &&
     row.external_image_id && row.image_id !== coverId &&
-    (positionOf.get(row.image_id) ?? -1) > firstPending);
+    (positionOf.get(row.image_id) ?? Infinity) < lastPending);
   const reordered: typeof plan.toSend = [];
   let reorderBlocked = false;
   if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0) {
