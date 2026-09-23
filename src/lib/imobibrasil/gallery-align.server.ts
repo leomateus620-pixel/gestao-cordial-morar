@@ -8,7 +8,7 @@
  * a fila, que as envia na ordem certa. Nunca apaga anúncio nem cadastro.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ImobiProvider } from "./config";
+import type { ImobiProvider } from "./providers";
 import { fetchRemoteGallery, deleteRemoteImage } from "./image-ops.server";
 import { queueMediaSync } from "./media-sync.server";
 
