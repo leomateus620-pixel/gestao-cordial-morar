@@ -16,7 +16,7 @@ import {
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
-import { sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
+import { prepareImageForUpload, sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
 import { describeGalleryMove, type GalleryMove } from "@/lib/imoveis/gallery-move";
 import type { PropertyImage } from "@/types/property";
 
@@ -136,10 +136,13 @@ export function usePropertyMedia(propertyId: string | undefined) {
       // O original entra primeiro no armazenamento durável. O worker aplica a
       // marca depois, inclusive se o navegador for fechado imediatamente.
       patch(key, { status: "preparando", progress: 0, error: undefined });
-      const hash = await sha256Hex(file);
+      // Redimensiona no navegador antes de subir: o arquivo da câmera costuma
+      // ter 8–12 MB e o envio de 10 fotos ficava lentíssimo sem isso.
+      const prepared = await prepareImageForUpload(file);
+      const hash = await sha256Hex(prepared.blob);
       const target = await createUrl({ data: {
-        propertyId, fileName: file.name, contentHash: hash,
-        sizeBytes: file.size, mimeType: file.type || null,
+        propertyId, fileName: prepared.fileName, contentHash: hash,
+        sizeBytes: prepared.sizeBytes, mimeType: prepared.mimeType || null,
         replacementFor: replacementFor ?? null, batchId: activeBatch.current,
       } });
       if (!target.reservationId) throw new Error("A intenção de upload não foi persistida.");
@@ -147,23 +150,9 @@ export function usePropertyMedia(propertyId: string | undefined) {
       try {
         patch(key, { status: "enviando" });
         await uploadSignedWithProgress({
-          bucket: BUCKET, path: target.path, token: target.token, blob: file,
-          contentType: file.type || "application/octet-stream",
+          bucket: BUCKET, path: target.path, token: target.token, blob: prepared.blob,
+          contentType: prepared.mimeType || "application/octet-stream",
           onProgress: (ratio) => patch(key, { progress: Math.min(99, Math.round(ratio * 100)) }),
-        });
-
-        result = await register({
-          data: {
-            propertyId,
-            storagePath: target.path,
-            fileName: file.name,
-            mimeType: file.type || null,
-            sizeBytes: file.size,
-            contentHash: hash,
-            reservationId: target.reservationId,
-            replacementFor: replacementFor ?? null,
-            batchId: activeBatch.current,
-          },
         });
       } catch (error) {
         // O PUT pode ter sido aceito apesar de a conexão cair. A reserva
@@ -171,6 +160,31 @@ export function usePropertyMedia(propertyId: string | undefined) {
         throw new UploadRecoveryPendingError(
           error instanceof Error ? error.message : "Confirmação do arquivo pendente.",
         );
+      }
+      try {
+        result = await register({
+          data: {
+            propertyId,
+            storagePath: target.path,
+            fileName: prepared.fileName,
+            mimeType: prepared.mimeType || null,
+            sizeBytes: prepared.sizeBytes,
+            contentHash: hash,
+            reservationId: target.reservationId,
+            replacementFor: replacementFor ?? null,
+            batchId: activeBatch.current,
+            width: prepared.width,
+            height: prepared.height,
+          },
+        });
+      } catch (error) {
+        // Recusa definitiva (permissão, reserva inválida, imóvel indisponível)
+        // precisa aparecer como erro: deixar em "processando" trava a tela.
+        const message = error instanceof Error ? error.message : "Confirmação do arquivo pendente.";
+        if (/permiss|Reserva de upload|indispon|inválid|invalid|removida/i.test(message)) {
+          throw new Error(message);
+        }
+        throw new UploadRecoveryPendingError(message);
       }
       patch(key, {
         progress: 100,

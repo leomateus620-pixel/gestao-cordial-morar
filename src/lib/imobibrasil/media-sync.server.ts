@@ -593,8 +593,28 @@ export async function deliverGallery(
   await reconcileLinkCodes(admin, params, publishable, gallery);
 
   // ------------------------------------------------------- ordem e capa
+  // Enquanto faltam fotos a enviar, a ordem exibida no site é parcial por
+  // construção (o site mostra capa + da mais nova para a mais antiga, e o
+  // envio segue essa sequência). Julgar a ordem agora faria a reconstrução
+  // apagar fotos recém-enviadas a cada passagem — laço sem fim. A ordem só é
+  // avaliada depois que todas as fotos do Gestão estão no site.
+  const { data: beforeRebuildLinks } = await admin
+    .from("property_image_provider_publications")
+    .select("image_id, desired_state, status, deleted_at")
+    .eq("publication_id", publicationId);
+  const desiredIds = new Set(publishable.map((image) => image.id));
+  const stillMissing = (beforeRebuildLinks ?? []).filter((row) =>
+    desiredIds.has(row.image_id as string) &&
+    row.desired_state !== "absent" && !row.deleted_at && row.status !== "synced",
+  ).length;
+  const missingLinks = publishable.length - (beforeRebuildLinks ?? []).filter(
+    (row) => desiredIds.has(row.image_id as string) && row.status === "synced",
+  ).length;
   const rebuild = unknownCount > 0 && !rebuildingFromCheckpoint
     ? { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown",
+        checkpoint: null, gallery }
+    : (stillMissing > 0 || missingLinks > 0) && !rebuildingFromCheckpoint
+    ? { deleted: 0, reinserted: 0, pending: true, reason: "envio_incompleto",
         checkpoint: null, gallery }
     : await rebuildRemoteOrderDurable(admin, {
     propertyId,
@@ -828,7 +848,67 @@ async function reconcileLinkCodes(
       last_op_state: "delivery_unknown",
     });
   }
+
+  // Adoção de código órfão: a API de inserção não devolve o código da foto,
+  // então uma entrega fica "incerta". Com leitura confiável, se existe UMA
+  // única foto do site sem par local e UMA única entrega incerta, o código é
+  // dela — a entrega passa a confirmada sem reenvio nenhum.
+  const { data: after } = await admin
+    .from("property_image_provider_publications")
+    .select("image_id, external_image_id, status, desired_state")
+    .eq("publication_id", publicationId);
+  const afterRows = (after ?? []) as typeof rows;
+  const takenCodes = new Set(
+    afterRows
+      .filter((row) => row.external_image_id && row.desired_state !== "absent")
+      .map((row) => String(row.external_image_id)),
+  );
+  // Entrega incerta que JÁ tem código e esse código aparece na galeria do
+  // site: a foto entrou. Confirmação por leitura, sem reenvio.
+  const remoteCodes = new Set(
+    gallery.items
+      .map((item) => item.codigoImagem)
+      .filter((code): code is string => Boolean(code)),
+  );
+  for (const row of afterRows) {
+    if (row.status !== "delivery_unknown" || row.desired_state === "absent") continue;
+    const code = row.external_image_id ? String(row.external_image_id) : null;
+    if (!code || !remoteCodes.has(code)) continue;
+    await persistLink(admin, ownership, {
+      image_id: row.image_id,
+      publication_id: publicationId,
+      status: "synced",
+      last_op: "insert",
+      last_op_state: "confirmed_by_read",
+      error_class: null,
+      last_error_message: null,
+      verification: { matched_by: "codigo_na_galeria", ambiguous: false, reason: null },
+    });
+  }
+  const orphans = gallery.items
+    .map((item) => item.codigoImagem)
+    .filter((code): code is string => Boolean(code) && !takenCodes.has(code as string));
+  const unknowns = desired
+    .map((image) => afterRows.find((row) => row.image_id === image.id))
+    .filter(
+      (row): row is (typeof rows)[number] =>
+        Boolean(row) && row!.status === "delivery_unknown" && !row!.external_image_id,
+    );
+  if (orphans.length === 1 && unknowns.length === 1) {
+    await persistLink(admin, ownership, {
+      image_id: unknowns[0]!.image_id,
+      publication_id: publicationId,
+      status: "synced",
+      external_image_id: orphans[0]!,
+      last_op: "insert",
+      last_op_state: "confirmed_by_orphan_code",
+      error_class: null,
+      last_error_message: null,
+      verification: { matched_by: "codigo_orfao_unico", ambiguous: false, reason: null },
+    });
+  }
 }
+
 
 /**
  * Apaga registro e arquivos SOMENTE de fotos cuja remoção já foi confirmada em

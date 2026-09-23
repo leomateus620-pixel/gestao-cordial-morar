@@ -89,6 +89,9 @@ export async function sha256Hex(blob: Blob): Promise<string> {
     .join("");
 }
 
+/** Tempo máximo de um único envio ao armazenamento. */
+const UPLOAD_TIMEOUT_MS = 180_000;
+
 /** Envio direto ao bucket privado por URL assinada, com progresso real. */
 export function uploadSignedWithProgress(args: {
   bucket: string;
@@ -104,6 +107,9 @@ export function uploadSignedWithProgress(args: {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url, true);
+    // Sem limite de tempo um envio parado deixa a tela girando para sempre.
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
+    xhr.ontimeout = () => reject(new Error("O envio desta foto demorou demais."));
     xhr.setRequestHeader("Content-Type", args.contentType);
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && args.onProgress) args.onProgress(event.loaded / event.total);
