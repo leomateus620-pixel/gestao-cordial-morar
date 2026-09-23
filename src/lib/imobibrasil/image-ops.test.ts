@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fetchRemoteGallery } from "./image-ops.server";
+import { detailImageTotal, fetchRemoteGallery } from "./image-ops.server";
 
 const image = (n: number) => ({ codigoImagem: String(n), url: `https://site.invalid/${n}.jpg` });
 
@@ -47,14 +47,36 @@ test("código ausente ou página repetida torna ausência inconclusiva", async (
 });
 
 // Contrato real 23/09/2026: a API ignora page/per_page e devolve tudo sempre.
-test("repetição exata da página 1 prova lista completa (58 fotos)", async () => {
-  const all = Array.from({ length: 58 }, (_, index) => ({ ...image(index + 1), destaque: index === 0 }));
-  const pages: number[] = [];
-  const gallery = await fetchRemoteGallery("morar", "fixture", undefined,
-    async (page) => { pages.push(page); return all; });
+const all58 = Array.from({ length: 58 }, (_, index) => ({ ...image(index + 1), destaque: index === 0 }));
+
+test("repetição com total da ficha igual prova lista completa (58 fotos)", async () => {
+  const gallery = await fetchRemoteGallery("morar", "fixture", undefined, async () => all58, async () => 58);
   assert.equal(gallery.reliable, true);
   assert.equal(gallery.items.length, 58);
-  assert.deepEqual(pages, [1, 2]);
+});
+
+test("repetição sem total independente continua inconclusiva", async () => {
+  const gallery = await fetchRemoteGallery("morar", "fixture", undefined, async () => all58, async () => null);
+  assert.equal(gallery.reliable, false);
+});
+
+test("lista cortada em 50 com ficha dizendo 58 fica inconclusiva", async () => {
+  const cut = all58.slice(0, 50);
+  const gallery = await fetchRemoteGallery("morar", "fixture", undefined, async () => cut, async () => 58);
+  assert.equal(gallery.reliable, false);
+  assert.equal(gallery.reason, "paginacao_incompleta");
+});
+
+test("falha ao ler a ficha mantém a leitura inconclusiva", async () => {
+  const gallery = await fetchRemoteGallery("morar", "fixture", undefined, async () => all58,
+    async () => { throw new Error("429"); });
+  assert.equal(gallery.reliable, false);
+});
+
+test("detailImageTotal só aceita lista de imagens reconhecida", () => {
+  assert.equal(detailImageTotal({ resultSet: { imagens: [1, 2, 3] } }), 3);
+  assert.equal(detailImageTotal({ resultSet: {} }), null);
+  assert.equal(detailImageTotal(null), null);
 });
 
 test("repetição com capa ou ordem diferente não é aceita como completa", async () => {

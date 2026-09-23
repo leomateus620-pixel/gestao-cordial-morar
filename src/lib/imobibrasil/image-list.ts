@@ -4,6 +4,7 @@ import type { RemotePage, RemoteRecord } from "./read-parsers";
  * exige resposta reconhecida, não erro convertido em array vazio. */
 export async function fetchAllImagePagesWith(
   fetchPage: (page: number) => Promise<RemotePage>,
+  independentTotal?: () => Promise<number | null>,
 ): Promise<RemoteRecord[]> {
   const images: RemoteRecord[] = [];
   const fingerprints = new Set<string>();
@@ -14,11 +15,13 @@ export async function fetchAllImagePagesWith(
     }
     if (result.items.length) {
       const fingerprint = JSON.stringify(result.items.map((item) => item["codigoImagem"] ?? item["id"] ?? item["url"]));
-      // A API ignora page/per_page e repete a lista inteira: página 2 idêntica
-      // à 1 (sem total declarado) prova que a 1 já era completa.
+      // A API ignora page/per_page e repete a lista inteira. A repetição só
+      // encerra a leitura se a ficha do imóvel confirmar o mesmo total.
       if (page === 2 && !result.totalPagesKnown && fingerprints.size === 1 &&
-          fingerprints.has(fingerprint) && images.length === result.items.length) {
-        return images;
+          fingerprints.has(fingerprint) && images.length === result.items.length && independentTotal) {
+        const total = await independentTotal().catch(() => null);
+        if (total !== null && total === images.length) return images;
+        throw new Error("Lista de imagens repetida sem total confirmado pela ficha; galeria inconclusiva.");
       }
       if (fingerprints.has(fingerprint)) {
         throw new Error("Paginação de imagens repetiu uma página; galeria inconclusiva.");

@@ -33,11 +33,31 @@ export type RemoteGallery = {
  * Lê a galeria COMPLETA do site, percorrendo a paginação. Formato desconhecido,
  * falha de consulta ou paginação incompleta NUNCA equivalem a "galeria vazia".
  */
+/** Total de fotos segundo a ficha do imóvel (/imovel/dados), fonte independente da lista. */
+export async function fetchDetailImageTotal(
+  provider: ImobiProvider,
+  externalId: string,
+  correlationId?: string,
+): Promise<number | null> {
+  const response = await imobiRequest(provider, `/imovel/dados/${encodeURIComponent(externalId)}`, {
+    method: "GET",
+    ...(correlationId ? { correlationId } : {}),
+  });
+  return detailImageTotal(response.data);
+}
+
+export function detailImageTotal(payload: unknown): number | null {
+  const root = payload as { resultSet?: { imagens?: unknown } } | null;
+  const list = root?.resultSet?.imagens;
+  return Array.isArray(list) ? list.length : null;
+}
+
 export async function fetchRemoteGallery(
   provider: ImobiProvider,
   externalId: string,
   correlationId?: string,
   requestPage?: (page: number) => Promise<unknown>,
+  independentTotal?: () => Promise<number | null>,
 ): Promise<RemoteGallery> {
   const items: RemoteImage[] = [];
   const codes = new Set<string>();
@@ -79,9 +99,9 @@ export async function fetchRemoteGallery(
         return { reliable: false, reason: "paginacao_incompleta", items };
       expectedItems = parsed.totalItems;
     }
-    // A API real (23/09/2026) ignora `page` e sem metadados devolve a lista
-    // inteira de novo na página 2. Repetição EXATA da página 1 (mesmos códigos,
-    // mesma ordem, mesma capa) prova que a primeira já era a lista completa.
+    // A API real (23/09/2026) ignora `page`/`per_page` e repete a lista inteira.
+    // Repetição exata NÃO prova sozinha que a lista não foi cortada: só vale
+    // como completa se a ficha do imóvel (fonte independente) tiver o mesmo total.
     if (
       page === 2 && expectedPages === null && expectedItems === null &&
       parsed.items.length === items.length && items.length > 0 &&
@@ -90,7 +110,14 @@ export async function fetchRemoteGallery(
         item.codigoImagem === items[index]?.codigoImagem &&
         item.destaque === items[index]?.destaque)
     ) {
-      return { reliable: true, reason: null, items };
+      let total: number | null = null;
+      try {
+        total = await (independentTotal ?? (() => fetchDetailImageTotal(provider, externalId, correlationId)))();
+      } catch {
+        total = null;
+      }
+      if (total !== null && total === items.length) return { reliable: true, reason: null, items };
+      return { reliable: false, reason: "paginacao_incompleta", items };
     }
     for (const item of parsed.items) {
       if (!item.codigoImagem || codes.has(item.codigoImagem))
