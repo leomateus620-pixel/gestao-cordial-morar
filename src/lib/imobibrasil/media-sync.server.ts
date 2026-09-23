@@ -277,7 +277,10 @@ export async function deliverGallery(
   // Envio incerto com UMA foto sem dono no site (leitura completa): é a foto
   // enviada. Resolve sem reenviar; com 0 ou 2+ candidatas continua incerto.
   if (plan.unknown.length === 1 && gallery.reliable) {
-    const known = new Set(presentLinks.map((row) => row.external_image_id).filter(Boolean));
+    const known = new Set(
+      links.filter((row) => row.desired_state !== "absent" && !row.deleted_at)
+        .map((row) => row.external_image_id).filter(Boolean),
+    );
     const orphans = gallery.items.filter((item) => item.codigoImagem && !known.has(item.codigoImagem));
     if (orphans.length === 1) {
       await persistLink(admin, params, {
