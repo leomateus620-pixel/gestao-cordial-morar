@@ -7,19 +7,19 @@
 
 Essas causas já estão corrigidas ou vão ser contornadas agora. O tempo por anúncio passa a depender só do limite do site, de 20 pedidos por minuto.
 
-## Anúncios já aprovados (retirar e reenviar)
-Cordial: 1384 (17 fotos), 1377 (13), 1380 (14).
-Morar: 3376 (13), 3377 (15), 3378 (41).
+## Anúncios que vou refazer direto, sem pedir aprovação
+Cordial: 1384 (17 fotos), 1377 (13), 1378, 1379 e 1380 (14).
+Morar: 3376 (13), 3377 (15), 3378 (41), 3379, 3380 e 3383.
+
+Em cada um deles:
+- retiro do site todas as fotos, menos a capa, quando ela já estiver certa;
+- reenvio todas as fotos do Gestão, na ordem e com a capa do Gestão.
+
+Não faço conferência antes e não mostro lista para aprovação. A leitura do site acontece só no fim, para confirmar que ficou igual ao Gestão.
 
 Cordial e Morar vão rodar ao mesmo tempo, porque o limite de cada site é separado. Dentro de cada site, um anúncio por vez.
 
-Tempo estimado: uns 3 a 4 minutos por anúncio pequeno e uns 8 minutos para o 3378, que tem 41 fotos. No total, algo entre 20 e 30 minutos. É uma estimativa.
-
-## Anúncios que ainda preciso ler
-1378 e 1379 na Cordial; 3379, 3380 e 3383 na Morar.
-- Primeiro leio esses cinco, só olhando.
-- Os que já estiverem iguais ao Gestão ficam como estão.
-- Para os diferentes, mostro a lista do que sai do site e do que entra, e espero você aprovar.
+Tempo estimado: uns 3 a 4 minutos por anúncio pequeno e uns 8 minutos para o 3378, que tem 41 fotos. No total, algo entre 30 e 45 minutos. É uma estimativa.
 
 ## Finalizar a correção
 1. **Envio automático não fica mais parado:** o pedido que dispara o envio passa a esperar mais tempo antes de desistir.
