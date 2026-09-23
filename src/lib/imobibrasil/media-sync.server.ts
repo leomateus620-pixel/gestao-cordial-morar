@@ -33,6 +33,7 @@ import {
   isExtensionError,
   isRateLimitError,
   planGalleryDelivery,
+  sendOrderForSite,
   safeDeliveryFileName,
   sortGallery,
   type LocalGalleryImage,
