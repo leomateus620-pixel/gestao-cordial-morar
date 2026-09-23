@@ -626,6 +626,27 @@ export async function deliverGallery(
     .eq("publication_id", publicationId);
   if (afterLinksError) throw new Error(afterLinksError.message);
   const finalLinks = (afterLinks ?? []) as unknown as LinkRow[];
+  // Foto apagada no Gestão que nunca teve código no site: com leitura
+  // confiável e todas as fotos do site pertencendo ao Gestão, não há o que
+  // retirar — a exclusão fica confirmada sem nenhuma chamada ao site.
+  if (gallery.reliable) {
+    const presentCodes = new Set(finalLinks
+      .filter((row) => row.desired_state !== "absent" && row.status === "synced" && row.external_image_id)
+      .map((row) => String(row.external_image_id)));
+    const noOrphans = gallery.items.every((item) => item.codigoImagem && presentCodes.has(item.codigoImagem));
+    if (noOrphans) {
+      for (const row of finalLinks) {
+        if (row.desired_state !== "absent" || row.deleted_at || row.external_image_id) continue;
+        const deletedAt = new Date().toISOString();
+        await persistLink(admin, params, {
+          image_id: row.image_id, publication_id: publicationId, provider,
+          status: "deleted", deleted_at: deletedAt, last_op: "delete", last_op_state: "already_absent",
+          error_class: null, last_error_message: null,
+        });
+        row.deleted_at = deletedAt;
+      }
+    }
+  }
   const pendingDeleteCount = finalLinks.filter(
     (row) => row.desired_state === "absent" && !row.deleted_at,
   ).length;
