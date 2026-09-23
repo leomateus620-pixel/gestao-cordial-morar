@@ -2371,6 +2371,7 @@ export type Database = {
           id: string
           inicio_previsao_empreendimento: string | null
           is_draft: boolean
+          last_user_edit_at: string | null
           local_chave: string | null
           localizacao_exibida: string | null
           localizacao_maps_coords: string | null
@@ -2399,6 +2400,7 @@ export type Database = {
           proprietario_nome: string | null
           proprietario_telefone: string | null
           publish_targets: string[]
+          recent_sort_at: string | null
           referencia: string | null
           regiao: string | null
           removal_state: string | null
@@ -2499,6 +2501,7 @@ export type Database = {
           id?: string
           inicio_previsao_empreendimento?: string | null
           is_draft?: boolean
+          last_user_edit_at?: string | null
           local_chave?: string | null
           localizacao_exibida?: string | null
           localizacao_maps_coords?: string | null
@@ -2527,6 +2530,7 @@ export type Database = {
           proprietario_nome?: string | null
           proprietario_telefone?: string | null
           publish_targets?: string[]
+          recent_sort_at?: string | null
           referencia?: string | null
           regiao?: string | null
           removal_state?: string | null
@@ -2627,6 +2631,7 @@ export type Database = {
           id?: string
           inicio_previsao_empreendimento?: string | null
           is_draft?: boolean
+          last_user_edit_at?: string | null
           local_chave?: string | null
           localizacao_exibida?: string | null
           localizacao_maps_coords?: string | null
@@ -2655,6 +2660,7 @@ export type Database = {
           proprietario_nome?: string | null
           proprietario_telefone?: string | null
           publish_targets?: string[]
+          recent_sort_at?: string | null
           referencia?: string | null
           regiao?: string | null
           removal_state?: string | null
