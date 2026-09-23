@@ -396,8 +396,15 @@ export async function deliverGallery(
         },
       );
 
-      const externalImageId = extractInsertedImageId(response.data);
       const after = await fetchRemoteGallery(provider, externalId, correlationId);
+      // O site nem sempre devolve o código no envio. Com a leitura completa e a
+      // posse exclusiva deste anúncio, UMA foto nova em relação à lista anterior
+      // é a foto enviada agora.
+      const newRemote = after.reliable && gallery.reliable
+        ? after.items.filter((item) => item.codigoImagem && !beforeCodes.includes(item.codigoImagem))
+        : [];
+      const externalImageId = extractInsertedImageId(response.data) ??
+        (newRemote.length === 1 ? newRemote[0]!.codigoImagem : null);
       const readItem = externalImageId && after.reliable
         ? after.items.find((item) => item.codigoImagem === externalImageId)
         : null;
