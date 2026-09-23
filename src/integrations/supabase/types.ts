@@ -1459,6 +1459,21 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_20260923_targets_trigger_def: {
+        Row: {
+          def: string | null
+          saved_at: string | null
+        }
+        Insert: {
+          def?: string | null
+          saved_at?: string | null
+        }
+        Update: {
+          def?: string | null
+          saved_at?: string | null
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           approximate_income: number | null
