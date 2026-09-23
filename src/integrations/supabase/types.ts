@@ -3432,6 +3432,10 @@ export type Database = {
       }
       property_provider_recovery_circuit: {
         Row: {
+          auth_error_count: number
+          blocked_until: string | null
+          last_auth_error_at: string | null
+          last_auth_status: number | null
           last_probe_at: string | null
           last_success_at: string | null
           next_probe_at: string
@@ -3439,6 +3443,10 @@ export type Database = {
           provider: Database["public"]["Enums"]["imobi_provider"]
         }
         Insert: {
+          auth_error_count?: number
+          blocked_until?: string | null
+          last_auth_error_at?: string | null
+          last_auth_status?: number | null
           last_probe_at?: string | null
           last_success_at?: string | null
           next_probe_at?: string
@@ -3446,6 +3454,10 @@ export type Database = {
           provider: Database["public"]["Enums"]["imobi_provider"]
         }
         Update: {
+          auth_error_count?: number
+          blocked_until?: string | null
+          last_auth_error_at?: string | null
+          last_auth_status?: number | null
           last_probe_at?: string | null
           last_success_at?: string | null
           next_probe_at?: string
@@ -5698,6 +5710,10 @@ export type Database = {
           _provider: Database["public"]["Enums"]["imobi_provider"]
         }
         Returns: Json
+      }
+      property_provider_auth_failure: {
+        Args: { _provider: string; _status: number }
+        Returns: undefined
       }
       property_publication_acquire_create_lock: {
         Args: {
