@@ -1760,7 +1760,11 @@ export async function runSyncWorker(
       const quickMediaRecovery = job.action === "media_sync" &&
         ["delivery_unknown", "remote_read_unreliable"].includes(String(outcomeStatus));
       const slowRecovery = ["delivery_unknown", "remote_read_unreliable", "out_of_sync", "waiting_watermark"].includes(String(outcomeStatus));
-      const nextDelay = quickMediaRecovery ? 120 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
+      // Galeria em andamento (reconstrução/envio parcial) não é falha: o número
+      // de rodadas não pode empurrá-la para 1 h, senão fica "Atualizando" sem fim.
+      const mediaInProgress = job.action === "media_sync" &&
+        ["rebuilding", "partial", "pending", "syncing"].includes(String(outcomeStatus));
+      const nextDelay = quickMediaRecovery ? 120 : mediaInProgress ? 75 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
       const owned = job.action === "media_sync" && converged
         ? await finishMediaJob(admin, job)
         : await finishJob(admin, job, converged
