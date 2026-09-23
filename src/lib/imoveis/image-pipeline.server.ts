@@ -49,12 +49,26 @@ export async function enqueueImageJobs(
   if (options.imageIds?.length) query = query.in("id", options.imageIds);
   const { data: images, error: imagesError } = await query;
   if (imagesError) throw new Error(imagesError.message);
-  const rows = (images ?? []) as Array<{
+  const allRows = (images ?? []) as Array<{
     id: string;
     destination_hash: string | null;
     desired_destination_hash: string | null;
     processing_status: string;
   }>;
+
+  // Legado (sem intenção gravada): nunca entra em lote automático. Só é
+  // adotado quando o pedido nomeia a foto explicitamente (troca/recuperação).
+  const legacy = allRows.filter((row) => row.desired_destination_hash === null);
+  if (legacy.length && options.imageIds?.length) {
+    const { error: adoptError } = await admin
+      .from("property_images")
+      .update({ desired_destination_hash: hash })
+      .in("id", legacy.map((row) => row.id))
+      .is("desired_destination_hash", null);
+    if (adoptError) throw new Error(adoptError.message);
+    for (const row of legacy) row.desired_destination_hash = hash;
+  }
+  const rows = allRows.filter((row) => row.desired_destination_hash !== null);
 
   // A escolha pode mudar enquanto a leitura está em andamento. A intenção no
   // banco vence; o watchdog retomará com a variante que ficou gravada.
