@@ -182,7 +182,16 @@ export async function applyWatermark(
   const detected = detectImageType(original);
   if (!detected) throw new WatermarkError("invalid_type", "Arquivo não é uma imagem suportada.");
 
-  const photon = await loadPhoton();
+  let photon: PhotonModule;
+  try {
+    photon = await loadPhoton();
+    // Garante que o WASM realmente inicializou (o import pode "passar" e o uso falhar).
+    photon.PhotonImage.new_from_byteslice(templateBytes(variant)).free();
+  } catch (err) {
+    photonModulePromise = null;
+    console.warn("[watermark_engine]", JSON.stringify({ engine: "purejs", reason: String((err as Error)?.message ?? err).slice(0, 160) }));
+    return applyWatermarkPureJs(original, variant, detected);
+  }
   const { PhotonImage, SamplingFilter, resize, watermark: photonWatermark } = photon;
   let photo: PhotonImageType;
   let template: PhotonImageType | null = null;
@@ -257,4 +266,47 @@ export async function applyWatermark(
     template?.free();
     photo.free();
   }
+}
+
+/** Mesmo processamento sem WebAssembly (usado no servidor publicado). */
+async function applyWatermarkPureJs(
+  original: Uint8Array,
+  variant: WatermarkVariant,
+  detected: "image/jpeg" | "image/png" | "image/webp",
+): Promise<WatermarkResult> {
+  const js = await import("./watermark-purejs.server");
+  if (detected === "image/webp")
+    throw new WatermarkError("decode_failed", "Foto WEBP não suportada neste servidor; envie JPEG ou PNG.");
+  let photo: import("./watermark-purejs.server").Raster;
+  try {
+    photo = js.decodeRaster(original, detected);
+  } catch {
+    throw new WatermarkError("decode_failed", "Não foi possível ler a foto enviada.");
+  }
+  if (photo.width * photo.height > WATERMARK_LIMITS.maxPixels)
+    throw new WatermarkError("too_many_pixels", "Foto com resolução acima do limite.");
+  if (detected === "image/jpeg") photo = js.orient(photo, readExifOrientation(original));
+  const maxEdge = Math.max(photo.width, photo.height);
+  if (maxEdge > WATERMARK_GEOMETRY.maxOutputEdgePx) {
+    const scale = WATERMARK_GEOMETRY.maxOutputEdgePx / maxEdge;
+    photo = js.resizeRaster(photo, Math.max(1, Math.round(photo.width * scale)), Math.max(1, Math.round(photo.height * scale)));
+  }
+  if (Math.min(photo.width, photo.height) < WATERMARK_LIMITS.minEdgePx)
+    throw new WatermarkError("too_small", "Foto pequena demais para publicação.");
+  const template = js.decodeRaster(templateBytes(variant), "image/png");
+  const placement = computePlacement(photo.width, photo.height, template.width, template.height, variant);
+  const mark = js.resizeRaster(template, placement.width, placement.height);
+  js.overlay(photo, mark, placement.x, placement.y);
+  const processed = js.encodeJpeg(photo, WATERMARK_GEOMETRY.jpegQuality);
+  const thumbWidth = Math.min(WATERMARK_GEOMETRY.thumbnailWidthPx, photo.width);
+  const thumb = js.resizeRaster(photo, thumbWidth, Math.max(1, Math.round((photo.height * thumbWidth) / photo.width)));
+  return {
+    variant,
+    version: WATERMARK_VERSION,
+    processed,
+    processedChecksum: await sha256Hex(processed),
+    thumbnail: js.encodeJpeg(thumb, WATERMARK_GEOMETRY.thumbnailQuality),
+    width: photo.width,
+    height: photo.height,
+  };
 }
