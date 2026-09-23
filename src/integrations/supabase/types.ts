@@ -5349,6 +5349,22 @@ export type Database = {
         }
         Relationships: []
       }
+      property_integration_health: {
+        Row: {
+          ambiguous_jobs: number | null
+          blocked_until: string | null
+          divergent_publications: number | null
+          expired_leases: number | null
+          last_auth_error_at: string | null
+          last_auth_status: number | null
+          last_success_at: string | null
+          media_behind: number | null
+          oldest_open_minutes: number | null
+          open_jobs: number | null
+          provider: Database["public"]["Enums"]["imobi_provider"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
