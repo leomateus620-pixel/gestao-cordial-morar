@@ -180,7 +180,13 @@ export const listPropertyImageUploadIssues = createServerFn({ method: "GET" })
       "property_image_upload_issues" as never,
       { _property_id: data.propertyId } as never,
     );
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Ajuste de banco 061000 ainda não aplicado: sem a lista, a tela segue normal.
+      if (error.code === "PGRST202" || /schema cache|does not exist/i.test(error.message)) {
+        return [];
+      }
+      throw new Error(error.message);
+    }
     return Array.isArray(issues) ? issues as PropertyImageUploadIssue[] : [];
   });
 
