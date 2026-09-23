@@ -924,6 +924,33 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_20260923_address_fix: {
+        Row: {
+          complemento_novo: string | null
+          complemento_original: string | null
+          numero_novo: string | null
+          numero_original: string | null
+          property_id: string
+          saved_at: string
+        }
+        Insert: {
+          complemento_novo?: string | null
+          complemento_original?: string | null
+          numero_novo?: string | null
+          numero_original?: string | null
+          property_id: string
+          saved_at?: string
+        }
+        Update: {
+          complemento_novo?: string | null
+          complemento_original?: string | null
+          numero_novo?: string | null
+          numero_original?: string | null
+          property_id?: string
+          saved_at?: string
+        }
+        Relationships: []
+      }
       backup_20260923_image_links: {
         Row: {
           attempts: number | null
@@ -1014,6 +1041,36 @@ export type Database = {
           updated_at?: string | null
           verification?: Json | null
           verified_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_20260923_policies_060000: {
+        Row: {
+          cmd: string | null
+          policyname: unknown
+          qual: string | null
+          roles: string | null
+          saved_at: string | null
+          tablename: unknown
+          with_check: string | null
+        }
+        Insert: {
+          cmd?: string | null
+          policyname?: unknown
+          qual?: string | null
+          roles?: string | null
+          saved_at?: string | null
+          tablename?: unknown
+          with_check?: string | null
+        }
+        Update: {
+          cmd?: string | null
+          policyname?: unknown
+          qual?: string | null
+          roles?: string | null
+          saved_at?: string | null
+          tablename?: unknown
+          with_check?: string | null
         }
         Relationships: []
       }
@@ -1456,6 +1513,21 @@ export type Database = {
             | null
           superseded_by?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_20260923_targets_trigger_def: {
+        Row: {
+          def: string | null
+          saved_at: string | null
+        }
+        Insert: {
+          def?: string | null
+          saved_at?: string | null
+        }
+        Update: {
+          def?: string | null
+          saved_at?: string | null
         }
         Relationships: []
       }
@@ -3370,6 +3442,98 @@ export type Database = {
             columns: ["publication_id"]
             isOneToOne: false
             referencedRelation: "property_provider_publications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_image_upload_reservations: {
+        Row: {
+          attempts: number
+          batch_id: string | null
+          content_hash: string
+          created_at: string
+          error_code: string | null
+          file_name: string
+          id: string
+          image_id: string | null
+          mime_type: string | null
+          next_check_at: string
+          property_id: string
+          replacement_for: string | null
+          resolved_at: string | null
+          size_bytes: number | null
+          status: string
+          storage_cleaned_at: string | null
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          attempts?: number
+          batch_id?: string | null
+          content_hash: string
+          created_at?: string
+          error_code?: string | null
+          file_name: string
+          id?: string
+          image_id?: string | null
+          mime_type?: string | null
+          next_check_at?: string
+          property_id: string
+          replacement_for?: string | null
+          resolved_at?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_cleaned_at?: string | null
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          attempts?: number
+          batch_id?: string | null
+          content_hash?: string
+          created_at?: string
+          error_code?: string | null
+          file_name?: string
+          id?: string
+          image_id?: string | null
+          mime_type?: string | null
+          next_check_at?: string
+          property_id?: string
+          replacement_for?: string | null
+          resolved_at?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_cleaned_at?: string | null
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_upload_reservations_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "property_image_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -6232,6 +6396,32 @@ export type Database = {
         Args: { _old_image_id: string; _payload: Json; _property_id: string }
         Returns: string
       }
+      property_image_upload_finalize: {
+        Args: { _reservation_id: string }
+        Returns: Json
+      }
+      property_image_upload_issues: {
+        Args: { _property_id: string }
+        Returns: Json
+      }
+      property_image_upload_mark_missing: {
+        Args: { _reservation_id: string }
+        Returns: boolean
+      }
+      property_image_upload_prune: { Args: never; Returns: number }
+      property_image_upload_reserve: {
+        Args: {
+          _batch_id?: string
+          _content_hash: string
+          _file_name: string
+          _mime_type: string
+          _property_id: string
+          _replacement_for?: string
+          _size_bytes: number
+          _storage_path: string
+        }
+        Returns: string
+      }
       property_images_normalize: {
         Args: { _property_id: string }
         Returns: Json
@@ -6298,6 +6488,10 @@ export type Database = {
         Args: { _job_id: string; _lease_token: string; _seconds?: number }
         Returns: boolean
       }
+      property_import_seed_incremental: {
+        Args: { _provider: Database["public"]["Enums"]["imobi_provider"] }
+        Returns: Json
+      }
       property_media_finish: {
         Args: {
           _processed_revision: number
@@ -6339,6 +6533,24 @@ export type Database = {
         }
         Returns: Json
       }
+      property_publication_finish_availability_if_owned: {
+        Args: {
+          _action: string
+          _job_id: string
+          _lease_token: string
+          _publication_id: string
+        }
+        Returns: boolean
+      }
+      property_publication_prepare_create: {
+        Args: {
+          _job_id: string
+          _lease_token: string
+          _publication_id: string
+          _worker: string
+        }
+        Returns: boolean
+      }
       property_publication_release_create_lock: {
         Args: { _publication_id: string; _worker: string }
         Returns: undefined
@@ -6373,6 +6585,15 @@ export type Database = {
           _publication_id: string
         }
         Returns: number
+      }
+      property_retire_request: {
+        Args: {
+          _action: string
+          _expected_revision: number
+          _property_id: string
+          _requested_by: string
+        }
+        Returns: Json
       }
       property_save_revision_enqueue: {
         Args: {
