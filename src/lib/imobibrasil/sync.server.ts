@@ -1755,8 +1755,12 @@ export async function runSyncWorker(
       const blockedImage = job.action === "media_sync" && outcomeStatus === "blocked_image";
       const businessConflict = outcomeStatus === "out_of_sync" &&
         Array.isArray((outcome as { duplicates?: unknown } | undefined)?.duplicates);
+      // Fotos: confirmação pendente volta em 2 min (a próxima rodada resolve
+      // pela leitura, sem reenviar). Demais recuperações seguem lentas.
+      const quickMediaRecovery = job.action === "media_sync" &&
+        ["delivery_unknown", "remote_read_unreliable"].includes(String(outcomeStatus));
       const slowRecovery = ["delivery_unknown", "remote_read_unreliable", "out_of_sync", "waiting_watermark"].includes(String(outcomeStatus));
-      const nextDelay = slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
+      const nextDelay = quickMediaRecovery ? 120 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
       const owned = job.action === "media_sync" && converged
         ? await finishMediaJob(admin, job)
         : await finishJob(admin, job, converged
