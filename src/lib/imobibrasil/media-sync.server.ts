@@ -330,7 +330,8 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : plan.toSend) {
+  const sendQueue = sendOrderForSite(plan.toSend, publishable[0]?.id);
+  for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
     const image = byId.get(target.id);
