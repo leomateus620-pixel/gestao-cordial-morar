@@ -3419,6 +3419,98 @@ export type Database = {
           },
         ]
       }
+      property_image_upload_reservations: {
+        Row: {
+          attempts: number
+          batch_id: string | null
+          content_hash: string
+          created_at: string
+          error_code: string | null
+          file_name: string
+          id: string
+          image_id: string | null
+          mime_type: string | null
+          next_check_at: string
+          property_id: string
+          replacement_for: string | null
+          resolved_at: string | null
+          size_bytes: number | null
+          status: string
+          storage_cleaned_at: string | null
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          attempts?: number
+          batch_id?: string | null
+          content_hash: string
+          created_at?: string
+          error_code?: string | null
+          file_name: string
+          id?: string
+          image_id?: string | null
+          mime_type?: string | null
+          next_check_at?: string
+          property_id: string
+          replacement_for?: string | null
+          resolved_at?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_cleaned_at?: string | null
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          attempts?: number
+          batch_id?: string | null
+          content_hash?: string
+          created_at?: string
+          error_code?: string | null
+          file_name?: string
+          id?: string
+          image_id?: string | null
+          mime_type?: string | null
+          next_check_at?: string
+          property_id?: string
+          replacement_for?: string | null
+          resolved_at?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_cleaned_at?: string | null
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_upload_reservations_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "property_image_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_images: {
         Row: {
           alt_text: string | null
@@ -6275,6 +6367,32 @@ export type Database = {
       }
       property_image_stage_replacement: {
         Args: { _old_image_id: string; _payload: Json; _property_id: string }
+        Returns: string
+      }
+      property_image_upload_finalize: {
+        Args: { _reservation_id: string }
+        Returns: Json
+      }
+      property_image_upload_issues: {
+        Args: { _property_id: string }
+        Returns: Json
+      }
+      property_image_upload_mark_missing: {
+        Args: { _reservation_id: string }
+        Returns: boolean
+      }
+      property_image_upload_prune: { Args: never; Returns: number }
+      property_image_upload_reserve: {
+        Args: {
+          _batch_id?: string
+          _content_hash: string
+          _file_name: string
+          _mime_type: string
+          _property_id: string
+          _replacement_for?: string
+          _size_bytes: number
+          _storage_path: string
+        }
         Returns: string
       }
       property_images_normalize: {
