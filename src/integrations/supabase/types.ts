@@ -5803,6 +5803,7 @@ export type Database = {
           proprietario_telefone: string | null
           providers: string[] | null
           publication_statuses: string[] | null
+          recent_sort_at: string | null
           referencia: string | null
           regiao: string | null
           removal_state: string | null
@@ -5928,6 +5929,7 @@ export type Database = {
           proprietario_telefone?: string | null
           providers?: never
           publication_statuses?: never
+          recent_sort_at?: string | null
           referencia?: string | null
           regiao?: string | null
           removal_state?: string | null
@@ -6053,6 +6055,7 @@ export type Database = {
           proprietario_telefone?: string | null
           providers?: never
           publication_statuses?: never
+          recent_sort_at?: string | null
           referencia?: string | null
           regiao?: string | null
           removal_state?: string | null
