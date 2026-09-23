@@ -310,7 +310,8 @@ export const listImoveis = createServerFn({ method: "GET" })
         query = query.order("area_principal", { ascending: false, nullsFirst: false });
         break;
       case "recentes":
-        query = query.order("updated_at", { ascending: false, nullsFirst: false });
+        // Cadastro ou última edição feita por pessoa; mexidas automáticas não contam.
+        query = query.order("recent_sort_at" as never, { ascending: false, nullsFirst: false });
         break;
       default:
         query = query.order("created_at", { ascending: true });
@@ -638,6 +639,13 @@ export const updateImovel = createServerFn({ method: "POST" })
       );
     }
     if (!result.ok) throw new Error("Não foi possível salvar o imóvel.");
+
+    // Marca a edição feita por pessoa (ordem "Mais recentes"). Só esta coluna:
+    // não dispara envio aos sites nem mexe em fotos.
+    await supabaseAdmin
+      .from("properties")
+      .update({ last_user_edit_at: new Date().toISOString() } as never)
+      .eq("id", id);
 
     const { data: row, error } = await context.supabase
       .from("properties")
