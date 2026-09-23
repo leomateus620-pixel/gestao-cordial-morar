@@ -1017,6 +1017,36 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_20260923_policies_060000: {
+        Row: {
+          cmd: string | null
+          policyname: unknown
+          qual: string | null
+          roles: string | null
+          saved_at: string | null
+          tablename: unknown
+          with_check: string | null
+        }
+        Insert: {
+          cmd?: string | null
+          policyname?: unknown
+          qual?: string | null
+          roles?: string | null
+          saved_at?: string | null
+          tablename?: unknown
+          with_check?: string | null
+        }
+        Update: {
+          cmd?: string | null
+          policyname?: unknown
+          qual?: string | null
+          roles?: string | null
+          saved_at?: string | null
+          tablename?: unknown
+          with_check?: string | null
+        }
+        Relationships: []
+      }
       backup_20260923_property_images: {
         Row: {
           alt_text: string | null
@@ -6313,6 +6343,10 @@ export type Database = {
         Args: { _job_id: string; _lease_token: string; _seconds?: number }
         Returns: boolean
       }
+      property_import_seed_incremental: {
+        Args: { _provider: Database["public"]["Enums"]["imobi_provider"] }
+        Returns: Json
+      }
       property_media_finish: {
         Args: {
           _processed_revision: number
@@ -6354,6 +6388,24 @@ export type Database = {
         }
         Returns: Json
       }
+      property_publication_finish_availability_if_owned: {
+        Args: {
+          _action: string
+          _job_id: string
+          _lease_token: string
+          _publication_id: string
+        }
+        Returns: boolean
+      }
+      property_publication_prepare_create: {
+        Args: {
+          _job_id: string
+          _lease_token: string
+          _publication_id: string
+          _worker: string
+        }
+        Returns: boolean
+      }
       property_publication_release_create_lock: {
         Args: { _publication_id: string; _worker: string }
         Returns: undefined
@@ -6388,6 +6440,15 @@ export type Database = {
           _publication_id: string
         }
         Returns: number
+      }
+      property_retire_request: {
+        Args: {
+          _action: string
+          _expected_revision: number
+          _property_id: string
+          _requested_by: string
+        }
+        Returns: Json
       }
       property_save_revision_enqueue: {
         Args: {
