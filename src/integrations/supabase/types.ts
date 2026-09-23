@@ -5570,6 +5570,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_image_complete_job: {
+        Args: { _job_id: string; _result: Json; _worker: string }
+        Returns: boolean
+      }
       property_image_delete_atomic: {
         Args: {
           _expected_gallery_revision?: number
@@ -5578,10 +5582,18 @@ export type Database = {
         }
         Returns: Json
       }
+      property_image_fail_job: {
+        Args: { _failure: Json; _job_id: string; _worker: string }
+        Returns: boolean
+      }
       property_image_reclaim_stale: { Args: { _max?: number }; Returns: number }
       property_image_register: {
         Args: { _payload: Json; _property_id: string }
         Returns: string
+      }
+      property_image_renew_lease: {
+        Args: { _job_id: string; _lease_seconds?: number; _worker: string }
+        Returns: boolean
       }
       property_image_replace_atomic: {
         Args: {
