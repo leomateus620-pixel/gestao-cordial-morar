@@ -6317,6 +6317,16 @@ export type Database = {
         }
         Returns: Json
       }
+      property_media_link_write_if_owned: {
+        Args: {
+          _fields: Json
+          _image_id: string
+          _job_id: string
+          _lease_token: string
+          _publication_id: string
+        }
+        Returns: boolean
+      }
       property_provider_auth_failure: {
         Args: { _provider: string; _status: number }
         Returns: undefined
