@@ -16,7 +16,7 @@ import {
   setPropertyImageCover,
   setPropertyPublishTargets,
 } from "@/lib/imoveis/media.functions";
-import { sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
+import { prepareImageForUpload, sha256Hex, uploadSignedWithProgress } from "@/lib/imoveis/image-client";
 import { describeGalleryMove, type GalleryMove } from "@/lib/imoveis/gallery-move";
 import type { PropertyImage } from "@/types/property";
 
