@@ -3031,6 +3031,7 @@ export type Database = {
           job_type: string
           last_error_category: string | null
           last_error_message: string | null
+          lease_token: string | null
           lock_expires_at: string | null
           locked_at: string | null
           locked_by: string | null
@@ -3039,6 +3040,7 @@ export type Database = {
           page: number | null
           payload: Json
           provider: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts: number
           run_id: string
           status: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at: string
@@ -3054,6 +3056,7 @@ export type Database = {
           job_type: string
           last_error_category?: string | null
           last_error_message?: string | null
+          lease_token?: string | null
           lock_expires_at?: string | null
           locked_at?: string | null
           locked_by?: string | null
@@ -3062,6 +3065,7 @@ export type Database = {
           page?: number | null
           payload?: Json
           provider: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts?: number
           run_id: string
           status?: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at?: string
@@ -3077,6 +3081,7 @@ export type Database = {
           job_type?: string
           last_error_category?: string | null
           last_error_message?: string | null
+          lease_token?: string | null
           lock_expires_at?: string | null
           locked_at?: string | null
           locked_by?: string | null
@@ -3085,6 +3090,7 @@ export type Database = {
           page?: number | null
           payload?: Json
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts?: number
           run_id?: string
           status?: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at?: string
@@ -5612,6 +5618,10 @@ export type Database = {
         Args: { _property_id: string }
         Returns: Json
       }
+      property_import_bump_run: {
+        Args: { _deltas: Json; _run_id: string }
+        Returns: boolean
+      }
       property_import_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
         Returns: {
@@ -5625,6 +5635,7 @@ export type Database = {
           job_type: string
           last_error_category: string | null
           last_error_message: string | null
+          lease_token: string | null
           lock_expires_at: string | null
           locked_at: string | null
           locked_by: string | null
@@ -5633,6 +5644,7 @@ export type Database = {
           page: number | null
           payload: Json
           provider: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts: number
           run_id: string
           status: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at: string
@@ -5643,6 +5655,30 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      property_import_finalize_if_owned: {
+        Args: { _job_id: string; _lease_token: string }
+        Returns: Json
+      }
+      property_import_finish_job: {
+        Args: {
+          _attempts?: number
+          _error_category?: string
+          _error_message?: string
+          _job_id: string
+          _lease_token: string
+          _next_run_at?: string
+          _status: string
+        }
+        Returns: boolean
+      }
+      property_import_recover_jobs: {
+        Args: { _limit?: number }
+        Returns: number
+      }
+      property_import_renew_lease: {
+        Args: { _job_id: string; _lease_token: string; _seconds?: number }
+        Returns: boolean
       }
       property_media_finish: {
         Args: {
