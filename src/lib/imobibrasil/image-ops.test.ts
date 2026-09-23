@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fetchRemoteGallery } from "./image-ops.server";
+import { detailImageTotal, fetchRemoteGallery } from "./image-ops.server";
 
 const image = (n: number) => ({ codigoImagem: String(n), url: `https://site.invalid/${n}.jpg` });
 
