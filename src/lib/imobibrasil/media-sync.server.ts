@@ -350,7 +350,40 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  const sendQueue = sendOrderForSite(plan.toSend, publishable[0]?.id);
+  // Foto nova/reordenada ANTES de fotos já no site: o site mostra a nova logo
+  // após a capa. Retira (com confirmação) as fotos já enviadas que ficam depois
+  // dela e reenvia tudo em ordem. Falha numa retirada = não envia nada agora.
+  const coverId = publishable[0]?.id;
+  const positionOf = new Map(publishable.map((image) => [image.id, image.position]));
+  const pendingPositions = plan.toSend.filter((i) => i.id !== coverId).map((i) => i.position);
+  const firstPending = pendingPositions.length ? Math.min(...pendingPositions) : Infinity;
+  const displaced = links.filter((row) =>
+    row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" &&
+    row.external_image_id && row.image_id !== coverId &&
+    (positionOf.get(row.image_id) ?? -1) > firstPending);
+  const reordered: typeof plan.toSend = [];
+  let reorderBlocked = false;
+  if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0) {
+    if (!gallery.reliable) reorderBlocked = true;
+    for (const row of reorderBlocked ? [] : displaced) {
+      if (outOfBudget()) { reorderBlocked = true; break; }
+      await progress();
+      const code = row.external_image_id as string;
+      const result = gallery.items.some((item) => item.codigoImagem === code)
+        ? await deleteRemoteImage(provider, externalId, code, correlationId)
+        : { confirmed: true, alreadyAbsent: true, message: null };
+      if (!result.confirmed) { reorderBlocked = true; break; }
+      await persistLink(admin, params, {
+        image_id: row.image_id, publication_id: publicationId, provider,
+        status: "pending", external_image_id: null, remote_url: null, is_cover: false,
+        synced_position: null, last_op: "delete", last_op_state: "reorder_reset",
+        error_class: null, last_error_message: null,
+      });
+      const image = publishable.find((i) => i.id === row.image_id);
+      if (image) reordered.push(image);
+    }
+  }
+  const sendQueue = reorderBlocked ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
