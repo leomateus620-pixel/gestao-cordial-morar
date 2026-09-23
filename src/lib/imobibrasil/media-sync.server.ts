@@ -15,6 +15,7 @@
  * Ordem: a fonte da verdade é `property_images` ordenado por `position`.
  */
 
+import { shouldSendAsCover } from "./cover-decision";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { imobiRequest } from "./client.server";
 import { toImobiError } from "./errors";
