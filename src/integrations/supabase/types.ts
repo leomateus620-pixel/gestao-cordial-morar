@@ -2824,6 +2824,7 @@ export type Database = {
           processing_started_at: string | null
           processing_status: string
           property_id: string
+          replacement_target_image_id: string | null
           size_bytes: number | null
           storage_path: string
           thumbnail_storage_path: string | null
@@ -2859,6 +2860,7 @@ export type Database = {
           processing_started_at?: string | null
           processing_status?: string
           property_id: string
+          replacement_target_image_id?: string | null
           size_bytes?: number | null
           storage_path: string
           thumbnail_storage_path?: string | null
@@ -2894,6 +2896,7 @@ export type Database = {
           processing_started_at?: string | null
           processing_status?: string
           property_id?: string
+          replacement_target_image_id?: string | null
           size_bytes?: number | null
           storage_path?: string
           thumbnail_storage_path?: string | null
@@ -3028,6 +3031,7 @@ export type Database = {
           job_type: string
           last_error_category: string | null
           last_error_message: string | null
+          lease_token: string | null
           lock_expires_at: string | null
           locked_at: string | null
           locked_by: string | null
@@ -3036,6 +3040,7 @@ export type Database = {
           page: number | null
           payload: Json
           provider: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts: number
           run_id: string
           status: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at: string
@@ -3051,6 +3056,7 @@ export type Database = {
           job_type: string
           last_error_category?: string | null
           last_error_message?: string | null
+          lease_token?: string | null
           lock_expires_at?: string | null
           locked_at?: string | null
           locked_by?: string | null
@@ -3059,6 +3065,7 @@ export type Database = {
           page?: number | null
           payload?: Json
           provider: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts?: number
           run_id: string
           status?: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at?: string
@@ -3074,6 +3081,7 @@ export type Database = {
           job_type?: string
           last_error_category?: string | null
           last_error_message?: string | null
+          lease_token?: string | null
           lock_expires_at?: string | null
           locked_at?: string | null
           locked_by?: string | null
@@ -3082,6 +3090,7 @@ export type Database = {
           page?: number | null
           payload?: Json
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts?: number
           run_id?: string
           status?: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at?: string
@@ -3194,6 +3203,7 @@ export type Database = {
           create_lock_worker: string | null
           create_state: string | null
           created_at: string
+          desired_availability: string
           echo_expires_at: string | null
           echo_payload_hash: string | null
           enabled: boolean
@@ -3214,20 +3224,26 @@ export type Database = {
           last_payload_snapshot: Json | null
           last_payload_synced_at: string | null
           last_published_hash: string | null
+          last_repair_requested_at: string | null
+          last_repair_signature: string | null
           last_synced_at: string | null
           last_synced_revision: number | null
           last_verified_at: string | null
           local_desired_hash: string | null
+          media_dirty_at: string | null
           media_dirty_revision: number | null
           media_expected_count: number | null
           media_failed_count: number | null
           media_order_guarantee: string | null
           media_rebuild_state: Json | null
+          media_recovery_attempts: number
+          media_recovery_next_at: string | null
           media_remote_count: number | null
           media_status: string | null
           media_synced_count: number | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision: number
           remote_codigo_corretor: string | null
           remote_codigo_proprietario: string | null
           remote_codigo_usuario_adicional: string | null
@@ -3260,6 +3276,7 @@ export type Database = {
           create_lock_worker?: string | null
           create_state?: string | null
           created_at?: string
+          desired_availability?: string
           echo_expires_at?: string | null
           echo_payload_hash?: string | null
           enabled?: boolean
@@ -3280,20 +3297,26 @@ export type Database = {
           last_payload_snapshot?: Json | null
           last_payload_synced_at?: string | null
           last_published_hash?: string | null
+          last_repair_requested_at?: string | null
+          last_repair_signature?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_dirty_at?: string | null
           media_dirty_revision?: number | null
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
           media_rebuild_state?: Json | null
+          media_recovery_attempts?: number
+          media_recovery_next_at?: string | null
           media_remote_count?: number | null
           media_status?: string | null
           media_synced_count?: number | null
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision?: number
           remote_codigo_corretor?: string | null
           remote_codigo_proprietario?: string | null
           remote_codigo_usuario_adicional?: string | null
@@ -3326,6 +3349,7 @@ export type Database = {
           create_lock_worker?: string | null
           create_state?: string | null
           created_at?: string
+          desired_availability?: string
           echo_expires_at?: string | null
           echo_payload_hash?: string | null
           enabled?: boolean
@@ -3346,20 +3370,26 @@ export type Database = {
           last_payload_snapshot?: Json | null
           last_payload_synced_at?: string | null
           last_published_hash?: string | null
+          last_repair_requested_at?: string | null
+          last_repair_signature?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_dirty_at?: string | null
           media_dirty_revision?: number | null
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
           media_rebuild_state?: Json | null
+          media_recovery_attempts?: number
+          media_recovery_next_at?: string | null
           media_remote_count?: number | null
           media_status?: string | null
           media_synced_count?: number | null
           property_id?: string
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision?: number
           remote_codigo_corretor?: string | null
           remote_codigo_proprietario?: string | null
           remote_codigo_usuario_adicional?: string | null
@@ -3399,6 +3429,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_provider_recovery_circuit: {
+        Row: {
+          auth_error_count: number
+          blocked_until: string | null
+          last_auth_error_at: string | null
+          last_auth_status: number | null
+          last_probe_at: string | null
+          last_success_at: string | null
+          next_probe_at: string
+          probe_count: number
+          provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Insert: {
+          auth_error_count?: number
+          blocked_until?: string | null
+          last_auth_error_at?: string | null
+          last_auth_status?: number | null
+          last_probe_at?: string | null
+          last_success_at?: string | null
+          next_probe_at?: string
+          probe_count?: number
+          provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Update: {
+          auth_error_count?: number
+          blocked_until?: string | null
+          last_auth_error_at?: string | null
+          last_auth_status?: number | null
+          last_probe_at?: string | null
+          last_success_at?: string | null
+          next_probe_at?: string
+          probe_count?: number
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Relationships: []
       }
       property_sync_attempts: {
         Row: {
@@ -3468,9 +3534,12 @@ export type Database = {
           locked_at: string | null
           locked_by: string | null
           max_attempts: number
+          next_recovery_at: string | null
           next_run_at: string
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision: number | null
+          recovery_attempts: number
           requested_by: string | null
           requested_revision: number
           status: Database["public"]["Enums"]["property_sync_job_status"]
@@ -3494,9 +3563,12 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           max_attempts?: number
+          next_recovery_at?: string | null
           next_run_at?: string
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision?: number | null
+          recovery_attempts?: number
           requested_by?: string | null
           requested_revision?: number
           status?: Database["public"]["Enums"]["property_sync_job_status"]
@@ -3520,9 +3592,12 @@ export type Database = {
           locked_at?: string | null
           locked_by?: string | null
           max_attempts?: number
+          next_recovery_at?: string | null
           next_run_at?: string
           property_id?: string
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision?: number | null
+          recovery_attempts?: number
           requested_by?: string | null
           requested_revision?: number
           status?: Database["public"]["Enums"]["property_sync_job_status"]
@@ -5274,6 +5349,22 @@ export type Database = {
         }
         Relationships: []
       }
+      property_integration_health: {
+        Row: {
+          ambiguous_jobs: number | null
+          blocked_until: string | null
+          divergent_publications: number | null
+          expired_leases: number | null
+          last_auth_error_at: string | null
+          last_auth_status: number | null
+          last_success_at: string | null
+          media_behind: number | null
+          oldest_open_minutes: number | null
+          open_jobs: number | null
+          provider: Database["public"]["Enums"]["imobi_provider"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
@@ -5513,14 +5604,51 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_image_complete_job: {
+        Args: { _job_id: string; _result: Json; _worker: string }
+        Returns: boolean
+      }
+      property_image_delete_atomic: {
+        Args: {
+          _expected_gallery_revision?: number
+          _image_id: string
+          _property_id: string
+        }
+        Returns: Json
+      }
+      property_image_fail_job: {
+        Args: { _failure: Json; _job_id: string; _worker: string }
+        Returns: boolean
+      }
       property_image_reclaim_stale: { Args: { _max?: number }; Returns: number }
       property_image_register: {
         Args: { _payload: Json; _property_id: string }
         Returns: string
       }
+      property_image_renew_lease: {
+        Args: { _job_id: string; _lease_seconds?: number; _worker: string }
+        Returns: boolean
+      }
+      property_image_replace_atomic: {
+        Args: {
+          _expected_gallery_revision?: number
+          _new_image_id: string
+          _old_image_id: string
+          _property_id: string
+        }
+        Returns: Json
+      }
+      property_image_stage_replacement: {
+        Args: { _old_image_id: string; _payload: Json; _property_id: string }
+        Returns: string
+      }
       property_images_normalize: {
         Args: { _property_id: string }
         Returns: Json
+      }
+      property_import_bump_run: {
+        Args: { _deltas: Json; _run_id: string }
+        Returns: boolean
       }
       property_import_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
@@ -5535,6 +5663,7 @@ export type Database = {
           job_type: string
           last_error_category: string | null
           last_error_message: string | null
+          lease_token: string | null
           lock_expires_at: string | null
           locked_at: string | null
           locked_by: string | null
@@ -5543,6 +5672,7 @@ export type Database = {
           page: number | null
           payload: Json
           provider: Database["public"]["Enums"]["imobi_provider"]
+          recovery_attempts: number
           run_id: string
           status: Database["public"]["Enums"]["property_sync_job_status"]
           updated_at: string
@@ -5553,6 +5683,30 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      property_import_finalize_if_owned: {
+        Args: { _job_id: string; _lease_token: string }
+        Returns: Json
+      }
+      property_import_finish_job: {
+        Args: {
+          _attempts?: number
+          _error_category?: string
+          _error_message?: string
+          _job_id: string
+          _lease_token: string
+          _next_run_at?: string
+          _status: string
+        }
+        Returns: boolean
+      }
+      property_import_recover_jobs: {
+        Args: { _limit?: number }
+        Returns: number
+      }
+      property_import_renew_lease: {
+        Args: { _job_id: string; _lease_token: string; _seconds?: number }
+        Returns: boolean
       }
       property_media_finish: {
         Args: {
@@ -5573,6 +5727,10 @@ export type Database = {
         }
         Returns: Json
       }
+      property_provider_auth_failure: {
+        Args: { _provider: string; _status: number }
+        Returns: undefined
+      }
       property_publication_acquire_create_lock: {
         Args: {
           _lease_seconds?: number
@@ -5584,6 +5742,26 @@ export type Database = {
       property_publication_release_create_lock: {
         Args: { _publication_id: string; _worker: string }
         Returns: undefined
+      }
+      property_publication_request: {
+        Args: {
+          _action: string
+          _expected_revision?: number
+          _external_reference: string
+          _property_id: string
+          _providers: string[]
+          _requested_by: string
+        }
+        Returns: Json
+      }
+      property_publication_update_if_owned: {
+        Args: {
+          _fields: Json
+          _job_id: string
+          _lease_token: string
+          _publication_id: string
+        }
+        Returns: boolean
       }
       property_remote_merge: {
         Args: {
@@ -5643,9 +5821,12 @@ export type Database = {
           locked_at: string | null
           locked_by: string | null
           max_attempts: number
+          next_recovery_at: string | null
           next_run_at: string
           property_id: string
           provider: Database["public"]["Enums"]["imobi_provider"]
+          publication_intent_revision: number | null
+          recovery_attempts: number
           requested_by: string | null
           requested_revision: number
           status: Database["public"]["Enums"]["property_sync_job_status"]
@@ -5671,9 +5852,21 @@ export type Database = {
         Returns: boolean
       }
       property_sync_reclaim_stale: { Args: never; Returns: number }
+      property_sync_recover_intents: {
+        Args: { _limit?: number }
+        Returns: Json
+      }
       property_sync_renew_lease: {
         Args: { _job_id: string; _lease_token: string; _seconds?: number }
         Returns: boolean
+      }
+      property_sync_request_repair: {
+        Args: {
+          _fields: string[]
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Returns: Json
       }
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
