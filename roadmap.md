@@ -152,3 +152,6 @@
 - [ ] Número do endereço >15 (1360/1372)
 - [ ] Validar 1384/1381/1373/1379 + pares Morar
 - [ ] Auditoria operacional só leitura da recuperação automática (PR #26), relatório por achado
+
+## Novo (23/09)
+- [x] Upload de fotos na etapa 6 travando: corretor não tinha permissão de gravação na função de salvar imóvel (agora admin/secretaria/corretor, igual às regras de acesso); fotos passam a ser reduzidas no navegador (11,6 MB → 3,5 MB); envio tem limite de tempo (3 min) e recusa definitiva aparece como erro em vez de ficar "processando". Teste: 10 fotos em 55 s, todas prontas, sem erro.
