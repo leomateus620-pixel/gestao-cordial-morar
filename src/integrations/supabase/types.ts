@@ -924,6 +924,33 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_20260923_address_fix: {
+        Row: {
+          complemento_novo: string | null
+          complemento_original: string | null
+          numero_novo: string | null
+          numero_original: string | null
+          property_id: string
+          saved_at: string
+        }
+        Insert: {
+          complemento_novo?: string | null
+          complemento_original?: string | null
+          numero_novo?: string | null
+          numero_original?: string | null
+          property_id: string
+          saved_at?: string
+        }
+        Update: {
+          complemento_novo?: string | null
+          complemento_original?: string | null
+          numero_novo?: string | null
+          numero_original?: string | null
+          property_id?: string
+          saved_at?: string
+        }
+        Relationships: []
+      }
       backup_20260923_image_links: {
         Row: {
           attempts: number | null
