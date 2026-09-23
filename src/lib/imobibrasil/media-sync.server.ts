@@ -15,6 +15,7 @@
  * Ordem: a fonte da verdade é `property_images` ordenado por `position`.
  */
 
+import { shouldSendAsCover } from "./cover-decision";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { imobiRequest } from "./client.server";
 import { toImobiError } from "./errors";
@@ -322,9 +323,15 @@ export async function deliverGallery(
   await purgeFullyDeletedImages(admin, propertyId);
 
   // -------------------------------------------------------------- inserções
+  // O Gestão é a fonte da verdade: fotos pendentes são enviadas na ordem do
+  // Gestão mesmo quando a leitura do site é inconclusiva. A confirmação vem do
+  // código de imagem devolvido pelo próprio envio; sem código, a entrega fica
+  // incerta e nunca é repetida às cegas.
+  const linkCoverKnown = links.some((row) =>
+    row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : plan.toSend) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
-    if (remainingMs() < 95_000 || !gallery.reliable) break;
+    if (remainingMs() < 95_000) break;
     const image = byId.get(target.id);
     if (!image) continue;
     await progress();
@@ -335,12 +342,15 @@ export async function deliverGallery(
       originalName: image.file_name,
       mimeType: image.processed_storage_path ? "image/jpeg" : image.mime_type,
     });
-    // Capa: só um destaque pode existir. Destaque=Sim apenas quando está
-    // comprovado que o site não tem nenhum e esta é a primeira foto desejada.
-    const asCover =
-      gallery.items.every((item) => !item.destaque) &&
-      coversSentThisRun === 0 &&
-      publishable[0]?.id === image.id;
+    // Capa: só um destaque pode existir. Destaque=Sim apenas para a primeira
+    // foto do Gestão, quando nem o site (leitura) nem os vínculos têm capa.
+    const asCover = shouldSendAsCover({
+      readReliable: gallery.reliable,
+      remoteHasCover: gallery.items.some((item) => item.destaque),
+      linkHasCover: linkCoverKnown,
+      coversSentThisRun,
+      isFirstDesired: publishable[0]?.id === image.id,
+    });
 
     let postReturned = false;
     try {
@@ -388,9 +398,14 @@ export async function deliverGallery(
 
       const externalImageId = extractInsertedImageId(response.data);
       const after = await fetchRemoteGallery(provider, externalId, correlationId);
-      const confirmedItem = externalImageId && after.reliable
+      const readItem = externalImageId && after.reliable
         ? after.items.find((item) => item.codigoImagem === externalImageId)
         : null;
+      // Leitura inconclusiva não invalida um envio aceito: o código devolvido
+      // pelo site identifica a foto enviada.
+      const confirmedItem = readItem ?? (externalImageId && !after.reliable
+        ? { codigoImagem: externalImageId, url: null, destaque: asCover }
+        : null);
       gallery = after;
       if (!confirmedItem) {
         unknownCount += 1;
