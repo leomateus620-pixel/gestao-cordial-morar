@@ -151,6 +151,24 @@ export function planGalleryDelivery(
   };
 }
 
+/**
+ * Ordem de ENVIO para que o site mostre a ordem do Gestão.
+ *
+ * Comprovado por leitura (23/09/2026): o site lista a capa primeiro e depois
+ * as fotos da MAIS NOVA para a mais antiga. Logo a capa vai primeiro e as
+ * demais vão da última para a primeira.
+ */
+export function sendOrderForSite<T extends { id: string; position: number }>(
+  toSend: readonly T[],
+  coverId: string | null | undefined,
+): T[] {
+  const cover = toSend.filter((image) => image.id === coverId);
+  const rest = toSend
+    .filter((image) => image.id !== coverId)
+    .sort((a, b) => b.position - a.position || b.id.localeCompare(a.id));
+  return [...cover, ...rest];
+}
+
 const SAFE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 
 /**

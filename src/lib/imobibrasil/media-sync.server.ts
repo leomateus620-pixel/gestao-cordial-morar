@@ -33,6 +33,7 @@ import {
   isExtensionError,
   isRateLimitError,
   planGalleryDelivery,
+  sendOrderForSite,
   safeDeliveryFileName,
   sortGallery,
   type LocalGalleryImage,
@@ -272,6 +273,26 @@ export async function deliverGallery(
 
   /** Leitura COMPLETA da galeria (paginada) — nunca só a primeira página. */
   let gallery: RemoteGallery = await fetchRemoteGallery(provider, externalId, correlationId);
+
+  // Envio incerto com UMA foto sem dono no site (leitura completa): é a foto
+  // enviada. Resolve sem reenviar; com 0 ou 2+ candidatas continua incerto.
+  if (plan.unknown.length === 1 && gallery.reliable) {
+    const known = new Set(
+      links.filter((row) => row.desired_state !== "absent" && !row.deleted_at)
+        .map((row) => row.external_image_id).filter(Boolean),
+    );
+    const orphans = gallery.items.filter((item) => item.codigoImagem && !known.has(item.codigoImagem));
+    if (orphans.length === 1) {
+      await persistLink(admin, params, {
+        image_id: plan.unknown[0]!, publication_id: publicationId, provider,
+        status: "synced", external_image_id: orphans[0]!.codigoImagem,
+        last_op: "insert", last_op_state: "confirmed_by_read",
+        error_class: null, last_error_message: null,
+      });
+      plan.unknown = [];
+      unknownCount = 0;
+    }
+  }
   const snapshotOf = (g: RemoteGallery) => ({
     count: g.items.length,
     coverCount: g.items.filter((item) => item.destaque).length,
@@ -329,7 +350,8 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : plan.toSend) {
+  const sendQueue = sendOrderForSite(plan.toSend, publishable[0]?.id);
+  for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
     const image = byId.get(target.id);
@@ -396,8 +418,15 @@ export async function deliverGallery(
         },
       );
 
-      const externalImageId = extractInsertedImageId(response.data);
       const after = await fetchRemoteGallery(provider, externalId, correlationId);
+      // O site nem sempre devolve o código no envio. Com a leitura completa e a
+      // posse exclusiva deste anúncio, UMA foto nova em relação à lista anterior
+      // é a foto enviada agora.
+      const newRemote = after.reliable && gallery.reliable
+        ? after.items.filter((item) => item.codigoImagem && !beforeCodes.includes(item.codigoImagem))
+        : [];
+      const externalImageId = extractInsertedImageId(response.data) ??
+        (newRemote.length === 1 ? newRemote[0]!.codigoImagem : null);
       const readItem = externalImageId && after.reliable
         ? after.items.find((item) => item.codigoImagem === externalImageId)
         : null;
