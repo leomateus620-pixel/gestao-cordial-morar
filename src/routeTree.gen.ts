@@ -54,6 +54,7 @@ import { Route as ApiPublicHooksPropertyImageWorkerRouteImport } from './routes/
 import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
 import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
+import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
 import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
@@ -297,6 +298,12 @@ const ApiPublicHooksGoogleCalendarSyncRoute =
     path: '/api/public/hooks/google-calendar-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksGalleryAlignRoute =
+  ApiPublicHooksGalleryAlignRouteImport.update({
+    id: '/api/public/hooks/gallery-align',
+    path: '/api/public/hooks/gallery-align',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksFinanceiroSheetsSyncRoute =
   ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
     id: '/api/public/hooks/financeiro-sheets-sync',
@@ -364,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
+  '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -413,6 +421,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
+  '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -466,6 +475,7 @@ export interface FileRoutesById {
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
+  '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -519,6 +529,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
+    | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -568,6 +579,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
+    | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -620,6 +632,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/financeiro-sheets-sync'
+    | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -648,6 +661,7 @@ export interface RootRouteChildren {
   ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
+  ApiPublicHooksGalleryAlignRoute: typeof ApiPublicHooksGalleryAlignRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
   ApiPublicHooksPropertyDriveWorkerRoute: typeof ApiPublicHooksPropertyDriveWorkerRoute
   ApiPublicHooksPropertyImageRetryRoute: typeof ApiPublicHooksPropertyImageRetryRoute
@@ -980,6 +994,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksGoogleCalendarSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/gallery-align': {
+      id: '/api/public/hooks/gallery-align'
+      path: '/api/public/hooks/gallery-align'
+      fullPath: '/api/public/hooks/gallery-align'
+      preLoaderRoute: typeof ApiPublicHooksGalleryAlignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/financeiro-sheets-sync': {
       id: '/api/public/hooks/financeiro-sheets-sync'
       path: '/api/public/hooks/financeiro-sheets-sync'
@@ -1120,6 +1141,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
+  ApiPublicHooksGalleryAlignRoute: ApiPublicHooksGalleryAlignRoute,
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
   ApiPublicHooksPropertyDriveWorkerRoute:
     ApiPublicHooksPropertyDriveWorkerRoute,
