@@ -89,6 +89,9 @@ export async function sha256Hex(blob: Blob): Promise<string> {
     .join("");
 }
 
+/** Tempo máximo de um único envio ao armazenamento. */
+const UPLOAD_TIMEOUT_MS = 180_000;
+
 /** Envio direto ao bucket privado por URL assinada, com progresso real. */
 export function uploadSignedWithProgress(args: {
   bucket: string;
