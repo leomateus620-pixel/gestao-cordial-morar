@@ -145,3 +145,10 @@
 - [x] Contato do proprietário em fichas vazias (em lotes)
 - [ ] Teste de edição mínima em 1 imóvel com proprietário por site — aguardando autorização do imóvel
 - [ ] 50 imóveis ainda sem proprietário no site — devolver lista ao suporte
+
+## 23/09 — divergência Gestão x sites
+- [ ] Aplicar migrações pendentes (230000, 230001, 231000 feitas; faltam 031700..061000; 230002 cron adiado — depende de segredos no Vault)
+- [ ] Destravar fila presa por erro desired_availability
+- [ ] Número do endereço >15 (1360/1372)
+- [ ] Validar 1384/1381/1373/1379 + pares Morar
+- [ ] Auditoria operacional só leitura da recuperação automática (PR #26), relatório por achado
