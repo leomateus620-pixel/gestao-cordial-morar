@@ -81,14 +81,18 @@ export async function alignGallery(
 
   // Maior começo idêntico: foto i do site = foto i do Gestão; só a 1ª é capa.
   let k = 0;
-  // Só a capa pode ficar: fotos novas aparecem logo depois dela no site.
-  while (k < 1 && k < gallery.items.length && k < desired.length) {
+  while (k < gallery.items.length && k < desired.length) {
     const item = gallery.items[k]!;
     const imageId = item.codigoImagem ? codeToImage.get(item.codigoImagem) : undefined;
     const coverOk = k === 0 ? Boolean(item.destaque) : !item.destaque;
     if (imageId !== desired[k]!.id || !coverOk) break;
     k += 1;
   }
+  // Galeria idêntica: nada muda. Caso contrário só a capa pode ficar, porque
+  // fotos novas aparecem logo depois dela no site.
+  const identical = k === desired.length && k === gallery.items.length;
+  if (!identical) k = Math.min(k, 1);
+  if (identical) return { ...base, keep: gallery.items.map((i) => String(i.codigoImagem)) };
   base.keep = gallery.items.slice(0, k).map((item) => String(item.codigoImagem));
   base.remove = gallery.items.slice(k).map((item) => String(item.codigoImagem)).filter(Boolean);
   base.resend = desired.slice(k).map((image) => ({ imageId: image.id, position: image.position }));
