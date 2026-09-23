@@ -384,7 +384,13 @@ export async function deliverGallery(
       if (image) reordered.push(image);
     }
   }
-  const sendQueue = reorderBlocked ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
+  // Foto aguardando nova tentativa: não envia outras antes dela (o site
+  // ordena pela sequência de envio). Espera o horário e segue em ordem.
+  const nowMs = Date.now();
+  const waitingRetry = links.some((row) =>
+    row.desired_state !== "absent" && !row.deleted_at && row.status === "error" &&
+    row.next_retry_at && new Date(String(row.next_retry_at)).getTime() > nowMs);
+  const sendQueue = reorderBlocked || waitingRetry ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
@@ -574,7 +580,9 @@ export async function deliverGallery(
           next_retry_at: retryAt,
         },
       );
-      if (isRateLimitError(normalized.message)) break;
+      // A ordem no site depende da sequência de envio: qualquer falha para
+      // o envio aqui, para não pular fotos e inverter a ordem.
+      break;
     }
   }
 
