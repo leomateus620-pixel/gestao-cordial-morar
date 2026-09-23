@@ -350,7 +350,47 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  const sendQueue = sendOrderForSite(plan.toSend, publishable[0]?.id);
+  // O site mostra cada foto nova logo após a capa. Se uma foto pendente deve
+  // ficar DEPOIS de fotos já no site (ex.: acrescentada no fim), retira (com
+  // confirmação) as já enviadas que ficam antes dela e reenvia tudo em ordem.
+  // Falha numa retirada = não envia nada agora.
+  const coverId = publishable[0]?.id;
+  const positionOf = new Map(publishable.map((image) => [image.id, image.position]));
+  const pendingPositions = plan.toSend.filter((i) => i.id !== coverId).map((i) => i.position);
+  const lastPending = pendingPositions.length ? Math.max(...pendingPositions) : -Infinity;
+  const displaced = links.filter((row) =>
+    row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" &&
+    row.external_image_id && row.image_id !== coverId &&
+    (positionOf.get(row.image_id) ?? Infinity) < lastPending);
+  const reordered: typeof plan.toSend = [];
+  let reorderBlocked = false;
+  if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0) {
+    if (!gallery.reliable) reorderBlocked = true;
+    for (const row of reorderBlocked ? [] : displaced) {
+      if (outOfBudget()) { reorderBlocked = true; break; }
+      await progress();
+      const code = row.external_image_id as string;
+      const result = gallery.items.some((item) => item.codigoImagem === code)
+        ? await deleteRemoteImage(provider, externalId, code, correlationId)
+        : { confirmed: true, alreadyAbsent: true, message: null };
+      if (!result.confirmed) { reorderBlocked = true; break; }
+      await persistLink(admin, params, {
+        image_id: row.image_id, publication_id: publicationId, provider,
+        status: "pending", external_image_id: null, remote_url: null, is_cover: false,
+        synced_position: null, last_op: "delete", last_op_state: "reorder_reset",
+        error_class: null, last_error_message: null,
+      });
+      const image = publishable.find((i) => i.id === row.image_id);
+      if (image) reordered.push(image);
+    }
+  }
+  // Foto aguardando nova tentativa: não envia outras antes dela (o site
+  // ordena pela sequência de envio). Espera o horário e segue em ordem.
+  const nowMs = Date.now();
+  const waitingRetry = links.some((row) =>
+    row.desired_state !== "absent" && !row.deleted_at && row.status === "error" &&
+    row.next_retry_at && new Date(String(row.next_retry_at)).getTime() > nowMs);
+  const sendQueue = reorderBlocked || waitingRetry ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
@@ -540,7 +580,9 @@ export async function deliverGallery(
           next_retry_at: retryAt,
         },
       );
-      if (isRateLimitError(normalized.message)) break;
+      // A ordem no site depende da sequência de envio: qualquer falha para
+      // o envio aqui, para não pular fotos e inverter a ordem.
+      break;
     }
   }
 
@@ -584,6 +626,27 @@ export async function deliverGallery(
     .eq("publication_id", publicationId);
   if (afterLinksError) throw new Error(afterLinksError.message);
   const finalLinks = (afterLinks ?? []) as unknown as LinkRow[];
+  // Foto apagada no Gestão que nunca teve código no site: com leitura
+  // confiável e todas as fotos do site pertencendo ao Gestão, não há o que
+  // retirar — a exclusão fica confirmada sem nenhuma chamada ao site.
+  if (gallery.reliable) {
+    const presentCodes = new Set(finalLinks
+      .filter((row) => row.desired_state !== "absent" && row.status === "synced" && row.external_image_id)
+      .map((row) => String(row.external_image_id)));
+    const noOrphans = gallery.items.every((item) => item.codigoImagem && presentCodes.has(item.codigoImagem));
+    if (noOrphans) {
+      for (const row of finalLinks) {
+        if (row.desired_state !== "absent" || row.deleted_at || row.external_image_id) continue;
+        const deletedAt = new Date().toISOString();
+        await persistLink(admin, params, {
+          image_id: row.image_id, publication_id: publicationId, provider,
+          status: "deleted", deleted_at: deletedAt, last_op: "delete", last_op_state: "already_absent",
+          error_class: null, last_error_message: null,
+        });
+        row.deleted_at = deletedAt;
+      }
+    }
+  }
   const pendingDeleteCount = finalLinks.filter(
     (row) => row.desired_state === "absent" && !row.deleted_at,
   ).length;
