@@ -115,5 +115,12 @@ export async function fetchPropertyImages(
       },
     );
     return extractImagePage(response.data, page, perPage);
+  }, async () => {
+    const detail = await imobiRequest(provider, `/imovel/dados/${encodeURIComponent(externalId)}`, {
+      method: "GET",
+      ...(correlationId ? { correlationId } : {}),
+    });
+    const list = (detail.data as { resultSet?: { imagens?: unknown } } | null)?.resultSet?.imagens;
+    return Array.isArray(list) ? list.length : null;
   });
 }
