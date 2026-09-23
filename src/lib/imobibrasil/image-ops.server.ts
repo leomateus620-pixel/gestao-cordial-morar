@@ -79,6 +79,19 @@ export async function fetchRemoteGallery(
         return { reliable: false, reason: "paginacao_incompleta", items };
       expectedItems = parsed.totalItems;
     }
+    // A API real (23/09/2026) ignora `page` e sem metadados devolve a lista
+    // inteira de novo na página 2. Repetição EXATA da página 1 (mesmos códigos,
+    // mesma ordem, mesma capa) prova que a primeira já era a lista completa.
+    if (
+      page === 2 && expectedPages === null && expectedItems === null &&
+      parsed.items.length === items.length && items.length > 0 &&
+      parsed.items.every((item, index) =>
+        item.codigoImagem !== null &&
+        item.codigoImagem === items[index]?.codigoImagem &&
+        item.destaque === items[index]?.destaque)
+    ) {
+      return { reliable: true, reason: null, items };
+    }
     for (const item of parsed.items) {
       if (!item.codigoImagem || codes.has(item.codigoImagem))
         return { reliable: false, reason: "identidade_incompleta", items };

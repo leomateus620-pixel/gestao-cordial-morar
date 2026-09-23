@@ -14,6 +14,12 @@ export async function fetchAllImagePagesWith(
     }
     if (result.items.length) {
       const fingerprint = JSON.stringify(result.items.map((item) => item["codigoImagem"] ?? item["id"] ?? item["url"]));
+      // A API ignora page/per_page e repete a lista inteira: página 2 idêntica
+      // à 1 (sem total declarado) prova que a 1 já era completa.
+      if (page === 2 && !result.totalPagesKnown && fingerprints.size === 1 &&
+          fingerprints.has(fingerprint) && images.length === result.items.length) {
+        return images;
+      }
       if (fingerprints.has(fingerprint)) {
         throw new Error("Paginação de imagens repetiu uma página; galeria inconclusiva.");
       }

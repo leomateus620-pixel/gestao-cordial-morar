@@ -34,13 +34,35 @@ test("código ausente ou página repetida torna ausência inconclusiva", async (
   assert.equal(unknown.reliable, false);
   assert.equal(unknown.reason, "identidade_incompleta");
 
-  const repeated = await fetchRemoteGallery("cordial", "fixture", undefined,
-    async () => Array.from({ length: 50 }, (_, index) => image(index + 1)));
-  assert.equal(repeated.reliable, false);
-  assert.equal(repeated.reason, "identidade_incompleta");
+  // Página 2 com sobreposição parcial continua inconclusiva.
+  const overlap = await fetchRemoteGallery("cordial", "fixture", undefined,
+    async (page) => page === 1 ? [image(1), image(2)] : [image(2), image(3)]);
+  assert.equal(overlap.reliable, false);
+  assert.equal(overlap.reason, "identidade_incompleta");
 
   const malformed = await fetchRemoteGallery("cordial", "fixture", undefined,
     async () => [image(1), { arquivo: "desconhecido" }]);
   assert.equal(malformed.reliable, false);
   assert.equal(malformed.reason, "formato_desconhecido");
+});
+
+// Contrato real 23/09/2026: a API ignora page/per_page e devolve tudo sempre.
+test("repetição exata da página 1 prova lista completa (58 fotos)", async () => {
+  const all = Array.from({ length: 58 }, (_, index) => ({ ...image(index + 1), destaque: index === 0 }));
+  const pages: number[] = [];
+  const gallery = await fetchRemoteGallery("morar", "fixture", undefined,
+    async (page) => { pages.push(page); return all; });
+  assert.equal(gallery.reliable, true);
+  assert.equal(gallery.items.length, 58);
+  assert.deepEqual(pages, [1, 2]);
+});
+
+test("repetição com capa ou ordem diferente não é aceita como completa", async () => {
+  const first = [image(1), image(2)];
+  const reordered = await fetchRemoteGallery("cordial", "fixture", undefined,
+    async (page) => page === 1 ? first : [image(2), image(1)]);
+  assert.equal(reordered.reliable, false);
+  const cover = await fetchRemoteGallery("cordial", "fixture", undefined,
+    async (page) => page === 1 ? first : [{ ...image(1), destaque: true }, image(2)]);
+  assert.equal(cover.reliable, false);
 });
