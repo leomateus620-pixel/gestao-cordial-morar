@@ -3218,6 +3218,8 @@ export type Database = {
           last_payload_snapshot: Json | null
           last_payload_synced_at: string | null
           last_published_hash: string | null
+          last_repair_requested_at: string | null
+          last_repair_signature: string | null
           last_synced_at: string | null
           last_synced_revision: number | null
           last_verified_at: string | null
@@ -3289,6 +3291,8 @@ export type Database = {
           last_payload_snapshot?: Json | null
           last_payload_synced_at?: string | null
           last_published_hash?: string | null
+          last_repair_requested_at?: string | null
+          last_repair_signature?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
@@ -3360,6 +3364,8 @@ export type Database = {
           last_payload_snapshot?: Json | null
           last_payload_synced_at?: string | null
           last_published_hash?: string | null
+          last_repair_requested_at?: string | null
+          last_repair_signature?: string | null
           last_synced_at?: string | null
           last_synced_revision?: number | null
           last_verified_at?: string | null
@@ -3417,6 +3423,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_provider_recovery_circuit: {
+        Row: {
+          last_probe_at: string | null
+          last_success_at: string | null
+          next_probe_at: string
+          probe_count: number
+          provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Insert: {
+          last_probe_at?: string | null
+          last_success_at?: string | null
+          next_probe_at?: string
+          probe_count?: number
+          provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Update: {
+          last_probe_at?: string | null
+          last_success_at?: string | null
+          next_probe_at?: string
+          probe_count?: number
+          provider?: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Relationships: []
       }
       property_sync_attempts: {
         Row: {
@@ -5742,9 +5772,21 @@ export type Database = {
         Returns: boolean
       }
       property_sync_reclaim_stale: { Args: never; Returns: number }
+      property_sync_recover_intents: {
+        Args: { _limit?: number }
+        Returns: Json
+      }
       property_sync_renew_lease: {
         Args: { _job_id: string; _lease_token: string; _seconds?: number }
         Returns: boolean
+      }
+      property_sync_request_repair: {
+        Args: {
+          _fields: string[]
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Returns: Json
       }
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
