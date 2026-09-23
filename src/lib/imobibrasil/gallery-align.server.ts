@@ -81,7 +81,8 @@ export async function alignGallery(
 
   // Maior começo idêntico: foto i do site = foto i do Gestão; só a 1ª é capa.
   let k = 0;
-  while (k < gallery.items.length && k < desired.length) {
+  // Só a capa pode ficar: fotos novas aparecem logo depois dela no site.
+  while (k < 1 && k < gallery.items.length && k < desired.length) {
     const item = gallery.items[k]!;
     const imageId = item.codigoImagem ? codeToImage.get(item.codigoImagem) : undefined;
     const coverOk = k === 0 ? Boolean(item.destaque) : !item.destaque;
