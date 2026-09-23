@@ -924,6 +924,541 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_20260923_image_links: {
+        Row: {
+          attempts: number | null
+          content_hash: string | null
+          created_at: string | null
+          deleted_at: string | null
+          delivery_file_name: string | null
+          desired_state: string | null
+          error_class: string | null
+          external_image_id: string | null
+          id: string | null
+          image_id: string | null
+          is_cover: boolean | null
+          last_error_message: string | null
+          last_op: string | null
+          last_op_state: string | null
+          next_retry_at: string | null
+          pending_delete_at: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_id: string | null
+          remote_destaque: boolean | null
+          remote_url: string | null
+          replacement_of_image_id: string | null
+          snapshot_at: string | null
+          status: string | null
+          synced_at: string | null
+          synced_position: number | null
+          updated_at: string | null
+          verification: Json | null
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          content_hash?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          delivery_file_name?: string | null
+          desired_state?: string | null
+          error_class?: string | null
+          external_image_id?: string | null
+          id?: string | null
+          image_id?: string | null
+          is_cover?: boolean | null
+          last_error_message?: string | null
+          last_op?: string | null
+          last_op_state?: string | null
+          next_retry_at?: string | null
+          pending_delete_at?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_id?: string | null
+          remote_destaque?: boolean | null
+          remote_url?: string | null
+          replacement_of_image_id?: string | null
+          snapshot_at?: string | null
+          status?: string | null
+          synced_at?: string | null
+          synced_position?: number | null
+          updated_at?: string | null
+          verification?: Json | null
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          content_hash?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          delivery_file_name?: string | null
+          desired_state?: string | null
+          error_class?: string | null
+          external_image_id?: string | null
+          id?: string | null
+          image_id?: string | null
+          is_cover?: boolean | null
+          last_error_message?: string | null
+          last_op?: string | null
+          last_op_state?: string | null
+          next_retry_at?: string | null
+          pending_delete_at?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_id?: string | null
+          remote_destaque?: boolean | null
+          remote_url?: string | null
+          replacement_of_image_id?: string | null
+          snapshot_at?: string | null
+          status?: string | null
+          synced_at?: string | null
+          synced_position?: number | null
+          updated_at?: string | null
+          verification?: Json | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_20260923_property_images: {
+        Row: {
+          alt_text: string | null
+          batch_id: string | null
+          content_hash: string | null
+          created_at: string | null
+          destination_hash: string | null
+          file_name: string | null
+          height: number | null
+          id: string | null
+          is_cover: boolean | null
+          mime_type: string | null
+          orientation_override: string | null
+          original_checksum: string | null
+          original_storage_path: string | null
+          pending_remote_delete: boolean | null
+          position: number | null
+          processed_at: string | null
+          processed_checksum: string | null
+          processed_storage_path: string | null
+          processing_error_code: string | null
+          processing_error_message: string | null
+          processing_finished_at: string | null
+          processing_started_at: string | null
+          processing_status: string | null
+          property_id: string | null
+          replacement_target_image_id: string | null
+          size_bytes: number | null
+          snapshot_at: string | null
+          storage_path: string | null
+          thumbnail_storage_path: string | null
+          updated_at: string | null
+          upload_status: string | null
+          uploaded_by: string | null
+          watermark_variant: string | null
+          watermark_version: string | null
+          width: number | null
+        }
+        Insert: {
+          alt_text?: string | null
+          batch_id?: string | null
+          content_hash?: string | null
+          created_at?: string | null
+          destination_hash?: string | null
+          file_name?: string | null
+          height?: number | null
+          id?: string | null
+          is_cover?: boolean | null
+          mime_type?: string | null
+          orientation_override?: string | null
+          original_checksum?: string | null
+          original_storage_path?: string | null
+          pending_remote_delete?: boolean | null
+          position?: number | null
+          processed_at?: string | null
+          processed_checksum?: string | null
+          processed_storage_path?: string | null
+          processing_error_code?: string | null
+          processing_error_message?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
+          processing_status?: string | null
+          property_id?: string | null
+          replacement_target_image_id?: string | null
+          size_bytes?: number | null
+          snapshot_at?: string | null
+          storage_path?: string | null
+          thumbnail_storage_path?: string | null
+          updated_at?: string | null
+          upload_status?: string | null
+          uploaded_by?: string | null
+          watermark_variant?: string | null
+          watermark_version?: string | null
+          width?: number | null
+        }
+        Update: {
+          alt_text?: string | null
+          batch_id?: string | null
+          content_hash?: string | null
+          created_at?: string | null
+          destination_hash?: string | null
+          file_name?: string | null
+          height?: number | null
+          id?: string | null
+          is_cover?: boolean | null
+          mime_type?: string | null
+          orientation_override?: string | null
+          original_checksum?: string | null
+          original_storage_path?: string | null
+          pending_remote_delete?: boolean | null
+          position?: number | null
+          processed_at?: string | null
+          processed_checksum?: string | null
+          processed_storage_path?: string | null
+          processing_error_code?: string | null
+          processing_error_message?: string | null
+          processing_finished_at?: string | null
+          processing_started_at?: string | null
+          processing_status?: string | null
+          property_id?: string | null
+          replacement_target_image_id?: string | null
+          size_bytes?: number | null
+          snapshot_at?: string | null
+          storage_path?: string | null
+          thumbnail_storage_path?: string | null
+          updated_at?: string | null
+          upload_status?: string | null
+          uploaded_by?: string | null
+          watermark_variant?: string | null
+          watermark_version?: string | null
+          width?: number | null
+        }
+        Relationships: []
+      }
+      backup_20260923_publications: {
+        Row: {
+          archived_at: string | null
+          baseline_at: string | null
+          characteristic_codes: Json | null
+          characteristic_sync_incomplete: boolean | null
+          characteristic_synced_at: string | null
+          commercial_reference: string | null
+          confirmed_field_snapshot: Json | null
+          confirmed_revision: number | null
+          conflict_count: number | null
+          create_absent_checks: number | null
+          create_ambiguous_at: string | null
+          create_lock_expires_at: string | null
+          create_lock_worker: string | null
+          create_state: string | null
+          created_at: string | null
+          desired_availability: string | null
+          echo_expires_at: string | null
+          echo_payload_hash: string | null
+          enabled: boolean | null
+          external_property_id: string | null
+          external_public_url: string | null
+          external_reference: string | null
+          gallery_revision: number | null
+          id: string | null
+          import_run_id: string | null
+          last_error_category: string | null
+          last_error_code: string | null
+          last_error_message: string | null
+          last_field_verification: Json | null
+          last_imported_at: string | null
+          last_media_synced_at: string | null
+          last_media_verified_at: string | null
+          last_payload_hash: string | null
+          last_payload_snapshot: Json | null
+          last_payload_synced_at: string | null
+          last_published_hash: string | null
+          last_repair_requested_at: string | null
+          last_repair_signature: string | null
+          last_synced_at: string | null
+          last_synced_revision: number | null
+          last_verified_at: string | null
+          local_desired_hash: string | null
+          media_dirty_at: string | null
+          media_dirty_revision: number | null
+          media_expected_count: number | null
+          media_failed_count: number | null
+          media_order_guarantee: string | null
+          media_rebuild_state: Json | null
+          media_recovery_attempts: number | null
+          media_recovery_next_at: string | null
+          media_remote_count: number | null
+          media_status: string | null
+          media_synced_count: number | null
+          property_id: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_intent_revision: number | null
+          remote_codigo_corretor: string | null
+          remote_codigo_proprietario: string | null
+          remote_codigo_usuario_adicional: string | null
+          remote_field_snapshot: Json | null
+          remote_links_synced_at: string | null
+          remote_match_checked_at: string | null
+          remote_match_count: number | null
+          remote_match_ids: string[] | null
+          remote_observed_hash: string | null
+          remote_read_state: string | null
+          remote_snapshot_at: string | null
+          snapshot_at: string | null
+          status:
+            | Database["public"]["Enums"]["property_publication_status"]
+            | null
+          synced_gallery_revision: number | null
+          system_managed: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          baseline_at?: string | null
+          characteristic_codes?: Json | null
+          characteristic_sync_incomplete?: boolean | null
+          characteristic_synced_at?: string | null
+          commercial_reference?: string | null
+          confirmed_field_snapshot?: Json | null
+          confirmed_revision?: number | null
+          conflict_count?: number | null
+          create_absent_checks?: number | null
+          create_ambiguous_at?: string | null
+          create_lock_expires_at?: string | null
+          create_lock_worker?: string | null
+          create_state?: string | null
+          created_at?: string | null
+          desired_availability?: string | null
+          echo_expires_at?: string | null
+          echo_payload_hash?: string | null
+          enabled?: boolean | null
+          external_property_id?: string | null
+          external_public_url?: string | null
+          external_reference?: string | null
+          gallery_revision?: number | null
+          id?: string | null
+          import_run_id?: string | null
+          last_error_category?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_field_verification?: Json | null
+          last_imported_at?: string | null
+          last_media_synced_at?: string | null
+          last_media_verified_at?: string | null
+          last_payload_hash?: string | null
+          last_payload_snapshot?: Json | null
+          last_payload_synced_at?: string | null
+          last_published_hash?: string | null
+          last_repair_requested_at?: string | null
+          last_repair_signature?: string | null
+          last_synced_at?: string | null
+          last_synced_revision?: number | null
+          last_verified_at?: string | null
+          local_desired_hash?: string | null
+          media_dirty_at?: string | null
+          media_dirty_revision?: number | null
+          media_expected_count?: number | null
+          media_failed_count?: number | null
+          media_order_guarantee?: string | null
+          media_rebuild_state?: Json | null
+          media_recovery_attempts?: number | null
+          media_recovery_next_at?: string | null
+          media_remote_count?: number | null
+          media_status?: string | null
+          media_synced_count?: number | null
+          property_id?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_intent_revision?: number | null
+          remote_codigo_corretor?: string | null
+          remote_codigo_proprietario?: string | null
+          remote_codigo_usuario_adicional?: string | null
+          remote_field_snapshot?: Json | null
+          remote_links_synced_at?: string | null
+          remote_match_checked_at?: string | null
+          remote_match_count?: number | null
+          remote_match_ids?: string[] | null
+          remote_observed_hash?: string | null
+          remote_read_state?: string | null
+          remote_snapshot_at?: string | null
+          snapshot_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["property_publication_status"]
+            | null
+          synced_gallery_revision?: number | null
+          system_managed?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          baseline_at?: string | null
+          characteristic_codes?: Json | null
+          characteristic_sync_incomplete?: boolean | null
+          characteristic_synced_at?: string | null
+          commercial_reference?: string | null
+          confirmed_field_snapshot?: Json | null
+          confirmed_revision?: number | null
+          conflict_count?: number | null
+          create_absent_checks?: number | null
+          create_ambiguous_at?: string | null
+          create_lock_expires_at?: string | null
+          create_lock_worker?: string | null
+          create_state?: string | null
+          created_at?: string | null
+          desired_availability?: string | null
+          echo_expires_at?: string | null
+          echo_payload_hash?: string | null
+          enabled?: boolean | null
+          external_property_id?: string | null
+          external_public_url?: string | null
+          external_reference?: string | null
+          gallery_revision?: number | null
+          id?: string | null
+          import_run_id?: string | null
+          last_error_category?: string | null
+          last_error_code?: string | null
+          last_error_message?: string | null
+          last_field_verification?: Json | null
+          last_imported_at?: string | null
+          last_media_synced_at?: string | null
+          last_media_verified_at?: string | null
+          last_payload_hash?: string | null
+          last_payload_snapshot?: Json | null
+          last_payload_synced_at?: string | null
+          last_published_hash?: string | null
+          last_repair_requested_at?: string | null
+          last_repair_signature?: string | null
+          last_synced_at?: string | null
+          last_synced_revision?: number | null
+          last_verified_at?: string | null
+          local_desired_hash?: string | null
+          media_dirty_at?: string | null
+          media_dirty_revision?: number | null
+          media_expected_count?: number | null
+          media_failed_count?: number | null
+          media_order_guarantee?: string | null
+          media_rebuild_state?: Json | null
+          media_recovery_attempts?: number | null
+          media_recovery_next_at?: string | null
+          media_remote_count?: number | null
+          media_status?: string | null
+          media_synced_count?: number | null
+          property_id?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_intent_revision?: number | null
+          remote_codigo_corretor?: string | null
+          remote_codigo_proprietario?: string | null
+          remote_codigo_usuario_adicional?: string | null
+          remote_field_snapshot?: Json | null
+          remote_links_synced_at?: string | null
+          remote_match_checked_at?: string | null
+          remote_match_count?: number | null
+          remote_match_ids?: string[] | null
+          remote_observed_hash?: string | null
+          remote_read_state?: string | null
+          remote_snapshot_at?: string | null
+          snapshot_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["property_publication_status"]
+            | null
+          synced_gallery_revision?: number | null
+          system_managed?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_20260923_sync_jobs: {
+        Row: {
+          action: Database["public"]["Enums"]["property_sync_action"] | null
+          attempts: number | null
+          changed_fields: string[] | null
+          checkpoint: Json | null
+          correlation_id: string | null
+          created_at: string | null
+          finished_at: string | null
+          id: string | null
+          last_error_category: string | null
+          last_error_message: string | null
+          last_http_status: number | null
+          lease_token: string | null
+          lock_expires_at: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number | null
+          next_recovery_at: string | null
+          next_run_at: string | null
+          property_id: string | null
+          provider: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_intent_revision: number | null
+          recovery_attempts: number | null
+          requested_by: string | null
+          requested_revision: number | null
+          snapshot_at: string | null
+          status: Database["public"]["Enums"]["property_sync_job_status"] | null
+          superseded_by: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          action?: Database["public"]["Enums"]["property_sync_action"] | null
+          attempts?: number | null
+          changed_fields?: string[] | null
+          checkpoint?: Json | null
+          correlation_id?: string | null
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string | null
+          last_error_category?: string | null
+          last_error_message?: string | null
+          last_http_status?: number | null
+          lease_token?: string | null
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number | null
+          next_recovery_at?: string | null
+          next_run_at?: string | null
+          property_id?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_intent_revision?: number | null
+          recovery_attempts?: number | null
+          requested_by?: string | null
+          requested_revision?: number | null
+          snapshot_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["property_sync_job_status"]
+            | null
+          superseded_by?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["property_sync_action"] | null
+          attempts?: number | null
+          changed_fields?: string[] | null
+          checkpoint?: Json | null
+          correlation_id?: string | null
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string | null
+          last_error_category?: string | null
+          last_error_message?: string | null
+          last_http_status?: number | null
+          lease_token?: string | null
+          lock_expires_at?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number | null
+          next_recovery_at?: string | null
+          next_run_at?: string | null
+          property_id?: string | null
+          provider?: Database["public"]["Enums"]["imobi_provider"] | null
+          publication_intent_revision?: number | null
+          recovery_attempts?: number | null
+          requested_by?: string | null
+          requested_revision?: number | null
+          snapshot_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["property_sync_job_status"]
+            | null
+          superseded_by?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           approximate_income: number | null
@@ -2693,6 +3228,47 @@ export type Database = {
           },
         ]
       }
+      property_image_legacy_review: {
+        Row: {
+          category: string
+          created_at: string
+          current_hash: string | null
+          expected_hash: string | null
+          image_id: string
+          property_id: string
+          review_status: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          current_hash?: string | null
+          expected_hash?: string | null
+          image_id: string
+          property_id: string
+          review_status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          current_hash?: string | null
+          expected_hash?: string | null
+          image_id?: string
+          property_id?: string
+          review_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_legacy_review_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: true
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_image_provider_publications: {
         Row: {
           attempts: number
@@ -2804,6 +3380,7 @@ export type Database = {
           batch_id: string | null
           content_hash: string | null
           created_at: string
+          desired_destination_hash: string | null
           destination_hash: string | null
           file_name: string
           height: number | null
@@ -2840,6 +3417,7 @@ export type Database = {
           batch_id?: string | null
           content_hash?: string | null
           created_at?: string
+          desired_destination_hash?: string | null
           destination_hash?: string | null
           file_name: string
           height?: number | null
@@ -2876,6 +3454,7 @@ export type Database = {
           batch_id?: string | null
           content_hash?: string | null
           created_at?: string
+          desired_destination_hash?: string | null
           destination_hash?: string | null
           file_name?: string
           height?: number | null
@@ -5554,6 +6133,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      property_expected_watermark_hash: {
+        Args: { _targets: string[] }
+        Returns: string
+      }
       property_image_batch_bump: {
         Args: { _batch_id: string; _column: string }
         Returns: {
@@ -5621,6 +6204,13 @@ export type Database = {
         Returns: boolean
       }
       property_image_reclaim_stale: { Args: { _max?: number }; Returns: number }
+      property_image_recovery_candidates: {
+        Args: { _limit?: number }
+        Returns: {
+          id: string
+          property_id: string
+        }[]
+      }
       property_image_register: {
         Args: { _payload: Json; _property_id: string }
         Returns: string
