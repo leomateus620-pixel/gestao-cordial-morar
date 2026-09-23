@@ -273,6 +273,23 @@ export async function deliverGallery(
 
   /** Leitura COMPLETA da galeria (paginada) — nunca só a primeira página. */
   let gallery: RemoteGallery = await fetchRemoteGallery(provider, externalId, correlationId);
+
+  // Envio incerto com UMA foto sem dono no site (leitura completa): é a foto
+  // enviada. Resolve sem reenviar; com 0 ou 2+ candidatas continua incerto.
+  if (plan.unknown.length === 1 && gallery.reliable) {
+    const known = new Set(presentLinks.map((row) => row.external_image_id).filter(Boolean));
+    const orphans = gallery.items.filter((item) => item.codigoImagem && !known.has(item.codigoImagem));
+    if (orphans.length === 1) {
+      await persistLink(admin, params, {
+        image_id: plan.unknown[0]!, publication_id: publicationId, provider,
+        status: "synced", external_image_id: orphans[0]!.codigoImagem,
+        last_op: "insert", last_op_state: "confirmed_by_read",
+        error_class: null, last_error_message: null,
+      });
+      plan.unknown = [];
+      unknownCount = 0;
+    }
+  }
   const snapshotOf = (g: RemoteGallery) => ({
     count: g.items.length,
     coverCount: g.items.filter((item) => item.destaque).length,
