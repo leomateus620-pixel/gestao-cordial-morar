@@ -135,7 +135,7 @@ export function shouldResendAbsentUnknown(
   const at = row.updated_at ? new Date(row.updated_at).getTime() : NaN;
   return Number.isFinite(at) && now - at >= ABSENT_UNKNOWN_WINDOW_MS;
 }
-...
+
 const LINK_COLUMNS =
   "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at, updated_at, verification";
 
