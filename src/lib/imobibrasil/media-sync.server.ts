@@ -136,6 +136,9 @@ export function shouldResendAbsentUnknown(
   return Number.isFinite(at) && now - at >= ABSENT_UNKNOWN_WINDOW_MS;
 }
 
+const IMAGE_COLUMNS =
+  "id, storage_path, processed_storage_path, processed_checksum, content_hash, file_name, mime_type, is_cover, position, processing_status, processing_error_code, processing_started_at, destination_hash, desired_destination_hash, updated_at, pending_remote_delete";
+
 const LINK_COLUMNS =
   "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at, updated_at, verification";
 
