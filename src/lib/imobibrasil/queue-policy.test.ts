@@ -10,6 +10,7 @@ import {
   leaseSecondsFor,
   isWriteBlockedByPause,
   shouldDeferForPause,
+  remoteReadDelaySeconds,
 } from "./queue-policy";
 
 const syncSource = readFileSync("src/lib/imobibrasil/sync.server.ts", "utf8");
@@ -103,4 +104,12 @@ test("cada rota usa o worker do seu tipo", () => {
 
 test("recuperação de lease é automática via RPC, não manual", () => {
   assert.ok(syncSource.includes("property_sync_reclaim_stale"));
+});
+
+test("leitura remota inconclusiva espera progressivamente com jitter limitado", () => {
+  assert.equal(remoteReadDelaySeconds(1, () => 0), 120);
+  assert.equal(remoteReadDelaySeconds(2, () => 0), 300);
+  assert.equal(remoteReadDelaySeconds(3, () => 0), 900);
+  assert.equal(remoteReadDelaySeconds(9, () => 0), 3600);
+  assert.ok(remoteReadDelaySeconds(9, () => 1) <= 3645);
 });

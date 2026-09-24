@@ -61,6 +61,13 @@ export function shouldDeferForPause(action: QueueAction, updatesPaused: boolean)
 /** Espera curta e previsível enquanto a pausa estiver ligada. */
 export const PAUSE_DEFER_SECONDS = 900;
 
+/** Espera crescente apenas para leitura remota inconclusiva do mesmo imóvel. */
+export function remoteReadDelaySeconds(streak: number, random = Math.random): number {
+  const ladder = [120, 300, 900, 3600] as const;
+  const base = ladder[Math.min(ladder.length - 1, Math.max(0, Math.floor(streak) - 1))] ?? 120;
+  return base + Math.floor(Math.max(0, Math.min(1, random())) * Math.min(45, Math.ceil(base * 0.08)));
+}
+
 export function isLeaseExpired(
   job: { status: string; lock_expires_at: string | null },
   now: Date = new Date(),

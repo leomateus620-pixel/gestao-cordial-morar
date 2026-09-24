@@ -124,6 +124,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
     qc.invalidateQueries({ queryKey: ["imovel-detalhe", propertyId] });
     qc.invalidateQueries({ queryKey: ["property-drive", propertyId] });
     qc.invalidateQueries({ queryKey: ["imoveis"] });
+    qc.invalidateQueries({ queryKey: ["property-sync", propertyId] });
   }, [qc, propertyId]);
 
   const patch = useCallback((key: string, next: Partial<UploadItem>) => {

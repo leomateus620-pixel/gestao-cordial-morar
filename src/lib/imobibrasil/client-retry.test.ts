@@ -29,12 +29,17 @@ test("vaga do limitador é pedida antes de cada tentativa", async () => {
 test("Retry-After longo não é repetido antes da hora", async () => {
   const f = stubFetch([() => new Response("", { status: 429, headers: { "Retry-After": "120" } })]);
   let err: ImobiApiError | null = null;
+  let persisted: { provider: string; seconds: number | null } | null = null;
   try {
-    await imobiRequest("cordial", "/x", { acquireSlot: async () => {} });
+    await imobiRequest("cordial", "/x", {
+      acquireSlot: async () => {},
+      recordRateLimit: async (provider, seconds) => { persisted = { provider, seconds }; },
+    });
   } catch (e) { err = e as ImobiApiError; } finally { f.restore(); }
   assert.equal(f.calls(), 1);
   assert.equal(err?.category, "rate_limit");
   assert.equal(err?.retryAfterSeconds, 120);
+  assert.deepEqual(persisted, { provider: "cordial", seconds: 120 });
 });
 
 test("limitador sem vaga/indisponível: o site não é chamado", async () => {

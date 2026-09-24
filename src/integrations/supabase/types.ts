@@ -3984,6 +3984,7 @@ export type Database = {
           media_expected_count: number | null
           media_failed_count: number | null
           media_order_guarantee: string | null
+          media_read_unreliable_streak: number
           media_rebuild_state: Json | null
           media_recovery_attempts: number
           media_recovery_next_at: string | null
@@ -4057,6 +4058,7 @@ export type Database = {
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
+          media_read_unreliable_streak?: number
           media_rebuild_state?: Json | null
           media_recovery_attempts?: number
           media_recovery_next_at?: string | null
@@ -4130,6 +4132,7 @@ export type Database = {
           media_expected_count?: number | null
           media_failed_count?: number | null
           media_order_guarantee?: string | null
+          media_read_unreliable_streak?: number
           media_rebuild_state?: Json | null
           media_recovery_attempts?: number
           media_recovery_next_at?: string | null
@@ -4186,10 +4189,12 @@ export type Database = {
           last_auth_error_at: string | null
           last_auth_status: number | null
           last_probe_at: string | null
+          last_rate_limit_at: string | null
           last_success_at: string | null
           next_probe_at: string
           probe_count: number
           provider: Database["public"]["Enums"]["imobi_provider"]
+          rate_limited_until: string | null
         }
         Insert: {
           auth_error_count?: number
@@ -4197,10 +4202,12 @@ export type Database = {
           last_auth_error_at?: string | null
           last_auth_status?: number | null
           last_probe_at?: string | null
+          last_rate_limit_at?: string | null
           last_success_at?: string | null
           next_probe_at?: string
           probe_count?: number
           provider: Database["public"]["Enums"]["imobi_provider"]
+          rate_limited_until?: string | null
         }
         Update: {
           auth_error_count?: number
@@ -4208,10 +4215,12 @@ export type Database = {
           last_auth_error_at?: string | null
           last_auth_status?: number | null
           last_probe_at?: string | null
+          last_rate_limit_at?: string | null
           last_success_at?: string | null
           next_probe_at?: string
           probe_count?: number
           provider?: Database["public"]["Enums"]["imobi_provider"]
+          rate_limited_until?: string | null
         }
         Relationships: []
       }
@@ -6530,9 +6539,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      property_media_record_read_outcome: {
+        Args: {
+          _property_id: string
+          _provider: Database["public"]["Enums"]["imobi_provider"]
+          _unreliable: boolean
+        }
+        Returns: number
+      }
       property_provider_auth_failure: {
         Args: { _provider: string; _status: number }
         Returns: undefined
+      }
+      property_provider_rate_limited: {
+        Args: { _provider: string; _retry_after_seconds: number }
+        Returns: string
       }
       property_publication_acquire_create_lock: {
         Args: {
@@ -6701,6 +6722,13 @@ export type Database = {
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
         Returns: Json
+      }
+      provider_rate_status: {
+        Args: never
+        Returns: {
+          provider: Database["public"]["Enums"]["imobi_provider"]
+          rate_limited_until: string
+        }[]
       }
       push_outbox_claim: {
         Args: { _limit?: number }

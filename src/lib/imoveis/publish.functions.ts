@@ -37,6 +37,8 @@ export type PublicationStatusView = {
   } | null;
   /** Categoria do último erro (config = bloqueado por pausa/credencial). */
   lastErrorCategory: string | null;
+  /** Pausa real compartilhada da conta após resposta 429. */
+  rateLimitedUntil: string | null;
   /** Estado só das fotos, independente do cadastro. */
   media: {
     status: string | null;
@@ -190,7 +192,8 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string }) => data)
   .handler(async ({ data, context }): Promise<PublicationStatusView[]> => {
-    const [publicationResult, jobResult, propertyResult] = await Promise.all([
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [publicationResult, jobResult, propertyResult, rateResult] = await Promise.all([
       context.supabase
         .from("property_provider_publications")
         .select("*")
@@ -205,13 +208,18 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         .select("revision, gallery_revision, updated_at")
         .eq("id", data.propertyId)
         .maybeSingle(),
+      supabaseAdmin.rpc("provider_rate_status" as never),
     ]);
-    for (const result of [publicationResult, jobResult, propertyResult]) {
+    for (const result of [publicationResult, jobResult, propertyResult, rateResult]) {
       if (result.error) throw new Error(result.error.message);
     }
     const publications = publicationResult.data;
     const jobs = jobResult.data;
     const prop = propertyResult.data;
+    const rateIndex = new Map(
+      ((rateResult.data ?? []) as unknown as Array<{ provider: ImobiProvider; rate_limited_until: string | null }>)
+        .map((row) => [row.provider, row.rate_limited_until]),
+    );
     const list = (value: unknown) => (Array.isArray(value) ? value.map(String) : []);
 
     const jobIndex = new Map(
@@ -238,6 +246,7 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
       lastVerifiedAt: row.last_verified_at,
       lastErrorMessage: row.last_error_message,
       lastErrorCategory: row.last_error_category ?? null,
+      rateLimitedUntil: rateIndex.get(row.provider as ImobiProvider) ?? null,
       activeJob: jobIndex.get(row.provider) ?? null,
       media: {
         status: row.media_status ?? null,
