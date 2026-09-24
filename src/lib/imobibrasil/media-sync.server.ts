@@ -120,13 +120,24 @@ type LinkRow = RemoteGalleryRow & {
   desired_state: string | null;
   deleted_at: string | null;
   pending_delete_at: string | null;
+  updated_at?: string | null;
+  verification?: Record<string, unknown> | null;
 };
 
-const IMAGE_COLUMNS =
-  "id, storage_path, processed_storage_path, processed_checksum, content_hash, file_name, mime_type, is_cover, position, processing_status, processing_error_code, processing_started_at, destination_hash, desired_destination_hash, updated_at, pending_remote_delete";
+/** Janela antes de considerar ausente um envio incerto (leitura completa sem a foto). */
+export const ABSENT_UNKNOWN_WINDOW_MS = 10 * 60_000;
 
+export function shouldResendAbsentUnknown(
+  row: { updated_at?: string | null; verification?: Record<string, unknown> | null },
+  now: number,
+): boolean {
+  if (row.verification && row.verification["resent_after_absent"] === true) return false;
+  const at = row.updated_at ? new Date(row.updated_at).getTime() : NaN;
+  return Number.isFinite(at) && now - at >= ABSENT_UNKNOWN_WINDOW_MS;
+}
+...
 const LINK_COLUMNS =
-  "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at";
+  "image_id, content_hash, status, synced_position, is_cover, attempts, next_retry_at, last_op, last_op_state, external_image_id, remote_url, desired_state, deleted_at, pending_delete_at, updated_at, verification";
 
 async function persistLink(
   admin: Admin,
@@ -293,6 +304,34 @@ export async function deliverGallery(
       unknownCount = 0;
     }
   }
+  // Envio incerto AUSENTE do site (causa do 1386/Cordial, 24/09): a intenção
+  // foi gravada, mas o POST não concluiu e a leitura completa não mostra
+  // nenhuma foto sem dono. Passada a janela de conferência, a foto volta à fila
+  // UMA única vez. Se já houve reenvio, continua incerta (sem risco de cópia).
+  if (plan.unknown.length > 0 && gallery.reliable) {
+    const known = new Set(
+      links.filter((row) => row.desired_state !== "absent" && !row.deleted_at)
+        .map((row) => row.external_image_id).filter(Boolean),
+    );
+    const orphanCount = gallery.items.filter((item) => item.codigoImagem && !known.has(item.codigoImagem)).length;
+    if (orphanCount === 0) {
+      for (const imageId of [...plan.unknown]) {
+        const row = links.find((link) => link.image_id === imageId);
+        if (!row || !shouldResendAbsentUnknown(row, now)) continue;
+        await persistLink(admin, params, {
+          image_id: imageId, publication_id: publicationId, provider,
+          status: "pending", last_op: "insert", last_op_state: "absent_after_read",
+          external_image_id: null, error_class: null, last_error_message: null,
+          verification: { ...(row.verification ?? {}), resent_after_absent: true, checked_at: new Date(now).toISOString() },
+        });
+        plan.unknown = plan.unknown.filter((id) => id !== imageId);
+        unknownCount -= 1;
+        const local = publishable.find((image) => image.id === imageId);
+        if (local) plan.toSend.push(local);
+      }
+    }
+  }
+
   const snapshotOf = (g: RemoteGallery) => ({
     count: g.items.length,
     coverCount: g.items.filter((item) => item.destaque).length,
