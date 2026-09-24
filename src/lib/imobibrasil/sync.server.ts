@@ -36,6 +36,7 @@ import {
   claimLimitFor,
   isWriteBlockedByPause,
   leaseSecondsFor,
+  remoteReadDelaySeconds,
   type QueueAction,
   type WorkerKind,
 } from "./queue-policy";
@@ -1748,6 +1749,19 @@ export async function runSyncWorker(
       }
       const outcome = await processJob(admin, job, { updatesPaused });
       const outcomeStatus = (outcome as { status?: string } | undefined)?.status;
+      let remoteReadStreak = 0;
+      if (job.action === "media_sync") {
+        const { data: streak, error: streakError } = await admin.rpc(
+          "property_media_record_read_outcome" as never,
+          {
+            _property_id: job.property_id,
+            _provider: job.provider,
+            _unreliable: outcomeStatus === "remote_read_unreliable",
+          } as never,
+        );
+        if (streakError) throw new Error(streakError.message);
+        remoteReadStreak = Number(streak ?? 0);
+      }
       const converged = job.action === "media_sync"
         ? outcomeStatus === "synced"
         : ["published", "unpublished", "deleted"].includes(String(outcomeStatus));
@@ -1757,14 +1771,16 @@ export async function runSyncWorker(
         Array.isArray((outcome as { duplicates?: unknown } | undefined)?.duplicates);
       // Fotos: confirmação pendente volta em 2 min (a próxima rodada resolve
       // pela leitura, sem reenviar). Demais recuperações seguem lentas.
-      const quickMediaRecovery = job.action === "media_sync" &&
-        ["delivery_unknown", "remote_read_unreliable"].includes(String(outcomeStatus));
+      const quickMediaRecovery = job.action === "media_sync" && outcomeStatus === "delivery_unknown";
+      const remoteReadRecovery = job.action === "media_sync" && outcomeStatus === "remote_read_unreliable";
       const slowRecovery = ["delivery_unknown", "remote_read_unreliable", "out_of_sync", "waiting_watermark"].includes(String(outcomeStatus));
       // Galeria em andamento (reconstrução/envio parcial) não é falha: o número
       // de rodadas não pode empurrá-la para 1 h, senão fica "Atualizando" sem fim.
       const mediaInProgress = job.action === "media_sync" &&
         ["rebuilding", "partial", "pending", "syncing"].includes(String(outcomeStatus));
-      const nextDelay = quickMediaRecovery ? 120 : mediaInProgress ? 75 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
+      const nextDelay = remoteReadRecovery
+        ? remoteReadDelaySeconds(remoteReadStreak)
+        : quickMediaRecovery ? 120 : mediaInProgress ? 75 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
       const owned = job.action === "media_sync" && converged
         ? await finishMediaJob(admin, job)
         : await finishJob(admin, job, converged

@@ -91,6 +91,8 @@ export type ImobiRequestOptions = {
   skipRateLimit?: boolean;
   /** Substitui o limitador (testes). Deve lançar ImobiApiError quando não há vaga. */
   acquireSlot?: (provider: ImobiProvider) => Promise<void>;
+  /** Persistência do Retry-After (injeção usada nos testes). */
+  recordRateLimit?: (provider: ImobiProvider, retryAfterSeconds: number | null) => Promise<void>;
   onLog?: (entry: ImobiRequestLog) => void;
 };
 
@@ -108,7 +110,7 @@ const SLOT_DEFER_SECONDS = 30;
  * devolvemos erro de limite com `retryAfterSeconds` para o worker reagendar.
  */
 async function waitForProviderSlot(provider: ImobiProvider) {
-  let result: { granted: boolean; unavailable?: boolean; blocked?: boolean };
+  let result: { granted: boolean; unavailable?: boolean; blocked?: boolean; rateLimited?: boolean; retryAfterSeconds?: number };
   try {
     const [{ supabaseAdmin }, { acquireProviderSlot }] = await Promise.all([
       import("@/integrations/supabase/client.server"),
@@ -123,6 +125,13 @@ async function waitForProviderSlot(provider: ImobiProvider) {
       throw new ImobiApiError({
         message: "Chamadas desta conta aguardam verificação da credencial; a outra conta continua ativa.",
         category: "config", retryAfterSeconds: 300,
+      });
+    }
+    if (result.rateLimited) {
+      throw new ImobiApiError({
+        message: "Limite temporário desta imobiliária; a outra integração continua ativa.",
+        category: "rate_limit",
+        retryAfterSeconds: result.retryAfterSeconds ?? SLOT_DEFER_SECONDS,
       });
     }
     // Sem vaga (ou controle indisponível): não chama o site; o worker reagenda.
@@ -232,6 +241,21 @@ export async function imobiRequest<T = unknown>(
         // `Retry-After` é respeitado: espera curta dentro do request, espera
         // longa devolve o job para o worker reagendar.
         const retryAfterSeconds = parseRetryAfter(response.headers.get("retry-after"));
+        if (response.status === 429) {
+          try {
+            if (options.recordRateLimit) {
+              await options.recordRateLimit(provider, retryAfterSeconds);
+            } else {
+              const [{ supabaseAdmin }, { recordProviderRateLimit }] = await Promise.all([
+                import("@/integrations/supabase/client.server"),
+                import("./rate-limit.server"),
+              ]);
+              await recordProviderRateLimit(supabaseAdmin, provider, retryAfterSeconds);
+            }
+          } catch {
+            // O 429 original continua visível; só a pausa compartilhada falhou.
+          }
+        }
         const error = new ImobiApiError({
           message: explainProviderMessage(providerMessage, response.status),
           category,

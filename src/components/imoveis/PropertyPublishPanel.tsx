@@ -25,6 +25,9 @@ function destinationState(row: PublicationStatusView | undefined, label: string)
   ) {
     return { text: `Impedimento na ${label}`, tone: "text-destructive bg-destructive/10" };
   }
+  if (row.rateLimitedUntil && new Date(row.rateLimitedUntil).getTime() > Date.now()) {
+    return { text: `Aguardando limite da ${label}`, tone: "text-amber-700 bg-amber-500/12" };
+  }
   const cadastroConfirmed = row.cadastro.localRevision != null &&
     row.cadastro.confirmedRevision != null &&
     row.cadastro.confirmedRevision >= row.cadastro.localRevision &&
@@ -35,7 +38,18 @@ function destinationState(row: PublicationStatusView | undefined, label: string)
   if (row.status === "published" && cadastroConfirmed && mediaConfirmed && !row.activeJob) {
     return { text: "Atualizado", tone: "text-emerald-700 bg-emerald-500/12" };
   }
-  return { text: `Atualizando ${label}`, tone: "text-sky-700 bg-sky-500/12" };
+  if (row.media.status === "delivery_unknown") {
+    return { text: "Conferindo envio", tone: "text-amber-700 bg-amber-500/12" };
+  }
+  const expected = row.media.expectedCount ?? 0;
+  const synced = row.media.syncedCount ?? 0;
+  if (expected > synced) {
+    return {
+      text: row.activeJob?.status === "processing" ? `Enviando ${synced} de ${expected}` : `Aguardando envio · ${synced} de ${expected}`,
+      tone: "text-sky-700 bg-sky-500/12",
+    };
+  }
+  return { text: `Atualizando cadastro na ${label}`, tone: "text-sky-700 bg-sky-500/12" };
 }
 
 function destinationDetails(row: PublicationStatusView) {
@@ -44,6 +58,8 @@ function destinationDetails(row: PublicationStatusView) {
     row.lastVerifiedAt ? `Última confirmação cadastral: ${fmt(row.lastVerifiedAt)}` : null,
     row.media.lastVerifiedAt ? `Última conferência das fotos: ${fmt(row.media.lastVerifiedAt)}` : null,
     row.activeJob?.nextRunAt ? `Próxima execução: ${fmt(row.activeJob.nextRunAt)}` : null,
+    row.rateLimitedUntil ? `Limite do site: aguardando até ${fmt(row.rateLimitedUntil)}` : null,
+    row.media.expectedCount != null ? `Fotos confirmadas: ${row.media.syncedCount ?? 0} de ${row.media.expectedCount}` : null,
     row.cadastro.divergent.length ? `Campos não confirmados: ${row.cadastro.divergent.join(", ")}` : null,
     row.cadastro.unverifiable.length ? `Campos sem confirmação: ${row.cadastro.unverifiable.join(", ")}` : null,
     row.lastErrorMessage || null,

@@ -8,6 +8,25 @@ import {
 } from "@/hooks/usePropertyMedia";
 import { WATERMARK_COMBINED_LABEL } from "@/lib/imoveis/watermark-config";
 import { usePhotoSorting } from "@/components/imoveis/PhotoSortableGrid";
+import { usePropertySyncStatus } from "@/hooks/usePropertySync";
+import type { PublicationStatusView } from "@/lib/imoveis/publish.functions";
+
+const SITE_LABELS: Record<string, string> = { cordial: "Cordial", morar: "Morar" };
+
+function galleryStatusText(row: PublicationStatusView) {
+  const expected = row.media.expectedCount ?? 0;
+  const synced = row.media.syncedCount ?? 0;
+  if (row.rateLimitedUntil && new Date(row.rateLimitedUntil).getTime() > Date.now()) {
+    return `Aguardando limite do site até ${new Date(row.rateLimitedUntil).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+  if (row.media.status === "delivery_unknown") return "Conferindo envio sem repetir a foto";
+  if (row.media.status === "synced" && expected === synced && row.media.orderGuarantee === "ordem_confirmada_por_leitura") {
+    return `Galeria confirmada · ${synced} de ${expected}`;
+  }
+  if (row.activeJob?.status === "processing") return `Enviando ${synced} de ${expected}`;
+  if (expected > synced) return `Aguardando envio · ${synced} de ${expected} confirmadas`;
+  return "Aguardando envio";
+}
 
 /**
  * Etapa 6 — fotos. O upload só existe com imóvel salvo, porque cada arquivo
@@ -27,6 +46,7 @@ export function PropertyPhotosStep({
   const [preparing, setPreparing] = useState(false);
   const images = usePropertyImages(propertyId ?? undefined);
   const media = usePropertyMedia(propertyId ?? undefined);
+  const gallerySync = usePropertySyncStatus(propertyId ?? undefined);
   const rows = images.data ?? [];
   const marcaAtual = WATERMARK_COMBINED_LABEL;
   const pendentes = rows.filter(
@@ -232,19 +252,28 @@ export function PropertyPhotosStep({
       )}
 
       {rows.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-foreground/[0.04] px-3 py-2 text-[11px]">
-          <span className="font-medium text-foreground/70">
+        <div className="space-y-2 rounded-2xl bg-foreground/[0.04] px-3 py-2 text-[11px]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-medium text-foreground/70">
             {pendentes > 0
-              ? `Atualizando marcas nas fotos… ${prontas} de ${rows.length} prontas.`
+              ? `Processando ${prontas} de ${rows.length} fotos no Gestão.`
               : `${prontas} de ${rows.length} fotos prontas com a marca ${marcaAtual}.`}
             {falhas > 0 ? ` ${falhas} sendo ajustadas automaticamente.` : ""}
-          </span>
-          {(falhas > 0 || pendentes > 0) && (
-            <span className="inline-flex items-center gap-1 font-semibold text-primary">
-              <RefreshCw className="size-3 animate-spin" />
-              Ajuste automático em andamento
             </span>
-          )}
+            {(falhas > 0 || pendentes > 0) && (
+              <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                <RefreshCw className="size-3 animate-spin" /> Ajuste automático em andamento
+              </span>
+            )}
+          </div>
+          {(gallerySync.data ?? [])
+            .filter((row) => destinos.includes(row.provider) && row.enabled)
+            .map((row) => (
+              <div key={row.provider} className="flex items-center justify-between gap-3 border-t border-foreground/10 pt-2">
+                <span className="font-semibold">{SITE_LABELS[row.provider] ?? row.provider}</span>
+                <span className="text-right text-foreground/65">{galleryStatusText(row)}</span>
+              </div>
+            ))}
         </div>
       )}
 
