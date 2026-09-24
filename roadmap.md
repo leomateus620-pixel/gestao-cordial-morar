@@ -157,8 +157,8 @@
 - [x] Upload de fotos na etapa 6 travando: corretor não tinha permissão de gravação na função de salvar imóvel (agora admin/secretaria/corretor, igual às regras de acesso); fotos passam a ser reduzidas no navegador (11,6 MB → 3,5 MB); envio tem limite de tempo (3 min) e recusa definitiva aparece como erro em vez de ficar "processando". Teste: 10 fotos em 55 s, todas prontas, sem erro.
 
 ## Incidente 1385 — conclusão (24/09)
-- [ ] Publicar fallback da marca-d'água e retomada de galerias em 75 s.
+- [x] Publicar fallback da marca-d'água e retomada de galerias em 75 s.
 - [x] Pausar somente o destino que respondeu 429 e respeitar o Retry-After compartilhado.
 - [x] Aplicar espera progressiva às leituras remotas inconclusivas por imóvel/site.
 - [x] Mostrar preparação, envio, limite, conferência e confirmação reais na etapa 6 e na ficha.
-- [ ] Validar testes, versão publicada, 1385 com 14/14 nos dois destinos e avanço das filas por leitura.
+- [ ] Validar 1385 com 14/14 nos dois destinos. Versão publicada, 332 testes e avanço das filas confirmados; leitura final atual ainda mostra 8/14 confirmadas e entrega incerta, sem reenvio cego.
