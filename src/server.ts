@@ -2,6 +2,11 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import {
+  isSiteRequest,
+  guardSiteRequest,
+  siteResponseHeaders,
+} from "./lib/cordial-site/request.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -40,9 +45,29 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const publicRequest = isSiteRequest(request);
+      if (publicRequest) {
+        const response = await guardSiteRequest(request);
+        if (response) return response;
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      if (!publicRequest) return normalized;
+      const headers = new Headers(normalized.headers);
+      // TanStack's renderer derives status from router stores, overriding h3 status.
+      // Consume only the private signal emitted by the withdrawn-property route.
+      const withdrawn = headers.get("X-Cordial-Page-Status") === "410";
+      headers.delete("X-Cordial-Page-Status");
+      for (const [name, value] of Object.entries(siteResponseHeaders()))
+        if (value) headers.set(name, value);
+      if (normalized.headers.get("content-type")?.startsWith("image/"))
+        headers.set("Cache-Control", normalized.headers.get("cache-control") ?? "no-store");
+      return new Response(normalized.body, {
+        status: withdrawn && normalized.status === 200 ? 410 : normalized.status,
+        statusText: withdrawn && normalized.status === 200 ? "Gone" : normalized.statusText,
+        headers,
+      });
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

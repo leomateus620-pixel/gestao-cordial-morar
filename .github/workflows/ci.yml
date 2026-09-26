@@ -18,3 +18,5 @@ jobs:
         run: bun run typecheck
       - name: Testes
         run: bun run test
+      - name: Site público e política PostgreSQL
+        run: bun run test:site
