@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useState } from "react";
 import { Building2, SlidersHorizontal, UsersRound } from "lucide-react";
@@ -27,7 +27,6 @@ function GuardedPage() {
   );
 }
 
-
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todos");
   const configuracoes = useFiltered(useApp((s) => s.configuracoes));
@@ -37,6 +36,18 @@ function Page() {
 
   return (
     <>
+      <section className="mb-5 rounded-xl border bg-card p-5">
+        <h2 className="font-semibold">Site público Cordial</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gerencie publicações, conteúdo e contatos do site próprio.
+        </p>
+        <Link
+          to="/site-administracao"
+          className="mt-3 inline-flex rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+        >
+          Administrar site
+        </Link>
+      </section>
       <section className="mb-5 grid grid-cols-3 gap-3">
         <KpiCard
           label="Parâmetros"

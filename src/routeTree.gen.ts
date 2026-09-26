@@ -10,13 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as SiteRouteImport } from './routes/site'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as SiteIndexRouteImport } from './routes/site.index'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as SiteFavoritosRouteImport } from './routes/site.favoritos'
+import { Route as SiteContatoRouteImport } from './routes/site.contato'
+import { Route as SiteBuscarRouteImport } from './routes/site.buscar'
+import { Route as SiteBairrosRouteImport } from './routes/site.bairros'
+import { Route as SiteAnuncieRouteImport } from './routes/site.anuncie'
+import { Route as SitePageRouteImport } from './routes/site.$page'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
+import { Route as AppSiteAdministracaoRouteImport } from './routes/_app.site-administracao'
 import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
 import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
 import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
@@ -33,9 +42,14 @@ import { Route as AppBuscaRouteImport } from './routes/_app.busca'
 import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
 import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
 import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
+import { Route as SiteNoticiasIndexRouteImport } from './routes/site.noticias.index'
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
+import { Route as SiteNoticiasSlugRouteImport } from './routes/site.noticias.$slug'
+import { Route as SiteInformacoesSlugRouteImport } from './routes/site.informacoes.$slug'
+import { Route as SiteImovelPublicIdRouteImport } from './routes/site.imovel.$publicId'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiCordialSiteSplatRouteImport } from './routes/api/cordial-site/$'
 import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
@@ -66,6 +80,11 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SiteRoute = SiteRouteImport.update({
+  id: '/site',
+  path: '/site',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -80,10 +99,45 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SiteIndexRoute = SiteIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SiteRoute,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const SiteFavoritosRoute = SiteFavoritosRouteImport.update({
+  id: '/favoritos',
+  path: '/favoritos',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteContatoRoute = SiteContatoRouteImport.update({
+  id: '/contato',
+  path: '/contato',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteBuscarRoute = SiteBuscarRouteImport.update({
+  id: '/buscar',
+  path: '/buscar',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteBairrosRoute = SiteBairrosRouteImport.update({
+  id: '/bairros',
+  path: '/bairros',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteAnuncieRoute = SiteAnuncieRouteImport.update({
+  id: '/anuncie',
+  path: '/anuncie',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SitePageRoute = SitePageRouteImport.update({
+  id: '/$page',
+  path: '/$page',
+  getParentRoute: () => SiteRoute,
 } as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
@@ -98,6 +152,11 @@ const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
 const AppVendasRoute = AppVendasRouteImport.update({
   id: '/vendas',
   path: '/vendas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSiteAdministracaoRoute = AppSiteAdministracaoRouteImport.update({
+  id: '/site-administracao',
+  path: '/site-administracao',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
@@ -180,6 +239,11 @@ const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
   path: '/agenciamentos',
   getParentRoute: () => AppRoute,
 } as any)
+const SiteNoticiasIndexRoute = SiteNoticiasIndexRouteImport.update({
+  id: '/noticias/',
+  path: '/noticias/',
+  getParentRoute: () => SiteRoute,
+} as any)
 const AppImoveisIndexRoute = AppImoveisIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -190,9 +254,29 @@ const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
   path: '/agenda/',
   getParentRoute: () => AppRoute,
 } as any)
+const SiteNoticiasSlugRoute = SiteNoticiasSlugRouteImport.update({
+  id: '/noticias/$slug',
+  path: '/noticias/$slug',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteInformacoesSlugRoute = SiteInformacoesSlugRouteImport.update({
+  id: '/informacoes/$slug',
+  path: '/informacoes/$slug',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteImovelPublicIdRoute = SiteImovelPublicIdRouteImport.update({
+  id: '/imovel/$publicId',
+  path: '/imovel/$publicId',
+  getParentRoute: () => SiteRoute,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCordialSiteSplatRoute = ApiCordialSiteSplatRouteImport.update({
+  id: '/api/cordial-site/$',
+  path: '/api/cordial-site/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
@@ -339,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/site': typeof SiteRouteWithChildren
   '/unsubscribe': typeof UnsubscribeRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/alugueis': typeof AppAlugueisRoute
@@ -356,16 +441,29 @@ export interface FileRoutesByFullPath {
   '/marketing': typeof AppMarketingRoute
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/site-administracao': typeof AppSiteAdministracaoRoute
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/site/$page': typeof SitePageRoute
+  '/site/anuncie': typeof SiteAnuncieRoute
+  '/site/bairros': typeof SiteBairrosRoute
+  '/site/buscar': typeof SiteBuscarRoute
+  '/site/contato': typeof SiteContatoRoute
+  '/site/favoritos': typeof SiteFavoritosRoute
+  '/site/': typeof SiteIndexRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
+  '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/site/imovel/$publicId': typeof SiteImovelPublicIdRoute
+  '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
+  '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
+  '/site/noticias/': typeof SiteNoticiasIndexRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
@@ -406,16 +504,29 @@ export interface FileRoutesByTo {
   '/marketing': typeof AppMarketingRoute
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/site-administracao': typeof AppSiteAdministracaoRoute
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/site/$page': typeof SitePageRoute
+  '/site/anuncie': typeof SiteAnuncieRoute
+  '/site/bairros': typeof SiteBairrosRoute
+  '/site/buscar': typeof SiteBuscarRoute
+  '/site/contato': typeof SiteContatoRoute
+  '/site/favoritos': typeof SiteFavoritosRoute
   '/': typeof AppIndexRoute
+  '/site': typeof SiteIndexRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/novo': typeof AppImoveisNovoRoute
+  '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/site/imovel/$publicId': typeof SiteImovelPublicIdRoute
+  '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
+  '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
+  '/site/noticias': typeof SiteNoticiasIndexRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
@@ -442,6 +553,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/site': typeof SiteRouteWithChildren
   '/unsubscribe': typeof UnsubscribeRoute
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
   '/_app/alugueis': typeof AppAlugueisRoute
@@ -459,17 +571,30 @@ export interface FileRoutesById {
   '/_app/marketing': typeof AppMarketingRoute
   '/_app/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
+  '/_app/site-administracao': typeof AppSiteAdministracaoRoute
   '/_app/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/site/$page': typeof SitePageRoute
+  '/site/anuncie': typeof SiteAnuncieRoute
+  '/site/bairros': typeof SiteBairrosRoute
+  '/site/buscar': typeof SiteBuscarRoute
+  '/site/contato': typeof SiteContatoRoute
+  '/site/favoritos': typeof SiteFavoritosRoute
   '/_app/': typeof AppIndexRoute
+  '/site/': typeof SiteIndexRoute
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/_app/imoveis/novo': typeof AppImoveisNovoRoute
+  '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/site/imovel/$publicId': typeof SiteImovelPublicIdRoute
+  '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
+  '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
+  '/site/noticias/': typeof SiteNoticiasIndexRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
@@ -497,6 +622,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/reset-password'
+    | '/site'
     | '/unsubscribe'
     | '/agenciamentos'
     | '/alugueis'
@@ -514,16 +640,29 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/pesquisa-satisfacao'
     | '/relatorios'
+    | '/site-administracao'
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/site/$page'
+    | '/site/anuncie'
+    | '/site/bairros'
+    | '/site/buscar'
+    | '/site/contato'
+    | '/site/favoritos'
+    | '/site/'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
     | '/imoveis/novo'
+    | '/api/cordial-site/$'
     | '/lovable/email/suppression'
+    | '/site/imovel/$publicId'
+    | '/site/informacoes/$slug'
+    | '/site/noticias/$slug'
     | '/agenda/'
     | '/imoveis/'
+    | '/site/noticias/'
     | '/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
@@ -564,16 +703,29 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/pesquisa-satisfacao'
     | '/relatorios'
+    | '/site-administracao'
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/site/$page'
+    | '/site/anuncie'
+    | '/site/bairros'
+    | '/site/buscar'
+    | '/site/contato'
+    | '/site/favoritos'
     | '/'
+    | '/site'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/imoveis/novo'
+    | '/api/cordial-site/$'
     | '/lovable/email/suppression'
+    | '/site/imovel/$publicId'
+    | '/site/informacoes/$slug'
+    | '/site/noticias/$slug'
     | '/agenda'
     | '/imoveis'
+    | '/site/noticias'
     | '/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
@@ -599,6 +751,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/reset-password'
+    | '/site'
     | '/unsubscribe'
     | '/_app/agenciamentos'
     | '/_app/alugueis'
@@ -616,17 +769,30 @@ export interface FileRouteTypes {
     | '/_app/marketing'
     | '/_app/pesquisa-satisfacao'
     | '/_app/relatorios'
+    | '/_app/site-administracao'
     | '/_app/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/site/$page'
+    | '/site/anuncie'
+    | '/site/bairros'
+    | '/site/buscar'
+    | '/site/contato'
+    | '/site/favoritos'
     | '/_app/'
+    | '/site/'
     | '/_app/agenda/fotos'
     | '/_app/clientes/$clienteId'
     | '/_app/imoveis/$imovelId'
     | '/_app/imoveis/novo'
+    | '/api/cordial-site/$'
     | '/lovable/email/suppression'
+    | '/site/imovel/$publicId'
+    | '/site/informacoes/$slug'
+    | '/site/noticias/$slug'
     | '/_app/agenda/'
     | '/_app/imoveis/'
+    | '/site/noticias/'
     | '/_app/imoveis/$imovelId/editar'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
@@ -653,9 +819,11 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SiteRoute: typeof SiteRouteWithChildren
   UnsubscribeRoute: typeof UnsubscribeRoute
   AvaliarTokenRoute: typeof AvaliarTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
   ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
@@ -686,6 +854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/site': {
+      id: '/site'
+      path: '/site'
+      fullPath: '/site'
+      preLoaderRoute: typeof SiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -707,12 +882,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/site/': {
+      id: '/site/'
+      path: '/'
+      fullPath: '/site/'
+      preLoaderRoute: typeof SiteIndexRouteImport
+      parentRoute: typeof SiteRoute
+    }
     '/_app/': {
       id: '/_app/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/site/favoritos': {
+      id: '/site/favoritos'
+      path: '/favoritos'
+      fullPath: '/site/favoritos'
+      preLoaderRoute: typeof SiteFavoritosRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/contato': {
+      id: '/site/contato'
+      path: '/contato'
+      fullPath: '/site/contato'
+      preLoaderRoute: typeof SiteContatoRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/buscar': {
+      id: '/site/buscar'
+      path: '/buscar'
+      fullPath: '/site/buscar'
+      preLoaderRoute: typeof SiteBuscarRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/bairros': {
+      id: '/site/bairros'
+      path: '/bairros'
+      fullPath: '/site/bairros'
+      preLoaderRoute: typeof SiteBairrosRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/anuncie': {
+      id: '/site/anuncie'
+      path: '/anuncie'
+      fullPath: '/site/anuncie'
+      preLoaderRoute: typeof SiteAnuncieRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/$page': {
+      id: '/site/$page'
+      path: '/$page'
+      fullPath: '/site/$page'
+      preLoaderRoute: typeof SitePageRouteImport
+      parentRoute: typeof SiteRoute
     }
     '/email/unsubscribe': {
       id: '/email/unsubscribe'
@@ -733,6 +957,13 @@ declare module '@tanstack/react-router' {
       path: '/vendas'
       fullPath: '/vendas'
       preLoaderRoute: typeof AppVendasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/site-administracao': {
+      id: '/_app/site-administracao'
+      path: '/site-administracao'
+      fullPath: '/site-administracao'
+      preLoaderRoute: typeof AppSiteAdministracaoRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/relatorios': {
@@ -847,6 +1078,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgenciamentosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/site/noticias/': {
+      id: '/site/noticias/'
+      path: '/noticias'
+      fullPath: '/site/noticias/'
+      preLoaderRoute: typeof SiteNoticiasIndexRouteImport
+      parentRoute: typeof SiteRoute
+    }
     '/_app/imoveis/': {
       id: '/_app/imoveis/'
       path: '/'
@@ -861,11 +1099,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/site/noticias/$slug': {
+      id: '/site/noticias/$slug'
+      path: '/noticias/$slug'
+      fullPath: '/site/noticias/$slug'
+      preLoaderRoute: typeof SiteNoticiasSlugRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/informacoes/$slug': {
+      id: '/site/informacoes/$slug'
+      path: '/informacoes/$slug'
+      fullPath: '/site/informacoes/$slug'
+      preLoaderRoute: typeof SiteInformacoesSlugRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/imovel/$publicId': {
+      id: '/site/imovel/$publicId'
+      path: '/imovel/$publicId'
+      fullPath: '/site/imovel/$publicId'
+      preLoaderRoute: typeof SiteImovelPublicIdRouteImport
+      parentRoute: typeof SiteRoute
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
       fullPath: '/lovable/email/suppression'
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cordial-site/$': {
+      id: '/api/cordial-site/$'
+      path: '/api/cordial-site/$'
+      fullPath: '/api/cordial-site/$'
+      preLoaderRoute: typeof ApiCordialSiteSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/imoveis/novo': {
@@ -1097,6 +1363,7 @@ interface AppRouteChildren {
   AppMarketingRoute: typeof AppMarketingRoute
   AppPesquisaSatisfacaoRoute: typeof AppPesquisaSatisfacaoRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppSiteAdministracaoRoute: typeof AppSiteAdministracaoRoute
   AppVendasRoute: typeof AppVendasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAgendaFotosRoute: typeof AppAgendaFotosRoute
@@ -1120,6 +1387,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingRoute: AppMarketingRoute,
   AppPesquisaSatisfacaoRoute: AppPesquisaSatisfacaoRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  AppSiteAdministracaoRoute: AppSiteAdministracaoRoute,
   AppVendasRoute: AppVendasRoute,
   AppIndexRoute: AppIndexRoute,
   AppAgendaFotosRoute: AppAgendaFotosRoute,
@@ -1128,13 +1396,45 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface SiteRouteChildren {
+  SitePageRoute: typeof SitePageRoute
+  SiteAnuncieRoute: typeof SiteAnuncieRoute
+  SiteBairrosRoute: typeof SiteBairrosRoute
+  SiteBuscarRoute: typeof SiteBuscarRoute
+  SiteContatoRoute: typeof SiteContatoRoute
+  SiteFavoritosRoute: typeof SiteFavoritosRoute
+  SiteIndexRoute: typeof SiteIndexRoute
+  SiteImovelPublicIdRoute: typeof SiteImovelPublicIdRoute
+  SiteInformacoesSlugRoute: typeof SiteInformacoesSlugRoute
+  SiteNoticiasSlugRoute: typeof SiteNoticiasSlugRoute
+  SiteNoticiasIndexRoute: typeof SiteNoticiasIndexRoute
+}
+
+const SiteRouteChildren: SiteRouteChildren = {
+  SitePageRoute: SitePageRoute,
+  SiteAnuncieRoute: SiteAnuncieRoute,
+  SiteBairrosRoute: SiteBairrosRoute,
+  SiteBuscarRoute: SiteBuscarRoute,
+  SiteContatoRoute: SiteContatoRoute,
+  SiteFavoritosRoute: SiteFavoritosRoute,
+  SiteIndexRoute: SiteIndexRoute,
+  SiteImovelPublicIdRoute: SiteImovelPublicIdRoute,
+  SiteInformacoesSlugRoute: SiteInformacoesSlugRoute,
+  SiteNoticiasSlugRoute: SiteNoticiasSlugRoute,
+  SiteNoticiasIndexRoute: SiteNoticiasIndexRoute,
+}
+
+const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SiteRoute: SiteRouteWithChildren,
   UnsubscribeRoute: UnsubscribeRoute,
   AvaliarTokenRoute: AvaliarTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
   ApiPublicHooksAgendaPhotoDigestRoute: ApiPublicHooksAgendaPhotoDigestRoute,

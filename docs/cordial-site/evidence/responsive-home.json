@@ -1,0 +1,37 @@
+[
+  {
+    "client": 346,
+    "overflow": false,
+    "page": "home",
+    "scroll": 346,
+    "width": 360
+  },
+  {
+    "client": 377,
+    "overflow": false,
+    "page": "home",
+    "scroll": 377,
+    "width": 390
+  },
+  {
+    "client": 755,
+    "overflow": false,
+    "page": "home",
+    "scroll": 755,
+    "width": 768
+  },
+  {
+    "client": 1010,
+    "overflow": false,
+    "page": "home",
+    "scroll": 1010,
+    "width": 1024
+  },
+  {
+    "client": 1427,
+    "overflow": false,
+    "page": "home",
+    "scroll": 1427,
+    "width": 1440
+  }
+]

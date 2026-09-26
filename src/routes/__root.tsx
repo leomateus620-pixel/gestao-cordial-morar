@@ -12,7 +12,6 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { NotificationExperienceProvider } from "@/components/notifications/NotificationExperienceProvider";
 
 function NotFoundComponent() {
   return (
@@ -75,50 +74,60 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Gestão Cordial" },
-      { name: "description", content: "Gestão integrada para Cordial Imóveis e Morar Imóveis." },
-      { name: "author", content: "Gestão Cordial" },
-      { property: "og:title", content: "Gestão Cordial" },
-      {
-        property: "og:description",
-        content: "Gestão integrada para Cordial Imóveis e Morar Imóveis.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@GestaoCordial" },
-      { name: "twitter:title", content: "Gestão Cordial" },
-      {
-        name: "twitter:description",
-        content: "Gestão integrada para Cordial Imóveis e Morar Imóveis.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp",
-      },
-    ],
-    links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
-      },
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
+  head: ({ matches }) => {
+    if (matches.some((match) => String(match.routeId) === "/site")) {
+      return {
+        meta: [
+          { charSet: "utf-8" },
+          { name: "viewport", content: "width=device-width, initial-scale=1" },
+        ],
+      };
+    }
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: "Gestão Cordial" },
+        { name: "description", content: "Gestão integrada para Cordial Imóveis e Morar Imóveis." },
+        { name: "author", content: "Gestão Cordial" },
+        { property: "og:title", content: "Gestão Cordial" },
+        {
+          property: "og:description",
+          content: "Gestão integrada para Cordial Imóveis e Morar Imóveis.",
+        },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:site", content: "@GestaoCordial" },
+        { name: "twitter:title", content: "Gestão Cordial" },
+        {
+          name: "twitter:description",
+          content: "Gestão integrada para Cordial Imóveis e Morar Imóveis.",
+        },
+        {
+          property: "og:image",
+          content:
+            "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp",
+        },
+        {
+          name: "twitter:image",
+          content:
+            "https://storage.googleapis.com/gpt-engineer-file-uploads/ojSg4sQALQSrP2ecpYSlmBrCWjn1/social-images/social-1782145257479-WhatsApp_Image_2026-06-22_at_13.20.25.webp",
+        },
+      ],
+      links: [
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+        },
+        {
+          rel: "stylesheet",
+          href: appCss,
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -144,11 +153,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <NotificationExperienceProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster position="bottom-center" richColors closeButton />
-      </NotificationExperienceProvider>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+      <Toaster position="bottom-center" richColors closeButton />
     </QueryClientProvider>
   );
 }
