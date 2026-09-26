@@ -209,6 +209,20 @@ export type Database = {
             foreignKeyName: "agenciamentos_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "agenciamentos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "agenciamentos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -1621,6 +1635,359 @@ export type Database = {
         }
         Relationships: []
       }
+      cordial_site_audit: {
+        Row: {
+          action: string
+          actor: string | null
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          entity: string
+          entity_id: string
+          id: number
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          entity: string
+          entity_id: string
+          id?: never
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          id?: never
+        }
+        Relationships: []
+      }
+      cordial_site_leads: {
+        Row: {
+          attendance_id: string | null
+          campaign: Json
+          city: string | null
+          consent_at: string
+          created_at: string
+          email: string | null
+          entry_path: string
+          fingerprint: string
+          id: string
+          kind: string
+          message: string
+          name: string
+          operation: string | null
+          phone: string
+          privacy_version: string
+          property_id: string | null
+          property_type: string | null
+          public_reference: string | null
+          request_id: string
+          status: string
+        }
+        Insert: {
+          attendance_id?: string | null
+          campaign?: Json
+          city?: string | null
+          consent_at?: string
+          created_at?: string
+          email?: string | null
+          entry_path: string
+          fingerprint: string
+          id?: string
+          kind: string
+          message: string
+          name: string
+          operation?: string | null
+          phone: string
+          privacy_version: string
+          property_id?: string | null
+          property_type?: string | null
+          public_reference?: string | null
+          request_id: string
+          status?: string
+        }
+        Update: {
+          attendance_id?: string | null
+          campaign?: Json
+          city?: string | null
+          consent_at?: string
+          created_at?: string
+          email?: string | null
+          entry_path?: string
+          fingerprint?: string
+          id?: string
+          kind?: string
+          message?: string
+          name?: string
+          operation?: string | null
+          phone?: string
+          privacy_version?: string
+          property_id?: string | null
+          property_type?: string | null
+          public_reference?: string | null
+          request_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_media: {
+        Row: {
+          approved_at: string
+          approved_by: string | null
+          approved_signature: string
+          id: string
+          image_id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by?: string | null
+          approved_signature: string
+          id?: string
+          image_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string | null
+          approved_signature?: string
+          id?: string
+          image_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_media_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: true
+            referencedRelation: "property_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_pages: {
+        Row: {
+          body: string
+          kind: string
+          published: boolean
+          published_at: string | null
+          slug: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          kind?: string
+          published?: boolean
+          published_at?: string | null
+          slug: string
+          summary?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          kind?: string
+          published?: boolean
+          published_at?: string | null
+          slug?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cordial_site_publications: {
+        Row: {
+          area_units_confirmed: boolean
+          availability_confirmed: boolean
+          cordial_authorized: boolean
+          property_id: string
+          public_id: string
+          public_reference: string
+          published_at: string | null
+          reviewed_by: string | null
+          reviewed_content_hash: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          area_units_confirmed?: boolean
+          availability_confirmed?: boolean
+          cordial_authorized?: boolean
+          property_id: string
+          public_id?: string
+          public_reference: string
+          published_at?: string | null
+          reviewed_by?: string | null
+          reviewed_content_hash?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          area_units_confirmed?: boolean
+          availability_confirmed?: boolean
+          cordial_authorized?: boolean
+          property_id?: string
+          public_id?: string
+          public_reference?: string
+          published_at?: string | null
+          reviewed_by?: string | null
+          reviewed_content_hash?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_rate_limits: {
+        Row: {
+          bucket: string
+          expires_at: string
+          hits: number
+        }
+        Insert: {
+          bucket: string
+          expires_at: string
+          hits: number
+        }
+        Update: {
+          bucket?: string
+          expires_at?: string
+          hits?: number
+        }
+        Relationships: []
+      }
+      cordial_site_redirects: {
+        Row: {
+          confirmed_at: string
+          confirmed_by: string | null
+          old_path: string
+          publication_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          confirmed_by?: string | null
+          old_path: string
+          publication_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          confirmed_by?: string | null
+          old_path?: string
+          publication_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_authorized_media"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_publications"
+            referencedColumns: ["public_id"]
+          },
+        ]
+      }
+      cordial_site_settings: {
+        Row: {
+          content: Json
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_dispatch_claims: {
         Row: {
           claim_key: string
@@ -2798,6 +3165,20 @@ export type Database = {
             foreignKeyName: "property_drive_files_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -2874,6 +3255,20 @@ export type Database = {
             foreignKeyName: "property_drive_folders_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: true
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_folders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_folders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -2943,6 +3338,20 @@ export type Database = {
             foreignKeyName: "property_drive_jobs_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -2996,6 +3405,20 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "property_drive_photos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_drive_photos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "property_drive_photos_property_id_fkey"
             columns: ["property_id"]
@@ -3071,6 +3494,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_field_conflicts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_field_conflicts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "property_field_conflicts_property_id_fkey"
             columns: ["property_id"]
@@ -3169,6 +3606,20 @@ export type Database = {
             foreignKeyName: "property_hotspot_cleanup_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_hotspot_cleanup_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_hotspot_cleanup_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -3219,6 +3670,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_image_batches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_image_batches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "property_image_batches_property_id_fkey"
             columns: ["property_id"]
@@ -3532,6 +3997,20 @@ export type Database = {
             foreignKeyName: "property_image_upload_reservations_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_image_upload_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -3668,6 +4147,20 @@ export type Database = {
             foreignKeyName: "property_images_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -3745,6 +4238,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_import_candidates_match_property_id_fkey"
+            columns: ["match_property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_import_candidates_match_property_id_fkey"
+            columns: ["match_property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "property_import_candidates_match_property_id_fkey"
             columns: ["match_property_id"]
@@ -4170,6 +4677,20 @@ export type Database = {
             foreignKeyName: "property_provider_publications_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_provider_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_provider_publications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -4367,6 +4888,20 @@ export type Database = {
             foreignKeyName: "property_sync_jobs_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_sync_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_sync_jobs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -4423,6 +4958,20 @@ export type Database = {
           uploaded_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "property_videos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_videos_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "property_videos_property_id_fkey"
             columns: ["property_id"]
@@ -4516,6 +5065,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "provider_code_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "provider_code_reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "provider_code_reservations_property_id_fkey"
             columns: ["property_id"]
@@ -5729,6 +6292,116 @@ export type Database = {
       }
     }
     Views: {
+      cordial_site_authorized_media: {
+        Row: {
+          height: number | null
+          id: string | null
+          position: number | null
+          property_id: string | null
+          public_id: string | null
+          storage_path: string | null
+          version: string | null
+          width: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_images_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_documents: {
+        Row: {
+          aceita_financiamento: boolean | null
+          area_construida: number | null
+          area_terreno: number | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          cidade: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          document: Json | null
+          dormitorios: number | null
+          endereco: string | null
+          estagio_empreendimento: string | null
+          mobiliado: boolean | null
+          operacao: string | null
+          permuta: boolean | null
+          photo_count: number | null
+          pontos_fortes: string | null
+          property_id: string | null
+          public_id: string | null
+          public_reference: string | null
+          published_at: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          vagas: number | null
+          valor: number | null
+          valor_modo: string | null
+        }
+        Relationships: []
+      }
+      cordial_site_eligible: {
+        Row: {
+          aceita_financiamento: boolean | null
+          area_construida: number | null
+          area_terreno: number | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          cidade: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          dormitorios: number | null
+          endereco: string | null
+          estagio_empreendimento: string | null
+          mobiliado: boolean | null
+          operacao: string | null
+          permuta: boolean | null
+          pontos_fortes: string | null
+          property_id: string | null
+          public_id: string | null
+          public_reference: string | null
+          published_at: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          vagas: number | null
+          valor: number | null
+          valor_modo: string | null
+        }
+        Relationships: []
+      }
       properties_catalog: {
         Row: {
           aceita_financiamento: boolean | null
@@ -6156,6 +6829,44 @@ export type Database = {
       attendance_can_access: {
         Args: { _attendance_id: string }
         Returns: boolean
+      }
+      cordial_site_content_hash: {
+        Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
+        Returns: string
+      }
+      cordial_site_facets: { Args: never; Returns: Json }
+      cordial_site_image_signature: {
+        Args: { i: Database["public"]["Tables"]["property_images"]["Row"] }
+        Returns: string
+      }
+      cordial_site_review: {
+        Args: {
+          _areas_m2?: boolean
+          _authorize?: boolean
+          _available?: boolean
+          _property_id: string
+          _publish: boolean
+          _review_content?: boolean
+          _review_media?: boolean
+        }
+        Returns: string
+      }
+      cordial_site_save_content: {
+        Args: { _content: Json; _key: string; _kind: string }
+        Returns: boolean
+      }
+      cordial_site_search: { Args: { f?: Json }; Returns: Json }
+      cordial_site_submit_lead: {
+        Args: { _fingerprint: string; _lead: Json }
+        Returns: string
+      }
+      cordial_site_take_rate: {
+        Args: { _bucket: string; _limit: number; _seconds: number }
+        Returns: boolean
+      }
+      cordial_site_triage: {
+        Args: { _lead_id: string; _operation: string; _type: string }
+        Returns: string
       }
       current_user_has_notification_agency_access: {
         Args: { _agency: string }
