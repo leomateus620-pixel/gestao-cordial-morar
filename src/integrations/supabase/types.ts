@@ -6860,6 +6860,10 @@ export type Database = {
         Args: { _fingerprint: string; _lead: Json }
         Returns: string
       }
+      cordial_site_sync_property: {
+        Args: { _property_id: string }
+        Returns: undefined
+      }
       cordial_site_take_rate: {
         Args: { _bucket: string; _limit: number; _seconds: number }
         Returns: boolean
