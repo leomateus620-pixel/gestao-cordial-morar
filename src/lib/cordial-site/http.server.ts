@@ -73,37 +73,34 @@ export async function mediaResponse(id: string, version: string, size: string): 
   if (storageError || !blob) return json({ error: "Imagem temporariamente indisponível." }, 503);
   if (blob.size > 25 * 1024 * 1024) return json({ error: "Imagem não disponível." }, 422);
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  const { PhotonImage, resize, SamplingFilter } = await import("@cf-wasm/photon");
-  const photo = PhotonImage.new_from_byteslice(bytes);
-  let resized: InstanceType<typeof PhotonImage> | undefined;
+  // Pure JS: the published runtime cannot load the Photon WASM module.
+  const { decodeRaster, resizeRaster, encodeJpeg } = await import(
+    "@/lib/imoveis/watermark-purejs.server"
+  );
+  const type = bytes[0] === 0x89 && bytes[1] === 0x50 ? "image/png" : "image/jpeg";
+  let photo;
   try {
-    if (photo.get_width() * photo.get_height() > 60_000_000)
-      return json({ error: "Imagem não disponível." }, 422);
-    const width = Math.min(
-      size === "thumb" ? 480 : size === "card" ? 960 : 1920,
-      photo.get_width(),
-    );
-    resized = resize(
-      photo,
-      width,
-      Math.max(1, Math.round((photo.get_height() * width) / photo.get_width())),
-      SamplingFilter.Lanczos3,
-    );
-    const output = resized.get_bytes_jpeg(size === "full" ? 88 : 80);
-    // Re-encoding strips EXIF/GPS. No new watermark is applied to an already approved image.
-    return new Response(new Blob([new Uint8Array(output)], { type: "image/jpeg" }), {
-      headers: {
-        ...headers,
-        "Content-Type": "image/jpeg",
-        "Cache-Control": "private, max-age=30, must-revalidate",
-        "Content-Disposition": "inline",
-        ETag: `"${version}-${size}"`,
-      },
-    });
-  } finally {
-    resized?.free();
-    photo.free();
+    photo = decodeRaster(bytes, type);
+  } catch {
+    return json({ error: "Imagem não disponível." }, 422);
   }
+  if (photo.width * photo.height > 60_000_000) return json({ error: "Imagem não disponível." }, 422);
+  const width = Math.min(size === "thumb" ? 480 : size === "card" ? 960 : 1920, photo.width);
+  const resized =
+    width === photo.width
+      ? photo
+      : resizeRaster(photo, width, Math.max(1, Math.round((photo.height * width) / photo.width)));
+  const output = encodeJpeg(resized, size === "full" ? 88 : 80);
+  // Re-encoding strips EXIF/GPS. No new watermark is applied to an already approved image.
+  return new Response(new Blob([new Uint8Array(output)], { type: "image/jpeg" }), {
+    headers: {
+      ...headers,
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "private, max-age=30, must-revalidate",
+      "Content-Disposition": "inline",
+      ETag: `"${version}-${size}"`,
+    },
+  });
 }
 function xml(value: string) {
   return value.replace(
