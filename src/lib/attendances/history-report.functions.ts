@@ -271,3 +271,33 @@ export const listClientAttendanceHistoryReport = createServerFn({ method: "POST"
       ),
     };
   });
+
+export type HistoryReportContactRow = {
+  id: string;
+  clienteNome: string;
+  telefone: string;
+  email: string | null;
+  clienteId: string | null;
+  corretorNome: string | null;
+};
+
+/** Contatos de atendimento para o seletor do relatório de cliente (somente admin). */
+export const listAttendanceReportContacts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<HistoryReportContactRow[]> => {
+    await assertAdmin(context);
+    const { data, error } = await (context.supabase as AnyClient)
+      .from("attendances")
+      .select("id,cliente_nome,telefone,email,cliente_id,cliente_convertido_id,corretor_nome,created_at")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Row[]).map((r) => ({
+      id: r.id as string,
+      clienteNome: (r.cliente_nome as string) ?? "",
+      telefone: (r.telefone as string) ?? "",
+      email: (r.email as string | null) ?? null,
+      clienteId: ((r.cliente_id ?? r.cliente_convertido_id) as string | null) ?? null,
+      corretorNome: (r.corretor_nome as string | null) ?? null,
+    }));
+  });

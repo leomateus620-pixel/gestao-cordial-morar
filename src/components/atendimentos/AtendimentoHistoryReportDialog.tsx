@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   listBrokerAttendanceHistoryReport,
+  listAttendanceReportContacts,
   listClientAttendanceHistoryReport,
 } from "@/lib/attendances/history-report.functions";
 import type { Atendimento } from "@/types/atendimento";
@@ -62,20 +63,37 @@ export function AtendimentoHistoryReportDialog({
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
+  const contactsFn = useServerFn(listAttendanceReportContacts);
+  const contactRows = useQuery({
+    queryKey: ["attendance-history-report-contacts"],
+    enabled: open && mode === "cliente",
+    retry: false,
+    queryFn: () => contactsFn(),
+  });
   const contacts = useMemo(() => {
     const map = new Map<string, Contact>();
-    for (const a of atendimentos) {
+    const source =
+      contactRows.data ??
+      atendimentos.map((a) => ({
+        id: a.id,
+        clienteNome: a.clienteNome,
+        telefone: a.telefone,
+        email: a.email ?? null,
+        clienteId: a.clienteId ?? a.clienteConvertidoId ?? null,
+        corretorNome: a.corretorNome ?? null,
+      }));
+    for (const a of source) {
       const phone = digits(a.telefone ?? "");
       const key = phone.length >= 8 ? `tel:${phone}` : a.clienteId ? `cli:${a.clienteId}` : `att:${a.id}`;
       const c = map.get(key) ?? { key, nome: a.clienteNome, telefone: a.telefone, ids: [] };
       c.ids.push(a.id);
-      c.email ??= a.email;
-      c.clientId ??= a.clienteId ?? a.clienteConvertidoId;
-      c.corretorNome ??= a.corretorNome;
+      c.email ??= a.email ?? undefined;
+      c.clientId ??= a.clienteId ?? undefined;
+      c.corretorNome ??= a.corretorNome ?? undefined;
       map.set(key, c);
     }
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  }, [atendimentos]);
+  }, [atendimentos, contactRows.data]);
 
   const filteredContacts = useMemo(() => {
     const q = search.trim().toLowerCase();
