@@ -40,11 +40,13 @@ export function AgenciamentoPrintReport({
   filters,
   corretorNome,
   trackLabel,
+  placaPhotoUrls = {},
 }: {
   agenciamentos: Agenciamento[];
   filters: AgenciamentoFiltersState;
   corretorNome: string;
   trackLabel: string;
+  placaPhotoUrls?: Record<string, string>;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -151,6 +153,27 @@ export function AgenciamentoPrintReport({
                   label="Telefone"
                   value={item.proprietarioTelefone ? formatPhoneBR(item.proprietarioTelefone) : "—"}
                 />
+              </div>
+
+              <div className="print-record-placa">
+                {item.placaFotoPath && placaPhotoUrls[item.placaFotoPath] ? (
+                  <>
+                    <img src={placaPhotoUrls[item.placaFotoPath]} alt={`Placa instalada — ${item.endereco}`} />
+                    <div>
+                      <span className="print-field-label">Placa instalada — comprovação</span>
+                      <span className="print-field-value">
+                        {item.placaFotoUploadedAt ? `Foto enviada em ${formatFullDate(item.placaFotoUploadedAt)}` : "Foto registrada"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <span className="print-field-label">Placa</span>
+                    <span className="print-field-value">
+                      {item.checklist.placaInstalada ? "Marcada sem foto de comprovação" : "Placa não instalada"}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="print-record-checklist">

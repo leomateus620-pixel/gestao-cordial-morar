@@ -1,3 +1,4 @@
+import { usePlacaPhotoUrls } from "@/hooks/usePlacaPhoto";
 import {
   BadgeCheck,
   CalendarClock,
@@ -117,6 +118,8 @@ export function AgenciamentoDetailDrawer({
   );
 
   const canReclassify = Boolean(onReclassify && canEdit);
+  const placaUrls = usePlacaPhotoUrls([open ? agenciamento?.placaFotoPath : null]);
+  const placaUrl = agenciamento?.placaFotoPath ? placaUrls.data?.[agenciamento.placaFotoPath] : undefined;
 
   return (
     <>
@@ -327,6 +330,24 @@ export function AgenciamentoDetailDrawer({
                         </div>
                       );
                     })}
+                    {agenciamento.placaFotoPath ? (
+                      <a
+                        href={placaUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 block overflow-hidden rounded-2xl ring-1 ring-white/70"
+                      >
+                        {placaUrl ? (
+                          <img src={placaUrl} alt="Foto da placa instalada" className="max-h-64 w-full object-cover" />
+                        ) : (
+                          <span className="block px-3 py-6 text-center text-xs text-foreground/50">Carregando foto da placa…</span>
+                        )}
+                      </a>
+                    ) : agenciamento.checklist.placaInstalada ? (
+                      <p className="mt-1 rounded-2xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800">
+                        Placa marcada antes da foto obrigatória — sem foto registrada. Edite o agenciamento para anexar.
+                      </p>
+                    ) : null}
                   </Panel>
                 </TabsContent>
 
