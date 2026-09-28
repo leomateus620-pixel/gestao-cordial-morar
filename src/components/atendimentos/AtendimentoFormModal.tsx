@@ -257,7 +257,8 @@ export function AtendimentoFormModal({
             current.corretorId === "a_definir" ? { ...current, corretorId: top.corretorId! } : current,
           );
         }
-      } catch {
+      } catch (err) {
+        console.error("[duplicate-lookup]", err);
         if (!cancelled) setMatchError(true);
       }
     }, 400);
