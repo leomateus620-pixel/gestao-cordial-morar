@@ -6895,6 +6895,23 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      find_attendance_contact_matches: {
+        Args: { _document: string; _email: string; _phone: string }
+        Returns: {
+          cliente_nome: string
+          corretor_id: string
+          corretor_nome: string
+          created_at: string
+          email: string
+          id: string
+          imobiliaria: string
+          pipeline_stage: string
+          source: string
+          status: string
+          telefone: string
+          updated_at: string
+        }[]
+      }
       get_corretores_response_metrics: {
         Args: { _end?: string; _imobiliaria?: string; _start?: string }
         Returns: {
@@ -7014,6 +7031,7 @@ export type Database = {
         }
         Returns: number
       }
+      phone_key: { Args: { _v: string }; Returns: string }
       property_drive_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
         Returns: {

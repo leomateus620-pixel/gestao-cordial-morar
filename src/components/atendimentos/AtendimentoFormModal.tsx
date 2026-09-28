@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronRight, Trash2, X } from "lucide-react";
+import { ChevronRight, Trash2, UserCheck, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { findExistingAttendanceByContact } from "@/lib/attendances/attendances.functions";
+import {
+  isOnlyStaleHistory,
+  isOpenMatch,
+  openOwnedMatch,
+  phoneKey,
+  type ContactMatch,
+} from "@/lib/attendances/duplicate-detection";
+import { canManageAttendanceAssignments } from "@/lib/access-control";
+import { pipelineStageLabel, atendimentoStatusLabel, atendimentoImobiliariaLabel } from "@/types/atendimento";
 import { createPortal } from "react-dom";
 import {
   AlertDialog,
@@ -147,7 +158,7 @@ export function AtendimentoFormModal({
   onDelete?: () => void | Promise<void>;
   canDelete?: boolean;
 }) {
-  const clientes = useApp((state) => state.clientes);
+  const navigate = useNavigate();
   const imoveis = useApp((state) => state.imoveis);
   const currentUser = useSession();
   const [form, setForm] = useState<FormState>(() => formFromAtendimento(initialValue));
@@ -164,6 +175,14 @@ export function AtendimentoFormModal({
     .concat({ id: "a_definir", label: "A definir" });
 
   const [imovelBusca, setImovelBusca] = useState("");
+  const [matches, setMatches] = useState<ContactMatch[]>([]);
+  const [matchError, setMatchError] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [dupNotice, setDupNotice] = useState<string | null>(null);
+  const canReassign = canManageAttendanceAssignments(currentUser);
+  const isNew = !initialValue;
+  const owned = openOwnedMatch(matches);
+  const lookupKey = `${phoneKey(form.telefone) ?? ""}|${form.email.trim().toLowerCase()}`;
   const [validation, setValidation] = useState<AtendimentoValidationResult["errors"]>({});
   const [saving, setSaving] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -213,6 +232,43 @@ export function AtendimentoFormModal({
     setValidation({});
   }, [initialValue, open, presetTrack]);
 
+  // Lookup automático (debounce ~400ms) de cliente já cadastrado — só em novo cadastro.
+  useEffect(() => {
+    if (!open || !isNew) return;
+    const [key, email] = lookupKey.split("|");
+    if (!key && !email.includes("@")) {
+      setMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await findExistingAttendanceByContact({
+          data: { phone: form.telefone, email: email.includes("@") ? email : undefined },
+        });
+        if (cancelled) return;
+        setMatchError(false);
+        setMatches(result);
+        setAcknowledged(false);
+        setDupNotice(null);
+        const top = openOwnedMatch(result);
+        if (top?.corretorId) {
+          setForm((current) =>
+            current.corretorId === "a_definir" ? { ...current, corretorId: top.corretorId! } : current,
+          );
+        }
+      } catch (err) {
+        console.error("[duplicate-lookup]", err);
+        if (!cancelled) setMatchError(true);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookupKey, open, isNew]);
+
   useEffect(() => {
     if (!mounted || typeof document === "undefined") return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -235,20 +291,29 @@ export function AtendimentoFormModal({
     }
   }
 
-  function selectClient(clienteId: string) {
-    update("clienteId", clienteId);
-    if (!clienteId) return;
-    const client = clientes.find((item) => item.id === clienteId);
-    if (!client) return;
-    const raw = client as typeof client & { fullName?: string; phone?: string };
+  function applyMatch(match: ContactMatch) {
+    const clientMatch = matches.find((m) => m.source === "client");
     setForm((current) => ({
       ...current,
-      clienteId,
-      clienteNome: raw.fullName ?? client.nome,
-      telefone: formatPhoneBR(raw.phone ?? client.telefone ?? client.whatsapp ?? ""),
-      email: client.email ?? "",
-      imobiliaria: client.imobiliaria,
+      clienteId: current.clienteId || clientMatch?.id || "",
+      clienteNome: current.clienteNome.trim() ? current.clienteNome : match.clienteNome,
+      telefone: current.telefone.trim() ? current.telefone : formatPhoneBR(match.telefone),
+      email: current.email.trim() ? current.email : (match.email ?? ""),
+      imobiliaria: (match.imobiliaria as ImobiliariaAtendimento | null) ?? current.imobiliaria,
+      corretorId:
+        match.corretorId && (current.corretorId === "a_definir" || isOpenMatch(match))
+          ? match.corretorId
+          : current.corretorId,
     }));
+  }
+
+  function openExisting(match: ContactMatch) {
+    requestClose();
+    if (match.source === "client") {
+      void navigate({ to: "/clientes/$clienteId", params: { clienteId: match.id } });
+    } else {
+      void navigate({ to: "/atendimentos", search: { id: match.id } as never });
+    }
   }
 
   function updateStatus(status: AtendimentoStatus) {
@@ -327,6 +392,27 @@ export function AtendimentoFormModal({
     const result = validateAtendimentoInput(input);
     setValidation(result.errors);
     if (!result.ok) return;
+
+    if (isNew && owned) {
+      const chosen = form.corretorId;
+      if (chosen !== owned.corretorId) {
+        if (!canReassign) {
+          setDupNotice(
+            `Este cliente já está em atendimento com ${owned.corretorNome ?? "outro corretor"}. Só a secretaria ou o administrador pode encaminhar para outro corretor.`,
+          );
+          return;
+        }
+        const ok = window.confirm(
+          `${owned.clienteNome} já está em atendimento aberto com ${owned.corretorNome ?? "outro corretor"}. Deseja mesmo encaminhar este novo atendimento para outro corretor?`,
+        );
+        if (!ok) return;
+      } else if (!acknowledged) {
+        setDupNotice(
+          "Já existe um atendimento aberto para este cliente. Prefira abrir o existente ou clique em “Cadastrar mesmo assim”.",
+        );
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -435,21 +521,6 @@ export function AtendimentoFormModal({
               title="Entrada do contato"
               description="Quem entrou em contato, como prefere falar e de onde veio."
             >
-              <Field label="Vincular cliente existente (opcional)">
-                <select
-                  value={form.clienteId}
-                  onChange={(event) => selectClient(event.target.value)}
-                  className={inputClass()}
-                >
-                  <option value="">Novo contato, sem cadastro</option>
-                  {clientes.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.nome}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
               <Field label="Nome do contato" error={validation.clienteNome}>
                 <input
                   value={form.clienteNome}
@@ -482,6 +553,26 @@ export function AtendimentoFormModal({
                   />
                 </Field>
               </div>
+
+              {isNew && matchError && (
+                <p className="rounded-xl bg-muted px-3 py-2 text-[11px] text-muted-foreground">
+                  Não foi possível verificar agora se o cliente já está cadastrado.
+                </p>
+              )}
+              {isNew && matches.length > 0 && (
+                <DuplicateBanner
+                  matches={matches}
+                  stale={isOnlyStaleHistory(matches)}
+                  acknowledged={acknowledged}
+                  notice={dupNotice}
+                  onOpen={openExisting}
+                  onApply={applyMatch}
+                  onAcknowledge={() => {
+                    setAcknowledged(true);
+                    setDupNotice(null);
+                  }}
+                />
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Contato preferencial">
@@ -688,6 +779,13 @@ export function AtendimentoFormModal({
                       {hiddenBrokersCount === 1
                         ? "1 corretor não atende esta imobiliária e ficou fora da lista."
                         : `${hiddenBrokersCount} corretores não atendem esta imobiliária e ficaram fora da lista.`}
+                    </p>
+                  )}
+                  {isNew && owned && form.corretorId !== owned.corretorId && (
+                    <p className="mt-1 text-[11px] font-medium text-amber-700">
+                      {canReassign
+                        ? `Atenção: este cliente já está com ${owned.corretorNome ?? "outro corretor"}. Será pedida confirmação ao salvar.`
+                        : `Este cliente já está com ${owned.corretorNome ?? "outro corretor"}; você não pode assumi-lo por aqui.`}
                     </p>
                   )}
                   {form.corretorId !== "a_definir" &&
@@ -1043,4 +1141,100 @@ function toTimeInput(iso?: string) {
 function optional(value: string) {
   const trimmed = value.trim();
   return trimmed || undefined;
+}
+
+function DuplicateBanner({
+  matches,
+  stale,
+  acknowledged,
+  notice,
+  onOpen,
+  onApply,
+  onAcknowledge,
+}: {
+  matches: ContactMatch[];
+  stale: boolean;
+  acknowledged: boolean;
+  notice: string | null;
+  onOpen: (m: ContactMatch) => void;
+  onApply: (m: ContactMatch) => void;
+  onAcknowledge: () => void;
+}) {
+  const top = matches.slice(0, 3);
+  const extra = matches.length - top.length;
+  const hasOpen = matches.some(isOpenMatch);
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "rounded-2xl border px-4 py-3 text-xs",
+        hasOpen ? "border-amber-300 bg-amber-50 text-amber-950" : "border-border bg-muted/60 text-foreground",
+      )}
+    >
+      <div className="flex items-center gap-2 font-semibold">
+        <UserCheck className="size-4" />
+        {hasOpen
+          ? "Cliente já cadastrado — atendimento em aberto"
+          : stale
+            ? "Cliente com histórico antigo"
+            : "Cliente já cadastrado"}
+      </div>
+      <ul className="mt-2 space-y-2">
+        {top.map((m) => (
+          <li key={`${m.source}-${m.id}`} className="rounded-xl bg-background/70 px-3 py-2">
+            <div className="font-semibold">{m.clienteNome}</div>
+            <div className="mt-0.5 text-[11px] opacity-80">
+              {formatPhoneBR(m.telefone)}
+              {m.email ? ` · ${m.email}` : ""}
+            </div>
+            {m.source === "attendance" ? (
+              <div className="mt-1 grid gap-0.5 text-[11px]">
+                <span>
+                  Corretor responsável:{" "}
+                  <strong>{m.corretorNome ?? "Sem corretor atribuído"}</strong>
+                </span>
+                <span>
+                  {m.pipelineStage ? pipelineStageLabel(m.pipelineStage as PipelineStage) : ""}
+                  {m.status ? ` · ${atendimentoStatusLabel(m.status as AtendimentoStatus)}` : ""}
+                  {m.imobiliaria
+                    ? ` · ${atendimentoImobiliariaLabel(m.imobiliaria as ImobiliariaAtendimento)}`
+                    : ""}
+                </span>
+                <span className="opacity-75">
+                  Atendimento de {new Date(m.createdAt).toLocaleDateString("pt-BR")} · último contato{" "}
+                  {new Date(m.updatedAt).toLocaleDateString("pt-BR")}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-1 text-[11px] opacity-75">Cadastro na base de clientes</div>
+            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onOpen(m)}
+                className="rounded-full bg-teal-700 px-3 py-1 text-[11px] font-semibold text-white"
+              >
+                {m.source === "client" ? "Abrir cliente" : "Abrir atendimento existente"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onApply(m)}
+                className="rounded-full border border-current/20 bg-background px-3 py-1 text-[11px] font-semibold"
+              >
+                Usar estes dados
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {extra > 0 && <p className="mt-1 text-[11px] opacity-75">+{extra} registro(s) com o mesmo contato.</p>}
+      {notice && <p className="mt-2 font-semibold text-destructive">{notice}</p>}
+      {hasOpen && (
+        <label className="mt-2 flex items-center gap-2 text-[11px] font-medium">
+          <input type="checkbox" checked={acknowledged} onChange={(e) => e.target.checked && onAcknowledge()} />
+          Cadastrar mesmo assim (criar um novo atendimento)
+        </label>
+      )}
+    </div>
+  );
 }
