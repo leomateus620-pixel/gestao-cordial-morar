@@ -33,6 +33,8 @@ import { cn } from "@/lib/utils";
 
 type AgenciamentoCardProps = {
   agenciamento: Agenciamento;
+  /** Link temporário da foto da placa, quando houver. */
+  placaPhotoUrl?: string;
   canManage: boolean;
   canEdit: boolean;
   onView: (agenciamento: Agenciamento) => void;
@@ -67,6 +69,7 @@ function getInitials(name: string): string {
 
 function AgenciamentoCardComponent({
   agenciamento,
+  placaPhotoUrl,
   canManage,
   canEdit,
   onView,
@@ -120,7 +123,7 @@ function AgenciamentoCardComponent({
       aria-label={`Abrir agenciamento ${getAgenciamentoTipoLabel(agenciamento.tipoImovel)} — ${agenciamento.endereco}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
-      className="group relative grid min-w-0 cursor-pointer gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.997] motion-reduce:transition-none sm:px-6 lg:grid-cols-2 2xl:grid-cols-[minmax(18rem,1.6fr)_minmax(11rem,0.7fr)_minmax(12rem,0.8fr)_auto] 2xl:items-center"
+      className="group relative grid min-w-0 cursor-pointer gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.997] motion-reduce:transition-none sm:px-6 lg:grid-cols-2 2xl:grid-cols-[4.5rem_minmax(16rem,1.6fr)_minmax(11rem,0.7fr)_minmax(12rem,0.8fr)_auto] 2xl:items-center"
     >
       <ArrowUpRight
         aria-hidden="true"
@@ -136,6 +139,11 @@ function AgenciamentoCardComponent({
           </p>
         </div>
       )}
+      <PlacaThumb
+        url={placaPhotoUrl}
+        installed={agenciamento.checklist.placaInstalada}
+        hasPhoto={Boolean(agenciamento.placaFotoPath)}
+      />
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge label={getAgenciamentoStatusLabel(agenciamento.status)} tone={statusTone} />
@@ -419,3 +427,37 @@ function StatusBadge({
 }
 
 export const AgenciamentoCard = memo(AgenciamentoCardComponent);
+
+function PlacaThumb({ url, installed, hasPhoto }: { url?: string; installed: boolean; hasPhoto: boolean }) {
+  const legacy = installed && !hasPhoto;
+  const label = hasPhoto
+    ? "Foto da placa instalada"
+    : legacy
+      ? "Placa marcada sem foto — anexe a foto ao editar"
+      : "Placa ainda não instalada";
+  return (
+    <div
+      title={label}
+      aria-label={label}
+      className={cn(
+        "relative grid size-[4.5rem] shrink-0 place-items-center overflow-hidden rounded-xl border lg:col-span-2 2xl:col-span-1",
+        hasPhoto
+          ? "border-primary/25 bg-muted"
+          : legacy
+            ? "border-amber-500/35 bg-amber-500/10"
+            : "border-dashed border-foreground/15 bg-foreground/[0.03]",
+      )}
+    >
+      {hasPhoto && url ? (
+        <img src={url} alt="Foto da placa" loading="lazy" className="size-full object-cover" />
+      ) : (
+        <span className="flex flex-col items-center gap-0.5 px-1 text-center">
+          <Signpost aria-hidden="true" className={cn("size-5", legacy ? "text-amber-700" : "text-foreground/30")} />
+          <span className={cn("text-[9px] font-bold uppercase leading-tight", legacy ? "text-amber-800" : "text-foreground/40")}>
+            {hasPhoto ? "Carregando" : legacy ? "Sem foto" : "Placa"}
+          </span>
+        </span>
+      )}
+    </div>
+  );
+}

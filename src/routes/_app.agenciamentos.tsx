@@ -543,6 +543,7 @@ function Page() {
   const periodLabel = getAgenciamentoPeriodLabel(filters.periodo, filters);
   const hasRecords = visibleAgenciamentos.length > 0;
   const hasFilteredResults = agenciamentos.length > 0;
+  const placaPhotoUrls = usePlacaPhotoUrls(agenciamentos.map((item) => item.placaFotoPath));
   const printCorretorNome =
     corretores.find((corretor) => corretor.id === filters.corretorId)?.nome ??
     agenciamentos[0]?.corretorNome ??
