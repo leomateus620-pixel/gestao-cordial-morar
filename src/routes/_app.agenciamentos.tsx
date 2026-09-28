@@ -338,10 +338,24 @@ function Page() {
   );
 
   const handleSubmit = useCallback(
-    async (input: AgenciamentoInput): Promise<boolean> => {
+    async (input: AgenciamentoInput, placaFile?: File | null): Promise<boolean> => {
+      const sendPlaca = async (id: string) => {
+        if (!placaFile || !input.checklist.placaInstalada) return true;
+        try {
+          await placaPhoto.apply(id, { kind: "upload", file: placaFile });
+          return true;
+        } catch (err) {
+          showFeedback(
+            `Agenciamento salvo, mas a foto da placa não subiu — a placa segue pendente. ${err instanceof Error ? err.message : ""}`,
+            "error",
+          );
+          return false;
+        }
+      };
       if (editingAgenciamento) {
         try {
           const updated = await updateAgenciamento(editingAgenciamento.id, input);
+          if (updated && !(await sendPlaca(editingAgenciamento.id))) return true;
           const trackChanged =
             Boolean(input.finalidade) && input.finalidade !== editingAgenciamento.finalidade;
           showFeedback(
@@ -372,6 +386,7 @@ function Page() {
 
       try {
         const id = await createAgenciamento(input);
+        if (typeof id === "string" && !(await sendPlaca(id))) return true;
         showFeedback(
           id ? "Agenciamento cadastrado com sucesso." : "Seu perfil não permite este cadastro.",
           id ? "success" : "error",

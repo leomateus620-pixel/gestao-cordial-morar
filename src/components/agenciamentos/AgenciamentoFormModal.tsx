@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { PlacaPhotoDialog } from "@/components/agenciamentos/PlacaPhotoDialog";
+import { usePlacaPhotoUrls } from "@/hooks/usePlacaPhoto";
 import {
   BadgeCheck,
   Building2,
@@ -113,7 +115,8 @@ type AgenciamentoFormModalProps = {
   canManage: boolean;
   defaultTrack?: AgenciamentoFinalidade;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: AgenciamentoInput) => Promise<boolean | void> | boolean | void;
+  /** placaFile: foto nova da placa, enviada depois que o registro existir. */
+  onSubmit: (input: AgenciamentoInput, placaFile?: File | null) => Promise<boolean | void> | boolean | void;
 };
 
 type FormStep = 0 | 1 | 2 | 3;
@@ -250,6 +253,26 @@ export function AgenciamentoFormModal({
   const [confirmTrackOpen, setConfirmTrackOpen] = useState(false);
   const [referencesOpen, setReferencesOpen] = useState(false);
   const isEditing = Boolean(agenciamento);
+  const [placaFile, setPlacaFile] = useState<File | null>(null);
+  const [placaDialogOpen, setPlacaDialogOpen] = useState(false);
+  const [placaFilePreview, setPlacaFilePreview] = useState<string | null>(null);
+  const existingPlacaUrls = usePlacaPhotoUrls([open ? agenciamento?.placaFotoPath : null]);
+  useEffect(() => {
+    if (!placaFile) {
+      setPlacaFilePreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(placaFile);
+    setPlacaFilePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [placaFile]);
+  const placaPreviewUrl =
+    placaFilePreview ??
+    (form.checklist.placaInstalada && agenciamento?.placaFotoPath
+      ? (existingPlacaUrls.data?.[agenciamento.placaFotoPath] ?? null)
+      : null);
+  const placaMissingPhoto =
+    form.checklist.placaInstalada && !placaFile && !agenciamento?.placaFotoPath;
 
   useEffect(() => {
     if (!open) return;
@@ -262,6 +285,8 @@ export function AgenciamentoFormModal({
     setSubmitError(null);
     setSaving(false);
     setConfirmCloseOpen(false);
+    setPlacaFile(null);
+    setPlacaDialogOpen(false);
     setReferencesOpen(Boolean(next.driveFolderUrl || next.siteUrl || next.observacoesInternas));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agenciamento?.id, defaultTrack]);
@@ -289,6 +314,13 @@ export function AgenciamentoFormModal({
 
   function updateChecklist(key: keyof AgenciamentoChecklist, value: boolean) {
     if (key === "validado" && !canManage) return;
+    if (key === "placaInstalada") {
+      if (value) {
+        setPlacaDialogOpen(true);
+        return;
+      }
+      setPlacaFile(null);
+    }
     setForm((current) => ({
       ...current,
       status: key === "validado" && value ? "validado" : current.status,
@@ -411,7 +443,7 @@ export function AgenciamentoFormModal({
     const input = toInput();
     setSaving(true);
     try {
-      const result = await onSubmit(input);
+      const result = await onSubmit(input, placaFile);
       if (result === false) {
         setSubmitError("Não foi possível salvar. Revise os dados e tente novamente.");
         return;
@@ -427,6 +459,19 @@ export function AgenciamentoFormModal({
 
   return (
     <>
+      <PlacaPhotoDialog
+        open={placaDialogOpen}
+        onCancel={() => setPlacaDialogOpen(false)}
+        onConfirm={(file) => {
+          setPlacaDialogOpen(false);
+          setPlacaFile(file);
+          setForm((current) => ({
+            ...current,
+            checklist: { ...current.checklist, placaInstalada: true },
+          }));
+          setSubmitError(null);
+        }}
+      />
       <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
@@ -525,7 +570,7 @@ export function AgenciamentoFormModal({
                 {step === 0 && <PropertyStep form={form} errors={errors} update={update} />}
                 {step === 1 && <OwnerStep form={form} errors={errors} update={update} />}
                 {step === 2 && <ResponsibilityStep form={form} errors={errors} corretores={corretores} canManage={canManage} selectBroker={selectBroker} update={update} />}
-                {step === 3 && <ReviewStep form={form} errors={errors} canManage={canManage} checklistCompleted={checklistCompleted} checklistProgress={checklistProgress} referencesOpen={referencesOpen} setReferencesOpen={setReferencesOpen} update={update} updateChecklist={updateChecklist} />}
+                {step === 3 && <ReviewStep form={form} errors={errors} canManage={canManage} checklistCompleted={checklistCompleted} checklistProgress={checklistProgress} referencesOpen={referencesOpen} setReferencesOpen={setReferencesOpen} update={update} updateChecklist={updateChecklist} placaSlot={<PlacaPhotoSlot checked={form.checklist.placaInstalada} previewUrl={placaPreviewUrl} missing={placaMissingPhoto} pending={Boolean(placaFile)} onChange={() => setPlacaDialogOpen(true)} />} />}
                 {submitError && (
                   <div role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm font-semibold text-destructive">
                     <CircleAlert className="mt-0.5 size-4 shrink-0" />{submitError}
@@ -706,7 +751,7 @@ function ResponsibilityStep({ form, errors, corretores, canManage, selectBroker,
   );
 }
 
-function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProgress, referencesOpen, setReferencesOpen, update, updateChecklist }: { form: FormState; errors: AgenciamentoValidationErrors; canManage: boolean; checklistCompleted: number; checklistProgress: number; referencesOpen: boolean; setReferencesOpen: (open: boolean) => void; update: <K extends keyof FormState>(key: K, value: FormState[K]) => void; updateChecklist: (key: keyof AgenciamentoChecklist, value: boolean) => void }) {
+function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProgress, referencesOpen, setReferencesOpen, update, updateChecklist, placaSlot }: { placaSlot?: ReactNode; form: FormState; errors: AgenciamentoValidationErrors; canManage: boolean; checklistCompleted: number; checklistProgress: number; referencesOpen: boolean; setReferencesOpen: (open: boolean) => void; update: <K extends keyof FormState>(key: K, value: FormState[K]) => void; updateChecklist: (key: keyof AgenciamentoChecklist, value: boolean) => void }) {
   return (
     <div className="space-y-5">
       <StepSection icon={ClipboardCheck} title="Checklist operacional" description="Marque apenas o que já foi concluído. Você pode atualizar o restante depois.">
@@ -717,6 +762,7 @@ function ReviewStep({ form, errors, canManage, checklistCompleted, checklistProg
         <div className="grid gap-2">
           {checklistItems.map((item) => <ChecklistButton key={item.key} checked={form.checklist[item.key]} icon={item.icon} label={item.label} helper={item.helper} onClick={() => updateChecklist(item.key, !form.checklist[item.key])} />)}
         </div>
+        {placaSlot}
         <div className="rounded-xl border-2 border-primary/25 bg-primary/[0.06] px-3.5 py-3.5">
           <div className="flex items-start gap-2.5">
             <ClipboardCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -840,4 +886,25 @@ function getFirstErrorStep(errors: AgenciamentoValidationErrors): FormStep {
   const keys = Object.keys(errors) as ValidationKey[];
   const step = ([0, 1, 2, 3] as FormStep[]).find((item) => stepFieldKeys[item].some((key) => keys.includes(key)));
   return step ?? 3;
+}
+function PlacaPhotoSlot({ checked, previewUrl, missing, pending, onChange }: { checked: boolean; previewUrl: string | null; missing: boolean; pending: boolean; onChange: () => void }) {
+  if (!checked) return null;
+  return (
+    <div className={cn("flex items-center gap-3 rounded-xl border px-3.5 py-3", missing ? "border-amber-500/30 bg-amber-500/10" : "border-primary/20 bg-primary/5")}>
+      <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-muted">
+        {previewUrl ? <img src={previewUrl} alt="Foto da placa instalada" className="size-full object-cover" /> : <Signpost aria-hidden="true" className="size-5 text-muted-foreground" />}
+      </div>
+      <div className="min-w-0 flex-1 text-xs leading-relaxed">
+        <p className="font-extrabold text-foreground">Foto da placa</p>
+        <p className="text-muted-foreground">
+          {missing
+            ? "Registro antigo sem foto da placa. Anexe a foto para comprovar a instalação."
+            : pending
+              ? "Foto nova — será enviada ao salvar."
+              : "Foto da placa anexada."}
+        </p>
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={onChange}>{missing ? "Anexar foto" : "Trocar"}</Button>
+    </div>
+  );
 }
