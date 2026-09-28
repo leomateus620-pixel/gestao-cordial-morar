@@ -123,7 +123,7 @@ function AgenciamentoCardComponent({
       aria-label={`Abrir agenciamento ${getAgenciamentoTipoLabel(agenciamento.tipoImovel)} — ${agenciamento.endereco}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
-      className="group relative grid min-w-0 cursor-pointer gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.997] motion-reduce:transition-none sm:px-6 lg:grid-cols-2 2xl:grid-cols-[4.5rem_minmax(16rem,1.6fr)_minmax(11rem,0.7fr)_minmax(12rem,0.8fr)_auto] 2xl:items-center"
+      className="group relative grid min-w-0 cursor-pointer gap-4 rounded-2xl border border-foreground/6 bg-white px-5 py-5 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_1px_2px_rgba(23,27,33,0.05),0_18px_36px_-24px_rgba(23,27,33,0.28)] transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_2px_4px_rgba(23,27,33,0.06),0_28px_48px_-24px_rgba(23,27,33,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:scale-[0.997] motion-reduce:transition-none sm:px-6 lg:grid-cols-2 2xl:grid-cols-[minmax(18rem,1.6fr)_minmax(11rem,0.7fr)_minmax(12rem,0.8fr)_auto] 2xl:items-center"
     >
       <ArrowUpRight
         aria-hidden="true"
@@ -139,12 +139,13 @@ function AgenciamentoCardComponent({
           </p>
         </div>
       )}
+      <div className="flex min-w-0 items-start gap-4">
       <PlacaThumb
         url={placaPhotoUrl}
         installed={agenciamento.checklist.placaInstalada}
         hasPhoto={Boolean(agenciamento.placaFotoPath)}
       />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge label={getAgenciamentoStatusLabel(agenciamento.status)} tone={statusTone} />
           <span
@@ -214,6 +215,7 @@ function AgenciamentoCardComponent({
           </span>
           <span className="shrink-0 text-foreground/60">{agenciamento.proprietarioTelefone}</span>
         </div>
+      </div>
       </div>
 
       <div className="min-w-0 self-start rounded-xl border border-foreground/8 bg-[#f7f4f0] px-3.5 py-3">
@@ -292,7 +294,7 @@ function AgenciamentoCardComponent({
 
       <div
         onClick={(event) => event.stopPropagation()}
-        className="flex flex-wrap items-center gap-1.5 lg:col-span-2 2xl:col-span-1 2xl:justify-end"
+        className="flex flex-wrap items-center gap-1.5 2xl:justify-end"
       >
         <Button
           type="button"
