@@ -86,6 +86,9 @@ export type Database = {
           imobiliaria: string
           observacoes_internas: string | null
           origem: string
+          placa_foto_mime: string | null
+          placa_foto_path: string | null
+          placa_foto_uploaded_at: string | null
           placa_instalada: boolean
           property_id: string | null
           proprietario_contato_preferencial: string | null
@@ -134,6 +137,9 @@ export type Database = {
           imobiliaria: string
           observacoes_internas?: string | null
           origem?: string
+          placa_foto_mime?: string | null
+          placa_foto_path?: string | null
+          placa_foto_uploaded_at?: string | null
           placa_instalada?: boolean
           property_id?: string | null
           proprietario_contato_preferencial?: string | null
@@ -182,6 +188,9 @@ export type Database = {
           imobiliaria?: string
           observacoes_internas?: string | null
           origem?: string
+          placa_foto_mime?: string | null
+          placa_foto_path?: string | null
+          placa_foto_uploaded_at?: string | null
           placa_instalada?: boolean
           property_id?: string | null
           proprietario_contato_preferencial?: string | null
@@ -6812,6 +6821,7 @@ export type Database = {
         Args: { _corretor_id: string }
         Returns: undefined
       }
+      agenciamento_can_edit: { Args: { _id: string }; Returns: boolean }
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
       agenda_is_participant: { Args: { _event_id: string }; Returns: boolean }
