@@ -10,6 +10,7 @@ import {
 } from "@/components/imoveis/PropertyForm";
 import { useCreateImovel, useImoveisFacets, useUpdateImovel } from "@/hooks/useImoveis";
 import { useFinalizePropertyAgency } from "@/hooks/usePropertyAgency";
+import { usePlacaPhotoActions } from "@/hooks/usePlacaPhoto";
 import { usePropertyImages } from "@/hooks/usePropertyMedia";
 import {
   PropertyAgencyStep,
@@ -61,6 +62,7 @@ function NovoImovelPage() {
   const codes = usePropertyCodeReservation();
   const session = useSession();
   const finalizeAgency = useFinalizePropertyAgency();
+  const placaPhoto = usePlacaPhotoActions();
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
@@ -156,13 +158,22 @@ function NovoImovelPage() {
 
       if (agency.enabled && canRegisterAgency) {
         try {
-          await finalizeAgency.mutateAsync({
+          const saved = await finalizeAgency.mutateAsync({
             propertyId,
             finalidade: agency.finalidade,
             providers: destinos.length ? destinos : [values.carteira],
             checklist: agency.checklist,
             descricao: agency.descricao,
           });
+          if (agency.checklist.placaInstalada && agency.placaFile) {
+            try {
+              await placaPhoto.apply(saved.id, { kind: "upload", file: agency.placaFile });
+            } catch (err) {
+              toast.warning(
+                `Agenciamento registrado, mas a foto da placa não subiu (placa segue pendente): ${(err as Error)?.message ?? "erro"}`,
+              );
+            }
+          }
           toast.success("Agenciamento registrado e vinculado ao imóvel.");
         } catch (err) {
           toast.warning(

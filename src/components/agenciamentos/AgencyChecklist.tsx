@@ -1,5 +1,7 @@
 import { Camera, Check, Globe2, HardDrive, Loader2, Signpost, Video, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { PlacaPhotoDialog } from "@/components/agenciamentos/PlacaPhotoDialog";
 import {
   CHECKLIST_ITEMS,
   isChecklistItemApplicable,
@@ -28,6 +30,8 @@ export function AgencyChecklist({
   onToggle,
   providerStates,
   disabled,
+  onPlacaPhoto,
+  placaPreviewUrl,
 }: {
   checklist: AgenciamentoChecklist;
   imobiliaria: AgenciamentoImobiliaria;
@@ -35,9 +39,23 @@ export function AgencyChecklist({
   /** Estado real da publicação por provedor; presente só no fluxo do imóvel. */
   providerStates?: Partial<Record<"cordial" | "morar", ProviderChecklistState>>;
   disabled?: boolean;
+  /** Quando presente, marcar a placa exige foto (abre o campo obrigatório). */
+  onPlacaPhoto?: (file: File) => void;
+  placaPreviewUrl?: string | null;
 }) {
+  const [placaDialog, setPlacaDialog] = useState(false);
   return (
     <div className="grid gap-2">
+      {onPlacaPhoto && (
+        <PlacaPhotoDialog
+          open={placaDialog}
+          onCancel={() => setPlacaDialog(false)}
+          onConfirm={(file) => {
+            setPlacaDialog(false);
+            onPlacaPhoto(file);
+          }}
+        />
+      )}
       {CHECKLIST_ITEMS.map((item) => {
         const applicable = isChecklistItemApplicable(item, imobiliaria);
         const Icon = CHECKLIST_ICONS[item.icon];
@@ -60,6 +78,17 @@ export function AgencyChecklist({
             )}
           >
             <Icon className={cn("size-4 shrink-0", checked ? "text-primary" : "text-muted-foreground")} />
+            {item.key === "placaInstalada" && onPlacaPhoto && checked && placaPreviewUrl ? (
+              <button
+                type="button"
+                onClick={() => setPlacaDialog(true)}
+                disabled={locked}
+                title="Trocar foto da placa"
+                className="size-11 shrink-0 overflow-hidden rounded-xl border border-primary/30"
+              >
+                <img src={placaPreviewUrl} alt="Foto da placa" className="size-full object-cover" />
+              </button>
+            ) : null}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">{item.label}</p>
               <p className="text-[11px] leading-snug text-muted-foreground">
@@ -67,7 +96,13 @@ export function AgencyChecklist({
                   ? "Não se aplica — site fora dos destinos escolhidos."
                   : providerState
                     ? providerLabel(providerState)
-                    : item.helper}
+                    : item.key === "placaInstalada" && onPlacaPhoto
+                      ? checked
+                        ? placaPreviewUrl
+                          ? "Foto da placa anexada. Toque na miniatura para trocar."
+                          : "Sem foto da placa — desmarque e marque de novo para anexar."
+                        : "Obrigatório anexar uma foto da placa instalada."
+                      : item.helper}
               </p>
             </div>
             <button
@@ -76,7 +111,13 @@ export function AgencyChecklist({
               aria-checked={checked}
               aria-label={item.label}
               disabled={locked}
-              onClick={() => onToggle(item.key, !checked)}
+              onClick={() => {
+                if (item.key === "placaInstalada" && onPlacaPhoto && !checked) {
+                  setPlacaDialog(true);
+                  return;
+                }
+                onToggle(item.key, !checked);
+              }}
               className={cn(
                 "grid size-11 shrink-0 place-items-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60",
                 checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background",
