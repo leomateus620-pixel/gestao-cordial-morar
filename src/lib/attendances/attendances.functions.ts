@@ -23,6 +23,7 @@ import {
   statusToPipelineStage,
 } from "@/types/atendimento";
 import { mapCanonicalPropertyFields } from "@/lib/attendances/attendance-field-mapping";
+import { openOwnedMatch, rankMatches, type ContactMatch } from "@/lib/attendances/duplicate-detection";
 
 type DbRow = {
   id: string;
@@ -453,6 +454,21 @@ export const createAttendance = createServerFn({ method: "POST" })
   .inputValidator((d: AtendimentoCreateInput) => d)
   .handler(async ({ data, context }) => {
     validate(data);
+    // Corretor comum não pode assumir, por cadastro novo, lead aberto de outro corretor.
+    const [isAdmin, isSecretaria] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "secretaria" }),
+    ]);
+    if (!isAdmin.data && !isSecretaria.data) {
+      const owned = openOwnedMatch(
+        await lookupContactMatches(context.supabase as never, { phone: data.telefone, email: data.email }),
+      );
+      if (owned && owned.corretorId !== context.userId) {
+        throw new Error(
+          `Este cliente já está em atendimento com ${owned.corretorNome ?? "outro corretor"}. Fale com a secretaria para reatribuir.`,
+        );
+      }
+    }
     let { data: inserted, error } = await context.supabase
       .from("attendances")
       .insert(inputToPayload(data, context.userId) as never)
@@ -736,31 +752,62 @@ export const findClientByContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { phone?: string; email?: string; document?: string }) => d)
   .handler(async ({ data, context }) => {
-    const phone = data.phone ? digits(data.phone) : "";
-    const email = data.email?.trim().toLowerCase() ?? "";
-    const doc = data.document ? digits(data.document) : "";
-    if (!phone && !email && !doc)
-      return [] as Array<{ id: string; fullName: string; phone: string; email: string | null }>;
+    const matches = await lookupContactMatches(context.supabase as never, data);
+    return matches
+      .filter((m) => m.source === "client")
+      .slice(0, 5)
+      .map((m) => ({ id: m.id, fullName: m.clienteNome, phone: m.telefone, email: m.email }));
+  });
 
-    const filters: string[] = [];
-    if (phone.length >= 8) filters.push(`phone.ilike.%${phone.slice(-8)}%`);
-    if (email) filters.push(`email.ilike.${email}`);
-    if (doc) filters.push(`document.ilike.%${doc}%`);
+type MatchRpcRow = {
+  source: string;
+  id: string;
+  cliente_nome: string;
+  telefone: string | null;
+  email: string | null;
+  corretor_id: string | null;
+  corretor_nome: string | null;
+  status: string | null;
+  pipeline_stage: string | null;
+  imobiliaria: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-    const { data: rows, error } = await context.supabase
-      .from("clients")
-      .select("id, full_name, phone, email, document")
-      .or(filters.join(","))
-      .limit(5);
-    if (error) throw new Error(error.message);
-    return (rows ?? []).map((r) => {
-      const rec = r as unknown as {
-        id: string;
-        full_name: string;
-        phone: string;
-        email: string | null;
-        document: string | null;
-      };
-      return { id: rec.id, fullName: rec.full_name, phone: rec.phone, email: rec.email };
-    });
+async function lookupContactMatches(
+  supabase: { rpc: (fn: never, args: never) => PromiseLike<{ data: unknown; error: { message: string } | null }> },
+  input: { phone?: string; email?: string; document?: string },
+): Promise<ContactMatch[]> {
+  const phone = input.phone ? digits(input.phone) : "";
+  const email = input.email?.trim().toLowerCase() ?? "";
+  const doc = input.document ? digits(input.document) : "";
+  if (phone.length < 8 && !email && doc.length < 11) return [];
+  const { data, error } = await supabase.rpc(
+    "find_attendance_contact_matches" as never,
+    { _phone: phone || null, _email: email || null, _document: doc || null } as never,
+  );
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as MatchRpcRow[]).map((r) => ({
+    source: r.source === "client" ? "client" : "attendance",
+    id: r.id,
+    clienteNome: r.cliente_nome,
+    telefone: r.telefone ?? "",
+    email: r.email,
+    corretorId: r.corretor_id,
+    corretorNome: r.corretor_nome,
+    status: r.status,
+    pipelineStage: r.pipeline_stage,
+    imobiliaria: r.imobiliaria,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+/** Detecta cliente já cadastrado (atendimentos + clientes) pelo telefone/e-mail/documento. */
+export const findExistingAttendanceByContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { phone?: string; email?: string; document?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const matches = await lookupContactMatches(context.supabase as never, data);
+    return rankMatches(matches, 20);
   });
