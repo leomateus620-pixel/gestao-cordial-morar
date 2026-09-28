@@ -40,6 +40,7 @@ import {
   canManageAttendanceTerminalState,
   canSeeAttendanceHandoffMessage,
   canSeeFinancialInsights,
+  isAdminUser,
 } from "@/lib/access-control";
 import {
   parseTrackParam,
