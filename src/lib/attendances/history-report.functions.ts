@@ -30,14 +30,16 @@ export type HistoryReportAttendance = {
   updatedAt: string;
 };
 
+type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
+
 export type HistoryReportEvent = {
   id: string;
   attendanceId: string;
   eventType: string;
   actorName: string | null;
   description: string | null;
-  previousValue: unknown;
-  newValue: unknown;
+  previousValue: Json;
+  newValue: Json;
   createdAt: string;
 };
 
@@ -163,8 +165,8 @@ async function loadRelated(
       eventType: r.event_type as string,
       actorName: (r.actor_name as string | null) ?? null,
       description: (r.description as string | null) ?? null,
-      previousValue: r.previous_value ?? null,
-      newValue: r.new_value ?? null,
+      previousValue: (r.previous_value ?? null) as Json,
+      newValue: (r.new_value ?? null) as Json,
       createdAt: r.created_at as string,
     })),
     assignments: assignments.map((r) => ({
