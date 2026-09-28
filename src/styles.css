@@ -3104,6 +3104,28 @@ html,
     word-break: break-word;
   }
 
+  .print-record-placa {
+    margin-top: 7px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    break-inside: avoid;
+  }
+
+  .print-record-placa img {
+    width: 34mm;
+    height: 25mm;
+    object-fit: cover;
+    border: 1px solid #d8d3cc;
+    border-radius: 3px;
+  }
+
+  .print-record-placa > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
   .print-record-checklist {
     margin-top: 7px;
     padding-top: 5px;
