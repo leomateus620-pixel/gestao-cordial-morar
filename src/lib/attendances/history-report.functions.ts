@@ -143,9 +143,12 @@ async function loadRelated(
     if (events.length > MAX_EVENTS) truncated = true;
   }
 
+  // Tempos de resposta ficam fora do acesso comum; a leitura é feita com
+  // acesso privilegiado somente depois de confirmar que o usuário é admin.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const assignments: Row[] = [];
   for (let i = 0; i < ids.length; i += 150) {
-    let q = supabase
+    let q = (supabaseAdmin as AnyClient)
       .from("attendance_assignments")
       .select("attendance_id,broker_id,assigned_at,first_opened_at,response_time_seconds,status")
       .in("attendance_id", ids.slice(i, i + 150))

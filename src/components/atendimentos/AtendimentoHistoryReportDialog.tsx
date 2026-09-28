@@ -105,6 +105,7 @@ export function AtendimentoHistoryReportDialog({
   const report = useQuery({
     queryKey: ["attendance-history-report", mode, brokerId, contactKey, period, from, to],
     enabled: open && targetReady && periodReady,
+    retry: false,
     queryFn: () =>
       mode === "corretor"
         ? brokerFn({ data: { brokerId, ...periodInput } })
