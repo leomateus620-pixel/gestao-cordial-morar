@@ -1,7 +1,12 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
+import { FileDown, Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
+import { AtendimentoHistoryReportDialog } from "@/components/atendimentos/AtendimentoHistoryReportDialog";
+import {
+  AtendimentoHistoryPrintReport,
+  type HistoryPrintPayload,
+} from "@/components/atendimentos/AtendimentoHistoryPrintReport";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
 import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
@@ -35,6 +40,7 @@ import {
   canManageAttendanceTerminalState,
   canSeeAttendanceHandoffMessage,
   canSeeFinancialInsights,
+  isAdminUser,
 } from "@/lib/access-control";
 import {
   parseTrackParam,
@@ -110,6 +116,14 @@ function Page() {
     setSelectedStage("primeiro_contato");
   };
   const [open, setOpen] = useState(false);
+  const isAdmin = isAdminUser(session);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [printPayload, setPrintPayload] = useState<HistoryPrintPayload | null>(null);
+  useEffect(() => {
+    if (!printPayload) return;
+    const t = window.setTimeout(() => window.print(), 150);
+    return () => window.clearTimeout(t);
+  }, [printPayload]);
   const [handoffAtendimento, setHandoffAtendimento] = useState<Atendimento | null>(null);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AtendimentoFiltersState>(() => ({
@@ -538,8 +552,32 @@ function Page() {
             <Plus className="size-4 transition-transform group-hover:rotate-90" />
             Novo atendimento
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/15 sm:w-auto"
+            >
+              <FileDown className="size-4" />
+              Histórico em PDF
+            </button>
+          )}
         </div>
       </section>
+
+      {isAdmin && (
+        <AtendimentoHistoryReportDialog
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          brokers={brokers}
+          atendimentos={atendimentos}
+          onPrint={(payload) => {
+            setHistoryOpen(false);
+            setPrintPayload({ ...payload });
+          }}
+        />
+      )}
+      {isAdmin && printPayload && <AtendimentoHistoryPrintReport payload={printPayload} />}
 
       <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} />
 

@@ -3152,3 +3152,69 @@ html,
     color: #666;
   }
 }
+
+/* ---- Histórico de atendimentos (impressão / PDF) ---- */
+@media print {
+  body:has(#atendimento-history-print-report)::before,
+  body:has(#atendimento-history-print-report)::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  body:has(#atendimento-history-print-report) > *:not(#atendimento-history-print-report) {
+    display: none !important;
+  }
+
+  #atendimento-history-print-report {
+    display: block !important;
+    position: static;
+    width: 100%;
+    color: #111;
+    font-size: 10.5pt;
+  }
+
+  #atendimento-history-print-report * {
+    box-shadow: none !important;
+  }
+
+  .print-history-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #174d61;
+    margin: 0 0 6px;
+  }
+
+  .print-history-notes {
+    margin: 6px 0 0;
+    font-size: 8.5pt;
+    color: #444;
+    white-space: pre-wrap;
+  }
+
+  .print-history-empty {
+    margin: 6px 0 0;
+    font-size: 8.5pt;
+    color: #777;
+  }
+
+  .print-history-timeline {
+    list-style: none;
+    margin: 7px 0 0;
+    padding: 5px 0 0;
+    border-top: 1px dashed #d8d3cc;
+  }
+
+  .print-history-timeline li {
+    display: grid;
+    grid-template-columns: 30mm 1fr;
+    gap: 8px;
+    font-size: 8.5pt;
+    padding: 2px 0;
+    break-inside: avoid;
+  }
+
+  .print-history-date {
+    color: #666;
+    font-variant-numeric: tabular-nums;
+  }
+}
