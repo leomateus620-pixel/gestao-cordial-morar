@@ -87,6 +87,10 @@ export type Agenciamento = {
 
   checklist: AgenciamentoChecklist;
 
+  /** Prova fotográfica da placa (bucket privado). Sem foto, placa não conta como instalada. */
+  placaFotoPath?: string;
+  placaFotoUploadedAt?: string;
+
   driveFolderUrl?: string;
   siteUrl?: string;
   observacoesInternas?: string;

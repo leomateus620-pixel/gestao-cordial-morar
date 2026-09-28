@@ -33,6 +33,8 @@ import { cn } from "@/lib/utils";
 
 type AgenciamentoCardProps = {
   agenciamento: Agenciamento;
+  /** Link temporário da foto da placa, quando houver. */
+  placaPhotoUrl?: string;
   canManage: boolean;
   canEdit: boolean;
   onView: (agenciamento: Agenciamento) => void;
@@ -67,6 +69,7 @@ function getInitials(name: string): string {
 
 function AgenciamentoCardComponent({
   agenciamento,
+  placaPhotoUrl,
   canManage,
   canEdit,
   onView,
@@ -136,7 +139,13 @@ function AgenciamentoCardComponent({
           </p>
         </div>
       )}
-      <div className="min-w-0">
+      <div className="flex min-w-0 items-start gap-4">
+      <PlacaThumb
+        url={placaPhotoUrl}
+        installed={agenciamento.checklist.placaInstalada}
+        hasPhoto={Boolean(agenciamento.placaFotoPath)}
+      />
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge label={getAgenciamentoStatusLabel(agenciamento.status)} tone={statusTone} />
           <span
@@ -206,6 +215,7 @@ function AgenciamentoCardComponent({
           </span>
           <span className="shrink-0 text-foreground/60">{agenciamento.proprietarioTelefone}</span>
         </div>
+      </div>
       </div>
 
       <div className="min-w-0 self-start rounded-xl border border-foreground/8 bg-[#f7f4f0] px-3.5 py-3">
@@ -284,7 +294,7 @@ function AgenciamentoCardComponent({
 
       <div
         onClick={(event) => event.stopPropagation()}
-        className="flex flex-wrap items-center gap-1.5 lg:col-span-2 2xl:col-span-1 2xl:justify-end"
+        className="flex flex-wrap items-center gap-1.5 2xl:justify-end"
       >
         <Button
           type="button"
@@ -419,3 +429,37 @@ function StatusBadge({
 }
 
 export const AgenciamentoCard = memo(AgenciamentoCardComponent);
+
+function PlacaThumb({ url, installed, hasPhoto }: { url?: string; installed: boolean; hasPhoto: boolean }) {
+  const legacy = installed && !hasPhoto;
+  const label = hasPhoto
+    ? "Foto da placa instalada"
+    : legacy
+      ? "Placa marcada sem foto — anexe a foto ao editar"
+      : "Placa ainda não instalada";
+  return (
+    <div
+      title={label}
+      aria-label={label}
+      className={cn(
+        "relative grid size-[4.5rem] shrink-0 place-items-center overflow-hidden rounded-xl border lg:col-span-2 2xl:col-span-1",
+        hasPhoto
+          ? "border-primary/25 bg-muted"
+          : legacy
+            ? "border-amber-500/35 bg-amber-500/10"
+            : "border-dashed border-foreground/15 bg-foreground/[0.03]",
+      )}
+    >
+      {hasPhoto && url ? (
+        <img src={url} alt="Foto da placa" loading="lazy" className="size-full object-cover" />
+      ) : (
+        <span className="flex flex-col items-center gap-0.5 px-1 text-center">
+          <Signpost aria-hidden="true" className={cn("size-5", legacy ? "text-amber-700" : "text-foreground/30")} />
+          <span className={cn("text-[9px] font-bold uppercase leading-tight", legacy ? "text-amber-800" : "text-foreground/40")}>
+            {hasPhoto ? "Carregando" : legacy ? "Sem foto" : "Placa"}
+          </span>
+        </span>
+      )}
+    </div>
+  );
+}

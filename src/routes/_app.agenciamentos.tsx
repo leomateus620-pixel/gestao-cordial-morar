@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoBonusPanel";
 import { AgenciamentoBonusRegistryDrawer } from "@/components/agenciamentos/AgenciamentoBonusRegistryDrawer";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
+import { usePlacaPhotoActions, usePlacaPhotoUrls } from "@/hooks/usePlacaPhoto";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoPrintReport } from "@/components/agenciamentos/AgenciamentoPrintReport";
 import {
@@ -138,6 +139,7 @@ function Page() {
   const [track, setTrack] = useState<AgenciamentoTrack>("venda");
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
+  const placaPhoto = usePlacaPhotoActions();
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
   const [pendingReject, setPendingReject] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -338,10 +340,24 @@ function Page() {
   );
 
   const handleSubmit = useCallback(
-    async (input: AgenciamentoInput): Promise<boolean> => {
+    async (input: AgenciamentoInput, placaFile?: File | null): Promise<boolean> => {
+      const sendPlaca = async (id: string) => {
+        if (!placaFile || !input.checklist.placaInstalada) return true;
+        try {
+          await placaPhoto.apply(id, { kind: "upload", file: placaFile });
+          return true;
+        } catch (err) {
+          showFeedback(
+            `Agenciamento salvo, mas a foto da placa não subiu — a placa segue pendente. ${err instanceof Error ? err.message : ""}`,
+            "error",
+          );
+          return false;
+        }
+      };
       if (editingAgenciamento) {
         try {
           const updated = await updateAgenciamento(editingAgenciamento.id, input);
+          if (updated && !(await sendPlaca(editingAgenciamento.id))) return true;
           const trackChanged =
             Boolean(input.finalidade) && input.finalidade !== editingAgenciamento.finalidade;
           showFeedback(
@@ -372,6 +388,7 @@ function Page() {
 
       try {
         const id = await createAgenciamento(input);
+        if (typeof id === "string" && !(await sendPlaca(id))) return true;
         showFeedback(
           id ? "Agenciamento cadastrado com sucesso." : "Seu perfil não permite este cadastro.",
           id ? "success" : "error",
@@ -393,6 +410,7 @@ function Page() {
       handleTrackChange,
       showFeedback,
       updateAgenciamento,
+      placaPhoto,
     ],
   );
 
@@ -525,6 +543,7 @@ function Page() {
   const periodLabel = getAgenciamentoPeriodLabel(filters.periodo, filters);
   const hasRecords = visibleAgenciamentos.length > 0;
   const hasFilteredResults = agenciamentos.length > 0;
+  const placaPhotoUrls = usePlacaPhotoUrls(agenciamentos.map((item) => item.placaFotoPath));
   const printCorretorNome =
     corretores.find((corretor) => corretor.id === filters.corretorId)?.nome ??
     agenciamentos[0]?.corretorNome ??
@@ -730,6 +749,7 @@ function Page() {
             <AgenciamentoPrintReport
               agenciamentos={agenciamentos}
               filters={filters}
+              placaPhotoUrls={placaPhotoUrls.data ?? {}}
               corretorNome={printCorretorNome}
               trackLabel={trackLabel}
             />
@@ -773,6 +793,11 @@ function Page() {
                 <AgenciamentoCard
                   key={agenciamento.id}
                   agenciamento={agenciamento}
+                  placaPhotoUrl={
+                    agenciamento.placaFotoPath
+                      ? placaPhotoUrls.data?.[agenciamento.placaFotoPath]
+                      : undefined
+                  }
                   canManage={canManage}
                   canEdit={canEditItem(agenciamento)}
                   onView={setSelectedAgenciamento}

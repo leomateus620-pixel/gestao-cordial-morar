@@ -153,7 +153,11 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
       fotos_vertical: Boolean(data.checklist?.fotosVertical),
       fotos_realizadas: Boolean(data.checklist?.fotosHorizontal && data.checklist?.fotosVertical),
       fotos_drive: Boolean(data.checklist?.fotosDrive),
+      // Só vira true com foto registrada (trigger do banco + registerPlacaPhoto).
       placa_instalada: Boolean(data.checklist?.placaInstalada),
+      ...(data.checklist?.placaInstalada
+        ? {}
+        : { placa_foto_path: null, placa_foto_mime: null, placa_foto_uploaded_at: null }),
       video_realizado: Boolean(data.checklist?.videoRealizado),
       criado_por_nome: creatorName,
     };
@@ -161,7 +165,7 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
     // Idempotência: retry ou duplo clique reaproveita o mesmo agenciamento.
     const { data: existing } = await context.supabase
       .from("agenciamentos")
-      .select("id")
+      .select("id,placa_foto_path")
       .eq("source_operation_key", operationKey)
       .maybeSingle();
 
@@ -175,6 +179,10 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
         .select("*")
         .single();
       if (error) throw new Error(error.message);
+      const oldPhoto = (existing as { placa_foto_path?: string | null }).placa_foto_path;
+      if (oldPhoto && !data.checklist?.placaInstalada) {
+        await context.supabase.storage.from("agenciamento-placa-photos").remove([oldPhoto]);
+      }
       return rowToAgenciamento(updated as unknown as AgenciamentoDbRow);
     }
 

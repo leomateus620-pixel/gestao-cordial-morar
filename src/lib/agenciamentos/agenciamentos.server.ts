@@ -41,6 +41,8 @@ export type AgenciamentoDbRow = {
   cadastrado_cordial?: boolean | null;
   fotos_drive: boolean;
   placa_instalada: boolean;
+  placa_foto_path?: string | null;
+  placa_foto_uploaded_at?: string | null;
   cadastrado_site: boolean;
   video_realizado: boolean;
   validado: boolean;
@@ -111,6 +113,8 @@ export function rowToAgenciamento(row: AgenciamentoDbRow): Agenciamento {
       videoRealizado: row.video_realizado,
       validado: row.validado,
     },
+    placaFotoPath: orUndef(row.placa_foto_path ?? null),
+    placaFotoUploadedAt: orUndef(row.placa_foto_uploaded_at ?? null),
     driveFolderUrl: orUndef(row.drive_folder_url),
     siteUrl: orUndef(row.site_url),
     observacoesInternas: orUndef(row.observacoes_internas),
@@ -273,6 +277,12 @@ export function patchToPayload(patchInput: Partial<AgenciamentoInput>, canManage
     if (checklist.fotosDrive !== undefined) patch.fotos_drive = Boolean(checklist.fotosDrive);
     if (checklist.placaInstalada !== undefined) {
       patch.placa_instalada = Boolean(checklist.placaInstalada);
+      // Desmarcar a placa descarta a prova; ligar só vale com foto (trigger do banco).
+      if (!checklist.placaInstalada) {
+        patch.placa_foto_path = null;
+        patch.placa_foto_mime = null;
+        patch.placa_foto_uploaded_at = null;
+      }
     }
     if (checklist.cadastradoMorar !== undefined) {
       patch.cadastrado_morar = Boolean(checklist.cadastradoMorar);

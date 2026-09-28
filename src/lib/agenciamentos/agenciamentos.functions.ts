@@ -66,7 +66,7 @@ export const updateAgenciamento = createServerFn({ method: "POST" })
 
     const { data: currentRow } = await context.supabase
       .from("agenciamentos")
-      .select("status")
+      .select("status,placa_foto_path")
       .eq("id", data.id)
       .maybeSingle();
 
@@ -87,6 +87,10 @@ export const updateAgenciamento = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+    const previousPhoto = (currentRow as { placa_foto_path?: string | null } | null)?.placa_foto_path;
+    if (previousPhoto && patch.placa_foto_path === null) {
+      await context.supabase.storage.from("agenciamento-placa-photos").remove([previousPhoto]);
+    }
     return rowToAgenciamento(updated as unknown as AgenciamentoDbRow);
   });
 

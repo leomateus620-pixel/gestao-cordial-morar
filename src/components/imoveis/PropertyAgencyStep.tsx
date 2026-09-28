@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, ClipboardCheck, Pencil, User2 } from "lucide-react";
 import { AgencyChecklist, type ProviderChecklistState } from "@/components/agenciamentos/AgencyChecklist";
 import {
@@ -21,6 +21,8 @@ export type AgencyStepState = {
   descricao: string;
   /** Enquanto false, a classificação acompanha a operação escolhida na Etapa 1. */
   finalidadeTouched?: boolean;
+  /** Foto obrigatória da placa; enviada logo depois que o agenciamento é criado. */
+  placaFile?: File | null;
 };
 
 export function emptyAgencyStepState(operacao: "venda" | "aluguel"): AgencyStepState {
@@ -83,8 +85,23 @@ export function PropertyAgencyStep({
   }, [operacaoFinalidade, state, onChange]);
 
   function toggle(key: ChecklistKey, value: boolean) {
-    onChange({ ...state, checklist: { ...state.checklist, [key]: value } });
+    onChange({
+      ...state,
+      checklist: { ...state.checklist, [key]: value },
+      ...(key === "placaInstalada" && !value ? { placaFile: null } : {}),
+    });
   }
+
+  const [placaPreview, setPlacaPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!state.placaFile) {
+      setPlacaPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(state.placaFile);
+    setPlacaPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [state.placaFile]);
 
   const endereco =
     [values.logradouro, values.numero].filter(Boolean).join(", ") || "Endereço não informado";
@@ -182,6 +199,14 @@ export function PropertyAgencyStep({
               checklist={state.checklist}
               imobiliaria={imobiliaria}
               onToggle={toggle}
+              onPlacaPhoto={(file) =>
+                onChange({
+                  ...state,
+                  placaFile: file,
+                  checklist: { ...state.checklist, placaInstalada: true },
+                })
+              }
+              placaPreviewUrl={placaPreview}
               providerStates={providerStates ?? { cordial: "pending", morar: "pending" }}
             />
 
