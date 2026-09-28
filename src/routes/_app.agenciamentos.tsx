@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgenciamentoBonusPanel } from "@/components/agenciamentos/AgenciamentoBonusPanel";
 import { AgenciamentoBonusRegistryDrawer } from "@/components/agenciamentos/AgenciamentoBonusRegistryDrawer";
 import { AgenciamentoCard } from "@/components/agenciamentos/AgenciamentoCard";
+import { usePlacaPhotoActions, usePlacaPhotoUrls } from "@/hooks/usePlacaPhoto";
 import { AgenciamentoDetailDrawer } from "@/components/agenciamentos/AgenciamentoDetailDrawer";
 import { AgenciamentoPrintReport } from "@/components/agenciamentos/AgenciamentoPrintReport";
 import {
@@ -138,6 +139,7 @@ function Page() {
   const [track, setTrack] = useState<AgenciamentoTrack>("venda");
   const [selectedAgenciamento, setSelectedAgenciamento] = useState<Agenciamento | null>(null);
   const [editingAgenciamento, setEditingAgenciamento] = useState<Agenciamento | null>(null);
+  const placaPhoto = usePlacaPhotoActions();
   const [pendingDelete, setPendingDelete] = useState<Agenciamento | null>(null);
   const [pendingReject, setPendingReject] = useState<Agenciamento | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -408,6 +410,7 @@ function Page() {
       handleTrackChange,
       showFeedback,
       updateAgenciamento,
+      placaPhoto,
     ],
   );
 
@@ -745,6 +748,7 @@ function Page() {
             <AgenciamentoPrintReport
               agenciamentos={agenciamentos}
               filters={filters}
+              placaPhotoUrls={placaPhotoUrls.data ?? {}}
               corretorNome={printCorretorNome}
               trackLabel={trackLabel}
             />
@@ -788,6 +792,11 @@ function Page() {
                 <AgenciamentoCard
                   key={agenciamento.id}
                   agenciamento={agenciamento}
+                  placaPhotoUrl={
+                    agenciamento.placaFotoPath
+                      ? placaPhotoUrls.data?.[agenciamento.placaFotoPath]
+                      : undefined
+                  }
                   canManage={canManage}
                   canEdit={canEditItem(agenciamento)}
                   onView={setSelectedAgenciamento}
