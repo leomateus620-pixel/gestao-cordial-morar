@@ -8,6 +8,7 @@
 import { confirmedLocalFieldsAfterSend, confirmedSnapshotAfterSend } from "./confirm-snapshot";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
+import { classifyCreateFailure } from "./create-failure";
 import { extractExternalId, imobiRequest, hasProviderToken } from "./client.server";
 import { resolveProviderCodes } from "./catalogs.server";
 import {
@@ -1898,12 +1899,23 @@ export async function runSyncWorker(
           finished_at: new Date().toISOString(),
           last_error_message: error.message,
         });
+        if (!owned) {
+          await logAttempt(admin, job, {
+            step: job.action, ok: false, durationMs: Date.now() - started,
+            errorCategory: "lease", errorMessage: error.message, outcome: "lease_lost",
+          });
+        }
         results.push({ jobId: job.id, provider: job.provider, status: owned ? "superseded" : "lease_lost" });
         continue;
       }
       // Posse perdida: outra execução é dona do trabalho. Nada é gravado aqui —
       // nem conclusão, nem erro na publicação — para não sobrescrever o estado atual.
       if (error instanceof LeaseLostError) {
+        // Só evidência (inserção); job e publicação continuam intocados.
+        await logAttempt(admin, job, {
+          step: job.action, ok: false, durationMs: Date.now() - started,
+          errorCategory: "lease", errorMessage: error.message, outcome: "lease_lost",
+        });
         results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
         continue;
       }
