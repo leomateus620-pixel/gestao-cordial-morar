@@ -82,11 +82,22 @@ export function AtendimentoHistoryReportDialog({
         clienteId: a.clienteId ?? a.clienteConvertidoId ?? null,
         corretorNome: a.corretorNome ?? null,
       }));
+    // Agrupa a mesma pessoa: telefone (últimos 8 dígitos) > e-mail > cadastro > atendimento.
+    const alias = new Map<string, string>();
     for (const a of source) {
-      const phone = digits(a.telefone ?? "");
-      const key = phone.length >= 8 ? `tel:${phone}` : a.clienteId ? `cli:${a.clienteId}` : `att:${a.id}`;
+      const p8 = digits(a.telefone ?? "").slice(-8);
+      const mail = (a.email ?? "").trim().toLowerCase();
+      const keys = [
+        p8.length === 8 ? `tel:${p8}` : "",
+        mail ? `mail:${mail}` : "",
+        a.clienteId ? `cli:${a.clienteId}` : "",
+      ].filter(Boolean);
+      const existing = keys.map((k) => alias.get(k)).find(Boolean);
+      const key = existing ?? keys[0] ?? `att:${a.id}`;
+      keys.forEach((k) => alias.set(k, key));
       const c = map.get(key) ?? { key, nome: a.clienteNome, telefone: a.telefone, ids: [] };
       c.ids.push(a.id);
+      if (!c.nome && a.clienteNome) c.nome = a.clienteNome;
       c.email ??= a.email ?? undefined;
       c.clientId ??= a.clienteId ?? undefined;
       c.corretorNome ??= a.corretorNome ?? undefined;
@@ -95,10 +106,11 @@ export function AtendimentoHistoryReportDialog({
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [atendimentos, contactRows.data]);
 
-  const filteredContacts = useMemo(() => {
+  const LIST_LIMIT = 100;
+  const matchedContacts = useMemo(() => {
     const q = search.trim().toLowerCase();
     const qd = digits(q);
-    const list = q
+    return q
       ? contacts.filter(
           (c) =>
             c.nome.toLowerCase().includes(q) ||
@@ -106,10 +118,11 @@ export function AtendimentoHistoryReportDialog({
             c.email?.toLowerCase().includes(q),
         )
       : contacts;
-    return list.slice(0, 50);
   }, [contacts, search]);
+  const filteredContacts = matchedContacts.slice(0, LIST_LIMIT);
 
-  const contact = contacts.find((c) => c.key === contactKey);
+  const [contact, setContact] = useState<Contact | null>(null);
+  const contactKey = contact?.key ?? "";
   const broker = brokers.find((b) => b.id === brokerId);
   const periodReady = period === "total" || Boolean(from && to);
   const targetReady = mode === "corretor" ? Boolean(broker) : Boolean(contact);
@@ -121,14 +134,20 @@ export function AtendimentoHistoryReportDialog({
   const brokerFn = useServerFn(listBrokerAttendanceHistoryReport);
   const clientFn = useServerFn(listClientAttendanceHistoryReport);
   const report = useQuery({
-    queryKey: ["attendance-history-report", mode, brokerId, contactKey, period, from, to],
+    queryKey: ["attendance-history-report", mode, brokerId, contactKey, contact?.ids.length, period, from, to],
     enabled: open && targetReady && periodReady,
     retry: false,
     queryFn: () =>
       mode === "corretor"
         ? brokerFn({ data: { brokerId, ...periodInput } })
         : clientFn({
-            data: { clientId: contact?.clientId ?? null, attendanceIds: contact?.ids ?? [], ...periodInput },
+            data: {
+              clientId: contact?.clientId ?? null,
+              attendanceIds: contact?.ids ?? [],
+              phone: contact?.telefone ?? null,
+              email: contact?.email ?? null,
+              ...periodInput,
+            },
           }),
   });
 
