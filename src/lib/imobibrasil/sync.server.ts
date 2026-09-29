@@ -1287,6 +1287,7 @@ export async function processJob(
     } catch (error) {
       if (error instanceof LeaseLostError) throw error;
       const beforeSend = postStarted === null;
+      const isPaused = error instanceof PausedWriteError;
       const normalized = error instanceof PausedWriteError
         ? new ImobiApiError({ message: error.message, category: "config" })
         : toImobiError(error);
@@ -1310,7 +1311,7 @@ export async function processJob(
       // Recusa DEFINITIVA: nada foi criado. Desfaz o checkpoint (estado e
       // contador anteriores), só se o lease e o prepare ainda forem nossos.
       if (kind === "definitive") {
-        if (!beforeSend || !(error instanceof PausedWriteError)) {
+        if (!beforeSend || !isPaused) {
           const { data: reverted, error: revertError } = await admin.rpc(
             "property_publication_revert_prepare_create" as never,
             { _job_id: job.id, _lease_token: job.lease_token, _publication_id: publication.id } as never,
@@ -1321,7 +1322,7 @@ export async function processJob(
           }
         }
         await releaseCreateLock(admin, publication.id, createLockWorker);
-        if (error instanceof PausedWriteError) throw error;
+        if (isPaused) throw error;
         throw normalized;
       }
       if (beforeSend) {
