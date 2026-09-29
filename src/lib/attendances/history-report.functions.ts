@@ -224,11 +224,27 @@ export const listBrokerAttendanceHistoryReport = createServerFn({ method: "POST"
 export const listClientAttendanceHistoryReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { clientId?: string | null; attendanceIds?: string[] } & HistoryReportPeriod) => {
+    (
+      input: {
+        clientId?: string | null;
+        attendanceIds?: string[];
+        phone?: string | null;
+        email?: string | null;
+      } & HistoryReportPeriod,
+    ) => {
       const attendanceIds = (input?.attendanceIds ?? []).filter((id) => UUID_RE.test(id)).slice(0, 200);
       const clientId = input?.clientId && UUID_RE.test(input.clientId) ? input.clientId : null;
-      if (!clientId && attendanceIds.length === 0) throw new Error("Selecione um cliente.");
-      return { clientId, attendanceIds, ...parsePeriod(input) };
+      const phone = String(input?.phone ?? "").replace(/\D/g, "").slice(-8);
+      const email = String(input?.email ?? "").trim().toLowerCase().slice(0, 200);
+      if (!clientId && attendanceIds.length === 0 && phone.length < 8 && !email)
+        throw new Error("Selecione um cliente.");
+      return {
+        clientId,
+        attendanceIds,
+        phone: phone.length === 8 ? phone : null,
+        email: email || null,
+        ...parsePeriod(input),
+      };
     },
   )
   .handler(async ({ data, context }): Promise<HistoryReportResult> => {
@@ -242,6 +258,30 @@ export const listClientAttendanceHistoryReport = createServerFn({ method: "POST"
       const { data: rows, error } = await supabase.from("attendances").select(COLUMNS).in("id", data.attendanceIds);
       if (error) throw new Error(error.message);
       add(rows);
+    }
+    // Mesmo telefone (últimos 8 dígitos, qualquer formatação) ou mesmo e-mail.
+    if (data.phone || data.email) {
+      const { data: all, error } = await supabase
+        .from("attendances")
+        .select("id,telefone,email")
+        .limit(10000);
+      if (error) throw new Error(error.message);
+      const ids = ((all ?? []) as Row[])
+        .filter((r) => {
+          const p = String(r.telefone ?? "").replace(/\D/g, "").slice(-8);
+          const e = String(r.email ?? "").trim().toLowerCase();
+          return (data.phone && p === data.phone) || (data.email && e === data.email);
+        })
+        .map((r) => r.id as string)
+        .filter((id) => !found.has(id));
+      for (let i = 0; i < ids.length; i += 150) {
+        const { data: rows, error: e2 } = await supabase
+          .from("attendances")
+          .select(COLUMNS)
+          .in("id", ids.slice(i, i + 150));
+        if (e2) throw new Error(e2.message);
+        add(rows);
+      }
     }
     const clientIds = new Set<string>();
     if (data.clientId) clientIds.add(data.clientId);
