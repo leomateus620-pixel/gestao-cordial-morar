@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Printer, Search } from "lucide-react";
+import { Check, Loader2, Printer, Search, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,6 @@ export function AtendimentoHistoryReportDialog({
 }) {
   const [mode, setMode] = useState<"corretor" | "cliente">("corretor");
   const [brokerId, setBrokerId] = useState("");
-  const [contactKey, setContactKey] = useState("");
   const [search, setSearch] = useState("");
   const [period, setPeriod] = useState<"total" | "personalizado">("total");
   const [from, setFrom] = useState("");
@@ -82,11 +81,22 @@ export function AtendimentoHistoryReportDialog({
         clienteId: a.clienteId ?? a.clienteConvertidoId ?? null,
         corretorNome: a.corretorNome ?? null,
       }));
+    // Agrupa a mesma pessoa: telefone (últimos 8 dígitos) > e-mail > cadastro > atendimento.
+    const alias = new Map<string, string>();
     for (const a of source) {
-      const phone = digits(a.telefone ?? "");
-      const key = phone.length >= 8 ? `tel:${phone}` : a.clienteId ? `cli:${a.clienteId}` : `att:${a.id}`;
+      const p8 = digits(a.telefone ?? "").slice(-8);
+      const mail = (a.email ?? "").trim().toLowerCase();
+      const keys = [
+        p8.length === 8 ? `tel:${p8}` : "",
+        mail ? `mail:${mail}` : "",
+        a.clienteId ? `cli:${a.clienteId}` : "",
+      ].filter(Boolean);
+      const existing = keys.map((k) => alias.get(k)).find(Boolean);
+      const key = existing ?? keys[0] ?? `att:${a.id}`;
+      keys.forEach((k) => alias.set(k, key));
       const c = map.get(key) ?? { key, nome: a.clienteNome, telefone: a.telefone, ids: [] };
       c.ids.push(a.id);
+      if (!c.nome && a.clienteNome) c.nome = a.clienteNome;
       c.email ??= a.email ?? undefined;
       c.clientId ??= a.clienteId ?? undefined;
       c.corretorNome ??= a.corretorNome ?? undefined;
@@ -95,10 +105,11 @@ export function AtendimentoHistoryReportDialog({
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [atendimentos, contactRows.data]);
 
-  const filteredContacts = useMemo(() => {
+  const LIST_LIMIT = 100;
+  const matchedContacts = useMemo(() => {
     const q = search.trim().toLowerCase();
     const qd = digits(q);
-    const list = q
+    return q
       ? contacts.filter(
           (c) =>
             c.nome.toLowerCase().includes(q) ||
@@ -106,10 +117,11 @@ export function AtendimentoHistoryReportDialog({
             c.email?.toLowerCase().includes(q),
         )
       : contacts;
-    return list.slice(0, 50);
   }, [contacts, search]);
+  const filteredContacts = matchedContacts.slice(0, LIST_LIMIT);
 
-  const contact = contacts.find((c) => c.key === contactKey);
+  const [contact, setContact] = useState<Contact | null>(null);
+  const contactKey = contact?.key ?? "";
   const broker = brokers.find((b) => b.id === brokerId);
   const periodReady = period === "total" || Boolean(from && to);
   const targetReady = mode === "corretor" ? Boolean(broker) : Boolean(contact);
@@ -121,14 +133,20 @@ export function AtendimentoHistoryReportDialog({
   const brokerFn = useServerFn(listBrokerAttendanceHistoryReport);
   const clientFn = useServerFn(listClientAttendanceHistoryReport);
   const report = useQuery({
-    queryKey: ["attendance-history-report", mode, brokerId, contactKey, period, from, to],
+    queryKey: ["attendance-history-report", mode, brokerId, contactKey, contact?.ids.length, period, from, to],
     enabled: open && targetReady && periodReady,
     retry: false,
     queryFn: () =>
       mode === "corretor"
         ? brokerFn({ data: { brokerId, ...periodInput } })
         : clientFn({
-            data: { clientId: contact?.clientId ?? null, attendanceIds: contact?.ids ?? [], ...periodInput },
+            data: {
+              clientId: contact?.clientId ?? null,
+              attendanceIds: contact?.ids ?? [],
+              phone: contact?.telefone ?? null,
+              email: contact?.email ?? null,
+              ...periodInput,
+            },
           }),
   });
 
@@ -210,6 +228,19 @@ export function AtendimentoHistoryReportDialog({
                   className="pl-9"
                 />
               </div>
+              {contact && (
+                <div className="mb-2 flex items-center justify-between gap-3 rounded-xl border-2 border-primary bg-primary/10 px-3 py-2 text-sm">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 font-semibold"><Check className="size-4 text-primary" /> {contact.nome}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {contact.telefone} · {contact.ids.length} atend.{contact.corretorNome ? ` · ${contact.corretorNome}` : ""}
+                    </span>
+                  </span>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setContact(null)}>
+                    <X className="size-4" /> Trocar
+                  </Button>
+                </div>
+              )}
               <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-border">
                 {filteredContacts.length === 0 ? (
                   <p className="p-3 text-sm text-muted-foreground">Nenhum contato encontrado.</p>
@@ -218,10 +249,10 @@ export function AtendimentoHistoryReportDialog({
                     <button
                       key={c.key}
                       type="button"
-                      onClick={() => setContactKey(c.key)}
+                      onClick={() => setContact(c)}
                       className={cn(
                         "flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-muted",
-                        c.key === contactKey && "bg-primary/10",
+                        c.key === contactKey && "bg-primary/15 ring-2 ring-inset ring-primary",
                       )}
                     >
                       <span className="min-w-0">
@@ -237,6 +268,14 @@ export function AtendimentoHistoryReportDialog({
                   ))
                 )}
               </div>
+              {matchedContacts.length > LIST_LIMIT && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mostrando {LIST_LIMIT} de {matchedContacts.length}. Refine a busca.
+                </p>
+              )}
+              {contactRows.isFetching && (
+                <p className="mt-1 text-xs text-muted-foreground">Carregando contatos…</p>
+              )}
             </div>
           )}
 
@@ -276,7 +315,11 @@ export function AtendimentoHistoryReportDialog({
                 <strong>{counts.att}</strong> atendimentos · <strong>{counts.ev}</strong> eventos no período
                 {report.data?.truncated && " (limite de 2.000 eventos atingido)"}
               </>
-            ) : null}
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="size-4 animate-spin" /> Calculando…
+              </span>
+            )}
           </div>
         </div>
 
