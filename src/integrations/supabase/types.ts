@@ -4463,10 +4463,14 @@ export type Database = {
           confirmed_revision: number | null
           conflict_count: number
           create_absent_checks: number
+          create_absent_checks_before: number | null
           create_ambiguous_at: string | null
+          create_first_requested_at: string | null
           create_lock_expires_at: string | null
           create_lock_worker: string | null
+          create_prepared_at: string | null
           create_state: string | null
+          create_state_before: string | null
           created_at: string
           desired_availability: string
           echo_expires_at: string | null
@@ -4537,10 +4541,14 @@ export type Database = {
           confirmed_revision?: number | null
           conflict_count?: number
           create_absent_checks?: number
+          create_absent_checks_before?: number | null
           create_ambiguous_at?: string | null
+          create_first_requested_at?: string | null
           create_lock_expires_at?: string | null
           create_lock_worker?: string | null
+          create_prepared_at?: string | null
           create_state?: string | null
+          create_state_before?: string | null
           created_at?: string
           desired_availability?: string
           echo_expires_at?: string | null
@@ -4611,10 +4619,14 @@ export type Database = {
           confirmed_revision?: number | null
           conflict_count?: number
           create_absent_checks?: number
+          create_absent_checks_before?: number | null
           create_ambiguous_at?: string | null
+          create_first_requested_at?: string | null
           create_lock_expires_at?: string | null
           create_lock_worker?: string | null
+          create_prepared_at?: string | null
           create_state?: string | null
+          create_state_before?: string | null
           created_at?: string
           desired_availability?: string
           echo_expires_at?: string | null
@@ -4766,6 +4778,9 @@ export type Database = {
           id: string
           job_id: string
           ok: boolean
+          outcome: string | null
+          request_path: string | null
+          response_excerpt: string | null
           step: string | null
         }
         Insert: {
@@ -4779,6 +4794,9 @@ export type Database = {
           id?: string
           job_id: string
           ok?: boolean
+          outcome?: string | null
+          request_path?: string | null
+          response_excerpt?: string | null
           step?: string | null
         }
         Update: {
@@ -4792,6 +4810,9 @@ export type Database = {
           id?: string
           job_id?: string
           ok?: boolean
+          outcome?: string | null
+          request_path?: string | null
+          response_excerpt?: string | null
           step?: string | null
         }
         Relationships: [
@@ -7032,6 +7053,7 @@ export type Database = {
         Returns: number
       }
       phone_key: { Args: { _v: string }; Returns: string }
+      property_create_stuck_alerts: { Args: never; Returns: number }
       property_drive_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
         Returns: {
@@ -7338,6 +7360,10 @@ export type Database = {
           _requested_by: string
         }
         Returns: Json
+      }
+      property_publication_revert_prepare_create: {
+        Args: { _job_id: string; _lease_token: string; _publication_id: string }
+        Returns: boolean
       }
       property_publication_update_if_owned: {
         Args: {

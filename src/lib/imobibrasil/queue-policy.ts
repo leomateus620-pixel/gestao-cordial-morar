@@ -68,6 +68,18 @@ export function remoteReadDelaySeconds(streak: number, random = Math.random): nu
   return base + Math.floor(Math.max(0, Math.min(1, random())) * Math.min(45, Math.ceil(base * 0.08)));
 }
 
+/**
+ * Conferência após criação sem resposta: leituras 1, 2 e 3 em 60/120/180 s;
+ * depois, intervalo fixo de 10 min enquanto continuar aguardando.
+ * `absentChecks` = leituras de ausência já feitas.
+ */
+export const RECONCILE_FIXED_SECONDS = 600;
+export function reconcileDelaySeconds(absentChecks: number): number {
+  const done = Math.max(0, Math.floor(Number(absentChecks) || 0));
+  const ladder = [60, 120, 180] as const;
+  return done < ladder.length ? ladder[done]! : RECONCILE_FIXED_SECONDS;
+}
+
 export function isLeaseExpired(
   job: { status: string; lock_expires_at: string | null },
   now: Date = new Date(),

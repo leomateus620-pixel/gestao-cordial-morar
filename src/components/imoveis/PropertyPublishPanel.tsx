@@ -25,6 +25,12 @@ function destinationState(row: PublicationStatusView | undefined, label: string)
   ) {
     return { text: `Impedimento na ${label}`, tone: "text-destructive bg-destructive/10" };
   }
+  if (row.remote.createState === "awaiting_create_reconcile") {
+    const minutes = createPendingMinutes(row);
+    return minutes != null && minutes >= 20
+      ? { text: `Ainda não está no ar na ${label} há ${minutes} min`, tone: "text-destructive bg-destructive/10" }
+      : { text: `Aguardando confirmação da ${label}`, tone: "text-amber-700 bg-amber-500/12" };
+  }
   if (row.rateLimitedUntil && new Date(row.rateLimitedUntil).getTime() > Date.now()) {
     return { text: `Aguardando limite da ${label}`, tone: "text-amber-700 bg-amber-500/12" };
   }
@@ -52,6 +58,12 @@ function destinationState(row: PublicationStatusView | undefined, label: string)
   return { text: `Atualizando cadastro na ${label}`, tone: "text-sky-700 bg-sky-500/12" };
 }
 
+function createPendingMinutes(row: PublicationStatusView): number | null {
+  const since = row.remote.createFirstRequestedAt ?? row.remote.createAmbiguousAt;
+  if (!since) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 60_000));
+}
+
 function destinationDetails(row: PublicationStatusView) {
   const details = [
     row.cadastro.savedAt ? `Salvo no Gestão: ${fmt(row.cadastro.savedAt)}` : null,
@@ -66,6 +78,9 @@ function destinationDetails(row: PublicationStatusView) {
   ];
   if ((row.remote.matchCount ?? 0) > 1) {
     details.push(`Há ${row.remote.matchCount} anúncios com a mesma referência nesta conta. A escolha do anúncio exige decisão administrativa.`);
+  }
+  if (row.remote.createState === "awaiting_create_reconcile") {
+    details.push(`Criação sem resposta confirmada do site: conferência ${Math.min(3, row.remote.createAbsentChecks)} de 3 antes de qualquer nova tentativa. Nenhum anúncio duplicado é criado.`);
   }
   if (row.media.status === "delivery_unknown") {
     details.push("O envio de uma foto ainda não foi confirmado pelo site. A conferência automática evita uma cópia duplicada.");

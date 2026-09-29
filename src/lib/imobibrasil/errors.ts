@@ -30,6 +30,12 @@ export class ImobiApiError extends Error {
   readonly ambiguous: boolean;
   /** Quando o provedor (ou o controle de limite) pede espera, em segundos. */
   readonly retryAfterSeconds: number | null;
+  /** Trecho sanitizado do corpo devolvido pelo site (evidência). */
+  readonly responseExcerpt: string | null;
+  readonly requestPath: string | null;
+  readonly durationMs: number | null;
+  /** Se definido, o imóvel está em conferência pós-criação com N leituras de ausência. */
+  readonly reconcileAbsentChecks: number | null;
 
   constructor(params: {
     message: string;
@@ -38,6 +44,10 @@ export class ImobiApiError extends Error {
     code?: string | null;
     ambiguous?: boolean;
     retryAfterSeconds?: number | null;
+    responseExcerpt?: string | null;
+    requestPath?: string | null;
+    durationMs?: number | null;
+    reconcileAbsentChecks?: number | null;
   }) {
     super(sanitizeMessage(params.message));
     this.name = "ImobiApiError";
@@ -47,6 +57,10 @@ export class ImobiApiError extends Error {
     this.retryable = RETRYABLE_CATEGORIES.has(params.category);
     this.ambiguous = params.ambiguous ?? false;
     this.retryAfterSeconds = params.retryAfterSeconds ?? null;
+    this.responseExcerpt = params.responseExcerpt ? sanitizeMessage(params.responseExcerpt, 500) : null;
+    this.requestPath = params.requestPath ?? null;
+    this.durationMs = params.durationMs ?? null;
+    this.reconcileAbsentChecks = params.reconcileAbsentChecks ?? null;
   }
 }
 

@@ -44,7 +44,16 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-worker")({
             passes += 1;
             if (!drain || result.claimed === 0) break;
           } while (passes < MAX_PASSES);
-          return Response.json({ ok: true, claimed, passes, results });
+          // Aviso aos administradores: anúncio pedido há 20+ min sem código no
+          // site (deduplicado no banco). Falha aqui nunca derruba o worker.
+          let alerts = 0;
+          try {
+            const { data } = await supabaseAdmin.rpc("property_create_stuck_alerts" as never);
+            alerts = Number(data ?? 0);
+          } catch {
+            alerts = 0;
+          }
+          return Response.json({ ok: true, claimed, passes, results, alerts });
         } catch (error) {
           const { sanitizeMessage } = await import("@/lib/imobibrasil/errors");
           return Response.json({ ok: false, error: sanitizeMessage(error) }, { status: 500 });

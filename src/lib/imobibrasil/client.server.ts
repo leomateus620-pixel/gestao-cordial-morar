@@ -261,6 +261,8 @@ export async function imobiRequest<T = unknown>(
           category,
           httpStatus: response.status,
           retryAfterSeconds,
+          responseExcerpt: rawText.slice(0, 2000),
+          requestPath: loggablePath(path),
         });
 
         const waitMs = retryAfterSeconds !== null ? retryAfterSeconds * 1000 : backoffMs(attempt);
@@ -282,6 +284,8 @@ export async function imobiRequest<T = unknown>(
             : "Resposta do provedor não é JSON válido.",
           category: "protocol",
           httpStatus: response.status,
+          responseExcerpt: rawText.slice(0, 2000),
+          requestPath: loggablePath(path),
         });
       }
 
@@ -295,6 +299,8 @@ export async function imobiRequest<T = unknown>(
           ),
           category: "business",
           httpStatus: response.status,
+          responseExcerpt: rawText.slice(0, 2000),
+          requestPath: loggablePath(path),
         });
       }
 
