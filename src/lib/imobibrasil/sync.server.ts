@@ -37,6 +37,7 @@ import {
   claimLimitFor,
   isWriteBlockedByPause,
   leaseSecondsFor,
+  reconcileDelaySeconds,
   remoteReadDelaySeconds,
   type QueueAction,
   type WorkerKind,
@@ -1943,6 +1944,10 @@ export async function runSyncWorker(
           last_error_message: error.message,
         });
         if (!mappingOwned) {
+          await logAttempt(admin, job, {
+            step: job.action, ok: false, errorCategory: "mapping",
+            errorMessage: error.message, outcome: "lease_lost",
+          });
           results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
           continue;
         }
