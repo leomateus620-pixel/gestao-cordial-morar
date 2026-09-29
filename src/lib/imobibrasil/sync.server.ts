@@ -217,6 +217,9 @@ async function logAttempt(
     durationMs?: number | null;
     errorCategory?: string | null;
     errorMessage?: string | null;
+    responseExcerpt?: string | null;
+    requestPath?: string | null;
+    outcome?: AttemptOutcome | null;
   },
 ) {
   const { error } = await admin.from("property_sync_attempts").insert({
@@ -229,9 +232,16 @@ async function logAttempt(
     duration_ms: entry.durationMs ?? null,
     error_category: entry.errorCategory ?? null,
     error_message: entry.errorMessage ? sanitizeMessage(entry.errorMessage, 300) : null,
-  });
-  if (error) throw new Error(error.message);
+    response_excerpt: entry.responseExcerpt ? sanitizeMessage(entry.responseExcerpt, 500) : null,
+    request_path: entry.requestPath ?? null,
+    outcome: entry.outcome ?? (entry.ok ? "ok" : "failed"),
+  } as never);
+  // O registro é evidência, nunca motivo para derrubar o trabalho.
+  if (error) console.error("[property-sync] falha ao registrar tentativa", sanitizeMessage(error.message));
 }
+
+export type AttemptOutcome =
+  | "ok" | "failed" | "ambiguous" | "rate_limited" | "lease_lost" | "definitive_no_create";
 
 function backoffSeconds(attempts: number): number {
   // Espera crescente com variação (evita que várias filas voltem juntas).
@@ -874,7 +884,7 @@ export async function processJob(
       if (!canCreateAfterAmbiguity({ create_state: "awaiting_create_reconcile", create_absent_checks: absentChecks })) {
         throw new ImobiApiError({
           message: "Criação anterior sem resposta: aguardando novas leituras antes de retirar o cadastro.",
-          category: "protocol", ambiguous: true,
+          category: "protocol", ambiguous: true, reconcileAbsentChecks: absentChecks,
         });
       }
     }
@@ -1113,6 +1123,7 @@ export async function processJob(
             message:
               "Criação anterior sem resposta confirmada: aguardando novas leituras do site antes de tentar criar de novo.",
             category: "server",
+            reconcileAbsentChecks: absentChecks,
           });
         }
       }
@@ -1249,6 +1260,7 @@ export async function processJob(
     }
   } else {
     let response: Awaited<ReturnType<typeof imobiRequest>>;
+    let postStarted: number | null = null;
     try {
       assertWriteAllowed("publish", updatesPaused);
       await assertJobLease(admin, job); // posse confirmada antes do efeito externo
@@ -1263,6 +1275,7 @@ export async function processJob(
       if (prepared !== true) throw new LeaseLostError(job.id);
       // O checkpoint acima existe ANTES do POST. Se o processo morrer depois
       // do efeito remoto, a retomada só poderá ler por referência primeiro.
+      postStarted = Date.now();
       response = await imobiRequest(job.provider, "/imovel/inserir", {
         method: "POST",
         json: fullPayload,
@@ -1271,11 +1284,55 @@ export async function processJob(
       });
     } catch (error) {
       if (error instanceof LeaseLostError) throw error;
-      const normalized = toImobiError(error);
+      const beforeSend = postStarted === null;
+      const normalized = error instanceof PausedWriteError
+        ? new ImobiApiError({ message: error.message, category: "config" })
+        : toImobiError(error);
+      const postDuration = postStarted === null ? null : Date.now() - postStarted;
+      const kind = error instanceof PausedWriteError
+        ? classifyCreateFailure({ category: "paused", beforeSend: true })
+        : classifyCreateFailure({
+          category: normalized.category, httpStatus: normalized.httpStatus,
+          ambiguous: normalized.ambiguous, beforeSend,
+        });
+      // Evidência de TODA falha do POST (antes de qualquer throw).
+      if (!beforeSend) {
+        await logAttempt(admin, job, {
+          step: "insert", ok: false,
+          httpStatus: normalized.httpStatus, durationMs: postDuration,
+          errorCategory: normalized.category, errorMessage: normalized.message,
+          responseExcerpt: normalized.responseExcerpt, requestPath: "/imovel/inserir",
+          outcome: kind === "definitive" ? "definitive_no_create" : "ambiguous",
+        });
+      }
+      // Recusa DEFINITIVA: nada foi criado. Desfaz o checkpoint (estado e
+      // contador anteriores), só se o lease e o prepare ainda forem nossos.
+      if (kind === "definitive") {
+        if (!beforeSend || !(error instanceof PausedWriteError)) {
+          const { data: reverted, error: revertError } = await admin.rpc(
+            "property_publication_revert_prepare_create" as never,
+            { _job_id: job.id, _lease_token: job.lease_token, _publication_id: publication.id } as never,
+          );
+          if (revertError || reverted !== true) {
+            console.error("[property-sync] checkpoint de criação mantido",
+              sanitizeMessage(revertError?.message ?? "reversão recusada"));
+          }
+        }
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        if (error instanceof PausedWriteError) throw error;
+        throw normalized;
+      }
+      if (beforeSend) {
+        // Erro local antes do POST não classificado como definitivo (ex.:
+        // prepare recusado): comportamento anterior.
+        await releaseCreateLock(admin, publication.id, createLockWorker);
+        throw normalized;
+      }
       // Timeout / rede / 5xx: o site pode ter criado o imóvel e perdido a
       // resposta. Nunca repetimos o POST: marcamos para reconciliação por
       // referência (somente GET) nas próximas execuções.
-      if (normalized.ambiguous || normalized.category === "network" || normalized.category === "server") {
+      if (normalized.ambiguous || normalized.category === "network" || normalized.category === "server"
+        || kind === "ambiguous") {
         const { error: ambiguousError } = await admin
           .from("property_provider_publications")
           .update({
@@ -1293,12 +1350,21 @@ export async function processJob(
           message:
             "Criação sem resposta confirmada do site. O imóvel será conferido por referência antes de qualquer nova tentativa.",
           category: "server",
+          httpStatus: normalized.httpStatus,
+          responseExcerpt: normalized.responseExcerpt,
+          requestPath: "/imovel/inserir",
+          durationMs: postDuration,
+          reconcileAbsentChecks: 0,
         });
       }
       await releaseCreateLock(admin, publication.id, createLockWorker);
       throw normalized;
     }
-    await logAttempt(admin, job, { step: "insert", ok: true, httpStatus: response.httpStatus });
+    await logAttempt(admin, job, {
+      step: "insert", ok: true, httpStatus: response.httpStatus,
+      durationMs: postStarted === null ? null : Date.now() - postStarted,
+      requestPath: "/imovel/inserir",
+    });
     // Inclusão: tudo que foi enviado precisa ser conferido na leitura.
     payload = fullPayload;
     sentKeys = Object.keys(fullPayload);
@@ -1321,6 +1387,7 @@ export async function processJob(
         message: "O provedor não retornou o código do imóvel e a referência não foi localizada.",
         category: "protocol",
         ambiguous: true,
+        reconcileAbsentChecks: 0,
       });
     }
   }
@@ -1889,17 +1956,24 @@ export async function runSyncWorker(
       // Limite de requisições não consome tentativa: reagenda respeitando
       // `Retry-After` (ou a espera pedida pelo controle de limite).
       const rateLimited = normalized.category === "rate_limit";
+      // Conferência pós-criação: agenda curta e fixa (60/120/180 s, depois 10 min),
+      // sem consumir tentativa. O limite do site continua tendo prioridade.
+      const reconciling = normalized.reconcileAbsentChecks !== null;
       const waitSeconds = rateLimited
         ? Math.max(15, normalized.retryAfterSeconds ?? 30)
-        : backoffSeconds(job.attempts);
+        : reconciling
+          ? reconcileDelaySeconds(normalized.reconcileAbsentChecks ?? 0)
+          : backoffSeconds(job.attempts);
       // Depois do orçamento normal, falhas técnicas continuam em recuperação
       // espaçada. 401/403, validação e conflito de negócio só acordam quando
       // configuração/dado mudar (ou no probe controlado do watchdog).
-      const canRetry = rateLimited || normalized.retryable || normalized.ambiguous;
-      const recoveryDelay = job.attempts >= job.max_attempts ? 3600 : waitSeconds;
+      const canRetry = rateLimited || reconciling || normalized.retryable || normalized.ambiguous;
+      const recoveryDelay = reconciling || rateLimited
+        ? waitSeconds
+        : job.attempts >= job.max_attempts ? 3600 : waitSeconds;
       const stillOwned = await finishJob(admin, job, {
         status: canRetry ? "retry" : "failed",
-        attempts: rateLimited || (canRetry && job.attempts >= job.max_attempts)
+        attempts: rateLimited || reconciling || (canRetry && job.attempts >= job.max_attempts)
           ? Math.min(Math.max(0, job.attempts - 1), Math.max(0, job.max_attempts - 1))
           : job.attempts,
         next_run_at: new Date(Date.now() + recoveryDelay * 1000).toISOString(),
@@ -1908,8 +1982,15 @@ export async function runSyncWorker(
         last_error_category: normalized.category,
         last_error_message: normalized.message,
       });
-      // Sem posse, outra execução é dona do estado: não sobrescreve a publicação.
+      // Sem posse, outra execução é dona do estado: não sobrescreve a publicação,
+      // mas a tentativa fica registrada (só inserção de evidência).
       if (!stillOwned) {
+        await logAttempt(admin, job, {
+          step: job.action, ok: false, durationMs: Date.now() - started,
+          httpStatus: normalized.httpStatus, errorCategory: normalized.category,
+          errorMessage: normalized.message, responseExcerpt: normalized.responseExcerpt,
+          requestPath: normalized.requestPath, outcome: "lease_lost",
+        });
         results.push({ jobId: job.id, provider: job.provider, status: "lease_lost" });
         continue;
       }
@@ -1939,6 +2020,9 @@ export async function runSyncWorker(
         httpStatus: normalized.httpStatus,
         errorCategory: normalized.category,
         errorMessage: normalized.message,
+        responseExcerpt: normalized.responseExcerpt,
+        requestPath: normalized.requestPath,
+        outcome: rateLimited ? "rate_limited" : normalized.ambiguous || reconciling ? "ambiguous" : "failed",
       });
       results.push({ jobId: job.id, provider: job.provider, error: normalized.category });
     }
