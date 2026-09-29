@@ -162,3 +162,10 @@
 - [x] Aplicar espera progressiva às leituras remotas inconclusivas por imóvel/site.
 - [x] Mostrar preparação, envio, limite, conferência e confirmação reais na etapa 6 e na ficha.
 - [ ] Validar 1385 com 14/14 nos dois destinos. Versão publicada, 332 testes e avanço das filas confirmados; leitura final atual ainda mostra 8/14 confirmadas e entrega incerta, sem reenvio cego.
+
+## Novo (29/09) — criação na Cordial sem resposta
+- [x] Registrar toda tentativa de /imovel/inserir (status, duração, trecho da resposta), inclusive limite e perda de posse.
+- [x] Recusa definitiva (429 do site, 400/422, erro local) desfaz o checkpoint e preserva as leituras de ausência.
+- [x] Conferência em 60/120/180 s e depois a cada 10 min.
+- [x] Ficha mostra "Aguardando confirmação"; aviso aos administradores após 20 min.
+- [x] Evidência para o chamado: docs/imobi-chamado-criacao-cordial.md.
