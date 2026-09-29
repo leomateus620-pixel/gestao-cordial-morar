@@ -66,6 +66,9 @@ export type PublicationStatusView = {
   /** Conferência da referência no site: quantos anúncios respondem por ela. */
   remote: {
     createState: string | null;
+    createAbsentChecks: number;
+    createAmbiguousAt: string | null;
+    createFirstRequestedAt: string | null;
     matchCount: number | null;
     matchIds: string[];
     checkedAt: string | null;
@@ -275,6 +278,10 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
       },
       remote: {
         createState: row.create_state ?? null,
+        createAbsentChecks: Number(row.create_absent_checks ?? 0),
+        createAmbiguousAt: row.create_ambiguous_at ?? null,
+        createFirstRequestedAt:
+          (row as { create_first_requested_at?: string | null }).create_first_requested_at ?? null,
         matchCount: row.remote_match_count ?? null,
         matchIds: Array.isArray(row.remote_match_ids)
           ? (row.remote_match_ids as string[]).map(String)
