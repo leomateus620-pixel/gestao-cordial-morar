@@ -211,24 +211,67 @@ function firstTagValue(xml: string, names: string[]): string | null {
   return null;
 }
 
-/** Interpreta o retorno síncrono do WNERestServiceNFSe. */
+/**
+ * Interpreta retornos JSON do Atende.Net, ex.:
+ * {"retorno":{"msg":"Acesso Negado!","sis":"EST","code":401}}
+ * {"retorno":{"msg":"NFS-e válida para emissão","code":100}}
+ */
+function parseJsonResponse(raw: string): NfseParsedResponse | null {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const data = JSON.parse(trimmed) as {
+      retorno?: { msg?: unknown; mensagem?: unknown; code?: unknown; codigo?: unknown };
+    };
+    const retorno = data?.retorno;
+    if (!retorno || typeof retorno !== "object") return null;
+    const mensagem =
+      typeof retorno.msg === "string" && retorno.msg.trim()
+        ? retorno.msg.trim()
+        : typeof retorno.mensagem === "string" && retorno.mensagem.trim()
+          ? retorno.mensagem.trim()
+          : null;
+    const codeRaw = retorno.code ?? retorno.codigo;
+    const code =
+      typeof codeRaw === "number" || typeof codeRaw === "string" ? String(codeRaw) : null;
+    const testeValidado = /v[áa]lida\s+para\s+emiss[ãa]o/i.test(mensagem ?? "");
+    const isError = code !== null && Number(code) >= 400;
+    const ok = !isError && (testeValidado || /sucesso/i.test(mensagem ?? ""));
+    return {
+      ok,
+      testeValidado,
+      numeroNfse: null,
+      codigoVerificador: null,
+      linkPdf: null,
+      mensagem,
+      codigosErro: isError && code ? [code] : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Interpreta o retorno síncrono do WNERestServiceNFSe (XML ou JSON). */
 export function parseNfseResponse(raw: string): NfseParsedResponse {
-  const xml = String(raw ?? "");
-  const numeroNfse = firstTagValue(xml, ["numero_nfse", "nro_nfse", "numero"]);
-  const codigoVerificador = firstTagValue(xml, [
+  const text = String(raw ?? "");
+  const json = parseJsonResponse(text);
+  if (json) return json;
+
+  const numeroNfse = firstTagValue(text, ["numero_nfse", "nro_nfse", "numero"]);
+  const codigoVerificador = firstTagValue(text, [
     "codigo_verificacao",
     "codigo_verificador",
     "cod_verificador",
   ]);
-  const linkPdf = firstTagValue(xml, ["link_nfse", "link", "url_nfse", "pdf"]);
-  const mensagem = firstTagValue(xml, ["codigo", "mensagem", "descricao", "erro"]);
+  const linkPdf = firstTagValue(text, ["link_nfse", "link", "url_nfse", "pdf"]);
+  const mensagem = firstTagValue(text, ["codigo", "mensagem", "descricao", "erro"]);
 
-  const codigosErro = Array.from(xml.matchAll(/<codigo>\s*(\d{3,6})\s*<\/codigo>/gi)).map(
+  const codigosErro = Array.from(text.matchAll(/<codigo>\s*(\d{3,6})\s*<\/codigo>/gi)).map(
     (m) => m[1] as string,
   );
 
-  const testeValidado = /v[áa]lida\s+para\s+emiss[ãa]o/i.test(xml);
-  const ok = testeValidado || Boolean(numeroNfse) || /sucesso/i.test(xml);
+  const testeValidado = /v[áa]lida\s+para\s+emiss[ãa]o/i.test(text);
+  const ok = testeValidado || Boolean(numeroNfse) || /sucesso/i.test(text);
 
   return {
     ok: ok && codigosErro.length === 0,

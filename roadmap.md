@@ -177,3 +177,9 @@
 - [x] Horário do evento no corpo (America/Sao_Paulo); dedup_key + sent_tokens.
 - [x] `venda_realizada` só para admins; cron de `sale-payment-reminders` NÃO ligar.
 - [x] Cartão "Entrega de push" + alerta de pendente > 2 min (dedup 30 min); testes; publicar.
+
+## NFS-e IPM — autenticação Basic (30/09/2026)
+- [x] Basic Auth em client.server.ts + parse JSON em xml.ts
+- [x] Testes unitários (header Basic, parse JSON)
+- [x] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
+- [x] Uma emissão modo teste por marca — auth OK (HTTP 200); prefeitura rejeitou item 10.05 (quer inteiro); aguardando OK para enviar 1005

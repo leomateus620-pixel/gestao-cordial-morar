@@ -109,3 +109,27 @@ test("retorno de emissão captura número, verificador e link", () => {
   assert.equal(parsed.codigoVerificador, "ABC123");
   assert.equal(parsed.linkPdf, "https://santarosa.atende.net/nfse/123");
 });
+
+test("retorno JSON de erro expõe a mensagem real da prefeitura", () => {
+  const parsed = parseNfseResponse(
+    '{"retorno":{"msg":"Acesso Negado!","sis":"EST","code":401}}',
+  );
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.mensagem, "Acesso Negado!");
+  assert.deepEqual(parsed.codigosErro, ["401"]);
+});
+
+test("retorno JSON de validação em modo teste é reconhecido", () => {
+  const parsed = parseNfseResponse(
+    '{"retorno":{"msg":"NFS-e válida para emissão","code":100}}',
+  );
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.testeValidado, true);
+  assert.deepEqual(parsed.codigosErro, []);
+});
+
+test("JSON inválido ou sem retorno cai no parser XML", () => {
+  const parsed = parseNfseResponse('{"outra":"coisa"}');
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.mensagem, null);
+});
