@@ -29,7 +29,7 @@ export function useRentalNfse(contractId: string | null, enabled = true) {
       }),
     onSuccess: (result) => {
       void qc.invalidateQueries({ queryKey: ["rental-nfse", contractId] });
-      if (result.emission.status === "erro") toast.error(result.message);
+      if (!result.emission || result.emission.status === "erro") toast.error(result.message);
       else toast.success(result.message);
     },
     onError: (error: unknown) => {
