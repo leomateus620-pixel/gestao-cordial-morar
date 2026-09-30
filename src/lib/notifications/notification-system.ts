@@ -111,6 +111,17 @@ export const notificationTypeConfig: Readonly<Record<string, NotificationTypeCon
     durationMs: 10_000,
     groupable: false,
   },
+  venda_realizada: {
+    category: "financial",
+    label: "Venda realizada",
+    icon: "sale",
+    motion: "from-top",
+    sound: "important",
+    ctaLabel: "Ver venda",
+    priority: 5,
+    durationMs: 10_000,
+    groupable: false,
+  },
   agenda_fotos: {
     category: "agenda",
     label: "Produção de material",
@@ -217,7 +228,7 @@ export function resolveNotificationDestination(
   if (notification.type === "agenda_fotos") {
     return { path: "/agenda/fotos", search: entityId ? { id: entityId } : {} };
   }
-  if (notification.type === "venda_vencimento") {
+  if (notification.type === "venda_vencimento" || notification.type === "venda_realizada") {
     return entityId ? { path: "/vendas", search: { id: entityId } } : null;
   }
   if (notification.type === "google_calendar") {

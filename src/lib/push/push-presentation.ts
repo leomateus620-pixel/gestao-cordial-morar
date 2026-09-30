@@ -2,6 +2,7 @@ import {
   getNotificationTypeConfig,
   type NotificationCategory,
 } from "@/lib/notifications/notification-system";
+import { formatPushEventTime } from "@/lib/push/push-delivery";
 
 /**
  * Apresentação do push espelhando a central de notificações.
@@ -34,6 +35,8 @@ const TYPE_EMOJI: Record<string, string> = {
   agenda_lembrete: "⏰",
   agenda_fotos: "📸",
   venda_vencimento: "💰",
+  venda_realizada: "🎉",
+  agenciamento_bonificacao: "🏆",
   google_calendar: "🔄",
 };
 
@@ -58,6 +61,9 @@ export function buildPushPresentation(input: {
   agency?: string | null;
   entityType?: string | null;
   entityId?: string | null;
+  /** Horário real do evento; o iOS mostra "agora" na entrega. */
+  eventAt?: string | null;
+  now?: Date;
 }): PushPresentation {
   const config = getNotificationTypeConfig(input.type, input.category);
   const emoji = TYPE_EMOJI[input.type] ?? CATEGORY_EMOJI[config.category];
@@ -67,7 +73,9 @@ export function buildPushPresentation(input: {
   const parts = [input.titulo?.trim(), input.mensagem?.trim()].filter(
     (part): part is string => Boolean(part && part.length > 0),
   );
-  const body = parts.join("\n") || config.label;
+  const when = formatPushEventTime(input.eventAt, input.now);
+  const text = parts.join("\n") || config.label;
+  const body = when ? `${text}\n${when.charAt(0).toUpperCase()}${when.slice(1)}` : text;
 
   // Agrupa avisos do mesmo assunto (entidade) para não empilhar repetições no aparelho.
   const tag = input.entityId

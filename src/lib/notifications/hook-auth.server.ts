@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { workerSecrets } from "@/lib/workers/hook-auth";
+import { internalTokenAuthorized } from "@/lib/workers/internal-token.server";
 
 /**
  * Autenticação dos gatilhos automáticos da agenda.
@@ -26,12 +28,17 @@ export async function agendaHookAuthorized(
   received: string | null,
   options: { envSecret?: string; supabaseUrl: string; serviceRoleKey: string },
 ): Promise<boolean> {
-  if (!received) return false;
+  if (!received || received.startsWith("sb_publishable_")) return false;
   if (options.envSecret && (await constantTimeEquals(received, options.envSecret))) return true;
+  for (const secret of workerSecrets()) {
+    if (await constantTimeEquals(received, secret)) return true;
+  }
 
   const admin = createClient(options.supabaseUrl, options.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  // Credencial interna do cofre (crons/gatilhos atuais).
+  if (await internalTokenAuthorized(admin, received)) return true;
   const { data } = await admin
     .from("app_settings")
     .select("value")
