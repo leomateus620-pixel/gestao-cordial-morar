@@ -94,6 +94,23 @@ export function onlyDigits(value: string | null | undefined, maxLength?: number)
   return maxLength ? digits.slice(0, maxLength) : digits;
 }
 
+/**
+ * Item da lista de serviço (LC 116): o XSD da IPM exige inteiro, sem ponto.
+ * Aceita o valor do cadastro com máscara ("10.05") e normaliza:
+ * - 4 dígitos → mantém ("10.05" → "1005");
+ * - 3 dígitos → completa com zero à esquerda ("1.05" → "0105");
+ * - 6 dígitos → mantém (desdobramento CGNFS-e, "10.05.01" → "100501");
+ * - qualquer outro tamanho → erro, para não enviar XML inválido.
+ */
+export function normalizeItemListaServico(value: string | null | undefined): string {
+  const digits = onlyDigits(value);
+  if (digits.length === 4 || digits.length === 6) return digits;
+  if (digits.length === 3) return digits.padStart(4, "0");
+  throw new Error(
+    `Código do item da lista de serviço inválido ("${value ?? ""}"): use 4 dígitos (ex.: 10.05) ou o desdobramento de 6 dígitos (ex.: 10.05.01).`,
+  );
+}
+
 /** Decimal brasileiro com vírgula, sempre com duas casas. */
 export function decimalBR(value: number, fractionDigits = 2): string {
   const n = Number.isFinite(value) ? value : 0;
@@ -164,12 +181,13 @@ export function buildNfseXml(payload: NfsePayload): string {
     `      ${tag("codigo_local_prestacao_servico", onlyDigits(i.codigoLocalPrestacaoServico, 9))}`,
   );
   lines.push(
-    `      ${tag("codigo_item_lista_servico", sanitizeText(i.codigoItemListaServico, 10))}`,
+    `      ${tag("codigo_item_lista_servico", normalizeItemListaServico(i.codigoItemListaServico))}`,
   );
-  if (i.codigoNbs) lines.push(`      ${tag("codigo_nbs", sanitizeText(i.codigoNbs, 9))}`);
+  const nbs = onlyDigits(i.codigoNbs, 9);
+  if (nbs) lines.push(`      ${tag("codigo_nbs", nbs)}`);
   lines.push(`      ${tag("descritivo", sanitizeText(payload.descritivo, 1000))}`);
   lines.push(`      ${tag("aliquota_item_lista_servico", decimalBR(i.aliquota, 4))}`);
-  lines.push(`      ${tag("situacao_tributaria", sanitizeText(i.situacaoTributaria, 4))}`);
+  lines.push(`      ${tag("situacao_tributaria", onlyDigits(i.situacaoTributaria, 4))}`);
   lines.push(`      ${tag("valor_tributavel", decimalBR(payload.valor))}`);
   lines.push(`      ${tag("valor_deducao", decimalBR(0))}`);
   lines.push(`      ${tag("valor_issrf", decimalBR(0))}`);
