@@ -13,15 +13,21 @@ export type PostNfseResult = NfseParsedResponse & {
   raw: string;
 };
 
+/** Monta o cabeçalho HTTP Basic exigido pela IPM (NT 35/2021 v2.9). */
+export function buildBasicAuthHeader(login: string, senha: string): string {
+  const user = String(login ?? "").replace(/\D+/g, "") || String(login ?? "").trim();
+  return `Basic ${Buffer.from(`${user}:${senha}`, "utf-8").toString("base64")}`;
+}
+
 /**
  * Envio síncrono ao WNERestServiceNFSe (Atende.Net / Santa Rosa).
- * multipart/form-data com login (CNPJ), senha do webservice, cidade (TOM)
- * e o arquivo XML — sem certificado digital.
+ * Autenticação via HTTP Basic (CNPJ só dígitos + senha de acesso ao sistema,
+ * com o serviço "Emissão de NFS-e por WebService" liberado no Portal do
+ * Cidadão). O corpo multipart leva apenas a cidade (TOM) e o arquivo XML —
+ * sem certificado digital e sem login/senha no corpo.
  */
 export async function postNfse(input: PostNfseInput): Promise<PostNfseResult> {
   const form = new FormData();
-  form.append("login", input.login);
-  form.append("senha", input.senha);
   form.append("cidade", input.cidade);
   form.append(
     "f1",
@@ -34,6 +40,9 @@ export async function postNfse(input: PostNfseInput): Promise<PostNfseResult> {
   try {
     const response = await fetch(input.endpointUrl, {
       method: "POST",
+      headers: {
+        Authorization: buildBasicAuthHeader(input.login, input.senha),
+      },
       body: form,
       signal: controller.signal,
     });
