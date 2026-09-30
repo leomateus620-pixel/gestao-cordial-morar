@@ -177,3 +177,9 @@
 - [x] Horário do evento no corpo (America/Sao_Paulo); dedup_key + sent_tokens.
 - [x] `venda_realizada` só para admins; cron de `sale-payment-reminders` NÃO ligar.
 - [x] Cartão "Entrega de push" + alerta de pendente > 2 min (dedup 30 min); testes; publicar.
+
+## NFS-e IPM — autenticação Basic (30/09/2026)
+- [ ] Basic Auth em client.server.ts + parse JSON em xml.ts
+- [ ] Testes unitários (header Basic, parse JSON)
+- [ ] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
+- [ ] Uma emissão modo teste por marca (Cordial R$100 08/2026; Morar R$85 09/2026) e informar status/error_message
