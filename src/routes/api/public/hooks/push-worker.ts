@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { workerSecrets } from "@/lib/workers/hook-auth";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildPushPresentation } from "@/lib/push/push-presentation";
+import { buildPushSummary, isPushExpired, pushRetryPlan } from "@/lib/push/push-delivery";
+import { internalTokenAuthorized } from "@/lib/workers/internal-token.server";
 
 /**
  * Worker de push (Firebase Cloud Messaging HTTP v1).
@@ -16,6 +18,9 @@ type OutboxRow = {
   notification_id: string;
   user_id: string;
   attempts: number;
+  event_at: string | null;
+  tipo: string | null;
+  sent_tokens: string[] | null;
 };
 
 type NotificationRow = {
@@ -29,6 +34,7 @@ type NotificationRow = {
   imobiliaria: string | null;
   entity_type: string | null;
   entity_id: string | null;
+  created_at: string;
 };
 
 type ServiceAccount = {
@@ -110,17 +116,49 @@ function readServiceAccount(): ServiceAccount | null {
   }
 }
 
-function buildLink(notification: NotificationRow, presentationLink: string): string {
+
+function buildLink(id: string, presentationLink: string): string {
   const separator = presentationLink.includes("?") ? "&" : "?";
-  return `${presentationLink}${separator}push=${notification.id}`;
+  return `${presentationLink}${separator}push=${id}`;
 }
 
-async function sendToToken(
+type PushMessage = { id: string; title: string; body: string; label: string; category: string; cta: string; tag: string; link: string; extra?: Record<string, string> };
+
+async function sendMessage(
   accessToken: string,
   projectId: string,
   token: string,
-  notification: NotificationRow,
+  message: PushMessage,
 ): Promise<{ ok: boolean; unregistered: boolean; error?: string }> {
+  const link = buildLink(message.id, message.link);
+  const data: Record<string, string> = {
+    notification_id: message.id,
+    type: message.extra?.['type'] ?? "system",
+    category: message.category,
+    label: message.label,
+    title: message.title,
+    body: message.body,
+    cta: message.cta,
+    tag: message.tag,
+    link,
+    ...(message.extra ?? {}),
+  };
+  const response = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    // Payload data-only: quem exibe é APENAS o service worker.
+    body: JSON.stringify({
+      message: { token, data, webpush: { headers: { Urgency: "high" }, fcm_options: { link } } },
+    }),
+  });
+  if (response.ok) return { ok: true, unregistered: false };
+  const body = await response.text();
+  const unregistered =
+    response.status === 404 || (response.status === 400 && body.includes("INVALID_ARGUMENT"));
+  return { ok: false, unregistered, error: `[${response.status}] ${body.slice(0, 300)}` };
+}
+
+function notificationMessage(notification: NotificationRow): PushMessage {
   const presentation = buildPushPresentation({
     id: notification.id,
     type: notification.tipo,
@@ -131,52 +169,70 @@ async function sendToToken(
     agency: notification.imobiliaria,
     entityType: notification.entity_type,
     entityId: notification.entity_id,
+    eventAt: notification.created_at,
   });
-  const link = buildLink(notification, presentation.link);
-
-  const data: Record<string, string> = {
-    notification_id: notification.id,
-    type: notification.tipo,
-    category: presentation.category,
-    label: presentation.label,
+  const extra: Record<string, string> = { type: notification.tipo };
+  if (notification.imobiliaria) extra['agency'] = notification.imobiliaria;
+  if (notification.entity_type) extra['entity_type'] = notification.entity_type;
+  if (notification.entity_id) extra['entity_id'] = notification.entity_id;
+  return {
+    id: notification.id,
     title: presentation.title,
     body: presentation.body,
+    label: presentation.label,
+    category: presentation.category,
     cta: presentation.ctaLabel,
     tag: presentation.tag,
-    link,
+    link: presentation.link,
+    extra,
   };
-  if (notification.imobiliaria) data['agency'] = notification.imobiliaria;
-  if (notification.entity_type) data['entity_type'] = notification.entity_type;
-  if (notification.entity_id) data['entity_id'] = notification.entity_id;
+}
 
-  const response = await fetch(
-    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      // Payload data-only: quem exibe é APENAS o service worker.
-      // Incluir `webpush.notification` aqui faria o navegador mostrar uma segunda cópia.
-      body: JSON.stringify({
-        message: {
-          token,
-          data,
-          webpush: {
-            headers: { Urgency: "high" },
-            fcm_options: { link },
-          },
-        },
-      }),
-    },
-  );
+/** Envia para os tokens que ainda não receberam; devolve os que receberam. */
+async function deliver(
+  admin: SupabaseClient,
+  userId: string,
+  alreadySent: string[],
+  accessToken: string,
+  projectId: string,
+  message: PushMessage,
+): Promise<{ delivered: string[]; errors: string[]; hadTokens: boolean }> {
+  const { data: tokens } = await admin.from("user_push_tokens").select("token").eq("user_id", userId);
+  const list = (tokens ?? []).map((row) => row.token as string);
+  const delivered: string[] = [];
+  const errors: string[] = [];
+  for (const token of list) {
+    if (alreadySent.includes(token)) continue;
+    try {
+      const result = await sendMessage(accessToken, projectId, token, message);
+      if (result.ok) delivered.push(token);
+      else {
+        if (result.unregistered) await admin.from("user_push_tokens").delete().eq("token", token);
+        if (result.error) errors.push(result.error);
+      }
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "erro desconhecido");
+    }
+  }
+  return { delivered, errors, hadTokens: list.length > 0 };
+}
 
-  if (response.ok) return { ok: true, unregistered: false };
-  const body = await response.text();
-  const unregistered =
-    response.status === 404 || (response.status === 400 && body.includes("INVALID_ARGUMENT"));
-  return { ok: false, unregistered, error: `[${response.status}] ${body.slice(0, 300)}` };
+async function markFailure(admin: SupabaseClient, row: OutboxRow, sentTokens: string[], message: string) {
+  const attempts = row.attempts + 1;
+  const plan = pushRetryPlan(attempts);
+  await admin
+    .from("push_outbox")
+    .update({
+      status: plan.status,
+      attempts,
+      sent_tokens: sentTokens,
+      next_attempt_at: plan.nextAttemptAt,
+      processed_at: plan.status === "failed_final" ? new Date().toISOString() : null,
+      last_error: message.slice(0, 500),
+      last_error_at: new Date().toISOString(),
+      claimed_at: null,
+    } as never)
+    .eq("id", row.id);
 }
 
 async function processRow(
@@ -184,67 +240,107 @@ async function processRow(
   row: OutboxRow,
   accessToken: string,
   projectId: string,
-): Promise<"sent" | "skipped" | "failed"> {
+): Promise<"sent" | "skipped" | "failed" | "expired"> {
+  const now = new Date().toISOString();
+  // Evento velho não vira push individual: entra no resumo único do usuário.
+  if (isPushExpired(row.tipo, row.event_at)) {
+    await admin
+      .from("push_outbox")
+      .update({ status: "expired", processed_at: now, claimed_at: null } as never)
+      .eq("id", row.id);
+    return "expired";
+  }
+
   const { data: notification, error: notificationError } = await admin
     .from("notifications")
-    .select("id, user_id, tipo, category, titulo, mensagem, link, imobiliaria, entity_type, entity_id")
+    .select("id, user_id, tipo, category, titulo, mensagem, link, imobiliaria, entity_type, entity_id, created_at")
     .eq("id", row.notification_id)
     .maybeSingle<NotificationRow>();
-
   if (notificationError || !notification) {
     await admin
       .from("push_outbox")
       .update({
         status: "skipped",
-        processed_at: new Date().toISOString(),
+        processed_at: now,
         last_error: notificationError?.message ?? "Notificação inexistente",
-      })
+        last_error_at: now,
+      } as never)
       .eq("id", row.id);
     return "skipped";
   }
 
-  const { data: tokens } = await admin
-    .from("user_push_tokens")
-    .select("token")
-    .eq("user_id", notification.user_id);
+  const already = row.sent_tokens ?? [];
+  const { delivered, errors, hadTokens } = await deliver(
+    admin, notification.user_id, already, accessToken, projectId, notificationMessage(notification),
+  );
+  const sentTokens = [...already, ...delivered];
 
-  if (!tokens || tokens.length === 0) {
+  if (!hadTokens) {
     await admin
       .from("push_outbox")
-      .update({ status: "skipped", processed_at: new Date().toISOString(), last_error: null })
+      .update({ status: "skipped", processed_at: now, last_error: null, claimed_at: null } as never)
       .eq("id", row.id);
     return "skipped";
   }
-
-  const errors: string[] = [];
-  let delivered = 0;
-  for (const entry of tokens) {
-    const token = entry.token as string;
-    try {
-      const result = await sendToToken(accessToken, projectId, token, notification);
-      if (result.ok) delivered += 1;
-      else {
-        if (result.unregistered) {
-          await admin.from("user_push_tokens").delete().eq("token", token);
-        }
-        if (result.error) errors.push(result.error);
-      }
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : "erro desconhecido");
-    }
+  if (errors.length === 0) {
+    await admin
+      .from("push_outbox")
+      .update({
+        status: "sent",
+        attempts: row.attempts + 1,
+        sent_tokens: sentTokens,
+        sent_at: new Date().toISOString(),
+        processed_at: new Date().toISOString(),
+        last_error: null,
+        claimed_at: null,
+      } as never)
+      .eq("id", row.id);
+    return "sent";
   }
+  if (sentTokens.length > 0) {
+    // Algum aparelho recebeu: registra como enviado, sem repetir aos que já receberam.
+    await admin
+      .from("push_outbox")
+      .update({
+        status: "sent",
+        attempts: row.attempts + 1,
+        sent_tokens: sentTokens,
+        sent_at: new Date().toISOString(),
+        processed_at: new Date().toISOString(),
+        last_error: errors.join(" | ").slice(0, 500),
+        last_error_at: new Date().toISOString(),
+        claimed_at: null,
+      } as never)
+      .eq("id", row.id);
+    return "sent";
+  }
+  await markFailure(admin, row, sentTokens, errors.join(" | "));
+  return "failed";
+}
 
-  const status = delivered > 0 ? "sent" : errors.length > 0 ? "failed" : "skipped";
-  await admin
-    .from("push_outbox")
-    .update({
-      status,
-      attempts: row.attempts + 1,
-      processed_at: new Date().toISOString(),
-      last_error: errors.length > 0 ? errors.join(" | ").slice(0, 500) : null,
-    })
-    .eq("id", row.id);
-  return status;
+async function sendSummaries(admin: SupabaseClient, accessToken: string, projectId: string): Promise<number> {
+  const { data, error } = await admin.rpc("push_outbox_take_expired" as never);
+  if (error) {
+    console.error("[push-worker] resumo falhou", error.message);
+    return 0;
+  }
+  let count = 0;
+  for (const entry of (data ?? []) as Array<{ user_id: string; summary_id: string; tipos: Record<string, number> }>) {
+    const summary = buildPushSummary(entry.tipos ?? {});
+    await deliver(admin, entry.user_id, [], accessToken, projectId, {
+      id: entry.summary_id,
+      title: summary.title,
+      body: summary.body,
+      label: "Resumo",
+      category: "system",
+      cta: "Ver notificações",
+      tag: `summary:${entry.summary_id}`,
+      link: "/",
+      extra: { type: "push_resumo" },
+    });
+    count += 1;
+  }
+  return count;
 }
 
 export const Route = createFileRoute("/api/public/hooks/push-worker")({
@@ -257,33 +353,32 @@ export const Route = createFileRoute("/api/public/hooks/push-worker")({
         if (!serviceRoleKey || !supabaseUrl) {
           return Response.json({ error: "Server configuration error" }, { status: 500 });
         }
+        const admin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
 
         const apikey = request.headers.get("apikey") ?? request.headers.get("x-api-key");
         // Credenciais exclusivas de servidor: a chave pública do app não vale aqui.
         const accepted = [hookSecret, ...workerSecrets()].filter(
-          (value): value is string => Boolean(value),
+          (value): value is string => Boolean(value) && !String(value).startsWith("sb_publishable_"),
         );
-        const authorized = !!apikey && accepted.includes(apikey);
+        const authorized =
+          !!apikey && (accepted.includes(apikey) || (await internalTokenAuthorized(admin, apikey)));
         if (!authorized) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-        const admin = createClient(supabaseUrl, serviceRoleKey, {
-          auth: { persistSession: false, autoRefreshToken: false },
-        });
+        let body: { limit?: number; notification_id?: string; mode?: string } = {};
+        try {
+          const text = await request.text();
+          if (text) body = JSON.parse(text) as typeof body;
+        } catch {
+          body = {};
+        }
 
         const account = readServiceAccount();
         if (!account) {
           console.warn("FCM não configurado: defina FIREBASE_SERVICE_ACCOUNT_JSON nos secrets.");
           return Response.json({ ok: true, skipped: true, reason: "FCM não configurado" });
         }
-
-        let body: { limit?: number } = {};
-        try {
-          const text = await request.text();
-          if (text) body = JSON.parse(text) as { limit?: number };
-        } catch {
-          body = {};
-        }
-        const limit = Math.min(Math.max(body.limit ?? 25, 1), 100);
 
         // Autentica ANTES de reservar a fila: falha de auth não deve deixar rows presas.
         let accessToken: string;
@@ -294,34 +389,36 @@ export const Route = createFileRoute("/api/public/hooks/push-worker")({
           return Response.json({ ok: false, error: "FCM auth falhou" }, { status: 200 });
         }
 
-        // Claim atômico: só processa o que esta execução conseguiu reservar (pending -> processing).
-        // Execuções paralelas do worker não pegam a mesma row, então não há push repetido.
-        const { data: rows, error } = await admin.rpc("push_outbox_claim", { _limit: limit });
+        const single = typeof body.notification_id === "string" && /^[0-9a-f-]{36}$/i.test(body.notification_id);
+        const { data: rows, error } = single
+          ? await admin.rpc("push_outbox_claim_one" as never, { _notification_id: body.notification_id } as never)
+          : await admin.rpc("push_outbox_claim_due" as never, {
+              _limit: Math.min(Math.max(body.limit ?? 25, 1), 100),
+            } as never);
         if (error) return Response.json({ error: error.message }, { status: 500 });
-        if (!rows || rows.length === 0) return Response.json({ ok: true, processed: 0 });
 
-        const results = { sent: 0, skipped: 0, failed: 0 };
-        for (const row of rows as OutboxRow[]) {
+        const results = { sent: 0, skipped: 0, failed: 0, expired: 0, summaries: 0, alerts: 0 };
+        for (const row of (rows ?? []) as OutboxRow[]) {
           try {
-            const status = await processRow(admin, row, accessToken, account.project_id);
-            results[status] += 1;
+            results[await processRow(admin, row, accessToken, account.project_id)] += 1;
           } catch (rowError) {
             results.failed += 1;
             console.error("Push outbox row falhou:", rowError);
-            await admin
-              .from("push_outbox")
-              .update({
-                status: "failed",
-                attempts: row.attempts + 1,
-                processed_at: new Date().toISOString(),
-                last_error:
-                  rowError instanceof Error ? rowError.message.slice(0, 500) : "erro desconhecido",
-              })
-              .eq("id", row.id);
+            await markFailure(
+              admin, row, row.sent_tokens ?? [],
+              rowError instanceof Error ? rowError.message : "erro desconhecido",
+            );
           }
         }
 
-        return Response.json({ ok: true, processed: rows.length, ...results });
+        // Resumo único dos eventos velhos e alerta de pendência (sempre que houver).
+        results.summaries = await sendSummaries(admin, accessToken, account.project_id);
+        if (!single) {
+          const { data: alerts } = await admin.rpc("push_outbox_stuck_alert" as never);
+          results.alerts = typeof alerts === "number" ? alerts : 0;
+        }
+
+        return Response.json({ ok: true, processed: (rows as unknown[] | null)?.length ?? 0, ...results });
       },
     },
   },
