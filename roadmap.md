@@ -171,9 +171,9 @@
 - [x] Evidência para o chamado: docs/imobi-chamado-criacao-cordial.md.
 
 ## Push na hora do evento (30/09/2026)
-- [ ] Credencial interna no cofre + `internal_worker_headers()`; push-worker e rotas de agenda aceitam; chave pública segue recusada.
-- [ ] Disparo por evento (1 item por chamada), erro registrado; retry de 1 min (1/2/4/8 min, 5 tentativas, `failed_final`).
-- [ ] Eventos velhos (10 min; 30 min agenda) viram 1 resumo por usuário; nenhum resumo na publicação.
-- [ ] Horário do evento no corpo (America/Sao_Paulo); dedup_key + sent_tokens.
-- [ ] `venda_realizada` só para admins; cron de `sale-payment-reminders` NÃO ligar.
-- [ ] Cartão "Entrega de push" + alerta de pendente > 2 min (dedup 30 min); testes; publicar.
+- [x] Credencial interna no cofre + `internal_worker_headers()`; push-worker e rotas de agenda aceitam; chave pública segue recusada.
+- [x] Disparo por evento (1 item por chamada), erro registrado; retry de 1 min (1/2/4/8 min, 5 tentativas, `failed_final`).
+- [x] Eventos velhos (10 min; 30 min agenda) viram 1 resumo por usuário; nenhum resumo na publicação.
+- [x] Horário do evento no corpo (America/Sao_Paulo); dedup_key + sent_tokens.
+- [x] `venda_realizada` só para admins; cron de `sale-payment-reminders` NÃO ligar.
+- [x] Cartão "Entrega de push" + alerta de pendente > 2 min (dedup 30 min); testes; publicar.

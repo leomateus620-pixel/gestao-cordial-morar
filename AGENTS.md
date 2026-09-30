@@ -1,0 +1,1 @@
+- Rotinas automáticas (gatilhos/crons → /api/public/hooks/*) autenticam com `public.internal_worker_headers()` (credencial no cofre); nunca chave pública — why: evita 401 silencioso e segredo em texto.
