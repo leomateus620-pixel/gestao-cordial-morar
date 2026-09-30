@@ -5184,33 +5184,60 @@ export type Database = {
           attempts: number
           claimed_at: string | null
           created_at: string
+          dedup_key: string | null
+          event_at: string | null
           id: string
           last_error: string | null
+          last_error_at: string | null
+          next_attempt_at: string | null
           notification_id: string
           processed_at: string | null
+          queued_at: string | null
+          sent_at: string | null
+          sent_tokens: string[]
           status: string
+          summary_id: string | null
+          tipo: string | null
           user_id: string
         }
         Insert: {
           attempts?: number
           claimed_at?: string | null
           created_at?: string
+          dedup_key?: string | null
+          event_at?: string | null
           id?: string
           last_error?: string | null
+          last_error_at?: string | null
+          next_attempt_at?: string | null
           notification_id: string
           processed_at?: string | null
+          queued_at?: string | null
+          sent_at?: string | null
+          sent_tokens?: string[]
           status?: string
+          summary_id?: string | null
+          tipo?: string | null
           user_id: string
         }
         Update: {
           attempts?: number
           claimed_at?: string | null
           created_at?: string
+          dedup_key?: string | null
+          event_at?: string | null
           id?: string
           last_error?: string | null
+          last_error_at?: string | null
+          next_attempt_at?: string | null
           notification_id?: string
           processed_at?: string | null
+          queued_at?: string | null
+          sent_at?: string | null
+          sent_tokens?: string[]
           status?: string
+          summary_id?: string | null
+          tipo?: string | null
           user_id?: string
         }
         Relationships: [
@@ -6973,6 +7000,7 @@ export type Database = {
         Args: { _operation_filter?: string; _provider_filter?: string }
         Returns: Json
       }
+      get_push_delivery_health: { Args: never; Returns: Json }
       get_satisfaction_survey_by_token: {
         Args: { _token: string }
         Returns: {
@@ -6993,6 +7021,11 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      internal_worker_headers: { Args: never; Returns: Json }
+      internal_worker_token_matches: {
+        Args: { _token: string }
         Returns: boolean
       }
       list_assignable_brokers: {
@@ -7505,6 +7538,40 @@ export type Database = {
           attempts: number
           id: string
           notification_id: string
+          user_id: string
+        }[]
+      }
+      push_outbox_claim_due: {
+        Args: { _limit?: number }
+        Returns: {
+          attempts: number
+          event_at: string
+          id: string
+          notification_id: string
+          sent_tokens: string[]
+          tipo: string
+          user_id: string
+        }[]
+      }
+      push_outbox_claim_one: {
+        Args: { _notification_id: string }
+        Returns: {
+          attempts: number
+          event_at: string
+          id: string
+          notification_id: string
+          sent_tokens: string[]
+          tipo: string
+          user_id: string
+        }[]
+      }
+      push_outbox_stuck_alert: { Args: never; Returns: number }
+      push_outbox_take_expired: {
+        Args: never
+        Returns: {
+          summary_id: string
+          tipos: Json
+          total: number
           user_id: string
         }[]
       }
