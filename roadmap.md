@@ -183,3 +183,11 @@
 - [x] Testes unitários (header Basic, parse JSON)
 - [x] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
 - [x] Uma emissão modo teste por marca — auth OK (HTTP 200); prefeitura rejeitou item 10.05 (quer inteiro); aguardando OK para enviar 1005
+
+## NFS-e IPM — formato do item de serviço (aprovado 30/09)
+- [ ] Normalizar codigo_item_lista_servico só dígitos (4 padrão, 3→zero à esquerda, 6 mantidos; inválido aborta antes do envio) — sem secrets novos
+- [ ] NBS e situacao_tributaria só dígitos
+- [ ] Testes unitários + type check
+- [ ] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
+- [ ] UMA tentativa em modo teste por marca (Cordial R$100 08/2026; Morar R$85 09/2026) e informar status/error_message
+- [ ] Se prefeitura recusar 1005: parar e avisar (fallback = salvar 10.05.01 no cadastro, só com aprovação)
