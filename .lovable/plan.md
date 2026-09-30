@@ -1,52 +1,42 @@
-# NFS-e Santa Rosa (IPM) — corrigir autenticação (Basic Auth)
+# NFS-e IPM: formato do item de serviço e demais campos numéricos
 
-## Diagnóstico confirmado no código
+## O que foi conferido
+- No cadastro das duas marcas o item está salvo como `10.05`. Na montagem do arquivo ele passa por `sanitizeText`, que mantém o ponto. É exatamente o que a prefeitura recusou.
+- Os outros campos numéricos já saem **só com dígitos** (passam por `onlyDigits`): CNPJ/CPF do prestador e do tomador, CEP, cidade (TOM 8847), local da prestação, DDD, telefone, cLocalidadeIncid, finNFSe, indFinal, cIndOp (020101), tpOper, CST (011) e cClassTrib (011004).
+- Dois campos de código ainda passam por `sanitizeText`, que não tira pontuação: `codigo_nbs` (salvo `110012100`, que já está certo, mas seria recusado se alguém digitasse `1.1001.21.00`) e `situacao_tributaria` (`0`). Os dois passam a sair só com dígitos.
+- Valores e alíquota vão com vírgula (`100,00`, `3,0000`), que é o formato decimal da IPM. Esses campos não são do tipo inteiro e **ficam como estão**. Se a prefeitura recusar esse formato, o erro vai aparecer no próximo teste e a mudança fica para outro ciclo.
+- O cadastro não usa campo de CNAE nem de código de atividade, então não há nada a corrigir ali.
 
-- `src/lib/nfse/ipm/client.server.ts` (`postNfse`) envia `login` e `senha` como campos do `multipart/form-data`, **sem cabeçalho `Authorization`**. Pela IPM NT 35/2021 v2.9 e NT 122/2025 v1.7, a autenticação é `Authorization: Basic base64(CNPJ:senha)`.
-- `parseNfseResponse` (`src/lib/nfse/ipm/xml.ts`) só procura tags XML (`<codigo>`, `<mensagem>`...). O retorno real de 15/09 foi JSON `{"retorno":{"msg":"Acesso Negado!","sis":"EST","code":401}}` — o parser não extrai nada e o histórico grava apenas "HTTP 401", escondendo a mensagem real da prefeitura.
-- As duas emissões de teste de 15/09 (Cordial e Morar) constam em `rental_nfse_emissions` com HTTP 401 "Acesso Negado!".
+## Mudanças
+1. **Item da lista de serviço (`xml.ts`)**: nova função `normalizeItemListaServico(valor, formato)`:
+   - Remove tudo o que não é dígito: `10.05` vira `1005`, e `10.05.01` vira `100501`.
+   - Formato padrão `lc116` (4 dígitos): se sobrarem 3 dígitos, completa com zero à esquerda (`1.05` vira `0105`). Se sobrarem 6, mantém os 6.
+   - Formato `cgnfse` (6 dígitos, desdobramento da NT 122/2025): se sobrarem 4 dígitos, completa com `01` no fim (`1005` vira `100501`).
+   - Se o código ficar vazio ou com tamanho que não dá para usar, a emissão para antes do envio com a mensagem "Código do item da lista de serviço inválido". Nada é enviado nesse caso.
+   - O valor salvo no cadastro (`10.05`) não muda.
+2. **Opção de reserva sem migração**: o formato é lido do segredo opcional `IPM_NFSE_ITEM_FORMATO_CORDIAL` / `_MORAR` (`lc116` ou `cgnfse`). Se o segredo não existir, vale `lc116`. Não crio esse segredo agora. Se a prefeitura recusar `1005`, você cadastra `cgnfse` em Configurações do projeto → Secrets. Como alternativa, dá para salvar `10.05.01` no cadastro, porque a normalização já gera `100501`.
+3. **NBS e situação tributária** passam a sair só com dígitos (NBS com no máximo 9, situação com no máximo 4).
+4. **Testes (`xml.test.ts`)**:
+   - `10.05` vira `1005`, `1005` continua `1005`, `1.05` vira `0105`, `10.05.01` vira `100501`.
+   - No formato `cgnfse`, `10.05` vira `100501`.
+   - Um valor inválido lança erro.
+   - O XML gerado tem `<codigo_item_lista_servico>1005</codigo_item_lista_servico>` e nenhum ponto nos campos numéricos (NBS, CNPJ, CEP, cIndOp, CST, cClassTrib).
+   - Depois, roda a tipagem e a suíte completa.
+5. **Documentação**: acrescentar a regra do formato e a opção de reserva em `docs/NFSE-IPM-SANTA-ROSA.md`.
 
-## O que vou fazer
-
-1. **Autenticação Basic no cliente** (`src/lib/nfse/ipm/client.server.ts`)
-   - Enviar `Authorization: Basic base64(login:senha)`, com login = CNPJ só dígitos (ou override `IPM_NFSE_LOGIN_*`) e senha = `IPM_NFSE_SENHA_*`.
-   - Remover `login`/`senha` do corpo multipart; manter `f1` (XML) e `cidade` (TOM 8847), que não atrapalham.
-   - Cookie PHPSESSID: **não** vou reaproveitar — o serviço REST é stateless com Basic por chamada; gerenciar sessão só adiciona fragilidade. Se a prefeitura exigir, avalio depois com base no retorno.
-
-2. **Parse do retorno JSON** (`src/lib/nfse/ipm/xml.ts` → `parseNfseResponse`)
-   - Se o corpo for JSON, ler `retorno.msg` / `retorno.code` (e variações) para `mensagem` e `codigosErro`, antes de tentar XML.
-   - Resultado: `error_message` em `rental_nfse_emissions` passa a mostrar a mensagem real (ex.: "Acesso Negado! — Crítica 401 — HTTP 401") em vez de só "HTTP 401".
-
-3. **Documentação** (`docs/NFSE-IPM-SANTA-ROSA.md`)
-   - Corrigir: autenticação é HTTP Basic; a senha é a **senha de acesso ao sistema** (portal), com o serviço "Emissão de NFS-e por WebService → Liberar Acesso ao Usuário" habilitado no Portal do Cidadão — não uma senha separada de webservice.
-
-4. **Testes unitários** (`src/lib/nfse/ipm/xml.test.ts` + novo teste do cliente)
-   - Cabeçalho Basic montado corretamente (base64 de `login:senha`, login só dígitos).
-   - Parse do JSON de erro (`retorno.msg`/`code`) e do JSON de sucesso.
-   - Parse XML existente continua passando (sem regressão).
-
-5. **Validação (só depois de aprovado e com as senhas já atualizadas por você)**
-   - Repetir **somente em modo teste** um contrato por marca — Cordial (comissão R$ 100) e Morar (comissão R$ 85), os mesmos de 15/09 — pelo fluxo existente (`emitRentalNfse` com `modo_teste=true`).
-   - Conferir o resultado em `rental_nfse_emissions` e te dizer se a prefeitura validou ou qual crítica retornou.
-   - `modo_teste` permanece ligado; nenhuma emissão real.
-
-## Arquivos afetados
-
-- `src/lib/nfse/ipm/client.server.ts` — header Basic, corpo sem login/senha
-- `src/lib/nfse/ipm/xml.ts` — parse de resposta JSON
-- `src/lib/nfse/ipm/xml.test.ts` — testes do parse JSON
-- novo `src/lib/nfse/ipm/client.test.ts` — teste do header Basic
-- `docs/NFSE-IPM-SANTA-ROSA.md` — seção de autenticação
-
-Sem migração de banco, sem mudança de segredos, sem mudança de UI.
+## Validação (após aprovação)
+- Uma tentativa em modo teste por marca, com os mesmos contratos de antes:
+  - Cordial: R$ 100, competência 08/2026, contrato e971e17a…
+  - Morar: R$ 85, competência 09/2026, contrato 9eb47d1a…
+- A tentativa usa o mesmo fluxo de teste pelo servidor no preview, com `modo_teste` continuando ligado.
+- Depois, informo o `status` e a `error_message` gravados em `rental_nfse_emissions`.
+- Se vier nova recusa de formato (inclusive se `1005` for recusado), paro e trago a mensagem sem tentar de novo.
 
 ## Riscos
+- A prefeitura pode exigir o desdobramento de 6 dígitos (`100501`). Nesse caso, basta cadastrar o segredo de formato, sem mudar código.
+- Pode aparecer outra crítica do formato depois dessa (por exemplo, sobre valores decimais), porque o XSD para na primeira falha. Nesse caso, isso vira um novo ciclo curto.
 
-- Se a prefeitura também exigir `login`/`senha` no corpo além do Basic, o primeiro teste pode falhar — o parse JSON novo vai mostrar a mensagem exata e ajusto na sequência.
-- Se a senha cadastrada no cofre for a de webservice antiga e não a de acesso ao sistema, o 401 pode persistir; nesse caso a mensagem real da prefeitura vai aparecer no histórico e te oriento sobre qual senha usar.
-- Nenhum risco para dados: modo teste não emite nota de verdade.
-
-## Fora de escopo
-
-- Emissão real, cancelamento/substituição, emissão em lote.
-- Qualquer alteração em Imóveis, sync ImobiBrasil, push ou Atendimentos.
+## Fora do escopo
+- Não altero segredos, telas nem dados do cadastro, e não publico.
+- Nenhuma emissão real.
+- Não mexo em outras áreas.
