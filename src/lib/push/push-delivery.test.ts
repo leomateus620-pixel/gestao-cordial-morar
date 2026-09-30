@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   buildPushSummary,
   formatPushEventTime,
@@ -95,7 +95,7 @@ test("worker: envio de um item, dedup por aparelho e credencial do cofre", () =>
 
 test("migração: gatilho usa credencial do cofre, registra erro e não reenvia fila antiga", () => {
   const dir = "supabase/migrations";
-  const files = require("node:fs").readdirSync(dir) as string[];
+  const files = readdirSync(dir);
   const sql = files
     .map((file) => readFileSync(`${dir}/${file}`, "utf8"))
     .find((text) => text.includes("push_outbox_claim_one"));
