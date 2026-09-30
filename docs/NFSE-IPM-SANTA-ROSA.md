@@ -10,8 +10,13 @@ caminho de Santa Rosa. Nada de ABRASF neste projeto.
 - Endpoint: `https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe`
 - Fallback: `https://ws-santarosa.atende.net:7443/?pg=rest&service=WNERestServiceNFSe`
 - Código TOM: **8847** · IBGE: **4317202**
-- Autenticação: POST `multipart/form-data` com `login` (CNPJ), `senha` (webservice),
-  `cidade` (8847) e o arquivo XML. Sem certificado digital.
+- Autenticação: **HTTP Basic** — cabeçalho `Authorization: Basic base64(login:senha)`,
+  com login = CPF/CNPJ do emissor (só dígitos) e senha = **senha de acesso ao
+  sistema** (a mesma do Portal do Cidadão), conforme IPM NT 35/2021 v2.9.
+  Pré-requisito: no Portal do Cidadão, serviço **"Emissão de NFS-e por
+  WebService → Liberar Acesso ao Usuário"** habilitado para o usuário.
+  O corpo multipart leva apenas `cidade` (TOM 8847) e o arquivo XML (`f1`).
+  Sem certificado digital e sem login/senha no corpo.
 
 ## Regra de negócio
 
