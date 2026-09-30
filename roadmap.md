@@ -185,9 +185,9 @@
 - [x] Uma emissão modo teste por marca — auth OK (HTTP 200); prefeitura rejeitou item 10.05 (quer inteiro); aguardando OK para enviar 1005
 
 ## NFS-e IPM — formato do item de serviço (aprovado 30/09)
-- [ ] Normalizar codigo_item_lista_servico só dígitos (4 padrão, 3→zero à esquerda, 6 mantidos; inválido aborta antes do envio) — sem secrets novos
-- [ ] NBS e situacao_tributaria só dígitos
-- [ ] Testes unitários + type check
-- [ ] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
-- [ ] UMA tentativa em modo teste por marca (Cordial R$100 08/2026; Morar R$85 09/2026) e informar status/error_message
-- [ ] Se prefeitura recusar 1005: parar e avisar (fallback = salvar 10.05.01 no cadastro, só com aprovação)
+- [x] Normalizar codigo_item_lista_servico só dígitos (4 padrão, 3→zero à esquerda, 6 mantidos; inválido aborta antes do envio) — sem secrets novos
+- [x] NBS e situacao_tributaria só dígitos
+- [x] Testes unitários + type check (348 pass, tsgo limpo)
+- [x] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
+- [x] UMA tentativa por marca feita — prefeitura recusou 1005: '00383 - Lista de Serviço informada não possui desdobramento nacional'
+- [ ] AGUARDANDO APROVAÇÃO: salvar 10.05.01 em nfse_provider_settings (codigo_item_lista_servico) das duas marcas e repetir o teste
