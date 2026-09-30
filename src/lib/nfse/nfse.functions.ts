@@ -365,7 +365,24 @@ export const emitRentalNfse = createServerFn({ method: "POST" })
           },
     };
 
-    const xml = buildNfseXml(payload);
+    let xml: string;
+    try {
+      xml = buildNfseXml(payload);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Arquivo da nota inválido.";
+      const { error: insertError } = await supabase.from("rental_nfse_emissions").insert({
+        contract_id: contract.id,
+        brand,
+        competencia,
+        valor,
+        modo_teste: modoTeste,
+        status: "erro",
+        error_message: message,
+        created_by: context.userId,
+      } as never);
+      if (insertError) throw new Error(insertError.message);
+      return { emission: null, xml: null, blocked: true as const, message };
+    }
     const names = secretNames(brand);
     const senha = readSecret(names.senha);
     const login = readSecret(names.login) ?? onlyDigits(settings.cnpj, 14);

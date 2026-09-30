@@ -5,6 +5,7 @@ import {
   buildNfseXml,
   decimalBR,
   inferTomadorTipo,
+  normalizeItemListaServico,
   parseNfseResponse,
   sanitizeText,
   type NfsePayload,
@@ -70,11 +71,44 @@ test("XML de teste traz valores BR, documentos limpos e IBSCBS", () => {
   assert.match(xml, /<cpfcnpj>12345678000190<\/cpfcnpj>/);
   assert.match(xml, /<cidade>8847<\/cidade>/);
   assert.match(xml, /<aliquota_item_lista_servico>3,0000<\/aliquota_item_lista_servico>/);
-  assert.match(xml, /<codigo_item_lista_servico>10\.05<\/codigo_item_lista_servico>/);
+  assert.match(xml, /<codigo_item_lista_servico>1005<\/codigo_item_lista_servico>/);
   assert.match(xml, /<cLocalidadeIncid>4317202<\/cLocalidadeIncid>/);
   assert.match(xml, /<CST>011<\/CST>/);
   assert.match(xml, /<cClassTrib>011004<\/cClassTrib>/);
   assert.ok(!/Rua A\/B/.test(xml), "barra não pode aparecer em texto livre");
+});
+
+test("item da lista de serviço sai só com dígitos", () => {
+  assert.equal(normalizeItemListaServico("10.05"), "1005");
+  assert.equal(normalizeItemListaServico("1005"), "1005");
+  assert.equal(normalizeItemListaServico("1.05"), "0105");
+  assert.equal(normalizeItemListaServico("10.05.01"), "100501");
+  assert.equal(normalizeItemListaServico("100501"), "100501");
+  assert.throws(() => normalizeItemListaServico("10"), /inválido/);
+  assert.throws(() => normalizeItemListaServico(""), /inválido/);
+  assert.throws(() => normalizeItemListaServico("10.05.0"), /inválido/);
+});
+
+test("XML não leva ponto nos campos numéricos de código", () => {
+  const xml = buildNfseXml(
+    basePayload({
+      item: {
+        codigoLocalPrestacaoServico: "8847",
+        codigoItemListaServico: "10.05",
+        codigoNbs: "1.1001.21.00",
+        aliquota: 3,
+        situacaoTributaria: "0",
+        tributaMunicipioPrestador: "S",
+      },
+    }),
+  );
+  assert.match(xml, /<codigo_item_lista_servico>1005<\/codigo_item_lista_servico>/);
+  assert.match(xml, /<codigo_nbs>110012100<\/codigo_nbs>/);
+  assert.match(xml, /<situacao_tributaria>0<\/situacao_tributaria>/);
+  assert.match(xml, /<cep>98900000<\/cep>/);
+  assert.match(xml, /<cIndOp>020101<\/cIndOp>/);
+  const codeTags = xml.match(/<(codigo_item_lista_servico|codigo_nbs|cIndOp|CST|cClassTrib)>[^<]*<\/\1>/g) ?? [];
+  for (const t of codeTags) assert.ok(!/\./.test(t), `ponto em campo numérico: ${t}`);
 });
 
 test("Simples Nacional (sem IBS/CBS) omite os grupos da reforma", () => {

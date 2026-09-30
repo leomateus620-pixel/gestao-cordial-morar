@@ -36,6 +36,21 @@ A NFS-e da imobiliária é sobre o **serviço de administração/intermediação
    (sugestão LC 116 **10.05** — administração de bens; confirme no cadastro municipal).
 4. Anote também o **código NBS** exigido pelo layout da reforma.
 
+### Formato do item da lista de serviço
+
+O XSD da IPM exige `codigo_item_lista_servico` como **inteiro, sem ponto**. O
+sistema normaliza na geração do XML, sem exigir mudança no valor salvo:
+
+- `10.05` → `1005` (4 dígitos, padrão LC 116);
+- `1.05` → `0105` (3 dígitos completados com zero à esquerda);
+- `10.05.01` → `100501` (desdobramento de 6 dígitos, NT 122/2025 / CGNFS-e).
+
+Se a prefeitura recusar o código de 4 dígitos, o fallback é salvar `10.05.01`
+no cadastro (menu Integrações → NFS-e), que a normalização envia como `100501`.
+Um valor com outro tamanho aborta a emissão antes do envio, com mensagem clara.
+Os demais campos de código (NBS, situação tributária, CNPJ/CPF, CEP, TOM,
+cIndOp, CST, cClassTrib) também saem só com dígitos.
+
 ## Segredos (servidor, nunca no client)
 
 | Segredo | Uso |

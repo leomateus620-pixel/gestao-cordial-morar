@@ -183,3 +183,11 @@
 - [x] Testes unitários (header Basic, parse JSON)
 - [x] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
 - [x] Uma emissão modo teste por marca — auth OK (HTTP 200); prefeitura rejeitou item 10.05 (quer inteiro); aguardando OK para enviar 1005
+
+## NFS-e IPM — formato do item de serviço (aprovado 30/09)
+- [x] Normalizar codigo_item_lista_servico só dígitos (4 padrão, 3→zero à esquerda, 6 mantidos; inválido aborta antes do envio) — sem secrets novos
+- [x] NBS e situacao_tributaria só dígitos
+- [x] Testes unitários + type check (348 pass, tsgo limpo)
+- [x] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
+- [x] UMA tentativa por marca feita — prefeitura recusou 1005: '00383 - Lista de Serviço informada não possui desdobramento nacional'
+- [ ] AGUARDANDO APROVAÇÃO: salvar 10.05.01 em nfse_provider_settings (codigo_item_lista_servico) das duas marcas e repetir o teste

@@ -63,7 +63,7 @@ export function RentalNfseSection({
   async function confirm() {
     try {
       const result = await emit({ modoTeste, competencia });
-      if (result.emission.status !== "erro") setOpen(false);
+      if (result.emission && result.emission.status !== "erro") setOpen(false);
     } catch {
       // erro já exibido em toast pelo hook
     }
