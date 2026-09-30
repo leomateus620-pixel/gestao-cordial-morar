@@ -9,6 +9,9 @@ import { GoogleCalendarCard } from "@/components/configuracoes/GoogleCalendarCar
 import { GoogleDriveCard } from "@/components/configuracoes/GoogleDriveCard";
 import { PropertyDriveRootCard } from "@/components/configuracoes/PropertyDriveRootCard";
 import { PushDiagnosticsCard } from "@/components/notifications/PushDiagnosticsCard";
+import { PushDeliveryHealthCard } from "@/components/notifications/PushDeliveryHealthCard";
+import { useSession } from "@/lib/auth-mock";
+import { isAdminUser } from "@/lib/access-control";
 import { agencies } from "@/lib/mock/data";
 import { useApp, useFiltered } from "@/store/app-store";
 
@@ -29,6 +32,7 @@ function GuardedPage() {
 
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todos");
+  const isAdmin = isAdminUser(useSession());
   const configuracoes = useFiltered(useApp((s) => s.configuracoes));
   const corretores = useFiltered(useApp((s) => s.corretores));
   const list = configuracoes.filter((c) => filter === "Todos" || c.grupo === filter);
@@ -83,6 +87,7 @@ function Page() {
           <GoogleDriveCard />
           <PropertyDriveRootCard />
           <PushDiagnosticsCard />
+          {isAdmin && <PushDeliveryHealthCard />}
         </div>
       </section>
 
