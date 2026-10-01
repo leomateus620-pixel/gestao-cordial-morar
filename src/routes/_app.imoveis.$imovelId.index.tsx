@@ -27,7 +27,8 @@ import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel"
 import { EmptyState } from "@/components/shared/empty-state";
 import { usePropertyDetail } from "@/hooks/useImoveis";
 import { useSession } from "@/lib/auth-mock";
-import { isAdminUser } from "@/lib/access-control";
+import { canArchiveProperty, isAdminUser } from "@/lib/access-control";
+import { ArchiveProgressBanner } from "@/components/imoveis/ArchiveProgressBanner";
 import { hasInternalSiteNotes } from "@/lib/imobibrasil/serializers";
 import { brl } from "@/lib/format";
 import {
@@ -213,6 +214,7 @@ function DetalhePage() {
           >
             <Pencil className="size-3.5" /> Editar
           </Link>
+          {canArchiveProperty(session) && (
           <button
             type="button"
             onClick={() => setArchiveOpen(true)}
@@ -222,10 +224,12 @@ function DetalhePage() {
                 ? "Reativar imóvel"
                 : "Arquivar imóvel (sai dos sites e fica guardado aqui)"
             }
-            className="inline-flex size-9 items-center justify-center rounded-full border border-white/60 bg-white/70 text-foreground/60 transition hover:text-foreground"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-white/60 bg-white/70 px-3 text-xs font-semibold text-foreground/70 transition hover:text-foreground"
           >
             {isArchived ? <ArchiveRestore className="size-4" /> : <Archive className="size-4" />}
+            <span>{isArchived ? "Reativar" : "Arquivar"}</span>
           </button>
+          )}
           <button
             type="button"
             onClick={() => setDeleteOpen(true)}
@@ -239,12 +243,7 @@ function DetalhePage() {
       </div>
 
       {(isArchived || isArchiving) && (
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-300/60 bg-amber-50/70 px-4 py-2.5 text-xs font-semibold text-amber-900">
-          <Archive className="size-4" />
-          {isArchived
-            ? "Imóvel arquivado — fora dos sites, guardado no sistema."
-            : "Arquivamento em andamento — aguardando os sites confirmarem a retirada do anúncio."}
-        </div>
+        <ArchiveProgressBanner propertyId={imovelId} archived={isArchived} archiving={isArchiving} canRetry={canArchiveProperty(session)} />
       )}
 
       <DeletePropertyDialog imovel={imovel} open={deleteOpen} onOpenChange={setDeleteOpen} />

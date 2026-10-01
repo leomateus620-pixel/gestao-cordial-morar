@@ -191,3 +191,6 @@
 - [x] Atualizar docs/NFSE-IPM-SANTA-ROSA.md
 - [x] UMA tentativa por marca feita — prefeitura recusou 1005: '00383 - Lista de Serviço informada não possui desdobramento nacional'
 - [x] Salvar 10.05.01 em nfse_provider_settings (codigo_item_lista_servico) das duas marcas e repetir o teste
+
+- [x] Arquivamento de imóveis: corretor pode arquivar, conclusão só com todos os sites confirmados, reativar sem republicar
+- [ ] Validação real de retirada em Cordial/Morar — aguardando anúncio de teste indicado pelo usuário

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.property_can_archive(uuid) FROM authenticated;

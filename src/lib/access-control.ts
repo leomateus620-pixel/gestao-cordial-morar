@@ -77,6 +77,18 @@ export function canDeleteAttendance(
   return Boolean(attendance.criadoPorId && attendance.criadoPorId === session.id);
 }
 
+/**
+ * Arquivar/reativar imóvel (tirar dos sites sem apagar). Espelha
+ * `property_can_archive` no banco. Exclusão definitiva segue regra própria.
+ */
+export function canArchiveProperty(session: SessionLike): boolean {
+  return (
+    session?.perfil === "admin_owner" ||
+    session?.perfil === "secretaria" ||
+    session?.perfil === "corretor"
+  );
+}
+
 export function getAllowedModulesForProfile(profile: UserProfile | undefined): AppModule[] {
   if (!profile) return [];
   return roleDefinitions[profile]?.modules ?? [];

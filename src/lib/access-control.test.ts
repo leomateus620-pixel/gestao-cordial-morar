@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
+import { canArchiveProperty, canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
 
 const admin = { id: "u-admin", perfil: "admin_owner" as const, modules: [] };
 const corretor = { id: "u-corretor", perfil: "corretor" as const, modules: [] };
@@ -29,4 +29,12 @@ test("corretor pode se autovincular, administração não precisa do autovíncul
   assert.equal(canSelfAssignAttendance(corretor), true);
   assert.equal(canSelfAssignAttendance(secretaria), false);
   assert.equal(canSelfAssignAttendance(null), false);
+});
+
+test("arquivar imóvel: admin, secretaria e corretor; financeiro e sem sessão não", () => {
+  assert.equal(canArchiveProperty(admin), true);
+  assert.equal(canArchiveProperty(secretaria), true);
+  assert.equal(canArchiveProperty(corretor), true);
+  assert.equal(canArchiveProperty({ perfil: "financeiro_admin" as const, modules: [] }), false);
+  assert.equal(canArchiveProperty(null), false);
 });
