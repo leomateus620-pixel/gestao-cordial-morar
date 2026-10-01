@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
 import { buildStablePublicUrl } from "@/lib/imobibrasil/public-url";
+import { assertProviderScope, kickWorker } from "@/lib/imoveis/publish.functions";
+import { archiveDestinations, retirementTargets } from "@/lib/imoveis/archive-state";
 import type {
   Property,
   PropertyDetail,
@@ -748,10 +750,8 @@ export const archiveImovel = createServerFn({ method: "POST" })
       .select("provider, enabled, external_property_id, last_synced_at, create_state, status")
       .eq("property_id", id);
     if (linksError) throw new Error(linksError.message);
-    const { retirementTargets } = await import("@/lib/imoveis/archive-state");
     const targets = retirementTargets((links ?? []) as never);
     if (targets.length) {
-      const { assertProviderScope } = await import("@/lib/imoveis/publish.functions");
       try {
         await assertProviderScope(context.supabase as never, context.userId, targets as never);
       } catch {
@@ -777,7 +777,6 @@ export const archiveImovel = createServerFn({ method: "POST" })
     if (finalized.status === "archived") {
       return { status: "archived", providers, alreadyRequested: result.alreadyRequested };
     }
-    const { kickWorker } = await import("@/lib/imoveis/publish.functions");
     await kickWorker();
     return { status: "pending_archive", providers, alreadyRequested: result.alreadyRequested };
   });
@@ -833,7 +832,6 @@ export const getArchiveProgress = createServerFn({ method: "GET" })
       ]);
     if (pError) throw new Error(pError.message);
     if (lError) throw new Error(lError.message);
-    const { archiveDestinations } = await import("@/lib/imoveis/archive-state");
     return {
       removalState: property?.removal_state ?? null,
       archivedAt: property?.archived_at ?? null,

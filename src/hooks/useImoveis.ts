@@ -7,6 +7,7 @@ import {
   deleteImovel,
   unarchiveImovel,
   getImovel,
+  getArchiveProgress,
   getImoveisFacets,
   getPropertyDetail,
   listImoveis,
@@ -113,6 +114,7 @@ function useInvalidateImovel() {
     qc.invalidateQueries({ queryKey: ["imovel-detalhe", id] });
     qc.invalidateQueries({ queryKey: ["imovel", id] });
     qc.invalidateQueries({ queryKey: ["property-sync", id] });
+    qc.invalidateQueries({ queryKey: ["imovel-arquivamento", id] });
   };
 }
 
@@ -123,6 +125,25 @@ export function useArchiveImovel() {
   return useMutation<ArchiveImovelResult, Error, string>({
     mutationFn: (id: string) => archive({ data: { id } }),
     onSuccess: (_result, id) => invalidate(id),
+  });
+}
+
+/** Acompanha o arquivamento por destino enquanto ele não termina. */
+export function useArchiveProgress(id: string | undefined, active: boolean) {
+  const get = useServerFn(getArchiveProgress);
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["imovel-arquivamento", id],
+    queryFn: async () => {
+      const progress = await get({ data: { id: id as string } });
+      if (progress.removalState === "archived") {
+        qc.invalidateQueries({ queryKey: ["imovel-detalhe", id] });
+        qc.invalidateQueries({ queryKey: ["imoveis"] });
+      }
+      return progress;
+    },
+    enabled: !!id && active,
+    refetchInterval: (q) => (q.state.data?.removalState === "pending_archive" ? 15_000 : false),
   });
 }
 
