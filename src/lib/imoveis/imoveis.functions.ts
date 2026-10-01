@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
 import { buildStablePublicUrl } from "@/lib/imobibrasil/public-url";
-import { assertProviderScope, kickWorker } from "@/lib/imoveis/publish.functions";
 import { archiveDestinations, retirementTargets } from "@/lib/imoveis/archive-state";
 import type {
   Property,
@@ -751,6 +750,7 @@ export const archiveImovel = createServerFn({ method: "POST" })
       .eq("property_id", id);
     if (linksError) throw new Error(linksError.message);
     const targets = retirementTargets((links ?? []) as never);
+    const { assertProviderScope, kickWorker } = await import("@/lib/imoveis/sync-helpers.server");
     if (targets.length) {
       try {
         await assertProviderScope(context.supabase as never, context.userId, targets as never);
