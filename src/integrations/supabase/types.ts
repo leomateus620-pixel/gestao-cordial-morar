@@ -3082,6 +3082,62 @@ export type Database = {
         }
         Relationships: []
       }
+      property_archive_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          detail: Json
+          id: string
+          property_id: string
+          transition: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          property_id: string
+          transition: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          property_id?: string
+          transition?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_archive_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_archive_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_archive_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_archive_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_drive_files: {
         Row: {
           category: string
@@ -4453,6 +4509,7 @@ export type Database = {
       }
       property_provider_publications: {
         Row: {
+          archive_intent_revision: number | null
           archived_at: string | null
           baseline_at: string | null
           characteristic_codes: Json | null
@@ -4531,6 +4588,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archive_intent_revision?: number | null
           archived_at?: string | null
           baseline_at?: string | null
           characteristic_codes?: Json | null
@@ -4609,6 +4667,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archive_intent_revision?: number | null
           archived_at?: string | null
           baseline_at?: string | null
           characteristic_codes?: Json | null
@@ -7086,6 +7145,11 @@ export type Database = {
         Returns: number
       }
       phone_key: { Args: { _v: string }; Returns: string }
+      property_archive_finalize: {
+        Args: { _expected_revision?: number; _property_id: string }
+        Returns: Json
+      }
+      property_can_archive: { Args: { _user: string }; Returns: boolean }
       property_create_stuck_alerts: { Args: never; Returns: number }
       property_drive_claim_jobs: {
         Args: { _lease_seconds?: number; _limit?: number; _worker: string }
@@ -7518,6 +7582,14 @@ export type Database = {
           _fields: string[]
           _property_id: string
           _provider: Database["public"]["Enums"]["imobi_provider"]
+        }
+        Returns: Json
+      }
+      property_unarchive: {
+        Args: {
+          _expected_revision: number
+          _property_id: string
+          _requested_by: string
         }
         Returns: Json
       }
