@@ -24,8 +24,10 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-reconcile"
         const { runReconcileSweep } = await import("@/lib/imobibrasil/reconcile.server");
 
         try {
+          const { finalizeStalledArchives } = await import("@/lib/imoveis/purge.server");
+          const archivesFinalized = await finalizeStalledArchives(supabaseAdmin);
           const result = await runReconcileSweep(supabaseAdmin, { limit });
-          return Response.json({ ok: true, ...result });
+          return Response.json({ ok: true, archivesFinalized, ...result });
         } catch (error) {
           const { sanitizeMessage } = await import("@/lib/imobibrasil/errors");
           return Response.json({ ok: false, error: sanitizeMessage(error) }, { status: 500 });

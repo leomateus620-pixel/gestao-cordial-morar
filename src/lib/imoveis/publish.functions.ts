@@ -82,7 +82,7 @@ function sanitizeProviders(input: unknown): ImobiProvider[] {
 }
 
 /** Escopo do usuário: admin publica em ambos; demais apenas nas carteiras vinculadas. */
-async function assertProviderScope(
+export async function assertProviderScope(
   supabase: {
     rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => Promise<{ data: unknown }>;
     from: (t: "user_agencies") => {
@@ -108,7 +108,7 @@ async function assertProviderScope(
   return { isAdmin: false };
 }
 
-async function kickWorker() {
+export async function kickWorker() {
   try {
     const secret =
       workerCallerSecret();
@@ -158,11 +158,16 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
 
     const { data: property, error: propertyError } = await context.supabase
       .from("properties")
-      .select("id, revision, is_draft")
+      .select("id, revision, is_draft, archived_at, removal_state")
       .eq("id", data.propertyId)
       .maybeSingle();
     if (propertyError) throw new Error(propertyError.message);
     if (!property) throw new Error("Imóvel não encontrado.");
+    if ((action === "publish" || action === "update") &&
+        (property.archived_at || property.removal_state === "pending_archive" ||
+         property.removal_state === "archived")) {
+      throw new Error("Imóvel arquivado: reative o cadastro antes de publicar novamente.");
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");

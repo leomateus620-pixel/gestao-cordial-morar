@@ -82,42 +82,44 @@ export async function finalizePendingRemoval(
   return true;
 }
 
+export type FinalizeArchiveResult =
+  | { status: "archived" | "not_found" | "not_pending" | "stale" }
+  | { status: "pending"; providers: string[] };
+
 /**
- * Conclui o arquivamento de um imóvel marcado como `pending_archive` assim que
- * todos os provedores confirmarem a despublicação. Nada é apagado: o cadastro
- * apenas sai do catálogo ativo e passa a ser listado como arquivado.
+ * Conclui o arquivamento de um imóvel em `pending_archive`. A decisão é do
+ * banco (`property_archive_finalize`), numa transação: só arquiva quando TODO
+ * destino marcado na intenção vigente confirmou a retirada. `enabled = false`
+ * não conta como confirmação. Erro de leitura é repassado, nunca vira "vazio".
  */
 export async function finalizePendingArchive(
   admin: AnyClient,
   propertyId: string,
-): Promise<boolean> {
-  const { data: property } = await admin
-    .from("properties")
-    .select("id, removal_state")
-    .eq("id", propertyId)
-    .maybeSingle();
-  if (
-    !property ||
-    (property as { removal_state?: string | null }).removal_state !== "pending_archive"
-  ) {
-    return false;
-  }
-
-  const { data: links } = await admin
-    .from("property_provider_publications")
-    .select("enabled, status")
-    .eq("property_id", propertyId);
-
-  const stillLive = ((links ?? []) as Array<{ enabled: boolean; status: string | null }>).some(
-    (link) => link.enabled && link.status !== "unpublished",
-  );
-  if (stillLive) return false;
-
-  const now = new Date().toISOString();
-  const { error } = await admin
-    .from("properties")
-    .update({ archived_at: now, removal_state: "archived", updated_at: now })
-    .eq("id", propertyId);
+  expectedRevision: number | null = null,
+): Promise<FinalizeArchiveResult> {
+  const { data, error } = await admin.rpc("property_archive_finalize", {
+    _property_id: propertyId,
+    _expected_revision: expectedRevision,
+  });
   if (error) throw new Error(error.message);
-  return true;
+  const result = (data ?? {}) as { status?: string; providers?: string[] };
+  if (result.status === "pending") return { status: "pending", providers: result.providers ?? [] };
+  if (!result.status) throw new Error("Resposta inválida ao concluir o arquivamento.");
+  return { status: result.status as "archived" };
+}
+
+/** Recuperação: tenta concluir arquivamentos pendentes (ex.: queda após ocultar no site). */
+export async function finalizeStalledArchives(admin: AnyClient, limit = 50): Promise<number> {
+  const { data, error } = await admin
+    .from("properties")
+    .select("id")
+    .eq("removal_state", "pending_archive")
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  let archived = 0;
+  for (const row of (data ?? []) as Array<{ id: string }>) {
+    const result = await finalizePendingArchive(admin, row.id);
+    if (result.status === "archived") archived += 1;
+  }
+  return archived;
 }
