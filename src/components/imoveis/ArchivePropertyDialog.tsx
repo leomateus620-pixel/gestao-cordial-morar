@@ -39,8 +39,8 @@ export function ArchivePropertyDialog({
         toast.success("Imóvel arquivado. Ele continua guardado no sistema.");
       } else {
         const names = result.providers.map((p) => PROVIDER_LABEL[p] ?? p).join(" e ");
-        toast.success(
-          `Despublicação solicitada em ${names}. O imóvel será arquivado assim que os sites confirmarem.`,
+        toast.info(
+          `Solicitação registrada. Retirada em andamento em ${names}; o imóvel só fica "Arquivado" quando todos confirmarem.`,
         );
       }
     } catch (error) {
@@ -78,13 +78,15 @@ export function ArchivePropertyDialog({
                 <strong>
                   {live.map((p) => PROVIDER_LABEL[p.provider] ?? p.provider).join(" e ")}
                 </strong>
-                . Nada é apagado: cadastro, fotos, vídeos, códigos e histórico continuam guardados
-                aqui e o imóvel passa a aparecer no filtro “Arquivados”.
+                {" "}e do site próprio. Nada é apagado: cadastro, fotos, vídeos, documentos, pastas do
+                Drive, códigos e histórico continuam guardados aqui. Quando todos os sites
+                confirmarem, o imóvel aparece no filtro “Arquivados”.
               </>
             ) : (
               <>
-                O imóvel sai do catálogo ativo e passa a aparecer no filtro “Arquivados”. Nada é
-                apagado: cadastro, fotos, vídeos e histórico continuam guardados aqui.
+                O imóvel sai do catálogo ativo e do site próprio e passa a aparecer no filtro
+                “Arquivados”. Nada é apagado: cadastro, fotos, vídeos, documentos, Drive, códigos e
+                histórico continuam guardados aqui.
               </>
             )}
           </DialogDescription>
@@ -100,7 +102,7 @@ export function ArchivePropertyDialog({
           </button>
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || imovel.removalState === "pending_archive"}
             onClick={isArchived ? handleUnarchive : handleArchive}
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-bold text-background shadow-md disabled:opacity-40"
           >
