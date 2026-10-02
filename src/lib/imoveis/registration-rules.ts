@@ -18,12 +18,10 @@ export function resolveAutoAgencyBroker(input: {
   rolesOf: (userId: string) => AgencyRole[];
 }): string | null {
   if (input.propertyCorretorId) return input.propertyCorretorId;
-  const isBrokerOnly = (id: string) => {
-    const roles = input.rolesOf(id);
-    return roles.includes("corretor") && !roles.includes("admin") && !roles.includes("secretaria");
-  };
-  if (input.createdBy && isBrokerOnly(input.createdBy)) return input.createdBy;
-  if (isBrokerOnly(input.publisherId)) return input.publisherId;
+  // Quem cadastrou (qualquer perfil, inclusive admin/secretária) é o responsável.
+  if (input.createdBy) return input.createdBy;
+  const roles = input.rolesOf(input.publisherId);
+  if (roles.includes("corretor") && !roles.includes("admin") && !roles.includes("secretaria")) return input.publisherId;
   return null;
 }
 
@@ -32,7 +30,8 @@ const isManager = (roles: AgencyRole[]) => roles.includes("admin") || roles.incl
 /**
  * Corretor do agenciamento na conclusão do cadastro. Corretor concluindo: ele
  * mesmo. Admin/secretária: escolha explícita; senão corretor do imóvel; senão
- * criador corretor. Quem clicou nunca entra como candidato. Sem candidato → null.
+ * quem cadastrou (qualquer perfil). Quem só clicou em rascunho alheio nunca
+ * vira responsável. Sem candidato → null.
  */
 export function resolveFinalizeAgencyBroker(input: {
   actorId: string;
@@ -44,10 +43,7 @@ export function resolveFinalizeAgencyBroker(input: {
   if (!isManager(input.rolesOf(input.actorId))) return input.actorId;
   if (input.explicitCorretorId) return input.explicitCorretorId;
   if (input.propertyCorretorId) return input.propertyCorretorId;
-  if (input.createdBy && input.createdBy !== input.actorId) {
-    const roles = input.rolesOf(input.createdBy);
-    if (roles.includes("corretor") && !isManager(roles)) return input.createdBy;
-  }
+  if (input.createdBy) return input.createdBy;
   return null;
 }
 
