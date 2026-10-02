@@ -155,3 +155,37 @@ Logs: uma linha JSON `evento: nfse_emissao` por tentativa, sem segredos.
 
 ### Etapa 2
 Consulta e cancelamento de nota, emissão em lote mensal.
+
+## Etapa 1b — classificação, "não emitida" e auditoria (02/10/2026)
+
+### Classificação do retorno
+- **Recusa (`erro`)**: `<retorno>` com ao menos uma mensagem, sem `numero_nfse` e sem "válida para
+  emissão" — qualquer texto. `NNNNN - …` vai para `error_codes` como `NNNNN`; `XSD Error 1824` como
+  `XSD-1824`; outros textos como `TEXTO`. Texto completo em `error_message`. JSON com `code >= 400`
+  também é recusa.
+- **Com `numero_nfse` (real) nunca é `erro`**: `emitida` se `situacao_codigo_nfse` = 1 ou ausente,
+  senão `incerto`. Mensagens junto viram "Aviso da prefeitura" (ex.: identificador repetido).
+- **`incerto`** só por incerteza real: timeout/abort, rede, HTTP 5xx, corpo vazio/HTML/não-XML,
+  XML sem `<retorno>` ou `<retorno>` sem mensagem e sem número.
+- Modo teste: "válida para emissão" → `teste_ok`; recusa → `erro`.
+
+### Conferência
+`reconcileRentalNfse` usa a mesma classificação: recusa → `erro` (libera a competência), número →
+`emitida`, incerteza → continua `incerto`. Cada conferência incrementa `attempts` e grava evento.
+Após 3 conferências seguidas em `incerto`, a tela sugere ao admin conferir no portal.
+
+### "Marcar como não emitida" (`nao_emitida`)
+Só admin, motivo ≥ 10 caracteres e confirmação "Conferi no portal". Só para `incerto` sem número
+(`processando` vencida passa antes a `incerto`). Update condicional; preenche `resolved_by`,
+`resolved_at`, `resolution_reason`. `nao_emitida` fica fora do índice único e libera a competência.
+Nova emissão usa o **mesmo identificador** (`…-1`): se a prefeitura tiver gerado a nota, devolve
+essa nota (NT 122), que vira `emitida` — sem duplicar.
+
+### Eventos (`rental_nfse_emission_events`, append-only)
+Toda transição feita pelo servidor: criação `processando`, resultado, expiração para `incerto`,
+conferência, marcação manual e reclassificação. Leitura só admin; escrita só pelo servidor.
+
+### Reclassificação (`reclassifyStuckNfse`, admin)
+Reaplica o parser às linhas `incerto` (e `processando` vencidas) que têm `response_raw`: recusa →
+`erro`, número → `emitida`, com evento `actor_kind = sistema`. Sem `response_raw`, a linha fica para a
+marcação manual. Nunca apaga.
