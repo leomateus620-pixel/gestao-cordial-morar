@@ -73,7 +73,7 @@ test("cadastro fiscal: erros por campo", () => {
   const e = validateNfseSettings({
     cnpj: "123",
     inscricaoMunicipal: "",
-    codigoItemListaServico: "10.0",
+    codigoItemListaServico: "10",
     codigoNbs: "123",
     aliquotaIss: 6,
     situacaoTributaria: "a",
