@@ -196,5 +196,5 @@
 - [ ] Validação real de retirada em Cordial/Morar — aguardando anúncio de teste indicado pelo usuário
 
 ## Cadastro não concluído (02/10)
-- [ ] Finalização única no servidor, rascunho visível, agenciamento automático ao publicar, created_by, alerta 30 min, lista de pendências, pasta Drive
-- [ ] Listar (sem aplicar) pendências: 1399/3398, 1385/3384, 950689c8, 1bac0a1d, 5 vazios
+- [x] Finalização única no servidor, rascunho visível, agenciamento automático ao publicar, created_by, alerta 30 min, lista de pendências, pasta Drive
+- [x] Listar (sem aplicar) pendências: 1399/3398, 1385/3384, 950689c8, 1bac0a1d, 5 vazios
