@@ -3,6 +3,9 @@ import test from "node:test";
 import {
   agencyDateFromCreatedAt,
   agencyFinalidadeFromProperty,
+  isFinalizeCompleted,
+  keepDraftBroker,
+  resolveFinalizeAgencyBroker,
   isRegistrationIncomplete,
   resolveAutoAgencyBroker,
   shouldAlertIncomplete,
@@ -90,4 +93,34 @@ test("alerta só depois de 30 minutos, nunca para concluído ou arquivado", () =
     shouldAlertIncomplete({ ...draft, createdAt: "2026-10-01T10:00:00Z" }, new Date("2026-10-03T12:00:00Z")),
     false,
   );
+});
+
+test("conclusão por admin/secretária: corretor do imóvel ou criador, nunca quem clicou", () => {
+  const r = { admin: ["admin"], sec: ["secretaria"], cor: ["corretor"], cor2: ["corretor"] } as Record<string, string[]>;
+  const rolesOf = (id: string) => r[id] ?? [];
+  for (const actor of ["admin", "sec"]) {
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: "cor2", createdBy: "cor", rolesOf }), "cor2");
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: "cor", rolesOf }), "cor");
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: null, rolesOf }), null);
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: actor, rolesOf }), null);
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: "admin", rolesOf }), null);
+  }
+  assert.equal(resolveFinalizeAgencyBroker({ actorId: "cor", propertyCorretorId: "cor2", createdBy: "cor", rolesOf }), "cor");
+});
+
+test("salvamento final mantém o corretor do rascunho quando nenhum foi escolhido", () => {
+  assert.deepEqual(keepDraftBroker({ tipo: "casa", corretorId: null, corretorNome: null }), { tipo: "casa" });
+  assert.deepEqual(keepDraftBroker({ tipo: "casa", corretorId: "x", corretorNome: "X" }), {
+    tipo: "casa",
+    corretorId: "x",
+    corretorNome: "X",
+  });
+});
+
+test("tela usa o mesmo critério de concluído do servidor", () => {
+  assert.equal(isFinalizeCompleted({ publish: "ok", agency: "ok" }), true);
+  assert.equal(isFinalizeCompleted({ publish: "ok", agency: "skipped" }), true);
+  assert.equal(isFinalizeCompleted({ publish: "error", agency: "ok" }), false);
+  assert.equal(isFinalizeCompleted({ publish: "ok", agency: "error" }), false);
+  assert.equal(isFinalizeCompleted({ publish: "ok", agency: "skipped" }, true), false);
 });
