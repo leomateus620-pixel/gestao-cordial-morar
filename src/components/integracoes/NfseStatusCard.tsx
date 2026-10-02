@@ -5,10 +5,51 @@ import { AlertTriangle, CheckCircle2, Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import {
+  getNfseHealth,
   getNfseSettings,
   saveNfseSettings,
+  type NfseBrandHealth,
   type NfseSettings,
 } from "@/lib/nfse/nfse.functions";
+import { validateNfseSettings } from "@/lib/nfse/validation";
+
+const HEALTH_LABEL: Record<string, string> = {
+  teste_ok: "Validada (teste)",
+  emitida: "Emitida",
+  erro: "Não emitida",
+  cancelada: "Cancelada",
+  processando: "Enviando…",
+  incerto: "Aguardando conferência",
+};
+
+function fmtSP(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
+function HealthLine({ health }: { health?: NfseBrandHealth }) {
+  if (!health) return null;
+  return (
+    <div className="mb-3 space-y-0.5 rounded-xl bg-foreground/[0.04] px-3 py-2 text-[11px] text-foreground/70">
+      <p>
+        <span className="font-bold">Última tentativa:</span>{" "}
+        {health.ultima
+          ? `${HEALTH_LABEL[health.ultima.status] ?? health.ultima.status}${health.ultima.modoTeste ? " (teste)" : ""} · ${fmtSP(health.ultima.createdAt)}`
+          : "nenhuma"}
+      </p>
+      {health.ultima?.mensagem && <p className="text-amber-900">{health.ultima.mensagem}</p>}
+      <p>
+        <span className="font-bold">Última nota real:</span>{" "}
+        {health.ultimoSucessoReal ? fmtSP(health.ultimoSucessoReal) : "nenhuma"} ·{" "}
+        <span className="font-bold">30 dias:</span> {health.incerto30d} aguardando conferência,{" "}
+        {health.erro30d} não emitidas
+      </p>
+    </div>
+  );
+}
 
 const BRANDS = ["cordial", "morar"] as const;
 
@@ -17,11 +58,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  error?: string;
 }) {
   return (
     <label className="block">
@@ -34,11 +77,12 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-xl border border-foreground/[0.1] bg-white/80 px-3 py-2 text-xs outline-none focus:border-primary/40"
       />
+      {error && <span className="mt-1 block text-[10px] font-semibold text-destructive">{error}</span>}
     </label>
   );
 }
 
-function BrandCard({ settings }: { settings: NfseSettings }) {
+function BrandCard({ settings, health }: { settings: NfseSettings; health?: NfseBrandHealth }) {
   const qc = useQueryClient();
   const save = useServerFn(saveNfseSettings);
   const [form, setForm] = useState({
@@ -65,6 +109,15 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
     });
   }, [settings]);
 
+  const errors = validateNfseSettings({
+    cnpj: form.cnpj,
+    inscricaoMunicipal: form.inscricaoMunicipal,
+    codigoItemListaServico: form.codigoItemListaServico,
+    codigoNbs: form.codigoNbs,
+    aliquotaIss: Number(form.aliquotaIss.replace(",", ".")),
+  });
+  const hasErrors = Object.keys(errors).length > 0;
+
   const mutation = useMutation({
     mutationFn: () =>
       save({
@@ -75,7 +128,7 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
           razaoSocial: form.razaoSocial,
           codigoItemListaServico: form.codigoItemListaServico,
           codigoNbs: form.codigoNbs,
-          aliquotaIss: Number(form.aliquotaIss.replace(",", ".")) || 0,
+          aliquotaIss: Number(form.aliquotaIss.replace(",", ".")),
           modoTeste: form.modoTeste,
           simplesNacional: form.simplesNacional,
         },
@@ -83,6 +136,7 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
     onSuccess: () => {
       toast.success("Configuração fiscal salva.");
       void qc.invalidateQueries({ queryKey: ["nfse-settings-status"] });
+      void qc.invalidateQueries({ queryKey: ["rental-nfse-preview"] });
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar."),
@@ -105,17 +159,20 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
         </span>
       </div>
 
+      <HealthLine health={health} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
           label="CNPJ do prestador"
           value={form.cnpj}
           onChange={(v) => setForm((f) => ({ ...f, cnpj: v }))}
+          error={errors["cnpj"]}
           placeholder="00000000000000"
         />
         <Field
           label="Inscrição municipal"
           value={form.inscricaoMunicipal}
           onChange={(v) => setForm((f) => ({ ...f, inscricaoMunicipal: v }))}
+          error={errors["inscricaoMunicipal"]}
         />
         <Field
           label="Razão social"
@@ -126,17 +183,20 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
           label="Item da lista de serviço"
           value={form.codigoItemListaServico}
           onChange={(v) => setForm((f) => ({ ...f, codigoItemListaServico: v }))}
+          error={errors["codigoItemListaServico"]}
           placeholder="10.05"
         />
         <Field
           label="Código NBS"
           value={form.codigoNbs}
           onChange={(v) => setForm((f) => ({ ...f, codigoNbs: v }))}
+          error={errors["codigoNbs"]}
         />
         <Field
           label="Alíquota ISS (%)"
           value={form.aliquotaIss}
           onChange={(v) => setForm((f) => ({ ...f, aliquotaIss: v }))}
+          error={errors["aliquotaIss"]}
           placeholder="3,0000"
         />
       </div>
@@ -158,7 +218,7 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
         </label>
         <button
           type="button"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || hasErrors}
           onClick={() => mutation.mutate()}
           className="ml-auto inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
         >
@@ -179,6 +239,8 @@ function BrandCard({ settings }: { settings: NfseSettings }) {
 
 export function NfseStatusCard({ enabled }: { enabled: boolean }) {
   const fetchSettings = useServerFn(getNfseSettings);
+  const fetchHealth = useServerFn(getNfseHealth);
+  const health = useQuery({ queryKey: ["nfse-health"], enabled, queryFn: () => fetchHealth() });
   const query = useQuery({
     queryKey: ["nfse-settings-status"],
     enabled,
@@ -208,7 +270,7 @@ export function NfseStatusCard({ enabled }: { enabled: boolean }) {
       ) : (
         <div className="space-y-3">
           {(query.data ?? []).map((s) => (
-            <BrandCard key={s.brand} settings={s} />
+            <BrandCard key={s.brand} settings={s} health={health.data?.find((h) => h.brand === s.brand)} />
           ))}
         </div>
       )}
