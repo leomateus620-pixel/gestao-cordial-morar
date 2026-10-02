@@ -76,7 +76,7 @@ export async function ensureAutoAgency(args: {
 
   const payload = {
     property_id: property.id,
-    source: "property_publication_auto",
+    source: "property_registration",
     source_operation_key: initialAgencyOperationKey(property.id),
     imobiliaria: providersToImobiliaria(
       args.providers.length ? args.providers : property.publish_targets,
