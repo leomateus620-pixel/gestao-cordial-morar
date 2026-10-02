@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import {
   getNfseHealth,
   getNfseSettings,
+  getNfseViewer,
+  reclassifyStuckNfse,
   saveNfseSettings,
   type NfseBrandHealth,
   type NfseSettings,
@@ -20,6 +22,7 @@ const HEALTH_LABEL: Record<string, string> = {
   cancelada: "Cancelada",
   processando: "Enviando…",
   incerto: "Aguardando conferência",
+  nao_emitida: "Não emitida (conferida)",
 };
 
 function fmtSP(iso: string) {
@@ -45,7 +48,7 @@ function HealthLine({ health }: { health?: NfseBrandHealth }) {
         <span className="font-bold">Última nota real:</span>{" "}
         {health.ultimoSucessoReal ? fmtSP(health.ultimoSucessoReal) : "nenhuma"} ·{" "}
         <span className="font-bold">30 dias:</span> {health.incerto30d} aguardando conferência,{" "}
-        {health.erro30d} não emitidas
+        {health.erro30d} recusadas, {health.naoEmitida30d} não emitidas (conferidas)
       </p>
     </div>
   );
@@ -241,6 +244,21 @@ export function NfseStatusCard({ enabled }: { enabled: boolean }) {
   const fetchSettings = useServerFn(getNfseSettings);
   const fetchHealth = useServerFn(getNfseHealth);
   const health = useQuery({ queryKey: ["nfse-health"], enabled, queryFn: () => fetchHealth() });
+  const viewerFn = useServerFn(getNfseViewer);
+  const viewer = useQuery({ queryKey: ["nfse-viewer"], enabled, queryFn: () => viewerFn(), staleTime: 300_000 });
+  const reclassifyFn = useServerFn(reclassifyStuckNfse);
+  const qcRoot = useQueryClient();
+  const reclassify = useMutation({
+    mutationFn: () => reclassifyFn(),
+    onSuccess: (r) => {
+      void qcRoot.invalidateQueries({ queryKey: ["nfse-health"] });
+      void qcRoot.invalidateQueries({ queryKey: ["rental-nfse"] });
+      toast.success(
+        `Pendências analisadas: ${r.analisadas}. Reclassificadas: ${r.alteradas.length}. Sem retorno gravado (marcação manual): ${r.semRetorno}.`,
+      );
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Não foi possível reclassificar."),
+  });
   const query = useQuery({
     queryKey: ["nfse-settings-status"],
     enabled,
@@ -262,6 +280,17 @@ export function NfseStatusCard({ enabled }: { enabled: boolean }) {
             Nota do serviço de administração dos aluguéis (valor da comissão).
           </p>
         </div>
+        {viewer.data?.isAdmin && (
+          <button
+            type="button"
+            disabled={reclassify.isPending}
+            onClick={() => reclassify.mutate()}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-foreground/10 px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+          >
+            {reclassify.isPending && <Loader2 className="size-3 animate-spin" />}
+            Reclassificar pendências
+          </button>
+        )}
       </div>
       {query.isLoading ? (
         <p className="text-xs text-foreground/55">Verificando configuração…</p>

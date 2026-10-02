@@ -5842,6 +5842,50 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_nfse_emission_events: {
+        Row: {
+          actor: string | null
+          actor_kind: string
+          created_at: string
+          details: Json | null
+          emission_id: string | null
+          from_status: string | null
+          id: string
+          reason: string | null
+          to_status: string
+        }
+        Insert: {
+          actor?: string | null
+          actor_kind: string
+          created_at?: string
+          details?: Json | null
+          emission_id?: string | null
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          to_status: string
+        }
+        Update: {
+          actor?: string | null
+          actor_kind?: string
+          created_at?: string
+          details?: Json | null
+          emission_id?: string | null
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_nfse_emission_events_emission_id_fkey"
+            columns: ["emission_id"]
+            isOneToOne: false
+            referencedRelation: "rental_nfse_emissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_nfse_emissions: {
         Row: {
           attempts: number
@@ -5864,6 +5908,9 @@ export type Database = {
           modo_teste: boolean
           numero_nfse: string | null
           request_xml: string | null
+          resolution_reason: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           response_raw: string | null
           serie_nfse: string | null
           situacao_nfse: string | null
@@ -5892,6 +5939,9 @@ export type Database = {
           modo_teste?: boolean
           numero_nfse?: string | null
           request_xml?: string | null
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           response_raw?: string | null
           serie_nfse?: string | null
           situacao_nfse?: string | null
@@ -5920,6 +5970,9 @@ export type Database = {
           modo_teste?: boolean
           numero_nfse?: string | null
           request_xml?: string | null
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           response_raw?: string | null
           serie_nfse?: string | null
           situacao_nfse?: string | null

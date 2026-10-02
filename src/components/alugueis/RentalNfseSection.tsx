@@ -13,7 +13,15 @@ import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useRentalNfse, useRentalNfsePreview } from "@/hooks/useRentalNfse";
 import type { NfseEmission } from "@/lib/nfse/nfse.functions";
-import { competenciaFromVencimento, currentYmSaoPaulo } from "@/lib/nfse/emission-rules";
+import {
+  competenciaFromVencimento,
+  currentYmSaoPaulo,
+  shouldSuggestManualResolution,
+} from "@/lib/nfse/emission-rules";
+
+function fmtSP(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+}
 import type { RentalContractFull } from "@/types/rental";
 
 const STATUS_LABEL: Record<NfseEmission["status"], string> = {
@@ -23,6 +31,7 @@ const STATUS_LABEL: Record<NfseEmission["status"], string> = {
   cancelada: "Cancelada",
   processando: "Enviando…",
   incerto: "Aguardando conferência",
+  nao_emitida: "Não emitida (conferida)",
 };
 
 const STATUS_CLASS: Record<NfseEmission["status"], string> = {
@@ -32,6 +41,7 @@ const STATUS_CLASS: Record<NfseEmission["status"], string> = {
   cancelada: "bg-foreground/[0.07] text-foreground/65",
   processando: "bg-primary/10 text-primary",
   incerto: "bg-orange-500/15 text-orange-900",
+  nao_emitida: "bg-foreground/[0.07] text-foreground/70",
 };
 
 function formatCompetence(value: string) {
@@ -53,7 +63,10 @@ export function RentalNfseSection({
   const [competencia, setCompetencia] = useState(() =>
     competenciaFromVencimento(contract.proximoVencimento, currentYmSaoPaulo()),
   );
-  const { emissions, isLoading, emit, isEmitting, reconcile, reconcilingId } = useRentalNfse(
+  const [markTarget, setMarkTarget] = useState<string | null>(null);
+  const [markReason, setMarkReason] = useState("");
+  const [markChecked, setMarkChecked] = useState(false);
+  const { emissions, isLoading, emit, isEmitting, reconcile, reconcilingId, isAdmin, markNotIssued, isMarking } = useRentalNfse(
     contract.id,
     canEmit,
   );
@@ -202,6 +215,32 @@ export function RentalNfseSection({
                   Conferir na prefeitura
                 </button>
               )}
+              {e.status === "incerto" && isAdmin && !e.numeroNfse && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMarkTarget(e.id);
+                    setMarkReason("");
+                    setMarkChecked(false);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-foreground/10 px-3 py-1 text-[11px] font-bold text-foreground/75"
+                >
+                  Marcar como não emitida
+                </button>
+              )}
+              {isAdmin && shouldSuggestManualResolution(e.status, e.attempts) && (
+                <span className="w-full text-[11px] font-semibold text-orange-900">
+                  Já foram {e.attempts - 1} conferências sem resposta definitiva. Confira no portal da
+                  prefeitura e, se a nota não existir, marque como não emitida.
+                </span>
+              )}
+              {e.status === "nao_emitida" && (
+                <span className="w-full text-[11px] text-foreground/65">
+                  Motivo: {e.resolutionReason ?? "—"}
+                  {e.resolvedByName ? ` · por ${e.resolvedByName}` : ""}
+                  {e.resolvedAt ? ` · ${fmtSP(e.resolvedAt)}` : ""}
+                </span>
+              )}
               {e.errorCodes.length > 0 && (
                 <span className="w-full text-[11px] font-semibold text-amber-900">
                   Códigos: {e.errorCodes.join(", ")}
@@ -214,6 +253,52 @@ export function RentalNfseSection({
           ))}
         </ul>
       )}
+
+      <Dialog open={markTarget !== null} onOpenChange={(v) => !v && setMarkTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Marcar como não emitida</DialogTitle>
+            <DialogDescription>
+              Use só depois de conferir no portal da prefeitura que a nota não foi gerada. A
+              competência fica livre para uma nova emissão, com o mesmo identificador.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="block text-xs">
+            <span className="mb-1 block font-bold">Motivo (mínimo 10 caracteres)</span>
+            <textarea
+              value={markReason}
+              onChange={(ev) => setMarkReason(ev.target.value)}
+              rows={3}
+              className="w-full rounded-xl border border-foreground/[0.1] bg-white/80 px-3 py-2 text-xs"
+            />
+          </label>
+          <label className="flex items-start gap-2 text-xs">
+            <input type="checkbox" checked={markChecked} onChange={(ev) => setMarkChecked(ev.target.checked)} className="mt-0.5" />
+            Conferi no portal da prefeitura que esta nota não foi gerada
+          </label>
+          <DialogFooter>
+            <button type="button" onClick={() => setMarkTarget(null)} className="rounded-full px-4 py-2 text-xs font-bold text-foreground/65">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={isMarking || !markChecked || markReason.trim().length < 10}
+              onClick={async () => {
+                try {
+                  await markNotIssued({ emissionId: markTarget as string, reason: markReason.trim() });
+                  setMarkTarget(null);
+                } catch {
+                  // erro exibido pelo hook
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
+            >
+              {isMarking && <Loader2 className="size-3.5 animate-spin" />}
+              Marcar como não emitida
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
