@@ -18,6 +18,11 @@ import {
   type ListImoveisInput,
   type UpdateImovelInput,
 } from "@/lib/imoveis/imoveis.functions";
+import {
+  finalizePropertyRegistration,
+  listIncompleteRegistrations,
+  type FinalizeRegistrationInput,
+} from "@/lib/imoveis/registration.functions";
 import type { Property, PropertyDetail } from "@/types/property";
 
 export function useDeleteImovel() {
@@ -154,5 +159,33 @@ export function useUnarchiveImovel() {
   return useMutation<{ status: "active" }, Error, string>({
     mutationFn: (id: string) => unarchive({ data: { id } }),
     onSuccess: (_result, id) => invalidate(id),
+  });
+}
+
+/** Conclusão única e idempotente do cadastro (assistente e "Concluir cadastro"). */
+export function useFinalizeRegistration() {
+  const qc = useQueryClient();
+  const finalize = useServerFn(finalizePropertyRegistration);
+  return useMutation({
+    mutationFn: (input: FinalizeRegistrationInput) => finalize({ data: input }),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["imoveis"] });
+      qc.invalidateQueries({ queryKey: ["imovel-detalhe", result.propertyId] });
+      qc.invalidateQueries({ queryKey: ["imovel", result.propertyId] });
+      qc.invalidateQueries({ queryKey: ["property-sync", result.propertyId] });
+      qc.invalidateQueries({ queryKey: ["agenciamentos"] });
+      qc.invalidateQueries({ queryKey: ["agenciamento-vinculado"] });
+      qc.invalidateQueries({ queryKey: ["cadastros-nao-concluidos"] });
+    },
+  });
+}
+
+export function useIncompleteRegistrations(enabled = true) {
+  const list = useServerFn(listIncompleteRegistrations);
+  return useQuery({
+    queryKey: ["cadastros-nao-concluidos"],
+    queryFn: () => list(),
+    enabled,
+    staleTime: 60_000,
   });
 }
