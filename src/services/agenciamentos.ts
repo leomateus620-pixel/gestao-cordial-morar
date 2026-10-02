@@ -1,3 +1,4 @@
+import { addDaysToKey, dateOnlyKey, saoPauloKeyOf } from "@/lib/dates";
 import type { Corretor } from "@/types/corretor";
 import type {
   Agenciamento,
@@ -283,19 +284,10 @@ export function getChecklistCompletionPercent(checklist: AgenciamentoChecklist) 
   return Math.round((getChecklistCompletedCount(checklist) / checklistKeys.length) * 100);
 }
 
-function startOfCurrentMonth(reference: Date) {
-  return new Date(reference.getFullYear(), reference.getMonth(), 1);
-}
-
-function startOfCurrentQuarter(reference: Date) {
-  const quarterStartMonth = Math.floor(reference.getMonth() / 3) * 3;
-  return new Date(reference.getFullYear(), quarterStartMonth, 1);
-}
-
-function startOfCurrentYear(reference: Date) {
-  return new Date(reference.getFullYear(), 0, 1);
-}
-
+/**
+ * Compara chaves AAAA-MM-DD no fuso de São Paulo. A data do agenciamento
+ * é coluna `date`; tratá-la como UTC jogaria o dia 1 no mês anterior.
+ */
 export function matchesPeriod(
   dateIso: string,
   periodo: AgenciamentoPeriodFilter,
@@ -303,26 +295,26 @@ export function matchesPeriod(
   range?: { dataInicio?: string; dataFim?: string },
 ) {
   if (periodo === "todos") return true;
-  const date = new Date(dateIso);
-  if (Number.isNaN(date.getTime())) return false;
+  const key = dateOnlyKey(dateIso);
+  if (!key) return false;
   if (periodo === "personalizado") {
     const inicio = (range?.dataInicio ?? "").trim();
     const fim = (range?.dataFim ?? "").trim();
-    if (!inicio && !fim) return true;
-    const key = toSaoPauloDateKey(date);
-    if (!key) return false;
     if (inicio && key < inicio) return false;
     if (fim && key > fim) return false;
     return true;
   }
-  if (periodo === "ano") return date >= startOfCurrentYear(reference);
-  if (periodo === "trimestre") return date >= startOfCurrentQuarter(reference);
-  if (periodo === "ultimos_30") {
-    const thirtyDaysAgo = new Date(reference);
-    thirtyDaysAgo.setDate(reference.getDate() - 30);
-    return date >= thirtyDaysAgo;
-  }
-  return date >= startOfCurrentMonth(reference);
+  const today = saoPauloKeyOf(reference);
+  const year = today.slice(0, 4);
+  const month = Number(today.slice(5, 7));
+  let start: string;
+  if (periodo === "ano") start = `${year}-01-01`;
+  else if (periodo === "trimestre") {
+    const qm = Math.floor((month - 1) / 3) * 3 + 1;
+    start = `${year}-${String(qm).padStart(2, "0")}-01`;
+  } else if (periodo === "ultimos_30") start = addDaysToKey(today, -30);
+  else start = `${today.slice(0, 7)}-01`;
+  return key >= start;
 }
 
 function matchesStatus(item: Agenciamento, status: AgenciamentoStatusFilter) {

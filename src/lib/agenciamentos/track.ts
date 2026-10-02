@@ -1,3 +1,4 @@
+import { dateOnlyKey, saoPauloKeyOf } from "@/lib/dates";
 import type {
   Agenciamento,
   AgenciamentoBonus,
@@ -56,11 +57,9 @@ export function getUnclassifiedAgenciamentos(items: Agenciamento[]) {
 }
 
 export function isSameMonth(dateIso: string, reference: Date) {
-  const date = new Date(dateIso);
-  if (Number.isNaN(date.getTime())) return false;
-  return (
-    date.getFullYear() === reference.getFullYear() && date.getMonth() === reference.getMonth()
-  );
+  const key = dateOnlyKey(dateIso);
+  if (!key) return false;
+  return key.slice(0, 7) === saoPauloKeyOf(reference).slice(0, 7);
 }
 
 export type BlockingChecklistSummary = {

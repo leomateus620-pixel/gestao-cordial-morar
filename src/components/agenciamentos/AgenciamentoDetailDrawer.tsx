@@ -58,6 +58,7 @@ import type {
   AgenciamentoFinalidade,
 } from "@/types/agenciamento";
 import { shortDate } from "@/lib/format";
+import { formatDateOnlyBR } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 type AgenciamentoDetailDrawerProps = {
@@ -167,7 +168,7 @@ export function AgenciamentoDetailDrawer({
                   <SheetDescription className="mt-1 text-xs">
                     {agenciamento.endereco} -{" "}
                     {getAgenciamentoImobiliariaLabel(agenciamento.imobiliaria)} -{" "}
-                    {shortDate(agenciamento.dataAgenciamento)}
+                    {formatDateOnlyBR(agenciamento.dataAgenciamento)}
                   </SheetDescription>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">

@@ -79,3 +79,38 @@ test("filtros padrão zeram o intervalo personalizado", () => {
   assert.equal(defaults.dataInicio, "");
   assert.equal(defaults.dataFim, "");
 });
+
+const ref = new Date("2026-10-02T15:00:00.000Z");
+
+test("dia 01/10 (coluna date) entra em mes, trimestre, ano e últimos 30", () => {
+  assert.equal(matchesPeriod("2026-10-01", "mes", ref), true);
+  assert.equal(matchesPeriod("2026-10-01", "trimestre", ref), true);
+  assert.equal(matchesPeriod("2026-10-01", "ano", ref), true);
+  assert.equal(matchesPeriod("2026-10-01", "ultimos_30", ref), true);
+  assert.equal(matchesPeriod("2026-09-30", "mes", ref), false);
+  assert.equal(matchesPeriod("2026-09-30", "trimestre", ref), false);
+});
+
+test("últimos 30 dias usa o calendário de São Paulo", () => {
+  assert.equal(matchesPeriod("2026-09-02", "ultimos_30", ref), true);
+  assert.equal(matchesPeriod("2026-09-01", "ultimos_30", ref), false);
+});
+
+test("personalizado com coluna date", () => {
+  const out = { dataInicio: "2026-10-01", dataFim: "2026-10-31" };
+  const set = { dataInicio: "2026-09-01", dataFim: "2026-09-30" };
+  assert.equal(matchesPeriod("2026-10-01", "personalizado", ref, out), true);
+  assert.equal(matchesPeriod("2026-10-01", "personalizado", ref, set), false);
+});
+
+test("01/01/2027 entra em ano e 1º trimestre de 2027, não em 2026", () => {
+  const jan = new Date("2027-01-01T15:00:00.000Z");
+  assert.equal(matchesPeriod("2027-01-01", "ano", jan), true);
+  assert.equal(matchesPeriod("2027-01-01", "trimestre", jan), true);
+  assert.equal(matchesPeriod("2026-12-31", "ano", jan), false);
+  assert.equal(matchesPeriod("2026-12-31", "trimestre", jan), false);
+  // referência ainda em 31/12/2026 às 22:00 BRT
+  const dez = new Date("2027-01-01T01:00:00.000Z");
+  assert.equal(matchesPeriod("2026-12-01", "ano", dez), true);
+  assert.equal(matchesPeriod("2026-10-01", "trimestre", dez), true);
+});

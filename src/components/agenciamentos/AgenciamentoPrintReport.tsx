@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { formatDateOnlyBR } from "@/lib/dates";
 import {
   formatPhoneBR,
   getAgenciamentoImobiliariaLabel,
@@ -146,7 +147,7 @@ export function AgenciamentoPrintReport({
                 />
                 <Field label="Códigos" value={codes.length > 0 ? codes.join(" · ") : "—"} />
                 <Field label="Corretor" value={item.corretorNome || "—"} />
-                <Field label="Data" value={formatFullDate(item.dataAgenciamento)} />
+                <Field label="Data" value={formatDateOnlyBR(item.dataAgenciamento, "full")} />
                 <Field label="Origem" value={getAgenciamentoOrigemLabel(item.origem)} />
                 <Field label="Proprietário" value={item.proprietarioNome || "—"} />
                 <Field
