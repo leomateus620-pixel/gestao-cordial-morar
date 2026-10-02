@@ -278,6 +278,11 @@ export function PropertyCatalogCard({
                 </h3>
                 <CodeChips codes={codes} className="hidden sm:flex" />
               </div>
+              {property.isDraft ? (
+            <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+              Cadastro não concluído
+            </span>
+          ) : null}
               {localidade ? (
                 <p className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-foreground/55">
                   <MapPin className="size-3 shrink-0 text-foreground/40" />
@@ -333,6 +338,11 @@ export function PropertyCatalogCard({
           </h3>
           <CodeChips codes={codes} />
         </div>
+        {property.isDraft ? (
+            <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+              Cadastro não concluído
+            </span>
+          ) : null}
 
         <Price property={property} className="text-[19px] leading-none" />
 
