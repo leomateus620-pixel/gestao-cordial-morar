@@ -12,6 +12,7 @@ import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
+import { IncompleteRegistrationsCard } from "@/components/integracoes/IncompleteRegistrationsCard";
 import { RemoteDuplicatesCard } from "@/components/integracoes/RemoteDuplicatesCard";
 import { ProviderOpsPanel } from "@/components/integracoes/ProviderOpsPanel";
 
@@ -50,6 +51,8 @@ function Page() {
       <NfseStatusCard enabled={isAdmin} />
 
       <HotspotCleanupCard enabled={isAdmin} />
+
+      <IncompleteRegistrationsCard enabled={isAdmin} />
 
       <RemoteDuplicatesCard enabled={isAdmin} />
 
