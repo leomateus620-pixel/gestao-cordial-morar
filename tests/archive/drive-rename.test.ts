@@ -35,13 +35,10 @@ test("job ativo já existente: códigos gravados e nenhum job extra", async () =
   assert.equal(await jobs(pg), 1);
 });
 
-test("conflito no INSERT (corrida) não desfaz a gravação dos códigos", async () => {
+test("cria um job por vez e libera novo após concluir, sem perder códigos", async () => {
   const pg = await db();
   await pg.exec(`INSERT INTO properties VALUES ('${ID}', null, null);
     INSERT INTO property_drive_folders VALUES ('${ID}', 'f');`);
-  // Simula a corrida: o job ativo surge depois do NOT EXISTS, via outro gatilho anterior.
-  await pg.exec(`CREATE FUNCTION race() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
-      INSERT INTO property_drive_jobs (property_id) VALUES (NEW.id); RETURN NEW; END $$;`);
   await pg.exec(`UPDATE properties SET codigo_cordial='1' WHERE id='${ID}'`);
   assert.equal(await jobs(pg), 1);
   await pg.exec(`UPDATE property_drive_jobs SET status='done'`);
