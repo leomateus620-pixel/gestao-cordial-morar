@@ -1,15 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import {
   PropertyForm,
   emptyPropertyValues,
   type PropertyFormValues,
 } from "@/components/imoveis/PropertyForm";
-import { useCreateImovel, useImoveisFacets, useUpdateImovel } from "@/hooks/useImoveis";
-import { useFinalizePropertyAgency } from "@/hooks/usePropertyAgency";
+import {
+  useCreateImovel,
+  useFinalizeRegistration,
+  useImoveisFacets,
+  useIncompleteRegistrations,
+  usePropertyDetail,
+} from "@/hooks/useImoveis";
 import { usePlacaPhotoActions } from "@/hooks/usePlacaPhoto";
 import { usePropertyImages } from "@/hooks/usePropertyMedia";
 import {
@@ -22,11 +27,12 @@ import { usePropertyDrive } from "@/hooks/usePropertyDrive";
 
 import { useSession } from "@/lib/auth-mock";
 import { canAccessModule } from "@/lib/access-control";
-import { useEnqueuePropertySync } from "@/hooks/usePropertySync";
 import { usePropertyCodeReservation } from "@/hooks/usePropertyCode";
-import type { PropertyCarteira } from "@/types/property";
+import type { PropertyCarteira, PropertyDetail } from "@/types/property";
 
 export const Route = createFileRoute("/_app/imoveis/novo")({
+  validateSearch: (search: Record<string, unknown>): { rascunho?: string } =>
+    typeof search.rascunho === "string" && search.rascunho ? { rascunho: search.rascunho } : {},
   head: () => ({
     meta: [
       { title: "Novo imóvel — Gestão Cordial" },
@@ -43,7 +49,7 @@ export const Route = createFileRoute("/_app/imoveis/novo")({
   }),
   component: () => (
     <RequireModuleAccess module="imoveis">
-      <NovoImovelPage />
+      <NovoImovelEntry />
     </RequireModuleAccess>
   ),
 });
@@ -54,14 +60,40 @@ function destinosLabel(destinos: PropertyCarteira[]) {
   return destinos.map((d) => carteiraLabels[d] ?? d).join(" e ");
 }
 
-function NovoImovelPage() {
+function toFormValues(detail: PropertyDetail): PropertyFormValues {
+  const base = emptyPropertyValues();
+  const values = { ...base };
+  for (const key of Object.keys(base) as Array<keyof PropertyFormValues>) {
+    const value = (detail as unknown as Record<string, unknown>)[key];
+    if (value !== undefined && value !== null) (values as Record<string, unknown>)[key] = value;
+  }
+  return values;
+}
+
+/** "Concluir cadastro": reabre o assistente sobre o rascunho existente. */
+function NovoImovelEntry() {
+  const { rascunho } = Route.useSearch();
+  const detail = usePropertyDetail(rascunho);
+  if (!rascunho) return <NovoImovelPage key="novo" />;
+  if (detail.isLoading) {
+    return (
+      <div className="flex items-center gap-2 p-6 text-sm text-foreground/60">
+        <Loader2 className="size-4 animate-spin" /> Abrindo o cadastro…
+      </div>
+    );
+  }
+  if (!detail.data) return <NovoImovelPage key="novo" />;
+  return <NovoImovelPage key={detail.data.id} resume={detail.data} />;
+}
+
+function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
   const navigate = useNavigate();
   const create = useCreateImovel();
   const facets = useImoveisFacets();
-  const enqueue = useEnqueuePropertySync();
+  const finalize = useFinalizeRegistration();
+  const pendentes = useIncompleteRegistrations(!resume);
   const codes = usePropertyCodeReservation();
   const session = useSession();
-  const finalizeAgency = useFinalizePropertyAgency();
   const placaPhoto = usePlacaPhotoActions();
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
@@ -69,7 +101,10 @@ function NovoImovelPage() {
   /** Publicar é a ação padrão da última etapa: os destinos vêm da Etapa 1. */
   const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
-  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(resume?.id ?? null);
+  const initialValues = useRef<PropertyFormValues>(resume ? toFormValues(resume) : emptyPropertyValues());
+  /** Concluído: não avisa mais ao sair. */
+  const finished = useRef(false);
   /** Chave da intenção de cadastro: vale para todo este formulário aberto. */
   const intentKey = useRef<string>(crypto.randomUUID());
   /** Criação em andamento: duplo clique reaproveita a mesma chamada. */
@@ -78,11 +113,10 @@ function NovoImovelPage() {
   const fotosProntas = (images.data ?? []).filter(
     (image) => image.processingStatus === "ready" || image.processingStatus === "legacy",
   ).length;
-  const update = useUpdateImovel(draftId ?? undefined);
   const drive = usePropertyDrive(draftId ?? undefined);
   /** Uma reserva ativa por provedor: retry/duplo clique substitui, nunca duplica. */
   const reservationIds = useRef<Partial<Record<PropertyCarteira, string>>>({});
-  const latestValues = useRef<PropertyFormValues>(emptyPropertyValues());
+  const latestValues = useRef<PropertyFormValues>(initialValues.current);
   /** Enquanto o imóvel não é salvo de verdade, as reservas continuam devolvíveis. */
   const committed = useRef(false);
   const releasePending = codes.releasePending;
@@ -107,17 +141,6 @@ function NovoImovelPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function commitCodes(propertyId: string) {
-    const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
-    if (!ids.length) return;
-    try {
-      await codes.commit.mutateAsync({ propertyId, reservationIds: ids });
-      committed.current = true;
-    } catch {
-      // A reserva expira sozinha; não travamos o cadastro por isso.
-    }
-  }
-
   async function ensureDraft(): Promise<string | null> {
     if (draftId) return draftId;
     // Uma única promessa em andamento: dois cliques compartilham a mesma criação.
@@ -132,6 +155,7 @@ function NovoImovelPage() {
           codigoCordial: null,
           codigoMorar: null,
           clientIntentKey: intentKey.current,
+          asDraft: true,
         });
         setDraftId(property.id);
         toast.info("Rascunho salvo para receber as fotos.");
@@ -145,100 +169,143 @@ function NovoImovelPage() {
     return draftPromise.current;
   }
 
+  /** Aviso ao fechar/recarregar a aba com cadastro pendente. */
+  useEffect(() => {
+    if (!draftId) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      if (finished.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [draftId]);
+
+  function confirmLeave(): boolean {
+    if (!draftId || finished.current) return true;
+    return window.confirm(
+      "Este cadastro ainda não foi concluído: o imóvel fica como rascunho, sem agenciamento e sem ir para os sites. Sair mesmo assim? Você pode continuar depois pelo botão \"Concluir cadastro\".",
+    );
+  }
+
   async function handleSubmit(values: PropertyFormValues) {
     try {
-      // A criação usa a mesma chave de intenção do formulário: reenviar o
-      // cadastro (duplo clique, retry) nunca gera um segundo imóvel.
-      const existing = draftId;
-      const propertyId = existing
-        ? ((await update.mutateAsync({ id: existing, ...values })).property?.id ?? existing)
-        : (await create.mutateAsync({ ...values, clientIntentKey: intentKey.current })).id;
+      // Uma única chamada no servidor, idempotente pela chave de intenção e
+      // pelo ID do rascunho: duplo clique/retry nunca duplica nada.
+      const result = await finalize.mutateAsync({
+        propertyId: draftId,
+        clientIntentKey: intentKey.current,
+        values: { ...values, clientIntentKey: intentKey.current },
+        reservationIds: Object.values(reservationIds.current).filter(Boolean) as string[],
+        agency:
+          agency.enabled && canRegisterAgency
+            ? {
+                finalidade: agency.finalidade,
+                providers: destinos.length ? destinos : [values.carteira],
+                checklist: agency.checklist,
+                descricao: agency.descricao,
+              }
+            : null,
+        publishProviders: publicar ? destinos : [],
+      });
+      const propertyId = result.propertyId;
+      committed.current = true;
+      setDraftId(propertyId);
 
-      await commitCodes(propertyId);
-
-      if (agency.enabled && canRegisterAgency) {
+      if (result.agenciamentoId && agency.checklist.placaInstalada && agency.placaFile) {
         try {
-          const saved = await finalizeAgency.mutateAsync({
-            propertyId,
-            finalidade: agency.finalidade,
-            providers: destinos.length ? destinos : [values.carteira],
-            checklist: agency.checklist,
-            descricao: agency.descricao,
-          });
-          if (agency.checklist.placaInstalada && agency.placaFile) {
-            try {
-              await placaPhoto.apply(saved.id, { kind: "upload", file: agency.placaFile });
-            } catch (err) {
-              toast.warning(
-                `Agenciamento registrado, mas a foto da placa não subiu (placa segue pendente): ${(err as Error)?.message ?? "erro"}`,
-              );
-            }
-          }
-          toast.success("Agenciamento registrado e vinculado ao imóvel.");
+          await placaPhoto.apply(result.agenciamentoId, { kind: "upload", file: agency.placaFile });
         } catch (err) {
           toast.warning(
-            `Imóvel salvo, mas o agenciamento não foi registrado: ${(err as Error)?.message ?? "erro desconhecido"}`,
+            `Agenciamento registrado, mas a foto da placa não subiu (placa segue pendente): ${(err as Error)?.message ?? "erro"}`,
           );
         }
       }
 
-      if (publicar) {
-        try {
-          const result = await enqueue.mutateAsync({
-            propertyId,
-            providers: destinos,
-            action: "publish",
-          });
-          const skipped = (result as { skippedImages?: number } | undefined)?.skippedImages ?? 0;
-          toast.success(`Imóvel enviado para publicação: ${destinosLabel(destinos)}.`);
-          if (skipped > 0) {
-            toast.warning(
-              `${skipped} foto(s) não subiram e ficaram de fora do envio. Reenvie na Etapa 6 — Fotos.`,
-            );
-          }
-        } catch (err) {
+      for (const message of result.messages) toast.warning(message);
+      const ok = Object.values(result.steps).every((step) => step !== "error");
+      if (ok) {
+        finished.current = true;
+        if (result.steps.agency === "ok") toast.success("Agenciamento registrado e vinculado ao imóvel.");
+        toast.success(
+          result.steps.publish === "ok"
+            ? `Imóvel enviado para publicação: ${destinosLabel(destinos)}.`
+            : "Imóvel cadastrado no catálogo.",
+        );
+        if ((result.skippedImages ?? 0) > 0) {
           toast.warning(
-            `Imóvel salvo, mas a publicação falhou: ${(err as Error)?.message ?? "erro desconhecido"}`,
+            `${result.skippedImages} foto(s) não subiram e ficaram de fora do envio. Reenvie na Etapa 6 — Fotos.`,
           );
         }
       } else {
-
-        toast.success("Imóvel cadastrado no catálogo.");
+        toast.warning('Cadastro salvo, mas ainda não concluído. Use "Concluir cadastro" na ficha do imóvel.');
       }
       // Drive roda em segundo plano: nunca segura a saída da tela de cadastro.
       void drive.sync.mutateAsync().catch(() => {
         // a fila persistente retoma sozinha
       });
 
+      finished.current = true;
       navigate({ to: "/imoveis/$imovelId", params: { imovelId: propertyId } });
     } catch (err) {
       toast.error((err as Error)?.message ?? "Não foi possível salvar o imóvel.");
     }
   }
 
+  const meusRascunhos = (pendentes.data ?? []).filter(
+    (item) => item.isDraft && item.createdBy === session?.id,
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Link
           to="/imoveis"
+          onClick={(event) => {
+            if (!confirmLeave()) event.preventDefault();
+          }}
           className="glass-panel inline-flex size-9 items-center justify-center rounded-full"
           aria-label="Voltar para o catálogo"
         >
           <ArrowLeft className="size-4" />
         </Link>
         <div>
-          <h1 className="text-lg font-bold">Novo imóvel</h1>
+          <h1 className="text-lg font-bold">{resume ? "Concluir cadastro" : "Novo imóvel"}</h1>
           <p className="text-[12px] text-foreground/55">
             Cadastro completo, com destino de publicação Cordial e/ou Morar.
           </p>
         </div>
       </div>
 
+      {!resume && !draftId && meusRascunhos.length > 0 ? (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 text-[13px]">
+          <p className="font-semibold">Você tem {meusRascunhos.length} cadastro(s) não concluído(s).</p>
+          <ul className="mt-1.5 space-y-1">
+            {meusRascunhos.slice(0, 5).map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-2">
+                <span className="truncate text-foreground/70">
+                  {item.tipo ?? "Imóvel"}
+                  {item.bairro ? ` · ${item.bairro}` : ""} ·{" "}
+                  {new Date(item.createdAt).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+                </span>
+                <Link
+                  to="/imoveis/novo"
+                  search={{ rascunho: item.id }}
+                  className="shrink-0 font-semibold text-primary hover:underline"
+                >
+                  Continuar cadastro
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <PropertyForm
-        initial={emptyPropertyValues()}
+        initial={initialValues.current}
         submitLabel={publicar ? "Publicar imóvel" : "Salvar imóvel"}
         pending={
-          create.isPending || update.isPending || enqueue.isPending || finalizeAgency.isPending
+          create.isPending || finalize.isPending
         }
         extraSteps={[
           {
@@ -279,6 +346,7 @@ function NovoImovelPage() {
         }}
         bairros={facets.data?.bairros ?? []}
         onCancel={() => {
+          if (!confirmLeave()) return;
           releaseCodesIfPending();
           navigate({ to: "/imoveis" });
         }}

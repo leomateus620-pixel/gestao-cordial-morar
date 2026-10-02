@@ -45,7 +45,7 @@ Sem criar imóvel de teste, sem publicar, sem enviar nada aos sites. Só testes 
 
 ## Dados para o Leonardo decidir um a um (nada é aplicado)
 - Agenciamento faltando: 1399/3398 (Geandre) e 1385/3384 (Felipe), com o corretor e a data sugeridos.
-- Rascunhos órfãos: 950689c8 (Geandre, 23/09, talvez refeito como 1388), 1bac0a1d (Ricardo, 27/08), os 5 rascunhos vazios, e o rascunho de 01/10 do Geandre. 0237848e já está arquivado (refeito como 1396) e fica de fora.
+- Rascunhos órfãos: 950689c8 (Geandre, 23/09, talvez refeito como 1388), 1bac0a1d (Ricardo, 27/08), os 5 rascunhos vazios. 0237848e já está arquivado (refeito como 1396) e fica de fora.
 - Os imóveis antigos não serão marcados como rascunho automaticamente.
 
 ## Riscos

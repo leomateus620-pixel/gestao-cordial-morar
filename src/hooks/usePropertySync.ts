@@ -30,6 +30,9 @@ export function useEnqueuePropertySync(propertyId?: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["property-sync", propertyId] });
       qc.invalidateQueries({ queryKey: ["imoveis"] });
+      qc.invalidateQueries({ queryKey: ["agenciamentos"] });
+      qc.invalidateQueries({ queryKey: ["agenciamento-vinculado"] });
+      qc.invalidateQueries({ queryKey: ["cadastros-nao-concluidos"] });
     },
   });
 }

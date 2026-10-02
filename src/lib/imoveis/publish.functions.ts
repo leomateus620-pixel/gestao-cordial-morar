@@ -88,10 +88,8 @@ export type EnqueueSyncInput = {
   action?: SyncAction;
 };
 
-export const enqueuePropertySync = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: EnqueueSyncInput) => data)
-  .handler(async ({ data, context }) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function enqueuePropertySyncCore(context: { supabase: any; userId: string }, data: EnqueueSyncInput) {
     const providers = sanitizeProviders(data.providers);
     if (!providers.length) throw new Error("Selecione ao menos um destino de publicação.");
     const action: SyncAction = data.action ?? "publish";
@@ -133,10 +131,26 @@ export const enqueuePropertySync = createServerFn({ method: "POST" })
     if (!(requested as { ok?: boolean } | null)?.ok) {
       throw new Error("Não foi possível persistir a decisão de publicação.");
     }
+    // Imóvel do Gestão publicado sem agenciamento: cria uma única vez, sem
+    // nunca sobrescrever. Falha aqui não bloqueia a publicação (fica pendente).
+    let agency: { status: string; reason?: string } | null = null;
+    if (action === "publish") {
+      try {
+        const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
+        agency = await ensureAutoAgency({ propertyId: property.id, publisherId: context.userId, providers });
+      } catch (err) {
+        console.error("[auto-agency] falhou", property.id, (err as Error)?.message);
+        agency = { status: "error", reason: (err as Error)?.message };
+      }
+    }
     await kickWorker();
-    return { enqueued: providers, durable: true };
+    return { enqueued: providers, durable: true, agency };
+}
 
-  });
+export const enqueuePropertySync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: EnqueueSyncInput) => data)
+  .handler(async ({ data, context }) => enqueuePropertySyncCore(context, data));
 
 export const getPropertySyncStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

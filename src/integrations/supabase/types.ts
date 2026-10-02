@@ -2779,6 +2779,7 @@ export type Database = {
           recent_sort_at: string | null
           referencia: string | null
           regiao: string | null
+          registration_completed_at: string | null
           removal_state: string | null
           revision: number
           salas: number | null
@@ -2909,6 +2910,7 @@ export type Database = {
           recent_sort_at?: string | null
           referencia?: string | null
           regiao?: string | null
+          registration_completed_at?: string | null
           removal_state?: string | null
           revision?: number
           salas?: number | null
@@ -3039,6 +3041,7 @@ export type Database = {
           recent_sort_at?: string | null
           referencia?: string | null
           regiao?: string | null
+          registration_completed_at?: string | null
           removal_state?: string | null
           revision?: number
           salas?: number | null
@@ -7190,6 +7193,25 @@ export type Database = {
           iniciais: string
           nome: string
           role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      list_incomplete_registrations: {
+        Args: never
+        Returns: {
+          bairro: string
+          cidade: string
+          codigo_cordial: string
+          codigo_morar: string
+          corretor_id: string
+          corretor_nome: string
+          created_at: string
+          created_by: string
+          criador_nome: string
+          has_agenciamento: boolean
+          has_publication: boolean
+          id: string
+          is_draft: boolean
+          tipo: string
         }[]
       }
       list_my_notifications: {

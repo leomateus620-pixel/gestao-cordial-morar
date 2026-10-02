@@ -1,0 +1,184 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createImovelCore, updateImovelCore, type CreateImovelInput } from "@/lib/imoveis/imoveis.functions";
+import { enqueuePropertySyncCore } from "@/lib/imoveis/publish.functions";
+import {
+  finalizePropertyAgencyCore,
+  type FinalizePropertyAgencyInput,
+} from "@/lib/agenciamentos/property-link.functions";
+
+export type FinalizeRegistrationInput = {
+  /** Rascunho já criado (fotos). Sem ele, o imóvel é criado pela chave de intenção. */
+  propertyId?: string | null;
+  clientIntentKey: string;
+  values: CreateImovelInput;
+  reservationIds?: string[];
+  /** Dados da etapa de agenciamento; ausente = só o automático na publicação. */
+  agency?: Omit<FinalizePropertyAgencyInput, "propertyId"> | null;
+  /** Destinos para publicar; vazio = só catálogo. */
+  publishProviders?: string[];
+};
+
+export type StepStatus = "ok" | "skipped" | "error";
+export type FinalizeRegistrationResult = {
+  propertyId: string;
+  agenciamentoId: string | null;
+  steps: {
+    save: StepStatus;
+    codes: StepStatus;
+    agency: StepStatus;
+    publish: StepStatus;
+  };
+  messages: string[];
+  skippedImages?: number;
+};
+
+/**
+ * Conclusão do cadastro numa única chamada idempotente: salva, confirma
+ * códigos, registra o agenciamento, envia aos sites e só então marca o
+ * cadastro como concluído. Repetir (duplo clique, retry, aba fechada) nunca
+ * duplica imóvel, código, agenciamento nem envio.
+ */
+export const finalizePropertyRegistration = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: FinalizeRegistrationInput) => {
+    if (!data?.clientIntentKey && !data?.propertyId) throw new Error("Cadastro sem identificação.");
+    const descricao = (data.agency?.descricao ?? "").trim();
+    if (descricao.length > 800) throw new Error("A descrição deve ter no máximo 800 caracteres.");
+    return data;
+  })
+  .handler(async ({ data, context }): Promise<FinalizeRegistrationResult> => {
+    const messages: string[] = [];
+    const steps: FinalizeRegistrationResult["steps"] = {
+      save: "ok",
+      codes: "skipped",
+      agency: "skipped",
+      publish: "skipped",
+    };
+
+    // 1) Salvar: rascunho existente é atualizado; senão, criado pela chave.
+    let propertyId = data.propertyId ?? null;
+    if (propertyId) {
+      const { clientIntentKey: _k, asDraft: _d, ...rest } = data.values;
+      await updateImovelCore(context, { id: propertyId, ...rest });
+    } else {
+      const created = await createImovelCore(context, {
+        ...data.values,
+        clientIntentKey: data.clientIntentKey,
+        asDraft: true,
+      });
+      propertyId = created.id;
+    }
+
+    const { data: state } = await context.supabase
+      .from("properties")
+      .select("id, registration_completed_at")
+      .eq("id", propertyId)
+      .maybeSingle();
+    if (!state) throw new Error("Imóvel não encontrado ou sem permissão.");
+
+    // 2) Códigos: confirmar reservas (idempotente). Códigos que faltarem são
+    // atribuídos na publicação, como no painel.
+    const ids = (data.reservationIds ?? []).filter(Boolean);
+    if (ids.length) {
+      const { error } = await context.supabase
+        .from("provider_code_reservations")
+        .update({ status: "committed", property_id: propertyId, committed_at: new Date().toISOString() })
+        .in("id", ids)
+        .in("status", ["reserved", "committed"]);
+      steps.codes = error ? "error" : "ok";
+      if (error) messages.push("Os códigos reservados não foram confirmados; serão atribuídos na publicação.");
+    }
+
+    // 3) Agenciamento da etapa do assistente (mesma chave idempotente).
+    let agenciamentoId: string | null = null;
+    if (data.agency) {
+      try {
+        const saved = await finalizePropertyAgencyCore(context, {
+          ...data.agency,
+          descricao: (data.agency.descricao ?? "").trim(),
+          propertyId,
+        });
+        agenciamentoId = saved.id;
+        steps.agency = "ok";
+      } catch (err) {
+        steps.agency = "error";
+        messages.push(`Agenciamento não registrado: ${(err as Error)?.message ?? "erro"}`);
+      }
+    }
+
+    // 4) Publicação (também cria o agenciamento automático se ainda faltar).
+    const providers = (data.publishProviders ?? []).filter((p) => p === "cordial" || p === "morar");
+    let skippedImages: number | undefined;
+    if (providers.length) {
+      try {
+        const result = (await enqueuePropertySyncCore(context, {
+          propertyId,
+          providers,
+          action: "publish",
+        })) as { agency?: { status: string; reason?: string } | null; skippedImages?: number };
+        steps.publish = "ok";
+        skippedImages = result.skippedImages;
+        if (!agenciamentoId && result.agency) {
+          if (result.agency.status === "created" || result.agency.status === "exists") steps.agency = "ok";
+          else if (result.agency.reason) messages.push(`Agenciamento pendente: ${result.agency.reason}`);
+        }
+      } catch (err) {
+        steps.publish = "error";
+        messages.push(`Publicação não enviada: ${(err as Error)?.message ?? "erro"}`);
+      }
+    }
+
+    // 5) Concluído só quando nada falhou. Só estas duas colunas: não dispara envio.
+    if (steps.publish !== "error" && steps.agency !== "error") {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin
+        .from("properties")
+        .update({
+          is_draft: false,
+          registration_completed_at: state.registration_completed_at ?? new Date().toISOString(),
+        } as never)
+        .eq("id", propertyId);
+    }
+
+    return { propertyId, agenciamentoId, steps, messages, skippedImages };
+  });
+
+export type IncompleteRegistration = {
+  id: string;
+  codigoCordial: string | null;
+  codigoMorar: string | null;
+  tipo: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  createdAt: string;
+  createdBy: string | null;
+  criadorNome: string | null;
+  corretorNome: string | null;
+  isDraft: boolean;
+  hasPublication: boolean;
+  hasAgenciamento: boolean;
+};
+
+/** Cadastros não concluídos (admin/secretária: todos; corretor: os próprios). */
+export const listIncompleteRegistrations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<IncompleteRegistration[]> => {
+    const { data, error } = await context.supabase.rpc("list_incomplete_registrations" as never);
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      codigoCordial: (r.codigo_cordial as string) ?? null,
+      codigoMorar: (r.codigo_morar as string) ?? null,
+      tipo: (r.tipo as string) ?? null,
+      bairro: (r.bairro as string) ?? null,
+      cidade: (r.cidade as string) ?? null,
+      createdAt: String(r.created_at),
+      createdBy: (r.created_by as string) ?? null,
+      criadorNome: (r.criador_nome as string) ?? null,
+      corretorNome: (r.corretor_nome as string) ?? null,
+      isDraft: Boolean(r.is_draft),
+      hasPublication: Boolean(r.has_publication),
+      hasAgenciamento: Boolean(r.has_agenciamento),
+    }));
+  });
