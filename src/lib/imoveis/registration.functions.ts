@@ -60,7 +60,8 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     let propertyId = data.propertyId ?? null;
     if (propertyId) {
       const { clientIntentKey: _k, asDraft: _d, ...rest } = data.values;
-      await updateImovelCore(context, { id: propertyId, ...rest });
+      // Corretor vazio no formulário não apaga o corretor gravado no rascunho.
+      await updateImovelCore(context, { id: propertyId, ...keepDraftBroker(rest) });
     } else {
       const created = await createImovelCore(context, {
         ...data.values,
@@ -72,7 +73,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
 
     const { data: state } = await context.supabase
       .from("properties")
-      .select("id, registration_completed_at")
+      .select("id, registration_completed_at, corretor_id, created_by")
       .eq("id", propertyId)
       .maybeSingle();
     if (!state) throw new Error("Imóvel não encontrado ou sem permissão.");
@@ -91,11 +92,54 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     }
 
     // 3) Agenciamento da etapa do assistente (mesma chave idempotente).
+    // Admin/secretária concluindo: corretor do imóvel ou criador corretor,
+    // nunca quem clicou. Sem candidato, não cria e o cadastro fica pendente.
     let agenciamentoId: string | null = null;
+    let agencyPending = false;
     if (data.agency) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const row = state as { corretor_id: string | null; created_by: string | null };
+      const ids = [context.userId, row.created_by].filter(Boolean) as string[];
+      const { data: roleRows } = await supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", ids);
+      const roleMap = new Map<string, string[]>();
+      for (const r of (roleRows ?? []) as Array<{ user_id: string; role: string }>) {
+        roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
+      }
+      const brokerId = resolveFinalizeAgencyBroker({
+        actorId: context.userId,
+        explicitCorretorId: data.agency.corretorId,
+        propertyCorretorId: row.corretor_id,
+        createdBy: row.created_by,
+        rolesOf: (id) => roleMap.get(id) ?? [],
+      });
+      if (!brokerId) {
+        agencyPending = true;
+        steps.agency = "skipped";
+        messages.push("Agenciamento pendente: imóvel sem corretor definido. Defina o corretor e conclua de novo.");
+      }
+    }
+    if (data.agency && !agencyPending) {
       try {
+        const row = state as { corretor_id: string | null; created_by: string | null };
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: roleRows } = await supabaseAdmin
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", [context.userId, row.created_by].filter(Boolean) as string[]);
+        const roleMap = new Map<string, string[]>();
+        for (const r of (roleRows ?? []) as Array<{ user_id: string; role: string }>) {
+          roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
+        }
+        const brokerId = resolveFinalizeAgencyBroker({
+          actorId: context.userId,
+          explicitCorretorId: data.agency.corretorId,
+          propertyCorretorId: row.corretor_id,
+          createdBy: row.created_by,
+          rolesOf: (id) => roleMap.get(id) ?? [],
+        });
         const saved = await finalizePropertyAgencyCore(context, {
           ...data.agency,
+          corretorId: brokerId,
           descricao: (data.agency.descricao ?? "").trim(),
           propertyId,
         });
