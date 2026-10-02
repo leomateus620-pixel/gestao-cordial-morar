@@ -5844,54 +5844,87 @@ export type Database = {
       }
       rental_nfse_emissions: {
         Row: {
+          attempts: number
           brand: string
           codigo_verificador: string | null
           competencia: string
+          confirmacao_real_por: string | null
           contract_id: string
           created_at: string
           created_by: string | null
+          data_emissao_nfse: string | null
+          duration_ms: number | null
+          error_codes: string[] | null
           error_message: string | null
+          finished_at: string | null
+          http_status: number | null
           id: string
+          identificador: string | null
           link_pdf: string | null
           modo_teste: boolean
           numero_nfse: string | null
           request_xml: string | null
           response_raw: string | null
+          serie_nfse: string | null
+          situacao_nfse: string | null
           status: string
+          updated_at: string | null
           valor: number
         }
         Insert: {
+          attempts?: number
           brand: string
           codigo_verificador?: string | null
           competencia: string
+          confirmacao_real_por?: string | null
           contract_id: string
           created_at?: string
           created_by?: string | null
+          data_emissao_nfse?: string | null
+          duration_ms?: number | null
+          error_codes?: string[] | null
           error_message?: string | null
+          finished_at?: string | null
+          http_status?: number | null
           id?: string
+          identificador?: string | null
           link_pdf?: string | null
           modo_teste?: boolean
           numero_nfse?: string | null
           request_xml?: string | null
           response_raw?: string | null
+          serie_nfse?: string | null
+          situacao_nfse?: string | null
           status?: string
+          updated_at?: string | null
           valor: number
         }
         Update: {
+          attempts?: number
           brand?: string
           codigo_verificador?: string | null
           competencia?: string
+          confirmacao_real_por?: string | null
           contract_id?: string
           created_at?: string
           created_by?: string | null
+          data_emissao_nfse?: string | null
+          duration_ms?: number | null
+          error_codes?: string[] | null
           error_message?: string | null
+          finished_at?: string | null
+          http_status?: number | null
           id?: string
+          identificador?: string | null
           link_pdf?: string | null
           modo_teste?: boolean
           numero_nfse?: string | null
           request_xml?: string | null
           response_raw?: string | null
+          serie_nfse?: string | null
+          situacao_nfse?: string | null
           status?: string
+          updated_at?: string | null
           valor?: number
         }
         Relationships: [
