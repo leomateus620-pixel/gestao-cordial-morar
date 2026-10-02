@@ -81,18 +81,11 @@ type PropertyRow = {
   proprietario_telefone: string | null;
 };
 
-export const finalizePropertyAgency = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: FinalizePropertyAgencyInput) => {
-    if (!data?.propertyId) throw new Error("Imóvel não informado.");
-    if (data.finalidade !== "venda" && data.finalidade !== "aluguel") {
-      throw new Error("Escolha se o agenciamento é de Venda ou Aluguel.");
-    }
-    const descricao = (data.descricao ?? "").trim();
-    if (descricao.length > 800) throw new Error("A descrição deve ter no máximo 800 caracteres.");
-    return { ...data, descricao };
-  })
-  .handler(async ({ data, context }): Promise<Agenciamento> => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function finalizePropertyAgencyCore(
+  context: { supabase: any; userId: string },
+  data: FinalizePropertyAgencyInput,
+): Promise<Agenciamento> {
     const roles = await getUserRoles(context.supabase, context.userId);
     const canManage = canManageAgenciamentos(roles);
 
@@ -194,7 +187,20 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return rowToAgenciamento(inserted as unknown as AgenciamentoDbRow);
-  });
+}
+
+export const finalizePropertyAgency = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: FinalizePropertyAgencyInput) => {
+    if (!data?.propertyId) throw new Error("Imóvel não informado.");
+    if (data.finalidade !== "venda" && data.finalidade !== "aluguel") {
+      throw new Error("Escolha se o agenciamento é de Venda ou Aluguel.");
+    }
+    const descricao = (data.descricao ?? "").trim();
+    if (descricao.length > 800) throw new Error("A descrição deve ter no máximo 800 caracteres.");
+    return { ...data, descricao };
+  })
+  .handler(async ({ data, context }): Promise<Agenciamento> => finalizePropertyAgencyCore(context, data));
 
 export const getLinkedAgenciamento = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
