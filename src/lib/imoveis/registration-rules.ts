@@ -27,6 +27,47 @@ export function resolveAutoAgencyBroker(input: {
   return null;
 }
 
+const isManager = (roles: AgencyRole[]) => roles.includes("admin") || roles.includes("secretaria");
+
+/**
+ * Corretor do agenciamento na conclusão do cadastro. Corretor concluindo: ele
+ * mesmo. Admin/secretária: escolha explícita; senão corretor do imóvel; senão
+ * criador corretor. Quem clicou nunca entra como candidato. Sem candidato → null.
+ */
+export function resolveFinalizeAgencyBroker(input: {
+  actorId: string;
+  explicitCorretorId?: string | null;
+  propertyCorretorId: string | null | undefined;
+  createdBy: string | null | undefined;
+  rolesOf: (userId: string) => AgencyRole[];
+}): string | null {
+  if (!isManager(input.rolesOf(input.actorId))) return input.actorId;
+  if (input.explicitCorretorId) return input.explicitCorretorId;
+  if (input.propertyCorretorId) return input.propertyCorretorId;
+  if (input.createdBy && input.createdBy !== input.actorId) {
+    const roles = input.rolesOf(input.createdBy);
+    if (roles.includes("corretor") && !isManager(roles)) return input.createdBy;
+  }
+  return null;
+}
+
+/** Salvamento final: corretor vazio no formulário não apaga o do rascunho. */
+export function keepDraftBroker<T extends { corretorId?: string | null; corretorNome?: string | null }>(
+  values: T,
+): T {
+  if (values.corretorId) return values;
+  const { corretorId: _i, corretorNome: _n, ...rest } = values;
+  return rest as T;
+}
+
+/** Mesmo critério do servidor para "cadastro concluído". */
+export function isFinalizeCompleted(
+  steps: { publish: string; agency: string },
+  agencyPending = false,
+): boolean {
+  return steps.publish !== "error" && steps.agency !== "error" && !agencyPending;
+}
+
 /** Venda/Aluguel do agenciamento a partir da operação/finalidade do imóvel. */
 export function agencyFinalidadeFromProperty(
   finalidade: string | null | undefined,
