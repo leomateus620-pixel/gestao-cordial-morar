@@ -269,6 +269,21 @@ function DetalhePage() {
             ) : null}
           </p>
           <h1 className="mt-1 text-2xl font-bold leading-tight">{imovel.tipo ?? "Imóvel"}</h1>
+          {imovel.isDraft && !isArchived ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-destructive/10 p-3 text-[13px] text-destructive">
+              <span className="font-semibold">Cadastro não concluído</span>
+              <span className="text-foreground/65">
+                Ainda sem agenciamento e sem envio aos sites.
+              </span>
+              <Link
+                to="/imoveis/novo"
+                search={{ rascunho: imovel.id }}
+                className="ml-auto rounded-full bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground"
+              >
+                Concluir cadastro
+              </Link>
+            </div>
+          ) : null}
 
           {address ? (
             <p className="mt-2 flex items-center gap-1.5 text-sm text-foreground/60">
