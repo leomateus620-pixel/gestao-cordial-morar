@@ -3,7 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   emitRentalNfse,
+  getNfseViewer,
   listRentalNfseEmissions,
+  markRentalNfseNotIssued,
   previewRentalNfse,
   reconcileRentalNfse,
   type NfseEmission,
@@ -18,6 +20,9 @@ export function useRentalNfse(contractId: string | null, enabled = true) {
   const list = useServerFn(listRentalNfseEmissions);
   const emit = useServerFn(emitRentalNfse);
   const reconcile = useServerFn(reconcileRentalNfse);
+  const mark = useServerFn(markRentalNfseNotIssued);
+  const viewerFn = useServerFn(getNfseViewer);
+  const viewer = useQuery({ queryKey: ["nfse-viewer"], enabled, queryFn: () => viewerFn(), staleTime: 300_000 });
 
   const query = useQuery<NfseEmission[]>({
     queryKey: ["rental-nfse", contractId],
@@ -60,7 +65,22 @@ export function useRentalNfse(contractId: string | null, enabled = true) {
     onError: onFail,
   });
 
+  const markMutation = useMutation({
+    mutationFn: (vars: { emissionId: string; reason: string }) =>
+      mark({ data: { ...vars, conferidoNoPortal: true } }),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ["rental-nfse", contractId] });
+      void qc.invalidateQueries({ queryKey: ["rental-nfse-preview", contractId] });
+      void qc.invalidateQueries({ queryKey: ["nfse-health"] });
+      toast.success(r.message);
+    },
+    onError: onFail,
+  });
+
   return {
+    isAdmin: Boolean(viewer.data?.isAdmin),
+    markNotIssued: markMutation.mutateAsync,
+    isMarking: markMutation.isPending,
     emissions: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
