@@ -72,6 +72,7 @@ export function classifyResult(
   if (parsed.kind === "recusa") return "erro";
   if (parsed.kind === "ilegivel") return "incerto";
   if (modoTeste) return parsed.kind === "teste_ok" ? "teste_ok" : "incerto";
+  if (parsed.kind !== "sucesso") return "incerto";
   if (parsed.numeroNfse && (!parsed.situacaoCodigo || parsed.situacaoCodigo === "1")) return "emitida";
   return "incerto";
 }

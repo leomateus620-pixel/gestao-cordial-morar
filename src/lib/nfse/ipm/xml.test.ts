@@ -6,10 +6,10 @@ import {
   decimalBR,
   inferTomadorTipo,
   normalizeItemListaServico,
-  parseNfseResponse,
   sanitizeText,
   type NfsePayload,
 } from "./xml.ts";
+import { parseNfseResponse } from "./response.ts";
 
 function basePayload(overrides: Partial<NfsePayload> = {}): NfsePayload {
   return {
