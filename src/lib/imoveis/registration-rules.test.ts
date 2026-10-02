@@ -37,10 +37,14 @@ test("sem corretor: criador corretor, senão quem publicou se for corretor", () 
   );
 });
 
-test("admin ou secretária que publicam nunca viram responsáveis", () => {
+test("admin ou secretária que cadastraram viram responsáveis; só publicar não", () => {
   for (const who of ["admin", "secretaria"]) {
     assert.equal(
       resolveAutoAgencyBroker({ propertyCorretorId: null, createdBy: who, publisherId: who, rolesOf }),
+      who,
+    );
+    assert.equal(
+      resolveAutoAgencyBroker({ propertyCorretorId: null, createdBy: null, publisherId: who, rolesOf }),
       null,
     );
   }
@@ -102,8 +106,8 @@ test("conclusão por admin/secretária: corretor do imóvel ou criador, nunca qu
     assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: "cor2", createdBy: "cor", rolesOf }), "cor2");
     assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: "cor", rolesOf }), "cor");
     assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: null, rolesOf }), null);
-    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: actor, rolesOf }), null);
-    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: "admin", rolesOf }), null);
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: actor, rolesOf }), actor);
+    assert.equal(resolveFinalizeAgencyBroker({ actorId: actor, propertyCorretorId: null, createdBy: "admin", rolesOf }), "admin");
   }
   assert.equal(resolveFinalizeAgencyBroker({ actorId: "cor", propertyCorretorId: "cor2", createdBy: "cor", rolesOf }), "cor");
 });
