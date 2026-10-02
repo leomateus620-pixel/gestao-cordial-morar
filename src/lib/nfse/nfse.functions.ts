@@ -9,7 +9,9 @@ import {
   classifyResult,
   competenciaFromVencimento,
   currentYmSaoPaulo,
+  checkMarkNotIssued,
   PROCESSANDO_STALE_MS,
+  reclassifyFromRaw,
   resolveModoTeste,
   type EmissionStatus,
 } from "./emission-rules";
@@ -67,6 +69,10 @@ export type NfseEmission = {
   attempts: number;
   createdAt: string;
   updatedAt: string | null;
+  resolvedBy: string | null;
+  resolvedByName: string | null;
+  resolvedAt: string | null;
+  resolutionReason: string | null;
 };
 
 type SettingsRow = {
@@ -109,13 +115,16 @@ type EmissionRow = {
   attempts: number | null;
   created_at: string;
   updated_at: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolution_reason: string | null;
   request_xml?: string | null;
 };
 
 const EMISSION_COLUMNS =
-  "id,contract_id,brand,competencia,valor,status,modo_teste,numero_nfse,serie_nfse,codigo_verificador,link_pdf,error_message,error_codes,identificador,http_status,duration_ms,attempts,created_at,updated_at";
+  "id,contract_id,brand,competencia,valor,status,modo_teste,numero_nfse,serie_nfse,codigo_verificador,link_pdf,error_message,error_codes,identificador,http_status,duration_ms,attempts,created_at,updated_at,resolved_by,resolved_at,resolution_reason";
 
-const STATUSES: EmissionStatus[] = ["teste_ok", "emitida", "erro", "cancelada", "processando", "incerto"];
+const STATUSES: EmissionStatus[] = ["teste_ok", "emitida", "erro", "cancelada", "processando", "incerto", "nao_emitida"];
 
 export function normalizeNfseBrand(brand: string | null | undefined): NfseBrand {
   return brand === "morar" ? "morar" : "cordial";
@@ -175,6 +184,10 @@ function mapEmission(row: EmissionRow): NfseEmission {
     attempts: row.attempts ?? 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    resolvedBy: row.resolved_by,
+    resolvedByName: null,
+    resolvedAt: row.resolved_at,
+    resolutionReason: row.resolution_reason,
   };
 }
 
@@ -294,8 +307,26 @@ export const listRentalNfseEmissions = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
-    return ((rows ?? []) as unknown as EmissionRow[]).map(mapEmission);
+    const list = ((rows ?? []) as unknown as EmissionRow[]).map(mapEmission);
+    const ids = [...new Set(list.map((e) => e.resolvedBy).filter(Boolean))] as string[];
+    if (ids.length) {
+      const { data: profs } = await context.supabase.from("profiles").select("id,nome").in("id", ids);
+      const names = new Map(((profs ?? []) as { id: string; nome: string | null }[]).map((p) => [p.id, p.nome]));
+      for (const e of list) if (e.resolvedBy) e.resolvedByName = names.get(e.resolvedBy) ?? null;
+    }
+    return list;
   });
+
+async function hasAdminRole(supabase: AuthedSupabase, userId: string): Promise<boolean> {
+  const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  return Boolean(data);
+}
+
+export const getNfseViewer = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => ({
+    isAdmin: await hasAdminRole(context.supabase as unknown as AuthedSupabase, context.userId),
+  }));
 
 // ---------------------------------------------------------------------------
 // Contexto da emissão (compartilhado entre checagem prévia e envio)
@@ -505,9 +536,33 @@ async function getAdmin(): Promise<AdminClient> {
   return supabaseAdmin as unknown as AdminClient;
 }
 
+async function recordEvent(
+  admin: AdminClient,
+  ev: {
+    emissionId: string;
+    from: string | null;
+    to: string;
+    actor: string | null;
+    kind: "usuario" | "sistema";
+    reason?: string | null;
+    details?: Record<string, unknown> | null;
+  },
+) {
+  const { error } = await admin.from("rental_nfse_emission_events").insert({
+    emission_id: ev.emissionId,
+    from_status: ev.from,
+    to_status: ev.to,
+    actor: ev.actor,
+    actor_kind: ev.kind,
+    reason: ev.reason ?? null,
+    details: ev.details ?? null,
+  });
+  if (error) console.error(JSON.stringify({ evento: "nfse_evento_falhou", emissionId: ev.emissionId, erro: error.message }));
+}
+
 async function expireStaleProcessing(admin: AdminClient, brand: NfseBrand) {
   const cutoff = new Date(Date.now() - PROCESSANDO_STALE_MS).toISOString();
-  const { error } = await admin
+  const { data: expired, error } = await admin
     .from("rental_nfse_emissions")
     .update({
       status: "incerto",
@@ -516,8 +571,11 @@ async function expireStaleProcessing(admin: AdminClient, brand: NfseBrand) {
     })
     .eq("brand", brand)
     .eq("status", "processando")
-    .lt("updated_at", cutoff);
+    .lt("updated_at", cutoff)
+    .select("id");
   if (error) throw new Error(error.message);
+  for (const r of (expired ?? []) as { id: string }[])
+    await recordEvent(admin, { emissionId: r.id, from: "processando", to: "incerto", actor: null, kind: "sistema", reason: "processando_vencido" });
 }
 
 function uniqueViolationMessage(err: { code?: string; message?: string }): string | null {
@@ -542,6 +600,8 @@ async function sendAndRecord(opts: {
   modoTeste: boolean;
   settingsRow: SettingsRow;
   xml: string;
+  actor: string;
+  origem: "emissao" | "conferencia";
 }) {
   const { admin, emissionId, brand, settingsRow } = opts;
   const names = secretNames(brand);
@@ -561,7 +621,9 @@ async function sendAndRecord(opts: {
 
   const errorMessage =
     status === "teste_ok" || status === "emitida"
-      ? null
+      ? p.mensagens.length && status === "emitida"
+        ? `Aviso da prefeitura: ${p.mensagem}`
+        : null
       : [
           result.transportError,
           p.mensagem,
@@ -607,6 +669,15 @@ async function sendAndRecord(opts: {
     },
     status === "erro" || status === "incerto" || Boolean(error),
   );
+  await recordEvent(admin, {
+    emissionId,
+    from: "processando",
+    to: status,
+    actor: opts.actor,
+    kind: "usuario",
+    reason: opts.origem,
+    details: { http_status: result.httpStatus, duration_ms: result.durationMs, error_codes: p.codigosErro, transport: result.transport },
+  });
   if (error) throw new Error(`Resposta recebida, mas o registro falhou: ${error.message}. A linha ficou em processamento e será conferida.`);
 
   const message =
@@ -676,7 +747,18 @@ export const emitRentalNfse = createServerFn({ method: "POST" })
       throw new Error(msg ?? insertError.message);
     }
 
+    await recordEvent(admin, {
+      emissionId: (inserted as { id: string }).id,
+      from: null,
+      to: "processando",
+      actor: context.userId,
+      kind: "usuario",
+      reason: modoTeste ? "emissao_teste" : "emissao_real",
+      details: { identificador: ctx.identificador, competencia: comp },
+    });
     return sendAndRecord({
+      actor: context.userId,
+      origem: "emissao",
       admin,
       emissionId: (inserted as { id: string }).id,
       brand,
@@ -730,7 +812,18 @@ export const reconcileRentalNfse = createServerFn({ method: "POST" })
     if (claimErr) throw new Error(uniqueViolationMessage(claimErr) ?? claimErr.message);
     if (!claimed || (claimed as unknown[]).length === 0) throw new Error("Esta emissão já está sendo conferida.");
 
+    await recordEvent(admin, {
+      emissionId: row.id,
+      from: "incerto",
+      to: "processando",
+      actor: context.userId,
+      kind: "usuario",
+      reason: "conferencia",
+      details: { attempts: (f.attempts ?? 1) + 1 },
+    });
     return sendAndRecord({
+      actor: context.userId,
+      origem: "conferencia",
       admin,
       emissionId: row.id,
       brand,
@@ -748,6 +841,7 @@ export type NfseBrandHealth = {
   ultimoSucessoReal: string | null;
   incerto30d: number;
   erro30d: number;
+  naoEmitida30d: number;
 };
 
 export const getNfseHealth = createServerFn({ method: "GET" })
@@ -776,7 +870,7 @@ export const getNfseHealth = createServerFn({ method: "GET" })
           .from("rental_nfse_emissions")
           .select("status")
           .eq("brand", brand)
-          .in("status", ["incerto", "erro"])
+          .in("status", ["incerto", "erro", "nao_emitida"])
           .gte("created_at", since),
       ]);
       for (const r of [last, okReal, recent]) if (r.error) throw new Error(r.error.message);
@@ -788,7 +882,126 @@ export const getNfseHealth = createServerFn({ method: "GET" })
         ultimoSucessoReal: ((okReal.data ?? [])[0] as { created_at: string } | undefined)?.created_at ?? null,
         incerto30d: rs.filter((r) => r.status === "incerto").length,
         erro30d: rs.filter((r) => r.status === "erro").length,
+        naoEmitida30d: rs.filter((r) => r.status === "nao_emitida").length,
       });
     }
     return out;
+  });
+
+const markSchema = z.object({
+  emissionId: uuid,
+  reason: z.string().max(1000),
+  conferidoNoPortal: z.boolean(),
+});
+
+export const markRentalNfseNotIssued = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: z.input<typeof markSchema>) => zParse(markSchema, d))
+  .handler(async ({ data, context }) => {
+    const isAdmin = await hasAdminRole(context.supabase as unknown as AuthedSupabase, context.userId);
+    if (!isAdmin) throw new Error("Apenas a administração pode marcar uma nota como não emitida.");
+    const { data: visible, error: visErr } = await context.supabase
+      .from("rental_nfse_emissions")
+      .select("id,brand")
+      .eq("id", data.emissionId)
+      .maybeSingle();
+    if (visErr) throw new Error(visErr.message);
+    if (!visible) throw new Error("Emissão não encontrada.");
+    const admin = await getAdmin();
+    await expireStaleProcessing(admin, normalizeNfseBrand((visible as { brand: string }).brand));
+    const { data: fresh, error: fErr } = await admin
+      .from("rental_nfse_emissions")
+      .select("status,numero_nfse")
+      .eq("id", data.emissionId)
+      .single();
+    if (fErr) throw new Error(fErr.message);
+    const f = fresh as { status: string; numero_nfse: string | null };
+    const reason = data.reason.trim();
+    const refusal = checkMarkNotIssued({ isAdmin, status: f.status, numeroNfse: f.numero_nfse, reason, conferidoNoPortal: data.conferidoNoPortal });
+    if (refusal) throw new Error(refusal);
+    const now = new Date().toISOString();
+    const { data: upd, error: uErr } = await admin
+      .from("rental_nfse_emissions")
+      .update({ status: "nao_emitida", resolved_by: context.userId, resolved_at: now, resolution_reason: reason, updated_at: now })
+      .eq("id", data.emissionId)
+      .eq("status", "incerto")
+      .is("numero_nfse", null)
+      .select(EMISSION_COLUMNS);
+    if (uErr) throw new Error(uErr.message);
+    const rows = (upd ?? []) as EmissionRow[];
+    if (!rows.length) throw new Error("A emissão mudou de estado: atualize a tela e confira de novo.");
+    await recordEvent(admin, {
+      emissionId: data.emissionId,
+      from: "incerto",
+      to: "nao_emitida",
+      actor: context.userId,
+      kind: "usuario",
+      reason,
+      details: { conferido_no_portal: true },
+    });
+    return { emission: mapEmission(rows[0] as EmissionRow), message: "Marcada como não emitida. A competência está livre." };
+  });
+
+export const reclassifyStuckNfse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const isAdmin = await hasAdminRole(context.supabase as unknown as AuthedSupabase, context.userId);
+    if (!isAdmin) throw new Error("Apenas a administração pode reclassificar pendências.");
+    const admin = await getAdmin();
+    for (const b of ["cordial", "morar"] as const) await expireStaleProcessing(admin, b);
+    const { data: rows, error } = await admin
+      .from("rental_nfse_emissions")
+      .select("id,status,modo_teste,response_raw")
+      .eq("status", "incerto");
+    if (error) throw new Error(error.message);
+    const { parseNfseResponse } = await import("./ipm/response");
+    let analisadas = 0;
+    let semRetorno = 0;
+    const alteradas: { id: string; de: string; para: string }[] = [];
+    for (const r of (rows ?? []) as { id: string; status: string; modo_teste: boolean; response_raw: string | null }[]) {
+      analisadas++;
+      if (!r.response_raw) {
+        semRetorno++;
+        continue;
+      }
+      const next = reclassifyFromRaw(r.status, r.response_raw, r.modo_teste, parseNfseResponse);
+      if (!next) continue;
+      const p = parseNfseResponse(r.response_raw);
+      const now = new Date().toISOString();
+      const patch: Record<string, unknown> = {
+        status: next,
+        error_codes: p.codigosErro.length ? p.codigosErro : null,
+        updated_at: now,
+      };
+      if (next === "erro") patch["error_message"] = p.mensagem;
+      if (next === "emitida") {
+        Object.assign(patch, {
+          numero_nfse: p.numeroNfse,
+          serie_nfse: p.serieNfse,
+          codigo_verificador: p.codigoVerificador,
+          link_pdf: p.linkPdf,
+          situacao_nfse: p.situacaoDescricao ?? p.situacaoCodigo,
+          error_message: p.mensagens.length ? `Aviso da prefeitura: ${p.mensagem}` : null,
+        });
+      }
+      const { data: upd, error: uErr } = await admin
+        .from("rental_nfse_emissions")
+        .update(patch)
+        .eq("id", r.id)
+        .eq("status", r.status)
+        .select("id");
+      if (uErr) throw new Error(uErr.message);
+      if (!(upd ?? []).length) continue;
+      await recordEvent(admin, {
+        emissionId: r.id,
+        from: r.status,
+        to: next,
+        actor: context.userId,
+        kind: "sistema",
+        reason: "reclassificacao_parser",
+        details: { status_antigo: r.status, motivo: p.kind, error_codes: p.codigosErro },
+      });
+      alteradas.push({ id: r.id, de: r.status, para: next });
+    }
+    return { analisadas, semRetorno, alteradas };
   });
