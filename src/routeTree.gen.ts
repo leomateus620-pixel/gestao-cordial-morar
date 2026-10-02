@@ -9,84 +9,75 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AppRouteImport } from './routes/_app'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as SiteRouteImport } from './routes/site'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as AppIndexRouteImport } from './routes/_app.index'
-import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
-import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
-import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
-import { Route as AppBuscaRouteImport } from './routes/_app.busca'
-import { Route as AppClientesRouteImport } from './routes/_app.clientes'
-import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
-import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
-import { Route as AppDocumentosRouteImport } from './routes/_app.documentos'
-import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
-import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
-import { Route as AppImoveisDestaqueRouteImport } from './routes/_app.imoveis-destaque'
-import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
-import { Route as AppMaisRouteImport } from './routes/_app.mais'
-import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
-import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
-import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
-import { Route as AppSiteAdministracaoRouteImport } from './routes/_app.site-administracao'
-import { Route as AppVendasRouteImport } from './routes/_app.vendas'
-import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as SiteRouteImport } from './routes/site'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as SiteIndexRouteImport } from './routes/site.index'
-import { Route as SitePageRouteImport } from './routes/site.$page'
-import { Route as SiteAnuncieRouteImport } from './routes/site.anuncie'
-import { Route as SiteBairrosRouteImport } from './routes/site.bairros'
-import { Route as SiteBuscarRouteImport } from './routes/site.buscar'
-import { Route as SiteContatoRouteImport } from './routes/site.contato'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as SiteFavoritosRouteImport } from './routes/site.favoritos'
-import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
-import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
-import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
-import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
-import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
-import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
-import { Route as ApiCordialSiteSplatRouteImport } from './routes/api/cordial-site/$'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as SiteImovelPublicIdRouteImport } from './routes/site.imovel.$publicId'
-import { Route as SiteInformacoesSlugRouteImport } from './routes/site.informacoes.$slug'
+import { Route as SiteContatoRouteImport } from './routes/site.contato'
+import { Route as SiteBuscarRouteImport } from './routes/site.buscar'
+import { Route as SiteBairrosRouteImport } from './routes/site.bairros'
+import { Route as SiteAnuncieRouteImport } from './routes/site.anuncie'
+import { Route as SitePageRouteImport } from './routes/site.$page'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
+import { Route as AppVendasRouteImport } from './routes/_app.vendas'
+import { Route as AppSiteAdministracaoRouteImport } from './routes/_app.site-administracao'
+import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
+import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
+import { Route as AppMaisRouteImport } from './routes/_app.mais'
+import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
+import { Route as AppImoveisDestaqueRouteImport } from './routes/_app.imoveis-destaque'
+import { Route as AppImoveisRouteImport } from './routes/_app.imoveis'
+import { Route as AppFinanceiroRouteImport } from './routes/_app.financeiro'
+import { Route as AppDocumentosRouteImport } from './routes/_app.documentos'
+import { Route as AppCorretoresRouteImport } from './routes/_app.corretores'
+import { Route as AppConfiguracoesRouteImport } from './routes/_app.configuracoes'
+import { Route as AppClientesRouteImport } from './routes/_app.clientes'
+import { Route as AppBuscaRouteImport } from './routes/_app.busca'
+import { Route as AppAtendimentosRouteImport } from './routes/_app.atendimentos'
+import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
+import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
 import { Route as SiteNoticiasIndexRouteImport } from './routes/site.noticias.index'
+import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
+import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as SiteNoticiasSlugRouteImport } from './routes/site.noticias.$slug'
+import { Route as SiteInformacoesSlugRouteImport } from './routes/site.informacoes.$slug'
+import { Route as SiteImovelPublicIdRouteImport } from './routes/site.imovel.$publicId'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiCordialSiteSplatRouteImport } from './routes/api/cordial-site/$'
+import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
+import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
+import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
+import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
 import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
-import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
-import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
-import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
-import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
-import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
-import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
-import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
-import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
-import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
-import { Route as ApiPublicHooksPropertyImageWorkerRouteImport } from './routes/api/public/hooks/property-image-worker'
-import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes/api/public/hooks/property-import-worker'
-import { Route as ApiPublicHooksPropertyMediaWorkerRouteImport } from './routes/api/public/hooks/property-media-worker'
-import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
-import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
-import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
-import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
+import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
+import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
+import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
+import { Route as ApiPublicHooksPropertyMediaWorkerRouteImport } from './routes/api/public/hooks/property-media-worker'
+import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes/api/public/hooks/property-import-worker'
+import { Route as ApiPublicHooksPropertyImageWorkerRouteImport } from './routes/api/public/hooks/property-image-worker'
+import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
+import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
+import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
+import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
+import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
+import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
+import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
+import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
+import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
 
-const AppRoute = AppRouteImport.update({
-  id: '/_app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteRoute = SiteRouteImport.update({
@@ -94,114 +85,18 @@ const SiteRoute = SiteRouteImport.update({
   path: '/site',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UnsubscribeRoute = UnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
-  id: '/agenciamentos',
-  path: '/agenciamentos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAlugueisRoute = AppAlugueisRouteImport.update({
-  id: '/alugueis',
-  path: '/alugueis',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAtendimentosRoute = AppAtendimentosRouteImport.update({
-  id: '/atendimentos',
-  path: '/atendimentos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppBuscaRoute = AppBuscaRouteImport.update({
-  id: '/busca',
-  path: '/busca',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppClientesRoute = AppClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCorretoresRoute = AppCorretoresRouteImport.update({
-  id: '/corretores',
-  path: '/corretores',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDocumentosRoute = AppDocumentosRouteImport.update({
-  id: '/documentos',
-  path: '/documentos',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
-  id: '/financeiro',
-  path: '/financeiro',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImoveisRoute = AppImoveisRouteImport.update({
-  id: '/imoveis',
-  path: '/imoveis',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImoveisDestaqueRoute = AppImoveisDestaqueRouteImport.update({
-  id: '/imoveis-destaque',
-  path: '/imoveis-destaque',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
-  id: '/integracoes',
-  path: '/integracoes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMaisRoute = AppMaisRouteImport.update({
-  id: '/mais',
-  path: '/mais',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMarketingRoute = AppMarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPesquisaSatisfacaoRoute = AppPesquisaSatisfacaoRouteImport.update({
-  id: '/pesquisa-satisfacao',
-  path: '/pesquisa-satisfacao',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSiteAdministracaoRoute = AppSiteAdministracaoRouteImport.update({
-  id: '/site-administracao',
-  path: '/site-administracao',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppVendasRoute = AppVendasRouteImport.update({
-  id: '/vendas',
-  path: '/vendas',
-  getParentRoute: () => AppRoute,
-} as any)
-const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
-  id: '/avaliar/$token',
-  path: '/avaliar/$token',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteIndexRoute = SiteIndexRouteImport.update({
@@ -209,24 +104,14 @@ const SiteIndexRoute = SiteIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SiteRoute,
 } as any)
-const SitePageRoute = SitePageRouteImport.update({
-  id: '/$page',
-  path: '/$page',
-  getParentRoute: () => SiteRoute,
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
 } as any)
-const SiteAnuncieRoute = SiteAnuncieRouteImport.update({
-  id: '/anuncie',
-  path: '/anuncie',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteBairrosRoute = SiteBairrosRouteImport.update({
-  id: '/bairros',
-  path: '/bairros',
-  getParentRoute: () => SiteRoute,
-} as any)
-const SiteBuscarRoute = SiteBuscarRouteImport.update({
-  id: '/buscar',
-  path: '/buscar',
+const SiteFavoritosRoute = SiteFavoritosRouteImport.update({
+  id: '/favoritos',
+  path: '/favoritos',
   getParentRoute: () => SiteRoute,
 } as any)
 const SiteContatoRoute = SiteContatoRouteImport.update({
@@ -234,54 +119,144 @@ const SiteContatoRoute = SiteContatoRouteImport.update({
   path: '/contato',
   getParentRoute: () => SiteRoute,
 } as any)
-const SiteFavoritosRoute = SiteFavoritosRouteImport.update({
-  id: '/favoritos',
-  path: '/favoritos',
+const SiteBuscarRoute = SiteBuscarRouteImport.update({
+  id: '/buscar',
+  path: '/buscar',
   getParentRoute: () => SiteRoute,
 } as any)
-const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
-  id: '/agenda/',
-  path: '/agenda/',
+const SiteBairrosRoute = SiteBairrosRouteImport.update({
+  id: '/bairros',
+  path: '/bairros',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteAnuncieRoute = SiteAnuncieRouteImport.update({
+  id: '/anuncie',
+  path: '/anuncie',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SitePageRoute = SitePageRouteImport.update({
+  id: '/$page',
+  path: '/$page',
+  getParentRoute: () => SiteRoute,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
+  id: '/avaliar/$token',
+  path: '/avaliar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppVendasRoute = AppVendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAgendaFotosRoute = AppAgendaFotosRouteImport.update({
-  id: '/agenda/fotos',
-  path: '/agenda/fotos',
+const AppSiteAdministracaoRoute = AppSiteAdministracaoRouteImport.update({
+  id: '/site-administracao',
+  path: '/site-administracao',
   getParentRoute: () => AppRoute,
 } as any)
-const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
-  id: '/$clienteId',
-  path: '/$clienteId',
-  getParentRoute: () => AppClientesRoute,
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPesquisaSatisfacaoRoute = AppPesquisaSatisfacaoRouteImport.update({
+  id: '/pesquisa-satisfacao',
+  path: '/pesquisa-satisfacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMarketingRoute = AppMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMaisRoute = AppMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisDestaqueRoute = AppImoveisDestaqueRouteImport.update({
+  id: '/imoveis-destaque',
+  path: '/imoveis-destaque',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisRoute = AppImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceiroRoute = AppFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentosRoute = AppDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCorretoresRoute = AppCorretoresRouteImport.update({
+  id: '/corretores',
+  path: '/corretores',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesRoute = AppClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBuscaRoute = AppBuscaRouteImport.update({
+  id: '/busca',
+  path: '/busca',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAtendimentosRoute = AppAtendimentosRouteImport.update({
+  id: '/atendimentos',
+  path: '/atendimentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAlugueisRoute = AppAlugueisRouteImport.update({
+  id: '/alugueis',
+  path: '/alugueis',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgenciamentosRoute = AppAgenciamentosRouteImport.update({
+  id: '/agenciamentos',
+  path: '/agenciamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const SiteNoticiasIndexRoute = SiteNoticiasIndexRouteImport.update({
+  id: '/noticias/',
+  path: '/noticias/',
+  getParentRoute: () => SiteRoute,
 } as any)
 const AppImoveisIndexRoute = AppImoveisIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppImoveisRoute,
 } as any)
-const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
-  id: '/$imovelId',
-  path: '/$imovelId',
-  getParentRoute: () => AppImoveisRoute,
+const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
+  id: '/agenda/',
+  path: '/agenda/',
+  getParentRoute: () => AppRoute,
 } as any)
-const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
-  id: '/novo',
-  path: '/novo',
-  getParentRoute: () => AppImoveisRoute,
-} as any)
-const ApiCordialSiteSplatRoute = ApiCordialSiteSplatRouteImport.update({
-  id: '/api/cordial-site/$',
-  path: '/api/cordial-site/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SiteImovelPublicIdRoute = SiteImovelPublicIdRouteImport.update({
-  id: '/imovel/$publicId',
-  path: '/imovel/$publicId',
+const SiteNoticiasSlugRoute = SiteNoticiasSlugRouteImport.update({
+  id: '/noticias/$slug',
+  path: '/noticias/$slug',
   getParentRoute: () => SiteRoute,
 } as any)
 const SiteInformacoesSlugRoute = SiteInformacoesSlugRouteImport.update({
@@ -289,121 +264,50 @@ const SiteInformacoesSlugRoute = SiteInformacoesSlugRouteImport.update({
   path: '/informacoes/$slug',
   getParentRoute: () => SiteRoute,
 } as any)
-const SiteNoticiasIndexRoute = SiteNoticiasIndexRouteImport.update({
-  id: '/noticias/',
-  path: '/noticias/',
+const SiteImovelPublicIdRoute = SiteImovelPublicIdRouteImport.update({
+  id: '/imovel/$publicId',
+  path: '/imovel/$publicId',
   getParentRoute: () => SiteRoute,
 } as any)
-const SiteNoticiasSlugRoute = SiteNoticiasSlugRouteImport.update({
-  id: '/noticias/$slug',
-  path: '/noticias/$slug',
-  getParentRoute: () => SiteRoute,
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCordialSiteSplatRoute = ApiCordialSiteSplatRouteImport.update({
+  id: '/api/cordial-site/$',
+  path: '/api/cordial-site/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => AppImoveisRoute,
+} as any)
+const AppImoveisImovelIdRoute = AppImoveisImovelIdRouteImport.update({
+  id: '/$imovelId',
+  path: '/$imovelId',
+  getParentRoute: () => AppImoveisRoute,
+} as any)
+const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
+  id: '/$clienteId',
+  path: '/$clienteId',
+  getParentRoute: () => AppClientesRoute,
+} as any)
+const AppAgendaFotosRoute = AppAgendaFotosRouteImport.update({
+  id: '/agenda/fotos',
+  path: '/agenda/fotos',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppImoveisImovelIdIndexRoute = AppImoveisImovelIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppImoveisImovelIdRoute,
 } as any)
-const AppImoveisImovelIdEditarRoute =
-  AppImoveisImovelIdEditarRouteImport.update({
-    id: '/editar',
-    path: '/editar',
-    getParentRoute: () => AppImoveisImovelIdRoute,
-  } as any)
-const ApiPublicGoogleCalendarCallbackRoute =
-  ApiPublicGoogleCalendarCallbackRouteImport.update({
-    id: '/api/public/google-calendar/callback',
-    path: '/api/public/google-calendar/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksAgendaPhotoDigestRoute =
-  ApiPublicHooksAgendaPhotoDigestRouteImport.update({
-    id: '/api/public/hooks/agenda-photo-digest',
-    path: '/api/public/hooks/agenda-photo-digest',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksAgendaRemindersRoute =
-  ApiPublicHooksAgendaRemindersRouteImport.update({
-    id: '/api/public/hooks/agenda-reminders',
-    path: '/api/public/hooks/agenda-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksFinanceiroSheetsSyncRoute =
-  ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
-    id: '/api/public/hooks/financeiro-sheets-sync',
-    path: '/api/public/hooks/financeiro-sheets-sync',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksGalleryAlignRoute =
-  ApiPublicHooksGalleryAlignRouteImport.update({
-    id: '/api/public/hooks/gallery-align',
-    path: '/api/public/hooks/gallery-align',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksGoogleCalendarSyncRoute =
-  ApiPublicHooksGoogleCalendarSyncRouteImport.update({
-    id: '/api/public/hooks/google-calendar-sync',
-    path: '/api/public/hooks/google-calendar-sync',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertyDriveWorkerRoute =
-  ApiPublicHooksPropertyDriveWorkerRouteImport.update({
-    id: '/api/public/hooks/property-drive-worker',
-    path: '/api/public/hooks/property-drive-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertyImageRetryRoute =
-  ApiPublicHooksPropertyImageRetryRouteImport.update({
-    id: '/api/public/hooks/property-image-retry',
-    path: '/api/public/hooks/property-image-retry',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertyImageWorkerRoute =
-  ApiPublicHooksPropertyImageWorkerRouteImport.update({
-    id: '/api/public/hooks/property-image-worker',
-    path: '/api/public/hooks/property-image-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertyImportWorkerRoute =
-  ApiPublicHooksPropertyImportWorkerRouteImport.update({
-    id: '/api/public/hooks/property-import-worker',
-    path: '/api/public/hooks/property-import-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertyMediaWorkerRoute =
-  ApiPublicHooksPropertyMediaWorkerRouteImport.update({
-    id: '/api/public/hooks/property-media-worker',
-    path: '/api/public/hooks/property-media-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertySyncReconcileRoute =
-  ApiPublicHooksPropertySyncReconcileRouteImport.update({
-    id: '/api/public/hooks/property-sync-reconcile',
-    path: '/api/public/hooks/property-sync-reconcile',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPropertySyncWorkerRoute =
-  ApiPublicHooksPropertySyncWorkerRouteImport.update({
-    id: '/api/public/hooks/property-sync-worker',
-    path: '/api/public/hooks/property-sync-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksPushWorkerRoute =
-  ApiPublicHooksPushWorkerRouteImport.update({
-    id: '/api/public/hooks/push-worker',
-    path: '/api/public/hooks/push-worker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksSalePaymentRemindersRoute =
-  ApiPublicHooksSalePaymentRemindersRouteImport.update({
-    id: '/api/public/hooks/sale-payment-reminders',
-    path: '/api/public/hooks/sale-payment-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
 const LovableEmailTransactionalPreviewRoute =
@@ -412,11 +316,107 @@ const LovableEmailTransactionalPreviewRoute =
     path: '/lovable/email/transactional/preview',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSalePaymentRemindersRoute =
+  ApiPublicHooksSalePaymentRemindersRouteImport.update({
+    id: '/api/public/hooks/sale-payment-reminders',
+    path: '/api/public/hooks/sale-payment-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPushWorkerRoute =
+  ApiPublicHooksPushWorkerRouteImport.update({
+    id: '/api/public/hooks/push-worker',
+    path: '/api/public/hooks/push-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertySyncWorkerRoute =
+  ApiPublicHooksPropertySyncWorkerRouteImport.update({
+    id: '/api/public/hooks/property-sync-worker',
+    path: '/api/public/hooks/property-sync-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertySyncReconcileRoute =
+  ApiPublicHooksPropertySyncReconcileRouteImport.update({
+    id: '/api/public/hooks/property-sync-reconcile',
+    path: '/api/public/hooks/property-sync-reconcile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertyMediaWorkerRoute =
+  ApiPublicHooksPropertyMediaWorkerRouteImport.update({
+    id: '/api/public/hooks/property-media-worker',
+    path: '/api/public/hooks/property-media-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertyImportWorkerRoute =
+  ApiPublicHooksPropertyImportWorkerRouteImport.update({
+    id: '/api/public/hooks/property-import-worker',
+    path: '/api/public/hooks/property-import-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertyImageWorkerRoute =
+  ApiPublicHooksPropertyImageWorkerRouteImport.update({
+    id: '/api/public/hooks/property-image-worker',
+    path: '/api/public/hooks/property-image-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertyImageRetryRoute =
+  ApiPublicHooksPropertyImageRetryRouteImport.update({
+    id: '/api/public/hooks/property-image-retry',
+    path: '/api/public/hooks/property-image-retry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksPropertyDriveWorkerRoute =
+  ApiPublicHooksPropertyDriveWorkerRouteImport.update({
+    id: '/api/public/hooks/property-drive-worker',
+    path: '/api/public/hooks/property-drive-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGoogleCalendarSyncRoute =
+  ApiPublicHooksGoogleCalendarSyncRouteImport.update({
+    id: '/api/public/hooks/google-calendar-sync',
+    path: '/api/public/hooks/google-calendar-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGalleryAlignRoute =
+  ApiPublicHooksGalleryAlignRouteImport.update({
+    id: '/api/public/hooks/gallery-align',
+    path: '/api/public/hooks/gallery-align',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksFinanceiroSheetsSyncRoute =
+  ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
+    id: '/api/public/hooks/financeiro-sheets-sync',
+    path: '/api/public/hooks/financeiro-sheets-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksAgendaRemindersRoute =
+  ApiPublicHooksAgendaRemindersRouteImport.update({
+    id: '/api/public/hooks/agenda-reminders',
+    path: '/api/public/hooks/agenda-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksAgendaPhotoDigestRoute =
+  ApiPublicHooksAgendaPhotoDigestRouteImport.update({
+    id: '/api/public/hooks/agenda-photo-digest',
+    path: '/api/public/hooks/agenda-photo-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicGoogleCalendarCallbackRoute =
+  ApiPublicGoogleCalendarCallbackRouteImport.update({
+    id: '/api/public/google-calendar/callback',
+    path: '/api/public/google-calendar/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppImoveisImovelIdEditarRoute =
+  AppImoveisImovelIdEditarRouteImport.update({
+    id: '/editar',
+    path: '/editar',
+    getParentRoute: () => AppImoveisImovelIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -847,25 +847,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/site': {
@@ -875,158 +861,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/unsubscribe': {
-      id: '/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/unsubscribe'
-      preLoaderRoute: typeof UnsubscribeRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/': {
-      id: '/_app/'
-      path: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/agenciamentos': {
-      id: '/_app/agenciamentos'
-      path: '/agenciamentos'
-      fullPath: '/agenciamentos'
-      preLoaderRoute: typeof AppAgenciamentosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/alugueis': {
-      id: '/_app/alugueis'
-      path: '/alugueis'
-      fullPath: '/alugueis'
-      preLoaderRoute: typeof AppAlugueisRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/atendimentos': {
-      id: '/_app/atendimentos'
-      path: '/atendimentos'
-      fullPath: '/atendimentos'
-      preLoaderRoute: typeof AppAtendimentosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/busca': {
-      id: '/_app/busca'
-      path: '/busca'
-      fullPath: '/busca'
-      preLoaderRoute: typeof AppBuscaRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/clientes': {
-      id: '/_app/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AppClientesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/configuracoes': {
-      id: '/_app/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof AppConfiguracoesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/corretores': {
-      id: '/_app/corretores'
-      path: '/corretores'
-      fullPath: '/corretores'
-      preLoaderRoute: typeof AppCorretoresRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/documentos': {
-      id: '/_app/documentos'
-      path: '/documentos'
-      fullPath: '/documentos'
-      preLoaderRoute: typeof AppDocumentosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/financeiro': {
-      id: '/_app/financeiro'
-      path: '/financeiro'
-      fullPath: '/financeiro'
-      preLoaderRoute: typeof AppFinanceiroRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/imoveis': {
-      id: '/_app/imoveis'
-      path: '/imoveis'
-      fullPath: '/imoveis'
-      preLoaderRoute: typeof AppImoveisRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/imoveis-destaque': {
-      id: '/_app/imoveis-destaque'
-      path: '/imoveis-destaque'
-      fullPath: '/imoveis-destaque'
-      preLoaderRoute: typeof AppImoveisDestaqueRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/integracoes': {
-      id: '/_app/integracoes'
-      path: '/integracoes'
-      fullPath: '/integracoes'
-      preLoaderRoute: typeof AppIntegracoesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/mais': {
-      id: '/_app/mais'
-      path: '/mais'
-      fullPath: '/mais'
-      preLoaderRoute: typeof AppMaisRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/marketing': {
-      id: '/_app/marketing'
-      path: '/marketing'
-      fullPath: '/marketing'
-      preLoaderRoute: typeof AppMarketingRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/pesquisa-satisfacao': {
-      id: '/_app/pesquisa-satisfacao'
-      path: '/pesquisa-satisfacao'
-      fullPath: '/pesquisa-satisfacao'
-      preLoaderRoute: typeof AppPesquisaSatisfacaoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/relatorios': {
-      id: '/_app/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof AppRelatoriosRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/site-administracao': {
-      id: '/_app/site-administracao'
-      path: '/site-administracao'
-      fullPath: '/site-administracao'
-      preLoaderRoute: typeof AppSiteAdministracaoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/vendas': {
-      id: '/_app/vendas'
-      path: '/vendas'
-      fullPath: '/vendas'
-      preLoaderRoute: typeof AppVendasRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/avaliar/$token': {
-      id: '/avaliar/$token'
-      path: '/avaliar/$token'
-      fullPath: '/avaliar/$token'
-      preLoaderRoute: typeof AvaliarTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/site/': {
@@ -1036,32 +889,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteIndexRouteImport
       parentRoute: typeof SiteRoute
     }
-    '/site/$page': {
-      id: '/site/$page'
-      path: '/$page'
-      fullPath: '/site/$page'
-      preLoaderRoute: typeof SitePageRouteImport
-      parentRoute: typeof SiteRoute
+    '/_app/': {
+      id: '/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/site/anuncie': {
-      id: '/site/anuncie'
-      path: '/anuncie'
-      fullPath: '/site/anuncie'
-      preLoaderRoute: typeof SiteAnuncieRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/site/bairros': {
-      id: '/site/bairros'
-      path: '/bairros'
-      fullPath: '/site/bairros'
-      preLoaderRoute: typeof SiteBairrosRouteImport
-      parentRoute: typeof SiteRoute
-    }
-    '/site/buscar': {
-      id: '/site/buscar'
-      path: '/buscar'
-      fullPath: '/site/buscar'
-      preLoaderRoute: typeof SiteBuscarRouteImport
+    '/site/favoritos': {
+      id: '/site/favoritos'
+      path: '/favoritos'
+      fullPath: '/site/favoritos'
+      preLoaderRoute: typeof SiteFavoritosRouteImport
       parentRoute: typeof SiteRoute
     }
     '/site/contato': {
@@ -1071,33 +910,180 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteContatoRouteImport
       parentRoute: typeof SiteRoute
     }
-    '/site/favoritos': {
-      id: '/site/favoritos'
-      path: '/favoritos'
-      fullPath: '/site/favoritos'
-      preLoaderRoute: typeof SiteFavoritosRouteImport
+    '/site/buscar': {
+      id: '/site/buscar'
+      path: '/buscar'
+      fullPath: '/site/buscar'
+      preLoaderRoute: typeof SiteBuscarRouteImport
       parentRoute: typeof SiteRoute
     }
-    '/_app/agenda/': {
-      id: '/_app/agenda/'
-      path: '/agenda'
-      fullPath: '/agenda/'
-      preLoaderRoute: typeof AppAgendaIndexRouteImport
+    '/site/bairros': {
+      id: '/site/bairros'
+      path: '/bairros'
+      fullPath: '/site/bairros'
+      preLoaderRoute: typeof SiteBairrosRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/anuncie': {
+      id: '/site/anuncie'
+      path: '/anuncie'
+      fullPath: '/site/anuncie'
+      preLoaderRoute: typeof SiteAnuncieRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/$page': {
+      id: '/site/$page'
+      path: '/$page'
+      fullPath: '/site/$page'
+      preLoaderRoute: typeof SitePageRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/avaliar/$token': {
+      id: '/avaliar/$token'
+      path: '/avaliar/$token'
+      fullPath: '/avaliar/$token'
+      preLoaderRoute: typeof AvaliarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/vendas': {
+      id: '/_app/vendas'
+      path: '/vendas'
+      fullPath: '/vendas'
+      preLoaderRoute: typeof AppVendasRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/agenda/fotos': {
-      id: '/_app/agenda/fotos'
-      path: '/agenda/fotos'
-      fullPath: '/agenda/fotos'
-      preLoaderRoute: typeof AppAgendaFotosRouteImport
+    '/_app/site-administracao': {
+      id: '/_app/site-administracao'
+      path: '/site-administracao'
+      fullPath: '/site-administracao'
+      preLoaderRoute: typeof AppSiteAdministracaoRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/clientes/$clienteId': {
-      id: '/_app/clientes/$clienteId'
-      path: '/$clienteId'
-      fullPath: '/clientes/$clienteId'
-      preLoaderRoute: typeof AppClientesClienteIdRouteImport
-      parentRoute: typeof AppClientesRoute
+    '/_app/relatorios': {
+      id: '/_app/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pesquisa-satisfacao': {
+      id: '/_app/pesquisa-satisfacao'
+      path: '/pesquisa-satisfacao'
+      fullPath: '/pesquisa-satisfacao'
+      preLoaderRoute: typeof AppPesquisaSatisfacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/marketing': {
+      id: '/_app/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof AppMarketingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/mais': {
+      id: '/_app/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof AppMaisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/integracoes': {
+      id: '/_app/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof AppIntegracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis-destaque': {
+      id: '/_app/imoveis-destaque'
+      path: '/imoveis-destaque'
+      fullPath: '/imoveis-destaque'
+      preLoaderRoute: typeof AppImoveisDestaqueRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/imoveis': {
+      id: '/_app/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof AppImoveisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/financeiro': {
+      id: '/_app/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof AppFinanceiroRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/documentos': {
+      id: '/_app/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof AppDocumentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/corretores': {
+      id: '/_app/corretores'
+      path: '/corretores'
+      fullPath: '/corretores'
+      preLoaderRoute: typeof AppCorretoresRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/configuracoes': {
+      id: '/_app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes': {
+      id: '/_app/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/busca': {
+      id: '/_app/busca'
+      path: '/busca'
+      fullPath: '/busca'
+      preLoaderRoute: typeof AppBuscaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/atendimentos': {
+      id: '/_app/atendimentos'
+      path: '/atendimentos'
+      fullPath: '/atendimentos'
+      preLoaderRoute: typeof AppAtendimentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/alugueis': {
+      id: '/_app/alugueis'
+      path: '/alugueis'
+      fullPath: '/alugueis'
+      preLoaderRoute: typeof AppAlugueisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenciamentos': {
+      id: '/_app/agenciamentos'
+      path: '/agenciamentos'
+      fullPath: '/agenciamentos'
+      preLoaderRoute: typeof AppAgenciamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/site/noticias/': {
+      id: '/site/noticias/'
+      path: '/noticias'
+      fullPath: '/site/noticias/'
+      preLoaderRoute: typeof SiteNoticiasIndexRouteImport
+      parentRoute: typeof SiteRoute
     }
     '/_app/imoveis/': {
       id: '/_app/imoveis/'
@@ -1106,39 +1092,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisIndexRouteImport
       parentRoute: typeof AppImoveisRoute
     }
-    '/_app/imoveis/$imovelId': {
-      id: '/_app/imoveis/$imovelId'
-      path: '/$imovelId'
-      fullPath: '/imoveis/$imovelId'
-      preLoaderRoute: typeof AppImoveisImovelIdRouteImport
-      parentRoute: typeof AppImoveisRoute
+    '/_app/agenda/': {
+      id: '/_app/agenda/'
+      path: '/agenda'
+      fullPath: '/agenda/'
+      preLoaderRoute: typeof AppAgendaIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/imoveis/novo': {
-      id: '/_app/imoveis/novo'
-      path: '/novo'
-      fullPath: '/imoveis/novo'
-      preLoaderRoute: typeof AppImoveisNovoRouteImport
-      parentRoute: typeof AppImoveisRoute
-    }
-    '/api/cordial-site/$': {
-      id: '/api/cordial-site/$'
-      path: '/api/cordial-site/$'
-      fullPath: '/api/cordial-site/$'
-      preLoaderRoute: typeof ApiCordialSiteSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/site/imovel/$publicId': {
-      id: '/site/imovel/$publicId'
-      path: '/imovel/$publicId'
-      fullPath: '/site/imovel/$publicId'
-      preLoaderRoute: typeof SiteImovelPublicIdRouteImport
+    '/site/noticias/$slug': {
+      id: '/site/noticias/$slug'
+      path: '/noticias/$slug'
+      fullPath: '/site/noticias/$slug'
+      preLoaderRoute: typeof SiteNoticiasSlugRouteImport
       parentRoute: typeof SiteRoute
     }
     '/site/informacoes/$slug': {
@@ -1148,19 +1113,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteInformacoesSlugRouteImport
       parentRoute: typeof SiteRoute
     }
-    '/site/noticias/': {
-      id: '/site/noticias/'
-      path: '/noticias'
-      fullPath: '/site/noticias/'
-      preLoaderRoute: typeof SiteNoticiasIndexRouteImport
+    '/site/imovel/$publicId': {
+      id: '/site/imovel/$publicId'
+      path: '/imovel/$publicId'
+      fullPath: '/site/imovel/$publicId'
+      preLoaderRoute: typeof SiteImovelPublicIdRouteImport
       parentRoute: typeof SiteRoute
     }
-    '/site/noticias/$slug': {
-      id: '/site/noticias/$slug'
-      path: '/noticias/$slug'
-      fullPath: '/site/noticias/$slug'
-      preLoaderRoute: typeof SiteNoticiasSlugRouteImport
-      parentRoute: typeof SiteRoute
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cordial-site/$': {
+      id: '/api/cordial-site/$'
+      path: '/api/cordial-site/$'
+      fullPath: '/api/cordial-site/$'
+      preLoaderRoute: typeof ApiCordialSiteSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/imoveis/novo': {
+      id: '/_app/imoveis/novo'
+      path: '/novo'
+      fullPath: '/imoveis/novo'
+      preLoaderRoute: typeof AppImoveisNovoRouteImport
+      parentRoute: typeof AppImoveisRoute
+    }
+    '/_app/imoveis/$imovelId': {
+      id: '/_app/imoveis/$imovelId'
+      path: '/$imovelId'
+      fullPath: '/imoveis/$imovelId'
+      preLoaderRoute: typeof AppImoveisImovelIdRouteImport
+      parentRoute: typeof AppImoveisRoute
+    }
+    '/_app/clientes/$clienteId': {
+      id: '/_app/clientes/$clienteId'
+      path: '/$clienteId'
+      fullPath: '/clientes/$clienteId'
+      preLoaderRoute: typeof AppClientesClienteIdRouteImport
+      parentRoute: typeof AppClientesRoute
+    }
+    '/_app/agenda/fotos': {
+      id: '/_app/agenda/fotos'
+      path: '/agenda/fotos'
+      fullPath: '/agenda/fotos'
+      preLoaderRoute: typeof AppAgendaFotosRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/imoveis/$imovelId/': {
       id: '/_app/imoveis/$imovelId/'
@@ -1169,123 +1169,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisImovelIdIndexRouteImport
       parentRoute: typeof AppImoveisImovelIdRoute
     }
-    '/_app/imoveis/$imovelId/editar': {
-      id: '/_app/imoveis/$imovelId/editar'
-      path: '/editar'
-      fullPath: '/imoveis/$imovelId/editar'
-      preLoaderRoute: typeof AppImoveisImovelIdEditarRouteImport
-      parentRoute: typeof AppImoveisImovelIdRoute
-    }
-    '/api/public/google-calendar/callback': {
-      id: '/api/public/google-calendar/callback'
-      path: '/api/public/google-calendar/callback'
-      fullPath: '/api/public/google-calendar/callback'
-      preLoaderRoute: typeof ApiPublicGoogleCalendarCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/agenda-photo-digest': {
-      id: '/api/public/hooks/agenda-photo-digest'
-      path: '/api/public/hooks/agenda-photo-digest'
-      fullPath: '/api/public/hooks/agenda-photo-digest'
-      preLoaderRoute: typeof ApiPublicHooksAgendaPhotoDigestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/agenda-reminders': {
-      id: '/api/public/hooks/agenda-reminders'
-      path: '/api/public/hooks/agenda-reminders'
-      fullPath: '/api/public/hooks/agenda-reminders'
-      preLoaderRoute: typeof ApiPublicHooksAgendaRemindersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/financeiro-sheets-sync': {
-      id: '/api/public/hooks/financeiro-sheets-sync'
-      path: '/api/public/hooks/financeiro-sheets-sync'
-      fullPath: '/api/public/hooks/financeiro-sheets-sync'
-      preLoaderRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/gallery-align': {
-      id: '/api/public/hooks/gallery-align'
-      path: '/api/public/hooks/gallery-align'
-      fullPath: '/api/public/hooks/gallery-align'
-      preLoaderRoute: typeof ApiPublicHooksGalleryAlignRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/google-calendar-sync': {
-      id: '/api/public/hooks/google-calendar-sync'
-      path: '/api/public/hooks/google-calendar-sync'
-      fullPath: '/api/public/hooks/google-calendar-sync'
-      preLoaderRoute: typeof ApiPublicHooksGoogleCalendarSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-drive-worker': {
-      id: '/api/public/hooks/property-drive-worker'
-      path: '/api/public/hooks/property-drive-worker'
-      fullPath: '/api/public/hooks/property-drive-worker'
-      preLoaderRoute: typeof ApiPublicHooksPropertyDriveWorkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-image-retry': {
-      id: '/api/public/hooks/property-image-retry'
-      path: '/api/public/hooks/property-image-retry'
-      fullPath: '/api/public/hooks/property-image-retry'
-      preLoaderRoute: typeof ApiPublicHooksPropertyImageRetryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-image-worker': {
-      id: '/api/public/hooks/property-image-worker'
-      path: '/api/public/hooks/property-image-worker'
-      fullPath: '/api/public/hooks/property-image-worker'
-      preLoaderRoute: typeof ApiPublicHooksPropertyImageWorkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-import-worker': {
-      id: '/api/public/hooks/property-import-worker'
-      path: '/api/public/hooks/property-import-worker'
-      fullPath: '/api/public/hooks/property-import-worker'
-      preLoaderRoute: typeof ApiPublicHooksPropertyImportWorkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-media-worker': {
-      id: '/api/public/hooks/property-media-worker'
-      path: '/api/public/hooks/property-media-worker'
-      fullPath: '/api/public/hooks/property-media-worker'
-      preLoaderRoute: typeof ApiPublicHooksPropertyMediaWorkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-sync-reconcile': {
-      id: '/api/public/hooks/property-sync-reconcile'
-      path: '/api/public/hooks/property-sync-reconcile'
-      fullPath: '/api/public/hooks/property-sync-reconcile'
-      preLoaderRoute: typeof ApiPublicHooksPropertySyncReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/property-sync-worker': {
-      id: '/api/public/hooks/property-sync-worker'
-      path: '/api/public/hooks/property-sync-worker'
-      fullPath: '/api/public/hooks/property-sync-worker'
-      preLoaderRoute: typeof ApiPublicHooksPropertySyncWorkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/push-worker': {
-      id: '/api/public/hooks/push-worker'
-      path: '/api/public/hooks/push-worker'
-      fullPath: '/api/public/hooks/push-worker'
-      preLoaderRoute: typeof ApiPublicHooksPushWorkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/sale-payment-reminders': {
-      id: '/api/public/hooks/sale-payment-reminders'
-      path: '/api/public/hooks/sale-payment-reminders'
-      fullPath: '/api/public/hooks/sale-payment-reminders'
-      preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/transactional/preview': {
@@ -1295,12 +1183,124 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/sale-payment-reminders': {
+      id: '/api/public/hooks/sale-payment-reminders'
+      path: '/api/public/hooks/sale-payment-reminders'
+      fullPath: '/api/public/hooks/sale-payment-reminders'
+      preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/push-worker': {
+      id: '/api/public/hooks/push-worker'
+      path: '/api/public/hooks/push-worker'
+      fullPath: '/api/public/hooks/push-worker'
+      preLoaderRoute: typeof ApiPublicHooksPushWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-sync-worker': {
+      id: '/api/public/hooks/property-sync-worker'
+      path: '/api/public/hooks/property-sync-worker'
+      fullPath: '/api/public/hooks/property-sync-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertySyncWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-sync-reconcile': {
+      id: '/api/public/hooks/property-sync-reconcile'
+      path: '/api/public/hooks/property-sync-reconcile'
+      fullPath: '/api/public/hooks/property-sync-reconcile'
+      preLoaderRoute: typeof ApiPublicHooksPropertySyncReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-media-worker': {
+      id: '/api/public/hooks/property-media-worker'
+      path: '/api/public/hooks/property-media-worker'
+      fullPath: '/api/public/hooks/property-media-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertyMediaWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-import-worker': {
+      id: '/api/public/hooks/property-import-worker'
+      path: '/api/public/hooks/property-import-worker'
+      fullPath: '/api/public/hooks/property-import-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertyImportWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-image-worker': {
+      id: '/api/public/hooks/property-image-worker'
+      path: '/api/public/hooks/property-image-worker'
+      fullPath: '/api/public/hooks/property-image-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertyImageWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-image-retry': {
+      id: '/api/public/hooks/property-image-retry'
+      path: '/api/public/hooks/property-image-retry'
+      fullPath: '/api/public/hooks/property-image-retry'
+      preLoaderRoute: typeof ApiPublicHooksPropertyImageRetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/property-drive-worker': {
+      id: '/api/public/hooks/property-drive-worker'
+      path: '/api/public/hooks/property-drive-worker'
+      fullPath: '/api/public/hooks/property-drive-worker'
+      preLoaderRoute: typeof ApiPublicHooksPropertyDriveWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/google-calendar-sync': {
+      id: '/api/public/hooks/google-calendar-sync'
+      path: '/api/public/hooks/google-calendar-sync'
+      fullPath: '/api/public/hooks/google-calendar-sync'
+      preLoaderRoute: typeof ApiPublicHooksGoogleCalendarSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/gallery-align': {
+      id: '/api/public/hooks/gallery-align'
+      path: '/api/public/hooks/gallery-align'
+      fullPath: '/api/public/hooks/gallery-align'
+      preLoaderRoute: typeof ApiPublicHooksGalleryAlignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/financeiro-sheets-sync': {
+      id: '/api/public/hooks/financeiro-sheets-sync'
+      path: '/api/public/hooks/financeiro-sheets-sync'
+      fullPath: '/api/public/hooks/financeiro-sheets-sync'
+      preLoaderRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/agenda-reminders': {
+      id: '/api/public/hooks/agenda-reminders'
+      path: '/api/public/hooks/agenda-reminders'
+      fullPath: '/api/public/hooks/agenda-reminders'
+      preLoaderRoute: typeof ApiPublicHooksAgendaRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/agenda-photo-digest': {
+      id: '/api/public/hooks/agenda-photo-digest'
+      path: '/api/public/hooks/agenda-photo-digest'
+      fullPath: '/api/public/hooks/agenda-photo-digest'
+      preLoaderRoute: typeof ApiPublicHooksAgendaPhotoDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/google-calendar/callback': {
+      id: '/api/public/google-calendar/callback'
+      path: '/api/public/google-calendar/callback'
+      fullPath: '/api/public/google-calendar/callback'
+      preLoaderRoute: typeof ApiPublicGoogleCalendarCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/imoveis/$imovelId/editar': {
+      id: '/_app/imoveis/$imovelId/editar'
+      path: '/editar'
+      fullPath: '/imoveis/$imovelId/editar'
+      preLoaderRoute: typeof AppImoveisImovelIdEditarRouteImport
+      parentRoute: typeof AppImoveisImovelIdRoute
     }
   }
 }
