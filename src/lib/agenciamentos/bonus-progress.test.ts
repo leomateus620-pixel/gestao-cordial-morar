@@ -87,3 +87,9 @@ test("cancelados e reprovados ficam fora dos bloqueados", () => {
   assert.equal(summary.blocked, 1);
   assert.equal(summary.cadastradoCordial, 1);
 });
+
+test("captação de 01/10 conta em outubro, não em setembro", () => {
+  const items = [item("out-1", { dataAgenciamento: "2026-10-01" })];
+  assert.equal(computeBonusProgress(items, "venda", new Date("2026-10-02T15:00:00.000Z")).cycleTotal, 1);
+  assert.equal(computeBonusProgress(items, "venda", new Date("2026-09-15T15:00:00.000Z")).cycleTotal, 0);
+});

@@ -313,7 +313,7 @@ export function matchesPeriod(
     start = `${year}-${String(qm).padStart(2, "0")}-01`;
   } else if (periodo === "ultimos_30") start = addDaysToKey(today, -30);
   else start = `${today.slice(0, 7)}-01`;
-  return key >= start && key <= today;
+  return key >= start;
 }
 
 function matchesStatus(item: Agenciamento, status: AgenciamentoStatusFilter) {
