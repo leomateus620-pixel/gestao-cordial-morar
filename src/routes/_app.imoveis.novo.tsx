@@ -141,17 +141,6 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function commitCodes(propertyId: string) {
-    const ids = Object.values(reservationIds.current).filter(Boolean) as string[];
-    if (!ids.length) return;
-    try {
-      await codes.commit.mutateAsync({ propertyId, reservationIds: ids });
-      committed.current = true;
-    } catch {
-      // A reserva expira sozinha; não travamos o cadastro por isso.
-    }
-  }
-
   async function ensureDraft(): Promise<string | null> {
     if (draftId) return draftId;
     // Uma única promessa em andamento: dois cliques compartilham a mesma criação.
@@ -289,7 +278,7 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
       </div>
 
       {!resume && !draftId && meusRascunhos.length > 0 ? (
-        <div className="rounded-2xl border border-warning/40 bg-warning/10 p-3 text-[13px]">
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 text-[13px]">
           <p className="font-semibold">Você tem {meusRascunhos.length} cadastro(s) não concluído(s).</p>
           <ul className="mt-1.5 space-y-1">
             {meusRascunhos.slice(0, 5).map((item) => (
