@@ -499,7 +499,7 @@ async function catalogoTimeline(supabase: Db, id: string): Promise<BuscaTimeline
     events.push(
       evt(
         `ag-${a.id}`,
-        a.data_agenciamento ?? a.created_at,
+        a.data_agenciamento ? `${a.data_agenciamento}T12:00:00-03:00` : a.created_at,
         "Agenciamento vinculado",
         joinParts([a.corretor_nome && `Corretor: ${a.corretor_nome}`, a.imobiliaria, a.status]),
         "agenciamento",

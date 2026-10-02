@@ -29,6 +29,7 @@ import {
 } from "@/services/agenciamentos";
 import type { Agenciamento, AgenciamentoChecklist } from "@/types/agenciamento";
 import { shortDate } from "@/lib/format";
+import { formatDateOnlyBR } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 type AgenciamentoCardProps = {
@@ -239,7 +240,7 @@ function AgenciamentoCardComponent({
             <span className="mt-0.5 flex flex-nowrap items-center gap-1 whitespace-nowrap text-[11px] font-medium text-foreground/55">
               <CalendarDays aria-hidden="true" className="size-3 shrink-0 text-foreground/45" />
               <span className="font-bold text-foreground/75">
-                {shortDate(agenciamento.dataAgenciamento)}
+                {formatDateOnlyBR(agenciamento.dataAgenciamento)}
               </span>
             </span>
 

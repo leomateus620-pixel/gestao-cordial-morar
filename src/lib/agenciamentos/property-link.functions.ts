@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { todaySaoPauloKey } from "@/lib/dates";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   canManageAgenciamentos,
@@ -146,7 +147,7 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
       proprietario_contato_preferencial: "whatsapp",
       corretor_id: brokerId,
       corretor_nome: brokerName,
-      data_agenciamento: data.dataAgenciamento ?? new Date().toISOString().slice(0, 10),
+      data_agenciamento: data.dataAgenciamento ?? todaySaoPauloKey(),
       origem: data.origem ?? "prospeccao_ativa",
       status: "em_andamento",
       fotos_horizontal: Boolean(data.checklist?.fotosHorizontal),
@@ -171,7 +172,7 @@ export const finalizePropertyAgency = createServerFn({ method: "POST" })
 
     if (existing?.id) {
       // Nunca apagar código já preenchido: o trigger do banco só completa colunas vazias.
-      const { codigo_cordial: _c, codigo_morar: _m, ...updatePayload } = payload;
+      const { codigo_cordial: _c, codigo_morar: _m, data_agenciamento: _d, ...updatePayload } = payload;
       const { data: updated, error } = await context.supabase
         .from("agenciamentos")
         .update(updatePayload as never)

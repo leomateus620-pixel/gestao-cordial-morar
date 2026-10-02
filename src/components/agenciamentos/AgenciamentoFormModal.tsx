@@ -188,10 +188,7 @@ const selectBaseClassName =
   "h-11 rounded-xl bg-background text-foreground shadow-none transition-[border-color,box-shadow,background-color] duration-150 focus:ring-2";
 
 function toDateInput(value?: string) {
-  if (!value) return new Date().toISOString().slice(0, 10);
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
-  return date.toISOString().slice(0, 10);
+  return dateOnlyKey(value) || todaySaoPauloKey();
 }
 
 function initialForm(agenciamento: Agenciamento | null | undefined, currentBroker?: Corretor, currentUserBroker?: CurrentUserBroker, defaultTrack: AgenciamentoFinalidade = "venda"): FormState {
