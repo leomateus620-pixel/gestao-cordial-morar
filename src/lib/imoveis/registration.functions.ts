@@ -96,6 +96,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     // nunca quem clicou. Sem candidato, não cria e o cadastro fica pendente.
     let agenciamentoId: string | null = null;
     let agencyPending = false;
+    let brokerId: string | null = null;
     if (data.agency) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const row = state as { corretor_id: string | null; created_by: string | null };
@@ -105,7 +106,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       for (const r of (roleRows ?? []) as Array<{ user_id: string; role: string }>) {
         roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
       }
-      const brokerId = resolveFinalizeAgencyBroker({
+      brokerId = resolveFinalizeAgencyBroker({
         actorId: context.userId,
         explicitCorretorId: data.agency.corretorId,
         propertyCorretorId: row.corretor_id,
@@ -120,23 +121,6 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     }
     if (data.agency && !agencyPending) {
       try {
-        const row = state as { corretor_id: string | null; created_by: string | null };
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: roleRows } = await supabaseAdmin
-          .from("user_roles")
-          .select("user_id, role")
-          .in("user_id", [context.userId, row.created_by].filter(Boolean) as string[]);
-        const roleMap = new Map<string, string[]>();
-        for (const r of (roleRows ?? []) as Array<{ user_id: string; role: string }>) {
-          roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
-        }
-        const brokerId = resolveFinalizeAgencyBroker({
-          actorId: context.userId,
-          explicitCorretorId: data.agency.corretorId,
-          propertyCorretorId: row.corretor_id,
-          createdBy: row.created_by,
-          rolesOf: (id) => roleMap.get(id) ?? [],
-        });
         const saved = await finalizePropertyAgencyCore(context, {
           ...data.agency,
           corretorId: brokerId,
