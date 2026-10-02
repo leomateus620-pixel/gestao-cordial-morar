@@ -6,6 +6,11 @@ import {
   finalizePropertyAgencyCore,
   type FinalizePropertyAgencyInput,
 } from "@/lib/agenciamentos/property-link.functions";
+import {
+  isFinalizeCompleted,
+  keepDraftBroker,
+  resolveFinalizeAgencyBroker,
+} from "@/lib/imoveis/registration-rules";
 
 export type FinalizeRegistrationInput = {
   /** Rascunho já criado (fotos). Sem ele, o imóvel é criado pela chave de intenção. */
@@ -31,6 +36,8 @@ export type FinalizeRegistrationResult = {
   };
   messages: string[];
   skippedImages?: number;
+  /** Mesmo critério usado para marcar o cadastro como concluído. */
+  completed: boolean;
 };
 
 /**
@@ -148,7 +155,10 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
         steps.publish = "ok";
         skippedImages = result.skippedImages;
         if (!agenciamentoId && result.agency) {
-          if (result.agency.status === "created" || result.agency.status === "exists") steps.agency = "ok";
+          if (result.agency.status === "created" || result.agency.status === "exists") {
+            steps.agency = "ok";
+            agencyPending = false;
+          }
           else if (result.agency.reason) messages.push(`Agenciamento pendente: ${result.agency.reason}`);
         }
       } catch (err) {
@@ -158,7 +168,8 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     }
 
     // 5) Concluído só quando nada falhou. Só estas duas colunas: não dispara envio.
-    if (steps.publish !== "error" && steps.agency !== "error") {
+    const completed = isFinalizeCompleted(steps, agencyPending);
+    if (completed) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin
         .from("properties")
@@ -169,7 +180,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
         .eq("id", propertyId);
     }
 
-    return { propertyId, agenciamentoId, steps, messages, skippedImages };
+    return { propertyId, agenciamentoId, steps, messages, skippedImages, completed };
   });
 
 export type IncompleteRegistration = {

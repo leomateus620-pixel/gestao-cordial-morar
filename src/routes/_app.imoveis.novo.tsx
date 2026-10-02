@@ -223,7 +223,8 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
       }
 
       for (const message of result.messages) toast.warning(message);
-      const ok = Object.values(result.steps).every((step) => step !== "error");
+      // Mesmo critério do servidor: falha só nos códigos não deixa "não concluído".
+      const ok = result.completed;
       if (ok) {
         finished.current = true;
         if (result.steps.agency === "ok") toast.success("Agenciamento registrado e vinculado ao imóvel.");
