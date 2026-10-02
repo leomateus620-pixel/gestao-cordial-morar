@@ -152,6 +152,7 @@ export type IncompleteRegistration = {
   bairro: string | null;
   cidade: string | null;
   createdAt: string;
+  createdBy: string | null;
   criadorNome: string | null;
   corretorNome: string | null;
   isDraft: boolean;
@@ -173,6 +174,7 @@ export const listIncompleteRegistrations = createServerFn({ method: "GET" })
       bairro: (r.bairro as string) ?? null,
       cidade: (r.cidade as string) ?? null,
       createdAt: String(r.created_at),
+      createdBy: (r.created_by as string) ?? null,
       criadorNome: (r.criador_nome as string) ?? null,
       corretorNome: (r.corretor_nome as string) ?? null,
       isDraft: Boolean(r.is_draft),
