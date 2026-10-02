@@ -1,7 +1,7 @@
 /** Regras puras da emissão (estado, identificador, competência, trava de teste). */
 import type { NfseParsedResponse } from "./ipm/response";
 
-export type EmissionStatus = "teste_ok" | "emitida" | "erro" | "cancelada" | "processando" | "incerto";
+export type EmissionStatus = "teste_ok" | "emitida" | "erro" | "cancelada" | "processando" | "incerto" | "nao_emitida";
 
 export const PROCESSANDO_STALE_MS = 120_000;
 export const NFSE_TIMEOUT_MS = 45_000;
@@ -75,4 +75,42 @@ export function classifyResult(
   if (parsed.kind !== "sucesso") return "incerto";
   if (parsed.numeroNfse && (!parsed.situacaoCodigo || parsed.situacaoCodigo === "1")) return "emitida";
   return "incerto";
+}
+
+export const RECONCILE_SUGGEST_AFTER = 3;
+
+/** Depois de 3 conferências seguidas em incerto, sugerir a marcação manual. */
+export function shouldSuggestManualResolution(status: EmissionStatus, attempts: number): boolean {
+  return status === "incerto" && attempts - 1 >= RECONCILE_SUGGEST_AFTER;
+}
+
+/** Regra de "Marcar como não emitida". Retorna a recusa ou null se permitido. */
+export function checkMarkNotIssued(input: {
+  isAdmin: boolean;
+  status: string;
+  numeroNfse: string | null;
+  reason: string;
+  conferidoNoPortal: boolean;
+}): string | null {
+  if (!input.isAdmin) return "Apenas a administração pode marcar uma nota como não emitida.";
+  if (input.conferidoNoPortal !== true) return "Confirme que conferiu no portal da prefeitura.";
+  if (String(input.reason ?? "").trim().length < 10) return "Informe o motivo (mínimo de 10 caracteres).";
+  if (input.status !== "incerto") return "Só emissões aguardando conferência podem ser marcadas como não emitidas.";
+  if (input.numeroNfse) return "Esta emissão tem número de nota: não pode ser marcada como não emitida.";
+  return null;
+}
+
+/** Reclassificação de linha presa a partir do retorno gravado. null = fica como está. */
+export function reclassifyFromRaw(
+  status: string,
+  raw: string | null,
+  modoTeste: boolean,
+  parse: (raw: string) => NfseParsedResponse,
+): EmissionStatus | null {
+  if (status !== "incerto" && status !== "processando") return null;
+  if (!raw || !raw.trim()) return null;
+  const parsed = parse(raw);
+  const next = classifyResult(parsed, 200, modoTeste);
+  if (next === "erro" || next === "emitida" || next === "teste_ok") return next;
+  return null;
 }

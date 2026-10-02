@@ -143,7 +143,8 @@ export function parseNfseResponse(raw: string): NfseParsedResponse {
   } catch {
     return empty("ilegivel");
   }
-  const parsedRetorno = retornoSchema.safeParse(doc?.["retorno"]);
+  if (!doc || typeof doc !== "object" || !("retorno" in doc)) return empty("ilegivel");
+  const parsedRetorno = retornoSchema.safeParse(doc["retorno"] === "" ? {} : doc["retorno"]);
   if (!parsedRetorno.success) return empty("ilegivel");
   const r = parsedRetorno.data;
 
@@ -154,15 +155,21 @@ export function parseNfseResponse(raw: string): NfseParsedResponse {
     const pm = mensagemSchema.safeParse(m);
     const codigos = pm.success ? toArray(pm.data.codigo as unknown).map(str) : [str(m)];
     const descricao = pm.success ? str(pm.data.descricao) : null;
+    if (codigos.every((c) => !c) && descricao) codigos.push(descricao);
     for (const c of codigos) {
       if (!c) continue;
       const match = CODIGO_ERRO.exec(c);
       if (match) {
         codigosErro.push(match[1] as string);
-        mensagens.push(match[2]?.trim() ? `${match[1]} - ${match[2].trim()}` : descricao ? `${match[1]} - ${descricao}` : c);
-      } else {
-        if (TESTE_OK.test(c)) testeValidado = true;
+        const texto = match[2]?.trim() || (descricao && descricao !== c ? descricao : "");
+        mensagens.push(texto ? `${match[1]} - ${texto}` : c);
+      } else if (TESTE_OK.test(c)) {
+        testeValidado = true;
         mensagens.push(c);
+      } else {
+        const xsd = /XSD\s*Error\s*(\d+)/i.exec(c);
+        codigosErro.push(xsd ? `XSD-${xsd[1]}` : "TEXTO");
+        mensagens.push(descricao && descricao !== c ? `${c} - ${descricao}` : c);
       }
     }
   }
@@ -184,8 +191,9 @@ export function parseNfseResponse(raw: string): NfseParsedResponse {
     mensagens,
     codigosErro,
   };
-  if (codigosErro.length) return { ...base, kind: "recusa" };
+  // Ordem importa: com número a nota existe — nunca é recusa.
   if (testeValidado) return { ...base, kind: "teste_ok", ok: true };
   if (numeroNfse) return { ...base, kind: "sucesso", ok: true };
-  return base;
+  if (mensagens.length) return { ...base, kind: "recusa" };
+  return base; // <retorno> sem mensagem e sem número → ilegível (incerto)
 }
