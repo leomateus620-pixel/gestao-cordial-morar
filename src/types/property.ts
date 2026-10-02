@@ -13,6 +13,8 @@ export type PropertyPublicationBadge = {
 
 export type Property = {
   id: string;
+  /** Cadastro iniciado pelo assistente e ainda não concluído. */
+  isDraft?: boolean;
 
   carteira: PropertyCarteira;
   operacao: PropertyOperacao;

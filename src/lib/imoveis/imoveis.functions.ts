@@ -137,6 +137,7 @@ function mapRow(
     publications: extras.publications ?? [],
     removalState: r.removal_state ?? null,
     archivedAt: r.archived_at ?? null,
+    isDraft: r.is_draft ?? false,
   };
 }
 
@@ -522,12 +523,18 @@ export type CreateImovelInput = Partial<PropertyWriteInput> & {
   operacao: "venda" | "aluguel";
   /** Chave da intenção de cadastro: repetir a mesma chave devolve o mesmo imóvel. */
   clientIntentKey?: string | null;
+  /** Rascunho criado só para receber fotos: fica como "cadastro não concluído". */
+  asDraft?: boolean;
 };
 
-export const createImovel = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: CreateImovelInput) => data)
-  .handler(async ({ data, context }): Promise<Property> => {
+type AuthedCtx = { supabase: any; userId: string };
+
+/**
+ * Criação idempotente (mesma `clientIntentKey` devolve o mesmo imóvel).
+ * O servidor grava quem criou; se for corretor e não houver corretor definido,
+ * ele mesmo vira o corretor do imóvel. `asDraft` marca "cadastro não concluído".
+ */
+export async function createImovelCore(context: AuthedCtx, data: CreateImovelInput): Promise<Property> {
     const intentKey = String(data.clientIntentKey ?? "").trim() || null;
 
     // Idempotência: duplo clique, retry de rede ou repetição da mesma
@@ -541,13 +548,32 @@ export const createImovel = createServerFn({ method: "POST" })
       if (existing) return mapRow(existing as Row);
     }
 
+    const { asDraft, clientIntentKey: _k, ...writeData } = data;
     const payload: Record<string, unknown> = {
-      ...toDbPayload(data),
+      ...toDbPayload(writeData),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
       source: "gestao_cordial",
       source_property_id: crypto.randomUUID(),
+      created_by: context.userId,
+      is_draft: Boolean(asDraft),
       ...(intentKey ? { client_intent_key: intentKey } : {}),
     };
+    if (!payload["corretor_id"]) {
+      const { data: roleRows } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId);
+      const roles = ((roleRows ?? []) as Array<{ role: string }>).map((r) => r.role);
+      if (roles.includes("corretor") && !roles.includes("admin") && !roles.includes("secretaria")) {
+        const { data: profile } = await context.supabase
+          .from("profiles")
+          .select("nome")
+          .eq("id", context.userId)
+          .maybeSingle();
+        payload["corretor_id"] = context.userId;
+        payload["corretor_nome"] = (profile as { nome?: string | null } | null)?.nome?.trim() || null;
+      }
+    }
     if (data.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
       payload["localizacao_maps_coords"] = await resolveMapsCoords(data.localizacaoMapsUrl);
@@ -571,7 +597,12 @@ export const createImovel = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
     return mapRow(row as Row);
-  });
+}
+
+export const createImovel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: CreateImovelInput) => data)
+  .handler(async ({ data, context }): Promise<Property> => createImovelCore(context, data));
 
 export type UpdateImovelInput = {
   id: string;
@@ -590,10 +621,10 @@ export const REVISION_CONFLICT = "REVISION_CONFLICT";
  * Gravar, versionar e enfileirar acontecem numa única operação no banco: se a
  * gravação falha, nada é enfileirado; se a versão mudou no meio, devolve conflito.
  */
-export const updateImovel = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: UpdateImovelInput) => data)
-  .handler(async ({ data, context }): Promise<{ property: PropertyDetail | null; queued: string[] }> => {
+export async function updateImovelCore(
+  context: AuthedCtx,
+  data: UpdateImovelInput,
+): Promise<{ property: PropertyDetail | null; queued: string[] }> {
     const { id, expectedRevision, changedFields, ...rest } = data;
     const payload = toDbPayload(rest);
     if (rest.localizacaoMapsUrl !== undefined) {
@@ -663,7 +694,12 @@ export const updateImovel = createServerFn({ method: "POST" })
       }),
       queued: result.providers ?? [],
     };
-  });
+}
+
+export const updateImovel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: UpdateImovelInput) => data)
+  .handler(async ({ data, context }) => updateImovelCore(context, data));
 
 
 export type DeleteImovelResult = {
