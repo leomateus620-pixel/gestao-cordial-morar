@@ -1,4 +1,5 @@
-import { parseNfseResponse, type NfseParsedResponse } from "./xml";
+import { NFSE_TIMEOUT_MS } from "../emission-rules";
+import { decodeResponse, parseNfseResponse, type NfseParsedResponse } from "./response";
 
 export type PostNfseInput = {
   endpointUrl: string;
@@ -6,11 +7,17 @@ export type PostNfseInput = {
   senha: string;
   cidade: string;
   xml: string;
+  timeoutMs?: number;
 };
 
-export type PostNfseResult = NfseParsedResponse & {
-  httpStatus: number;
+export type PostNfseResult = {
+  transport: "ok" | "timeout" | "rede";
+  parsed: NfseParsedResponse;
+  httpStatus: number | null;
   raw: string;
+  durationMs: number;
+  /** Mensagem de falha de transporte (nunca contém credenciais). */
+  transportError: string | null;
 };
 
 /** Monta o cabeçalho HTTP Basic exigido pela IPM (NT 35/2021 v2.9). */
@@ -20,39 +27,44 @@ export function buildBasicAuthHeader(login: string, senha: string): string {
 }
 
 /**
- * Envio síncrono ao WNERestServiceNFSe (Atende.Net / Santa Rosa).
- * Autenticação via HTTP Basic (CNPJ só dígitos + senha de acesso ao sistema,
- * com o serviço "Emissão de NFS-e por WebService" liberado no Portal do
- * Cidadão). O corpo multipart leva apenas a cidade (TOM) e o arquivo XML —
- * sem certificado digital e sem login/senha no corpo.
+ * Envio síncrono ao WNERestServiceNFSe. Nunca lança: falhas de transporte
+ * voltam como transport="timeout"/"rede" para serem gravadas como "incerto".
  */
 export async function postNfse(input: PostNfseInput): Promise<PostNfseResult> {
   const form = new FormData();
   form.append("cidade", input.cidade);
-  form.append(
-    "f1",
-    new Blob([input.xml], { type: "text/xml; charset=utf-8" }),
-    "nfse.xml",
-  );
+  form.append("f1", new Blob([input.xml], { type: "text/xml; charset=utf-8" }), "nfse.xml");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45_000);
+  const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? NFSE_TIMEOUT_MS);
+  const started = Date.now();
   try {
     const response = await fetch(input.endpointUrl, {
       method: "POST",
-      headers: {
-        Authorization: buildBasicAuthHeader(input.login, input.senha),
-      },
+      headers: { Authorization: buildBasicAuthHeader(input.login, input.senha) },
       body: form,
       signal: controller.signal,
     });
-    const raw = await response.text();
-    const parsed = parseNfseResponse(raw);
+    const raw = decodeResponse(await response.arrayBuffer(), response.headers.get("content-type"));
     return {
-      ...parsed,
-      ok: parsed.ok && response.ok,
+      transport: "ok",
+      parsed: parseNfseResponse(raw),
       httpStatus: response.status,
       raw,
+      durationMs: Date.now() - started,
+      transportError: null,
+    };
+  } catch (err) {
+    const aborted = controller.signal.aborted || (err instanceof Error && err.name === "AbortError");
+    return {
+      transport: aborted ? "timeout" : "rede",
+      parsed: parseNfseResponse(""),
+      httpStatus: null,
+      raw: "",
+      durationMs: Date.now() - started,
+      transportError: aborted
+        ? "A prefeitura não respondeu a tempo."
+        : "Falha de comunicação com a prefeitura.",
     };
   } finally {
     clearTimeout(timeout);

@@ -107,3 +107,51 @@ Configurações do projeto → Secrets como `IPM_NFSE_SENHA_CORDIAL` / `IPM_NFSE
 Ficha do aluguel → seção "NFS-e (Santa Rosa)" → **Emitir NFS-e**. O valor é sempre a
 comissão mensal (serviço de administração), nunca o aluguel cheio. O modo teste vem
 ligado por padrão e apenas valida na prefeitura.
+
+## Etapa 1 — emissão segura (02/10/2026)
+
+### Máquina de estados (`rental_nfse_emissions.status`)
+`processando` → `teste_ok` | `emitida` | `erro` | `incerto`.
+- A linha `processando` é gravada **antes** do envio (com `request_xml` e `identificador`).
+- `emitida`: há `numero_nfse`, nenhum código de crítica e `situacao_codigo_nfse` 1 (ou ausente).
+- `teste_ok`: modo teste com "válida para emissão".
+- `erro`: recusa da prefeitura com código (definitiva).
+- `incerto`: timeout, erro de rede, HTTP 5xx ou retorno ilegível. Bloqueia nova nota real até a conferência.
+- `processando` há mais de 120 s vira `incerto` no próximo envio da marca.
+- Emissão real **nunca** é reenviada automaticamente.
+
+### Idempotência
+`identificador` = `GC-<marca>-<contrato sem hífens>-<AAAAMM>-1` (teste: sufixo `-T`, ≤ 80).
+A prefeitura não processa duas vezes o mesmo identificador e devolve a nota já gerada (NT 122).
+Índices únicos: uma nota real (`processando`/`incerto`/`emitida`) por contrato+competência e um
+`processando` por marca (o webservice é síncrono).
+
+### Conferência
+`reconcileRentalNfse` (admin/financeiro) reenvia o **mesmo** `request_xml` de uma linha `incerto`,
+atualiza a mesma linha e incrementa `attempts`. Linhas antigas sem identificador não são conferidas.
+
+### Trava de modo teste
+Com `nfse_provider_settings.modo_teste = true`, o servidor força teste e recusa pedido real
+("Modo teste ligado nas Integrações…"). Nota real exige `confirmarEmissaoReal: true`; o usuário fica em
+`confirmacao_real_por`. Em linhas de teste, número, link e verificador não são gravados nem exibidos
+(ficam só em `response_raw`).
+
+### Validações (`src/lib/nfse/validation.ts`)
+CPF/CNPJ com DV (CNPJ alfanumérico aceito), item 4/6 dígitos, NBS 9 dígitos, alíquota 0–5, situação
+tributária só dígitos, endpoint `https://*.atende.net` (também CHECK no banco), e-mail e telefone
+opcionais (inválidos são omitidos; DDI 55 removido). Aplicadas ao salvar e de novo antes do envio.
+Endereço do tomador vem do imóvel (logradouro, número, complemento, bairro, CEP); cidade/CEP só vão
+se o imóvel for em Santa Rosa. Competência `AAAA-MM`, lida do vencimento como texto; mais de 1 mês
+no futuro é recusada.
+
+### Encoding e parser
+Retorno lido como bytes e decodificado pelo charset do Content-Type ou do prólogo (padrão
+ISO-8859-1). Parser `fast-xml-parser` + zod (`src/lib/nfse/ipm/response.ts`); todas as mensagens
+`NNNNN - texto` viram `error_codes`. JSON `{"retorno":{"msg","code"}}` continua suportado.
+
+### Segurança
+Só o servidor grava em `rental_nfse_emissions` (políticas de INSERT/UPDATE do navegador removidas).
+Logs: uma linha JSON `evento: nfse_emissao` por tentativa, sem segredos.
+
+### Etapa 2
+Consulta e cancelamento de nota, emissão em lote mensal.
