@@ -1,59 +1,44 @@
-# Cadastro de imóvel que não termina: conclusão segura, rascunho visível e agenciamento automático
-
-## Objetivo
-Um imóvel cadastrado pelo Gestão nunca deve ficar "meio salvo" sem aviso: ou termina com códigos, agenciamento e envio aos sites, ou aparece claramente como "Cadastro não concluído", com um botão para terminar. Publicar pelo painel também cria o agenciamento que falta.
+# Correções do commit 3aa8a196: corretor na conclusão, gatilho do Drive e corretor do rascunho
 
 ## O que muda
-1. **Conclusão em uma única chamada no servidor** (`finalizePropertyRegistration`): salva os dados, confirma as reservas de código (ou reserva, se faltar), registra o agenciamento (mesma chave `property:<id>:initial-agency-listing`), tira a marca de rascunho e envia para publicação, se pedido. Cada passo é idempotente: duplo clique, nova tentativa ou aba fechada não duplicam imóvel, código, agenciamento nem envio. Devolve o resultado de cada passo, para a tela mostrar o que deu certo e o que falta.
-2. **Rascunho visível**: o imóvel criado para receber fotos é gravado com `is_draft=true`. Catálogo e detalhe mostram o selo "Cadastro não concluído" e o botão "Concluir cadastro", que reabre o assistente no passo final. Em "Novo imóvel", se o usuário tiver um rascunho próprio, aparece a opção "Continuar cadastro". Ao Cancelar, voltar ou fechar a aba com rascunho pendente, aparece um aviso.
-3. **Agenciamento automático ao publicar** (decisão do Leonardo): `enqueuePropertySync` com ação publish, para imóvel do Gestão sem agenciamento vinculado, cria o agenciamento antes de enviar.
-   - Corretor: `properties.corretor_id`; se vazio, `created_by`; se vazio, quem publicou, só se for corretor. Admin ou secretária nunca viram responsáveis por terem clicado; sem corretor definido, o agenciamento não é criado e o caso aparece na lista de pendências.
-   - Data: o dia (fuso de São Paulo) em que o imóvel foi criado.
-   - Venda/Aluguel: vem da finalidade do imóvel; locação/temporada vira Aluguel.
-   - Agenciamento existente nunca é sobrescrito. Se a criação falhar, a publicação continua e o problema fica registrado.
-4. **Criador registrado**: `createImovel` grava `created_by` no servidor. Se quem cria é corretor e não há corretor definido, ele vira o corretor do imóvel, com o nome do perfil.
-5. **Visão do admin**: o alerta que já roda (`property_create_stuck_alerts`) passa a avisar sobre imóveis do Gestão não arquivados, criados há mais de 30 min, sem publicação e/ou sem agenciamento. O corretor criador recebe "Seu cadastro não foi concluído" (uma vez por imóvel). Integrações ganha a lista "Cadastros não concluídos".
-6. **Drive**: quando os códigos chegam depois, a pasta "IMÓVEL - SEM CÓDIGO" é renomeada para o nome com os códigos. Só renomeia; nada é apagado nem movido.
+1. **"Concluir cadastro" feito por admin ou secretária.** Hoje, se a etapa de agenciamento vem sem corretor, `finalizePropertyAgencyCore` usa quem clicou (`context.userId`, linha 104). Com a correção:
+   - Se quem conclui é admin ou secretária e não escolheu um corretor de forma explícita, o servidor escolhe o corretor pela mesma regra da publicação manual (`resolveAutoAgencyBroker`): primeiro `properties.corretor_id`, depois `created_by` se for corretor. Quem clicou nunca entra como candidato: o `publisherId` passado à regra não é aceito quando é admin ou secretária.
+   - Sem candidato, o agenciamento não é criado. O passo fica como "pendente" com a mensagem "Imóvel sem corretor definido", e o imóvel continua na lista de pendências (não é marcado como concluído).
+   - Corretor concluindo o próprio rascunho continua como hoje: ele mesmo.
+   - A escolha do corretor vira uma função pura em `registration-rules.ts` (`resolveFinalizeAgencyBroker`), que dá para testar.
+2. **Gatilho do Drive à prova de corrida.** `CREATE OR REPLACE` de `property_drive_rename_on_codes`: o INSERT passa a usar `ON CONFLICT (property_id) WHERE status IN ('pending','processing','retry') DO NOTHING`, que é o índice `property_drive_jobs_active_idx`. Mantenho o `NOT EXISTS` como filtro rápido. Para garantir que o gatilho nunca desfaça a gravação dos códigos, envolvo o INSERT em `BEGIN … EXCEPTION WHEN unique_violation THEN NULL END`. Nada mais muda na função.
+3. **Corretor do rascunho preservado.** No salvamento final (`updateImovelCore`, chamado por `finalizePropertyRegistration`), `corretorId` e `corretorNome` vazios ou nulos deixam de ser enviados. O corretor gravado no rascunho continua. Se o usuário escolher outro corretor, essa escolha é gravada. A edição normal do imóvel não muda: lá, limpar o corretor continua sendo permitido.
 
-## Migração (aditiva, sem tocar em dados existentes)
-- Nova coluna `properties.registration_completed_at` (vazia nos imóveis atuais).
-- Nova versão de `property_create_stuck_alerts` com a regra dos 30 min e a deduplicação por imóvel (mesmo padrão do alerta atual).
-- Função de leitura `list_incomplete_registrations` (admin/secretária veem todos; corretor vê só os próprios).
-- Para que o alerta não dispare nos imóveis antigos, ele só olha imóveis criados depois da migração. Os casos antigos ficam só na lista para decisão manual.
-- Nenhum UPDATE, INSERT ou DELETE em linhas existentes.
+## Opcionais (pequenos e de baixo risco)
+- (a) **Repetir a conclusão não reenvia aos sites.** Se o imóvel já tem `registration_completed_at` e uma publicação ativa nos destinos pedidos, a conclusão pula a publicação (passo "ignorado") e não cria um job extra de atualização completa.
+- (b) **Tela alinhada com o servidor.** A tela passa a considerar o cadastro concluído quando nem a publicação nem o agenciamento falharam, que é o mesmo critério do servidor. Se só a confirmação de códigos falhar, aparece apenas o aviso, sem "cadastro não concluído".
+
+## Migração (só aditiva)
+- Uma migração com o `CREATE OR REPLACE FUNCTION public.property_drive_rename_on_codes()`. O gatilho continua o mesmo.
+- Nenhum UPDATE, INSERT ou DELETE em linhas existentes. Nenhuma coluna ou índice novo.
 
 ## Arquivos afetados
-- Novo: `src/lib/imoveis/registration.functions.ts` (+ `registration.server.ts` com a regra do corretor/data/finalidade, que pode ser testada).
-- `src/lib/imoveis/imoveis.functions.ts` (created_by, corretor padrão, is_draft no rascunho).
-- `src/lib/imoveis/publish.functions.ts` (agenciamento automático no publish).
-- `src/lib/agenciamentos/property-link.functions.ts` (lógica de inserção idempotente extraída para reuso).
-- `src/routes/_app.imoveis.novo.tsx`, `src/routes/_app.imoveis.$imovelId.index.tsx`, `src/components/imoveis/PropertyCatalogCard.tsx`, `src/routes/_app.integracoes.tsx` (+ cartão novo de pendências).
-- `src/hooks/useImoveis.ts`, `src/hooks/usePropertyAgency.ts`.
-- Drive: `src/lib/imoveis/drive/property-drive.functions.ts` / `naming.ts`.
-- Migração nova; `AGENTS.md` (regra: conclusão de cadastro só pela função única no servidor).
+- `src/lib/imoveis/registration-rules.ts`: nova função pura `resolveFinalizeAgencyBroker`.
+- `src/lib/imoveis/registration.functions.ts`: escolha do corretor antes do agenciamento, regra de "sem candidato", filtro dos campos de corretor vazios e os opcionais (a) e (b) do lado do servidor.
+- `src/lib/agenciamentos/property-link.functions.ts`: o núcleo aceita um corretor já escolhido pelo servidor. Admin ou secretária sem corretor não caem mais em `context.userId`.
+- `src/routes/_app.imoveis.novo.tsx`: critério de "concluído" da tela (b).
+- Migração nova. Testes novos: `src/lib/imoveis/registration-rules.test.ts` e `tests/sql/` (ou junto com `tests/archive`, rodando em PGlite).
+- `AGENTS.md`: ajuste da regra existente sobre a conclusão do cadastro (o corretor nunca é quem clicou se for admin ou secretária).
 
-## Testes (TZ=America/Sao_Paulo + type check)
-- Finalização: duplo clique, retry e repetição após fechar a aba geram um só agenciamento, uma só confirmação de código e um só envio.
-- Publicação manual cria o agenciamento uma única vez; corretor certo quando publica corretor, admin ou secretária; admin sem corretor definido não vira responsável.
-- created_by gravado; corretor criador vira corretor do imóvel.
-- Rascunho criado com is_draft=true e listado como pendente; deixa de aparecer depois de concluído.
-- Regra do alerta: dispara após 30 min; não dispara para concluído, arquivado ou com menos de 30 min (teste isolado em banco local, como no arquivamento).
-- data_agenciamento: imóvel criado às 22:30 BRT de 01/10 recebe 2026-10-01.
+## Testes (TZ=America/Sao_Paulo + type check, todos os testes)
+1. Admin ou secretária concluindo o rascunho de um corretor: o agenciamento fica com o `corretor_id` do imóvel ou, se vazio, com o criador corretor. Nunca com quem clicou. Sem candidato: não cria e o imóvel continua pendente. Corretor concluindo o próprio rascunho: fica ele mesmo.
+2. Gatilho do Drive em PGlite isolado, com tabelas mínimas: com um job ativo já existente, o UPDATE dos códigos é gravado sem erro e continua existindo só um job ativo. Sem job ativo, cria um. Sem pasta, não cria nenhum.
+3. Filtro dos campos de corretor (função pura): sem corretor escolhido, mantém o do rascunho. Com corretor escolhido, grava o escolhido.
+4. Opcionais: repetir a conclusão já publicada não envia de novo. Falha só nos códigos é tratada como concluído na tela.
 
 ## Validação
-Sem criar imóvel de teste, sem publicar, sem enviar nada aos sites. Só testes automáticos e consultas de leitura (conferir que a lista de pendências mostra 1399/3398, 1385/3384 e os rascunhos órfãos).
-
-## Dados para o Leonardo decidir um a um (nada é aplicado)
-- Agenciamento faltando: 1399/3398 (Geandre) e 1385/3384 (Felipe), com o corretor e a data sugeridos.
-- Rascunhos órfãos: 950689c8 (Geandre, 23/09, talvez refeito como 1388), 1bac0a1d (Ricardo, 27/08), os 5 rascunhos vazios. 0237848e já está arquivado (refeito como 1396) e fica de fora.
-- Os imóveis antigos não serão marcados como rascunho automaticamente.
+Só testes automáticos e consultas de leitura. Sem imóvel de teste, sem enviar nada aos sites, sem publicar. Não crio agenciamentos para 1399/1385 nem mexo nos rascunhos órfãos.
 
 ## Riscos
-- O agenciamento automático pode criar um registro que alguém faria à mão; isso é evitado pela chave única e porque nada existente é sobrescrito.
-- Marcar o rascunho com is_draft pode escondê-lo de filtros que hoje excluem rascunhos. Vou conferir os filtros e mostrar os rascunhos com o selo, em vez de escondê-los.
-- O aviso ao fechar a aba depende do navegador; a lista de pendências e o alerta cobrem esse caso.
+- Admin ou secretária que hoje concluem rascunhos sem corretor definido passam a deixar o imóvel pendente. É o comportamento pedido, e o imóvel aparece na lista.
+- Com o opcional (a), uma correção feita na própria tela de conclusão de um imóvel já publicado não segue sozinha para os sites. Ela continua possível pelo painel de publicação.
+- O `EXCEPTION` no gatilho cria um ponto de retorno interno a cada execução. O custo é baixo, porque só roda quando os códigos mudam.
 
-## Desvios da proposta
-- Sem corretor definido e com admin/secretária publicando, o agenciamento não é criado (vai para pendências) em vez de ficar sem responsável.
-- O alerta só vale para imóveis criados depois da migração, para não gerar notificações em massa sobre casos antigos.
-- O estado partial/"Verificação remota divergente" e o atraso das fotos ficam fora deste plano, como pedido.
+## Desvios
+- Além do `ON CONFLICT`, o gatilho ganha `EXCEPTION WHEN unique_violation` como segunda proteção.
+- O filtro de corretor vazio vale só na conclusão do cadastro, não na edição normal do imóvel.
