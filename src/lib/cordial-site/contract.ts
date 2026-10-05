@@ -116,6 +116,14 @@ export const publicPropertySchema = z.object({
 export type PublicProperty = z.infer<typeof publicPropertySchema>;
 export type PublicMedia = z.infer<typeof mediaSchema>;
 export type PublicDetail = PublicProperty & { images: PublicMedia[] };
+const publicFacet = z.object({ value: z.string().max(100), count: z.number().int().nonnegative() });
+export const publicFacetsSchema = z.object({
+  types: z.array(publicFacet),
+  cities: z.array(publicFacet),
+  districts: z.array(publicFacet.extend({ city: z.string().max(100) })),
+  stages: z.array(z.string().max(100)),
+  total: z.number().int().nonnegative(),
+});
 export type SiteFacets = {
   types: Array<{ value: string; count: number }>;
   cities: Array<{ value: string; count: number }>;
@@ -144,6 +152,8 @@ export const settingsSchema = z.object({
   about: z.string().max(6000).default(""),
   privacy: z.string().max(20000).default(""),
   instagram: z.union([z.string().url().startsWith("https://"), z.literal("")]).default(""),
+  facebook: z.union([z.string().url().startsWith("https://"), z.literal("")]).default(""),
+  heroPropertyId: z.string().uuid().nullable().default(null),
   links: z
     .array(z.object({ label: z.string().max(100), url: z.string().url().startsWith("https://") }))
     .max(12)

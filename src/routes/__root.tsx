@@ -75,7 +75,7 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: ({ matches }) => {
-    if (matches.some((match) => String(match.routeId) === "/site")) {
+    if (matches.some((match) => ["/site", "/site-morar"].includes(String(match.routeId)))) {
       return {
         meta: [
           { charSet: "utf-8" },

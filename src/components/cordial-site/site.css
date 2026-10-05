@@ -57,6 +57,12 @@ body:has(.cordial-site) {
 .cordial-site :where(button) {
   border: 0;
 }
+.cordial-site .cs-contact-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
 .cordial-site :where(img) {
   display: block;
   max-width: 100%;

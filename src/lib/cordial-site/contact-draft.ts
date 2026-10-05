@@ -1,4 +1,8 @@
 // Browser memory only: survives route error/retry without writing contact PII to disk.
+import type { SiteBrand } from "./brand";
+export function contactDraftKey(kind: string, propertyId?: string, brand: SiteBrand = "cordial") {
+  return `${brand}:${kind}:${propertyId ?? "general"}`;
+}
 export type ContactDraft = {
   requestId: string;
   values: {
@@ -13,6 +17,21 @@ export type ContactDraft = {
     consent: boolean;
   };
 };
+export function initialContactValues(reference?: string): ContactDraft["values"] {
+  return {
+    name: "",
+    phone: "",
+    email: "",
+    message: reference
+      ? `Olá! Tenho interesse no imóvel ${reference}. Gostaria de receber mais informações.`
+      : "",
+    operation: "",
+    propertyType: "",
+    city: "",
+    website: "",
+    consent: false,
+  };
+}
 const drafts = new Map<string, { draft: ContactDraft; expires: number }>();
 export function readContactDraft(key: string): ContactDraft | undefined {
   if (typeof window === "undefined") return undefined;

@@ -5,10 +5,16 @@ import { defaultSearch, searchSchema, type SiteSearch } from "@/lib/cordial-site
 import { loadCatalog } from "@/lib/cordial-site/data";
 import { sitePath } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
-import { useSite } from "@/lib/cordial-site/context";
+import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 
+import { MorarSearchForm } from "./MorarSearchForm";
 import { searchLabels as labels } from "@/lib/cordial-site/search-labels";
-export function SearchForm({
+type SearchFormProps = { initial?: Partial<SiteSearch>; compact?: boolean; onApplied?: () => void };
+export function SearchForm(props: SearchFormProps) {
+  const brand = useSiteBrand();
+  return brand === "morar" ? <MorarSearchForm {...props} /> : <CordialSearchForm {...props} />;
+}
+function CordialSearchForm({
   initial = defaultSearch,
   compact = false,
   onApplied,

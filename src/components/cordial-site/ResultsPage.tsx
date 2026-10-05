@@ -20,13 +20,17 @@ import { sitePath } from "@/lib/cordial-site/presentation";
 import { PropertyCard } from "./PropertyCard";
 import { SearchForm } from "./SearchForm";
 import { searchLabels } from "@/lib/cordial-site/search-labels";
+import { getSiteBrand } from "@/lib/cordial-site/brand";
+import { useSiteBrand } from "@/lib/cordial-site/context";
 import { SiteLink } from "./SiteShell";
 export function ResultsPage({ result, search }: { result: SiteCatalog; search: SiteSearch }) {
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   const [filters, setFilters] = useState(false);
-  const [expanded, setExpanded] = useState(result.total === 0);
+  const [expanded, setExpanded] = useState(brand === "morar" || result.total === 0);
   const navigate = useNavigate();
   const change = (patch: Partial<SiteSearch>) =>
-    void navigate({ to: "/site/buscar", search: { ...search, ...patch, pagina: 1 } });
+    void navigate({ to: `${config.basePath}/buscar`, search: { ...search, ...patch, pagina: 1 } });
   const chips = Object.entries(search).filter(
     ([k, v]) => k in searchLabels && v != null && v !== defaultSearch[k as keyof SiteSearch],
   );
@@ -66,7 +70,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
       </div>
       <div className="cs-quick-filters">
         <label>
-          <span>Referência Cordial</span>
+          <span>Referência {config.shortName}</span>
           <input
             id="referencia"
             key={search.referencia ?? ""}
@@ -118,8 +122,8 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
               Filtros{chips.length > 0 ? ` (${chips.length})` : ""}
             </Dialog.Trigger>
             <Dialog.Portal>
-              <Dialog.Overlay className="cordial-site cs-dialog-overlay" />
-              <Dialog.Content className="cordial-site cs-drawer cs-filter-drawer">
+              <Dialog.Overlay className={`${config.themeClass} cs-dialog-overlay`} />
+              <Dialog.Content className={`${config.themeClass} cs-drawer cs-filter-drawer`}>
                 <Dialog.Title>Encontre seu imóvel</Dialog.Title>
                 <Dialog.Description>
                   Combine filtros e aplique para ver os resultados.
@@ -160,7 +164,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
                   aria-pressed={search.visualizacao === v}
                   onClick={() =>
                     void navigate({
-                      to: "/site/buscar",
+                      to: `${config.basePath}/buscar`,
                       search: { ...search, visualizacao: v as SiteSearch["visualizacao"] },
                     })
                   }

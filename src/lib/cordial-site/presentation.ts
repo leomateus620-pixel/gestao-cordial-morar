@@ -1,10 +1,16 @@
 import { decodeHTML } from "entities";
 import type { PublicProperty, PublicMedia } from "./contract";
+import { getSiteBrand, type SiteBrand } from "./brand";
 export const SITE_BASE = "/site";
-export const sitePath = (path = "") => `${SITE_BASE}${path}`;
-export const propertyPath = (p: Pick<PublicProperty, "id">) => sitePath(`/imovel/${p.id}`);
-export const mediaPath = (m: PublicMedia, size: "thumb" | "card" | "full" = "card") =>
-  `/api/cordial-site/media/${m.id}/${m.version}/${size}`;
+export const sitePath = (path = "", brand: SiteBrand = "cordial") =>
+  `${getSiteBrand(brand).basePath}${path}`;
+export const propertyPath = (p: Pick<PublicProperty, "id">, brand: SiteBrand = "cordial") =>
+  sitePath(`/imovel/${p.id}`, brand);
+export const mediaPath = (
+  m: PublicMedia,
+  size: "thumb" | "card" | "full" = "card",
+  brand: SiteBrand = "cordial",
+) => `${getSiteBrand(brand).apiBase}/media/${m.id}/${m.version}/${size}`;
 export const money = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 export function priceLabel(p: Pick<PublicProperty, "price" | "priceMode" | "operation">) {

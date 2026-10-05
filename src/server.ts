@@ -6,6 +6,7 @@ import {
   isSiteRequest,
   guardSiteRequest,
   siteResponseHeaders,
+  requestSiteBrand,
 } from "./lib/cordial-site/request.server";
 
 type ServerEntry = {
@@ -57,9 +58,14 @@ export default {
       const headers = new Headers(normalized.headers);
       // TanStack's renderer derives status from router stores, overriding h3 status.
       // Consume only the private signal emitted by the withdrawn-property route.
-      const withdrawn = headers.get("X-Cordial-Page-Status") === "410";
+      const withdrawn =
+        headers.get("X-Cordial-Page-Status") === "410" ||
+        headers.get("X-Morar-Page-Status") === "410";
       headers.delete("X-Cordial-Page-Status");
-      for (const [name, value] of Object.entries(siteResponseHeaders()))
+      headers.delete("X-Morar-Page-Status");
+      for (const [name, value] of Object.entries(
+        siteResponseHeaders(requestSiteBrand(request) ?? "cordial"),
+      ))
         if (value) headers.set(name, value);
       if (normalized.headers.get("content-type")?.startsWith("image/"))
         headers.set("Cache-Control", normalized.headers.get("cache-control") ?? "no-store");

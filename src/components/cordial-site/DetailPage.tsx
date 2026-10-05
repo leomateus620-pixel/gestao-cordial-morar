@@ -12,7 +12,6 @@ import {
   MapPin,
   Share2,
   X,
-  MessageCircle,
 } from "lucide-react";
 import type { PublicDetail, SiteCatalog } from "@/lib/cordial-site/contract";
 import {
@@ -24,7 +23,9 @@ import {
   sitePath,
 } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
-import { useSite } from "@/lib/cordial-site/context";
+import { getSiteBrand } from "@/lib/cordial-site/brand";
+import { WhatsAppIcon } from "./SocialIcons";
+import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyCard, PropertyImage } from "./PropertyCard";
 import { externalSitePath } from "@/lib/cordial-site/routing";
 import { ContactForm } from "./ContactForm";
@@ -36,23 +37,29 @@ export function DetailPage({
   related: SiteCatalog | null;
 }) {
   const { settings, canonicalOrigin } = useSite();
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const galleryTrigger = useRef<HTMLButtonElement | null>(null);
   const touch = useRef<number | null>(null);
   const shareRef = useRef<HTMLInputElement>(null);
+  const [previewOrigin, setPreviewOrigin] = useState<string | null>(null);
+  useEffect(() => {
+    if (!canonicalOrigin) setPreviewOrigin(window.location.origin);
+  }, [canonicalOrigin]);
   useEffect(() => {
     setIndex((i) => (i < p.images.length ? i : 0));
     if (!p.images.length) setOpen(false);
   }, [p.images.length]);
   const move = (n: number) =>
     setIndex((i) => (p.images.length ? (i + n + p.images.length) % p.images.length : 0));
-  const url = canonicalOrigin
-    ? canonicalOrigin + externalSitePath(propertyPath(p))
-    : typeof location !== "undefined"
-      ? location.origin + externalSitePath(propertyPath(p))
-      : propertyPath(p);
+  const publicPath = externalSitePath(propertyPath(p, brand), brand);
+  const url =
+    (canonicalOrigin ?? previewOrigin)
+      ? (canonicalOrigin ?? previewOrigin) + publicPath
+      : publicPath;
   const whatsapp = settings.whatsapp
     ? `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel ${p.reference}. ${url}`)}`
     : null;
@@ -60,9 +67,9 @@ export function DetailPage({
     <>
       <div className="cs-container cs-detail-page">
         <nav className="cs-breadcrumb" aria-label="Caminho">
-          <SiteLink to={sitePath("/")}>Início</SiteLink>
+          <SiteLink to={sitePath("/", brand)}>Início</SiteLink>
           <span>/</span>
-          <SiteLink to={sitePath("/buscar")}>Imóveis</SiteLink>
+          <SiteLink to={sitePath("/buscar", brand)}>Imóveis</SiteLink>
           <span>/</span>
           <span>Ref. {p.reference}</span>
         </nav>
@@ -71,7 +78,7 @@ export function DetailPage({
             className="cs-text-link"
             onClick={() => {
               if (history.length > 1) history.back();
-              else location.assign(sitePath("/buscar"));
+              else location.assign(sitePath("/buscar", brand));
             }}
           >
             <ArrowLeft size={17} />
@@ -99,7 +106,7 @@ export function DetailPage({
                 try {
                   if (navigator.share)
                     await navigator.share({
-                      title: `${p.type ?? "Imóvel"} · Cordial ${p.reference}`,
+                      title: `${p.type ?? "Imóvel"} · ${config.shortName} ${p.reference}`,
                       url,
                     });
                   else {
@@ -165,9 +172,9 @@ export function DetailPage({
         </div>
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Portal>
-            <Dialog.Overlay className="cordial-site cs-dialog-overlay" />
+            <Dialog.Overlay className={`${config.themeClass} cs-dialog-overlay`} />
             <Dialog.Content
-              className="cordial-site cs-lightbox"
+              className={`${config.themeClass} cs-lightbox`}
               onCloseAutoFocus={(e) => {
                 e.preventDefault();
                 galleryTrigger.current?.focus();
@@ -263,10 +270,10 @@ export function DetailPage({
             </div>
             <div className="cs-detail-attributes">
               {[
-                [BedDouble, p.bedrooms, "Dormitórios"],
-                [Bath, p.bathrooms, "Banheiros"],
-                [BedDouble, p.suites, "Suítes"],
-                [CarFront, p.parking, "Vagas"],
+                [BedDouble, p.bedrooms, p.bedrooms === 1 ? "Dormitório" : "Dormitórios"],
+                [Bath, p.bathrooms, p.bathrooms === 1 ? "Banheiro" : "Banheiros"],
+                [BedDouble, p.suites, p.suites === 1 ? "Suíte" : "Suítes"],
+                [CarFront, p.parking, p.parking === 1 ? "Vaga" : "Vagas"],
               ].map(([Icon, value, label]) => {
                 const I = Icon as typeof Bath;
                 return value != null ? (
@@ -331,7 +338,7 @@ export function DetailPage({
               <p>Peça mais informações ou manifeste seu interesse em uma visita.</p>
               {whatsapp && (
                 <a className="cs-button" href={whatsapp} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle size={20} />
+                  <WhatsAppIcon width={20} height={20} />
                   Conversar pelo WhatsApp
                 </a>
               )}

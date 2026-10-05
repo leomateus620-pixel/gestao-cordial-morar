@@ -21,7 +21,8 @@ export function resolveAutoAgencyBroker(input: {
   // Quem cadastrou (qualquer perfil, inclusive admin/secretária) é o responsável.
   if (input.createdBy) return input.createdBy;
   const roles = input.rolesOf(input.publisherId);
-  if (roles.includes("corretor") && !roles.includes("admin") && !roles.includes("secretaria")) return input.publisherId;
+  if (roles.includes("corretor") && !roles.includes("admin") && !roles.includes("secretaria"))
+    return input.publisherId;
   return null;
 }
 
@@ -48,9 +49,9 @@ export function resolveFinalizeAgencyBroker(input: {
 }
 
 /** Salvamento final: corretor vazio no formulário não apaga o do rascunho. */
-export function keepDraftBroker<T extends { corretorId?: string | null; corretorNome?: string | null }>(
-  values: T,
-): T {
+export function keepDraftBroker<
+  T extends { corretorId?: string | null; corretorNome?: string | null },
+>(values: T): T {
   if (values.corretorId) return values;
   const { corretorId: _i, corretorNome: _n, ...rest } = values;
   return rest as T;
@@ -58,10 +59,16 @@ export function keepDraftBroker<T extends { corretorId?: string | null; corretor
 
 /** Mesmo critério do servidor para "cadastro concluído". */
 export function isFinalizeCompleted(
-  steps: { publish: string; agency: string },
+  steps: { publish: string; agency: string; ownedMorar?: string; save?: string },
   agencyPending = false,
 ): boolean {
-  return steps.publish !== "error" && steps.agency !== "error" && !agencyPending;
+  return (
+    steps.publish !== "error" &&
+    steps.agency !== "error" &&
+    steps.ownedMorar !== "error" &&
+    steps.save !== "error" &&
+    !agencyPending
+  );
 }
 
 /** Venda/Aluguel do agenciamento a partir da operação/finalidade do imóvel. */
