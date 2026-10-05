@@ -14,3 +14,12 @@ export function nextPaymentDueDate(dueDate: string | null, dueDay: number): stri
   const lastNextDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   return new Date(Date.UTC(year, month, Math.min(dueDay, lastNextDay))).toISOString().slice(0, 10);
 }
+
+/** A baixa só conta como registrada quando gravou uma referência histórica nova. */
+export function assertPaymentReferenceRecorded(previous: string | null, current: string | null): void {
+  if (!current || current === previous) {
+    throw new Error(
+      "A baixa não registrou a referência histórica da ocorrência. Não repita a baixa; solicite suporte para conferir o contrato.",
+    );
+  }
+}

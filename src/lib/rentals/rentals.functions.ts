@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { nextPaymentDueDate } from "@/lib/rentals/payment-reference";
+import { assertPaymentReferenceRecorded, nextPaymentDueDate } from "@/lib/rentals/payment-reference";
 import {
   RENTAL_PROPERTY_COLUMNS,
   mapRentalPropertyRow,
