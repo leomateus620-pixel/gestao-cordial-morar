@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import test from "node:test";
 import {
   buildRentalPrefill,
   fillEmpty,
@@ -7,37 +8,35 @@ import {
   previousCompetence,
 } from "./rental-prefill";
 
-describe("rental prefill", () => {
-  it("competência = mês anterior em Brasília", () => {
-    expect(previousCompetence(new Date("2026-10-05T13:45:00Z"))).toBe("2026-09");
-    expect(previousCompetence(new Date("2026-01-01T02:00:00Z"))).toBe("2025-11");
-    expect(previousCompetence(new Date("2026-01-15T12:00:00Z"))).toBe("2025-12");
+test("competência = mês anterior em Brasília", () => {
+    assert.equal(previousCompetence(new Date("2026-10-05T13:45:00Z")), "2026-09");
+    assert.equal(previousCompetence(new Date("2026-01-01T02:00:00Z")), "2025-11");
+    assert.equal(previousCompetence(new Date("2026-01-15T12:00:00Z")), "2025-12");
   });
-  it("último dia", () => {
-    expect(lastDayOfCompetence("2026-09")).toBe("2026-09-30");
-    expect(lastDayOfCompetence("2028-02")).toBe("2028-02-29");
+test("último dia", () => {
+    assert.equal(lastDayOfCompetence("2026-09"), "2026-09-30");
+    assert.equal(lastDayOfCompetence("2028-02"), "2028-02-29");
   });
-  it("endereço livre", () => {
-    expect(parseFreeAddress("Rua Canadá, n° 995 – Bairro Cidade Nova-Teresina/PI")).toEqual({
+test("endereço livre", () => {
+    assert.deepEqual(parseFreeAddress("Rua Canadá, n° 995 – Bairro Cidade Nova-Teresina/PI"), {
       logradouro: "Rua Canadá",
       numero: "995",
       bairro: "Cidade Nova",
       cep: "",
     });
   });
-  it("monta rascunho com comissão e tomador", () => {
+test("monta rascunho com comissão e tomador", () => {
     const d = buildRentalPrefill({
       competencia: "2026-09",
       comissaoMensal: 170,
       tenantNome: "Rodrigo Elyel Costa Batista",
       tenantDocumento: "072.513.793-25",
     });
-    expect(d.valor).toBe("170,00");
-    expect(d.documento).toBe("07251379325");
-    expect(d.dataFatoGerador).toBe("2026-09-30");
-    expect(d.motivo.length).toBeGreaterThanOrEqual(15);
+    assert.equal(d.valor, "170,00");
+    assert.equal(d.documento, "07251379325");
+    assert.equal(d.dataFatoGerador, "2026-09-30");
+    assert.deepEqual(d.motivo.length).toBeGreaterThanOrEqual(15);
   });
-  it("não sobrescreve", () => {
-    expect(fillEmpty({ a: "x", b: "" }, { a: "y", b: "z" })).toEqual({ a: "x", b: "z" });
+test("não sobrescreve", () => {
+    expect(fillEmpty({ a: "x", b: "" }, { a: "y", b: "z" }), { a: "x", b: "z" });
   });
-});
