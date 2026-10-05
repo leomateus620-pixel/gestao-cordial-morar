@@ -7,7 +7,7 @@ export async function morarDatabase() {
   await db.exec(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   await db.exec(
     await readFile(
-      new URL("../../supabase/migrations/20261004150000_morar_owned_site.sql", import.meta.url),
+      new URL("./morar_owned_site.sql", import.meta.url),
       "utf8",
     ),
   );
