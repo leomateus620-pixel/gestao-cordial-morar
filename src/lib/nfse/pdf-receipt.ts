@@ -46,7 +46,17 @@ export async function buildNfseReceiptPdf(d: NfseReceiptData): Promise<Uint8Arra
     const words = text.split(/\s+/);
     const lines: string[] = [];
     let cur = "";
-    for (const w of words) {
+    for (let w of words) {
+      while (f.widthOfTextAtSize(w, size) > width) {
+        let k = w.length;
+        while (k > 1 && f.widthOfTextAtSize(w.slice(0, k), size) > width) k--;
+        if (cur) {
+          lines.push(cur);
+          cur = "";
+        }
+        lines.push(w.slice(0, k));
+        w = w.slice(k);
+      }
       const next = cur ? `${cur} ${w}` : w;
       if (f.widthOfTextAtSize(next, size) > width && cur) {
         lines.push(cur);
@@ -107,6 +117,7 @@ export async function buildNfseReceiptPdf(d: NfseReceiptData): Promise<Uint8Arra
   field("Competência", compLabel);
 
   section("Valor");
+  y -= 12;
   text(brl(d.valor), 20, bold, accent);
   y -= 6;
 
