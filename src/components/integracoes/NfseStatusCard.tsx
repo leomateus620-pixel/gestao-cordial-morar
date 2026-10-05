@@ -14,8 +14,17 @@ import {
   type NfseSettings,
 } from "@/lib/nfse/nfse.functions";
 import { validateNfseSettings } from "@/lib/nfse/validation";
+import { normalizeItemListaServico } from "@/lib/nfse/ipm/xml";
 import { NfseFiscalProfileEditor } from "./NfseFiscalProfileEditor";
 import { fiscalProfileApprovalInput, parseProfileDraft, profileToDraft } from "./nfse-profile-form";
+
+function itemSentAs(value: string | null | undefined): string {
+  try {
+    return ` (enviado à prefeitura como ${normalizeItemListaServico(value)})`;
+  } catch {
+    return "";
+  }
+}
 
 const BUTTON =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50";
@@ -235,7 +244,7 @@ function BrandCard({
             onChange={(value) => update("razaoSocial", value)}
           />
           <Field
-            label="Item da lista de serviço aprovado"
+            label={`Item da lista de serviço aprovado${itemSentAs(form.codigoItemListaServico)}`}
             value={form.codigoItemListaServico}
             onChange={(value) => update("codigoItemListaServico", value)}
             error={errors.codigoItemListaServico}
