@@ -158,9 +158,9 @@ export function RentalNfseSection({
     const fill = buildRentalPrefill({
       competencia,
       comissaoMensal: contract.comissaoMensal,
-      tenantNome: contract.tenant?.nome,
-      tenantDocumento: contract.tenant?.cpfCnpj,
-      tenantEndereco: contract.tenant?.endereco,
+      ownerNome: contract.property?.proprietarioNome,
+      ownerDocumento: contract.property?.proprietarioCpf,
+      property: contract.property,
       propertyLabel: contract.property?.apelido,
     });
     setDraft((current) => fillEmpty(current, fill));
@@ -497,7 +497,7 @@ export function RentalNfseSection({
                         />
                         {(key === "cep" || key === "cidadeTom") && !draft[key] && (
                           <span className="block text-xs font-normal text-amber-900">
-                            Não consta no cadastro do locatário — preencha.
+                            Não consta no cadastro do imóvel — preencha.
                           </span>
                         )}
                       </label>
