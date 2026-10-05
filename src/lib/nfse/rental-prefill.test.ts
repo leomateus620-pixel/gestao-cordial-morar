@@ -35,8 +35,8 @@ test("monta rascunho com comissão e tomador", () => {
     assert.equal(d.valor, "170,00");
     assert.equal(d.documento, "07251379325");
     assert.equal(d.dataFatoGerador, "2026-09-30");
-    assert.deepEqual(d.motivo.length).toBeGreaterThanOrEqual(15);
+    assert.ok(d.motivo.length >= 15);
   });
 test("não sobrescreve", () => {
-    expect(fillEmpty({ a: "x", b: "" }, { a: "y", b: "z" }), { a: "x", b: "z" });
+    assert.deepEqual(fillEmpty({ a: "x", b: "" }, { a: "y", b: "z" }), { a: "x", b: "z" });
   });
