@@ -902,6 +902,7 @@ export const markRentalPaymentPaid = createServerFn({ method: "POST" })
       dia_vencimento: number;
       proximo_vencimento: string | null;
       updated_at: string;
+      last_payment_reference_id: string | null;
     };
     if (!data.expectedDueDate || data.expectedDueDate !== r.proximo_vencimento) {
       throw new Error(
@@ -927,6 +928,10 @@ export const markRentalPaymentPaid = createServerFn({ method: "POST" })
       throw new Error(
         "Esta ocorrência foi alterada ou já recebeu baixa. Atualize a ficha antes de continuar.",
       );
+    assertPaymentReferenceRecorded(
+      r.last_payment_reference_id,
+      (updated as { last_payment_reference_id: string | null }).last_payment_reference_id,
+    );
     return { ok: true, proximoVencimento: next };
   });
 
