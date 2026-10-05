@@ -94,7 +94,11 @@ export function useRentals(options: UseRentalsOptions = {}) {
     onSuccess: invalidate,
   });
   const payMutation = useMutation({
-    mutationFn: (id: string) => markPaid({ data: { id } }),
+    mutationFn: (id: string) => {
+      const contract = contractsQuery.data?.find((item) => item.id === id);
+      if (!contract) throw new Error("Atualize a ficha do contrato antes de registrar a baixa.");
+      return markPaid({ data: { id, expectedDueDate: contract.proximoVencimento ?? null } });
+    },
     onSuccess: invalidate,
   });
   const deleteMutation = useMutation({

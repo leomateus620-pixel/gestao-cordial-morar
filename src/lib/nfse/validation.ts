@@ -7,8 +7,8 @@ import { normalizeItemListaServico, normalizeTaxDoc, onlyDigits } from "./ipm/xm
 export { normalizeTaxDoc };
 
 export function isValidCpf(value: string | null | undefined): boolean {
-  const d = onlyDigits(value);
-  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const d = normalizeTaxDoc(value);
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
   const calc = (len: number) => {
     let sum = 0;
     for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
@@ -25,7 +25,8 @@ export function isValidCnpj(value: string | null | undefined): boolean {
   if (/^(\d)\1{13}$/.test(v)) return false;
   const val = (c: string) => c.charCodeAt(0) - 48;
   const dv = (len: number) => {
-    const weights = len === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const weights =
+      len === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     let sum = 0;
     for (let i = 0; i < len; i++) sum += val(v[i] as string) * (weights[i] as number);
     const r = sum % 11;
@@ -45,7 +46,9 @@ export function isValidEmail(value: string | null | undefined): boolean {
 }
 
 /** Telefone BR: remove DDI 55 (12/13 dígitos); DDD 2 + número 8/9. Inválido → null. */
-export function normalizePhone(value: string | null | undefined): { ddd: string; numero: string } | null {
+export function normalizePhone(
+  value: string | null | undefined,
+): { ddd: string; numero: string } | null {
   let d = onlyDigits(value);
   if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2);
   if (d.length !== 10 && d.length !== 11) return null;
@@ -54,10 +57,27 @@ export function normalizePhone(value: string | null | undefined): { ddd: string;
   return { ddd, numero: d.slice(2) };
 }
 
-export const ENDPOINT_ALLOWLIST = /^https:\/\/[a-z0-9-]+\.atende\.net(:[0-9]+)?\//;
+export const IPM_SANTA_ROSA_ENDPOINT =
+  "https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe";
 
 export function isAllowedEndpoint(value: string | null | undefined): boolean {
-  return ENDPOINT_ALLOWLIST.test(String(value ?? ""));
+  try {
+    const url = new URL(String(value ?? ""));
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "santarosa.atende.net" &&
+      !url.port &&
+      !url.username &&
+      !url.password &&
+      !url.hash &&
+      url.pathname === "/" &&
+      url.searchParams.get("pg") === "rest" &&
+      url.searchParams.get("service") === "WNERestServiceNFSe" &&
+      [...url.searchParams].length === 2
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Compara nomes de cidade sem acento e sem diferença de maiúsculas. */
@@ -87,11 +107,13 @@ export type NfseSettingsInput = {
 /** Erros por campo; objeto vazio = válido. Só valida os campos informados. */
 export function validateNfseSettings(input: NfseSettingsInput): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (input.cnpj !== undefined && !isValidCnpj(input.cnpj)) errors["cnpj"] = "CNPJ do prestador inválido.";
+  if (input.cnpj !== undefined && !isValidCnpj(input.cnpj))
+    errors["cnpj"] = "CNPJ do prestador inválido.";
   if (input.inscricaoMunicipal !== undefined) {
     const im = String(input.inscricaoMunicipal ?? "").trim();
     if (!im) errors["inscricaoMunicipal"] = "Informe a inscrição municipal.";
-    else if (!/^[0-9.\-/]{1,20}$/.test(im)) errors["inscricaoMunicipal"] = "Use só números na inscrição municipal.";
+    else if (!/^[0-9.\-/]{1,20}$/.test(im))
+      errors["inscricaoMunicipal"] = "Use só números na inscrição municipal.";
   }
   if (input.codigoItemListaServico !== undefined) {
     try {
@@ -101,18 +123,24 @@ export function validateNfseSettings(input: NfseSettingsInput): Record<string, s
       errors["codigoItemListaServico"] = "Item da lista: use 4 dígitos (10.05) ou 6 (10.05.01).";
     }
   }
-  if (input.codigoNbs !== undefined && input.codigoNbs !== null && String(input.codigoNbs).trim() !== "") {
-    if (onlyDigits(input.codigoNbs).length !== 9) errors["codigoNbs"] = "Código NBS deve ter 9 dígitos.";
+  if (
+    input.codigoNbs !== undefined &&
+    input.codigoNbs !== null &&
+    String(input.codigoNbs).trim() !== ""
+  ) {
+    if (!/^\d{9}$/.test(String(input.codigoNbs).replace(/[.\s]/g, "")))
+      errors["codigoNbs"] = "Código NBS deve ter 9 dígitos.";
   }
   if (input.aliquotaIss !== undefined) {
     const a = Number(input.aliquotaIss);
-    if (!Number.isFinite(a) || a < 0 || a > 5) errors["aliquotaIss"] = "Alíquota do ISS deve ficar entre 0 e 5%.";
+    if (input.aliquotaIss === null || !Number.isFinite(a) || a < 0 || a > 5)
+      errors["aliquotaIss"] = "Alíquota do ISS deve ficar entre 0 e 5%.";
   }
   if (input.situacaoTributaria !== undefined) {
     if (!/^\d{1,4}$/.test(String(input.situacaoTributaria ?? "").trim()))
       errors["situacaoTributaria"] = "Situação tributária: só dígitos (até 4).";
   }
   if (input.endpointUrl !== undefined && !isAllowedEndpoint(input.endpointUrl))
-    errors["endpointUrl"] = "Endereço da prefeitura deve ser https://*.atende.net.";
+    errors["endpointUrl"] = "Utilize o endpoint oficial aprovado de NFS-e de Santa Rosa.";
   return errors;
 }

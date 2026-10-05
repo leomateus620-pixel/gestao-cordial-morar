@@ -29,7 +29,9 @@ test("XSD Error 1824 sem número → erro (real e teste), mensagem e acentos pre
 });
 
 test("00383 - texto → erro com código 00383", () => {
-  const p = parseNfseResponse("<retorno><mensagem><codigo>00383 - Lista de Serviço sem desdobramento</codigo></mensagem></retorno>");
+  const p = parseNfseResponse(
+    "<retorno><mensagem><codigo>00383 - Lista de Serviço sem desdobramento</codigo></mensagem></retorno>",
+  );
   assert.deepEqual(p.codigosErro, ["00383"]);
   assert.equal(classifyResult(p, 200, false), "erro");
 });
@@ -45,26 +47,44 @@ test("mensagens numéricas e textuais misturadas → erro com todas listadas", (
 });
 
 test("número + mensagem → emitida em real, nunca erro (identificador repetido)", () => {
-  const p = parseNfseResponse(NOTA.replace("<retorno>", "<retorno><mensagem><codigo>00999 - Identificador já processado</codigo></mensagem>"));
+  const p = parseNfseResponse(
+    NOTA.replace(
+      "<retorno>",
+      "<retorno><mensagem><codigo>00999 - Identificador já processado</codigo></mensagem>",
+    ),
+  );
   assert.equal(p.kind, "sucesso");
   assert.equal(p.numeroNfse, "900");
   assert.equal(classifyResult(p, 200, false), "emitida");
 });
 
-test("número com situação 2 → incerto", () => {
+test("número com situação 2 → cancelada (sem executar cancelamento)", () => {
   const p = parseNfseResponse(NOTA.replace("<situacao_codigo_nfse>1", "<situacao_codigo_nfse>2"));
-  assert.equal(classifyResult(p, 200, false), "incerto");
+  assert.equal(classifyResult(p, 200, false), "cancelada");
 });
 
 test("vazio, HTML, XML sem retorno, retorno vazio e 5xx → incerto", () => {
-  for (const raw of ["", "<html><body>x</body></html>", "texto solto", "<outro><a>1</a></outro>", "<retorno></retorno>", "<retorno/>"]) {
+  for (const raw of [
+    "",
+    "<html><body>x</body></html>",
+    "texto solto",
+    "<outro><a>1</a></outro>",
+    "<retorno></retorno>",
+    "<retorno/>",
+  ]) {
     assert.equal(classifyResult(parseNfseResponse(raw), 200, false), "incerto", raw);
   }
   assert.equal(classifyResult(parseNfseResponse(XSD), 503, false), "incerto");
 });
 
 test("regra de marcar como não emitida", () => {
-  const ok = { isAdmin: true, status: "incerto", numeroNfse: null, reason: "Conferido no portal em 02/10", conferidoNoPortal: true };
+  const ok = {
+    isAdmin: true,
+    status: "incerto",
+    numeroNfse: null,
+    reason: "Conferido no portal em 02/10",
+    conferidoNoPortal: true,
+  };
   assert.equal(checkMarkNotIssued(ok), null);
   assert.ok(checkMarkNotIssued({ ...ok, isAdmin: false }));
   assert.ok(checkMarkNotIssued({ ...ok, reason: "curto" }));
@@ -86,8 +106,34 @@ test("sugestão manual depois de 3 conferências seguidas em incerto", () => {
 });
 
 test("reclassificação: incerto com recusa gravada → erro; sem retorno → inalterado", () => {
-  assert.equal(reclassifyFromRaw("incerto", XSD, false, parseNfseResponse), "erro");
-  assert.equal(reclassifyFromRaw("incerto", NOTA, false, parseNfseResponse), "emitida");
+  const evidence = {
+    httpStatus: 200,
+    responseComplete: true,
+    attemptId: "tentativa-1",
+    parserVersion: "ipm-v1",
+  };
+  assert.equal(reclassifyFromRaw("incerto", XSD, false, parseNfseResponse, evidence), "erro");
+  assert.equal(reclassifyFromRaw("incerto", NOTA, false, parseNfseResponse, evidence), "emitida");
+  assert.equal(reclassifyFromRaw("incerto", XSD, false, parseNfseResponse), null);
+  assert.equal(
+    reclassifyFromRaw("incerto", XSD, false, parseNfseResponse, { ...evidence, httpStatus: 503 }),
+    null,
+  );
+  assert.equal(
+    reclassifyFromRaw("incerto", NOTA, false, parseNfseResponse, { ...evidence, httpStatus: null }),
+    null,
+  );
+  assert.equal(
+    reclassifyFromRaw("incerto", NOTA, false, parseNfseResponse, {
+      ...evidence,
+      responseComplete: false,
+    }),
+    null,
+  );
+  assert.equal(
+    reclassifyFromRaw("incerto", NOTA, false, parseNfseResponse, { ...evidence, attemptId: null }),
+    null,
+  );
   assert.equal(reclassifyFromRaw("incerto", null, false, parseNfseResponse), null);
   assert.equal(reclassifyFromRaw("incerto", "<html></html>", false, parseNfseResponse), null);
   assert.equal(reclassifyFromRaw("erro", XSD, false, parseNfseResponse), null);

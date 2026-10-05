@@ -1,191 +1,88 @@
-# NFS-e Santa Rosa/RS — integração IPM REST (NTE 122/2025)
+# NFS-e de Aluguéis — Santa Rosa / IPM
 
-## Por que IPM REST e não ABRASF
+## Situação desta entrega
 
-Santa Rosa/RS opera no Atende.Net com **layout próprio IPM 1.01**, exposto em
-`WNERestServiceNFSe`. O padrão ABRASF 2.04 (SOAP, `WNENotaFiscalEletronicaNfe`, NTE 123/2025)
-existe em outros municípios IPM, exige WSDL e assinatura digital A1/A3 e **não** é o
-caminho de Santa Rosa. Nada de ABRASF neste projeto.
+Implementação integrada aos server functions TanStack e à ficha existente de Aluguéis. A referência `d03c42b4bccfacca4b21bd87c1ef6441b5dc633c` foi obtida do GitHub e comparada: os arquivos fiscais afetados eram iguais aos da revisão local `a75fa6bb`. Não há novas rotas, Edge Functions, RPCs expostas ou emissor paralelo.
 
-- Endpoint: `https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe`
-- Fallback: `https://ws-santarosa.atende.net:7443/?pg=rest&service=WNERestServiceNFSe`
-- Código TOM: **8847** · IBGE: **4317202**
-- Autenticação: **HTTP Basic** — cabeçalho `Authorization: Basic base64(login:senha)`,
-  com login = CPF/CNPJ do emissor (só dígitos) e senha = **senha de acesso ao
-  sistema** (a mesma do Portal do Cidadão), conforme IPM NT 35/2021 v2.9.
-  Pré-requisito: no Portal do Cidadão, serviço **"Emissão de NFS-e por
-  WebService → Liberar Acesso ao Usuário"** habilitado para o usuário.
-  O corpo multipart leva apenas `cidade` (TOM 8847) e o arquivo XML (`f1`).
-  Sem certificado digital e sem login/senha no corpo.
+Em 05/10/2026 o solicitante confirmou que **ainda não existe perfil fiscal aprovado**. O código não transforma a configuração herdada em aprovação. Nenhuma transmissão municipal, alteração de segurança remota, migration real, cancelamento ou substituição foi executada nesta entrega.
 
-## Regra de negócio
+## Contrato IPM conferido
 
-A NFS-e da imobiliária é sobre o **serviço de administração/intermediação** —
-`rental_contracts.comissao_mensal` — e nunca sobre o valor cheio do aluguel
-(`valor_mensal`, que é repasse ao proprietário).
+Referências oficiais consultadas: [NTE 35/2021, versão 2.9](https://wiki.ipm.com.br/?QR=&download=202135) e [NTE 122/2025, versão 1.7](https://wiki.ipm.com.br/?download=2025122).
 
-- Tomador: locatário principal do contrato (`rental_tenants`).
-- Prestador: CNPJ da marca do contrato (`cordial` ou `morar`).
-- Local da prestação: Santa Rosa (TOM 8847).
+O transporte utiliza REST síncrono, multipart e Basic Auth. O único destino permitido é `https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe`. Redirecionamentos são recusados. Não existe fallback para host/porta alternativos. A resposta é limitada a 1 MiB; o timeout é limitado pelo servidor.
 
-## Liberar o webservice no Portal do Cidadão
+A consulta documentada usa autenticidade, ou número, série e cadastro econômico. Não existe consulta inventada por protocolo/RPS. Um reenvio do XML original pode concluir a emissão e exige ação explícita. HTTP 200 isolado não confirma emissão. Os retornos completo e reduzido são interpretados com validação de identidade e situação.
 
-1. Acesse o Portal do Cidadão de Santa Rosa com o certificado/senha da empresa.
-2. Menu do ISS/NFS-e → **Webservice / Integração** → gere a senha de webservice.
-3. Confirme a inscrição municipal ativa e o item da lista de serviço habilitado
-   (sugestão LC 116 **10.05** — administração de bens; confirme no cadastro municipal).
-4. Anote também o **código NBS** exigido pelo layout da reforma.
+A associação antiga de 10.05 a administração foi removida. Códigos de serviço, NBS, alíquota, indicador de operação e classificações dependem do enquadramento aprovado. Não se troca código para fazer o XML passar. Data do fato gerador é civil; grupos de imóvel, referências e IBS/CBS obedecem aos campos condicionais do layout escolhido.
 
-### Formato do item da lista de serviço
+A leitura dos manuais não substitui habilitação do contribuinte nem homologação aplicável a Santa Rosa.
 
-O XSD da IPM exige `codigo_item_lista_servico` como **inteiro, sem ponto**. O
-sistema normaliza na geração do XML, sem exigir mudança no valor salvo:
+## Perfil e operação fiscal
 
-- `10.05` → `1005` (4 dígitos, padrão LC 116);
-- `1.05` → `0105` (3 dígitos completados com zero à esquerda);
-- `10.05.01` → `100501` (desdobramento de 6 dígitos, NT 122/2025 / CGNFS-e).
+Cada empresa possui um perfil ativo versionado, explicitando administração ou intermediação, papel do tomador, origem do valor, elegibilidade, descrição, município da prestação, regime, layout e percentuais de retenção. Aprovação e autorização de produção registram ator, horário e versão no banco. O financeiro mantém seu acesso existente aos campos comuns; aprovação de perfil e alteração de ambiente exigem administração.
 
-Se a prefeitura recusar o código de 4 dígitos, o fallback é salvar `10.05.01`
-no cadastro (menu Integrações → NFS-e), que a normalização envia como `100501`.
-Um valor com outro tamanho aborta a emissão antes do envio, com mensagem clara.
-Os demais campos de código (NBS, situação tributária, CNPJ/CPF, CEP, TOM,
-cIndOp, CST, cClassTrib) também saem só com dígitos.
+Aluguel bruto, comissão da imobiliária e repasse são grandezas distintas. A operação não declara aluguel bruto como repasse nem adota comissão/locatário atuais para meses anteriores. O valor faturado, o tomador e seu endereço fiscal precisam de revisão explícita. O endereço do imóvel só compõe o grupo de imóvel quando aplicável; nunca substitui automaticamente o endereço do tomador.
 
-## Segredos (servidor, nunca no client)
+A marca `ambas` exige escolher Cordial ou Morar. Valores desconhecidos são rejeitados. CNPJ alfanumérico e zeros são preservados na configuração, validação, XML e autenticação. A credencial deve corresponder ao prestador.
 
-| Segredo | Uso |
-| --- | --- |
-| `IPM_NFSE_SENHA_CORDIAL` | senha do webservice da Cordial |
-| `IPM_NFSE_SENHA_MORAR` | senha do webservice da Morar |
-| `IPM_NFSE_LOGIN_CORDIAL` / `IPM_NFSE_LOGIN_MORAR` | opcional; por padrão o login é o CNPJ da configuração |
+A configuração apresenta quatro evidências separadas: credencial cadastrada, configuração aprovada/completa, versão validada em teste e produção autorizada. Produção depende também de teste persistido da mesma versão. Qualquer alteração material invalida aprovações e retorna ao teste. Troca de senha preserva a identidade; troca de prestador/perfil bloqueia recuperação com XML antigo.
 
-Cadastre em **Configurações do projeto → Secrets**. A interface só informa
-"senha configurada / faltando" — o valor nunca é exibido nem enviado ao navegador.
-Sem a senha, o sistema monta o XML, grava a prévia no histórico e bloqueia o envio
-com mensagem clara.
+## Competência e origem histórica
 
-## Teste x produção
+`proximo_vencimento` não é a competência fiscal. A baixa usa vencimento esperado e atualização condicional para impedir repetição de uma mesma ocorrência. Um trigger privado captura os dados anteriores (vencimento, comissão, aluguel bruto e tomador) na mesma transação que avança a cobrança.
 
-`nfse_provider_settings.modo_teste` (padrão `true`) gera `<nfse_teste>1</nfse_teste>`:
-a prefeitura roda todas as validações e responde "NFS-e válida para emissão", sem
-emitir. Para produção, desligue o modo teste na configuração ou desmarque o toggle
-no diálogo de emissão.
+A referência de pagamento não presume competência nem fato gerador: esses campos continuam pendentes. Na emissão assistida, uma referência fiscal revisada registra competência, data civil, valor, tomador, origem e motivo, vinculando a ocorrência original quando houver. Se a origem aprovada for a comissão preservada, divergências são bloqueadas. Histórico inexistente não é reconstruído a partir do vencimento já avançado.
 
-## Reforma tributária (IBS/CBS)
+A preparação dessa referência é independente e pode permanecer sem emissão. A atomicidade garantida é a do estado fiscal com seu evento, e a da baixa com sua referência; não se alega uma transação distribuída com a prefeitura.
 
-O XML inclui `<IBSCBS>` dentro de `<nf>` (`cLocalidadeIncid` = 4317202) e o grupo
-`<IBSCBS>` de nível superior com `cIndOp`, `CST` e `cClassTrib` — todos editáveis por
-marca. Optantes do Simples Nacional: marque `simples_nacional`, e os grupos IBS/CBS
-são omitidos conforme a NTE.
+## Prévia, identificação e recuperação
 
-## Arquivos
+A prévia usa POST para não colocar dados pessoais em URLs. O servidor valida e assina um snapshot canônico, com validade de 15 minutos e vínculo ao usuário. O HMAC utiliza uma credencial disponível exclusivamente no servidor, que nunca faz parte do snapshot. A assinatura abrange empresa, competência, ambiente, configuração, perfil, contrato, referência, revisão e payload. O envio reconstrói os dados e verifica a assinatura. Alterações materiais invalidam a aprovação; a UI também limpa a confirmação local.
 
-- `src/lib/nfse/ipm/xml.ts` — builder do XML, sanitização e parser do retorno
-- `src/lib/nfse/ipm/xml.test.ts` — testes unitários
-- `src/lib/nfse/ipm/client.server.ts` — POST multipart
-- `src/lib/nfse/nfse.functions.ts` — configuração, histórico e `emitRentalNfse`
-- `src/hooks/useRentalNfse.ts`, `src/components/alugueis/RentalNfseSection.tsx` — UI
-- Tabelas: `nfse_provider_settings`, `rental_nfse_emissions`
+Antes do HTTP, a linha `processando`, o identificador, o snapshot e a tentativa são persistidos. O trigger grava o evento na mesma transação; falha no evento reverte o estado. Índices impedem transmissão simultânea do mesmo CNPJ, inclusive por marcas diferentes. A incerteza mantém o bloqueio. Registros legados pendentes sem identidade comprovada exigem conferência, sem reconstrução pelo CNPJ atual.
 
-## Fora de escopo (próximas fatias)
+Cada resposta atualiza somente a tentativa reivindicada. Respostas tardias são guardadas como evidência sem alegar uma transição; a reclassificação só considera a tentativa vigente, HTTP original, resposta completa, transporte e versão do parser. Iniciar recuperação limpa a resposta operacional anterior, preservada nos eventos. Recusa de consulta não prova ausência de emissão.
 
-Cancelamento/substituição de nota e emissão em lote mensal.
+Consulta não reenvia emissão. Reenvio explícito mantém XML, prestador, configuração, identificador e conteúdo originais; para produção exige confirmação. A expiração de `processando` encaminha para `incerto` quando o servidor é consultado, sem liberar uma nova nota. Fechar a ficha não cancela o HTTP iniciado nem apaga a intenção. Encerramento do processo pode interromper a execução; a referência persistida permite recuperação assistida ao reabrir.
 
-## Onde configurar no sistema
+Correção material usa revisão explícita vinculada a uma tentativa comprovadamente recusada ou resolvida como `nao_emitida`. O administrador aprova uma nova prévia e uma identidade própria determinística, em cadeia única. Tentativa incerta, emitida ou cancelada não pode originar esse fluxo. Uma revisão repetida não cria outro fato; recuperação conserva a identidade da revisão. Legados sem prova suficiente exigem conferência interna.
 
-Menu **Integrações** → card "NFS-e Santa Rosa (IPM)" (visível apenas para admin/financeiro):
-CNPJ do prestador, inscrição municipal, razão social, item da lista de serviço (padrão 10.05),
-código NBS, alíquota ISS, modo teste e Simples Nacional — por marca (Cordial e Morar).
+Não há cancelamento ou substituição automáticos. Uma nota cancelada informada no retorno permanece distinta de recusa e de resolução como não emitida.
 
-A senha do webservice NUNCA fica no banco nem no navegador: cadastre em
-Configurações do projeto → Secrets como `IPM_NFSE_SENHA_CORDIAL` / `IPM_NFSE_SENHA_MORAR`
-(login opcional em `IPM_NFSE_LOGIN_*`; por padrão usa o CNPJ). O card mostra apenas
-"senha configurada / faltando".
+## Persistência proposta e implantação
 
-## Emissão
+Migration: `supabase/migrations/20261005090000_rental_nfse_integrity.sql` — **não aplicada remotamente**.
 
-Ficha do aluguel → seção "NFS-e (Santa Rosa)" → **Emitir NFS-e**. O valor é sempre a
-comissão mensal (serviço de administração), nunca o aluguel cheio. O modo teste vem
-ligado por padrão e apenas valida na prefeitura.
+Inclui referências imutáveis, versões/aprovações da configuração, identidade do prestador, snapshot/hash, tentativa, contexto de transporte, auditoria atômica e proteções de concorrência. FKs passam a `RESTRICT`; exclusão física de contratos com histórico ou referências fica bloqueada. O fluxo existente de encerramento permanece disponível. Não apaga nem reclassifica dados antigos por inferência.
 
-## Etapa 1 — emissão segura (02/10/2026)
+XML, respostas e snapshots deixam de ter SELECT direto para usuários do navegador. A projeção operacional mantém RLS; diagnóstico e eventos são restritos ao servidor. Erros técnicos não entram no DTO de Aluguéis. Falhas de persistência apresentam referência de atendimento e conservam a necessidade de conferência.
 
-### Máquina de estados (`rental_nfse_emissions.status`)
-`processando` → `teste_ok` | `emitida` | `erro` | `incerto`.
-- A linha `processando` é gravada **antes** do envio (com `request_xml` e `identificador`).
-- `emitida`: há `numero_nfse`, nenhum código de crítica e `situacao_codigo_nfse` 1 (ou ausente).
-- `teste_ok`: modo teste com "válida para emissão".
-- `erro`: recusa da prefeitura com código (definitiva).
-- `incerto`: timeout, erro de rede, HTTP 5xx ou retorno ilegível. Bloqueia nova nota real até a conferência.
-- `processando` há mais de 120 s vira `incerto` no próximo envio da marca.
-- Emissão real **nunca** é reenviada automaticamente.
+Retenção: evidências ficam preservadas, sem rotina de expurgo. Prazo legal, descarte e acesso extraordinário dependem de política aprovada; nenhum prazo foi inferido.
 
-### Idempotência
-`identificador` = `GC-<marca>-<contrato sem hífens>-<AAAAMM>-1` (teste: sufixo `-T`, ≤ 80).
-A prefeitura não processa duas vezes o mesmo identificador e devolve a nota já gerada (NT 122).
-Índices únicos: uma nota real (`processando`/`incerto`/`emitida`) por contrato+competência e um
-`processando` por marca (o webservice é síncrono).
+A implantação exige revisão e autorização da migration, backup e aplicação em ambiente autorizado, seguida de implantação coordenada do código. Antes da migration, o novo caminho de baixa falha de modo seguro para não avançar vencimento sem referência. Essa dependência precisa constar da janela de implantação. O rollback operacional não deve remover evidências ou restaurar permissões de diagnóstico; prefira correção progressiva.
 
-### Conferência
-`reconcileRentalNfse` (admin/financeiro) reenvia o **mesmo** `request_xml` de uma linha `incerto`,
-atualiza a mesma linha e incrementa `attempts`. Linhas antigas sem identificador não são conferidas.
+## Automação e pendências de ativação
 
-### Trava de modo teste
-Com `nfse_provider_settings.modo_teste = true`, o servidor força teste e recusa pedido real
-("Modo teste ligado nas Integrações…"). Nota real exige `confirmarEmissaoReal: true`; o usuário fica em
-`confirmacao_real_por`. Em linhas de teste, número, link e verificador não são gravados nem exibidos
-(ficam só em `response_raw`).
+A política implementada permanece `assistida`. Não foi adicionado disparo fiscal a “Marcar pago”, polling executor, execução solta após resposta nem cron fictício. Os hooks existentes tratam propriedades, mídia, lembretes e sincronizações; não constituem executor fiscal durável compatível.
 
-### Validações (`src/lib/nfse/validation.ts`)
-CPF/CNPJ com DV (CNPJ alfanumérico aceito), item 4/6 dígitos, NBS 9 dígitos, alíquota 0–5, situação
-tributária só dígitos, endpoint `https://*.atende.net` (também CHECK no banco), e-mail e telefone
-opcionais (inválidos são omitidos; DDI 55 removido). Aplicadas ao salvar e de novo antes do envio.
-Endereço do tomador vem do imóvel (logradouro, número, complemento, bairro, CEP); cidade/CEP só vão
-se o imóvel for em Santa Rosa. Competência `AAAA-MM`, lida do vencimento como texto; mais de 1 mês
-no futuro é recusada.
+Para automatizar será necessário: aprovação contábil por empresa/operação, critério de elegibilidade, limites e autorização expressa; habilitação municipal e homologação autorizada; migration e verificação de RLS/transações no ambiente de destino; mecanismo durável aprovado para reivindicar e retomar intenções, com autenticação interna existente e sem reenvio automático de notas reais. Ampliar um executor existente exige avaliação de contrato e escopo próprios.
 
-### Encoding e parser
-Retorno lido como bytes e decodificado pelo charset do Content-Type ou do prólogo (padrão
-ISO-8859-1). Parser `fast-xml-parser` + zod (`src/lib/nfse/ipm/response.ts`); todas as mensagens
-`NNNNN - texto` viram `error_codes`. JSON `{"retorno":{"msg","code"}}` continua suportado.
+## Verificação reproduzível
 
-### Segurança
-Só o servidor grava em `rental_nfse_emissions` (políticas de INSERT/UPDATE do navegador removidas).
-Logs: uma linha JSON `evento: nfse_emissao` por tentativa, sem segredos.
+- `npm run test:nfse`: regras, documentos alfanuméricos, XML, multipart/redirect/timeout/503, parser, assinatura, handlers, estado da UI e PostgreSQL local (PGlite).
+- `npm run typecheck`: tipos do aplicativo completo.
+- `npm run build`: cliente e servidor; o build existente emite avisos de dependências/inputValidator e WASM sem abortar.
+- Lint focado nos arquivos alterados; a suíte geral é reportada separadamente quando houver falhas anteriores.
 
-### Etapa 2
-Consulta e cancelamento de nota, emissão em lote mensal.
+Os handlers são exercitados com DB e transporte substituídos; os triggers/constraints/permissões são executados em PostgreSQL local por PGlite. Nenhum desses testes equivale a homologação municipal, implantação Supabase ou teste em produção. Fixtures são sintéticas e não contêm credenciais reais.
 
-## Etapa 1b — classificação, "não emitida" e auditoria (02/10/2026)
+### Evidências locais finais desta revisão
 
-### Classificação do retorno
-- **Recusa (`erro`)**: `<retorno>` com ao menos uma mensagem, sem `numero_nfse` e sem "válida para
-  emissão" — qualquer texto. `NNNNN - …` vai para `error_codes` como `NNNNN`; `XSD Error 1824` como
-  `XSD-1824`; outros textos como `TEXTO`. Texto completo em `error_message`. JSON com `code >= 400`
-  também é recusa.
-- **Com `numero_nfse` (real) nunca é `erro`**: `emitida` se `situacao_codigo_nfse` = 1 ou ausente,
-  senão `incerto`. Mensagens junto viram "Aviso da prefeitura" (ex.: identificador repetido).
-- **`incerto`** só por incerteza real: timeout/abort, rede, HTTP 5xx, corpo vazio/HTML/não-XML,
-  XML sem `<retorno>` ou `<retorno>` sem mensagem e sem número.
-- Modo teste: "válida para emissão" → `teste_ok`; recusa → `erro`.
+Em 05/10/2026: 42 testes fiscais na linha de base; 125 testes na suíte fiscal ampliada; suíte principal final com 484 testes aprovados, sem falhas. Typecheck do aplicativo e build de cliente/servidor concluídos. ESLint em 33 arquivos TypeScript alterados: zero erros e zero avisos. `git diff --check` sem erros.
 
-### Conferência
-`reconcileRentalNfse` usa a mesma classificação: recusa → `erro` (libera a competência), número →
-`emitida`, incerteza → continua `incerto`. Cada conferência incrementa `attempts` e grava evento.
-Após 3 conferências seguidas em `incerto`, a tela sugere ao admin conferir no portal.
+A suíte principal foi executada pelo mesmo tsx/test runner via Node (`node --import tsx --test` com a lista de arquivos do script), sem depender do wrapper bunx. Os novos casos também estão incluídos em `npm test`, além de `npm run test:nfse`.
 
-### "Marcar como não emitida" (`nao_emitida`)
-Só admin, motivo ≥ 10 caracteres e confirmação "Conferi no portal". Só para `incerto` sem número
-(`processando` vencida passa antes a `incerto`). Update condicional; preenche `resolved_by`,
-`resolved_at`, `resolution_reason`. `nao_emitida` fica fora do índice único e libera a competência.
-Nova emissão usa o **mesmo identificador** (`…-1`): se a prefeitura tiver gerado a nota, devolve
-essa nota (NT 122), que vira `emitida` — sem duplicar.
+A inspeção visual local usou os componentes reais e o CSS do aplicativo, com hooks substituídos por fixtures sanitizadas, sem acesso à prefeitura ou banco. Foram conferidos desktop e viewport móvel, escolha de emissor/competência, falha de histórico com retry e separação de testes. A inspeção de DOM móvel não encontrou campos sem label ou overflow horizontal. Não equivale a teste em aparelho físico, leitor de tela ou sessão autenticada de produção. As capturas locais anteriores ao último checkbox administrativo permanecem em `.local/nfse-qa/` (não versionadas).
 
-### Eventos (`rental_nfse_emission_events`, append-only)
-Toda transição feita pelo servidor: criação `processando`, resultado, expiração para `incerto`,
-conferência, marcação manual e reclassificação. Leitura só admin; escrita só pelo servidor.
-
-### Reclassificação (`reclassifyStuckNfse`, admin)
-Reaplica o parser às linhas `incerto` (e `processando` vencidas) que têm `response_raw`: recusa →
-`erro`, número → `emitida`, com evento `actor_kind = sistema`. Sem `response_raw`, a linha fica para a
-marcação manual. Nunca apaga.
+A implantação e a homologação municipal permanecem não verificadas. Não foi emitida nenhuma nota fiscal real.

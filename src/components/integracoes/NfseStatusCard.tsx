@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, CheckCircle2, Loader2, Receipt } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, Loader2, Receipt, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -14,18 +14,21 @@ import {
   type NfseSettings,
 } from "@/lib/nfse/nfse.functions";
 import { validateNfseSettings } from "@/lib/nfse/validation";
+import { NfseFiscalProfileEditor } from "./NfseFiscalProfileEditor";
+import { fiscalProfileApprovalInput, parseProfileDraft, profileToDraft } from "./nfse-profile-form";
 
+const BUTTON =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50";
 const HEALTH_LABEL: Record<string, string> = {
-  teste_ok: "Validada (teste)",
+  teste_ok: "Validada em teste",
   emitida: "Emitida",
-  erro: "Não emitida",
+  erro: "Recusada",
   cancelada: "Cancelada",
-  processando: "Enviando…",
-  incerto: "Aguardando conferência",
-  nao_emitida: "Não emitida (conferida)",
+  processando: "Envio registrado",
+  incerto: "Aguardando confirmação",
+  nao_emitida: "Não emitida — conferida",
 };
-
-function fmtSP(iso: string) {
+function dateTime(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
     dateStyle: "short",
@@ -33,273 +36,462 @@ function fmtSP(iso: string) {
   }).format(new Date(iso));
 }
 
-function HealthLine({ health }: { health?: NfseBrandHealth }) {
-  if (!health) return null;
-  return (
-    <div className="mb-3 space-y-0.5 rounded-xl bg-foreground/[0.04] px-3 py-2 text-[11px] text-foreground/70">
-      <p>
-        <span className="font-bold">Última tentativa:</span>{" "}
-        {health.ultima
-          ? `${HEALTH_LABEL[health.ultima.status] ?? health.ultima.status}${health.ultima.modoTeste ? " (teste)" : ""} · ${fmtSP(health.ultima.createdAt)}`
-          : "nenhuma"}
-      </p>
-      {health.ultima?.mensagem && <p className="text-amber-900">{health.ultima.mensagem}</p>}
-      <p>
-        <span className="font-bold">Última nota real:</span>{" "}
-        {health.ultimoSucessoReal ? fmtSP(health.ultimoSucessoReal) : "nenhuma"} ·{" "}
-        <span className="font-bold">30 dias:</span> {health.incerto30d} aguardando conferência,{" "}
-        {health.erro30d} recusadas, {health.naoEmitida30d} não emitidas (conferidas)
-      </p>
-    </div>
-  );
-}
-
-const BRANDS = ["cordial", "morar"] as const;
-
 function Field({
   label,
   value,
   onChange,
-  placeholder,
   error,
+  disabled,
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
+  onChange: (value: string) => void;
   error?: string;
+  disabled?: boolean;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-foreground/55">
-        {label}
-      </span>
+    <label className="block space-y-1.5 text-sm font-semibold">
+      <span>{label}</span>
       <input
         value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-foreground/[0.1] bg-white/80 px-3 py-2 text-xs outline-none focus:border-primary/40"
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full rounded-lg border border-foreground/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:bg-foreground/5"
       />
-      {error && <span className="mt-1 block text-[10px] font-semibold text-destructive">{error}</span>}
+      {error && <span className="block text-sm font-normal text-destructive">{error}</span>}
     </label>
   );
 }
-
-function BrandCard({ settings, health }: { settings: NfseSettings; health?: NfseBrandHealth }) {
-  const qc = useQueryClient();
-  const save = useServerFn(saveNfseSettings);
-  const [form, setForm] = useState({
+function formFromSettings(settings: NfseSettings) {
+  return {
     cnpj: settings.cnpj,
     inscricaoMunicipal: settings.inscricaoMunicipal ?? "",
     razaoSocial: settings.razaoSocial ?? "",
     codigoItemListaServico: settings.codigoItemListaServico,
     codigoNbs: settings.codigoNbs ?? "",
     aliquotaIss: String(settings.aliquotaIss),
+    situacaoTributaria: settings.situacaoTributaria,
+    tributaMunicipioPrestador: settings.tributaMunicipioPrestador,
+    cIndOp: settings.cIndOp,
+    cst: settings.cst,
+    cClassTrib: settings.cClassTrib,
     modoTeste: settings.modoTeste,
     simplesNacional: settings.simplesNacional,
-  });
-
+  };
+}
+function BrandCard({
+  settings,
+  health,
+  isAdmin,
+}: {
+  settings: NfseSettings;
+  health?: NfseBrandHealth;
+  isAdmin: boolean;
+}) {
+  const qc = useQueryClient();
+  const save = useServerFn(saveNfseSettings);
+  const [form, setForm] = useState(() => formFromSettings(settings));
+  const [profileDraft, setProfileDraft] = useState(() => profileToDraft(settings.fiscalProfile));
+  const [profileTouched, setProfileTouched] = useState(false);
+  const [approvalConfirmed, setApprovalConfirmed] = useState(false);
   useEffect(() => {
-    setForm({
-      cnpj: settings.cnpj,
-      inscricaoMunicipal: settings.inscricaoMunicipal ?? "",
-      razaoSocial: settings.razaoSocial ?? "",
-      codigoItemListaServico: settings.codigoItemListaServico,
-      codigoNbs: settings.codigoNbs ?? "",
-      aliquotaIss: String(settings.aliquotaIss),
-      modoTeste: settings.modoTeste,
-      simplesNacional: settings.simplesNacional,
-    });
+    setForm(formFromSettings(settings));
+    setProfileDraft(profileToDraft(settings.fiscalProfile));
+    setProfileTouched(false);
+    setApprovalConfirmed(false);
   }, [settings]);
-
+  const parsedProfile = parseProfileDraft(profileDraft);
   const errors = validateNfseSettings({
-    cnpj: form.cnpj,
-    inscricaoMunicipal: form.inscricaoMunicipal,
-    codigoItemListaServico: form.codigoItemListaServico,
-    codigoNbs: form.codigoNbs,
+    ...form,
     aliquotaIss: Number(form.aliquotaIss.replace(",", ".")),
   });
-  const hasErrors = Object.keys(errors).length > 0;
-
+  const hasErrors =
+    Object.keys(errors).length > 0 ||
+    (profileTouched && (!parsedProfile.success || !approvalConfirmed));
   const mutation = useMutation({
-    mutationFn: () =>
-      save({
+    mutationFn: () => {
+      const { modoTeste, ...commonSettings } = form;
+      return save({
         data: {
           brand: settings.brand,
-          cnpj: form.cnpj,
-          inscricaoMunicipal: form.inscricaoMunicipal,
-          razaoSocial: form.razaoSocial,
-          codigoItemListaServico: form.codigoItemListaServico,
-          codigoNbs: form.codigoNbs,
+          ...commonSettings,
           aliquotaIss: Number(form.aliquotaIss.replace(",", ".")),
-          modoTeste: form.modoTeste,
-          simplesNacional: form.simplesNacional,
+          ...(isAdmin ? { modoTeste } : {}),
+          ...fiscalProfileApprovalInput({
+            isAdmin,
+            confirmed: approvalConfirmed,
+            profile: parsedProfile.success ? parsedProfile.data : null,
+          }),
         },
-      }),
+      });
+    },
     onSuccess: () => {
-      toast.success("Configuração fiscal salva.");
+      setApprovalConfirmed(false);
+      toast.success("Configuração fiscal salva. Confira as etapas de habilitação.");
       void qc.invalidateQueries({ queryKey: ["nfse-settings-status"] });
       void qc.invalidateQueries({ queryKey: ["rental-nfse-preview"] });
+      void qc.invalidateQueries({ queryKey: ["nfse-health"] });
     },
-    onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Não foi possível salvar."),
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a configuração fiscal. Confira os campos e as autorizações da empresa.",
+      ),
   });
-
-  const ready = Boolean(settings.cnpj) && settings.senhaConfigurada;
+  const stages = [
+    ["Credenciais cadastradas", settings.senhaConfigurada],
+    ["Configuração completa", settings.configurationComplete],
+    ["Validada em teste", settings.validatedInTest],
+    ["Habilitada para produção", settings.productionEnabled],
+  ] as const;
+  const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setApprovalConfirmed(false);
+  };
 
   return (
-    <div className="rounded-2xl border border-foreground/[0.07] bg-white/70 p-3">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-bold capitalize text-foreground">{settings.brand}</p>
-        <span
-          className={
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold " +
-            (ready ? "bg-emerald-500/10 text-emerald-800" : "bg-amber-500/12 text-amber-900")
-          }
-        >
-          {ready ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
-          {settings.senhaConfigurada ? (ready ? "Pronta" : "Faltam dados") : "Senha faltando"}
+    <article className="rounded-xl border border-foreground/15 bg-white p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-lg font-bold">
+          {settings.brand === "cordial" ? "Cordial Imóveis" : "Morar Imóveis"}
+        </h3>
+        <span className="text-sm text-foreground/70">
+          Configuração <span className="font-mono">v{settings.configVersion}</span>
         </span>
       </div>
-
-      <HealthLine health={health} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field
-          label="CNPJ do prestador"
-          value={form.cnpj}
-          onChange={(v) => setForm((f) => ({ ...f, cnpj: v }))}
-          error={errors["cnpj"]}
-          placeholder="00000000000000"
-        />
-        <Field
-          label="Inscrição municipal"
-          value={form.inscricaoMunicipal}
-          onChange={(v) => setForm((f) => ({ ...f, inscricaoMunicipal: v }))}
-          error={errors["inscricaoMunicipal"]}
-        />
-        <Field
-          label="Razão social"
-          value={form.razaoSocial}
-          onChange={(v) => setForm((f) => ({ ...f, razaoSocial: v }))}
-        />
-        <Field
-          label="Item da lista de serviço"
-          value={form.codigoItemListaServico}
-          onChange={(v) => setForm((f) => ({ ...f, codigoItemListaServico: v }))}
-          error={errors["codigoItemListaServico"]}
-          placeholder="10.05"
-        />
-        <Field
-          label="Código NBS"
-          value={form.codigoNbs}
-          onChange={(v) => setForm((f) => ({ ...f, codigoNbs: v }))}
-          error={errors["codigoNbs"]}
-        />
-        <Field
-          label="Alíquota ISS (%)"
-          value={form.aliquotaIss}
-          onChange={(v) => setForm((f) => ({ ...f, aliquotaIss: v }))}
-          error={errors["aliquotaIss"]}
-          placeholder="3,0000"
-        />
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-[11px] font-semibold text-foreground/70">
-          <Switch
-            checked={form.modoTeste}
-            onCheckedChange={(v) => setForm((f) => ({ ...f, modoTeste: v }))}
+      <ol className="mt-4 grid gap-3 sm:grid-cols-2">
+        {stages.map(([label, done]) => (
+          <li key={label} className="flex items-center gap-2 text-sm">
+            {done ? (
+              <CheckCircle2 aria-hidden className="size-4 shrink-0 text-emerald-700" />
+            ) : (
+              <Circle aria-hidden className="size-4 shrink-0 text-foreground/45" />
+            )}
+            <span>
+              {label}
+              <span className={done ? "text-emerald-800" : "text-foreground/65"}>
+                {" "}
+                · {done ? "Confirmado" : "Pendente"}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      {!settings.fiscalProfile && (
+        <p className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+          <AlertTriangle aria-hidden className="mt-1 size-4 shrink-0" />
+          Perfil fiscal ainda não aprovado. A emissão real e a automação permanecem bloqueadas.
+        </p>
+      )}
+      {health && (
+        <div className="mt-4 border-y border-foreground/15 py-3 text-sm leading-6 text-foreground/75">
+          <p>
+            Última tentativa:{" "}
+            {health.ultima
+              ? `${HEALTH_LABEL[health.ultima.status] ?? "Conferência necessária"}${health.ultima.modoTeste ? " (teste)" : ""} · ${dateTime(health.ultima.createdAt)}`
+              : "nenhuma registrada"}
+            .
+          </p>
+          <p>
+            Última nota real:{" "}
+            {health.ultimoSucessoReal ? dateTime(health.ultimoSucessoReal) : "nenhuma registrada"}.
+          </p>
+          <p>
+            Nos últimos 30 dias: {health.incerto30d} aguardando confirmação, {health.erro30d}{" "}
+            recusadas e {health.naoEmitida30d} não emitidas após conferência.
+          </p>
+        </div>
+      )}
+      <p className="mt-4 text-sm leading-6 text-foreground/75">
+        Município do prestador: TOM {settings.cidadeTom} · IBGE {settings.codigoIbgeMunicipio}. As
+        credenciais são mantidas exclusivamente no servidor.
+      </p>
+      {!isAdmin && (
+        <p className="mt-3 text-sm text-foreground/75">
+          Você pode manter os dados cadastrais e tributários. O perfil, as aprovações e a
+          habilitação de produção são exclusivos da administração.
+        </p>
+      )}
+      <fieldset disabled={mutation.isPending} className="mt-5">
+        <legend className="mb-3 text-base font-bold">Prestador e enquadramento tributário</legend>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="CNPJ do prestador"
+            value={form.cnpj}
+            onChange={(value) => update("cnpj", value)}
+            error={errors.cnpj}
           />
-          Modo teste
-        </label>
-        <label className="flex items-center gap-2 text-[11px] font-semibold text-foreground/70">
+          <Field
+            label="Inscrição municipal"
+            value={form.inscricaoMunicipal}
+            onChange={(value) => update("inscricaoMunicipal", value)}
+            error={errors.inscricaoMunicipal}
+          />
+          <Field
+            label="Razão social"
+            value={form.razaoSocial}
+            onChange={(value) => update("razaoSocial", value)}
+          />
+          <Field
+            label="Item da lista de serviço aprovado"
+            value={form.codigoItemListaServico}
+            onChange={(value) => update("codigoItemListaServico", value)}
+            error={errors.codigoItemListaServico}
+          />
+          <Field
+            label="Código NBS aprovado"
+            value={form.codigoNbs}
+            onChange={(value) => update("codigoNbs", value)}
+            error={errors.codigoNbs}
+          />
+          <Field
+            label="Alíquota ISS (%)"
+            value={form.aliquotaIss}
+            onChange={(value) => update("aliquotaIss", value)}
+            error={errors.aliquotaIss}
+          />
+          <Field
+            label="Situação tributária municipal"
+            value={form.situacaoTributaria}
+            onChange={(value) => update("situacaoTributaria", value)}
+            error={errors.situacaoTributaria}
+          />
+          <label className="block space-y-1.5 text-sm font-semibold">
+            Tributação no município do prestador
+            <select
+              value={form.tributaMunicipioPrestador}
+              onChange={(event) =>
+                update("tributaMunicipioPrestador", event.target.value === "S" ? "S" : "N")
+              }
+              className="min-h-11 w-full rounded-lg border border-foreground/20 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <option value="S">Sim, conforme enquadramento</option>
+              <option value="N">Não, conforme enquadramento</option>
+            </select>
+          </label>
+        </div>
+        <label className="mt-4 flex items-center gap-3 text-sm font-semibold">
           <Switch
+            aria-label="Optante pelo Simples Nacional"
             checked={form.simplesNacional}
-            onCheckedChange={(v) => setForm((f) => ({ ...f, simplesNacional: v }))}
+            onCheckedChange={(value) => update("simplesNacional", value)}
           />
-          Simples Nacional
+          Optante pelo Simples Nacional
+        </label>
+        {profileDraft.ibsCbs === "true" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <Field
+              label="Indicador da operação (cIndOp)"
+              value={form.cIndOp}
+              onChange={(value) => update("cIndOp", value)}
+            />
+            <Field
+              label="CST IBS/CBS"
+              value={form.cst}
+              onChange={(value) => update("cst", value)}
+            />
+            <Field
+              label="Classificação tributária (cClassTrib)"
+              value={form.cClassTrib}
+              onChange={(value) => update("cClassTrib", value)}
+            />
+          </div>
+        )}
+        <NfseFiscalProfileEditor
+          draft={profileDraft}
+          onChange={(draft) => {
+            setProfileDraft(draft);
+            setProfileTouched(true);
+            setApprovalConfirmed(false);
+          }}
+          disabled={!isAdmin || mutation.isPending}
+        />
+        {profileTouched && !parsedProfile.success && (
+          <p
+            role="status"
+            className="mt-4 rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900"
+          >
+            Complete as definições do perfil e a referência da aprovação. As retenções precisam de
+            valores explícitos; informe zero quando aprovado. Nenhum código será escolhido
+            automaticamente.
+          </p>
+        )}
+        {isAdmin && (
+          <label className="mt-4 flex items-start gap-3 rounded-lg border border-primary/25 p-4 text-sm leading-6">
+            <input
+              type="checkbox"
+              className="mt-1 size-4 shrink-0"
+              checked={approvalConfirmed}
+              disabled={!parsedProfile.success || mutation.isPending}
+              onChange={(event) => setApprovalConfirmed(event.target.checked)}
+            />
+            <span>
+              <strong className="font-semibold">
+                Conferi a aprovação contábil para esta configuração e operação.
+              </strong>
+              <span className="mt-1 block text-foreground/75">
+                Marque somente após conferir a referência da aprovação e os dados atuais. Qualquer
+                alteração exige nova confirmação. Salvar campos comuns sem marcar não renova a
+                aprovação anterior.
+              </span>
+            </span>
+          </label>
+        )}
+        {profileTouched && parsedProfile.success && !approvalConfirmed && (
+          <p role="status" className="mt-3 text-sm leading-6 text-amber-900">
+            O perfil foi alterado. Confirme a aprovação contábil antes de registrar esta versão.
+            Para salvar apenas campos comuns, mantenha o perfil sem alterações.
+          </p>
+        )}
+        <label className="mt-5 flex items-start justify-between gap-4 border-t border-foreground/15 pt-4 text-sm">
+          <span>
+            <strong className="block">Manter somente em teste</strong>
+            <span className="mt-1 block leading-6 text-foreground/75">
+              Produção exige perfil aprovado, teste válido para a configuração atual e autorização
+              registrada.
+            </span>
+          </span>
+          <Switch
+            aria-label="Manter somente em teste"
+            checked={form.modoTeste}
+            disabled={
+              !isAdmin ||
+              (form.modoTeste &&
+                (!settings.validatedInTest ||
+                  !parsedProfile.success ||
+                  !parsedProfile.data.productionAuthorization))
+            }
+            onCheckedChange={(value) => update("modoTeste", value)}
+          />
         </label>
         <button
           type="button"
           disabled={mutation.isPending || hasErrors}
           onClick={() => mutation.mutate()}
-          className="ml-auto inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
+          className={`${BUTTON} mt-4 bg-primary text-primary-foreground`}
         >
-          {mutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
-          Salvar
+          {mutation.isPending && <Loader2 aria-hidden className="size-4 animate-spin" />}Salvar
+          configuração
         </button>
-      </div>
-
+      </fieldset>
       {!settings.senhaConfigurada && (
-        <p className="mt-2 text-[11px] text-amber-900">
-          Falta a senha do webservice. Cadastre em Configurações do projeto → Secrets como{" "}
-          <code>IPM_NFSE_SENHA_{settings.brand.toUpperCase()}</code>.
+        <p className="mt-4 text-sm leading-6 text-amber-900">
+          Credencial do webservice pendente. Solicite o cadastro seguro à equipe responsável pela
+          integração.
         </p>
       )}
-    </div>
+    </article>
   );
 }
 
 export function NfseStatusCard({ enabled }: { enabled: boolean }) {
   const fetchSettings = useServerFn(getNfseSettings);
   const fetchHealth = useServerFn(getNfseHealth);
-  const health = useQuery({ queryKey: ["nfse-health"], enabled, queryFn: () => fetchHealth() });
   const viewerFn = useServerFn(getNfseViewer);
-  const viewer = useQuery({ queryKey: ["nfse-viewer"], enabled, queryFn: () => viewerFn(), staleTime: 300_000 });
   const reclassifyFn = useServerFn(reclassifyStuckNfse);
-  const qcRoot = useQueryClient();
-  const reclassify = useMutation({
-    mutationFn: () => reclassifyFn(),
-    onSuccess: (r) => {
-      void qcRoot.invalidateQueries({ queryKey: ["nfse-health"] });
-      void qcRoot.invalidateQueries({ queryKey: ["rental-nfse"] });
-      toast.success(
-        `Pendências analisadas: ${r.analisadas}. Reclassificadas: ${r.alteradas.length}. Sem retorno gravado (marcação manual): ${r.semRetorno}.`,
-      );
-    },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Não foi possível reclassificar."),
+  const qc = useQueryClient();
+  const health = useQuery({ queryKey: ["nfse-health"], enabled, queryFn: () => fetchHealth() });
+  const viewer = useQuery({
+    queryKey: ["nfse-viewer"],
+    enabled,
+    queryFn: () => viewerFn(),
+    staleTime: 300_000,
   });
-  const query = useQuery({
+  const settings = useQuery({
     queryKey: ["nfse-settings-status"],
     enabled,
-    queryFn: async () =>
-      Promise.all(BRANDS.map((brand) => fetchSettings({ data: { brand } }))),
+    queryFn: () =>
+      Promise.all(
+        (["cordial", "morar"] as const).map((brand) => fetchSettings({ data: { brand } })),
+      ),
   });
-
+  const reclassify = useMutation({
+    mutationFn: () => reclassifyFn(),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ["nfse-health"] });
+      void qc.invalidateQueries({ queryKey: ["rental-nfse"] });
+      toast.info(
+        `${result.analisadas} pendências analisadas; ${result.alteradas.length} atualizadas. Operações inconclusivas permanecem em conferência.`,
+      );
+    },
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível concluir a conferência dos registros. As operações permanecem protegidas contra nova emissão.",
+      ),
+  });
   if (!enabled) return null;
-
   return (
-    <section className="glass-panel mb-5 rounded-3xl p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="grid size-8 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Receipt className="size-4" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold">NFS-e Santa Rosa (IPM)</p>
-          <p className="text-[11px] text-foreground/55">
-            Nota do serviço de administração dos aluguéis (valor da comissão).
-          </p>
+    <section
+      className="mb-5 rounded-2xl border border-foreground/15 bg-white p-4 sm:p-6"
+      aria-labelledby="nfse-config-title"
+    >
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <Receipt aria-hidden className="mt-1 size-5 text-primary" />
+          <div>
+            <h2 id="nfse-config-title" className="text-lg font-bold">
+              NFS-e · Santa Rosa / IPM
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-foreground/75">
+              Configuração por empresa, perfil aprovado e habilitação fiscal.
+            </p>
+          </div>
         </div>
         {viewer.data?.isAdmin && (
           <button
             type="button"
             disabled={reclassify.isPending}
             onClick={() => reclassify.mutate()}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-foreground/10 px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+            className={`${BUTTON} border border-foreground/20`}
           >
-            {reclassify.isPending && <Loader2 className="size-3 animate-spin" />}
-            Reclassificar pendências
+            {reclassify.isPending ? (
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw aria-hidden className="size-4" />
+            )}
+            Conferir registros pendentes
           </button>
         )}
-      </div>
-      {query.isLoading ? (
-        <p className="text-xs text-foreground/55">Verificando configuração…</p>
-      ) : query.isError ? (
-        <p className="text-xs text-foreground/55">Configuração indisponível para o seu perfil.</p>
+      </header>
+      {settings.isLoading ? (
+        <p role="status" className="mt-5 text-sm">
+          Carregando configuração…
+        </p>
+      ) : settings.isError ? (
+        <div role="alert" className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+          <p>
+            Não foi possível consultar a configuração fiscal. Tente novamente ou solicite a
+            verificação do acesso.
+          </p>
+          <button
+            type="button"
+            onClick={() => void settings.refetch()}
+            className={`${BUTTON} mt-2 border border-amber-900/25`}
+          >
+            Tentar novamente
+          </button>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {(query.data ?? []).map((s) => (
-            <BrandCard key={s.brand} settings={s} health={health.data?.find((h) => h.brand === s.brand)} />
+        <div className="mt-5 space-y-5">
+          {health.isError && (
+            <div role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+              <p>O histórico de validação está indisponível.</p>
+              <button type="button" onClick={() => void health.refetch()} className={BUTTON}>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+          {settings.data?.map((item) => (
+            <BrandCard
+              key={item.brand}
+              settings={item}
+              health={health.data?.find((row) => row.brand === item.brand)}
+              isAdmin={Boolean(viewer.data?.isAdmin)}
+            />
           ))}
         </div>
       )}

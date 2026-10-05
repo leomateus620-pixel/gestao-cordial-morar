@@ -11,6 +11,7 @@ import {
   MapPin,
   MessageCircle,
   Pencil,
+  Receipt,
   RotateCcw,
   ShieldCheck,
   Trash2,
@@ -44,7 +45,8 @@ import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
 
-type DetailSection = "resumo" | "contrato" | "locatarios" | "garantias" | "imovel" | "documentos";
+type DetailSection =
+  "resumo" | "contrato" | "locatarios" | "garantias" | "imovel" | "nfse" | "documentos";
 
 type PendingAction = "paid" | "renew" | "close" | "delete" | null;
 
@@ -58,6 +60,7 @@ const SECTION_NAVIGATION: {
   { id: "locatarios", label: "Locatários", icon: UsersRound },
   { id: "garantias", label: "Garantias", icon: ShieldCheck },
   { id: "imovel", label: "Imóvel e proprietário", icon: Building2 },
+  { id: "nfse", label: "NFS-e", icon: Receipt },
   { id: "documentos", label: "Documentos", icon: WalletCards },
 ];
 
@@ -87,8 +90,15 @@ const PROPERTY_TYPE_LABELS: Record<RentalPropertyType, string> = {
 };
 
 function BrandBadge({ brand }: { brand?: string | null }) {
-  const normalized = brand === "morar" ? "morar" : "cordial";
-  const label = normalized === "morar" ? "Morar Imóveis" : "Cordial Imóveis";
+  const normalized = brand;
+  const label =
+    normalized === "morar"
+      ? "Morar Imóveis"
+      : normalized === "cordial"
+        ? "Cordial Imóveis"
+        : normalized === "ambas"
+          ? "Cordial e Morar"
+          : "Empresa não definida";
   const className =
     normalized === "morar"
       ? "bg-[color:var(--morar-primary,#8b5cf6)]/10 text-[color:var(--morar-primary,#8b5cf6)] ring-[color:var(--morar-primary,#8b5cf6)]/25"
@@ -551,26 +561,28 @@ export function RentalExpandedDetails({
             className="sticky top-0 z-20 border-b border-foreground/[0.07] bg-[#f7f3ed]/94 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8"
           >
             <div className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto">
-              {SECTION_NAVIGATION.map(({ id, label, icon: Icon }) => {
-                const active = activeSection === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => navigateTo(id)}
-                    aria-current={active ? "location" : undefined}
-                    className={cn(
-                      "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
-                      active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-foreground/58 hover:bg-white/70 hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="size-3.5" />
-                    {label}
-                  </button>
-                );
-              })}
+              {SECTION_NAVIGATION.filter(({ id }) => id !== "nfse" || canEmitNfse).map(
+                ({ id, label, icon: Icon }) => {
+                  const active = activeSection === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => navigateTo(id)}
+                      aria-current={active ? "location" : undefined}
+                      className={cn(
+                        "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
+                        active
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-foreground/58 hover:bg-white/70 hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="size-3.5" />
+                      {label}
+                    </button>
+                  );
+                },
+              )}
             </div>
           </nav>
 
@@ -814,7 +826,12 @@ export function RentalExpandedDetails({
               </SectionSurface>
             </div>
 
-            <RentalNfseSection contract={contract} canEmit={canEmitNfse} />
+            <RentalNfseSection
+              key={contract.id}
+              contract={contract}
+              canEmit={canEmitNfse}
+              sectionId={sectionId("nfse")}
+            />
 
             <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
           </div>
