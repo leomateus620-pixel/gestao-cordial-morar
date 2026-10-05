@@ -14,3 +14,12 @@ test("histórico ausente e vencimento impossível exigem revisão", () => {
   assert.throws(() => nextPaymentDueDate("2026-02-31", 10), /Revise o vencimento/);
   assert.throws(() => nextPaymentDueDate("2026-13-01", 10), /Revise o vencimento/);
 });
+
+test("baixa exige referência histórica nova gravada", async () => {
+  const { assertPaymentReferenceRecorded } = await import("./payment-reference");
+  assert.doesNotThrow(() => assertPaymentReferenceRecorded(null, "a"));
+  assert.doesNotThrow(() => assertPaymentReferenceRecorded("a", "b"));
+  assert.throws(() => assertPaymentReferenceRecorded(null, null), /referência histórica/);
+  assert.throws(() => assertPaymentReferenceRecorded("a", "a"), /referência histórica/);
+  assert.throws(() => assertPaymentReferenceRecorded("a", null), /referência histórica/);
+});

@@ -3022,14 +3022,22 @@ export type Database = {
           codigo_ibge_municipio: string
           codigo_item_lista_servico: string
           codigo_nbs: string | null
+          config_version: number
           created_at: string
           endpoint_url: string
+          fiscal_approved_at: string | null
+          fiscal_approved_by: string | null
+          fiscal_approved_config_version: number | null
+          fiscal_profile: Json
           ibs_cbs_c_class_trib: string
           ibs_cbs_c_ind_op: string
           ibs_cbs_cst: string
           id: string
           inscricao_municipal: string | null
           modo_teste: boolean
+          production_authorized_at: string | null
+          production_authorized_by: string | null
+          production_authorized_config_version: number | null
           razao_social: string | null
           simples_nacional: boolean
           situacao_tributaria: string
@@ -3037,21 +3045,29 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          aliquota_iss?: number
+          aliquota_iss: number
           brand: string
           cidade_tom?: string
           cnpj?: string
           codigo_ibge_municipio?: string
-          codigo_item_lista_servico?: string
+          codigo_item_lista_servico: string
           codigo_nbs?: string | null
+          config_version?: number
           created_at?: string
           endpoint_url?: string
-          ibs_cbs_c_class_trib?: string
-          ibs_cbs_c_ind_op?: string
-          ibs_cbs_cst?: string
+          fiscal_approved_at?: string | null
+          fiscal_approved_by?: string | null
+          fiscal_approved_config_version?: number | null
+          fiscal_profile?: Json
+          ibs_cbs_c_class_trib: string
+          ibs_cbs_c_ind_op: string
+          ibs_cbs_cst: string
           id?: string
           inscricao_municipal?: string | null
           modo_teste?: boolean
+          production_authorized_at?: string | null
+          production_authorized_by?: string | null
+          production_authorized_config_version?: number | null
           razao_social?: string | null
           simples_nacional?: boolean
           situacao_tributaria?: string
@@ -3066,14 +3082,22 @@ export type Database = {
           codigo_ibge_municipio?: string
           codigo_item_lista_servico?: string
           codigo_nbs?: string | null
+          config_version?: number
           created_at?: string
           endpoint_url?: string
+          fiscal_approved_at?: string | null
+          fiscal_approved_by?: string | null
+          fiscal_approved_config_version?: number | null
+          fiscal_profile?: Json
           ibs_cbs_c_class_trib?: string
           ibs_cbs_c_ind_op?: string
           ibs_cbs_cst?: string
           id?: string
           inscricao_municipal?: string | null
           modo_teste?: boolean
+          production_authorized_at?: string | null
+          production_authorized_by?: string | null
+          production_authorized_config_version?: number | null
           razao_social?: string | null
           simples_nacional?: boolean
           situacao_tributaria?: string
@@ -6418,6 +6442,7 @@ export type Database = {
           garantia_tipo: Database["public"]["Enums"]["rental_guarantee_type"]
           guarantor_id: string | null
           id: string
+          last_payment_reference_id: string | null
           observacoes: string | null
           payment_status: Database["public"]["Enums"]["rental_payment_status"]
           property_id: string
@@ -6443,6 +6468,7 @@ export type Database = {
           garantia_tipo?: Database["public"]["Enums"]["rental_guarantee_type"]
           guarantor_id?: string | null
           id?: string
+          last_payment_reference_id?: string | null
           observacoes?: string | null
           payment_status?: Database["public"]["Enums"]["rental_payment_status"]
           property_id: string
@@ -6468,6 +6494,7 @@ export type Database = {
           garantia_tipo?: Database["public"]["Enums"]["rental_guarantee_type"]
           guarantor_id?: string | null
           id?: string
+          last_payment_reference_id?: string | null
           observacoes?: string | null
           payment_status?: Database["public"]["Enums"]["rental_payment_status"]
           property_id?: string
@@ -6487,6 +6514,13 @@ export type Database = {
             columns: ["guarantor_id"]
             isOneToOne: false
             referencedRelation: "rental_guarantors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_contracts_last_payment_reference_id_fkey"
+            columns: ["last_payment_reference_id"]
+            isOneToOne: false
+            referencedRelation: "rental_nfse_service_references"
             referencedColumns: ["id"]
           },
           {
@@ -6658,35 +6692,41 @@ export type Database = {
         Row: {
           actor: string | null
           actor_kind: string
+          attempt_id: string | null
           created_at: string
           details: Json | null
           emission_id: string | null
+          evidence_kind: string
           from_status: string | null
           id: string
           reason: string | null
-          to_status: string
+          to_status: string | null
         }
         Insert: {
           actor?: string | null
           actor_kind: string
+          attempt_id?: string | null
           created_at?: string
           details?: Json | null
           emission_id?: string | null
+          evidence_kind?: string
           from_status?: string | null
           id?: string
           reason?: string | null
-          to_status: string
+          to_status?: string | null
         }
         Update: {
           actor?: string | null
           actor_kind?: string
+          attempt_id?: string | null
           created_at?: string
           details?: Json | null
           emission_id?: string | null
+          evidence_kind?: string
           from_status?: string | null
           id?: string
           reason?: string | null
-          to_status?: string
+          to_status?: string | null
         }
         Relationships: [
           {
@@ -6700,10 +6740,12 @@ export type Database = {
       }
       rental_nfse_emissions: {
         Row: {
+          attempt_id: string | null
           attempts: number
           brand: string
           codigo_verificador: string | null
           competencia: string
+          config_version: number | null
           confirmacao_real_por: string | null
           contract_id: string
           created_at: string
@@ -6716,25 +6758,37 @@ export type Database = {
           http_status: number | null
           id: string
           identificador: string | null
+          issuer_identity: string | null
           link_pdf: string | null
           modo_teste: boolean
           numero_nfse: string | null
+          parser_version: string | null
           request_xml: string | null
           resolution_reason: string | null
           resolved_at: string | null
           resolved_by: string | null
+          response_complete: boolean
           response_raw: string | null
           serie_nfse: string | null
+          service_reference_id: string | null
           situacao_nfse: string | null
+          snapshot: Json | null
+          snapshot_hash: string | null
           status: string
+          transition_actor: string | null
+          transition_details: Json | null
+          transition_reason: string | null
+          transport: string | null
           updated_at: string | null
           valor: number
         }
         Insert: {
+          attempt_id?: string | null
           attempts?: number
           brand: string
           codigo_verificador?: string | null
           competencia: string
+          config_version?: number | null
           confirmacao_real_por?: string | null
           contract_id: string
           created_at?: string
@@ -6747,25 +6801,37 @@ export type Database = {
           http_status?: number | null
           id?: string
           identificador?: string | null
+          issuer_identity?: string | null
           link_pdf?: string | null
           modo_teste?: boolean
           numero_nfse?: string | null
+          parser_version?: string | null
           request_xml?: string | null
           resolution_reason?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          response_complete?: boolean
           response_raw?: string | null
           serie_nfse?: string | null
+          service_reference_id?: string | null
           situacao_nfse?: string | null
+          snapshot?: Json | null
+          snapshot_hash?: string | null
           status?: string
+          transition_actor?: string | null
+          transition_details?: Json | null
+          transition_reason?: string | null
+          transport?: string | null
           updated_at?: string | null
           valor: number
         }
         Update: {
+          attempt_id?: string | null
           attempts?: number
           brand?: string
           codigo_verificador?: string | null
           competencia?: string
+          config_version?: number | null
           confirmacao_real_por?: string | null
           contract_id?: string
           created_at?: string
@@ -6778,23 +6844,93 @@ export type Database = {
           http_status?: number | null
           id?: string
           identificador?: string | null
+          issuer_identity?: string | null
           link_pdf?: string | null
           modo_teste?: boolean
           numero_nfse?: string | null
+          parser_version?: string | null
           request_xml?: string | null
           resolution_reason?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          response_complete?: boolean
           response_raw?: string | null
           serie_nfse?: string | null
+          service_reference_id?: string | null
           situacao_nfse?: string | null
+          snapshot?: Json | null
+          snapshot_hash?: string | null
           status?: string
+          transition_actor?: string | null
+          transition_details?: Json | null
+          transition_reason?: string | null
+          transport?: string | null
           updated_at?: string | null
           valor?: number
         }
         Relationships: [
           {
             foreignKeyName: "rental_nfse_emissions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_nfse_emissions_service_reference_id_fkey"
+            columns: ["service_reference_id"]
+            isOneToOne: false
+            referencedRelation: "rental_nfse_service_references"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_nfse_service_references: {
+        Row: {
+          competencia: string | null
+          contract_id: string
+          contract_snapshot: Json
+          created_at: string
+          created_by: string | null
+          decision: Json
+          fato_gerador: string | null
+          id: string
+          source: string
+          source_key: string
+          valor_servico: number | null
+          vencimento_original: string | null
+        }
+        Insert: {
+          competencia?: string | null
+          contract_id: string
+          contract_snapshot: Json
+          created_at?: string
+          created_by?: string | null
+          decision?: Json
+          fato_gerador?: string | null
+          id?: string
+          source: string
+          source_key: string
+          valor_servico?: number | null
+          vencimento_original?: string | null
+        }
+        Update: {
+          competencia?: string | null
+          contract_id?: string
+          contract_snapshot?: Json
+          created_at?: string
+          created_by?: string | null
+          decision?: Json
+          fato_gerador?: string | null
+          id?: string
+          source?: string
+          source_key?: string
+          valor_servico?: number | null
+          vencimento_original?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_nfse_service_references_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "rental_contracts"
