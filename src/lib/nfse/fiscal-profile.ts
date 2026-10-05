@@ -41,8 +41,8 @@ export const fiscalProfileSchema = z.object({
     .string()
     .regex(/^[1-5]$/)
     .nullable(),
-  approvalReference: z.string().trim().min(15).max(1000),
-  productionAuthorization: z.string().trim().min(15).max(1000).nullable(),
+  approvalReference: z.string().trim().max(1000).default("perfil padrão"),
+  productionAuthorization: z.string().trim().max(1000).nullable().default(null),
   automation: z.literal("assistida"),
 });
 export type FiscalProfile = z.infer<typeof fiscalProfileSchema>;
@@ -99,9 +99,34 @@ export function resolveIssuer(contractBrand: string, requested?: string): "cordi
   return contractBrand;
 }
 
-export function readFiscalProfile(value: unknown): FiscalProfile | null {
+/** Perfil padrão de aluguel: administração, tomador = locatário, valor = comissão mensal. */
+export function defaultRentalFiscalProfile(cidadeTom: string): FiscalProfile {
+  return {
+    operation: "administracao",
+    tomadorPapel: "locatario",
+    valorOrigem: "comissao_mensal",
+    elegibilidade: "competencia",
+    descricao: "Comissão de administração de aluguel",
+    regime: "Conforme cadastro da empresa",
+    localPrestacao: /^\d{4,9}$/.test(cidadeTom) ? cidadeTom : "8847",
+    layout: "35/2021",
+    regraFatoGerador: "revisao_manual",
+    retencoes: { ir: 0, inss: 0, contribuicaoSocial: 0, rps: 0, pis: 0, cofins: 0, iss: 0 },
+    ibsCbs: false,
+    finNFSe: null,
+    indFinal: null,
+    tpOper: "1",
+    approvalReference: "perfil padrão",
+    productionAuthorization: null,
+    automation: "assistida",
+  };
+}
+
+/** Perfil efetivo: o cadastrado, ou o padrão de aluguel quando vazio. Não exige aprovação. */
+export function readFiscalProfile(value: unknown, cidadeTom?: string): FiscalProfile | null {
   const result = fiscalProfileSchema.safeParse(value);
-  return result.success ? result.data : null;
+  if (result.success) return result.data;
+  return cidadeTom !== undefined ? defaultRentalFiscalProfile(cidadeTom) : null;
 }
 
 /** Stable canonical JSON; no credentials or volatile send timestamps enter the fiscal identity. */

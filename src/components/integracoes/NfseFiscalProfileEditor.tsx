@@ -104,17 +104,17 @@ export function NfseFiscalProfileEditor({
         </div>
       )}
       <label className="mt-5 block space-y-1.5 text-sm font-semibold">
-        Referência da aprovação contábil
+        Observação do contador (opcional)
         <textarea
           rows={3}
           value={draft.approvalReference ?? ""}
           onChange={(event) => set("approvalReference", event.target.value)}
           className={inputClass}
-          placeholder="Responsável, data e documento que aprovaram este enquadramento (mínimo 15 caracteres)."
+          placeholder="Responsável, data e documento que aprovaram este enquadramento ."
         />
       </label>
       <label className="mt-4 block space-y-1.5 text-sm font-semibold">
-        Autorização para produção, após homologação
+        Observação sobre produção (opcional)
         <textarea
           rows={3}
           value={draft.productionAuthorization ?? ""}

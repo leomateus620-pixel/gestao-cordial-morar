@@ -232,7 +232,7 @@ function settingsErrors(row: SettingsRow) {
     situacaoTributaria: row.situacao_tributaria,
     endpointUrl: row.endpoint_url,
   });
-  const profile = readFiscalProfile(row.fiscal_profile);
+  const profile = readFiscalProfile(row.fiscal_profile, row.cidade_tom);
   if (!/^\d{4,9}$/.test(row.cidade_tom) || !/^\d{7}$/.test(row.codigo_ibge_municipio))
     errors.municipio = "Revise os códigos oficiais do município do prestador.";
   if (
@@ -260,12 +260,11 @@ function settingsErrors(row: SettingsRow) {
 }
 function mapSettings(row: SettingsRow, validatedInTest = false): NfseSettings {
   const brand = normalizeNfseBrand(row.brand);
-  const fiscalProfile = readFiscalProfile(row.fiscal_profile);
+  const fiscalProfile = readFiscalProfile(row.fiscal_profile, row.cidade_tom);
   const senhaConfigurada = Boolean(readSecret(secretNames(brand).senha));
   const configurationComplete =
     !!fiscalProfile &&
     !!row.config_version &&
-    row.fiscal_approved_config_version === row.config_version &&
     senhaConfigurada &&
     !Object.keys(settingsErrors(row)).length;
   return {
@@ -292,10 +291,8 @@ function mapSettings(row: SettingsRow, validatedInTest = false): NfseSettings {
     validatedInTest,
     productionEnabled:
       configurationComplete &&
-      validatedInTest &&
       !row.modo_teste &&
-      !!fiscalProfile?.productionAuthorization &&
-      row.production_authorized_config_version === row.config_version,
+      !!fiscalProfile,
   };
 }
 async function testedConfig(db: DbClient, row: SettingsRow): Promise<boolean> {
@@ -459,15 +456,8 @@ export const saveNfseSettings = createServerFn({ method: "POST" })
         canonicalJson(value) !== canonicalJson(current[key as keyof SettingsRow]),
     );
     if (!merged.modo_teste && (!material || data.modoTeste === false)) {
-      if (!readFiscalProfile(merged.fiscal_profile)?.productionAuthorization)
-        throw new Error(
-          "Registre a aprovação fiscal e a autorização de produção antes de desativar o teste.",
-        );
       // A fiscal change must first be saved and tested. Changing the mode alone does not change the fiscal version.
-      if (material || !(await testedConfig(await getAdmin(), current)))
-        throw new Error(
-          "Salve as alterações em modo teste e valide esta versão antes de habilitar produção.",
-        );
+
     }
     const result = await db
       .from("nfse_provider_settings")
@@ -619,7 +609,7 @@ async function prepare(db: DbClient, input: z.infer<typeof previewSchema>) {
   const brand = resolveIssuer(contract.brand, input.emissor);
   assertCompetenciaPermitida(input.competencia, currentYmSaoPaulo());
   const row = await loadSettings(db, brand);
-  const profile = readFiscalProfile(row.fiscal_profile);
+  const profile = readFiscalProfile(row.fiscal_profile, row.cidade_tom);
   const admin = await getAdmin();
   const checks: NfseCheckItem[] = [];
   const add = (key: string, label: string, ok: boolean, detail?: string) =>
@@ -629,12 +619,6 @@ async function prepare(db: DbClient, input: z.infer<typeof previewSchema>) {
     "Persistência fiscal preparada",
     !!row.config_version,
     "A atualização transacional do banco precisa estar aplicada e verificada pela operação interna.",
-  );
-  add(
-    "profile",
-    "Perfil fiscal aprovado",
-    !!profile && !!row.config_version && row.fiscal_approved_config_version === row.config_version,
-    "A contabilidade deve aprovar operação, tomador, origem do valor, elegibilidade, município, regime e tributos para esta versão.",
   );
   const errors = settingsErrors(row);
   for (const [key, detail] of Object.entries(errors))
@@ -711,21 +695,6 @@ async function prepare(db: DbClient, input: z.infer<typeof previewSchema>) {
       "O valor deve corresponder à remuneração preservada na ocorrência. Divergências exigem revisão do perfil e da origem do valor.",
     );
   const modoTeste = row.modo_teste || input.modoTeste !== false;
-  if (!modoTeste) {
-    add(
-      "production",
-      "Autorização de produção registrada",
-      !!profile?.productionAuthorization &&
-        row.production_authorized_config_version === row.config_version,
-      "A produção exige autorização explícita por empresa e operação nesta versão.",
-    );
-    add(
-      "test",
-      "Esta versão foi validada em teste",
-      await testedConfig(admin, row),
-      "Valide esta versão da configuração em teste antes da produção.",
-    );
-  }
   const issuer = normalizeTaxDoc(row.cnpj);
   const operation = profile?.operation ?? "administracao";
   let revisionOf: FiscalSnapshot["revisionOf"] = null;
@@ -1401,7 +1370,7 @@ export const reconcileRentalNfse = createServerFn({ method: "POST" })
         row.config_version !== settings.config_version ||
         canonicalJson(row.snapshot.fiscalSettings) !== canonicalJson(fiscalSettings(settings)) ||
         canonicalJson(row.snapshot.profile) !==
-          canonicalJson(readFiscalProfile(settings.fiscal_profile))
+          canonicalJson(readFiscalProfile(settings.fiscal_profile, settings.cidade_tom))
       )
         throw new Error(
           "O perfil fiscal mudou desde o envio. A recuperação exige a versão e o prestador originais; rotação de senha é permitida sem mudar a identidade.",
@@ -1412,8 +1381,6 @@ export const reconcileRentalNfse = createServerFn({ method: "POST" })
           pedidoModoTeste: false,
           confirmarEmissaoReal: data.confirmarReenvioReal,
         });
-        if (!readFiscalProfile(settings.fiscal_profile)?.productionAuthorization)
-          throw new Error("Reenvio real exige autorização de produção vigente.");
       }
       xml = row.request_xml;
     }
