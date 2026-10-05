@@ -15,6 +15,13 @@
       "when": 1790958429271,
       "tag": "0001_drive_rename_on_conflict",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791205180690,
+      "tag": "0002_morar_owned_site",
+      "breakpoints": true
     }
   ]
 }

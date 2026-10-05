@@ -255,7 +255,7 @@ const server = createServer(async (req, res) => {
       if (input.action === "failure") unavailable[namespace] = input.enabled === true;
       else if (input.action === "refresh_search_sql") {
         const migration = await readFile(
-          new URL("../../supabase/migrations/20261004150000_morar_owned_site.sql", import.meta.url),
+          new URL("../../tests/morar-site/morar_owned_site.sql", import.meta.url),
           "utf8",
         );
         const definition = migration.match(
