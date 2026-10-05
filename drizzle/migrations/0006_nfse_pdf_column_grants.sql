@@ -1,0 +1,1 @@
+GRANT SELECT (pdf_status, pdf_document_id, pdf_last_error, pdf_attempts) ON public.rental_nfse_emissions TO authenticated;

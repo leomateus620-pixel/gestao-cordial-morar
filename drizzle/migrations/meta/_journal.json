@@ -43,6 +43,13 @@
       "when": 1791209301881,
       "tag": "0005_nfse_no_fiscal_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791209596429,
+      "tag": "0006_nfse_pdf_column_grants",
+      "breakpoints": true
     }
   ]
 }
