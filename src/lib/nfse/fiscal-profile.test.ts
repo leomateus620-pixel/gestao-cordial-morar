@@ -54,7 +54,6 @@ test("perfil fiscal não herda enquadramento, alíquota, retenções ou produç�
     "elegibilidade",
     "regime",
     "retencoes",
-    "approvalReference",
   ]) {
     const input: Record<string, unknown> = { ...approvedProfile() };
     delete input[field];
@@ -64,10 +63,10 @@ test("perfil fiscal não herda enquadramento, alíquota, retenções ou produç�
     fiscalProfileSchema.safeParse({ ...approvedProfile(), automation: "automatica" }).success,
     false,
   );
-  assert.equal(
-    fiscalProfileSchema.safeParse({ ...approvedProfile(), productionAuthorization: "sim" }).success,
-    false,
-  );
+  // Aprovação e autorização de produção são opcionais (não bloqueiam emissão).
+  const sem: Record<string, unknown> = { ...approvedProfile() };
+  delete sem.approvalReference;
+  assert.equal(fiscalProfileSchema.safeParse(sem).success, true);
 });
 
 test("retenções preservam zero e rejeitam percentuais não finitos/fora do intervalo", () => {
