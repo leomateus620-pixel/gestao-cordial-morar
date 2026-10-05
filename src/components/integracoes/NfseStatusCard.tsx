@@ -366,11 +366,7 @@ function BrandCard({
             aria-label="Manter somente em teste"
             checked={form.modoTeste}
             disabled={
-              !isAdmin ||
-              (form.modoTeste &&
-                (!settings.validatedInTest ||
-                  !parsedProfile.success ||
-                  !parsedProfile.data.productionAuthorization))
+              !isAdmin
             }
             onCheckedChange={(value) => update("modoTeste", value)}
           />

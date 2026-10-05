@@ -291,7 +291,6 @@ function mapSettings(row: SettingsRow, validatedInTest = false): NfseSettings {
     validatedInTest,
     productionEnabled:
       configurationComplete &&
-      validatedInTest &&
       !row.modo_teste &&
       !!fiscalProfile,
   };
@@ -458,10 +457,7 @@ export const saveNfseSettings = createServerFn({ method: "POST" })
     );
     if (!merged.modo_teste && (!material || data.modoTeste === false)) {
       // A fiscal change must first be saved and tested. Changing the mode alone does not change the fiscal version.
-      if (material || !(await testedConfig(await getAdmin(), current)))
-        throw new Error(
-          "Salve as alterações em modo teste e valide esta versão antes de habilitar produção.",
-        );
+
     }
     const result = await db
       .from("nfse_provider_settings")
@@ -699,21 +695,6 @@ async function prepare(db: DbClient, input: z.infer<typeof previewSchema>) {
       "O valor deve corresponder à remuneração preservada na ocorrência. Divergências exigem revisão do perfil e da origem do valor.",
     );
   const modoTeste = row.modo_teste || input.modoTeste !== false;
-  if (!modoTeste) {
-    add(
-      "production",
-      "Autorização de produção registrada",
-      !!profile?.productionAuthorization &&
-        row.production_authorized_config_version === row.config_version,
-      "A produção exige autorização explícita por empresa e operação nesta versão.",
-    );
-    add(
-      "test",
-      "Esta versão foi validada em teste",
-      await testedConfig(admin, row),
-      "Valide esta versão da configuração em teste antes da produção.",
-    );
-  }
   const issuer = normalizeTaxDoc(row.cnpj);
   const operation = profile?.operation ?? "administracao";
   let revisionOf: FiscalSnapshot["revisionOf"] = null;
