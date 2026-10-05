@@ -98,11 +98,14 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
+  const [publishOwnedMorar, setPublishOwnedMorar] = useState(false);
   /** Publicar é a ação padrão da última etapa: os destinos vêm da Etapa 1. */
   const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
   const [draftId, setDraftId] = useState<string | null>(resume?.id ?? null);
-  const initialValues = useRef<PropertyFormValues>(resume ? toFormValues(resume) : emptyPropertyValues());
+  const initialValues = useRef<PropertyFormValues>(
+    resume ? toFormValues(resume) : emptyPropertyValues(),
+  );
   /** Concluído: não avisa mais ao sair. */
   const finished = useRef(false);
   /** Chave da intenção de cadastro: vale para todo este formulário aberto. */
@@ -184,7 +187,7 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
   function confirmLeave(): boolean {
     if (!draftId || finished.current) return true;
     return window.confirm(
-      "Este cadastro ainda não foi concluído: o imóvel fica como rascunho, sem agenciamento e sem ir para os sites. Sair mesmo assim? Você pode continuar depois pelo botão \"Concluir cadastro\".",
+      'Este cadastro ainda não foi concluído: o imóvel fica como rascunho, sem agenciamento e sem ir para os sites. Sair mesmo assim? Você pode continuar depois pelo botão "Concluir cadastro".',
     );
   }
 
@@ -201,12 +204,17 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
           agency.enabled && canRegisterAgency
             ? {
                 finalidade: agency.finalidade,
-                providers: destinos.length ? destinos : [values.carteira],
+                providers: [
+                  ...new Set([...destinos, ...(publishOwnedMorar ? ["morar" as const] : [])]),
+                ].length
+                  ? [...new Set([...destinos, ...(publishOwnedMorar ? ["morar" as const] : [])])]
+                  : [values.carteira],
                 checklist: agency.checklist,
                 descricao: agency.descricao,
               }
             : null,
         publishProviders: publicar ? destinos : [],
+        publishOwnedMorar,
       });
       const propertyId = result.propertyId;
       committed.current = true;
@@ -227,11 +235,14 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
       const ok = result.completed;
       if (ok) {
         finished.current = true;
-        if (result.steps.agency === "ok") toast.success("Agenciamento registrado e vinculado ao imóvel.");
+        if (result.steps.agency === "ok")
+          toast.success("Agenciamento registrado e vinculado ao imóvel.");
         toast.success(
-          result.steps.publish === "ok"
-            ? `Imóvel enviado para publicação: ${destinosLabel(destinos)}.`
-            : "Imóvel cadastrado no catálogo.",
+          result.ownedMorarPublication?.active
+            ? "Imóvel publicado no site próprio Morar."
+            : result.steps.publish === "ok"
+              ? `Imóvel enviado para publicação: ${destinosLabel(destinos)}.`
+              : "Imóvel cadastrado no catálogo.",
         );
         if ((result.skippedImages ?? 0) > 0) {
           toast.warning(
@@ -239,7 +250,9 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
           );
         }
       } else {
-        toast.warning('Cadastro salvo, mas ainda não concluído. Use "Concluir cadastro" na ficha do imóvel.');
+        toast.warning(
+          'Cadastro salvo, mas ainda não concluído. Use "Concluir cadastro" na ficha do imóvel.',
+        );
       }
       // Drive roda em segundo plano: nunca segura a saída da tela de cadastro.
       void drive.sync.mutateAsync().catch(() => {
@@ -280,14 +293,18 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
 
       {!resume && !draftId && meusRascunhos.length > 0 ? (
         <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 text-[13px]">
-          <p className="font-semibold">Você tem {meusRascunhos.length} cadastro(s) não concluído(s).</p>
+          <p className="font-semibold">
+            Você tem {meusRascunhos.length} cadastro(s) não concluído(s).
+          </p>
           <ul className="mt-1.5 space-y-1">
             {meusRascunhos.slice(0, 5).map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span className="truncate text-foreground/70">
                   {item.tipo ?? "Imóvel"}
                   {item.bairro ? ` · ${item.bairro}` : ""} ·{" "}
-                  {new Date(item.createdAt).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+                  {new Date(item.createdAt).toLocaleDateString("pt-BR", {
+                    timeZone: "America/Sao_Paulo",
+                  })}
                 </span>
                 <Link
                   to="/imoveis/novo"
@@ -305,9 +322,7 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
       <PropertyForm
         initial={initialValues.current}
         submitLabel={publicar ? "Publicar imóvel" : "Salvar imóvel"}
-        pending={
-          create.isPending || finalize.isPending
-        }
+        pending={create.isPending || finalize.isPending}
         extraSteps={[
           {
             label: "Agenciamento",
@@ -337,6 +352,8 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
         ]}
         destinos={destinos}
         onDestinosChange={setDestinos}
+        publishOwnedMorar={publishOwnedMorar}
+        onPublishOwnedMorarChange={setPublishOwnedMorar}
         propertyId={draftId}
         onRequestSave={ensureDraft}
         onValuesChange={(values) => {
@@ -353,7 +370,6 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
         }}
         onSubmit={handleSubmit}
       />
-
     </div>
   );
 }

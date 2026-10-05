@@ -5,6 +5,7 @@ import {
   mediaSchema,
   searchSchema,
   settingsSchema,
+  publicFacetsSchema,
   type SiteBootstrap,
   type SiteCatalog,
   type PublicDetail,
@@ -12,6 +13,8 @@ import {
   type SitePage,
 } from "./contract";
 import { plainText } from "./presentation";
+import type { SiteBrand } from "./brand";
+import { siteChannel, siteDefaultSettings } from "./channel.server";
 
 export class SiteUnavailable extends Error {
   constructor() {
@@ -47,10 +50,11 @@ export const emptyFacets: SiteFacets = {
   districts: [],
   stages: [],
 };
-export function siteEnvironment() {
+export function siteEnvironment(brand: SiteBrand = "cordial") {
+  const channel = siteChannel(brand);
   let canonicalOrigin: string | null = null;
   try {
-    const url = new URL(process.env.CORDIAL_SITE_CANONICAL_ORIGIN ?? "");
+    const url = new URL(process.env[`${channel.envPrefix}_CANONICAL_ORIGIN`] ?? "");
     if (url.protocol === "https:" && url.pathname === "/" && !url.username && !url.password)
       canonicalOrigin = url.origin;
   } catch {
@@ -58,35 +62,36 @@ export function siteEnvironment() {
   }
   return {
     canonicalOrigin,
-    indexable: process.env.CORDIAL_SITE_ENV === "production" && !!canonicalOrigin,
+    indexable: process.env[`${channel.envPrefix}_ENV`] === "production" && !!canonicalOrigin,
   };
 }
-export async function bootstrap(): Promise<SiteBootstrap> {
+export async function bootstrap(brand: SiteBrand = "cordial"): Promise<SiteBootstrap> {
+  const channel = siteChannel(brand);
   try {
     const db = siteDb();
     const [settings, facets] = await Promise.all([
-      db.from("cordial_site_settings").select("content").eq("id", true).single(),
-      db.rpc("cordial_site_facets"),
+      db.from(`${channel.namespace}_settings`).select("content").eq("id", true).single(),
+      db.rpc(`${channel.namespace}_facets`),
     ]);
     if (settings.error || facets.error) throw new SiteUnavailable();
     return {
-      settings: settingsSchema.parse(settings.data.content),
-      facets: facets.data as SiteFacets,
+      settings: settingsSchema.parse({ ...siteDefaultSettings(brand), ...settings.data.content }),
+      facets: publicFacetsSchema.parse(facets.data),
       available: true,
-      ...siteEnvironment(),
+      ...siteEnvironment(brand),
     };
   } catch {
     return {
-      settings: settingsSchema.parse({}),
+      settings: siteDefaultSettings(brand),
       facets: emptyFacets,
       available: false,
-      ...siteEnvironment(),
+      ...siteEnvironment(brand),
     };
   }
 }
-export async function catalog(input: unknown): Promise<SiteCatalog> {
+export async function catalog(input: unknown, brand: SiteBrand = "cordial"): Promise<SiteCatalog> {
   const f = searchSchema.parse(input);
-  const { data, error } = await siteDb().rpc("cordial_site_search", { f });
+  const { data, error } = await siteDb().rpc(`${siteChannel(brand).namespace}_search`, { f });
   if (error || !data) throw new SiteUnavailable();
   return {
     items: z.array(publicPropertySchema).parse(data.items),
@@ -95,18 +100,22 @@ export async function catalog(input: unknown): Promise<SiteCatalog> {
     pageSize: 12,
   };
 }
-export async function detail(id: string): Promise<PublicDetail | null> {
+export async function detail(
+  id: string,
+  brand: SiteBrand = "cordial",
+): Promise<PublicDetail | null> {
+  const channel = siteChannel(brand);
   if (!z.string().uuid().safeParse(id).success) return null;
   const db = siteDb();
   const { data, error } = await db
-    .from("cordial_site_documents")
+    .from(`${channel.namespace}_documents`)
     .select("document")
     .eq("public_id", id)
     .maybeSingle();
   if (error) throw new SiteUnavailable();
   if (!data) return null;
   const { data: media, error: mediaError } = await db
-    .from("cordial_site_authorized_media")
+    .from(`${channel.namespace}_authorized_media`)
     .select("id,version,width,height,position")
     .eq("public_id", id)
     .order("position")
@@ -121,10 +130,13 @@ export async function detail(id: string): Promise<PublicDetail | null> {
     images: z.array(mediaSchema).parse(media ?? []),
   };
 }
-export async function detailState(id: string): Promise<"withdrawn" | "unavailable" | "missing"> {
+export async function detailState(
+  id: string,
+  brand: SiteBrand = "cordial",
+): Promise<"withdrawn" | "unavailable" | "missing"> {
   if (!z.string().uuid().safeParse(id).success) return "missing";
   const { data, error } = await siteDb()
-    .from("cordial_site_publications")
+    .from(`${siteChannel(brand).namespace}_publications`)
     .select("state,published_at")
     .eq("public_id", id)
     .maybeSingle();
@@ -132,10 +144,10 @@ export async function detailState(id: string): Promise<"withdrawn" | "unavailabl
   if (!data?.published_at) return "missing";
   return data.state === "withdrawn" ? "withdrawn" : "unavailable";
 }
-export async function pages(kind?: string): Promise<SitePage[]> {
+export async function pages(kind?: string, brand: SiteBrand = "cordial"): Promise<SitePage[]> {
   const db = siteDb();
   let q = db
-    .from("cordial_site_pages")
+    .from(`${siteChannel(brand).namespace}_pages`)
     .select("slug,kind,title,summary,body,published_at")
     .eq("published", true)
     .order("published_at", { ascending: false })
@@ -153,10 +165,10 @@ export async function pages(kind?: string): Promise<SitePage[]> {
     publishedAt: p.published_at,
   }));
 }
-export async function page(slug: string): Promise<SitePage | null> {
+export async function page(slug: string, brand: SiteBrand = "cordial"): Promise<SitePage | null> {
   if (!/^[a-z0-9-]{1,100}$/.test(slug)) return null;
   const { data, error } = await siteDb()
-    .from("cordial_site_pages")
+    .from(`${siteChannel(brand).namespace}_pages`)
     .select("slug,kind,title,summary,body,published_at")
     .eq("published", true)
     .eq("slug", slug)
@@ -172,20 +184,25 @@ export async function page(slug: string): Promise<SitePage | null> {
     publishedAt: data.published_at,
   };
 }
-export async function readSite(resource: string, input: unknown): Promise<unknown> {
+export async function readSite(
+  resource: string,
+  input: unknown,
+  brand: SiteBrand = "cordial",
+): Promise<unknown> {
+  siteChannel(brand);
   switch (resource) {
     case "detail-state":
-      return detailState(z.string().parse(input));
+      return detailState(z.string().parse(input), brand);
     case "bootstrap":
-      return bootstrap();
+      return bootstrap(brand);
     case "properties":
-      return catalog(input);
+      return catalog(input, brand);
     case "detail":
-      return detail(z.string().parse(input));
+      return detail(z.string().parse(input), brand);
     case "pages":
-      return pages(typeof input === "string" ? input : undefined);
+      return pages(typeof input === "string" ? input : undefined, brand);
     case "page":
-      return page(z.string().parse(input));
+      return page(z.string().parse(input), brand);
     default:
       throw new Error("Unknown public resource");
   }

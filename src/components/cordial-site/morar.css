@@ -1,0 +1,924 @@
+.cordial-site.morar-site {
+  --cs-ink: #333333;
+  --cs-muted: #706b65;
+  --cs-brand: #aa4707;
+  --cs-dark: #333333;
+  --cs-mint: #f6c49a;
+  --cs-paper: #fcfaf7;
+  --cs-soft: #f0ece5;
+  --cs-line: #e5ded5;
+  --ms-orange: #eb7a1c;
+  --ms-button: #aa4707;
+  --ms-warm: #f6efe6;
+  background: var(--cs-paper);
+}
+body:has(.morar-site) {
+  background: #fcfaf7;
+}
+.morar-site :where(a, button, input, select, textarea, summary):focus-visible {
+  outline-color: #bc5008;
+}
+.morar-site .cs-header {
+  background: #333;
+}
+.morar-site .cs-brand img {
+  width: 160px;
+  height: auto;
+  max-height: 68px;
+  object-fit: contain;
+}
+.morar-site .cs-header-inner {
+  min-height: 96px;
+}
+.morar-site .cs-preview {
+  background: #f1e3d3;
+  color: #684429;
+}
+.morar-site .cs-header :where(a, summary) {
+  color: #fff;
+}
+.morar-site .cs-menu > div {
+  background: #fffdf9;
+  box-shadow: 0 16px 45px #33271a24;
+}
+.morar-site .cs-menu > div a {
+  color: #333;
+}
+.morar-site .cs-menu > div a:hover {
+  background: #f5e8d9;
+}
+.morar-site .cs-header :where(a, summary):hover {
+  color: #f5c598;
+}
+.morar-site .cs-button {
+  background: var(--ms-button);
+  color: #fff;
+}
+.morar-site .cs-button:hover {
+  background: #873705;
+  box-shadow: 0 7px 20px #65350a20;
+}
+.morar-site .cs-button-light {
+  background: #f1e9df;
+  color: #67452d;
+}
+.morar-site .cs-button-light:hover {
+  background: #e9ddcd;
+}
+.morar-site .cs-button-white {
+  background: #fffdf9;
+  color: #333;
+}
+.morar-site .cs-button-white:hover {
+  background: #f4e2d0;
+}
+.morar-site .cs-property-card {
+  border-color: #e5ded5;
+  background: #fffdf9;
+}
+.morar-site .cs-property-card:hover {
+  box-shadow: 0 18px 38px #3c2d1c12;
+}
+.morar-site .cs-card-photo,
+.morar-site .cs-photo-fallback {
+  background: #eee7de;
+  color: #736b61;
+}
+.morar-site .cs-operation,
+.morar-site .cs-gallery-count {
+  background: #fffaf1f0;
+  color: #493d33;
+}
+.morar-site .cs-favorite {
+  background: #fffaf4ef;
+  border-color: #e2d6c7;
+}
+.morar-site .cs-favorite.is-active {
+  color: var(--ms-button);
+}
+.morar-site .cs-card-reference,
+.morar-site .cs-card-location,
+.morar-site .cs-card-attributes,
+.morar-site .cs-breadcrumb {
+  color: #70685f;
+}
+.morar-site .cs-card-attributes {
+  border-color: #e8e0d5;
+}
+.morar-site .cs-card-reference > span {
+  background: #f8e1c6;
+  color: #7b3b10;
+}
+.morar-site .cs-card-arrow {
+  background: #f3eadd;
+  color: #734727;
+}
+.morar-site .cs-field :where(input, select, textarea),
+.morar-site .cs-quick-filters input {
+  border-color: #dcd1c2;
+  background: #fffdf9;
+  color: #333;
+}
+.morar-site .cs-field :where(input, select, textarea)::placeholder {
+  color: #81766a;
+}
+.morar-site .cs-field :where(input, select, textarea):focus {
+  border-color: #bc5008;
+}
+.morar-site .cs-filter-chips button,
+.morar-site .cs-result-purpose .is-active,
+.morar-site .cs-view-toggle button[aria-pressed="true"],
+.morar-site .cs-detail-features span {
+  background: #f3e5d4;
+  color: #66472d;
+}
+.morar-site .cs-result-purpose,
+.morar-site .cs-quick-filters,
+.morar-site .cs-sort select {
+  border-color: #e5d8c8;
+}
+.morar-site .cs-detail-areas,
+.morar-site .cs-contact-panel,
+.morar-site .cs-share-feedback {
+  background: #f3ece3;
+}
+.morar-site .cs-detail-price,
+.morar-site .cs-text-link,
+.morar-site .cs-eyebrow {
+  color: var(--ms-button);
+}
+.morar-site .cs-detail-description,
+.morar-site .cs-detail-areas,
+.morar-site .cs-editorial-aside,
+.morar-site .cs-contact-brand,
+.morar-site .cs-article-card,
+.morar-site .cs-district-card {
+  border-color: #e5d8c8;
+}
+.morar-site .cs-district-card,
+.morar-site .cs-article-card,
+.morar-site .cs-editorial-aside {
+  background: #f3ece3;
+}
+.morar-site .cs-footer {
+  background: #333;
+}
+.morar-site .cs-footer :where(p, a, span) {
+  color: #e3dbd2;
+}
+.morar-site .cs-footer h2 {
+  color: #f1e9df;
+}
+.morar-site .cs-footer img {
+  width: 175px;
+  height: auto;
+}
+.morar-site .cs-footer-bottom {
+  border-color: #ffffff24;
+}
+.morar-site .cs-whatsapp {
+  color: #333;
+  background: #fffdf9;
+  border-color: #ded4c7;
+  box-shadow: 0 6px 20px #36271824;
+}
+.morar-site.cs-dialog-overlay {
+  background: #231b13bf;
+}
+.morar-site.cs-drawer {
+  box-shadow: -12px 0 60px #33271930;
+}
+.morar-site.cs-lightbox {
+  background: #25211d;
+  color: #fff;
+}
+.morar-site.cs-lightbox .cs-icon-button,
+.morar-site.cs-lightbox .cs-gallery-arrow {
+  color: #fff;
+  background: #ffffff18;
+}
+.morar-site .cs-mobile-contact {
+  background: #fffcf7;
+  border-color: #e5d5c1;
+  box-shadow: 0 -7px 20px #3d2a1a14;
+}
+.morar-site .cs-mobile-contact strong {
+  color: #333;
+}
+.morar-site .cs-mobile-contact .cs-button {
+  color: #fff;
+}
+
+.morar-site .ms-hero {
+  min-height: clamp(400px, 52vh, 540px);
+  position: relative;
+  overflow: hidden;
+  background: #3b3229;
+  color: white;
+}
+.morar-site .ms-hero-photo,
+.morar-site .ms-hero-shade {
+  position: absolute;
+  inset: 0;
+}
+.morar-site .ms-hero-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 53%;
+}
+.morar-site .ms-hero-shade {
+  background:
+    linear-gradient(90deg, #211c17dc 0%, #211c1785 55%, #211c173a 100%),
+    linear-gradient(0deg, #211c17b3, transparent 60%);
+}
+.morar-site .ms-hero-inner {
+  position: relative;
+  min-height: clamp(400px, 52vh, 540px);
+  padding-block: 28px 36px;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  justify-content: space-between;
+}
+.morar-site .ms-hero-copy {
+  max-width: 770px;
+  animation: ms-entry 580ms ease both;
+}
+.morar-site .ms-hero-copy .cs-eyebrow {
+  color: #f8d9b8;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.morar-site .ms-hero-copy .cs-eyebrow > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ms-orange);
+}
+.morar-site .ms-hero h1 {
+  font-size: clamp(44px, min(4.8vw, 7.2vh), 68px);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  margin: 22px 0;
+}
+.morar-site .ms-hero h1 em {
+  font-style: normal;
+  color: #f5bc85;
+}
+.morar-site .ms-hero-copy > p:not(.cs-eyebrow) {
+  max-width: 490px;
+  font-size: 18px;
+  line-height: 1.7;
+  color: #faf2e8;
+}
+.morar-site .ms-hero-signature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  color: #f2d7bc;
+  font-size: 14px;
+}
+.morar-site .ms-hero-signature::before {
+  content: "";
+  width: 35px;
+  height: 1px;
+  background: #efb77d;
+}
+.morar-site .ms-hero-offer {
+  display: grid;
+  gap: 9px;
+  align-self: flex-end;
+  max-width: 290px;
+  background: #2b241bcc;
+  border: 1px solid #fff4;
+  backdrop-filter: blur(8px);
+  padding: 22px;
+  border-radius: 13px;
+  font-size: 14px;
+}
+.morar-site .ms-hero-offer > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.morar-site .ms-hero-offer > span:last-child {
+  color: #ffd2a4;
+  margin-top: 5px;
+}
+.morar-site .ms-home-search {
+  position: relative;
+  margin-top: -62px;
+  z-index: 2;
+  padding: 25px 30px 21px;
+  background: #fffdf9;
+  border: 1px solid #e8dfd4;
+  border-radius: 18px;
+  box-shadow: 0 15px 45px #3c2d1a16;
+}
+.morar-site .ms-search-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 24px;
+  margin-bottom: 21px;
+}
+.morar-site .ms-search-intro h2 {
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+.morar-site .ms-search-purpose {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.morar-site .ms-search-purpose button {
+  background: transparent;
+  min-height: 44px;
+  padding: 8px 17px;
+  border-radius: 8px;
+  color: #655747;
+  border: 1px solid transparent;
+  font-size: 15px;
+}
+.morar-site .ms-search-purpose button[aria-pressed="true"] {
+  color: #884007;
+  border-color: #edd2b1;
+  background: #f7ebdc;
+}
+.morar-site .ms-filter-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+.morar-site .ms-filter-trigger {
+  min-height: 64px;
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  text-align: left;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8f5ef;
+  border: 1px solid #e7ded2;
+  color: #534839;
+}
+.morar-site .ms-filter-trigger > svg:first-child {
+  color: var(--ms-button);
+  flex-shrink: 0;
+}
+.morar-site .ms-filter-trigger > svg:last-child {
+  margin-left: auto;
+  transition: transform 220ms;
+}
+.morar-site .ms-filter-trigger.is-open {
+  background: #faebd9;
+  border-color: #d19d63;
+}
+.morar-site .ms-filter-trigger.is-open > svg:last-child {
+  transform: rotate(180deg);
+}
+.morar-site .ms-filter-trigger > span {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.morar-site .ms-filter-trigger small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #725f49;
+}
+.morar-site .ms-filter-panel {
+  margin-top: 14px;
+  padding: 21px;
+  background: #f8f3eb;
+  border-radius: 11px;
+  border: 1px solid #e9dac7;
+  animation: ms-panel 250ms ease;
+}
+.morar-site .ms-filter-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.morar-site .ms-filter-panel-heading h3 {
+  font-size: 18px;
+}
+.morar-site .ms-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px;
+}
+.morar-site .ms-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 21px;
+}
+.morar-site .ms-search-actions .cs-button {
+  margin-left: auto;
+}
+.morar-site .ms-search-actions .cs-text-link {
+  min-height: 44px;
+  background: transparent;
+}
+.morar-site .ms-search-count {
+  font-size: 13px;
+  color: #736554;
+}
+.morar-site .cs-section h2 em,
+.morar-site .ms-human-band h2 em,
+.morar-site .ms-neighborhoods h2 em,
+.morar-site .ms-conversation h2 em {
+  font-style: normal;
+  font-weight: 400;
+  color: #a34a0d;
+}
+.morar-site .ms-human-band {
+  background: #f3e9dd;
+  padding-block: 75px;
+  border-block: 1px solid #eadcca;
+}
+.morar-site .ms-human-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 100px;
+  align-items: center;
+}
+.morar-site .ms-human-title > svg {
+  color: #9b4e14;
+  margin-bottom: 20px;
+}
+.morar-site .ms-human-title .cs-eyebrow {
+  margin-bottom: 13px;
+}
+.morar-site .ms-human-layout > div:last-child > p {
+  color: #665747;
+  font-size: 18px;
+  line-height: 1.85;
+  white-space: pre-line;
+  margin-bottom: 25px;
+}
+.morar-site .ms-neighborhoods {
+  padding-block: 75px;
+  background: #f6f1e9;
+}
+.morar-site .ms-districts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.morar-site .ms-districts > a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 25px 20px;
+  background: #fffdf9;
+  border: 1px solid #e7dbcb;
+  border-radius: 13px;
+  transition:
+    transform 230ms,
+    background 230ms;
+}
+.morar-site .ms-districts > a:hover {
+  transform: translateY(-3px);
+  background: #fbebd8;
+}
+.morar-site .ms-districts > a > svg {
+  color: #a04a0c;
+  flex-shrink: 0;
+}
+.morar-site .ms-districts > a > svg:last-child {
+  margin-left: auto;
+}
+.morar-site .ms-districts small {
+  color: #7c6b55;
+  font-size: 12px;
+}
+.morar-site .ms-districts h3 {
+  font-size: 21px;
+  margin: 3px 0;
+}
+.morar-site .ms-districts span > span {
+  color: #7b6b56;
+  font-size: 13px;
+}
+.morar-site .ms-services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.morar-site .ms-services article {
+  padding: 35px;
+  background: #f4ede3;
+  border: 1px solid #e6d8c6;
+  border-radius: 16px;
+}
+.morar-site .ms-services article > svg {
+  color: var(--ms-button);
+  margin-bottom: 23px;
+}
+.morar-site .ms-services article h3 {
+  margin-bottom: 14px;
+  max-width: 410px;
+}
+.morar-site .ms-services article p {
+  color: #73604e;
+  margin-bottom: 26px;
+}
+.morar-site .ms-types {
+  padding-bottom: 75px;
+}
+.morar-site .ms-types h2 {
+  margin-block: 10px 25px;
+}
+.morar-site .ms-types > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.morar-site .ms-types a {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 50px;
+  padding: 9px 17px;
+  border: 1px solid #e3d4c0;
+  border-radius: 30px;
+  color: #5a4934;
+  transition: background 220ms;
+}
+.morar-site .ms-types a:hover {
+  background: #f6e4cb;
+}
+.morar-site .ms-types a > span {
+  color: #805c36;
+  font-size: 13px;
+}
+.morar-site .ms-conversation {
+  padding: 75px 0;
+  background: #3c3229;
+  color: #fff;
+}
+.morar-site .ms-conversation > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 50px;
+}
+.morar-site .ms-conversation .cs-eyebrow {
+  color: #f1c191;
+  margin-bottom: 15px;
+}
+.morar-site .ms-conversation h2 em {
+  color: #f2bc87;
+}
+.morar-site .ms-conversation-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 17px;
+}
+.morar-site .ms-social-link {
+  min-height: 44px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #f2dfc8;
+}
+@keyframes ms-entry {
+  from {
+    opacity: 0.6;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ms-panel {
+  from {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 1100px) {
+  .morar-site .ms-filter-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .morar-site .ms-hero-offer {
+    display: none;
+  }
+  .morar-site .ms-search-intro {
+    display: block;
+  }
+  .morar-site .ms-search-intro h2 {
+    margin-top: 7px;
+  }
+  .morar-site .ms-human-layout {
+    gap: 40px;
+  }
+}
+@media (max-width: 768px) {
+  .morar-site .cs-header-inner {
+    min-height: 82px;
+  }
+  .morar-site .cs-brand img {
+    width: 143px;
+  }
+  .morar-site .ms-hero,
+  .morar-site .ms-hero-inner {
+    min-height: 440px;
+  }
+  .morar-site .ms-hero-inner {
+    padding-block: 40px 70px;
+  }
+  .morar-site .ms-hero h1 {
+    font-size: clamp(36px, 6.6vw, 48px);
+  }
+  .morar-site .ms-hero-copy > p:not(.cs-eyebrow) {
+    font-size: 16px;
+    max-width: 420px;
+  }
+  .morar-site .ms-hero-shade {
+    background:
+      linear-gradient(90deg, #211c17d9, #211c1787), linear-gradient(0deg, #211c1799, transparent);
+  }
+  .morar-site .ms-home-search {
+    margin-top: -30px;
+    padding: 23px 21px;
+    border-radius: 14px;
+  }
+  .morar-site .ms-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .morar-site .ms-filter-row .ms-filter-trigger:last-child {
+    grid-column: 1/-1;
+  }
+  .morar-site .ms-filter-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .morar-site .ms-filter-panel {
+    padding: 16px;
+  }
+  .morar-site .ms-search-actions {
+    flex-wrap: wrap;
+    gap: 7px 17px;
+  }
+  .morar-site .ms-search-actions .cs-button {
+    width: 100%;
+    margin-top: 9px;
+  }
+  .morar-site .ms-search-count {
+    margin-left: auto;
+  }
+  .morar-site .ms-human-layout {
+    grid-template-columns: 1fr;
+    gap: 27px;
+  }
+  .morar-site .ms-human-band,
+  .morar-site .ms-neighborhoods {
+    padding-block: 48px;
+  }
+  .morar-site .ms-human-layout > div:last-child > p {
+    font-size: 16px;
+  }
+  .morar-site .ms-districts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .morar-site .ms-districts > a {
+    padding: 18px 15px;
+    gap: 11px;
+  }
+  .morar-site .ms-districts h3 {
+    font-size: 18px;
+  }
+  .morar-site .ms-services {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .morar-site .ms-services article {
+    padding: 27px;
+  }
+  .morar-site .ms-conversation {
+    padding: 49px 0;
+  }
+  .morar-site .ms-conversation > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 27px;
+  }
+  .morar-site .ms-types {
+    padding-bottom: 45px;
+  }
+  .morar-site .ms-search-purpose button {
+    padding-inline: 12px;
+  }
+  .morar-site.cs-filter-drawer .ms-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 430px) {
+  .morar-site .ms-search-intro h2 {
+    font-size: 19px;
+  }
+  .morar-site .ms-filter-trigger {
+    gap: 8px;
+    padding: 11px 9px;
+  }
+  .morar-site .ms-filter-trigger > span {
+    font-size: 13px;
+  }
+  .morar-site .ms-filter-fields {
+    grid-template-columns: 1fr;
+  }
+  .morar-site .ms-districts {
+    grid-template-columns: 1fr;
+  }
+  .morar-site .ms-search-count {
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .morar-site .ms-hero-copy,
+  .morar-site .ms-filter-panel {
+    animation: none;
+  }
+  .morar-site .ms-filter-trigger > svg:last-child,
+  .morar-site .ms-districts > a {
+    transition: none;
+  }
+}
+
+.morar-site .ms-featured-single {
+  display: block;
+}
+.morar-site .ms-featured-single .cs-property-card {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+}
+.morar-site .ms-featured-single .cs-card-photo {
+  aspect-ratio: auto;
+  min-height: 380px;
+}
+.morar-site .ms-featured-single .cs-card-photo > a {
+  height: 100%;
+}
+.morar-site .ms-featured-single .cs-card-photo img {
+  height: 100%;
+}
+.morar-site .ms-featured-single .cs-card-content {
+  align-self: center;
+  padding: 38px;
+}
+.morar-site .ms-featured-single .cs-card-content h3 {
+  font-size: 27px;
+  margin-block: 15px 10px;
+}
+.morar-site .ms-featured-single .cs-card-bottom strong {
+  font-size: 28px;
+}
+@media (max-width: 768px) {
+  .morar-site .ms-featured-single .cs-property-card {
+    display: block;
+  }
+  .morar-site .ms-featured-single .cs-card-photo {
+    aspect-ratio: 3/2;
+    min-height: 0;
+  }
+  .morar-site .ms-featured-single .cs-card-content {
+    padding: 23px;
+  }
+  .morar-site .ms-featured-single .cs-card-content h3 {
+    font-size: 23px;
+  }
+  .morar-site .ms-featured-single .cs-card-bottom strong {
+    font-size: 26px;
+  }
+}
+
+.morar-site .cs-desktop-filter-panel {
+  background: #fffdf9;
+  border-color: #e5d7c4;
+}
+.morar-site .cs-header .cs-icon-button:hover {
+  background: #ffffff17;
+}
+.morar-site .cs-quick-filters {
+  background: #f6efe5;
+}
+.morar-site .cs-result-purpose button {
+  background: #fffaf2;
+  color: #66523e;
+  border-color: #e0d1bb;
+}
+.morar-site .cs-result-purpose button.is-active {
+  background: #f6dfc1;
+  color: #723a0c;
+}
+
+@media (max-width: 768px) {
+  .morar-site .ms-hero,
+  .morar-site .ms-hero-inner {
+    min-height: 360px;
+  }
+  .morar-site .ms-hero-inner {
+    padding-block: 32px 48px;
+  }
+  .morar-site .ms-search.is-compact {
+    display: flex;
+    flex-direction: column;
+  }
+  .morar-site .ms-search.is-compact .ms-search-purpose {
+    order: 1;
+  }
+  .morar-site .ms-search.is-compact .ms-search-actions {
+    order: 2;
+    margin-top: 0;
+    margin-bottom: 17px;
+  }
+  .morar-site .ms-search.is-compact .ms-filter-row {
+    order: 3;
+  }
+  .morar-site .ms-search.is-compact .ms-filter-panel {
+    order: 4;
+  }
+}
+
+.morar-site .cs-area-grid > div,
+.morar-site .cs-inline-state,
+.morar-site .cs-share-feedback {
+  background: #f3ece3;
+  border-color: #e5d8c8;
+}
+.morar-site .cs-prose {
+  color: #665c50;
+}
+.morar-site .cs-district-number {
+  color: #9a6b34;
+}
+.morar-site .cs-contact-brand {
+  background: #333;
+  color: #f1e4d3;
+}
+.morar-site .cs-loading-line {
+  background: #ead7c0;
+}
+
+.morar-site .cs-icon-button,
+.morar-site .cs-favorite {
+  min-width: 44px;
+  min-height: 44px;
+}
+.morar-site .cs-favorite {
+  width: 44px;
+  height: 44px;
+}
+
+.morar-site .ms-nav-whatsapp {
+  gap: 11px;
+  color: #8b420c;
+  background: #f8e7d2;
+  padding-inline: 14px;
+  border-radius: 9px;
+}
+.morar-site .ms-nav-whatsapp svg:last-child {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .morar-site .cs-whatsapp {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .morar-site .ms-search.is-compact {
+    display: flex;
+    flex-direction: column;
+  }
+  .morar-site .ms-search.is-compact .ms-search-purpose {
+    order: 1;
+  }
+  .morar-site .ms-search.is-compact .ms-search-actions {
+    order: 2;
+    margin-top: 0;
+    margin-bottom: 17px;
+  }
+  .morar-site .ms-search.is-compact .ms-filter-row {
+    order: 3;
+  }
+  .morar-site .ms-search.is-compact .ms-filter-panel {
+    order: 4;
+  }
+}

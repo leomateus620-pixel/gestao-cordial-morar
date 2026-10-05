@@ -10,20 +10,24 @@ import {
   areaLabels,
 } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
-import { KEY, readFavorites } from "@/lib/cordial-site/favorites";
+import { getSiteBrand } from "@/lib/cordial-site/brand";
+import { useSiteBrand } from "@/lib/cordial-site/context";
+import { readFavorites } from "@/lib/cordial-site/favorites";
 export function FavoriteButton({ id }: { id: string }) {
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   const [active, setActive] = useState(false);
   const [message, setMessage] = useState("");
   useEffect(() => {
-    const sync = () => setActive(readFavorites().includes(id));
+    const sync = () => setActive(readFavorites(brand).includes(id));
     sync();
     window.addEventListener("storage", sync);
-    window.addEventListener("cordial-favorites", sync);
+    window.addEventListener(config.favoritesEvent, sync);
     return () => {
       window.removeEventListener("storage", sync);
-      window.removeEventListener("cordial-favorites", sync);
+      window.removeEventListener(config.favoritesEvent, sync);
     };
-  }, [id]);
+  }, [id, brand, config.favoritesEvent]);
   return (
     <>
       <button
@@ -31,12 +35,12 @@ export function FavoriteButton({ id }: { id: string }) {
         aria-label={active ? "Remover dos favoritos" : "Salvar nos favoritos"}
         aria-pressed={active}
         onClick={() => {
-          const old = readFavorites();
+          const old = readFavorites(brand);
           const next = old.includes(id) ? old.filter((x) => x !== id) : [...old, id].slice(-100);
           try {
-            localStorage.setItem(KEY, JSON.stringify(next));
+            localStorage.setItem(config.favoritesKey, JSON.stringify(next));
             setActive(next.includes(id));
-            window.dispatchEvent(new Event("cordial-favorites"));
+            window.dispatchEvent(new Event(config.favoritesEvent));
           } catch {
             setMessage("Seu navegador não permitiu salvar o favorito.");
           }
@@ -63,6 +67,7 @@ export function PropertyImage({
   size?: "thumb" | "card" | "full";
   className?: string;
 }) {
+  const brand = useSiteBrand();
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [media?.id, media?.version]);
   if (!media || failed)
@@ -75,11 +80,11 @@ export function PropertyImage({
   return (
     <img
       className={className}
-      src={mediaPath(media, size)}
+      src={mediaPath(media, size, brand)}
       srcSet={
         size === "thumb"
           ? undefined
-          : `${mediaPath(media, "thumb")} 480w, ${mediaPath(media, "card")} 960w, ${mediaPath(media, "full")} 1920w`
+          : `${mediaPath(media, "thumb", brand)} 480w, ${mediaPath(media, "card", brand)} 960w, ${mediaPath(media, "full", brand)} 1920w`
       }
       sizes={
         size === "full"
@@ -103,6 +108,8 @@ export function PropertyCard({
   property: PublicProperty;
   priority?: boolean;
 }) {
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   const area = (["construida", "util", "terreno", "total"] as const).find(
     (k) => p.areas[k] != null,
   );
@@ -110,7 +117,7 @@ export function PropertyCard({
     <article className="cs-property-card">
       <div className="cs-card-photo">
         <SiteLink
-          to={propertyPath(p)}
+          to={propertyPath(p, brand)}
           aria-label={`Ver ${p.type ?? "imóvel"}, referência ${p.reference}`}
         >
           <PropertyImage
@@ -125,10 +132,10 @@ export function PropertyCard({
       <div className="cs-card-content">
         <div className="cs-card-reference">
           REF. {p.reference}
-          {p.featured && <span>Seleção Cordial</span>}
+          {p.featured && <span>Seleção {config.shortName}</span>}
         </div>
         <h3>
-          <SiteLink to={propertyPath(p)}>
+          <SiteLink to={propertyPath(p, brand)}>
             {p.type ?? "Imóvel"}
             {p.district ? ` em ${p.district}` : ""}
           </SiteLink>
@@ -140,21 +147,22 @@ export function PropertyCard({
           {p.bedrooms != null && (
             <span>
               <BedDouble size={17} />
-              {p.bedrooms} <span className="cs-sr-only">dormitórios</span>
+              {p.bedrooms}{" "}
+              <span className="cs-sr-only">{p.bedrooms === 1 ? "dormitório" : "dormitórios"}</span>
             </span>
           )}
           {p.bathrooms != null && (
             <span>
               <Bath size={17} />
               {p.bathrooms}
-              <span className="cs-sr-only">banheiros</span>
+              <span className="cs-sr-only">{p.bathrooms === 1 ? "banheiro" : "banheiros"}</span>
             </span>
           )}
           {p.parking != null && (
             <span>
               <CarFront size={17} />
               {p.parking}
-              <span className="cs-sr-only">vagas</span>
+              <span className="cs-sr-only">{p.parking === 1 ? "vaga" : "vagas"}</span>
             </span>
           )}
           {area && (
@@ -168,7 +176,7 @@ export function PropertyCard({
           <strong>{priceLabel(p)}</strong>
           <SiteLink
             className="cs-card-arrow"
-            to={propertyPath(p)}
+            to={propertyPath(p, brand)}
             aria-label={`Conhecer imóvel ${p.reference}`}
           >
             <ArrowUpRight size={23} />

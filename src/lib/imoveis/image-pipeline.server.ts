@@ -25,8 +25,31 @@ export async function propertyTargets(admin: Admin, propertyId: string): Promise
     .select("publish_targets")
     .eq("id", propertyId)
     .maybeSingle();
-  if (error || !data) throw new Error(error?.message ?? "Imóvel não encontrado para processar a foto.");
-  return normalizeTargets(data.publish_targets);
+  if (error || !data)
+    throw new Error(error?.message ?? "Imóvel não encontrado para processar a foto.");
+  return withOwnedMorarTarget(admin, propertyId, data.publish_targets);
+}
+
+/** Own publication affects the logo only; it never creates a provider job. */
+export async function withOwnedMorarTarget(
+  admin: Admin,
+  propertyId: string,
+  targets: readonly string[] | null | undefined,
+): Promise<PublishTarget[]> {
+  const { data: own, error } = await admin
+    .from("morar_site_publications")
+    .select("state,morar_authorized,manual_withdrawn")
+    .eq("property_id", propertyId)
+    .maybeSingle();
+  // Preserve the internal pipeline when the new migration has not yet run.
+  // Other errors cannot silently choose an incorrect logo.
+  if (error && !["42P01", "PGRST205"].includes(error.code)) throw new Error(error.message);
+  const authorized =
+    !error &&
+    own?.morar_authorized === true &&
+    own?.manual_withdrawn === false &&
+    ["draft", "published"].includes(own.state);
+  return normalizeTargets([...(targets ?? []), ...(authorized ? ["morar"] : [])]);
 }
 
 /** Enfileira (ou reenfileira) as fotos do imóvel para o destino atual. */
@@ -36,14 +59,16 @@ export async function enqueueImageJobs(
   options: { imageIds?: string[]; targets?: readonly string[]; force?: boolean } = {},
 ): Promise<{ enqueued: number; variant: WatermarkVariant; hash: string }> {
   const targets = options.targets
-    ? normalizeTargets(options.targets)
+    ? await withOwnedMorarTarget(admin, propertyId, options.targets)
     : await propertyTargets(admin, propertyId);
   const variant = variantForTargets(targets);
   const hash = destinationHash(targets);
 
   let query = admin
     .from("property_images")
-    .select("id, storage_path, original_storage_path, destination_hash, desired_destination_hash, processing_status")
+    .select(
+      "id, storage_path, original_storage_path, destination_hash, desired_destination_hash, processing_status",
+    )
     .eq("property_id", propertyId)
     .or("pending_remote_delete.is.null,pending_remote_delete.eq.false");
   if (options.imageIds?.length) query = query.in("id", options.imageIds);
@@ -63,7 +88,10 @@ export async function enqueueImageJobs(
     const { error: adoptError } = await admin
       .from("property_images")
       .update({ desired_destination_hash: hash })
-      .in("id", legacy.map((row) => row.id))
+      .in(
+        "id",
+        legacy.map((row) => row.id),
+      )
       .is("desired_destination_hash", null);
     if (adoptError) throw new Error(adoptError.message);
     for (const row of legacy) row.desired_destination_hash = hash;
@@ -78,7 +106,8 @@ export async function enqueueImageJobs(
 
   const failed = ["failed", "failed_retryable"];
   const stale = rows.filter(
-    (row) => options.force || row.destination_hash !== hash || failed.includes(row.processing_status),
+    (row) =>
+      options.force || row.destination_hash !== hash || failed.includes(row.processing_status),
   );
   if (!stale.length) return { enqueued: 0, variant, hash };
 
@@ -137,7 +166,11 @@ export async function enqueueImageJobs(
         processing_finished_at: new Date().toISOString(),
       })
       .in("id", ids);
-    if (markError) console.error("[image_enqueue_failure]", JSON.stringify({ propertyId, error: markError.message }));
+    if (markError)
+      console.error(
+        "[image_enqueue_failure]",
+        JSON.stringify({ propertyId, error: markError.message }),
+      );
     throw new Error(error.message);
   }
   return { enqueued: stale.length, variant, hash };
@@ -157,9 +190,12 @@ type Job = {
 
 async function assertImageLease(admin: Admin, job: Job): Promise<void> {
   const { data, error } = await admin.rpc("property_image_renew_lease", {
-    _job_id: job.id, _worker: job.locked_by, _lease_seconds: 180,
+    _job_id: job.id,
+    _worker: job.locked_by,
+    _lease_seconds: 180,
   });
-  if (error || data !== true) throw new WatermarkError("lease_lost", error?.message ?? "A reserva da foto expirou.");
+  if (error || data !== true)
+    throw new WatermarkError("lease_lost", error?.message ?? "A reserva da foto expirou.");
 }
 
 function derivedPaths(propertyId: string, imageId: string, hash: string) {
@@ -192,8 +228,11 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     .maybeSingle();
   if (imageError) throw new WatermarkError("image_read_failed", imageError.message);
   if (!image) {
-    const { error: cancelError } = await admin.from("property_image_jobs")
-      .update({ status: "cancelled" }).eq("id", job.id).eq("locked_by", job.locked_by);
+    const { error: cancelError } = await admin
+      .from("property_image_jobs")
+      .update({ status: "cancelled" })
+      .eq("id", job.id)
+      .eq("locked_by", job.locked_by);
     if (cancelError) throw new WatermarkError("persist_failed", cancelError.message);
     return;
   }
@@ -213,7 +252,8 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
     .eq("pending_remote_delete", false)
     .select("id");
   if (processingError) throw new WatermarkError("persist_failed", processingError.message);
-  if ((processingRows ?? []).length !== 1) throw new WatermarkError("lease_lost", "A foto mudou de destino.");
+  if ((processingRows ?? []).length !== 1)
+    throw new WatermarkError("lease_lost", "A foto mudou de destino.");
 
   const originalPath: string = image.original_storage_path ?? image.storage_path;
   const download = await admin.storage.from(BUCKET).download(originalPath);
@@ -223,9 +263,14 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
   const bytes = new Uint8Array(await download.data.arrayBuffer());
   if (typeof image.content_hash === "string" && /^[a-f0-9]{64}$/i.test(image.content_hash)) {
     const digest = await crypto.subtle.digest("SHA-256", bytes);
-    const actual = Array.from(new Uint8Array(digest), (part) => part.toString(16).padStart(2, "0")).join("");
+    const actual = Array.from(new Uint8Array(digest), (part) =>
+      part.toString(16).padStart(2, "0"),
+    ).join("");
     if (actual !== image.content_hash.toLowerCase()) {
-      throw new WatermarkError("checksum_mismatch", "O original recebido não corresponde ao arquivo selecionado.");
+      throw new WatermarkError(
+        "checksum_mismatch",
+        "O original recebido não corresponde ao arquivo selecionado.",
+      );
     }
   }
   const result = await applyWatermark(bytes, job.watermark_variant);
@@ -252,14 +297,19 @@ export async function processImageJob(admin: Admin, job: Job): Promise<void> {
 
   await assertImageLease(admin, job);
   const { data: completed, error } = await admin.rpc("property_image_complete_job", {
-    _job_id: job.id, _worker: job.locked_by,
+    _job_id: job.id,
+    _worker: job.locked_by,
     _result: {
-      original_storage_path: originalPath, processed_storage_path: paths.processed,
-      thumbnail_storage_path: paths.thumbnail, processed_checksum: result.processedChecksum,
-      width: result.width, height: result.height,
+      original_storage_path: originalPath,
+      processed_storage_path: paths.processed,
+      thumbnail_storage_path: paths.thumbnail,
+      processed_checksum: result.processedChecksum,
+      width: result.width,
+      height: result.height,
     },
   });
-  if (error || completed !== true) throw new WatermarkError("lease_lost", error?.message ?? "Outro worker assumiu a foto.");
+  if (error || completed !== true)
+    throw new WatermarkError("lease_lost", error?.message ?? "Outro worker assumiu a foto.");
 }
 
 async function failJob(admin: Admin, job: Job, error: unknown) {
@@ -276,16 +326,26 @@ async function failJob(admin: Admin, job: Job, error: unknown) {
   // O orçamento de tentativas só muda a cadência. Rede, Storage e runtime
   // voltam após correção; apenas um arquivo comprovadamente inválido bloqueia.
   const terminal = PERMANENT_CODES.includes(code);
-  const baseDelay = wasmBlocked ? 21_600 :
-    Math.min(job.attempts >= job.max_attempts ? 21_600 : 3_600,
-      2 ** Math.min(job.attempts, 11) * 15);
+  const baseDelay = wasmBlocked
+    ? 21_600
+    : Math.min(
+        job.attempts >= job.max_attempts ? 21_600 : 3_600,
+        2 ** Math.min(job.attempts, 11) * 15,
+      );
   const delaySeconds = baseDelay + Math.floor(Math.random() * Math.min(300, baseDelay * 0.15));
   const { data: persisted, error: persistError } = await admin.rpc("property_image_fail_job", {
-    _job_id: job.id, _worker: job.locked_by,
-    _failure: { code, message, terminal, run_after: new Date(Date.now() + delaySeconds * 1000).toISOString() },
+    _job_id: job.id,
+    _worker: job.locked_by,
+    _failure: {
+      code,
+      message,
+      terminal,
+      run_after: new Date(Date.now() + delaySeconds * 1000).toISOString(),
+    },
   });
   if (persistError) throw new Error(persistError.message);
-  if (persisted !== true && code !== "lease_lost") throw new Error("Falha da foto não pôde ser persistida sob o lease atual.");
+  if (persisted !== true && code !== "lease_lost")
+    throw new Error("Falha da foto não pôde ser persistida sob o lease atual.");
 }
 
 /** Recover originals registered just before an enqueue failure or worker restart. */

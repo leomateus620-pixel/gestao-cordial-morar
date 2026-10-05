@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createImovelCore, updateImovelCore, type CreateImovelInput } from "@/lib/imoveis/imoveis.functions";
+import {
+  createImovelCore,
+  updateImovelCore,
+  type CreateImovelInput,
+} from "@/lib/imoveis/imoveis.functions";
 import { enqueuePropertySyncCore } from "@/lib/imoveis/publish.functions";
 import {
   finalizePropertyAgencyCore,
@@ -11,6 +15,10 @@ import {
   keepDraftBroker,
   resolveFinalizeAgencyBroker,
 } from "@/lib/imoveis/registration-rules";
+import {
+  prepareOwnedMorarRegistration,
+  type OwnedMorarDecision,
+} from "@/lib/morar-site/registration-workflow";
 
 export type FinalizeRegistrationInput = {
   /** Rascunho já criado (fotos). Sem ele, o imóvel é criado pela chave de intenção. */
@@ -22,6 +30,8 @@ export type FinalizeRegistrationInput = {
   agency?: Omit<FinalizePropertyAgencyInput, "propertyId"> | null;
   /** Destinos para publicar; vazio = só catálogo. */
   publishProviders?: string[];
+  /** Canal próprio independente do provedor ImobiBrasil. */
+  publishOwnedMorar?: boolean;
 };
 
 export type StepStatus = "ok" | "skipped" | "error";
@@ -33,11 +43,13 @@ export type FinalizeRegistrationResult = {
     codes: StepStatus;
     agency: StepStatus;
     publish: StepStatus;
+    ownedMorar: StepStatus;
   };
   messages: string[];
   skippedImages?: number;
   /** Mesmo critério usado para marcar o cadastro como concluído. */
   completed: boolean;
+  ownedMorarPublication?: OwnedMorarDecision;
 };
 
 /**
@@ -52,6 +64,8 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     if (!data?.clientIntentKey && !data?.propertyId) throw new Error("Cadastro sem identificação.");
     const descricao = (data.agency?.descricao ?? "").trim();
     if (descricao.length > 800) throw new Error("A descrição deve ter no máximo 800 caracteres.");
+    if (data.publishOwnedMorar !== undefined && typeof data.publishOwnedMorar !== "boolean")
+      throw new Error("Intenção de publicação Morar inválida.");
     return data;
   })
   .handler(async ({ data, context }): Promise<FinalizeRegistrationResult> => {
@@ -61,6 +75,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       codes: "skipped",
       agency: "skipped",
       publish: "skipped",
+      ownedMorar: "skipped",
     };
 
     // 1) Salvar: rascunho existente é atualizado; senão, criado pela chave.
@@ -80,7 +95,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
 
     const { data: state } = await context.supabase
       .from("properties")
-      .select("id, registration_completed_at, corretor_id, created_by")
+      .select("id, registration_completed_at, corretor_id, created_by, revision")
       .eq("id", propertyId)
       .maybeSingle();
     if (!state) throw new Error("Imóvel não encontrado ou sem permissão.");
@@ -91,11 +106,18 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     if (ids.length) {
       const { error } = await context.supabase
         .from("provider_code_reservations")
-        .update({ status: "committed", property_id: propertyId, committed_at: new Date().toISOString() })
+        .update({
+          status: "committed",
+          property_id: propertyId,
+          committed_at: new Date().toISOString(),
+        })
         .in("id", ids)
         .in("status", ["reserved", "committed"]);
       steps.codes = error ? "error" : "ok";
-      if (error) messages.push("Os códigos reservados não foram confirmados; serão atribuídos na publicação.");
+      if (error)
+        messages.push(
+          "Os códigos reservados não foram confirmados; serão atribuídos na publicação.",
+        );
     }
 
     // 3) Agenciamento da etapa do assistente (mesma chave idempotente).
@@ -108,7 +130,10 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const row = state as { corretor_id: string | null; created_by: string | null };
       const ids = [context.userId, row.created_by].filter(Boolean) as string[];
-      const { data: roleRows } = await supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", ids);
+      const { data: roleRows } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", ids);
       const roleMap = new Map<string, string[]>();
       for (const r of (roleRows ?? []) as Array<{ user_id: string; role: string }>) {
         roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role]);
@@ -123,7 +148,9 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       if (!brokerId) {
         agencyPending = true;
         steps.agency = "skipped";
-        messages.push("Agenciamento pendente: imóvel sem corretor definido. Defina o corretor e conclua de novo.");
+        messages.push(
+          "Agenciamento pendente: imóvel sem corretor definido. Defina o corretor e conclua de novo.",
+        );
       }
     }
     if (data.agency && !agencyPending) {
@@ -142,7 +169,79 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       }
     }
 
-    // 4) Publicação (também cria o agenciamento automático se ainda faltar).
+    // 4) A própria Morar guarda a intenção ainda inativa. Só a marca durável
+    // de conclusão permite ativação pelo servidor, sem depender de fila externa.
+    let ownedMorarPublication: OwnedMorarDecision | undefined;
+    if (data.publishOwnedMorar === true) {
+      try {
+        const { assertProviderScope } = await import("@/lib/imoveis/sync-helpers.server");
+        await assertProviderScope(context.supabase as never, context.userId, ["morar"]);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
+        const result = await prepareOwnedMorarRegistration({
+          persistIntent: async () => {
+            const { data: decision, error } = await supabaseAdmin.rpc(
+              "morar_site_request_publication" as never,
+              {
+                _property_id: propertyId,
+                _requested_by: context.userId,
+                _publish: true,
+                _expected_revision: state.revision,
+                _review_media: true,
+                _areas_m2: false,
+              } as never,
+            );
+            if (error) throw new Error(error.message);
+            return decision as OwnedMorarDecision;
+          },
+          ensureAgency: () =>
+            ensureAutoAgency({
+              propertyId: propertyId!,
+              publisherId: context.userId,
+              providers: [
+                ...new Set([
+                  ...(data.publishProviders ?? []).filter((p) => p === "cordial" || p === "morar"),
+                  "morar",
+                ]),
+              ],
+            }),
+        });
+        ownedMorarPublication = result.decision;
+        agenciamentoId = agenciamentoId ?? result.agency.id ?? null;
+        if (steps.agency !== "error") {
+          steps.agency = "ok";
+          agencyPending = false;
+        }
+        steps.ownedMorar = "ok";
+        try {
+          const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+          const images = await enqueueImageJobs(supabaseAdmin, propertyId);
+          if (images.enqueued > 0) {
+            messages.push(
+              "Fotos do site Morar aguardando processamento da marca. Elas só aparecem quando o arquivo final for confirmado.",
+            );
+            const { kickOwnedMorarImageWorker } =
+              await import("@/lib/morar-site/image-worker.server");
+            await kickOwnedMorarImageWorker();
+          }
+        } catch {
+          // The transaction stored the destination intent. The existing
+          // private worker recovers it; never enqueue an external provider.
+          messages.push(
+            "A intenção das fotos Morar foi salva; processamento pendente. Confira as fotos no Gestão antes de divulgar.",
+          );
+        }
+        if (result.decision.pendingReview)
+          messages.push(
+            "A intenção do site Morar foi salva. Publicação aguardando confirmação de autorização ou disponibilidade em Configurações → Site público Morar.",
+          );
+      } catch (err) {
+        steps.ownedMorar = "error";
+        messages.push(`Site próprio Morar pendente: ${(err as Error)?.message ?? "erro"}`);
+      }
+    }
+
+    // Publicação externa continua no fluxo existente.
     const providers = (data.publishProviders ?? []).filter((p) => p === "cordial" || p === "morar");
     let skippedImages: number | undefined;
     if (providers.length) {
@@ -158,8 +257,8 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
           if (result.agency.status === "created" || result.agency.status === "exists") {
             steps.agency = "ok";
             agencyPending = false;
-          }
-          else if (result.agency.reason) messages.push(`Agenciamento pendente: ${result.agency.reason}`);
+          } else if (result.agency.reason)
+            messages.push(`Agenciamento pendente: ${result.agency.reason}`);
         }
       } catch (err) {
         steps.publish = "error";
@@ -168,19 +267,64 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     }
 
     // 5) Concluído só quando nada falhou. Só estas duas colunas: não dispara envio.
-    const completed = isFinalizeCompleted(steps, agencyPending);
+    let completed = isFinalizeCompleted(steps, agencyPending);
     if (completed) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin
+      const { error: completionError } = await supabaseAdmin
         .from("properties")
         .update({
           is_draft: false,
           registration_completed_at: state.registration_completed_at ?? new Date().toISOString(),
         } as never)
-        .eq("id", propertyId);
+        .eq("id", propertyId)
+        .select("id,registration_completed_at")
+        .single();
+      if (completionError) {
+        completed = false;
+        steps.save = "error";
+        messages.push(
+          "Cadastro salvo, mas a conclusão não foi confirmada. Tente concluir novamente; a intenção Morar permanece inativa.",
+        );
+      } else if (data.publishOwnedMorar === true) {
+        // Apenas leitura: o trigger é dono da ativação; não repetimos uma
+        // decisão de publicação que poderia desfazer uma retirada concorrente.
+        const { data: publication, error } = await supabaseAdmin
+          .from("morar_site_publications" as never)
+          .select("public_id,state")
+          .eq("property_id", propertyId)
+          .maybeSingle();
+        if (error || !publication) {
+          ownedMorarPublication = {
+            ...ownedMorarPublication,
+            ok: true,
+            active: false,
+            confirmationError: true,
+          };
+          messages.push(
+            "Cadastro concluído, mas não foi possível confirmar o estado do site Morar. Confira a administração do site antes de divulgar o link.",
+          );
+        } else {
+          const confirmed = publication as { public_id: string; state: string };
+          ownedMorarPublication = {
+            ...ownedMorarPublication,
+            ok: true,
+            publicId: confirmed.public_id,
+            state: confirmed.state,
+            active: confirmed.state === "published",
+          };
+        }
+      }
     }
 
-    return { propertyId, agenciamentoId, steps, messages, skippedImages, completed };
+    return {
+      propertyId,
+      agenciamentoId,
+      steps,
+      messages,
+      skippedImages,
+      completed,
+      ownedMorarPublication,
+    };
   });
 
 export type IncompleteRegistration = {

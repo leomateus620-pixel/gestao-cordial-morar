@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown, MessageCircle } from "lucide-react";
+import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown } from "lucide-react";
 import type { SiteBootstrap } from "@/lib/cordial-site/contract";
 import { searchSchema } from "@/lib/cordial-site/contract";
 import { sitePath } from "@/lib/cordial-site/presentation";
 
-import { SiteContext } from "@/lib/cordial-site/context";
-const destinations = [
-  ["Sobre a Cordial", "/sobre"],
+import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
+import { WhatsAppIcon, InstagramIcon } from "./SocialIcons";
+import { SiteContext, SiteBrandContext, useSiteBrand } from "@/lib/cordial-site/context";
+const destinationsFor = (name: string) => [
+  [`Sobre a ${name}`, "/sobre"],
   ["Bairros", "/bairros"],
   ["Financiamento", "/financiamento"],
   ["Correspondente bancário", "/correspondente"],
@@ -20,7 +22,13 @@ export function SiteLink({
   children,
   ...rest
 }: Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & { to: string }) {
-  const { pathname: path, search: query, hash } = new URL(to, "https://cordial.invalid");
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
+  const scoped =
+    brand === "morar" && (to === "/site" || to.startsWith("/site/") || to.startsWith("/site?"))
+      ? config.basePath + to.slice(5)
+      : to;
+  const { pathname: path, search: query, hash } = new URL(scoped, "https://cordial.invalid");
   const raw = Object.fromEntries(new URLSearchParams(query));
   const parsed = path.endsWith("/buscar") ? searchSchema.safeParse(raw) : null;
   const search = parsed?.success
@@ -34,7 +42,10 @@ export function SiteLink({
     </Link>
   );
 }
-export function SiteShell({ data }: { data: SiteBootstrap }) {
+export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; brand?: SiteBrand }) {
+  const config = getSiteBrand(brand);
+  const destinations = destinationsFor(config.shortName);
+  const pathFor = (path = "") => sitePath(path, brand);
   const [open, setOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
@@ -44,7 +55,12 @@ export function SiteShell({ data }: { data: SiteBootstrap }) {
   useEffect(() => {
     // Refresh visible offers after withdrawal. The server and image endpoints always recheck eligibility.
     // Contact/CMS pages have no live offers; refreshing their parent can interrupt form input.
-    if (!/^\/site(?:\/?$|\/buscar$|\/imovel\/|\/favoritos$|\/bairros$)/.test(path)) return;
+    const relative = path.slice(config.basePath.length);
+    if (
+      !["", "/", "/buscar", "/favoritos", "/bairros"].includes(relative) &&
+      !relative.startsWith("/imovel/")
+    )
+      return;
     const refresh = () => {
       if (document.visibilityState === "visible") void router.invalidate();
     };
@@ -54,7 +70,7 @@ export function SiteShell({ data }: { data: SiteBootstrap }) {
       clearInterval(timer);
       window.removeEventListener("focus", refresh);
     };
-  }, [router, path]);
+  }, [router, path, config.basePath]);
   useEffect(() => {
     const nodes = document.querySelectorAll(".cs-reveal");
     if (
@@ -80,168 +96,205 @@ export function SiteShell({ data }: { data: SiteBootstrap }) {
   }, [path]);
   const { settings } = data;
   return (
-    <SiteContext.Provider value={data}>
-      <div className="cordial-site">
-        <a className="cs-skip" href="#conteudo">
-          Ir para o conteúdo
-        </a>
-        {!data.indexable && (
-          <div className="cs-preview">Cordial Imóveis · Ambiente de homologação</div>
-        )}
-        <header className="cs-header">
-          <div className="cs-container cs-header-inner">
-            <SiteLink to={sitePath("/")} className="cs-brand" aria-label="Cordial Imóveis, início">
-              <img src="/cordial-site/logo.png" width="691" height="231" alt="Cordial Imóveis" />
-            </SiteLink>
-            <nav className="cs-desktop-nav" aria-label="Navegação principal">
-              <SiteLink to={sitePath("/buscar?finalidade=venda")}>Comprar</SiteLink>
-              <SiteLink to={sitePath("/buscar?finalidade=aluguel")}>Alugar</SiteLink>
-              <SiteLink to={sitePath("/anuncie")}>Anunciar meu imóvel</SiteLink>
-              <details
-                className="cs-menu"
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    e.currentTarget.open = false;
-                    e.currentTarget.querySelector("summary")?.focus();
-                  }
-                }}
-              >
-                <summary>
-                  A Cordial <ChevronDown size={14} />
-                </summary>
-                <div>
-                  {destinations.map(([label, to]) => (
-                    <SiteLink
-                      key={to}
-                      to={sitePath(to)}
-                      onClick={(e) => {
-                        const details = e.currentTarget.closest("details");
-                        if (details) details.open = false;
-                      }}
-                    >
-                      {label}
-                    </SiteLink>
-                  ))}
-                </div>
-              </details>
-              <SiteLink to={sitePath("/contato")}>Contato</SiteLink>
-            </nav>
-            <div className="cs-header-actions">
+    <SiteBrandContext.Provider value={brand}>
+      <SiteContext.Provider value={data}>
+        <div className={config.themeClass}>
+          <a className="cs-skip" href="#conteudo">
+            Ir para o conteúdo
+          </a>
+          {!data.indexable && (
+            <div className="cs-preview">{config.name} · Ambiente de homologação</div>
+          )}
+          <header className="cs-header">
+            <div className="cs-container cs-header-inner">
               <SiteLink
-                to={sitePath("/favoritos")}
-                className="cs-icon-button"
-                aria-label="Meus favoritos"
+                to={pathFor("/")}
+                className="cs-brand"
+                aria-label={`${config.name}, início`}
               >
-                <Heart size={20} />
+                <img
+                  src={config.logo}
+                  width={config.logoWidth}
+                  height={config.logoHeight}
+                  alt={config.name}
+                />
               </SiteLink>
-              <Dialog.Root open={open} onOpenChange={setOpen}>
-                <Dialog.Trigger className="cs-icon-button cs-mobile-toggle" aria-label="Abrir menu">
-                  <Menu />
-                </Dialog.Trigger>
-                <Dialog.Portal>
-                  <Dialog.Overlay className="cordial-site cs-dialog-overlay" />
-                  <Dialog.Content className="cordial-site cs-drawer cs-navigation-drawer">
-                    <Dialog.Title>Encontre seu lugar</Dialog.Title>
-                    <Dialog.Description>Navegue pelo site da Cordial.</Dialog.Description>
-                    <Dialog.Close
-                      className="cs-icon-button cs-dialog-close"
-                      aria-label="Fechar menu"
+              <nav className="cs-desktop-nav" aria-label="Navegação principal">
+                <SiteLink to={pathFor("/buscar?finalidade=venda")}>Comprar</SiteLink>
+                <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>Alugar</SiteLink>
+                <SiteLink to={pathFor("/anuncie")}>Anunciar meu imóvel</SiteLink>
+                <details
+                  className="cs-menu"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.currentTarget.open = false;
+                      e.currentTarget.querySelector("summary")?.focus();
+                    }
+                  }}
+                >
+                  <summary>
+                    A {config.shortName} <ChevronDown size={14} />
+                  </summary>
+                  <div>
+                    {destinations.map(([label, to]) => (
+                      <SiteLink
+                        key={to}
+                        to={pathFor(to)}
+                        onClick={(e) => {
+                          const details = e.currentTarget.closest("details");
+                          if (details) details.open = false;
+                        }}
+                      >
+                        {label}
+                      </SiteLink>
+                    ))}
+                  </div>
+                </details>
+                <SiteLink to={pathFor("/contato")}>Contato</SiteLink>
+              </nav>
+              <div className="cs-header-actions">
+                <SiteLink
+                  to={pathFor("/favoritos")}
+                  className="cs-icon-button"
+                  aria-label="Meus favoritos"
+                >
+                  <Heart size={20} />
+                </SiteLink>
+                <Dialog.Root open={open} onOpenChange={setOpen}>
+                  <Dialog.Trigger
+                    className="cs-icon-button cs-mobile-toggle"
+                    aria-label="Abrir menu"
+                  >
+                    <Menu />
+                  </Dialog.Trigger>
+                  <Dialog.Portal>
+                    <Dialog.Overlay className={`${config.themeClass} cs-dialog-overlay`} />
+                    <Dialog.Content
+                      className={`${config.themeClass} cs-drawer cs-navigation-drawer`}
                     >
-                      <X />
-                    </Dialog.Close>
-                    <nav aria-label="Menu móvel">
-                      {[
-                        ["Comprar", "/buscar?finalidade=venda"],
-                        ["Alugar", "/buscar?finalidade=aluguel"],
-                        ["Anunciar meu imóvel", "/anuncie"],
-                        ...destinations,
-                        ["Contato", "/contato"],
-                        ["Favoritos", "/favoritos"],
-                      ].map(([label, to]) => (
-                        <SiteLink key={to} to={sitePath(to)} onClick={() => setOpen(false)}>
-                          {label}
-                          <ArrowUpRight size={18} />
-                        </SiteLink>
-                      ))}
-                    </nav>
-                  </Dialog.Content>
-                </Dialog.Portal>
-              </Dialog.Root>
+                      <Dialog.Title>Encontre seu lugar</Dialog.Title>
+                      <Dialog.Description>
+                        Navegue pelo site da {config.shortName}.
+                      </Dialog.Description>
+                      <Dialog.Close
+                        className="cs-icon-button cs-dialog-close"
+                        aria-label="Fechar menu"
+                      >
+                        <X />
+                      </Dialog.Close>
+                      <nav aria-label="Menu móvel">
+                        {[
+                          ["Comprar", "/buscar?finalidade=venda"],
+                          ["Alugar", "/buscar?finalidade=aluguel"],
+                          ["Anunciar meu imóvel", "/anuncie"],
+                          ...destinations,
+                          ["Contato", "/contato"],
+                          ["Favoritos", "/favoritos"],
+                        ].map(([label, to]) => (
+                          <SiteLink key={to} to={pathFor(to)} onClick={() => setOpen(false)}>
+                            {label}
+                            <ArrowUpRight size={18} />
+                          </SiteLink>
+                        ))}
+                        {brand === "morar" && settings.whatsapp && (
+                          <a
+                            className="ms-nav-whatsapp"
+                            href={`https://wa.me/${settings.whatsapp}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <WhatsAppIcon width={22} height={22} />
+                            Conversar pelo WhatsApp
+                            <ArrowUpRight size={18} />
+                          </a>
+                        )}
+                      </nav>
+                    </Dialog.Content>
+                  </Dialog.Portal>
+                </Dialog.Root>
+              </div>
             </div>
-          </div>
-        </header>
-        <main id="conteudo" tabIndex={-1}>
-          <Outlet />
-        </main>
-        <footer className="cs-footer">
-          <div className="cs-container">
-            <div className="cs-footer-grid">
-              <div>
-                <img src="/cordial-site/logo.png" width="691" height="231" alt="Cordial Imóveis" />
-                <p>{settings.tagline}</p>
-                {settings.creci && <p>{settings.creci}</p>}
+          </header>
+          <main id="conteudo" tabIndex={-1}>
+            <Outlet />
+          </main>
+          <footer className="cs-footer">
+            <div className="cs-container">
+              <div className="cs-footer-grid">
+                <div>
+                  <img
+                    src={config.logo}
+                    width={config.logoWidth}
+                    height={config.logoHeight}
+                    alt={config.name}
+                  />
+                  <p>{settings.tagline}</p>
+                  {settings.creci && <p>{settings.creci}</p>}
+                </div>
+                <div>
+                  <h2>Seu próximo endereço</h2>
+                  <SiteLink to={pathFor("/buscar?finalidade=venda")}>Imóveis para comprar</SiteLink>
+                  <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>
+                    Imóveis para alugar
+                  </SiteLink>
+                  <SiteLink to={pathFor("/bairros")}>Encontre por bairro</SiteLink>
+                  <SiteLink to={pathFor("/buscar")}>Pesquisa completa</SiteLink>
+                </div>
+                <div>
+                  <h2>Conte com a {config.shortName}</h2>
+                  <SiteLink to={pathFor("/anuncie")}>Anuncie seu imóvel</SiteLink>
+                  {destinations
+                    .filter((x) => !["/bairros", "/buscar"].includes(x[1]))
+                    .map(([label, to]) => (
+                      <SiteLink to={pathFor(to)} key={to}>
+                        {label}
+                      </SiteLink>
+                    ))}
+                </div>
+                <div>
+                  <h2>Vamos conversar</h2>
+                  {settings.phone && (
+                    <a href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}>
+                      <Phone size={16} />
+                      {settings.phone}
+                    </a>
+                  )}
+                  {settings.email && <a href={`mailto:${settings.email}`}>{settings.email}</a>}
+                  {settings.address && <p>{settings.address}</p>}
+                  {settings.hours && <p>{settings.hours}</p>}
+                  <SiteLink to={pathFor("/contato")}>
+                    Entre em contato <ArrowUpRight size={16} />
+                  </SiteLink>
+                </div>
               </div>
-              <div>
-                <h2>Seu próximo endereço</h2>
-                <SiteLink to={sitePath("/buscar?finalidade=venda")}>Imóveis para comprar</SiteLink>
-                <SiteLink to={sitePath("/buscar?finalidade=aluguel")}>Imóveis para alugar</SiteLink>
-                <SiteLink to={sitePath("/bairros")}>Encontre por bairro</SiteLink>
-                <SiteLink to={sitePath("/buscar")}>Pesquisa completa</SiteLink>
-              </div>
-              <div>
-                <h2>Conte com a Cordial</h2>
-                <SiteLink to={sitePath("/anuncie")}>Anuncie seu imóvel</SiteLink>
-                {destinations
-                  .filter((x) => !["/bairros", "/buscar"].includes(x[1]))
-                  .map(([label, to]) => (
-                    <SiteLink to={sitePath(to)} key={to}>
-                      {label}
-                    </SiteLink>
-                  ))}
-              </div>
-              <div>
-                <h2>Vamos conversar</h2>
-                {settings.phone && (
-                  <a href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}>
-                    <Phone size={16} />
-                    {settings.phone}
+              <div className="cs-footer-bottom">
+                <span>
+                  © {new Date().getFullYear()} {settings.brand}
+                </span>
+                <SiteLink to={pathFor("/privacidade")}>Privacidade</SiteLink>
+                {settings.instagram && (
+                  <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
+                    <InstagramIcon width={18} height={18} /> Instagram <ArrowUpRight size={14} />
                   </a>
                 )}
-                {settings.email && <a href={`mailto:${settings.email}`}>{settings.email}</a>}
-                {settings.address && <p>{settings.address}</p>}
-                {settings.hours && <p>{settings.hours}</p>}
-                <SiteLink to={sitePath("/contato")}>
-                  Entre em contato <ArrowUpRight size={16} />
-                </SiteLink>
               </div>
             </div>
-            <div className="cs-footer-bottom">
-              <span>
-                © {new Date().getFullYear()} {settings.brand}
-              </span>
-              <SiteLink to={sitePath("/privacidade")}>Privacidade</SiteLink>
-              {settings.instagram && (
-                <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
-                  Instagram <ArrowUpRight size={14} />
-                </a>
-              )}
-            </div>
-          </div>
-        </footer>
-        {settings.whatsapp && (
-          <a
-            className="cs-whatsapp"
-            href={`https://wa.me/${settings.whatsapp}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Conversar com a Cordial no WhatsApp"
-          >
-            <MessageCircle size={23} />
-            <span>Vamos conversar</span>
-          </a>
-        )}
-      </div>
-    </SiteContext.Provider>
+          </footer>
+          {settings.whatsapp && (
+            <a
+              className="cs-whatsapp"
+              href={`https://wa.me/${settings.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Conversar com a ${config.shortName} no WhatsApp`}
+            >
+              <WhatsAppIcon width={23} height={23} />
+              <span>Vamos conversar</span>
+            </a>
+          )}
+        </div>
+      </SiteContext.Provider>
+    </SiteBrandContext.Provider>
   );
 }
 export function SiteError({ reset }: { reset?: () => void }) {
@@ -274,12 +327,14 @@ export function SitePending() {
   );
 }
 export function SiteNotFound() {
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   return (
     <div className="cs-container cs-state">
       <p className="cs-eyebrow">Página não encontrada</p>
       <h1>Vamos encontrar um novo caminho.</h1>
-      <p>Este endereço não existe no site da Cordial.</p>
-      <SiteLink className="cs-button" to={sitePath("/")}>
+      <p>Este endereço não existe no site da {config.shortName}.</p>
+      <SiteLink className="cs-button" to={sitePath("/", brand)}>
         Voltar ao início
       </SiteLink>
     </div>

@@ -1,10 +1,13 @@
+import { getSiteBrand, type SiteBrand } from "./brand";
 import type { SiteBootstrap, PublicDetail } from "./contract";
 import { locationLabel, mediaPath, propertyPath, priceLabel, plainText } from "./presentation";
 import { externalSitePath } from "./routing";
 export function siteMatchData(
   matches: readonly { routeId: string; loaderData?: unknown }[],
+  brand: SiteBrand = "cordial",
 ): SiteBootstrap | undefined {
-  return matches.find((m) => m.routeId === "/site")?.loaderData as SiteBootstrap | undefined;
+  return matches.find((m) => m.routeId === getSiteBrand(brand).basePath)?.loaderData as
+    SiteBootstrap | undefined;
 }
 export function siteHead(
   title: string,
@@ -13,13 +16,16 @@ export function siteHead(
   path = "/site/",
   noindex = false,
   image?: string,
+  brand: SiteBrand = "cordial",
 ) {
-  const canonical = data?.canonicalOrigin ? data.canonicalOrigin + externalSitePath(path) : null;
+  const canonical = data?.canonicalOrigin
+    ? data.canonicalOrigin + externalSitePath(path, brand)
+    : null;
   return {
     meta: [
-      { title: `${title} | Cordial Imóveis` },
+      { title: `${title} | ${getSiteBrand(brand).name}` },
       { name: "description", content: description },
-      { property: "og:title", content: `${title} | Cordial Imóveis` },
+      { property: "og:title", content: `${title} | ${getSiteBrand(brand).name}` },
       { property: "og:description", content: description },
       { property: "og:type", content: "website" },
       {
@@ -33,28 +39,29 @@ export function siteHead(
     links: canonical ? [{ rel: "canonical", href: canonical }] : [],
   };
 }
-export function detailHead(p: PublicDetail, data?: SiteBootstrap) {
+export function detailHead(p: PublicDetail, data?: SiteBootstrap, brand: SiteBrand = "cordial") {
   const title = `${p.type ?? "Imóvel"} ${p.operation === "venda" ? "à venda" : "para alugar"} · ${p.reference}`;
   return siteHead(
     title,
     `${locationLabel(p)}. ${priceLabel(p)}. ${plainText(p.description).slice(0, 130)}`,
     data,
-    propertyPath(p),
+    propertyPath(p, brand),
     false,
     p.cover && data?.canonicalOrigin
-      ? data.canonicalOrigin + mediaPath(p.cover, "full")
+      ? data.canonicalOrigin + mediaPath(p.cover, "full", brand)
       : undefined,
+    brand,
   );
 }
-export function listingJsonLd(p: PublicDetail, origin: string) {
-  const url = origin + externalSitePath(propertyPath(p));
+export function listingJsonLd(p: PublicDetail, origin: string, brand: SiteBrand = "cordial") {
+  const url = origin + externalSitePath(propertyPath(p, brand), brand);
   return {
     "@context": "https://schema.org",
     "@type": "RealEstateListing",
     name: `${p.type ?? "Imóvel"} ${p.reference}`,
     url,
     description: p.description,
-    ...(p.cover ? { image: origin + mediaPath(p.cover, "full") } : {}),
+    ...(p.cover ? { image: origin + mediaPath(p.cover, "full", brand) } : {}),
     ...(p.price != null && p.priceMode === "fixo"
       ? {
           offers: {

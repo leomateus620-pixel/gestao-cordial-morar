@@ -52,6 +52,25 @@ function Page() {
           Administrar site
         </Link>
       </section>
+      <section className="mb-5 rounded-xl border bg-card p-5">
+        <h2 className="font-semibold">Site público Morar</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Identidade, publicações próprias, conteúdo e contatos da Morar Imóveis.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Link to="/site-morar" className="inline-flex rounded-lg border px-4 py-2 text-sm">
+            Ver site
+          </Link>
+          {isAdmin && (
+            <Link
+              to="/site-morar-administracao"
+              className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+            >
+              Administrar site
+            </Link>
+          )}
+        </div>
+      </section>
       <section className="mb-5 grid grid-cols-3 gap-3">
         <KpiCard
           label="Parâmetros"

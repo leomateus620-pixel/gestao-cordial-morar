@@ -4,7 +4,9 @@ import type { PublicDetail, SitePage } from "@/lib/cordial-site/contract";
 import { loadDetail } from "@/lib/cordial-site/data";
 import { sitePath } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
-import { useSite } from "@/lib/cordial-site/context";
+import { getSiteBrand } from "@/lib/cordial-site/brand";
+import { WhatsAppIcon, InstagramIcon } from "./SocialIcons";
+import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { ContactForm } from "./ContactForm";
 import { PropertyCard } from "./PropertyCard";
 import { readFavorites } from "@/lib/cordial-site/favorites";
@@ -27,6 +29,8 @@ export function PageIntro({
 }
 export function ContactPage({ capture = false }: { capture?: boolean }) {
   const { settings } = useSite();
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   return (
     <div className="cs-container cs-content-page">
       <PageIntro
@@ -38,13 +42,13 @@ export function ContactPage({ capture = false }: { capture?: boolean }) {
         }
         description={
           capture
-            ? "Conte um pouco sobre o imóvel que você quer vender ou alugar. A equipe Cordial entrará em contato para dar continuidade."
-            : "Dúvidas, planos ou uma nova oportunidade. Conte à Cordial o que você procura."
+            ? `Conte um pouco sobre o imóvel que você quer vender ou alugar. A equipe ${config.shortName} entrará em contato para dar continuidade.`
+            : `Conte à ${config.shortName} o que você procura. Nossa equipe está por perto para ajudar.`
         }
       />
       <div className="cs-contact-layout">
         <div className="cs-contact-information">
-          <h2>Fale com a Cordial</h2>
+          <h2>Fale com a {config.shortName}</h2>
           {settings.phone && (
             <a href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}>
               <Phone />
@@ -71,11 +75,24 @@ export function ContactPage({ capture = false }: { capture?: boolean }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Conversar no WhatsApp <ArrowUpRight size={18} />
+              <WhatsAppIcon width={22} height={22} /> Conversar no WhatsApp{" "}
+              <ArrowUpRight size={18} />
+            </a>
+          )}
+          {settings.instagram && (
+            <a
+              className="cs-text-link"
+              href={settings.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <InstagramIcon width={22} height={22} />
+              Acompanhe a {config.shortName} no Instagram
+              <ArrowUpRight size={18} />
             </a>
           )}
           <div className="cs-contact-brand">
-            <img src="/cordial-site/logo.png" width="691" height="231" alt="" />
+            <img src={config.logo} width={config.logoWidth} height={config.logoHeight} alt="" />
             <p>{settings.tagline}</p>
           </div>
         </div>
@@ -89,10 +106,15 @@ export function ContactPage({ capture = false }: { capture?: boolean }) {
 }
 export function EditorialPage({ slug, content }: { slug: string; content: SitePage | null }) {
   const { settings } = useSite();
+  const brand = useSiteBrand();
+  const config = getSiteBrand(brand);
   const titles: Record<string, [string, string]> = {
-    sobre: ["A Cordial", "Sentir-se em casa. Em cada escolha."],
+    sobre: [
+      `A ${config.shortName}`,
+      brand === "morar" ? "Seu lugar, uma nova história." : "Sentir-se em casa. Em cada escolha.",
+    ],
     financiamento: ["Planeje seu próximo passo", "Financiamento imobiliário."],
-    correspondente: ["Conte com a Cordial", "Correspondente bancário."],
+    correspondente: [`Conte com a ${config.shortName}`, "Correspondente bancário."],
     privacidade: ["Seus dados, suas escolhas", "Política de Privacidade."],
   };
   const [eyebrow, title] = titles[slug] ?? ["Informações", content?.title ?? "Conteúdo"];
@@ -128,7 +150,7 @@ export function EditorialPage({ slug, content }: { slug: string; content: SitePa
         </article>
         <aside className="cs-editorial-aside">
           <span className="cs-eyebrow">Seu próximo capítulo</span>
-          <h2>Conte com a proximidade da Cordial.</h2>
+          <h2>Conte com a proximidade da {config.shortName}.</h2>
           <SiteLink to={sitePath("/contato")} className="cs-button">
             Fale com a equipe <ArrowUpRight size={18} />
           </SiteLink>
@@ -192,12 +214,13 @@ export function DistrictsPage({ pages }: { pages: SitePage[] }) {
   );
 }
 export function NewsPage({ pages }: { pages: SitePage[] }) {
+  const config = getSiteBrand(useSiteBrand());
   return (
     <div className="cs-container cs-content-page">
       <PageIntro
         eyebrow="Conexões e novidades"
         title="O que acontece por aqui."
-        description="Notícias e conteúdos publicados pela equipe Cordial."
+        description={`Notícias e conteúdos publicados pela equipe ${config.shortName}.`}
       />
       {pages.length ? (
         <div className="cs-news-grid">
@@ -231,6 +254,7 @@ export function NewsPage({ pages }: { pages: SitePage[] }) {
   );
 }
 export function FavoritesPage() {
+  const brand = useSiteBrand();
   const [items, setItems] = useState<PublicDetail[]>([]);
   const [missing, setMissing] = useState(0);
   const [pending, setPending] = useState(true);
@@ -244,10 +268,10 @@ export function FavoritesPage() {
       let count = 0;
       const loaded: PublicDetail[] = [];
       try {
-        const ids = readFavorites();
+        const ids = readFavorites(brand);
         for (let i = 0; i < ids.length; i += 4) {
           const batch = await Promise.all(
-            ids.slice(i, i + 4).map((id) => loadDetail(id, abort.signal)),
+            ids.slice(i, i + 4).map((id) => loadDetail(id, abort.signal, brand)),
           );
           for (const p of batch) {
             if (p) loaded.push(p);
@@ -265,13 +289,13 @@ export function FavoritesPage() {
       }
     }
     void refresh();
-    window.addEventListener("cordial-favorites", refresh);
+    window.addEventListener(getSiteBrand(brand).favoritesEvent, refresh);
     return () => {
       disposed = true;
       abort.abort();
-      window.removeEventListener("cordial-favorites", refresh);
+      window.removeEventListener(getSiteBrand(brand).favoritesEvent, refresh);
     };
-  }, []);
+  }, [brand]);
   return (
     <div className="cs-container cs-content-page">
       <PageIntro
