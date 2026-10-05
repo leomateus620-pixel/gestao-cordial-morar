@@ -198,3 +198,6 @@
 ## Cadastro não concluído (02/10)
 - [x] Finalização única no servidor, rascunho visível, agenciamento automático ao publicar, created_by, alerta 30 min, lista de pendências, pasta Drive
 - [x] Listar (sem aplicar) pendências: 1399/3398, 1385/3384, 950689c8, 1bac0a1d, 5 vazios
+- [ ] Arquivar PDF de NFS-e emitida no aluguel
+- [ ] Liberar regra do banco que ainda exige aprovação fiscal
+- [ ] Envio de teste Rodrigo (Cordial, 09/2026, R$170, CEP 64000-001) e mostrar resultado
