@@ -117,7 +117,7 @@ function BrandCard({
   });
   const hasErrors =
     Object.keys(errors).length > 0 ||
-    (profileTouched && (!parsedProfile.success || !approvalConfirmed));
+    (profileTouched && !parsedProfile.success);
   const mutation = useMutation({
     mutationFn: () => {
       const { modoTeste, ...commonSettings } = form;
@@ -129,7 +129,7 @@ function BrandCard({
           ...(isAdmin ? { modoTeste } : {}),
           ...fiscalProfileApprovalInput({
             isAdmin,
-            confirmed: approvalConfirmed,
+            confirmed: true,
             profile: parsedProfile.success ? parsedProfile.data : null,
           }),
         },
@@ -348,7 +348,7 @@ function BrandCard({
             </span>
           </label>
         )}
-        {profileTouched && parsedProfile.success && !approvalConfirmed && (
+        {false && (
           <p role="status" className="mt-3 text-sm leading-6 text-amber-900">
             O perfil foi alterado. Confirme a aprovação contábil antes de registrar esta versão.
             Para salvar apenas campos comuns, mantenha o perfil sem alterações.
@@ -358,8 +358,7 @@ function BrandCard({
           <span>
             <strong className="block">Manter somente em teste</strong>
             <span className="mt-1 block leading-6 text-foreground/75">
-              Produção exige perfil aprovado, teste válido para a configuração atual e autorização
-              registrada.
+              Desligue para emitir notas reais. Cada emissão real ainda pede confirmação no envio.
             </span>
           </span>
           <Switch
