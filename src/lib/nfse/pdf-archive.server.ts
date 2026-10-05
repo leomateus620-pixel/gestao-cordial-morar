@@ -1,4 +1,5 @@
 import { safeNfseDocumentUrl } from "./ipm/response";
+import { buildNfseReceiptPdf } from "./pdf-receipt";
 import {
   NFSE_PDF_MAX_BYTES,
   isPdfBytes,
@@ -21,7 +22,7 @@ export async function archiveNfsePdf(admin: Admin, emissionId: string): Promise<
   const { data: row, error } = await admin
     .from("rental_nfse_emissions")
     .select(
-      "id,contract_id,brand,competencia,status,modo_teste,numero_nfse,link_pdf,pdf_document_id,pdf_attempts",
+      "id,contract_id,brand,competencia,status,modo_teste,numero_nfse,serie_nfse,codigo_verificador,data_emissao_nfse,valor,snapshot,link_pdf,pdf_document_id,pdf_attempts",
     )
     .eq("id", emissionId)
     .maybeSingle();
@@ -45,19 +46,27 @@ export async function archiveNfsePdf(admin: Admin, emissionId: string): Promise<
   const url = safeNfseDocumentUrl(row.link_pdf);
   if (!url) return fail("Link do PDF fora do endereço oficial da prefeitura.");
 
-  let bytes: Uint8Array;
+  // O link oficial costuma abrir a página de autenticidade (HTML). Se vier PDF, guarda o original;
+  // senão gera o comprovante com os dados devolvidos pela prefeitura e o link de autenticidade.
+  let bytes: Uint8Array | null = null;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     const response = await fetch(url, { signal: controller.signal, redirect: "follow" });
     clearTimeout(timer);
-    if (!response.ok) return fail(`A prefeitura respondeu ${response.status} ao baixar o PDF.`);
-    const buffer = new Uint8Array(await response.arrayBuffer());
-    if (buffer.byteLength > NFSE_PDF_MAX_BYTES) return fail("PDF maior que 10 MB.");
-    if (!isPdfBytes(buffer)) return fail("A prefeitura não devolveu um arquivo PDF.");
-    bytes = buffer;
-  } catch (err) {
-    return fail(err instanceof Error && err.name === "AbortError" ? "Tempo esgotado ao baixar o PDF." : "Falha de rede ao baixar o PDF.");
+    if (response.ok) {
+      const buffer = new Uint8Array(await response.arrayBuffer());
+      if (buffer.byteLength <= NFSE_PDF_MAX_BYTES && isPdfBytes(buffer)) bytes = buffer;
+    }
+  } catch {
+    bytes = null;
+  }
+  if (!bytes) {
+    try {
+      bytes = await buildNfseReceiptPdf(receiptFromRow(row, url));
+    } catch {
+      return fail("Não foi possível gerar o PDF da nota.");
+    }
   }
 
   const path = nfsePdfPath(row.contract_id, row.id);
@@ -99,4 +108,31 @@ export async function archiveNfsePdf(admin: Admin, emissionId: string): Promise<
     .eq("id", row.id)
     .is("pdf_document_id", null);
   return { status: "salvo" };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function receiptFromRow(row: any, link: string | null) {
+  const snap = row.snapshot ?? {};
+  const fs = snap.fiscalSettings ?? {};
+  const t = snap.review?.tomador ?? {};
+  return {
+    modoTeste: !!row.modo_teste,
+    numero: row.numero_nfse ?? null,
+    serie: row.serie_nfse ?? null,
+    dataEmissao: row.data_emissao_nfse ?? null,
+    codigoVerificador: row.codigo_verificador ?? null,
+    linkConsulta: link,
+    prestadorNome: String(fs.razao_social ?? (row.brand === "morar" ? "Morar" : "Cordial")),
+    prestadorCnpj: String(fs.cnpj ?? ""),
+    tomadorNome: String(t.nome ?? ""),
+    tomadorDocumento: String(t.documento ?? ""),
+    tomadorEndereco: [t.logradouro, t.numero, t.bairro, t.cep ? `CEP ${t.cep}` : null, t.cidadeTom ? `Município (TOM) ${t.cidadeTom}` : null]
+      .filter(Boolean)
+      .join(", "),
+    descricao: String(snap.profile?.descricao ?? "Comissão de administração de aluguel"),
+    competencia: String(row.competencia),
+    valor: Number(row.valor),
+    itemServico: String(fs.codigo_item_lista_servico ?? ""),
+    imovel: snap.propertyLabel ?? null,
+  };
 }
