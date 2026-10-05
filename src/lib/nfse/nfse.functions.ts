@@ -67,6 +67,9 @@ export type NfseEmission = {
   serieNfse: string | null;
   codigoVerificador: string | null;
   linkPdf: string | null;
+  pdfStatus: "nao_aplicavel" | "pendente" | "salvo" | "falhou";
+  pdfDocumentId: string | null;
+  pdfError: string | null;
   errorMessage: string | null;
   errorCodes: string[];
   identificador: string | null;
@@ -118,6 +121,9 @@ type EmissionRow = {
   serie_nfse: string | null;
   codigo_verificador: string | null;
   link_pdf: string | null;
+  pdf_status?: string | null;
+  pdf_document_id?: string | null;
+  pdf_last_error?: string | null;
   identificador: string | null;
   attempts: number | null;
   created_at: string;
@@ -141,7 +147,7 @@ type EmissionRow = {
 };
 // Column privileges in the proposed migration match this operational projection. No XML/raw/error/HTTP in browser DTOs.
 const EMISSION_COLUMNS =
-  "id,contract_id,brand,competencia,valor,status,modo_teste,numero_nfse,serie_nfse,codigo_verificador,link_pdf,identificador,attempts,created_at,updated_at,resolved_by,resolved_at,resolution_reason,data_emissao_nfse";
+  "id,contract_id,brand,competencia,valor,status,modo_teste,numero_nfse,serie_nfse,codigo_verificador,link_pdf,identificador,attempts,created_at,updated_at,resolved_by,resolved_at,resolution_reason,data_emissao_nfse,pdf_status,pdf_document_id,pdf_last_error";
 const STATUSES: EmissionStatus[] = [
   "teste_ok",
   "emitida",
@@ -331,6 +337,17 @@ function mapEmission(row: EmissionRow): NfseEmission {
     serieNfse: row.modo_teste ? null : row.serie_nfse,
     codigoVerificador: row.modo_teste ? null : row.codigo_verificador,
     linkPdf: row.modo_teste ? null : safeNfseDocumentUrl(row.link_pdf),
+    pdfStatus: row.modo_teste
+      ? "nao_aplicavel"
+      : row.pdf_document_id
+        ? "salvo"
+        : status === "emitida"
+          ? row.pdf_status === "falhou"
+            ? "falhou"
+            : "pendente"
+          : "nao_aplicavel",
+    pdfDocumentId: row.pdf_document_id ?? null,
+    pdfError: row.pdf_last_error ?? null,
     errorMessage: safeMessage(status, row.id, row.transport),
     errorCodes: [],
     identificador: row.identificador,
@@ -1151,7 +1168,19 @@ async function sendAndRecord(opts: {
       `A resposta foi preservada para conferência, sem substituir uma situação mais recente. Não emita outra nota. Referência: ${row.id}.`,
     );
   }
-  const emission = mapEmission({ ...updated.data, transport: result.transport });
+  let finalRow = updated.data as EmissionRow;
+  if (status === "emitida" && !row.modo_teste) {
+    try {
+      const { archiveNfsePdf } = await import("./pdf-archive.server");
+      await admin.from("rental_nfse_emissions").update({ pdf_status: "pendente" } as never).eq("id", row.id).is("pdf_document_id", null);
+      await archiveNfsePdf(admin, row.id);
+      const fresh = await admin.from("rental_nfse_emissions").select(EMISSION_COLUMNS).eq("id", row.id).maybeSingle();
+      if (fresh.data) finalRow = fresh.data as EmissionRow;
+    } catch (err) {
+      console.error("[nfse-pdf] archive failed", row.id, err instanceof Error ? err.message : err);
+    }
+  }
+  const emission = mapEmission({ ...finalRow, transport: result.transport });
   return {
     emission,
     message:
@@ -1659,4 +1688,51 @@ export const getNfseHealth = createServerFn({ method: "GET" })
       });
     }
     return out;
+  });
+
+export const retryNfsePdf = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { emissionId: string }) => zParse(z.object({ emissionId: z.string().uuid() }), d))
+  .handler(async ({ data, context }) => {
+    await assertFiscalRole(context.supabase as unknown as AuthedSupabase, context.userId);
+    const admin = await getAdmin();
+    const { data: row } = await admin
+      .from("rental_nfse_emissions")
+      .select("contract_id")
+      .eq("id", data.emissionId)
+      .maybeSingle();
+    if (!row) throw new Error("Nota não encontrada.");
+    await loadContract(context.supabase as unknown as DbClient, (row as { contract_id: string }).contract_id);
+    const { archiveNfsePdf } = await import("./pdf-archive.server");
+    const result = await archiveNfsePdf(admin, data.emissionId);
+    if (result.status === "falhou") throw new Error(result.error ?? "Não foi possível baixar o PDF.");
+    return result;
+  });
+
+export const getNfsePdfUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { emissionId: string }) => zParse(z.object({ emissionId: z.string().uuid() }), d))
+  .handler(async ({ data, context }) => {
+    await assertFiscalRole(context.supabase as unknown as AuthedSupabase, context.userId);
+    const admin = await getAdmin();
+    const { data: row } = await admin
+      .from("rental_nfse_emissions")
+      .select("contract_id,pdf_document_id")
+      .eq("id", data.emissionId)
+      .maybeSingle();
+    const r = row as { contract_id: string; pdf_document_id: string | null } | null;
+    if (!r?.pdf_document_id) throw new Error("O PDF desta nota ainda não foi guardado.");
+    await loadContract(context.supabase as unknown as DbClient, r.contract_id);
+    const { data: doc } = await admin
+      .from("rental_contract_documents")
+      .select("file_path")
+      .eq("id", r.pdf_document_id)
+      .maybeSingle();
+    const path = (doc as { file_path: string } | null)?.file_path;
+    if (!path) throw new Error("PDF não encontrado.");
+    const signed = await (admin as unknown as import("@supabase/supabase-js").SupabaseClient).storage
+      .from("rental-documents")
+      .createSignedUrl(path, 600);
+    if (signed.error || !signed.data) throw new Error("Não foi possível abrir o PDF.");
+    return { url: signed.data.signedUrl };
   });

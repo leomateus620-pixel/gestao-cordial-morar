@@ -870,6 +870,36 @@ export function RentalNfseSection({
                               Abrir nota
                             </a>
                           )}
+                          {!row.modoTeste && row.pdfStatus === "salvo" && (
+                            <button
+                              type="button"
+                              onClick={() => void fiscal.openPdf(row.id)}
+                              className={cn(BUTTON, "border border-foreground/20 text-primary")}
+                            >
+                              <ExternalLink aria-hidden className="size-4" />
+                              Abrir PDF
+                            </button>
+                          )}
+                          {!row.modoTeste && (row.pdfStatus === "pendente" || row.pdfStatus === "falhou") && (
+                            <>
+                              <span className="self-center text-sm font-semibold text-amber-900">
+                                PDF pendente{row.pdfError ? ` — ${row.pdfError}` : ""}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={fiscal.retryingPdfId === row.id}
+                                onClick={() => void fiscal.retryPdf(row.id).catch(() => undefined)}
+                                className={cn(BUTTON, "border border-foreground/20")}
+                              >
+                                {fiscal.retryingPdfId === row.id ? "Baixando…" : "Baixar PDF novamente"}
+                              </button>
+                            </>
+                          )}
+                          {row.modoTeste && (
+                            <span className="self-center text-sm text-foreground/70">
+                              Teste sem PDF oficial
+                            </span>
+                          )}
                           {pending && row.canConsult && (
                             <button
                               type="button"

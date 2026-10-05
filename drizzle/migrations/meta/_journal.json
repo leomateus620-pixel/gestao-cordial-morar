@@ -29,6 +29,27 @@
       "when": 1791206542686,
       "tag": "0003_rental_nfse_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791209042760,
+      "tag": "0004_nfse_pdf_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791209301881,
+      "tag": "0005_nfse_no_fiscal_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791209596429,
+      "tag": "0006_nfse_pdf_column_grants",
+      "breakpoints": true
     }
   ]
 }

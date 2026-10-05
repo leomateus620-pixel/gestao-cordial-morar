@@ -141,6 +141,7 @@ function FileActions({
           <CloudOff className="size-4" />
         </button>
       )}
+      {document.category !== "nota_fiscal" && (
       <button
         type="button"
         onClick={onDelete}
@@ -151,6 +152,7 @@ function FileActions({
       >
         <Trash2 className="size-4" />
       </button>
+      )}
     </div>
   );
 }
@@ -193,6 +195,7 @@ export function RentalDocuments({
       checklist_aluguel: [],
       apolice_seguro_fianca: [],
       outro: [],
+      nota_fiscal: [],
     };
     for (const document of documents) groups[document.category].push(document);
     return groups;
@@ -355,6 +358,7 @@ export function RentalDocuments({
                     {category.description}
                   </p>
                 </div>
+                {category.id !== "nota_fiscal" && (
                 <button
                   type="button"
                   onClick={() => inputsRef.current[category.id]?.click()}
@@ -369,6 +373,7 @@ export function RentalDocuments({
                   )}
                   {busy ? "Enviando…" : "Adicionar"}
                 </button>
+                )}
                 <input
                   ref={(element) => {
                     inputsRef.current[category.id] = element;
