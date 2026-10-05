@@ -371,8 +371,6 @@ export function RentalDocuments({
                   {busy ? "Enviando…" : "Adicionar"}
                 </button>
                 )}
-                {category.id === "nota_fiscal" ? null : (<>
-                </button>
                 <input
                   ref={(element) => {
                     inputsRef.current[category.id] = element;
