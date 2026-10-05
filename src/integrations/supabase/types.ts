@@ -6763,6 +6763,10 @@ export type Database = {
           modo_teste: boolean
           numero_nfse: string | null
           parser_version: string | null
+          pdf_attempts: number
+          pdf_document_id: string | null
+          pdf_last_error: string | null
+          pdf_status: string
           request_xml: string | null
           resolution_reason: string | null
           resolved_at: string | null
@@ -6806,6 +6810,10 @@ export type Database = {
           modo_teste?: boolean
           numero_nfse?: string | null
           parser_version?: string | null
+          pdf_attempts?: number
+          pdf_document_id?: string | null
+          pdf_last_error?: string | null
+          pdf_status?: string
           request_xml?: string | null
           resolution_reason?: string | null
           resolved_at?: string | null
@@ -6849,6 +6857,10 @@ export type Database = {
           modo_teste?: boolean
           numero_nfse?: string | null
           parser_version?: string | null
+          pdf_attempts?: number
+          pdf_document_id?: string | null
+          pdf_last_error?: string | null
+          pdf_status?: string
           request_xml?: string | null
           resolution_reason?: string | null
           resolved_at?: string | null
@@ -6874,6 +6886,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_nfse_emissions_pdf_document_id_fkey"
+            columns: ["pdf_document_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contract_documents"
             referencedColumns: ["id"]
           },
           {
