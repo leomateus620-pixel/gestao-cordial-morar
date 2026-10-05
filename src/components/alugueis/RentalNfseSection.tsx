@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { buildRentalPrefill, fillEmpty, previousCompetence } from "@/lib/nfse/rental-prefill";
 import {
   AlertTriangle,
   Ban,
@@ -109,7 +110,7 @@ export function RentalNfseSection({
   const [open, setOpen] = useState(false);
   const [modoTeste, setModoTeste] = useState(true);
   const [historyTests, setHistoryTests] = useState(false);
-  const [competencia, setCompetencia] = useState("");
+  const [competencia, setCompetencia] = useState(() => previousCompetence());
   const [emissor, setEmissor] = useState<NfseBrand | undefined>(() =>
     contract.brand === "cordial" || contract.brand === "morar" ? contract.brand : undefined,
   );
@@ -151,6 +152,19 @@ export function RentalNfseSection({
   useEffect(() => {
     if (p?.configModoTeste) setModoTeste(true);
   }, [p?.configModoTeste]);
+
+  useEffect(() => {
+    if (!open || !competencia) return;
+    const fill = buildRentalPrefill({
+      competencia,
+      comissaoMensal: contract.comissaoMensal,
+      tenantNome: contract.tenant?.nome,
+      tenantDocumento: contract.tenant?.cpfCnpj,
+      tenantEndereco: contract.tenant?.endereco,
+      propertyLabel: contract.property?.apelido,
+    });
+    setDraft((current) => fillEmpty(current, fill));
+  }, [open, competencia, contract]);
 
   function edit(key: keyof ReturnType<typeof emptyReview>, value: string) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -435,13 +449,18 @@ export function RentalNfseSection({
                   )}
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <label className="space-y-1.5 text-sm font-semibold">
-                      Valor do serviço (R$)
+                      Valor do serviço (R$) — comissão do aluguel
                       <input
                         inputMode="decimal"
                         className={INPUT}
                         value={draft.valor}
                         onChange={(event) => edit("valor", event.target.value)}
                       />
+                      {!contract.comissaoMensal && (
+                        <span className="block text-xs font-normal text-amber-900">
+                          Cadastre a comissão no aluguel.
+                        </span>
+                      )}
                     </label>
                     <label className="space-y-1.5 text-sm font-semibold">
                       Data do fato gerador
@@ -476,6 +495,11 @@ export function RentalNfseSection({
                           value={draft[key]}
                           onChange={(event) => edit(key, event.target.value)}
                         />
+                        {(key === "cep" || key === "cidadeTom") && !draft[key] && (
+                          <span className="block text-xs font-normal text-amber-900">
+                            Não consta no cadastro do locatário — preencha.
+                          </span>
+                        )}
                       </label>
                     ))}
                   </div>
