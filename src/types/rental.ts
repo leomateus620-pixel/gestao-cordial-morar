@@ -187,7 +187,8 @@ export type RentalDocumentCategory =
   | "termo_vistoria"
   | "checklist_aluguel"
   | "apolice_seguro_fianca"
-  | "outro";
+  | "outro"
+  | "nota_fiscal";
 
 export const RENTAL_DOCUMENT_CATEGORIES: {
   id: RentalDocumentCategory;
@@ -213,6 +214,11 @@ export const RENTAL_DOCUMENT_CATEGORIES: {
     id: "apolice_seguro_fianca",
     label: "Apólice de Seguro Fiança",
     description: "Apólice emitida pela seguradora da fiança locatícia.",
+  },
+  {
+    id: "nota_fiscal",
+    label: "Notas fiscais (NFS-e)",
+    description: "PDF oficial de cada nota emitida, guardado automaticamente.",
   },
   {
     id: "outro",

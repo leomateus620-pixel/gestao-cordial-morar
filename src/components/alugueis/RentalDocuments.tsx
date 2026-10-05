@@ -355,6 +355,7 @@ export function RentalDocuments({
                     {category.description}
                   </p>
                 </div>
+                {category.id !== "nota_fiscal" && (
                 <button
                   type="button"
                   onClick={() => inputsRef.current[category.id]?.click()}
@@ -368,6 +369,9 @@ export function RentalDocuments({
                     <Upload className="size-3.5" />
                   )}
                   {busy ? "Enviando…" : "Adicionar"}
+                </button>
+                )}
+                {category.id === "nota_fiscal" ? null : (<>
                 </button>
                 <input
                   ref={(element) => {

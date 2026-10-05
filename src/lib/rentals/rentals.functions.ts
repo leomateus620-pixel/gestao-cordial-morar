@@ -988,7 +988,8 @@ type DocRow = {
 };
 
 type RentalDocCategory =
-  "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "apolice_seguro_fianca" | "outro";
+  "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "apolice_seguro_fianca" | "outro"
+  | "nota_fiscal";
 
 const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
   "contrato_aluguel",
@@ -996,6 +997,7 @@ const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
   "checklist_aluguel",
   "apolice_seguro_fianca",
   "outro",
+  "nota_fiscal",
 ]);
 
 function normalizeRentalCategory(v: string | null | undefined): RentalDocCategory {
