@@ -81,6 +81,7 @@ import { Route as ApiPublicHooksPropertyImportWorkerRouteImport } from './routes
 import { Route as ApiPublicHooksPropertyImageWorkerRouteImport } from './routes/api/public/hooks/property-image-worker'
 import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
 import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
+import { Route as ApiPublicHooksNfsePdfRetryRouteImport } from './routes/api/public/hooks/nfse-pdf-retry'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
 import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
@@ -462,6 +463,12 @@ const ApiPublicHooksPropertyDriveWorkerRoute =
     path: '/api/public/hooks/property-drive-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksNfsePdfRetryRoute =
+  ApiPublicHooksNfsePdfRetryRouteImport.update({
+    id: '/api/public/hooks/nfse-pdf-retry',
+    path: '/api/public/hooks/nfse-pdf-retry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksGoogleCalendarSyncRoute =
   ApiPublicHooksGoogleCalendarSyncRouteImport.update({
     id: '/api/public/hooks/google-calendar-sync',
@@ -571,6 +578,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
@@ -647,6 +655,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
@@ -729,6 +738,7 @@ export interface FileRoutesById {
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
   '/api/public/hooks/property-image-worker': typeof ApiPublicHooksPropertyImageWorkerRoute
@@ -811,6 +821,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
     | '/api/public/hooks/property-image-worker'
@@ -887,6 +898,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
     | '/api/public/hooks/property-image-worker'
@@ -968,6 +980,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
     | '/api/public/hooks/property-image-worker'
@@ -1001,6 +1014,7 @@ export interface RootRouteChildren {
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGalleryAlignRoute: typeof ApiPublicHooksGalleryAlignRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
+  ApiPublicHooksNfsePdfRetryRoute: typeof ApiPublicHooksNfsePdfRetryRoute
   ApiPublicHooksPropertyDriveWorkerRoute: typeof ApiPublicHooksPropertyDriveWorkerRoute
   ApiPublicHooksPropertyImageRetryRoute: typeof ApiPublicHooksPropertyImageRetryRoute
   ApiPublicHooksPropertyImageWorkerRoute: typeof ApiPublicHooksPropertyImageWorkerRoute
@@ -1521,6 +1535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPropertyDriveWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/nfse-pdf-retry': {
+      id: '/api/public/hooks/nfse-pdf-retry'
+      path: '/api/public/hooks/nfse-pdf-retry'
+      fullPath: '/api/public/hooks/nfse-pdf-retry'
+      preLoaderRoute: typeof ApiPublicHooksNfsePdfRetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/google-calendar-sync': {
       id: '/api/public/hooks/google-calendar-sync'
       path: '/api/public/hooks/google-calendar-sync'
@@ -1747,6 +1768,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksFinanceiroSheetsSyncRoute,
   ApiPublicHooksGalleryAlignRoute: ApiPublicHooksGalleryAlignRoute,
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
+  ApiPublicHooksNfsePdfRetryRoute: ApiPublicHooksNfsePdfRetryRoute,
   ApiPublicHooksPropertyDriveWorkerRoute:
     ApiPublicHooksPropertyDriveWorkerRoute,
   ApiPublicHooksPropertyImageRetryRoute: ApiPublicHooksPropertyImageRetryRoute,

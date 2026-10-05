@@ -195,6 +195,7 @@ export function RentalDocuments({
       checklist_aluguel: [],
       apolice_seguro_fianca: [],
       outro: [],
+      nota_fiscal: [],
     };
     for (const document of documents) groups[document.category].push(document);
     return groups;
