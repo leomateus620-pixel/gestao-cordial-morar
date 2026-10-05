@@ -30,6 +30,7 @@ export function useRentalNfse(contractId: string | null, enabled = true, modoTes
   const emit = useServerFn(emitRentalNfse);
   const reconcile = useServerFn(reconcileRentalNfse);
   const mark = useServerFn(markRentalNfseNotIssued);
+  const retryPdfFn = useServerFn(retryNfsePdf);
   const viewerFn = useServerFn(getNfseViewer);
   const viewer = useQuery({
     queryKey: ["nfse-viewer"],

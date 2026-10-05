@@ -141,6 +141,7 @@ function FileActions({
           <CloudOff className="size-4" />
         </button>
       )}
+      {document.category !== "nota_fiscal" && (
       <button
         type="button"
         onClick={onDelete}
@@ -151,6 +152,7 @@ function FileActions({
       >
         <Trash2 className="size-4" />
       </button>
+      )}
     </div>
   );
 }
