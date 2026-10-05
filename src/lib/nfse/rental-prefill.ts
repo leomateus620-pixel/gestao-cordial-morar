@@ -61,26 +61,40 @@ export function formatCompetence(competencia: string): string {
 export type PrefillSource = {
   competencia: string;
   comissaoMensal?: number | null;
-  tenantNome?: string | null;
-  tenantDocumento?: string | null;
-  tenantEndereco?: string | null;
+  ownerNome?: string | null;
+  ownerDocumento?: string | null;
+  property?: {
+    logradouro?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    cep?: string | null;
+  } | null;
   propertyLabel?: string | null;
 };
 
+/** Código TOM de Santa Rosa/RS (município das empresas). */
+export const SANTA_ROSA_TOM = "8847";
+
+/** Tomador = proprietário do imóvel; endereço fiscal = endereço do imóvel. */
 export function buildRentalPrefill(src: PrefillSource) {
-  const addr = parseFreeAddress(src.tenantEndereco);
+  const p = src.property ?? {};
+  const cidade = (p.cidade ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const logradouro = [p.logradouro?.trim(), p.complemento?.trim()].filter(Boolean).join(", ").slice(0, 70);
   return {
     valor:
       src.comissaoMensal != null && src.comissaoMensal > 0
         ? src.comissaoMensal.toFixed(2).replace(".", ",")
         : "",
     dataFatoGerador: lastDayOfCompetence(src.competencia),
-    nome: src.tenantNome?.trim() ?? "",
-    documento: (src.tenantDocumento ?? "").replace(/\D/g, ""),
-    logradouro: addr.logradouro,
-    numero: addr.numero,
-    bairro: addr.bairro,
-    cep: addr.cep,
+    nome: src.ownerNome?.trim() ?? "",
+    documento: (src.ownerDocumento ?? "").replace(/\D/g, ""),
+    logradouro,
+    numero: (p.numero ?? "").trim().slice(0, 8),
+    bairro: (p.bairro ?? "").trim().slice(0, 30),
+    cidadeTom: cidade === "santa rosa" ? SANTA_ROSA_TOM : "",
+    cep: (p.cep ?? "").replace(/\D/g, "").length === 8 ? (p.cep ?? "").replace(/\D/g, "") : "",
     motivo: `Comissão de administração do aluguel — competência ${formatCompetence(src.competencia)}${
       src.propertyLabel ? ` — contrato ${src.propertyLabel}` : ""
     }`,

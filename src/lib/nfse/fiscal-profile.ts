@@ -103,7 +103,7 @@ export function resolveIssuer(contractBrand: string, requested?: string): "cordi
 export function defaultRentalFiscalProfile(cidadeTom: string): FiscalProfile {
   return {
     operation: "administracao",
-    tomadorPapel: "locatario",
+    tomadorPapel: "proprietario",
     valorOrigem: "comissao_mensal",
     elegibilidade: "competencia",
     descricao: "Comissão de administração de aluguel",
