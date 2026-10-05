@@ -2,8 +2,11 @@
  * Decodificação e interpretação do retorno síncrono do WNERestServiceNFSe.
  * Puro (sem imports de servidor) para testes com `node --test`.
  */
-import { XMLParser } from "fast-xml-parser";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { z } from "zod";
+import { normalizeTaxDoc } from "./xml";
+
+export const NFSE_PARSER_VERSION = "ipm-2026-10-v2";
 
 export type NfseResponseKind = "sucesso" | "teste_ok" | "recusa" | "ilegivel";
 
@@ -18,6 +21,8 @@ export type NfseParsedResponse = {
   situacaoCodigo: string | null;
   situacaoDescricao: string | null;
   codigoVerificador: string | null;
+  identificador: string | null;
+  cnpjPrestador: string | null;
   linkPdf: string | null;
   /** Mensagem legível (todas as mensagens, separadas por " · "). */
   mensagem: string | null;
@@ -36,7 +41,10 @@ export function detectCharset(bytes: Uint8Array, contentType?: string | null): s
   return "iso-8859-1";
 }
 
-export function decodeResponse(buffer: ArrayBuffer | Uint8Array, contentType?: string | null): string {
+export function decodeResponse(
+  buffer: ArrayBuffer | Uint8Array,
+  contentType?: string | null,
+): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   const charset = detectCharset(bytes, contentType);
   try {
@@ -84,8 +92,33 @@ function str(v: unknown): string | null {
   return null;
 }
 
-const TESTE_OK = /v[áa]lida\s+para\s+emiss[ãa]o/i;
+const TESTE_OK = /^NFS-?e\s+v[áa]lida\s+para\s+emiss[ãa]o\.?$/i;
 const CODIGO_ERRO = /^(\d{3,6})(?:\s*-\s*([\s\S]*))?$/;
+
+/** Link fiscal recebido também é entrada externa; nunca publicar destinos arbitrários. */
+export function safeNfseDocumentUrl(value: string | null | undefined): string | null {
+  try {
+    const url = new URL(String(value ?? ""));
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "santarosa.atende.net" ||
+      url.port ||
+      url.username ||
+      url.password ||
+      url.hash
+    )
+      return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
 function empty(kind: NfseResponseKind, mensagem: string | null = null): NfseParsedResponse {
   return {
@@ -99,6 +132,8 @@ function empty(kind: NfseResponseKind, mensagem: string | null = null): NfsePars
     situacaoCodigo: null,
     situacaoDescricao: null,
     codigoVerificador: null,
+    identificador: null,
+    cnpjPrestador: null,
     linkPdf: null,
     mensagem,
     mensagens: mensagem ? [mensagem] : [],
@@ -117,7 +152,11 @@ function parseJson(text: string): NfseParsedResponse | null {
     const code = str(r["code"]) ?? str(r["codigo"]);
     const testeValidado = TESTE_OK.test(mensagem ?? "");
     const isError = code !== null && Number(code) >= 400;
-    const base = empty(isError ? "recusa" : testeValidado ? "teste_ok" : "ilegivel", mensagem);
+    const isRefusal = isError && Number(code) < 500;
+    const base = empty(
+      isRefusal ? "recusa" : !isError && testeValidado ? "teste_ok" : "ilegivel",
+      mensagem,
+    );
     return {
       ...base,
       ok: !isError && testeValidado,
@@ -130,21 +169,55 @@ function parseJson(text: string): NfseParsedResponse | null {
 }
 
 export function parseNfseResponse(raw: string): NfseParsedResponse {
-  const text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
-  if (!text) return empty("ilegivel");
+  const text = String(raw ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim();
+  if (!text || text.length > 1_048_576) return empty("ilegivel");
   const json = parseJson(text);
   if (json) return json;
-  if (!text.startsWith("<") || /^<!doctype html|^<html/i.test(text)) return empty("ilegivel");
+  if (!text.startsWith("<") || /<!DOCTYPE|<!ENTITY|^<html/i.test(text)) return empty("ilegivel");
 
   let doc: Record<string, unknown>;
   try {
-    const parser = new XMLParser({ ignoreAttributes: true, parseTagValue: false, trimValues: true });
+    if (XMLValidator.validate(text) !== true) return empty("ilegivel");
+    // DTD e ENTITY já foram recusados; apenas entidades XML predefinidas são decodificadas.
+    const parser = new XMLParser({
+      ignoreAttributes: true,
+      parseTagValue: false,
+      trimValues: true,
+      processEntities: true,
+    });
     doc = parser.parse(text) as Record<string, unknown>;
   } catch {
     return empty("ilegivel");
   }
-  if (!doc || typeof doc !== "object" || !("retorno" in doc)) return empty("ilegivel");
-  const parsedRetorno = retornoSchema.safeParse(doc["retorno"] === "" ? {} : doc["retorno"]);
+  if (!doc || typeof doc !== "object") return empty("ilegivel");
+  // Somente caminhos documentados, sem procura recursiva por qualquer numero_nfse.
+  const root = record(doc["retorno"]) ?? record(doc["nfse"]);
+  if (!root) return empty("ilegivel");
+  if (Array.isArray(root["nfse"])) return empty("ilegivel");
+  const nfse = record(root["nfse"]) ?? root;
+  const nfe = record(nfse["nfe"]) ?? record(nfse["nf"]);
+  const sources = [root, nfse, nfe].filter((v): v is Record<string, unknown> => Boolean(v));
+  const merged: Record<string, unknown> = {};
+  const fields = [
+    "numero_nfse",
+    "serie_nfse",
+    "data_nfse",
+    "hora_nfse",
+    "situacao_codigo_nfse",
+    "situacao_descricao_nfse",
+    "link_nfse",
+    "cod_verificador_autenticidade",
+    "codigo_verificacao",
+  ];
+  for (const field of fields) {
+    const values = [...new Set(sources.map((source) => str(source[field])).filter(Boolean))];
+    if (values.length > 1) return empty("ilegivel");
+    merged[field] = values[0] ?? null;
+  }
+  merged["mensagem"] = [...new Set(sources)].flatMap((source) => toArray(source["mensagem"]));
+  const parsedRetorno = retornoSchema.safeParse(merged);
   if (!parsedRetorno.success) return empty("ilegivel");
   const r = parsedRetorno.data;
 
@@ -174,7 +247,10 @@ export function parseNfseResponse(raw: string): NfseParsedResponse {
     }
   }
 
-  const numeroNfse = r.numero_nfse ?? null;
+  const numeroNfse =
+    r.numero_nfse && /^\d+$/.test(r.numero_nfse) && /[1-9]/.test(r.numero_nfse)
+      ? r.numero_nfse
+      : null;
   const base: NfseParsedResponse = {
     kind: "ilegivel",
     ok: false,
@@ -186,14 +262,32 @@ export function parseNfseResponse(raw: string): NfseParsedResponse {
     situacaoCodigo: r.situacao_codigo_nfse ?? null,
     situacaoDescricao: r.situacao_descricao_nfse ?? null,
     codigoVerificador: r.cod_verificador_autenticidade ?? r.codigo_verificacao ?? null,
-    linkPdf: r.link_nfse ?? null,
+    identificador: str(nfse["identificador"]),
+    cnpjPrestador: normalizeTaxDoc(str(record(nfse["prestador"])?.["cpfcnpj"])) || null,
+    linkPdf: safeNfseDocumentUrl(r.link_nfse),
     mensagem: mensagens.length ? mensagens.join(" · ") : null,
     mensagens,
     codigosErro,
   };
   // Ordem importa: com número a nota existe — nunca é recusa.
-  if (testeValidado) return { ...base, kind: "teste_ok", ok: true };
+  if (testeValidado && codigosErro.length === 0) return { ...base, kind: "teste_ok", ok: true };
+  if (testeValidado) return base; // mensagens contraditórias não confirmam teste nem emissão real.
   if (numeroNfse) return { ...base, kind: "sucesso", ok: true };
-  if (mensagens.length) return { ...base, kind: "recusa" };
+  // Texto de espera/duplicidade não comprova rejeição anterior à emissão.
+  if (
+    mensagens.some((message) =>
+      /processando|processad[oa]|aguard|j[áa].*(?:identificador|nota)|identificador.*(?:repetid|exist)|timeout|indispon[ií]vel/i.test(
+        message,
+      ),
+    )
+  )
+    return base;
+  if (
+    codigosErro.some((code) => code !== "TEXTO") ||
+    mensagens.some((message) =>
+      /acesso negado|inv[áa]lid[oa]|n[ãa]o autorizad[oa]|recusad[oa]/i.test(message),
+    )
+  )
+    return { ...base, kind: "recusa" };
   return base; // <retorno> sem mensagem e sem número → ilegível (incerto)
 }

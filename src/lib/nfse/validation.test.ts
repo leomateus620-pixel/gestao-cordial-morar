@@ -44,12 +44,36 @@ test("e-mail opcional", () => {
   assert.equal(isValidEmail(null), false);
 });
 
-test("endpoint na allowlist *.atende.net", () => {
-  assert.equal(isAllowedEndpoint("https://santarosa.atende.net/?pg=rest"), true);
-  assert.equal(isAllowedEndpoint("https://ws-santarosa.atende.net:7443/?pg=rest"), true);
+test("endpoint restringe município, serviço, porta, caminho e parâmetros", () => {
+  assert.equal(
+    isAllowedEndpoint("https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe"),
+    true,
+  );
+  assert.equal(
+    isAllowedEndpoint("https://santarosa.atende.net/?service=WNERestServiceNFSe&pg=rest"),
+    true,
+  );
+  assert.equal(isAllowedEndpoint("https://santarosa.atende.net/?pg=rest"), false);
+  assert.equal(isAllowedEndpoint("https://ws-santarosa.atende.net:7443/?pg=rest"), false);
   assert.equal(isAllowedEndpoint("http://santarosa.atende.net/"), false);
   assert.equal(isAllowedEndpoint("https://atende.net.evil.com/"), false);
   assert.equal(isAllowedEndpoint("https://evil.com/santarosa.atende.net/"), false);
+  for (const bad of [
+    "https://user:secret@santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe",
+    "https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe&service=Other",
+    "https://santarosa.atende.net/?pg=rest&service=WNERestServiceNFSe#x",
+    "https://santarosa.atende.net/other?pg=rest&service=WNERestServiceNFSe",
+    "https://outracidade.atende.net/?pg=rest&service=WNERestServiceNFSe",
+  ])
+    assert.equal(isAllowedEndpoint(bad), false, bad);
+});
+
+test("documentos inválidos não perdem caracteres nem são truncados para uma identidade válida", () => {
+  assert.equal(isValidCnpj("12ABC34501DE35EXTRA"), false);
+  assert.equal(isValidCnpj("12ABC34501DE35!"), false);
+  assert.equal(isValidCpf("52998224725A"), false);
+  assert.equal(isValidCpf("52998224725!"), false);
+  assert.equal(normalizeTaxDoc("00123456789012"), "00123456789012");
 });
 
 test("cidade Santa Rosa sem acento e sem caixa", () => {

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { nextPaymentDueDate } from "@/lib/rentals/payment-reference";
 import {
   RENTAL_PROPERTY_COLUMNS,
   mapRentalPropertyRow,
@@ -124,7 +125,10 @@ function mapContract(r: ContractRow): RentalContract {
     tenantId: r.tenant_id,
     guarantorId: r.guarantor_id,
     valorMensal: Number(r.valor_mensal),
-    comissaoMensal: r.comissao_mensal !== null && r.comissao_mensal !== undefined ? Number(r.comissao_mensal) : null,
+    comissaoMensal:
+      r.comissao_mensal !== null && r.comissao_mensal !== undefined
+        ? Number(r.comissao_mensal)
+        : null,
     valorCaucao: r.valor_caucao !== null ? Number(r.valor_caucao) : null,
     garantiaTipo: (r.garantia_tipo as RentalContract["garantiaTipo"]) ?? "sem_garantia",
     seguroSeguradora: r.seguro_seguradora,
@@ -882,31 +886,47 @@ export const renewRentalContract = createServerFn({ method: "POST" })
 
 export const markRentalPaymentPaid = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => d)
+  .inputValidator((d: { id: string; expectedDueDate: string | null }) => d)
   .handler(async ({ data, context }) => {
     const { data: row, error: rErr } = await context.supabase
       .from("rental_contracts")
-      .select("dia_vencimento,proximo_vencimento,data_inicio")
+      // The reference column also fails closed before the reviewed migration exists.
+      .select("dia_vencimento,proximo_vencimento,updated_at,last_payment_reference_id")
       .eq("id", data.id)
       .single();
-    if (rErr) throw new Error(rErr.message);
+    if (rErr)
+      throw new Error(
+        "Não foi possível preparar a baixa com sua referência histórica. Solicite suporte.",
+      );
     const r = row as unknown as {
       dia_vencimento: number;
       proximo_vencimento: string | null;
-      data_inicio: string;
+      updated_at: string;
     };
-    const base = r.proximo_vencimento ?? r.data_inicio;
-    const next = (() => {
-      const d = new Date(base);
-      d.setMonth(d.getMonth() + 1);
-      d.setDate(Math.min(r.dia_vencimento, 28));
-      return d.toISOString().slice(0, 10);
-    })();
-    const { error } = await context.supabase
+    if (!data.expectedDueDate || data.expectedDueDate !== r.proximo_vencimento) {
+      throw new Error(
+        "Esta ocorrência foi alterada ou já recebeu baixa. Atualize a ficha antes de continuar.",
+      );
+    }
+    const next = nextPaymentDueDate(r.proximo_vencimento, r.dia_vencimento);
+    // One conditional UPDATE: the database trigger stores OLD values and the
+    // occurrence reference in the same transaction that advances the due date.
+    const { data: updated, error } = await context.supabase
       .from("rental_contracts")
       .update({ payment_status: "pago", proximo_vencimento: next } as never)
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+      .eq("id", data.id)
+      .eq("proximo_vencimento", data.expectedDueDate)
+      .eq("updated_at", r.updated_at)
+      .select("id,last_payment_reference_id")
+      .maybeSingle();
+    if (error)
+      throw new Error(
+        "Não foi possível registrar a baixa e preservar sua referência. Tente novamente.",
+      );
+    if (!updated)
+      throw new Error(
+        "Esta ocorrência foi alterada ou já recebeu baixa. Atualize a ficha antes de continuar.",
+      );
     return { ok: true, proximoVencimento: next };
   });
 
@@ -914,8 +934,23 @@ export const deleteRentalContract = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
+    const { data: history, error: historyError } = await context.supabase
+      .from("rental_nfse_emissions")
+      .select("id")
+      .eq("contract_id", data.id)
+      .limit(1);
+    if (historyError)
+      throw new Error("Não foi possível verificar o histórico fiscal. O contrato foi preservado.");
+    if (history?.length) {
+      throw new Error(
+        "Este contrato possui histórico fiscal e deve ser preservado. Utilize Encerrar contrato.",
+      );
+    }
     const { error } = await context.supabase.from("rental_contracts").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error)
+      throw new Error(
+        "Não foi possível excluir o contrato. Vínculos e referências fiscais devem ser preservados; utilize Encerrar contrato.",
+      );
     return { ok: true };
   });
 
@@ -948,11 +983,7 @@ type DocRow = {
 };
 
 type RentalDocCategory =
-  | "contrato_aluguel"
-  | "termo_vistoria"
-  | "checklist_aluguel"
-  | "apolice_seguro_fianca"
-  | "outro";
+  "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "apolice_seguro_fianca" | "outro";
 
 const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
   "contrato_aluguel",
