@@ -7,6 +7,8 @@ import {
   getNfseViewer,
   listRentalNfseEmissions,
   markRentalNfseNotIssued,
+  retryNfsePdf,
+  getNfsePdfUrl,
   previewRentalNfse,
   reconcileRentalNfse,
   type NfseBrand,
@@ -31,6 +33,7 @@ export function useRentalNfse(contractId: string | null, enabled = true, modoTes
   const reconcile = useServerFn(reconcileRentalNfse);
   const mark = useServerFn(markRentalNfseNotIssued);
   const retryPdfFn = useServerFn(retryNfsePdf);
+  const pdfUrlFn = useServerFn(getNfsePdfUrl);
   const viewerFn = useServerFn(getNfseViewer);
   const viewer = useQuery({
     queryKey: ["nfse-viewer"],
@@ -113,7 +116,31 @@ export function useRentalNfse(contractId: string | null, enabled = true, modoTes
     onError: onFail,
   });
 
+  const retryPdfMutation = useMutation({
+    mutationFn: (emissionId: string) => retryPdfFn({ data: { emissionId } }),
+    onSuccess: () => {
+      setActionError(null);
+      refresh();
+      toast.success("PDF da nota guardado no aluguel.");
+    },
+    onError: onFail,
+  });
+  async function openPdf(emissionId: string) {
+    const win = window.open("", "_blank");
+    try {
+      const { url } = await pdfUrlFn({ data: { emissionId } });
+      if (win) win.location.href = url;
+      else window.location.href = url;
+    } catch (err) {
+      win?.close();
+      onFail(err as Error);
+    }
+  }
+
   return {
+    openPdf,
+    retryPdf: retryPdfMutation.mutateAsync,
+    retryingPdfId: retryPdfMutation.isPending ? retryPdfMutation.variables : null,
     actionError,
     isAdmin: Boolean(viewer.data?.isAdmin),
     canEmit: Boolean(viewer.data?.canEmit),

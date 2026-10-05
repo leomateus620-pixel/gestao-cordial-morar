@@ -1708,3 +1708,31 @@ export const retryNfsePdf = createServerFn({ method: "POST" })
     if (result.status === "falhou") throw new Error(result.error ?? "Não foi possível baixar o PDF.");
     return result;
   });
+
+export const getNfsePdfUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { emissionId: string }) => zParse(z.object({ emissionId: z.string().uuid() }), d))
+  .handler(async ({ data, context }) => {
+    await assertFiscalRole(context.supabase as unknown as AuthedSupabase, context.userId);
+    const admin = await getAdmin();
+    const { data: row } = await admin
+      .from("rental_nfse_emissions")
+      .select("contract_id,pdf_document_id")
+      .eq("id", data.emissionId)
+      .maybeSingle();
+    const r = row as { contract_id: string; pdf_document_id: string | null } | null;
+    if (!r?.pdf_document_id) throw new Error("O PDF desta nota ainda não foi guardado.");
+    await loadContract(context.supabase as unknown as DbClient, r.contract_id);
+    const { data: doc } = await admin
+      .from("rental_contract_documents")
+      .select("file_path")
+      .eq("id", r.pdf_document_id)
+      .maybeSingle();
+    const path = (doc as { file_path: string } | null)?.file_path;
+    if (!path) throw new Error("PDF não encontrado.");
+    const signed = await (admin as unknown as import("@supabase/supabase-js").SupabaseClient).storage
+      .from("rental-documents")
+      .createSignedUrl(path, 600);
+    if (signed.error || !signed.data) throw new Error("Não foi possível abrir o PDF.");
+    return { url: signed.data.signedUrl };
+  });
