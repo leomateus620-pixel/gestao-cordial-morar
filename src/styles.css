@@ -467,18 +467,20 @@
 
 .app-sidebar-brand-eyebrow {
   color: var(--app-sidebar-accent);
-  font-size: 0.55rem;
-  font-weight: 750;
-  letter-spacing: 0.18em;
-  line-height: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 0.8rem;
   text-transform: uppercase;
 }
 
 .app-sidebar-brand-title {
   color: var(--app-sidebar-primary-text);
+  font-family: var(--font-display);
   font-size: 0.78rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   line-height: 1rem;
 }
 
@@ -521,24 +523,24 @@
   display: flex;
   min-height: 1.55rem;
   flex-shrink: 0;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
   margin-top: 0.5rem;
   overflow: hidden;
   border-top: 1px solid var(--app-sidebar-border);
-  padding: 0.45rem 0.375rem 0;
+  padding: 0.55rem 0.375rem 0;
   color: var(--app-sidebar-muted-text);
-  font-size: 0.5rem;
+  font-size: 0.52rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   line-height: 0.7rem;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.app-shell-root[data-sidebar-state="collapsed"] .app-sidebar-shell .app-sidebar-footer {
-  justify-content: center;
-  padding-inline: 0;
+.app-sidebar-footer-dot {
+  color: var(--app-sidebar-accent);
 }
 
 .app-sidebar-drawer {
@@ -589,10 +591,11 @@
 .app-sidebar-section-label {
   padding: 0 0.5rem 0.375rem;
   color: var(--app-sidebar-section-text);
-  font-size: 0.535rem;
-  font-weight: 750;
-  letter-spacing: 0.16em;
-  line-height: 0.7rem;
+  font-family: var(--font-display);
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 0.75rem;
   text-transform: uppercase;
 }
 
