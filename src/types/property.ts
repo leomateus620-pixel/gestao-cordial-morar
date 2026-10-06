@@ -95,6 +95,8 @@ export type PropertyWriteInput = {
   cep: string | null;
   logradouro: string | null;
   numero: string | null;
+  /** Bloco, apartamento, fundos… (o Número leva só o número do prédio/casa). */
+  complemento: string | null;
   /** `nao` (padrão) oculta rua/número no anúncio; `sim` exibe endereço completo. */
   exibirEnderecoSite: string | null;
   bairro: string | null;

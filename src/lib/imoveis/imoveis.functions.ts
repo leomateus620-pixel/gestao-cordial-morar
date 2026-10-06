@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { validateAddressNumber } from "@/lib/imoveis/address-rules";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
 import { buildStablePublicUrl } from "@/lib/imobibrasil/public-url";
@@ -24,6 +25,7 @@ const WRITE_COLUMNS: Record<keyof PropertyWriteInput, string> = {
   cep: "cep",
   logradouro: "logradouro",
   numero: "numero",
+  complemento: "complemento",
   exibirEnderecoSite: "exibir_endereco_site",
   bairro: "bairro",
   cidade: "cidade",
@@ -92,6 +94,12 @@ function toDbPayload(input: Partial<PropertyWriteInput>): Record<string, unknown
   return payload;
 }
 
+
+/** Recusa número acima do limite dos sites, sem truncar. */
+export function assertAddressNumber(numero: string | null | undefined): void {
+  const check = validateAddressNumber(numero);
+  if (!check.ok) throw new Error(check.message);
+}
 
 type Row = Record<string, unknown>;
 
@@ -397,6 +405,7 @@ function mapDetail(row: Record<string, any>, extras: {
     cep: row.cep ?? null,
     logradouro: row.logradouro ?? null,
     numero: row.numero ?? null,
+    complemento: row.complemento ?? null,
     zona: row.zona ?? null,
     regiao: row.regiao ?? null,
     salas: row.salas ?? null,
@@ -549,6 +558,7 @@ export async function createImovelCore(context: AuthedCtx, data: CreateImovelInp
     }
 
     const { asDraft, clientIntentKey: _k, ...writeData } = data;
+    assertAddressNumber(writeData.numero);
     const payload: Record<string, unknown> = {
       ...toDbPayload(writeData),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
@@ -636,11 +646,15 @@ export async function updateImovelCore(
     // Autorização: a leitura passa pelas regras de acesso do usuário.
     const { data: current, error: readError } = await context.supabase
       .from("properties")
-      .select("revision")
+      .select("revision, numero")
       .eq("id", id)
       .maybeSingle();
     if (readError) throw new Error(readError.message);
     if (!current) throw new Error("Imóvel não encontrado ou sem permissão.");
+    // Registro legado: só valida o número quando ele foi alterado agora.
+    if (rest.numero !== undefined && (rest.numero ?? "").trim() !== ((current as { numero?: string | null }).numero ?? "").trim()) {
+      assertAddressNumber(rest.numero);
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Imóvel, revisão, destinos e campos alterados numa única transação. Os
