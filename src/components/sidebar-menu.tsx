@@ -185,7 +185,11 @@ export const SidebarMenu = memo(function SidebarMenu({
                               className="app-sidebar-nav-row group"
                             >
                               <span className="app-sidebar-nav-icon" aria-hidden="true">
-                                <Icon className="size-[18px]" strokeWidth={1.5} />
+                                <Icon
+                                  className="app-sidebar-nav-icon-fill size-[18px]"
+                                  strokeWidth={1.5}
+                                />
+                                <Icon className="size-[18px]" strokeWidth={1.75} />
                               </span>
 
                               {!collapsed && (
