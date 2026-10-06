@@ -5,6 +5,7 @@
  * verificação remota. Nada é marcado como `published` sem confirmação por GET.
  */
 
+import { precheckAddressPayload } from "./address-precheck";
 import { confirmedLocalFieldsAfterSend, confirmedSnapshotAfterSend } from "./confirm-snapshot";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ImobiApiError, sanitizeMessage, toImobiError } from "./errors";
@@ -1232,6 +1233,9 @@ export async function processJob(
     const minimal = patch;
 
     if (hasEffectivePatch(patch)) {
+      // Número acima do limite do site: falha local, sem chamada HTTP.
+      const addressBlock = precheckAddressPayload(patch.payload);
+      if (addressBlock) throw new ImobiApiError({ message: addressBlock, category: "validation" });
       assertWriteAllowed("update", updatesPaused);
       await assertJobLease(admin, job); // posse confirmada antes do efeito externo
       const response = await imobiRequest(
@@ -1261,6 +1265,9 @@ export async function processJob(
       });
     }
   } else {
+    // Antes de qualquer trava de criação ou HTTP: estado de criação intocado.
+    const addressBlock = precheckAddressPayload(fullPayload);
+    if (addressBlock) throw new ImobiApiError({ message: addressBlock, category: "validation" });
     let response: Awaited<ReturnType<typeof imobiRequest>>;
     let postStarted: number | null = null;
     try {

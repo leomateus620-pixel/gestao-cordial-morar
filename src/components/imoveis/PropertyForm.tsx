@@ -1,4 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  NUMERO_HINT,
+  looksLikeComplement,
+  mergeComplemento,
+  suggestAddressSplit,
+  validateAddressNumber,
+} from "@/lib/imoveis/address-rules";
 import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PropertyCarteira, PropertyOperacao, PropertyWriteInput } from "@/types/property";
@@ -232,6 +239,7 @@ export function emptyPropertyValues(): PropertyFormValues {
     cep: null,
     logradouro: null,
     numero: null,
+    complemento: null,
     exibirEnderecoSite: "nao",
     bairro: null,
     cidade: CIDADE_PADRAO,
@@ -554,12 +562,22 @@ export function PropertyForm({
     set(provider === "cordial" ? "codigoCordial" : "codigoMorar", code || null);
   }
 
-  const canSubmit = useMemo(() => !!values.tipo && !pending, [values.tipo, pending]);
+  const numeroCheck = validateAddressNumber(values.numero);
+  const numeroSplit = suggestAddressSplit(values.numero);
+  const canSubmit = useMemo(
+    () => !!values.tipo && !pending && numeroCheck.ok,
+    [values.tipo, pending, numeroCheck.ok],
+  );
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        if (!numeroCheck.ok) {
+          toast.error(numeroCheck.message);
+          setStep(1);
+          return;
+        }
         if (!canSubmit) return;
         if (values.proprietarioEmail && !isValidEmail(values.proprietarioEmail)) {
           toast.error("Informe um e-mail válido para o proprietário.");
@@ -796,10 +814,36 @@ export function PropertyForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Número">
+            <Field label="Número" hint={NUMERO_HINT}>
               <input
                 value={values.numero ?? ""}
                 onChange={(e) => set("numero", e.target.value)}
+                aria-invalid={!numeroCheck.ok}
+                className={`${inputCls} ${numeroCheck.ok ? "" : "border-destructive"}`}
+              />
+              {!numeroCheck.ok && (
+                <span role="alert" className="mt-1 block text-[11px] font-semibold text-destructive">
+                  {numeroCheck.message}
+                </span>
+              )}
+              {numeroSplit && (!numeroCheck.ok || looksLikeComplement(values.numero)) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    set("complemento", mergeComplemento(numeroSplit.complemento, values.complemento));
+                    set("numero", numeroSplit.numero);
+                  }}
+                  className="mt-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary"
+                >
+                  Mover para Complemento: {numeroSplit.numero} · {numeroSplit.complemento}
+                </button>
+              )}
+            </Field>
+            <Field label="Complemento" hint="Bloco, apartamento, fundos, sala…">
+              <input
+                value={values.complemento ?? ""}
+                onChange={(e) => set("complemento", e.target.value)}
                 className={inputCls}
               />
             </Field>
@@ -1136,7 +1180,13 @@ export function PropertyForm({
         {step < STEPS.length - 1 ? (
           <button
             type="button"
-            onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+            onClick={() => {
+              if (step === 1 && !numeroCheck.ok) {
+                toast.error(numeroCheck.message);
+                return;
+              }
+              setStep((s) => Math.min(STEPS.length - 1, s + 1));
+            }}
             className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
           >
             Avançar <ChevronRight className="size-3.5" />

@@ -148,7 +148,7 @@ function DetalhePage() {
   // O Maps usa o melhor endereço disponível: rua completa, senão bairro/cidade,
   // senão a localização exibida do anúncio. Assim o botão vale para todo imóvel.
   const enderecoCompleto = [
-    [imovel.logradouro, imovel.numero].filter(Boolean).join(", "),
+    [imovel.logradouro, imovel.numero, imovel.complemento].filter(Boolean).join(", "),
     imovel.bairro,
     imovel.cidade,
     imovel.uf,
@@ -168,7 +168,7 @@ function DetalhePage() {
   const isArchiving = imovel.removalState === "pending_archive";
 
   const hasLocationDetails =
-    imovel.cep || imovel.logradouro || imovel.numero || imovel.zona || imovel.regiao;
+    imovel.cep || imovel.logradouro || imovel.numero || imovel.complemento || imovel.zona || imovel.regiao;
 
   const hasAreas =
     imovel.areaTotal || imovel.areaUtil || imovel.areaConstruida || imovel.areaTerreno;
@@ -370,6 +370,7 @@ function DetalhePage() {
                 <Field label="CEP" value={imovel.cep} />
                 <Field label="Logradouro" value={imovel.logradouro} />
                 <Field label="Número" value={imovel.numero} />
+                <Field label="Complemento" value={imovel.complemento} />
                 <Field label="Bairro" value={imovel.bairro} />
                 <Field label="Cidade" value={imovel.cidade} />
                 <Field label="UF" value={imovel.uf} />
