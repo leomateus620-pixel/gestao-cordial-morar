@@ -122,9 +122,9 @@
   --app-sidebar-row-radius: 1rem;
   --app-sidebar-icon-size: 1.75rem;
   --app-sidebar-icon-radius: 0.625rem;
-  --app-sidebar-duotone-rest: 26%;
-  --app-sidebar-duotone-hover: 44%;
-  --app-sidebar-duotone-active: 58%;
+  --app-sidebar-duotone-rest: 34%;
+  --app-sidebar-duotone-hover: 50%;
+  --app-sidebar-duotone-active: 62%;
   --app-sidebar-row-gap: 0.375rem;
   --app-sidebar-section-gap: 0.875rem;
   --app-sidebar-scrollbar-width: 0.1875rem;
