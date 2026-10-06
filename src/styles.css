@@ -769,7 +769,7 @@
   transition: color var(--app-sidebar-motion-duration) ease-out;
 }
 
-.app-sidebar-nav-icon-fill svg {
+.app-sidebar-nav-icon .app-sidebar-nav-icon-fill {
   stroke: none;
   fill: currentColor;
 }
