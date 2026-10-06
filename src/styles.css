@@ -744,30 +744,38 @@
   height: var(--app-sidebar-icon-size);
   flex-shrink: 0;
   place-items: center;
+  border-radius: var(--app-sidebar-icon-radius);
   color: var(--app-sidebar-icon-foreground);
-  transition: color var(--app-sidebar-motion-duration) ease-out;
+  transition:
+    color var(--app-sidebar-motion-duration) ease-out,
+    background-color var(--app-sidebar-motion-duration) ease-out,
+    box-shadow var(--app-sidebar-motion-duration) ease-out;
 }
 
 .app-sidebar-nav-icon svg {
   stroke-width: 1.5;
 }
 
+@media (hover: hover) {
+  .app-sidebar-nav-row:not([aria-disabled="true"]):hover .app-sidebar-nav-icon {
+    color: var(--app-sidebar-primary-text);
+    background: color-mix(in oklab, var(--app-sidebar-card-accent, var(--app-sidebar-accent)) 12%, transparent);
+  }
+
+  .app-sidebar-nav-row[data-active="true"]:hover .app-sidebar-nav-icon {
+    color: var(--app-sidebar-card-accent, var(--app-sidebar-accent));
+    background: color-mix(in oklab, var(--app-sidebar-card-accent, var(--app-sidebar-accent)) 16%, transparent);
+  }
+}
+
 .app-sidebar-nav-row[data-active="true"] .app-sidebar-nav-icon {
-  color: var(--app-sidebar-accent);
+  color: var(--app-sidebar-card-accent, var(--app-sidebar-accent));
+  background: color-mix(in oklab, var(--app-sidebar-card-accent, var(--app-sidebar-accent)) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--app-sidebar-card-accent, var(--app-sidebar-accent)) 28%, transparent);
 }
 
 .app-sidebar-nav-row[data-active="true"] .app-sidebar-nav-icon svg {
   stroke-width: 2;
-}
-
-@media (hover: hover) {
-  .app-sidebar-nav-row:not([aria-disabled="true"]):hover .app-sidebar-nav-icon {
-    color: var(--app-sidebar-primary-text);
-  }
-
-  .app-sidebar-nav-row[data-active="true"]:hover .app-sidebar-nav-icon {
-    color: var(--app-sidebar-accent);
-  }
 }
 
 .app-sidebar-nav-copy {
