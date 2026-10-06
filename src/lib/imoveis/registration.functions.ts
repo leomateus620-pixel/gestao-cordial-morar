@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   createImovelCore,
   updateImovelCore,
+  assertAddressNumber,
   type CreateImovelInput,
 } from "@/lib/imoveis/imoveis.functions";
 import { enqueuePropertySyncCore } from "@/lib/imoveis/publish.functions";
