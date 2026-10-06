@@ -629,7 +629,7 @@
 
 .app-sidebar-nav-row::before {
   position: absolute;
-  inset-block: 0.5rem;
+  inset-block: 0.75rem;
   inset-inline-start: 0;
   width: 0.1875rem;
   border-radius: 0 9999px 9999px 0;
@@ -643,7 +643,6 @@
 .app-sidebar-nav-row[data-active="true"] {
   border-color: var(--app-sidebar-active-border);
   background: var(--app-sidebar-active-surface);
-  box-shadow: var(--app-sidebar-active-shadow);
   color: var(--app-sidebar-primary-text);
 }
 
@@ -689,31 +688,28 @@
   height: var(--app-sidebar-icon-size);
   flex-shrink: 0;
   place-items: center;
-  border: 1px solid var(--app-sidebar-icon-border);
-  border-radius: var(--app-sidebar-icon-radius);
-  background: var(--app-sidebar-icon-surface);
   color: var(--app-sidebar-icon-foreground);
-  transition:
-    background-color var(--app-sidebar-motion-duration) ease-out,
-    border-color var(--app-sidebar-motion-duration) ease-out,
-    color var(--app-sidebar-motion-duration) ease-out;
+  transition: color var(--app-sidebar-motion-duration) ease-out;
+}
+
+.app-sidebar-nav-icon svg {
+  stroke-width: 1.5;
 }
 
 .app-sidebar-nav-row[data-active="true"] .app-sidebar-nav-icon {
-  border-color: var(--app-sidebar-active-border);
-  background: var(--app-sidebar-elevated-surface);
   color: var(--app-sidebar-accent);
 }
 
+.app-sidebar-nav-row[data-active="true"] .app-sidebar-nav-icon svg {
+  stroke-width: 2;
+}
+
 @media (hover: hover) {
-  .app-sidebar-nav-row:hover .app-sidebar-nav-icon {
-    border-color: var(--app-sidebar-hover-border);
-    background: var(--app-sidebar-elevated-surface);
+  .app-sidebar-nav-row:not([aria-disabled="true"]):hover .app-sidebar-nav-icon {
     color: var(--app-sidebar-primary-text);
   }
 
   .app-sidebar-nav-row[data-active="true"]:hover .app-sidebar-nav-icon {
-    border-color: var(--app-sidebar-active-border);
     color: var(--app-sidebar-accent);
   }
 }
@@ -723,28 +719,20 @@
   flex: 1 1 auto;
 }
 
-.app-sidebar-nav-title,
-.app-sidebar-nav-description {
+.app-sidebar-nav-title {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.app-sidebar-nav-title {
   color: inherit;
-  font-size: 0.8125rem;
-  font-weight: 650;
+  font-size: 0.85rem;
+  font-weight: 600;
   letter-spacing: -0.004em;
-  line-height: 1rem;
+  line-height: 1.05rem;
 }
 
-.app-sidebar-nav-description {
-  margin-top: 0.125rem;
-  color: var(--app-sidebar-secondary-text);
-  font-size: 0.65rem;
-  font-weight: 500;
-  line-height: 0.75rem;
+.app-sidebar-nav-row[data-active="true"] .app-sidebar-nav-title {
+  font-weight: 700;
 }
 
 .app-sidebar-tooltip {
