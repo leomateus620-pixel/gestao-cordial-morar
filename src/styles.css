@@ -821,6 +821,58 @@
   line-height: 0.875rem;
 }
 
+.app-sidebar-active-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border: 1px solid var(--app-sidebar-active-border);
+  border-radius: var(--app-sidebar-row-radius);
+  background: var(--app-sidebar-active-surface);
+  box-shadow: var(--app-sidebar-active-shadow);
+  pointer-events: none;
+}
+
+.app-sidebar-active-pill[data-animated="false"] {
+  transition: none;
+}
+
+.app-sidebar-active-pill[data-animated="true"] {
+  transition:
+    transform var(--app-sidebar-pill-duration) var(--app-sidebar-motion-easing),
+    width var(--app-sidebar-pill-duration) var(--app-sidebar-motion-easing),
+    height var(--app-sidebar-pill-duration) var(--app-sidebar-motion-easing),
+    opacity 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar-active-pill[data-animated="true"] {
+    transition: none;
+  }
+}
+
+@keyframes app-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-page-enter {
+  animation: app-page-enter 300ms var(--app-sidebar-motion-easing) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-page-enter {
+    animation: none;
+  }
+}
+
 .app-shell-root[data-sidebar-ready="false"] .app-sidebar-shell,
 .app-shell-root[data-sidebar-ready="false"] .app-shell-content,
 .app-shell-root[data-sidebar-ready="false"] .app-sidebar-brand-copy {
@@ -836,6 +888,7 @@
 }
 
 .premium-sidebar-scroll {
+  position: relative;
   scrollbar-width: thin;
   scrollbar-color: var(--app-sidebar-scrollbar) transparent;
   scrollbar-gutter: stable;
