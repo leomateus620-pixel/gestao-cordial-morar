@@ -78,6 +78,8 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       ownedMorar: "skipped",
     };
 
+    // Número acima do limite dos sites nunca conclui o cadastro.
+    assertAddressNumber(data.values.numero);
     // 1) Salvar: rascunho existente é atualizado; senão, criado pela chave.
     let propertyId = data.propertyId ?? null;
     if (propertyId) {
