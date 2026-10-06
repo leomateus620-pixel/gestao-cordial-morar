@@ -662,6 +662,7 @@
 
 .app-sidebar-nav-row {
   position: relative;
+  z-index: 1;
   display: flex;
   width: 100%;
   min-height: var(--app-sidebar-row-height);
@@ -696,8 +697,8 @@
 }
 
 .app-sidebar-nav-row[data-active="true"] {
-  border-color: var(--app-sidebar-active-border);
-  background: var(--app-sidebar-active-surface);
+  border-color: transparent;
+  background: transparent;
   color: var(--app-sidebar-primary-text);
 }
 
@@ -713,8 +714,8 @@
   }
 
   .app-sidebar-nav-row[data-active="true"]:hover {
-    border-color: var(--app-sidebar-active-border);
-    background: var(--app-sidebar-active-surface);
+    border-color: transparent;
+    background: transparent;
   }
 }
 
