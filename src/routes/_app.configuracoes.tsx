@@ -54,6 +54,7 @@ function Page() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             to="/busca"
+            search={{ q: "" }}
             className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition hover:border-primary/35 hover:bg-primary/5"
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
