@@ -20,13 +20,13 @@ export function friendlyPublishError(
 
 /** Texto da próxima execução: horário passado não é exibido. */
 export function nextRunLabel(
-  job: { type?: string | null; nextRunAt: string | null } | null | undefined,
+  job: { action?: string | null; nextRunAt: string | null } | null | undefined,
   hasExternalId: boolean,
   now = Date.now(),
   fmt: (iso: string) => string = (iso) => new Date(iso).toLocaleString("pt-BR"),
 ): string | null {
   if (!job) return null;
-  if (job.type === "media_sync" && !hasExternalId) return "Fotos aguardando a criação do anúncio";
+  if (job.action === "media_sync" && !hasExternalId) return "Fotos aguardando a criação do anúncio";
   if (!job.nextRunAt) return null;
   if (new Date(job.nextRunAt).getTime() <= now) return null;
   return `Próxima execução: ${fmt(job.nextRunAt)}`;

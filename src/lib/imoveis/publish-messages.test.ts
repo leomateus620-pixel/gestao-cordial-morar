@@ -20,7 +20,7 @@ test("traduz erro da Imobi e o local", () => {
 
 test("próxima execução", () => {
   const now = Date.parse("2026-10-06T12:00:00Z");
-  assert.equal(nextRunLabel({ type: "media_sync", nextRunAt: "2026-10-06T10:00:00Z" }, false, now), "Fotos aguardando a criação do anúncio");
-  assert.equal(nextRunLabel({ type: "publish", nextRunAt: "2026-10-06T10:00:00Z" }, true, now), null);
-  assert.match(nextRunLabel({ type: "publish", nextRunAt: "2026-10-06T13:00:00Z" }, true, now, () => "x")!, /Próxima execução: x/);
+  assert.equal(nextRunLabel({ action: "media_sync", nextRunAt: "2026-10-06T10:00:00Z" }, false, now), "Fotos aguardando a criação do anúncio");
+  assert.equal(nextRunLabel({ action: "publish", nextRunAt: "2026-10-06T10:00:00Z" }, true, now), null);
+  assert.match(nextRunLabel({ action: "publish", nextRunAt: "2026-10-06T13:00:00Z" }, true, now, () => "x")!, /Próxima execução: x/);
 });

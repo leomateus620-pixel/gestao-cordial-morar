@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { CloudUpload, ExternalLink, Loader2 } from "lucide-react";
 import { useEnqueuePropertySync, usePropertySyncStatus } from "@/hooks/usePropertySync";
 import type { PublicationStatusView } from "@/lib/imoveis/publish.functions";
+import { Link } from "@tanstack/react-router";
+import { friendlyPublishError, nextRunLabel } from "@/lib/imoveis/publish-messages";
 
 const PROVIDERS = [
   { key: "cordial", label: "Cordial" },
@@ -69,12 +71,12 @@ function destinationDetails(row: PublicationStatusView) {
     row.cadastro.savedAt ? `Salvo no Gestão: ${fmt(row.cadastro.savedAt)}` : null,
     row.lastVerifiedAt ? `Última confirmação cadastral: ${fmt(row.lastVerifiedAt)}` : null,
     row.media.lastVerifiedAt ? `Última conferência das fotos: ${fmt(row.media.lastVerifiedAt)}` : null,
-    row.activeJob?.nextRunAt ? `Próxima execução: ${fmt(row.activeJob.nextRunAt)}` : null,
+    nextRunLabel(row.activeJob, Boolean(row.externalPropertyId)),
     row.rateLimitedUntil ? `Limite do site: aguardando até ${fmt(row.rateLimitedUntil)}` : null,
     row.media.expectedCount != null ? `Fotos confirmadas: ${row.media.syncedCount ?? 0} de ${row.media.expectedCount}` : null,
     row.cadastro.divergent.length ? `Campos não confirmados: ${row.cadastro.divergent.join(", ")}` : null,
     row.cadastro.unverifiable.length ? `Campos sem confirmação: ${row.cadastro.unverifiable.join(", ")}` : null,
-    row.lastErrorMessage || null,
+    friendlyPublishError(row.lastErrorMessage)?.text ?? null,
   ];
   if ((row.remote.matchCount ?? 0) > 1) {
     details.push(`Há ${row.remote.matchCount} anúncios com a mesma referência nesta conta. A escolha do anúncio exige decisão administrativa.`);
@@ -175,6 +177,12 @@ export function PropertyPublishPanel({
                     {!destinationDetails(row).length && <p>Aguardando a primeira confirmação deste destino.</p>}
                   </div>
                 </details>
+              )}
+              {row && friendlyPublishError(row.lastErrorMessage)?.editAddress && (
+                <Link to="/imoveis/$imovelId/editar" params={{ imovelId: propertyId }}
+                  className="mt-2 inline-flex rounded-full bg-destructive/10 px-3 py-1.5 text-[11px] font-semibold text-destructive">
+                  Corrigir número do endereço
+                </Link>
               )}
               {canPublish && row?.status === "published" && (
                 <button type="button" onClick={() => void run("unpublish", [provider.key])}
