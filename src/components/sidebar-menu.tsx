@@ -112,13 +112,12 @@ export const SidebarMenu = memo(function SidebarMenu({
                               className="app-sidebar-nav-row group"
                             >
                               <span className="app-sidebar-nav-icon" aria-hidden="true">
-                                <Icon className="size-[17px]" strokeWidth={2} />
+                                <Icon className="size-[18px]" strokeWidth={1.5} />
                               </span>
 
                               {!collapsed && (
                                 <span className="app-sidebar-nav-copy">
                                   <span className="app-sidebar-nav-title">{copy.label}</span>
-                                  <span className="app-sidebar-nav-description">{copy.desc}</span>
                                 </span>
                               )}
                             </Link>
