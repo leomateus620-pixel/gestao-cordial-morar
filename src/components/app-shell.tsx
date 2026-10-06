@@ -319,7 +319,9 @@ export function AppShell() {
 
         <main className="mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10">
           <NotificationTransientRegion />
-          <Outlet />
+          <div key={pathname} className="app-page-enter">
+            <Outlet />
+          </div>
         </main>
       </div>
 
