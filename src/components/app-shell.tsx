@@ -177,7 +177,13 @@ export function AppShell() {
         <SidebarMenu allowedModules={sessionModules} collapsed={sidebarCollapsed} />
 
         <div className="app-sidebar-footer">
-          {sidebarCollapsed ? "CI • MI" : "Cordial Imóveis • Morar Imóveis"}
+          {sidebarCollapsed ? (
+            "CI • MI"
+          ) : (
+            <>
+              Cordial Imóveis <span className="app-sidebar-footer-dot">•</span> Morar Imóveis
+            </>
+          )}
         </div>
       </aside>
 
@@ -238,7 +244,10 @@ export function AppShell() {
                     allowedModules={sessionModules}
                     onNavigate={handleMobileNavigation}
                   />
-                  <div className="app-sidebar-footer">Cordial Imóveis • Morar Imóveis</div>
+                  <div className="app-sidebar-footer">
+                    Cordial Imóveis <span className="app-sidebar-footer-dot">•</span> Morar
+                    Imóveis
+                  </div>
                 </SheetContent>
               </Sheet>
               {isCatalogRoute ? <SiteSyncPanel isAdmin={isAdmin} /> : null}
