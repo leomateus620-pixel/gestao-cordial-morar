@@ -241,7 +241,6 @@ export const moduleItems: ModuleItem[] = [
     desc: "Busca global com histórico",
     icon: Search,
     module: "busca",
-    sidebar: { section: "sistema", order: 5, desc: "Pesquisa em todos os módulos" },
   },
   {
     to: "/integracoes",
@@ -249,7 +248,6 @@ export const moduleItems: ModuleItem[] = [
     desc: "Conectores e sincronizações",
     icon: Cable,
     module: "integracoes",
-    sidebar: { section: "sistema", order: 10 },
   },
   {
     to: "/pesquisa-satisfacao",

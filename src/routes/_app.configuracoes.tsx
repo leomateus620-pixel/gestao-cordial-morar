@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useState } from "react";
-import { Building2, SlidersHorizontal, UsersRound } from "lucide-react";
+import { ArrowRight, Building2, Cable, Search, SlidersHorizontal, UsersRound } from "lucide-react";
 import { KpiCard } from "@/components/kpi-card";
 import { SectionHeader } from "@/components/section-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -18,7 +18,16 @@ import { useApp, useFiltered } from "@/store/app-store";
 const filters = ["Todos", "Equipe", "Comercial", "Financeiro", "Sistema"] as const;
 
 export const Route = createFileRoute("/_app/configuracoes")({
-  head: () => ({ meta: [{ title: "Configurações — Gestão Cordial" }] }),
+  head: () => ({
+    meta: [
+      { title: "Configurações — Gestão Cordial" },
+      { name: "description", content: "Preferências, busca global e integrações administrativas do Gestão Cordial." },
+      { property: "og:title", content: "Configurações — Gestão Cordial" },
+      { property: "og:description", content: "Preferências, busca global e integrações administrativas do Gestão Cordial." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: GuardedPage,
 });
 
@@ -40,6 +49,40 @@ function Page() {
 
   return (
     <>
+      <section className="mb-5">
+        <SectionHeader title="Ferramentas administrativas" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            to="/busca"
+            search={{ q: "" }}
+            className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition hover:border-primary/35 hover:bg-primary/5"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Search className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Busca global</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">Encontre registros em todo o sistema</span>
+            </span>
+            <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+          </Link>
+
+          <Link
+            to="/integracoes"
+            className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition hover:border-primary/35 hover:bg-primary/5"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Cable className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Integrações</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">Conectores, sincronizações e NFS-e</span>
+            </span>
+            <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+          </Link>
+        </div>
+      </section>
+
       <section className="mb-5 rounded-xl border bg-card p-5">
         <h2 className="font-semibold">Site público Cordial</h2>
         <p className="mt-1 text-sm text-muted-foreground">

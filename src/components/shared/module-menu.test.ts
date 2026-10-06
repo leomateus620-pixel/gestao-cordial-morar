@@ -32,8 +32,6 @@ test("derives a flat, ordered admin sidebar from the canonical module registry",
     "/pesquisa-satisfacao",
     "/marketing",
     "/documentos",
-    "/busca",
-    "/integracoes",
     "/configuracoes",
   ]);
 
@@ -67,8 +65,16 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
     "/",
     "/financeiro",
     "/relatorios",
-    "/integracoes",
   ]);
+});
+
+test("keeps search and integrations inside admin settings instead of the sidebar", () => {
+  const adminSidebar = sidebarPaths("admin_owner");
+  assert.equal(adminSidebar.includes("/busca"), false);
+  assert.equal(adminSidebar.includes("/integracoes"), false);
+  assert.equal(roleDefinitions.financeiro_admin.modules.includes("integracoes"), false);
+  assert.equal(roleDefinitions.admin_owner.modules.includes("busca"), true);
+  assert.equal(roleDefinitions.admin_owner.modules.includes("integracoes"), true);
 });
 
 test("fails closed without an authorized module list and never duplicates routes", () => {
