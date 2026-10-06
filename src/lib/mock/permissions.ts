@@ -187,15 +187,12 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "clientes",
       "financeiro",
       "relatorios",
-      "integracoes",
     ],
     permissions: [
       "clientes:read",
       "financeiro:read",
       "financeiro:write",
       "relatorios:read",
-      "integracoes:read",
-      "integracoes:manage",
     ],
   },
 };

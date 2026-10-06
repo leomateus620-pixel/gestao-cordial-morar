@@ -19,7 +19,16 @@ import { ProviderOpsPanel } from "@/components/integracoes/ProviderOpsPanel";
 const filters = ["Todas", "Conectada", "Atenção", "Disponível"] as const;
 
 export const Route = createFileRoute("/_app/integracoes")({
-  head: () => ({ meta: [{ title: "Integrações — Gestão Cordial" }] }),
+  head: () => ({
+    meta: [
+      { title: "Integrações — Gestão Cordial" },
+      { name: "description", content: "Conectores, sincronizações e serviços fiscais do Gestão Cordial." },
+      { property: "og:title", content: "Integrações — Gestão Cordial" },
+      { property: "og:description", content: "Conectores, sincronizações e serviços fiscais do Gestão Cordial." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: GuardedPage,
 });
 
