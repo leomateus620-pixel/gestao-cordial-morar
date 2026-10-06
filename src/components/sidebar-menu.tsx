@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useRef, type RefObject } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSidebarSections, type SidebarModuleItem } from "@/components/shared/module-menu";
 import type { AppModule } from "@/lib/mock/permissions";
@@ -51,6 +59,72 @@ function ActiveItemVisibility({ navRef }: { navRef: RefObject<HTMLElement | null
   return null;
 }
 
+type PillBox = { x: number; y: number; w: number; h: number };
+
+function ActivePill({
+  navRef,
+  collapsed,
+}: {
+  navRef: RefObject<HTMLElement | null>;
+  collapsed: boolean;
+}) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [box, setBox] = useState<PillBox | null>(null);
+  const [animated, setAnimated] = useState(false);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const nav = navRef.current;
+      const row = nav?.querySelector<HTMLElement>('[data-active="true"]');
+      if (!nav || !row) {
+        setBox(null);
+        return;
+      }
+
+      const navRect = nav.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      setBox({
+        x: rowRect.left - navRect.left + nav.scrollLeft,
+        y: rowRect.top - navRect.top + nav.scrollTop,
+        w: rowRect.width,
+        h: rowRect.height,
+      });
+    };
+
+    // Mede após a pintura e de novo quando a largura da sidebar termina de transitar.
+    const frame = window.requestAnimationFrame(measure);
+    const settle = window.setTimeout(measure, 260);
+    const observer = new ResizeObserver(() => measure());
+    if (navRef.current) observer.observe(navRef.current);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settle);
+      observer.disconnect();
+    };
+  }, [navRef, pathname, collapsed]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setAnimated(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  if (!box) return null;
+
+  return (
+    <span
+      aria-hidden="true"
+      className="app-sidebar-active-pill"
+      data-animated={animated ? "true" : "false"}
+      style={{
+        transform: `translate3d(${box.x}px, ${box.y}px, 0)`,
+        width: box.w,
+        height: box.h,
+      }}
+    />
+  );
+}
+
 export const SidebarMenu = memo(function SidebarMenu({
   allowedModules,
   className,
@@ -72,8 +146,9 @@ export const SidebarMenu = memo(function SidebarMenu({
         data-collapsed={collapsed ? "true" : "false"}
       >
         <ActiveItemVisibility navRef={navRef} />
+        <ActivePill navRef={navRef} collapsed={collapsed} />
         <div className="app-sidebar-sections">
-          {visibleSections.map((section, sectionIndex) => {
+          {visibleSections.map((section) => {
             const headingId = `sidebar-section-${section.id}`;
 
             return (
@@ -81,13 +156,11 @@ export const SidebarMenu = memo(function SidebarMenu({
                 key={section.id}
                 aria-labelledby={headingId}
                 data-navigation-section={section.id}
+                className="app-sidebar-card"
               >
-                {collapsed && sectionIndex > 0 && (
-                  <div className="app-sidebar-section-divider" aria-hidden="true" />
-                )}
                 <h2
                   id={headingId}
-                  className={cn("app-sidebar-section-label", collapsed && "sr-only")}
+                  className={cn("app-sidebar-card-label", collapsed && "sr-only")}
                 >
                   {section.label}
                 </h2>
