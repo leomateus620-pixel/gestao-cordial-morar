@@ -740,6 +740,7 @@
 
 .app-sidebar-nav-icon {
   display: grid;
+  position: relative;
   width: var(--app-sidebar-icon-size);
   height: var(--app-sidebar-icon-size);
   flex-shrink: 0;
@@ -752,8 +753,26 @@
     box-shadow var(--app-sidebar-motion-duration) ease-out;
 }
 
+/* Duotone: camada de preenchimento suave da cor do grupo atrás do traço */
+.app-sidebar-nav-icon-fill {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  color: color-mix(
+    in oklab,
+    var(--app-sidebar-card-accent, var(--app-sidebar-accent)) var(--app-sidebar-duotone-rest, 26%),
+    transparent
+  );
+  transition: color var(--app-sidebar-motion-duration) ease-out;
+}
+
+.app-sidebar-nav-icon-fill svg {
+  stroke: none;
+  fill: currentColor;
+}
+
 .app-sidebar-nav-icon svg {
-  stroke-width: 1.5;
+  stroke-width: 1.75;
 }
 
 @media (hover: hover) {
