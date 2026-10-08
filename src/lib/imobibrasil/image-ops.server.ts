@@ -52,7 +52,7 @@ export function detailImageTotal(payload: unknown): number | null {
   return Array.isArray(list) ? list.length : null;
 }
 
-export const SLOT_REFUSED_REASON = "limite_de_chamadas";
+export const SLOT_REFUSED_REASON = "limite_de_chamadas" as const;
 
 /** Recusa de vaga (limite 18/min) ou conta bloqueada: nada foi lido do site. */
 export function isSlotRefusal(error: unknown): boolean {
