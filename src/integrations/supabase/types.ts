@@ -5308,10 +5308,12 @@ export type Database = {
           last_synced_revision: number | null
           last_verified_at: string | null
           local_desired_hash: string | null
+          media_attention_reason: string | null
           media_dirty_at: string | null
           media_dirty_revision: number | null
           media_expected_count: number | null
           media_failed_count: number | null
+          media_no_progress_runs: number
           media_order_guarantee: string | null
           media_read_unreliable_streak: number
           media_rebuild_state: Json | null
@@ -5387,10 +5389,12 @@ export type Database = {
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_attention_reason?: string | null
           media_dirty_at?: string | null
           media_dirty_revision?: number | null
           media_expected_count?: number | null
           media_failed_count?: number | null
+          media_no_progress_runs?: number
           media_order_guarantee?: string | null
           media_read_unreliable_streak?: number
           media_rebuild_state?: Json | null
@@ -5466,10 +5470,12 @@ export type Database = {
           last_synced_revision?: number | null
           last_verified_at?: string | null
           local_desired_hash?: string | null
+          media_attention_reason?: string | null
           media_dirty_at?: string | null
           media_dirty_revision?: number | null
           media_expected_count?: number | null
           media_failed_count?: number | null
+          media_no_progress_runs?: number
           media_order_guarantee?: string | null
           media_read_unreliable_streak?: number
           media_rebuild_state?: Json | null
