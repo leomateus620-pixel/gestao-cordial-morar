@@ -1855,7 +1855,13 @@ export async function runSyncWorker(
       // de rodadas não pode empurrá-la para 1 h, senão fica "Atualizando" sem fim.
       const mediaInProgress = job.action === "media_sync" &&
         ["rebuilding", "partial", "pending", "syncing"].includes(String(outcomeStatus));
-      const nextDelay = remoteReadRecovery
+      const noProgressRuns = Number((outcome as { noProgressRuns?: number } | undefined)?.noProgressRuns ?? 0);
+      const { noProgressDelaySeconds, NO_PROGRESS_LIMIT } = await import("@/lib/imoveis/media-recovery-rules");
+      const stalled = job.action === "media_sync" &&
+        (outcomeStatus === "needs_attention" || noProgressRuns >= NO_PROGRESS_LIMIT);
+      const nextDelay = stalled
+        ? noProgressDelaySeconds(Math.max(noProgressRuns, NO_PROGRESS_LIMIT))
+        : remoteReadRecovery
         ? remoteReadDelaySeconds(remoteReadStreak)
         : quickMediaRecovery ? 120 : mediaInProgress ? 75 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
       const owned = job.action === "media_sync" && converged
@@ -2036,7 +2042,10 @@ export async function runSyncWorker(
       if (job.publication_intent_revision != null) {
         publicationUpdate = publicationUpdate.eq("publication_intent_revision", job.publication_intent_revision);
       }
-      const { error: publicationError } = await publicationUpdate;
+      // Fotos adiadas por falta de vaga no limite: nada mudou no site nem no
+      // anúncio; a publicação não é rebaixada para "pendente".
+      const mediaDeferred = job.action === "media_sync" && rateLimited;
+      const { error: publicationError } = mediaDeferred ? { error: null } : await publicationUpdate;
       if (publicationError) throw new Error(publicationError.message);
       await logAttempt(admin, job, {
         step: job.action,

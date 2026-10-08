@@ -50,6 +50,13 @@
       "when": 1791209596429,
       "tag": "0006_nfse_pdf_column_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791488000452,
+      "tag": "0007_media_no_progress_cap",
+      "breakpoints": true
     }
   ]
 }

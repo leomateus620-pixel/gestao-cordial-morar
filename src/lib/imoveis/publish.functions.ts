@@ -49,6 +49,8 @@ export type PublicationStatusView = {
     remoteCount: number | null;
     lastSyncedAt: string | null;
     lastVerifiedAt: string | null;
+    noProgressRuns: number;
+    attentionReason: string | null;
   };
   /** Cadastro por destino: revisão salva aqui x confirmada no site. */
   cadastro: {
@@ -223,6 +225,8 @@ export const getPropertySyncStatus = createServerFn({ method: "GET" })
         remoteCount: row.media_remote_count ?? null,
         lastSyncedAt: row.last_media_synced_at ?? null,
         lastVerifiedAt: row.last_media_verified_at ?? null,
+        noProgressRuns: Number(row.media_no_progress_runs ?? 0),
+        attentionReason: row.media_attention_reason ?? null,
       },
       cadastro: {
         localRevision: (prop as { revision?: number } | null)?.revision ?? null,

@@ -25,7 +25,7 @@ export type RemoteGallery = {
   /** Formato reconhecido e paginação percorrida até o fim? */
   reliable: boolean;
   /** Motivo quando não é confiável: usado para o estado "não sei". */
-  reason: "formato_desconhecido" | "identidade_incompleta" | "paginacao_incompleta" | "falha_consulta" | null;
+  reason: "formato_desconhecido" | "identidade_incompleta" | "paginacao_incompleta" | "falha_consulta" | "limite_de_chamadas" | null;
   items: RemoteImage[];
 };
 
@@ -50,6 +50,34 @@ export function detailImageTotal(payload: unknown): number | null {
   const root = payload as { resultSet?: { imagens?: unknown } } | null;
   const list = root?.resultSet?.imagens;
   return Array.isArray(list) ? list.length : null;
+}
+
+export const SLOT_REFUSED_REASON = "limite_de_chamadas" as const;
+
+/** Recusa de vaga (limite 18/min) ou conta bloqueada: nada foi lido do site. */
+export function isSlotRefusal(error: unknown): boolean {
+  const category = (error as { category?: unknown } | null)?.category;
+  return category === "rate_limit" || category === "config";
+}
+
+/**
+ * Leitura inicial da rodada de fotos: sem vaga, a rodada é adiada (erro de
+ * limite que não consome tentativa) em vez de virar "leitura não confiável".
+ */
+export async function fetchRemoteGalleryOrDefer(
+  provider: ImobiProvider,
+  externalId: string,
+  correlationId?: string,
+): Promise<RemoteGallery> {
+  const gallery = await fetchRemoteGallery(provider, externalId, correlationId);
+  if (!gallery.reliable && gallery.reason === SLOT_REFUSED_REASON) {
+    const { ImobiApiError } = await import("./errors");
+    throw new ImobiApiError({
+      message: "Limite de chamadas do site ocupado; conferência das fotos adiada.",
+      category: "rate_limit", retryAfterSeconds: 60,
+    });
+  }
+  return gallery;
 }
 
 export async function fetchRemoteGallery(
@@ -81,7 +109,9 @@ export async function fetchRemoteGallery(
         );
         payload = response.data;
       }
-    } catch {
+    } catch (error) {
+      // Vaga recusada pelo nosso próprio limitador não é leitura ruim do site.
+      if (isSlotRefusal(error)) return { reliable: false, reason: SLOT_REFUSED_REASON, items };
       return { reliable: false, reason: "falha_consulta", items };
     }
 
