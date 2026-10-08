@@ -21,8 +21,20 @@ import { imobiRequest } from "./client.server";
 import { toImobiError } from "./errors";
 import { boolToImageSimNao } from "./serializers";
 import { extractInsertedImageId } from "./image-parsers";
-import { deleteRemoteImage, fetchRemoteGallery, type RemoteGallery } from "./image-ops.server";
-import { rebuildRemoteOrderDurable } from "./media-rebuild.server";
+import { deleteRemoteImage, fetchRemoteGallery, fetchRemoteGalleryOrDefer, SLOT_REFUSED_REASON, type RemoteGallery } from "./image-ops.server";
+import { rebuildRemoteOrderDurable, validateRebuildSources } from "./media-rebuild.server";
+import { ImobiApiError } from "./errors";
+import {
+  attentionMessage,
+  classifyOrphanedRebuild,
+  hasMediaReadHeadroom,
+  isActiveRebuildCheckpoint,
+  isCleanRebuildRequest,
+  noProgressDecision,
+  planCleanRebuild,
+  rebuildStateFields,
+  resolveUnknownDeliveries,
+} from "@/lib/imoveis/media-recovery-rules";
 import type { ImobiProvider } from "./providers";
 import { canPublishPropertyImage } from "@/lib/imoveis/image-status";
 import { classifyImageDeliveryError, nextImageRetryAt } from "@/lib/imoveis/delivery";
@@ -89,7 +101,10 @@ export type MediaSyncResult = {
     | "remote_read_unreliable"
     | "pending_delete"
     | "rebuilding"
+    | "needs_attention"
     | "not_published";
+  /** Rodadas seguidas sem progresso (limite → needs_attention). */
+  noProgressRuns?: number;
   durationMs: number;
   order: Array<{ imageId: string; position: number; externalImageId?: string | null }>;
   errors: Array<{ imageId: string; message: string }>;
@@ -234,13 +249,27 @@ export async function deliverGallery(
 
   const { data: priorState, error: priorStateError } = await admin
     .from("property_provider_publications")
-    .select("media_rebuild_state")
+    .select("media_rebuild_state, media_synced_count, media_no_progress_runs")
     .eq("id", publicationId).single();
   if (priorStateError) throw new Error(priorStateError.message);
   const priorCheckpoint = priorState.media_rebuild_state as Record<string, unknown> | null;
-  const rebuildingFromCheckpoint = Boolean(priorCheckpoint &&
-    Array.isArray(priorCheckpoint.deleteRemoteIds) &&
-    Array.isArray(priorCheckpoint.reinsertImageIds));
+  let rebuildingFromCheckpoint = isActiveRebuildCheckpoint(priorCheckpoint);
+  const cleanRequested = isCleanRebuildRequest(priorCheckpoint);
+  const priorSynced = Number((priorState as { media_synced_count?: number | null }).media_synced_count ?? 0);
+  const priorNoProgress = Number((priorState as { media_no_progress_runs?: number | null }).media_no_progress_runs ?? 0);
+
+  // Sem folga no limite do site, a rodada nem começa: as leituras falhariam
+  // por falta de vaga e a galeria viraria "não confiável" à toa.
+  {
+    const [{ providerCallsLastMinute }] = await Promise.all([import("./rate-limit.server")]);
+    const used = await providerCallsLastMinute(admin, provider);
+    if (!hasMediaReadHeadroom(used)) {
+      throw new ImobiApiError({
+        message: "Limite de chamadas do site ocupado; envio das fotos adiado.",
+        category: "rate_limit", retryAfterSeconds: 60,
+      });
+    }
+  }
 
   let galleryRevision = params.galleryRevision ?? 0;
   if (!galleryRevision) {
@@ -274,7 +303,9 @@ export async function deliverGallery(
   const presentLinks = links.filter(
     (row) => row.desired_state !== "absent" && !row.deleted_at,
   ) as unknown as RemoteGalleryRow[];
-  const plan = planGalleryDelivery(publishable, presentLinks, now);
+  const plan = planGalleryDelivery(publishable, presentLinks, now, {
+    rebuildActive: rebuildingFromCheckpoint || cleanRequested,
+  });
 
   const errors: Array<{ imageId: string; message: string }> = [];
   const order: MediaSyncResult["order"] = [];
@@ -283,10 +314,67 @@ export async function deliverGallery(
   let deletedCount = 0;
   let rebuiltCount = 0;
   let unknownCount = plan.unknown.length;
+  const resetUnknown = () => { unknownCount = plan.unknown.length; };
   let coversSentThisRun = 0;
 
   /** Leitura COMPLETA da galeria (paginada) — nunca só a primeira página. */
-  let gallery: RemoteGallery = await fetchRemoteGallery(provider, externalId, correlationId);
+  let gallery: RemoteGallery = await fetchRemoteGalleryOrDefer(provider, externalId, correlationId);
+
+  // ------------------------------------------- reconstrução limpa (manual)
+  // Pedida só pelo administrador. Com leitura confiável vira um checkpoint
+  // durável comum; sem ela, nada é enviado e o pedido continua guardado.
+  let holdAll = false;
+  let attentionReason: string | null = null;
+  let abandonRequest = false;
+  if (cleanRequested) {
+    if (!gallery.reliable) {
+      holdAll = true;
+    } else {
+      const linkedCodes = new Map(links
+        .filter((row) => row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" && row.external_image_id)
+        .map((row) => [String(row.external_image_id), row.image_id]));
+      const cleanPlan = planCleanRebuild({
+        desiredImageIds: publishable.map((image) => image.id),
+        remote: gallery.items.map((item) => ({
+          codigoImagem: item.codigoImagem,
+          imageId: item.codigoImagem ? linkedCodes.get(item.codigoImagem) ?? null : null,
+          destaque: item.destaque,
+        })),
+      });
+      const invalidSource = cleanPlan.feasible
+        ? await validateRebuildSources(admin, cleanPlan.reinsertImageIds, byId as never)
+        : null;
+      if (!cleanPlan.feasible || invalidSource) {
+        holdAll = true;
+        abandonRequest = true;
+        attentionReason = cleanPlan.feasible ? `arquivo: ${invalidSource}` : cleanPlan.reason;
+      } else {
+        await progress();
+        const { data: owned, error: cpError } = await admin.rpc("property_publication_update_if_owned" as never, {
+          _job_id: params.jobId, _lease_token: params.leaseToken, _publication_id: publicationId,
+          _fields: { media_rebuild_state: {
+            revision: galleryRevision, phase: "deleting",
+            deleteRemoteIds: cleanPlan.deleteRemoteIds, reinsertImageIds: cleanPlan.reinsertImageIds,
+            deleteIndex: 0, insertIndex: 0, keptPrefix: cleanPlan.keptPrefix, clean: true,
+          } },
+        } as never);
+        if (cpError || owned !== true) throw new Error(`media_checkpoint_persist_failed: ${cpError?.message ?? "lease lost"}`);
+        const reinsert = new Set(cleanPlan.reinsertImageIds);
+        for (const row of links) {
+          if (!reinsert.has(row.image_id) || row.desired_state === "absent" || row.deleted_at) continue;
+          await persistLink(admin, params, {
+            image_id: row.image_id, publication_id: publicationId, provider,
+            desired_state: "present", status: "pending", external_image_id: null, remote_url: null,
+            is_cover: false, synced_position: null, last_op: "rebuild_delete", last_op_state: "clean_rebuild_reset",
+            error_class: null, last_error_message: null, attempts: 0, next_retry_at: null,
+          });
+        }
+        rebuildingFromCheckpoint = true;
+        plan.unknown = [];
+        plan.toSend = [];
+      }
+    }
+  }
 
   // Envio incerto com UMA foto sem dono no site (leitura completa): é a foto
   // enviada. Resolve sem reenviar; com 0 ou 2+ candidatas continua incerto.
@@ -332,6 +420,31 @@ export async function deliverGallery(
         const local = publishable.find((image) => image.id === imageId);
         if (local) plan.toSend.push(local);
       }
+    }
+  }
+
+  resetUnknown();
+  // Fotos órfãs de uma reconstrução perdida (rebuild_delete + pending, sem
+  // código): voltam ao envio comum, na ordem do Gestão, SOMENTE se a galeria
+  // real foi lida com confiança e nenhuma foto do site está sem vínculo.
+  if (plan.orphanedRebuild.length && !holdAll) {
+    const linkedCodes = new Set(links
+      .filter((row) => row.desired_state !== "absent" && !row.deleted_at && row.external_image_id)
+      .map((row) => String(row.external_image_id)));
+    const decision = classifyOrphanedRebuild({
+      orphanImageIds: plan.orphanedRebuild,
+      galleryReliable: gallery.reliable,
+      remoteCodes: gallery.items.map((item) => item.codigoImagem),
+      linkedCodes,
+    });
+    if (decision.action === "send") {
+      const ids = new Set(decision.imageIds);
+      plan.toSend = sortGallery([...plan.toSend, ...publishable.filter((image) => ids.has(image.id))]);
+    } else if (decision.reason === "fotos_sem_vinculo_no_site") {
+      attentionReason = "fotos_sem_vinculo_no_site";
+      holdAll = true;
+    } else {
+      holdAll = true;
     }
   }
 
@@ -406,7 +519,7 @@ export async function deliverGallery(
     (positionOf.get(row.image_id) ?? Infinity) < lastPending);
   const reordered: typeof plan.toSend = [];
   let reorderBlocked = false;
-  if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0) {
+  if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0 && !holdAll) {
     if (!gallery.reliable) reorderBlocked = true;
     for (const row of reorderBlocked ? [] : displaced) {
       if (outOfBudget()) { reorderBlocked = true; break; }
@@ -432,7 +545,7 @@ export async function deliverGallery(
   const waitingRetry = links.some((row) =>
     row.desired_state !== "absent" && !row.deleted_at && row.status === "error" &&
     row.next_retry_at && new Date(String(row.next_retry_at)).getTime() > nowMs);
-  const sendQueue = reorderBlocked || waitingRetry ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
+  const sendQueue = holdAll || reorderBlocked || waitingRetry ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
@@ -652,12 +765,16 @@ export async function deliverGallery(
   const missingLinks = publishable.length - (beforeRebuildLinks ?? []).filter(
     (row) => desiredIds.has(row.image_id as string) && row.status === "synced",
   ).length;
-  const rebuild = unknownCount > 0 && !rebuildingFromCheckpoint
-    ? { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown",
-        checkpoint: null, gallery }
+  // Rodadas que pulam a reconstrução NÃO conhecem o checkpoint: `undefined`
+  // preserva o que está gravado (nunca apaga um ponto de retomada).
+  const skipped = (reason: string) => ({ deleted: 0, reinserted: 0, pending: true, reason,
+    checkpoint: undefined, outcome: "paused" as const, gallery });
+  const rebuild = holdAll
+    ? skipped(attentionReason ?? "aguardando_leitura_confiavel")
+    : unknownCount > 0 && !rebuildingFromCheckpoint
+    ? skipped("delivery_unknown")
     : (stillMissing > 0 || missingLinks > 0) && !rebuildingFromCheckpoint
-    ? { deleted: 0, reinserted: 0, pending: true, reason: "envio_incompleto",
-        checkpoint: null, gallery }
+    ? skipped("envio_incompleto")
     : await rebuildRemoteOrderDurable(admin, {
     propertyId,
     provider,
@@ -752,14 +869,15 @@ export async function deliverGallery(
     !extraRemote &&
     exactMatch;
 
-  const status: MediaSyncResult["status"] = blockedImage
+  const slotRefused = !gallery.reliable && gallery.reason === SLOT_REFUSED_REASON;
+  const baseStatus: MediaSyncResult["status"] = blockedImage
     ? "blocked_image"
     : unready.length
       ? "waiting_watermark"
     : pendingDeleteCount > 0
       ? "pending_delete"
       : !gallery.reliable
-        ? "remote_read_unreliable"
+        ? (slotRefused ? "partial" : "remote_read_unreliable")
         : multipleCovers
           ? "remote_multiple_covers"
           : unknownCount > 0
@@ -771,6 +889,17 @@ export async function deliverGallery(
                 : extraRemote
                   ? "order_drift"
                   : "partial";
+
+  const terminal = ["synced", "blocked_image", "waiting_watermark"].includes(baseStatus);
+  const progressed = syncedTotal > priorSynced || sentCount > 0 || deletedCount > 0 || rebuiltCount > 0;
+  const stall = noProgressDecision({ priorRuns: priorNoProgress, progressed, terminal });
+  if (!attentionReason && stall.needsAttention) {
+    attentionReason = unknownCount > 0 ? "delivery_unknown"
+      : !gallery.reliable ? "leitura_inconclusiva"
+      : extraRemote ? "fotos_sem_vinculo_no_site" : "sem_progresso";
+  }
+  const status: MediaSyncResult["status"] =
+    attentionReason && !terminal ? "needs_attention" : baseStatus;
 
   const orderGuarantee = !gallery.reliable
     ? gallery.reason ?? "leitura_inconclusiva"
@@ -809,7 +938,9 @@ export async function deliverGallery(
       media_remote_count: remoteCount,
       media_status: status,
       media_order_guarantee: orderGuarantee,
-      media_rebuild_state: rebuild.checkpoint,
+      ...(abandonRequest ? { media_rebuild_state: null } : rebuildStateFields(rebuild.checkpoint)),
+      media_no_progress_runs: stall.runs,
+      media_attention_reason: status === "needs_attention" ? attentionMessage(attentionReason) : null,
       last_media_synced_at: new Date().toISOString(),
       ...(remoteCount !== null ? { last_media_verified_at: new Date().toISOString() } : {}),
       },
@@ -841,6 +972,7 @@ export async function deliverGallery(
     orderDrift: plan.orderDrift,
     coverDrift: plan.coverDrift,
     status,
+    noProgressRuns: stall.runs,
     durationMs: Date.now() - started,
     order: publishable.map((image) => ({ imageId: image.id, position: image.position })),
     errors,
@@ -897,9 +1029,9 @@ async function reconcileLinkCodes(
   // dela — a entrega passa a confirmada sem reenvio nenhum.
   const { data: after } = await admin
     .from("property_image_provider_publications")
-    .select("image_id, external_image_id, status, desired_state")
+    .select("image_id, external_image_id, status, desired_state, verification")
     .eq("publication_id", publicationId);
-  const afterRows = (after ?? []) as typeof rows;
+  const afterRows = (after ?? []) as Array<(typeof rows)[number] & { verification?: Record<string, unknown> | null }>;
   const takenCodes = new Set(
     afterRows
       .filter((row) => row.external_image_id && row.desired_state !== "absent")
@@ -936,6 +1068,29 @@ async function reconcileLinkCodes(
       (row): row is (typeof rows)[number] =>
         Boolean(row) && row!.status === "delivery_unknown" && !row!.external_image_id,
     );
+  // Várias entregas incertas: só com evidência consistente (hora da intenção,
+  // códigos antes de cada envio e códigos crescentes do site).
+  if (unknowns.length > 1) {
+    const matches = resolveUnknownDeliveries({
+      unknowns: unknowns.map((row) => {
+        const v = (row as { verification?: Record<string, unknown> | null }).verification ?? null;
+        return {
+          imageId: row.image_id,
+          at: typeof v?.["at"] === "string" ? (v["at"] as string) : null,
+          beforeCodes: Array.isArray(v?.["before_codes"]) ? (v!["before_codes"] as unknown[]).map(String) : null,
+        };
+      }),
+      orphanCodes: orphans,
+    });
+    for (const match of matches ?? []) {
+      await persistLink(admin, ownership, {
+        image_id: match.imageId, publication_id: publicationId, status: "synced",
+        external_image_id: match.code, last_op: "insert", last_op_state: "confirmed_by_orphan_code",
+        error_class: null, last_error_message: null,
+        verification: { matched_by: "ordem_de_insercao_e_codigos_anteriores", ambiguous: false, reason: null },
+      });
+    }
+  }
   if (orphans.length === 1 && unknowns.length === 1) {
     await persistLink(admin, ownership, {
       image_id: unknowns[0]!.image_id,
