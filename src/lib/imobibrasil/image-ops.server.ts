@@ -25,7 +25,7 @@ export type RemoteGallery = {
   /** Formato reconhecido e paginação percorrida até o fim? */
   reliable: boolean;
   /** Motivo quando não é confiável: usado para o estado "não sei". */
-  reason: "formato_desconhecido" | "identidade_incompleta" | "paginacao_incompleta" | "falha_consulta" | null;
+  reason: "formato_desconhecido" | "identidade_incompleta" | "paginacao_incompleta" | "falha_consulta" | "limite_de_chamadas" | null;
   items: RemoteImage[];
 };
 
