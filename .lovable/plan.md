@@ -1,61 +1,84 @@
-# Códigos Cordial/Morar únicos — bloqueio no servidor, no banco e no envio
+# Fotos travadas nos sites: destravar sem duplicar
 
-## Objetivo
-Dois imóveis nunca podem ficar com o mesmo código Cordial ou Morar. O caso 1405/3404 de hoje não pode se repetir, e se um código repetido escapar, o envio para com uma mensagem clara, sem entrar em repetição.
+## O que foi confirmado no código
+- `media-rebuild.server.ts`: a reconstrução devolve `checkpoint: null` quando a leitura do site não é confiável (linha 144) e quando falta um arquivo (`arquivo_indisponivel`, linhas 199 e 201).
+- `media-sync.server.ts` linha 812: esse `null` é gravado em `media_rebuild_state`. Isso apaga um checkpoint que estava em andamento.
+- Na rodada seguinte:
+  - `gallery-plan.ts` linha 92 coloca as fotos `rebuild_delete` + `pending` na lista de espera, porque "só a reconstrução pode reinseri-las".
+  - A reconstrução não roda porque `stillMissing > 0` (linhas 648–658).
+  - Resultado: ninguém reenvia essas fotos.
+- `media-sync.server.ts` linhas 408–435: se a leitura não é confiável e há fotos "deslocadas", `reorderBlocked` esvazia a fila de envio. É por isso que nada sobe no 1377.
+- `image-ops.server.ts` linha 84: qualquer erro na leitura vira `falha_consulta`, inclusive a recusa do nosso próprio limitador de requisições.
+- Ainda não confirmado: os itens 4 (tentativas congeladas) e 5 (adoção de foto só com 1 órfã + 1 desconhecida). Eles serão conferidos no primeiro passo da implementação, antes de qualquer mudança.
 
-## 1) Bloqueio ao salvar (criar, editar, concluir)
-- Nova função de servidor `assertProviderCodesFree(admin, { propertyId, codigoCordial, codigoMorar })` em `src/lib/imoveis/code-guard.server.ts`. Ela compara sem diferenciar maiúsculas e minúsculas e ignora espaços nas pontas. A busca considera só imóveis não arquivados (`archived_at is null`) e exclui o próprio imóvel.
-- Se o código estiver ocupado, ela recusa com a mensagem: "O código Cordial 1405 já é usado pelo imóvel <código do outro site / tipo, bairro> (id curto). Escolha outro código."
-- A função é chamada em `createImovelCore` e `updateImovelCore` (`imoveis.functions.ts`). Por consequência, `finalizePropertyRegistration` também fica coberta. Na edição, ela só roda quando o código muda.
-- Código digitado à mão (sem reserva): depois da conferência, o sistema grava em `provider_code_reservations` uma linha `committed` para esse provedor e código, ligada ao imóvel. Se outro imóvel já tiver uma reserva ativa ou confirmada desse código, a gravação falha com a mesma mensagem. Isso acontece dentro da mesma chamada de salvar, antes de confirmar.
+## (a) Nunca apagar um checkpoint em andamento
+- A reconstrução passa a devolver um resultado explícito:
+  - `completed`: grava `null`;
+  - `abandoned`: grava `null` e registra o motivo;
+  - `paused`: mantém o checkpoint anterior.
+- Em `media-sync.server.ts`, a gravação de `media_rebuild_state` só troca um valor não nulo por `null` quando o resultado é `completed` ou `abandoned`. Em qualquer outro caso, o checkpoint anterior (`priorCheckpoint`) é preservado.
+- Leitura não confiável e arquivo indisponível passam a ser `paused`.
 
-## 2) `commitPropertyCodes` e o passo de códigos do `finalize`
-- Cada reserva só é confirmada se as três condições forem verdadeiras:
-  - foi feita pelo próprio usuário (`reserved_by = userId`);
-  - o código dela é igual ao código que está sendo gravado no imóvel para aquele provedor;
-  - o código não é usado por outro imóvel.
-- Uma reserva vencida (`expires_at` passado) pode ser confirmada se cumprir as três condições. Se alguma falhar, a reserva não é confirmada: vira `released`, ou `taken_remote` quando o código for de outro imóvel.
-- Quando a reserva é recusada, o sistema reserva um código novo (`reserve_provider_code` com conferência no site) e grava esse código no imóvel. A resposta avisa o usuário: "O código 1405 já estava em uso; o imóvel recebeu 1406."
-- A lógica fica num único lugar, `reconcileReservations` em `code-guard.server.ts`, usado pelas duas funções. Isso evita a cópia atual do passo 2 dentro de `registration.functions.ts`.
+## (b) Recuperar fotos órfãs (`rebuild_delete` + `pending` sem checkpoint)
+- Vale para fotos com `last_op = rebuild_delete`, `status = pending` e publicação com `media_rebuild_state` nulo.
+- Uma leitura confiável da galeria é obrigatória. Sem ela, nada é enviado.
+- Para cada foto órfã:
+  - se o código remoto dela (`external_image_id`) ainda aparece no site, a foto é marcada como `synced`, sem reenvio;
+  - se não aparece, `last_op` passa para `recover_send` e a foto entra na fila normal de envio, na ordem do Gestão.
+- Isso fica num ajudante puro em `gallery-plan.ts` (`classifyOrphanedRebuild`). O `planGalleryDelivery` deixa de prender essas fotos quando não existe checkpoint.
 
-## 3) Banco: índice único parcial
-- Primeiro, uma consulta só de leitura (SELECT) procura códigos duplicados entre imóveis não arquivados, separadamente para Cordial e Morar:
-  `select lower(trim(codigo_cordial)), array_agg(id) from properties where codigo_cordial is not null and trim(codigo_cordial) <> '' and archived_at is null group by 1 having count(*) > 1` (e o mesmo para Morar).
-- **Com zero duplicados:** uma migração cria os índices únicos parciais `properties_codigo_cordial_unique_active` e `properties_codigo_morar_unique_active` sobre `lower(trim(codigo))`, com `where codigo is not null and trim(codigo) <> '' and archived_at is null`. A migração não apaga nem altera nada.
-- **Se aparecer algum duplicado:** a migração não roda. Eu mostro a lista com os ids e espero você decidir.
-- O erro de chave duplicada (23505 nesses índices) é traduzido para a mesma mensagem clara do item 1. Isso cobre o caso de dois salvamentos ao mesmo tempo.
-- Ponto a observar: reativar um imóvel arquivado (`property_unarchive`) passa a falhar se o código dele estiver em uso. Esse é o comportamento desejado, e a mensagem será clara.
+## (c) Separar falta de vaga de falha real de leitura
+- `acquireProviderSlot` e o `imobiRequest` passam a lançar `ProviderSlotUnavailable` quando não há vaga, quando o limite de requisições foi atingido ou quando o controle de vagas está fora do ar.
+- `fetchRemoteGallery` deixa esse erro passar sem convertê-lo em `falha_consulta`.
+- No worker de fotos, esse erro reagenda o job conforme o `retryAfterSeconds`, sem gastar tentativa, sem mudar o estado da foto e sem marcar `remote_read_unreliable`.
+- Antes de começar uma rodada de fotos, o worker reserva vagas para as leituras previstas: no mínimo 2 (ler antes e conferir depois). Se não conseguir, adia o job inteiro.
 
-## 4) Envio (worker de sincronização)
-- Em `sync.server.ts`, nos pontos em que a consulta por referência encontra um único anúncio (`lookup.kind === "unique"`, ~linhas 855, 1075, 1444 e 1657):
-  - Antes de gravar `external_property_id`, o worker confere se outra publicação do mesmo provedor já está ligada a esse id remoto e pertence a **outro** imóvel.
-  - Se estiver: a publicação fica com `status = error`, `last_error_category = business` e a mensagem "Código duplicado com o imóvel X (anúncio Y). Envio bloqueado; nenhum anúncio foi alterado." O worker não grava o id, não faz nenhuma chamada de alteração ao site, libera a trava de criação e lança erro de negócio, que não volta para a fila.
-- A conferência fica num ajudante puro e testável, `classifyRemoteOwnership`. A consulta por referência, `awaiting_create_reconcile`, as 3 conferências e a classificação do HTTP 400 continuam como estão.
+## (d) Várias fotos com entrega desconhecida e fotos sobrando no site
+- **Resolução segura:** com leitura confiável, cada foto desconhecida é casada com uma foto do site pela evidência gravada: os códigos `before_codes` e a ordem de inserção. As fotos novas do site, que não estavam em `before_codes`, são atribuídas às desconhecidas na ordem de envio.
+  - O casamento só é aceito se a quantidade de fotos novas for exatamente igual à de desconhecidas.
+  - Em qualquer outro caso, nada é adotado.
+- **Reconstrução limpa protegida** (só pela ação do item f, nunca automática):
+  - lê a galeria com segurança;
+  - apaga somente as fotos do site que não têm vínculo com o Gestão ou que estão duplicadas;
+  - reenvia na ordem do Gestão, com a primeira foto como capa;
+  - usa o checkpoint durável já existente.
+- Isso cobre as fotos sobrando no 1353, no 1373 e no 1308.
 
-## 5) Formulário (PropertyForm)
-- Quando o código é digitado à mão, o sistema confere em tempo real, com espera de 400 ms, usando a nova função de servidor só de leitura `checkProviderCodeAvailability({ provider, code, propertyId })`. Ela devolve livre, ou ocupado com o nome e o link do outro imóvel.
-- Se o código estiver ocupado, aparece o aviso em vermelho "Já usado por …" e o botão de salvar/avançar fica bloqueado. O servidor continua sendo a garantia final.
-- Uma reserva que falhou não mantém mais um número digitado como se estivesse reservado: o status passa a "manual", e esse código passa pela mesma conferência.
+## (e) Limite de rodadas sem progresso
+- Progresso = aumento de fotos `synced` ou avanço do checkpoint.
+- Depois de 5 rodadas seguidas sem progresso, a publicação recebe `media_status = needs_attention` e uma mensagem clara no card da publicação, por exemplo: "Fotos paradas: 4 de 13 no site. Use Reenviar fotos."
+- A espera entre tentativas passa a crescer: 2 → 10 → 30 → 120 min e depois 6 h.
+- **Migração mínima necessária**, só aditiva: duas colunas nulas em `property_provider_publications`:
+  - `media_no_progress_runs int default 0`;
+  - `media_attention_reason text`.
+- Não há alteração de dados.
 
-## 6) Testes (node:test)
-- `code-guard.test.ts`:
-  - código livre, código ocupado por outro imóvel, código do próprio imóvel, imóvel arquivado ignorado;
-  - maiúsculas/minúsculas e espaços;
-  - reserva de outro usuário, reserva com código diferente, reserva vencida mas válida, reserva com código já em uso que recebe um código novo;
-  - código manual gerando a linha confirmada.
-- `remote-ownership.test.ts`: id remoto livre, id ligado ao mesmo imóvel (segue), id ligado a outro imóvel (bloqueia, sem alteração remota).
-- Tradução do erro 23505 para a mensagem clara.
-- Teste da lógica do aviso "já usado por…" no formulário.
-- Rodar a suíte completa e o typecheck.
+## (f) Ação "Reenviar fotos" por imóvel e site
+- Botão no `SiteSyncPanel`, só para administrador.
+- Ele chama a função de servidor `recoverPropertyMedia({ propertyId, provider, mode })`. `mode` pode ser:
+  - `resume`: aplica (b) e (d) resolução segura;
+  - `clean_rebuild`: aplica (d) reconstrução limpa.
+- A função confere o papel de administrador no servidor, zera o contador sem progresso e enfileira um único job `media_sync` com prioridade. Não usa SQL solto.
+- A tela mostra o resultado: quantas fotos estão no site e no Gestão, e qual é a capa.
+- A recuperação dos imóveis listados é feita um por vez, só com a sua autorização.
+
+## Testes
+- Checkpoint não é apagado quando a leitura não é confiável nem quando falta um arquivo.
+- Fotos órfãs `rebuild_delete` são recuperadas na ordem do Gestão, sem duplicar, e uma foto cujo código ainda está no site não é reenviada.
+- Recusa de vaga ou limite de requisições não marca leitura não confiável e reagenda o job sem gastar tentativa.
+- Várias fotos desconhecidas: casamento exato é adotado; contagem divergente não adota nada.
+- A reconstrução limpa apaga só as fotos sem vínculo ou duplicadas, e a capa é a primeira foto do Gestão.
+- O limite sem progresso leva a `needs_attention` com espera crescente.
+- A ação "Reenviar fotos" é recusada para quem não é administrador.
+- Suíte completa e typecheck.
 
 ## Arquivos
-- novos: `src/lib/imoveis/code-guard.server.ts`, `code-guard.ts` (regras puras), `code-guard.test.ts`, `src/lib/imobibrasil/remote-ownership.ts` + teste
-- alterados: `imoveis.functions.ts`, `codes.functions.ts`, `registration.functions.ts`, `sync.server.ts`, `PropertyForm.tsx`, `ProviderCodeFields.tsx`, `usePropertyCode.ts`
-- migração: só os 2 índices únicos parciais, e só depois da consulta sem duplicados
+- alterados: `media-sync.server.ts`, `media-rebuild.server.ts`, `image-ops.server.ts`, `rate-limit.server.ts`, `client.server.ts`, `gallery-plan.ts`, `image-retry.server.ts`, `SiteSyncPanel.tsx`
+- novos: `media-recovery.functions.ts`, `delivery-unknown-resolve.ts` + testes
 
-## Restrições confirmadas
-- Nada é publicado e nenhum envio é enfileirado.
+## Restrições
+- Nada é publicado e nenhuma recuperação é disparada sem a sua autorização.
 - NFS-e e fiscal de aluguel não são tocados.
 - A sincronização Imobi não é pausada.
-- Nenhuma alteração de dados: nenhum UPDATE ou DELETE manual. A migração só cria índices, e só com zero duplicados.
-- Os imóveis aed8a310 (1406/3405) e 8c6a2cdc ficam como estão.
+- Nenhum dado é alterado.
+- Única migração: as duas colunas aditivas do item (e).
