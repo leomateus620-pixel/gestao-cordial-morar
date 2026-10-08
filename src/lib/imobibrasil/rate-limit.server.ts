@@ -69,3 +69,17 @@ export async function recordProviderRateLimit(
   });
   if (error) throw new Error(error.message);
 }
+
+/** Chamadas já usadas na janela de 1 min (só leitura). Falha = sem folga. */
+export async function providerCallsLastMinute(admin: Admin, provider: string): Promise<number> {
+  try {
+    const since = new Date(Date.now() - WINDOW_SECONDS * 1000).toISOString();
+    const { count, error } = await admin.from("provider_rate_events")
+      .select("id", { count: "exact", head: true })
+      .eq("provider", provider).gte("created_at", since);
+    if (error) return LIMIT;
+    return Number(count ?? 0);
+  } catch {
+    return LIMIT;
+  }
+}
