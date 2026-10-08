@@ -59,7 +59,13 @@ type Result = {
   reinserted: number;
   pending: boolean;
   reason: string | null;
-  checkpoint: Checkpoint | Record<string, unknown> | null;
+  /**
+   * Estado a gravar. `undefined` = esta rodada não tem conhecimento confiável
+   * do checkpoint (leitura não confiável): o valor gravado é preservado.
+   */
+  checkpoint: Checkpoint | Record<string, unknown> | null | undefined;
+  /** completed = terminou; abandoned = descartado de propósito; paused = retoma depois. */
+  outcome: "completed" | "abandoned" | "paused";
   gallery: RemoteGallery | null;
 };
 
@@ -95,6 +101,18 @@ async function persistLink(admin: Admin, params: Params, row: Record<string, unk
   } as never);
   if (error || data !== true)
     throw new Error(`media_link_persist_failed: ${error?.message ?? "lease lost"}`);
+}
+
+/** Confere TODOS os arquivos antes de qualquer exclusão remota. */
+export async function validateRebuildSources(admin: Admin, imageIds: readonly string[], byId: Map<string, Image>): Promise<string | null> {
+  for (const imageId of imageIds) {
+    const image = byId.get(imageId);
+    if (!image) return "arquivo_indisponivel";
+    try { await source(admin, image); } catch (error) {
+      return error instanceof Error ? error.message : "arquivo_indisponivel";
+    }
+  }
+  return null;
 }
 
 async function source(admin: Admin, image: Image): Promise<{ bytes: ArrayBuffer; mime: string; fileName: string }> {
@@ -141,7 +159,8 @@ async function confirmInsert(admin: Admin, params: Params, checkpoint: Checkpoin
 /** Each external effect has a committed intent before the call. A lost response never becomes a blind retry. */
 export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): Promise<Result> {
   let gallery = params.gallery;
-  if (!gallery.reliable) return { deleted: 0, reinserted: 0, pending: true, reason: gallery.reason, checkpoint: null, gallery };
+  // Sem leitura confiável nada é decidido: o checkpoint em andamento fica intacto.
+  if (!gallery.reliable) return { deleted: 0, reinserted: 0, pending: true, reason: gallery.reason, checkpoint: undefined, outcome: "paused", gallery };
 
   const { data: publication, error: publicationError } = await admin.from("property_provider_publications")
     .select("media_rebuild_state").eq("id", params.publicationId).single();
@@ -170,7 +189,7 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
         last_error_message: "Envio sem código de imagem confirmado; requer evidência do provedor.",
         next_retry_at: null,
       });
-      return { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown", checkpoint, gallery };
+      return { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown", checkpoint, outcome: "paused", gallery };
     }
   }
 
@@ -188,17 +207,17 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
     const plan = planGalleryRebuild({
       desiredImageIds: params.desiredImageIds, remote, rebuildFromImageId: desiredDrift,
     });
-    if (!plan.needed) return { deleted: 0, reinserted: 0, pending: false, reason: null, checkpoint: null, gallery };
+    if (!plan.needed) return { deleted: 0, reinserted: 0, pending: false, reason: null, checkpoint: null, outcome: "completed", gallery };
     if (!plan.feasible) return {
       deleted: 0, reinserted: 0, pending: true, reason: plan.reason,
-      checkpoint: { state: "blocked", reason: plan.reason }, gallery,
+      checkpoint: { state: "blocked", reason: plan.reason }, outcome: "abandoned", gallery,
     };
     // Validate ALL originals/derivatives before deleting the first remote photo.
     for (const imageId of plan.reinsertImageIds) {
       const image = params.byId.get(imageId);
-      if (!image) return { deleted: 0, reinserted: 0, pending: true, reason: "arquivo_indisponivel", checkpoint: null, gallery };
+      if (!image) return { deleted: 0, reinserted: 0, pending: true, reason: "arquivo_indisponivel", checkpoint: null, outcome: "paused", gallery };
       try { await source(admin, image); } catch (error) {
-        return { deleted: 0, reinserted: 0, pending: true, reason: error instanceof Error ? error.message : "arquivo_indisponivel", checkpoint: null, gallery };
+        return { deleted: 0, reinserted: 0, pending: true, reason: error instanceof Error ? error.message : "arquivo_indisponivel", checkpoint: null, outcome: "paused", gallery };
       }
     }
     checkpoint = {
@@ -213,7 +232,7 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
   let reinserted = 0;
   while (checkpoint.phase === "deleting" && checkpoint.deleteIndex < checkpoint.deleteRemoteIds.length) {
     if (!canStartRebuildEffect(params.remainingMs(), "delete"))
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
     const code = checkpoint.deleteRemoteIds[checkpoint.deleteIndex]!;
     const imageId = codeToImage.get(code) ?? null;
     await params.progress();
@@ -221,19 +240,19 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
       checkpoint.operation = { kind: "delete", code, imageId };
       await persistCheckpoint(admin, params, checkpoint);
     }
-    if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, gallery };
+    if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, outcome: "paused", gallery };
     if (gallery.items.some((item) => item.codigoImagem === code)) {
       // Check the lease and the real deadline *after* the checkpoint write,
       // immediately before starting another remote effect.
       await params.progress();
       if (!canStartRebuildEffect(params.remainingMs(), "delete"))
-        return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+        return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
       const result = await deleteRemoteImage(params.provider, params.externalId, code, params.correlationId);
-      if (!result.confirmed) return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, gallery };
+      if (!result.confirmed) return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, outcome: "paused", gallery };
     }
     gallery = await fetchRemoteGallery(params.provider, params.externalId, params.correlationId);
     if (!gallery.reliable || gallery.items.some((item) => item.codigoImagem === code))
-      return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, outcome: "paused", gallery };
     await params.progress();
     if (imageId) await persistLink(admin, params, {
       image_id: imageId, publication_id: params.publicationId, provider: params.provider,
@@ -251,17 +270,17 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
 
   while (checkpoint.insertIndex < checkpoint.reinsertImageIds.length) {
     if (!canStartRebuildEffect(params.remainingMs(), "insert"))
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
     const imageId = checkpoint.reinsertImageIds[checkpoint.insertIndex]!;
     const image = params.byId.get(imageId);
-    if (!image) return { deleted, reinserted, pending: true, reason: "arquivo_indisponivel", checkpoint, gallery };
-    if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, gallery };
+    if (!image) return { deleted, reinserted, pending: true, reason: "arquivo_indisponivel", checkpoint, outcome: "paused", gallery };
+    if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, outcome: "paused", gallery };
     await params.progress();
     const prepared = await source(admin, image);
     // Storage download and image preparation consume the same request budget.
     // No intent is written until there is enough time to perform the POST.
     if (!canStartRebuildEffect(params.remainingMs(), "insert"))
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
     const asCover = checkpoint.insertIndex === 0 && checkpoint.keptPrefix === 0 && gallery.items.every((item) => !item.destaque);
     const form = new FormData();
     form.append("imagem", new Blob([prepared.bytes], { type: prepared.mime }), prepared.fileName);
@@ -285,7 +304,7 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
         desired_state: "present", status: "pending", last_op: "rebuild_insert",
         last_op_state: "deferred_no_post", error_class: null, last_error_message: null,
       });
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
     }
     try {
       const response = await imobiRequest(params.provider,
@@ -302,17 +321,17 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
       }
     } catch (error) {
       // The POST may have been accepted. Keep the pre-call checkpoint and stop.
-      return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, outcome: "paused", gallery };
     }
     if (params.remainingMs() < READ_CONFIRMATION_MARGIN_MS)
-      return { deleted, reinserted, pending: true, reason: "confirmacao_agendada", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "confirmacao_agendada", checkpoint, outcome: "paused", gallery };
     gallery = await fetchRemoteGallery(params.provider, params.externalId, params.correlationId);
     if (!(await confirmInsert(admin, params, checkpoint, gallery)))
-      return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, gallery };
+      return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, outcome: "paused", gallery };
     reinserted += 1;
   }
 
   await params.progress();
   await persistCheckpoint(admin, params, null);
-  return { deleted, reinserted, pending: false, reason: null, checkpoint: null, gallery };
+  return { deleted, reinserted, pending: false, reason: null, checkpoint: null, outcome: "completed", gallery };
 }
