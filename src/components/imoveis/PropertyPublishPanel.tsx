@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CloudUpload, ExternalLink, Loader2 } from "lucide-react";
+import { CloudUpload, ExternalLink, ImageUp, Loader2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { recoverPropertyMedia } from "@/lib/imoveis/media-recovery.functions";
 import { useEnqueuePropertySync, usePropertySyncStatus } from "@/hooks/usePropertySync";
 import type { PublicationStatusView } from "@/lib/imoveis/publish.functions";
 import { Link } from "@tanstack/react-router";
@@ -46,6 +49,12 @@ function destinationState(row: PublicationStatusView | undefined, label: string)
   if (row.status === "published" && cadastroConfirmed && mediaConfirmed && !row.activeJob) {
     return { text: "Atualizado", tone: "text-emerald-700 bg-emerald-500/12" };
   }
+  if (row.media.status === "needs_attention") {
+    return {
+      text: `Fotos paradas · ${row.media.syncedCount ?? 0} de ${row.media.expectedCount ?? 0}`,
+      tone: "text-destructive bg-destructive/10",
+    };
+  }
   if (row.media.status === "delivery_unknown") {
     return { text: "Conferindo envio", tone: "text-amber-700 bg-amber-500/12" };
   }
@@ -87,6 +96,9 @@ function destinationDetails(row: PublicationStatusView) {
   if (row.media.status === "delivery_unknown") {
     details.push("O envio de uma foto ainda não foi confirmado pelo site. A conferência automática evita uma cópia duplicada.");
   }
+  if (row.media.status === "needs_attention" && row.media.attentionReason) {
+    details.push(row.media.attentionReason);
+  }
   if (row.media.status === "blocked_image") {
     details.push("Uma foto ativa não pôde ser preparada. Confira a mensagem dessa foto na galeria e corrija o arquivo; a atualização volta automaticamente.");
   }
@@ -99,6 +111,7 @@ function destinationDetails(row: PublicationStatusView) {
 export function PropertyPublishPanel({
   propertyId,
   canPublish,
+  isAdmin,
 }: {
   propertyId: string;
   canPublish: boolean;
@@ -107,6 +120,19 @@ export function PropertyPublishPanel({
   const status = usePropertySyncStatus(propertyId);
   const enqueue = useEnqueuePropertySync(propertyId);
   const [selected, setSelected] = useState<string[]>([]);
+  const qc = useQueryClient();
+  const recoverFn = useServerFn(recoverPropertyMedia);
+  const recover = useMutation({
+    mutationFn: (input: { provider: "cordial" | "morar"; mode: "resume" | "clean_rebuild" }) =>
+      recoverFn({ data: { propertyId, ...input } }),
+    onSuccess: (_result, input) => {
+      toast.success(input.mode === "clean_rebuild"
+        ? "Reconstrução da galeria agendada. As fotos do site serão refeitas na ordem do Gestão, sem cópias."
+        : "Envio das fotos retomado. Acompanhe por aqui.");
+      void qc.invalidateQueries({ queryKey: ["property-sync", propertyId] });
+    },
+    onError: (error) => toast.error((error as Error)?.message ?? "Não foi possível retomar o envio das fotos."),
+  });
   const byProvider = useMemo(
     () => new Map((status.data ?? []).map((row) => [row.provider, row])),
     [status.data],
@@ -183,6 +209,25 @@ export function PropertyPublishPanel({
                   className="mt-2 inline-flex rounded-full bg-destructive/10 px-3 py-1.5 text-[11px] font-semibold text-destructive">
                   Corrigir número do endereço
                 </Link>
+              )}
+              {isAdmin && row?.externalPropertyId && row.enabled && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" disabled={recover.isPending}
+                    onClick={() => recover.mutate({ provider: provider.key, mode: "resume" })}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-50">
+                    <ImageUp className="size-3" /> Reenviar fotos
+                  </button>
+                  {row.media.status !== "synced" && (
+                    <button type="button" disabled={recover.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Reconstruir a galeria na ${provider.label}? As fotos do site que não estão no Gestão ou estão fora de ordem serão retiradas e reenviadas a partir do Gestão, com a capa primeiro.`))
+                          recover.mutate({ provider: provider.key, mode: "clean_rebuild" });
+                      }}
+                      className="rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50">
+                      Reconstruir galeria
+                    </button>
+                  )}
+                </div>
               )}
               {canPublish && row?.status === "published" && (
                 <button type="button" onClick={() => void run("unpublish", [provider.key])}
