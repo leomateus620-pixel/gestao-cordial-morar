@@ -2042,7 +2042,10 @@ export async function runSyncWorker(
       if (job.publication_intent_revision != null) {
         publicationUpdate = publicationUpdate.eq("publication_intent_revision", job.publication_intent_revision);
       }
-      const { error: publicationError } = await publicationUpdate;
+      // Fotos adiadas por falta de vaga no limite: nada mudou no site nem no
+      // anúncio; a publicação não é rebaixada para "pendente".
+      const mediaDeferred = job.action === "media_sync" && rateLimited;
+      const { error: publicationError } = mediaDeferred ? { error: null } : await publicationUpdate;
       if (publicationError) throw new Error(publicationError.message);
       await logAttempt(admin, job, {
         step: job.action,
