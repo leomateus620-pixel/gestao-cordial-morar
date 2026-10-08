@@ -1855,7 +1855,13 @@ export async function runSyncWorker(
       // de rodadas não pode empurrá-la para 1 h, senão fica "Atualizando" sem fim.
       const mediaInProgress = job.action === "media_sync" &&
         ["rebuilding", "partial", "pending", "syncing"].includes(String(outcomeStatus));
-      const nextDelay = remoteReadRecovery
+      const noProgressRuns = Number((outcome as { noProgressRuns?: number } | undefined)?.noProgressRuns ?? 0);
+      const { noProgressDelaySeconds, NO_PROGRESS_LIMIT } = await import("@/lib/imoveis/media-recovery-rules");
+      const stalled = job.action === "media_sync" &&
+        (outcomeStatus === "needs_attention" || noProgressRuns >= NO_PROGRESS_LIMIT);
+      const nextDelay = stalled
+        ? noProgressDelaySeconds(Math.max(noProgressRuns, NO_PROGRESS_LIMIT))
+        : remoteReadRecovery
         ? remoteReadDelaySeconds(remoteReadStreak)
         : quickMediaRecovery ? 120 : mediaInProgress ? 75 : slowRecovery ? 3600 : job.attempts >= job.max_attempts ? 3600 : 75;
       const owned = job.action === "media_sync" && converged
