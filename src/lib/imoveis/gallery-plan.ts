@@ -41,6 +41,11 @@ export type GalleryPlan = {
   /** Fotos com entrega ambígua: só podem ser conferidas por leitura. */
   unknown: string[];
   /**
+   * Fotos apagadas por uma reconstrução cujo checkpoint se perdeu. Sem dono,
+   * ficam fora do envio comum até a conferência pela galeria real.
+   */
+  orphanedRebuild: string[];
+  /**
    * Fotos já sincronizadas cujo binário local mudou depois do envio (marca
    * d'água / reprocessamento). NUNCA são reenviadas: o site só insere, então
    * reenviar criaria uma cópia permanente.
@@ -64,13 +69,16 @@ export function planGalleryDelivery(
   images: readonly LocalGalleryImage[],
   remote: readonly RemoteGalleryRow[],
   now: number = Date.now(),
+  options: { rebuildActive?: boolean } = {},
 ): GalleryPlan {
+  const rebuildActive = options.rebuildActive ?? true;
   const ordered = sortGallery(images);
   const index = new Map(remote.map((row) => [row.image_id, row]));
 
   const toSend: LocalGalleryImage[] = [];
   const waiting: string[] = [];
   const unknown: string[] = [];
+  const orphanedRebuild: string[] = [];
   const contentDrift: string[] = [];
   let syncedCount = 0;
   let failedCount = 0;
@@ -92,7 +100,8 @@ export function planGalleryDelivery(
     if (existing.last_op === "rebuild_delete" && existing.status === "pending") {
       // A reconstrução durável é a única dona dessa reinserção. O envio
       // comum nunca antecipa nem duplica um passo do checkpoint.
-      waiting.push(image.id);
+      if (rebuildActive) waiting.push(image.id);
+      else orphanedRebuild.push(image.id);
       continue;
     }
     if (existing.status === "synced") {
@@ -142,6 +151,7 @@ export function planGalleryDelivery(
     toSend,
     waiting,
     unknown,
+    orphanedRebuild,
     contentDrift,
     expectedCount: ordered.length,
     syncedCount,
