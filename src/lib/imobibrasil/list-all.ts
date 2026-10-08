@@ -3,7 +3,7 @@ import type { RemotePage, RemoteRecord } from "./read-parsers";
 export type FullListResult = {
   /** Só é confiável quando TODAS as páginas foram lidas sem falha. */
   reliable: boolean;
-  reason: "ok" | "paginacao_incompleta" | "falha_consulta" | "limite_de_chamadas" | "formato_desconhecido";
+  reason: "ok" | "paginacao_incompleta" | "falha_consulta" | "formato_desconhecido";
   items: RemoteRecord[];
   pagesRead: number;
   totalPages: number | null;
