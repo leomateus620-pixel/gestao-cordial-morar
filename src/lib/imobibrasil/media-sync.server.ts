@@ -505,47 +505,26 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  // O site mostra cada foto nova logo após a capa. Se uma foto pendente deve
-  // ficar DEPOIS de fotos já no site (ex.: acrescentada no fim), retira (com
-  // confirmação) as já enviadas que ficam antes dela e reenvia tudo em ordem.
-  // Falha numa retirada = não envia nada agora.
+  // O site exibe a capa e depois as fotos na ordem CRESCENTE de envio. Foto
+  // pendente que deveria ficar ANTES de fotos já no site é enviada mesmo assim
+  // (no fim): nenhuma foto é apagada aqui para "abrir espaço" — isso esvaziou o
+  // 3378 M em 09/10/2026. A ordem divergente fica sinalizada e só é corrigida
+  // pela reconstrução (enviar primeiro, apagar depois).
   const coverId = publishable[0]?.id;
   const positionOf = new Map(publishable.map((image) => [image.id, image.position]));
   const pendingPositions = plan.toSend.filter((i) => i.id !== coverId).map((i) => i.position);
-  const lastPending = pendingPositions.length ? Math.max(...pendingPositions) : -Infinity;
-  const displaced = links.filter((row) =>
+  const firstPending = pendingPositions.length ? Math.min(...pendingPositions) : Infinity;
+  const displacedCount = links.filter((row) =>
     row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" &&
     row.external_image_id && row.image_id !== coverId &&
-    (positionOf.get(row.image_id) ?? Infinity) < lastPending);
-  const reordered: typeof plan.toSend = [];
-  let reorderBlocked = false;
-  if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0 && !holdAll) {
-    if (!gallery.reliable) reorderBlocked = true;
-    for (const row of reorderBlocked ? [] : displaced) {
-      if (outOfBudget()) { reorderBlocked = true; break; }
-      await progress();
-      const code = row.external_image_id as string;
-      const result = gallery.items.some((item) => item.codigoImagem === code)
-        ? await deleteRemoteImage(provider, externalId, code, correlationId)
-        : { confirmed: true, alreadyAbsent: true, message: null };
-      if (!result.confirmed) { reorderBlocked = true; break; }
-      await persistLink(admin, params, {
-        image_id: row.image_id, publication_id: publicationId, provider,
-        status: "pending", external_image_id: null, remote_url: null, is_cover: false,
-        synced_position: null, last_op: "delete", last_op_state: "reorder_reset",
-        error_class: null, last_error_message: null,
-      });
-      const image = publishable.find((i) => i.id === row.image_id);
-      if (image) reordered.push(image);
-    }
-  }
+    (positionOf.get(row.image_id) ?? -Infinity) > firstPending).length;
   // Foto aguardando nova tentativa: não envia outras antes dela (o site
   // ordena pela sequência de envio). Espera o horário e segue em ordem.
   const nowMs = Date.now();
   const waitingRetry = links.some((row) =>
     row.desired_state !== "absent" && !row.deleted_at && row.status === "error" &&
     row.next_retry_at && new Date(String(row.next_retry_at)).getTime() > nowMs);
-  const sendQueue = holdAll || reorderBlocked || waitingRetry ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
+  const sendQueue = holdAll || waitingRetry ? [] : sendOrderForSite(plan.toSend, coverId);
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
