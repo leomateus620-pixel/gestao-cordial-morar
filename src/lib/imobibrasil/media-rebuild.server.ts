@@ -199,21 +199,37 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
   const validCheckpoint = checkpoint && Array.isArray(checkpoint.deleteRemoteIds) && Array.isArray(checkpoint.reinsertImageIds);
   if (!validCheckpoint) checkpoint = null;
 
-  // A prior POST whose response was lost cannot be identified from gallery
-  // count, order, URL, or a single unmatched photo. Preserve the exception.
+  const linkedCodes = new Set(codeToImage.keys());
+  const paused = (deleted: number, reinserted: number, reason: string, cp: Checkpoint | null = checkpoint): Result =>
+    ({ deleted, reinserted, pending: true, reason, checkpoint: cp, outcome: "paused", gallery });
+
+  // Envio anterior sem resposta: confirma pelo código devolvido ou pela janela
+  // before_codes. Ausência comprovada (leitura confiável, nada novo) volta a
+  // enviar UMA vez. Duas ou mais fotos novas = continua incerto, sem reenvio.
   if (checkpoint?.operation?.kind === "insert") {
-    if (await confirmInsert(admin, params, checkpoint, gallery)) {
-      // Continue from a confirmed code.
-    } else {
-      const op = checkpoint.operation;
-      await persistLink(admin, params, {
-        image_id: op.imageId, publication_id: params.publicationId, provider: params.provider,
-        desired_state: "present", status: "delivery_unknown", last_op: "rebuild_insert",
-        last_op_state: "delivery_unknown", error_class: "entrega_ambigua",
-        last_error_message: "Envio sem código de imagem confirmado; requer evidência do provedor.",
-        next_retry_at: null,
-      });
-      return { deleted: 0, reinserted: 0, pending: true, reason: "delivery_unknown", checkpoint, outcome: "paused", gallery };
+    if (!(await confirmInsert(admin, params, checkpoint, gallery, linkedCodes))) {
+      const op = checkpoint.operation as Extract<Operation, { kind: "insert" }>;
+      const fresh = newCodesSince(op.beforeCodes, gallery, linkedCodes);
+      const retried = checkpoint.absentRetried ?? [];
+      if (fresh.length === 0 && op.beforeCodes.length > 0 && !retried.includes(op.imageId)) {
+        checkpoint.absentRetried = [...retried, op.imageId];
+        delete checkpoint.operation;
+        await persistCheckpoint(admin, params, checkpoint);
+        await persistLink(admin, params, {
+          image_id: op.imageId, publication_id: params.publicationId, provider: params.provider,
+          desired_state: "present", status: "pending", last_op: "rebuild_insert",
+          last_op_state: "absent_after_read", error_class: null, last_error_message: null,
+        });
+      } else {
+        await persistLink(admin, params, {
+          image_id: op.imageId, publication_id: params.publicationId, provider: params.provider,
+          desired_state: "present", status: "delivery_unknown", last_op: "rebuild_insert",
+          last_op_state: "delivery_unknown", error_class: "entrega_ambigua",
+          last_error_message: "Envio sem código de imagem confirmado; requer evidência do provedor.",
+          next_retry_at: null,
+        });
+        return paused(0, 0, "delivery_unknown");
+      }
     }
   }
 
@@ -236,76 +252,92 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
       deleted: 0, reinserted: 0, pending: true, reason: plan.reason,
       checkpoint: { state: "blocked", reason: plan.reason }, outcome: "abandoned", gallery,
     };
-    // Validate ALL originals/derivatives before deleting the first remote photo.
+    // Validate ALL originals/derivatives before any remote effect.
     for (const imageId of plan.reinsertImageIds) {
       const image = params.byId.get(imageId);
-      if (!image) return { deleted: 0, reinserted: 0, pending: true, reason: "arquivo_indisponivel", checkpoint: null, outcome: "paused", gallery };
+      if (!image) return paused(0, 0, "arquivo_indisponivel", null);
       try { await source(admin, image); } catch (error) {
-        return { deleted: 0, reinserted: 0, pending: true, reason: error instanceof Error ? error.message : "arquivo_indisponivel", checkpoint: null, outcome: "paused", gallery };
+        return paused(0, 0, error instanceof Error ? error.message : "arquivo_indisponivel", null);
       }
     }
     checkpoint = {
-      revision: params.galleryRevision, phase: "deleting", deleteRemoteIds: plan.deleteRemoteIds,
+      revision: params.galleryRevision, phase: "reinserting", deleteRemoteIds: plan.deleteRemoteIds,
       reinsertImageIds: plan.reinsertImageIds, deleteIndex: 0, insertIndex: 0, keptPrefix: plan.keptPrefix,
     };
     await params.progress();
+  }
+
+  // Enviar primeiro, apagar depois: converte checkpoints antigos (que apagavam
+  // tudo antes de reenviar). Só a capa antiga sai antes, pois o site aceita uma.
+  if (!checkpoint.insertFirst) {
+    const remaining = checkpoint.deleteRemoteIds.slice(checkpoint.deleteIndex);
+    const coverCode = checkpoint.keptPrefix === 0
+      ? remaining.find((code) => gallery.items.some((item) => item.codigoImagem === code && item.destaque)) ?? null
+      : null;
+    checkpoint = {
+      ...checkpoint, insertFirst: true, phase: "reinserting", coverCode, coverDone: !coverCode,
+      startCount: checkpoint.startCount ?? gallery.items.length,
+      deleteRemoteIds: remaining.filter((code) => code !== coverCode), deleteIndex: 0,
+    };
     await persistCheckpoint(admin, params, checkpoint);
   }
 
   let deleted = 0;
   let reinserted = 0;
-  while (checkpoint.phase === "deleting" && checkpoint.deleteIndex < checkpoint.deleteRemoteIds.length) {
-    if (!canStartRebuildEffect(params.remainingMs(), "delete"))
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
-    const code = checkpoint.deleteRemoteIds[checkpoint.deleteIndex]!;
+  const desiredCount = params.desiredImageIds.length;
+  const startCount = checkpoint.startCount ?? gallery.items.length;
+
+  const guardedDelete = async (code: string): Promise<string | null> => {
+    const allowed = deletionAllowed({
+      reliable: gallery.reliable, deletedThisRun: deleted, startCount, desiredCount,
+      currentCount: gallery.items.length,
+    });
+    if (!allowed.ok) return allowed.reason;
+    if (!canStartRebuildEffect(params.remainingMs(), "delete")) return "continuacao_agendada";
     const imageId = codeToImage.get(code) ?? null;
     await params.progress();
-    if (!checkpoint.operation) {
-      checkpoint.operation = { kind: "delete", code, imageId };
-      await persistCheckpoint(admin, params, checkpoint);
-    }
-    if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, outcome: "paused", gallery };
+    checkpoint!.operation = { kind: "delete", code, imageId };
+    await persistCheckpoint(admin, params, checkpoint!);
     if (gallery.items.some((item) => item.codigoImagem === code)) {
-      // Check the lease and the real deadline *after* the checkpoint write,
-      // immediately before starting another remote effect.
       await params.progress();
-      if (!canStartRebuildEffect(params.remainingMs(), "delete"))
-        return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
       const result = await deleteRemoteImage(params.provider, params.externalId, code, params.correlationId);
-      if (!result.confirmed) return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, outcome: "paused", gallery };
+      if (!result.confirmed) return "exclusao_nao_confirmada";
     }
     gallery = await fetchRemoteGallery(params.provider, params.externalId, params.correlationId);
-    if (!gallery.reliable || gallery.items.some((item) => item.codigoImagem === code))
-      return { deleted, reinserted, pending: true, reason: "exclusao_nao_confirmada", checkpoint, outcome: "paused", gallery };
+    if (!gallery.reliable || gallery.items.some((item) => item.codigoImagem === code)) return "exclusao_nao_confirmada";
     await params.progress();
-    if (imageId) await persistLink(admin, params, {
-      image_id: imageId, publication_id: params.publicationId, provider: params.provider,
-      desired_state: "present", status: "pending", external_image_id: null, remote_url: null,
-      is_cover: false, synced_position: null, last_op: "rebuild_delete", last_op_state: "confirmed",
-      attempts: 0, next_retry_at: null,
-    });
-    checkpoint.deleteIndex += 1;
-    delete checkpoint.operation;
-    await persistCheckpoint(admin, params, checkpoint);
+    if (imageId && !checkpoint!.reinsertImageIds.slice(0, checkpoint!.insertIndex).includes(imageId)) {
+      await persistLink(admin, params, {
+        image_id: imageId, publication_id: params.publicationId, provider: params.provider,
+        desired_state: "present", status: "pending", external_image_id: null, remote_url: null,
+        is_cover: false, synced_position: null, last_op: "rebuild_delete", last_op_state: "confirmed",
+        attempts: 0, next_retry_at: null,
+      });
+    }
+    delete checkpoint!.operation;
     deleted += 1;
-  }
-  checkpoint.phase = "reinserting";
-  await persistCheckpoint(admin, params, checkpoint);
+    return null;
+  };
 
+  // 1) Capa antiga (só quando a capa muda).
+  if (checkpoint.coverCode && !checkpoint.coverDone) {
+    const blocked = await guardedDelete(checkpoint.coverCode);
+    if (blocked) { await persistCheckpoint(admin, params, checkpoint); return paused(deleted, 0, blocked); }
+    checkpoint.coverDone = true;
+    await persistCheckpoint(admin, params, checkpoint);
+  }
+
+  // 2) Reenvio na ordem do Gestão (aparece no fim da galeria do site).
   while (checkpoint.insertIndex < checkpoint.reinsertImageIds.length) {
-    if (!canStartRebuildEffect(params.remainingMs(), "insert"))
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
+    if (!canStartRebuildEffect(params.remainingMs(), "insert")) return paused(deleted, reinserted, "continuacao_agendada");
     const imageId = checkpoint.reinsertImageIds[checkpoint.insertIndex]!;
     const image = params.byId.get(imageId);
-    if (!image) return { deleted, reinserted, pending: true, reason: "arquivo_indisponivel", checkpoint, outcome: "paused", gallery };
-    if (!gallery.reliable) return { deleted, reinserted, pending: true, reason: "leitura_inconclusiva", checkpoint, outcome: "paused", gallery };
+    if (!image) return paused(deleted, reinserted, "arquivo_indisponivel");
+    if (!gallery.reliable) return paused(deleted, reinserted, "leitura_inconclusiva");
     await params.progress();
     const prepared = await source(admin, image);
-    // Storage download and image preparation consume the same request budget.
-    // No intent is written until there is enough time to perform the POST.
-    if (!canStartRebuildEffect(params.remainingMs(), "insert"))
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
-    const asCover = checkpoint.insertIndex === 0 && checkpoint.keptPrefix === 0 && gallery.items.every((item) => !item.destaque);
+    if (!canStartRebuildEffect(params.remainingMs(), "insert")) return paused(deleted, reinserted, "continuacao_agendada");
+    const asCover = imageId === params.desiredImageIds[0] && gallery.items.every((item) => !item.destaque);
     const form = new FormData();
     form.append("imagem", new Blob([prepared.bytes], { type: prepared.mime }), prepared.fileName);
     form.append("destaque", boolToImageSimNao(asCover));
@@ -319,8 +351,6 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
     });
     await params.progress();
     if (!canStartRebuildEffect(params.remainingMs(), "insert")) {
-      // We have explicitly not sent the POST. Reset this prepared intent under
-      // the lease so the next execution can safely prepare it again.
       delete checkpoint.operation;
       await persistCheckpoint(admin, params, checkpoint);
       await persistLink(admin, params, {
@@ -328,7 +358,7 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
         desired_state: "present", status: "pending", last_op: "rebuild_insert",
         last_op_state: "deferred_no_post", error_class: null, last_error_message: null,
       });
-      return { deleted, reinserted, pending: true, reason: "continuacao_agendada", checkpoint, outcome: "paused", gallery };
+      return paused(deleted, reinserted, "continuacao_agendada");
     }
     try {
       const response = await imobiRequest(params.provider,
@@ -339,20 +369,26 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
       const code = extractInsertedImageId(response.data);
       if (code) {
         checkpoint.operation.externalImageId = code;
-        // This RPC itself fences the lease and revision. Persist the returned
-        // identity before spending time on another provider read.
         await persistCheckpoint(admin, params, checkpoint);
       }
-    } catch (error) {
-      // The POST may have been accepted. Keep the pre-call checkpoint and stop.
-      return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, outcome: "paused", gallery };
+    } catch {
+      return paused(deleted, reinserted, "delivery_unknown");
     }
-    if (params.remainingMs() < READ_CONFIRMATION_MARGIN_MS)
-      return { deleted, reinserted, pending: true, reason: "confirmacao_agendada", checkpoint, outcome: "paused", gallery };
+    if (params.remainingMs() < READ_CONFIRMATION_MARGIN_MS) return paused(deleted, reinserted, "confirmacao_agendada");
     gallery = await fetchRemoteGallery(params.provider, params.externalId, params.correlationId);
-    if (!(await confirmInsert(admin, params, checkpoint, gallery)))
-      return { deleted, reinserted, pending: true, reason: "delivery_unknown", checkpoint, outcome: "paused", gallery };
+    if (!(await confirmInsert(admin, params, checkpoint, gallery, linkedCodes)))
+      return paused(deleted, reinserted, "delivery_unknown");
     reinserted += 1;
+  }
+
+  // 3) Só agora, com todas as substitutas confirmadas, retira as antigas.
+  checkpoint.phase = "deleting";
+  while (checkpoint.deleteIndex < checkpoint.deleteRemoteIds.length) {
+    if (deleted >= MAX_DELETES_PER_RUN) { await persistCheckpoint(admin, params, checkpoint); return paused(deleted, reinserted, "continuacao_agendada"); }
+    const blocked = await guardedDelete(checkpoint.deleteRemoteIds[checkpoint.deleteIndex]!);
+    if (blocked) { await persistCheckpoint(admin, params, checkpoint); return paused(deleted, reinserted, blocked); }
+    checkpoint.deleteIndex += 1;
+    await persistCheckpoint(admin, params, checkpoint);
   }
 
   await params.progress();
