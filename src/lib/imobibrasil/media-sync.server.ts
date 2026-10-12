@@ -21,6 +21,7 @@ import { imobiRequest } from "./client.server";
 import { toImobiError } from "./errors";
 import { boolToImageSimNao } from "./serializers";
 import { extractInsertedImageId } from "./image-parsers";
+import { displayOrder, resolveUnknownByWindows } from "@/lib/imoveis/gallery-display";
 import { deleteRemoteImage, fetchRemoteGallery, fetchRemoteGalleryOrDefer, SLOT_REFUSED_REASON, type RemoteGallery } from "./image-ops.server";
 import { rebuildRemoteOrderDurable, validateRebuildSources } from "./media-rebuild.server";
 import { ImobiApiError } from "./errors";
@@ -410,6 +411,7 @@ export async function deliverGallery(
           synced_at: new Date().toISOString(),
           verification: { ...(row?.verification ?? {}), matched_by: "janela_before_codes" },
         });
+        if (row) Object.assign(row, { status: "synced", external_image_id: decision.code });
         plan.unknown = plan.unknown.filter((id) => id !== decision.imageId);
       } else if (decision.action === "resend" && row && shouldResendAbsentUnknown(row, now)) {
         await persistLink(admin, params, {
