@@ -106,6 +106,7 @@ export const ATTENTION_MESSAGES: Record<string, string> = {
   fotos_sem_vinculo_no_site: "Há fotos no site que não estão ligadas ao Gestão. Use \"Reconstruir galeria\" para limpar e reenviar na ordem certa.",
   delivery_unknown: "O site não confirmou o envio de algumas fotos. Use \"Reconstruir galeria\" para reenviar sem cópias.",
   leitura_inconclusiva: "O site não respondeu a conferência das fotos várias vezes seguidas. Tente \"Reenviar fotos\" mais tarde.",
+  ordem_divergente: "Todas as fotos estão no site, mas fora da ordem do Gestão. Use \"Reconstruir galeria\" para corrigir sem perder fotos.",
   sem_progresso: "O envio das fotos parou de avançar. Use \"Reenviar fotos\".",
 };
 
@@ -148,4 +149,12 @@ export function planCleanRebuild(params: {
     reinsertImageIds: params.desiredImageIds.slice(keptPrefix),
     keptPrefix,
   };
+}
+
+type RoleChecker = { rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => PromiseLike<{ data: unknown; error?: unknown }> };
+
+/** "Reenviar fotos" / "Reconstruir galeria": só administrador, conferido no servidor. */
+export async function assertMediaRecoveryAdmin(supabase: RoleChecker, userId: string): Promise<void> {
+  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (error || data !== true) throw new Error("Acesso restrito a administradores.");
 }

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { isActiveRebuildCheckpoint } from "@/lib/imoveis/media-recovery-rules";
+import { assertMediaRecoveryAdmin, isActiveRebuildCheckpoint } from "@/lib/imoveis/media-recovery-rules";
 
 export type RecoverMediaInput = {
   propertyId: string;
@@ -24,11 +24,7 @@ export const recoverPropertyMedia = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (isAdmin !== true) throw new Error("Acesso restrito a administradores.");
+    await assertMediaRecoveryAdmin(context.supabase as never, context.userId);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: publication, error } = await supabaseAdmin

@@ -21,6 +21,7 @@ import { imobiRequest } from "./client.server";
 import { toImobiError } from "./errors";
 import { boolToImageSimNao } from "./serializers";
 import { extractInsertedImageId } from "./image-parsers";
+import { displayOrder, resolveUnknownByWindows } from "@/lib/imoveis/gallery-display";
 import { deleteRemoteImage, fetchRemoteGallery, fetchRemoteGalleryOrDefer, SLOT_REFUSED_REASON, type RemoteGallery } from "./image-ops.server";
 import { rebuildRemoteOrderDurable, validateRebuildSources } from "./media-rebuild.server";
 import { ImobiApiError } from "./errors";
@@ -335,7 +336,7 @@ export async function deliverGallery(
         .map((row) => [String(row.external_image_id), row.image_id]));
       const cleanPlan = planCleanRebuild({
         desiredImageIds: publishable.map((image) => image.id),
-        remote: gallery.items.map((item) => ({
+        remote: displayOrder(gallery.items).map((item) => ({
           codigoImagem: item.codigoImagem,
           imageId: item.codigoImagem ? linkedCodes.get(item.codigoImagem) ?? null : null,
           destaque: item.destaque,
@@ -374,6 +375,57 @@ export async function deliverGallery(
         plan.toSend = [];
       }
     }
+  }
+
+  // Entregas incertas resolvidas pela janela de cada envio (before_codes do
+  // envio e do seguinte). Adota a foto que já está no site pelo código; só
+  // reenvia a que comprovadamente não chegou (uma única vez).
+  if (plan.unknown.length > 0 && gallery.reliable && !holdAll) {
+    const linkedCodes = new Set(links
+      .filter((row) => row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" && row.external_image_id)
+      .map((row) => String(row.external_image_id)));
+    const evidence = plan.unknown.map((imageId) => {
+      const v = links.find((row) => row.image_id === imageId)?.verification as Record<string, unknown> | null | undefined;
+      return {
+        imageId,
+        at: typeof v?.["at"] === "string" ? (v["at"] as string) : null,
+        beforeCodes: Array.isArray(v?.["before_codes"]) ? (v!["before_codes"] as unknown[]).map(String) : null,
+      };
+    });
+    const decisions = resolveUnknownByWindows({
+      unknowns: evidence,
+      currentCodes: gallery.items.map((item) => item.codigoImagem).filter((c): c is string => Boolean(c)),
+      linkedCodes,
+    });
+    for (const decision of decisions) {
+      const row = links.find((link) => link.image_id === decision.imageId);
+      if (decision.action === "adopt") {
+        const item = gallery.items.find((g) => g.codigoImagem === decision.code);
+        const local = publishable.find((image) => image.id === decision.imageId);
+        await persistLink(admin, params, {
+          image_id: decision.imageId, publication_id: publicationId, provider,
+          status: "synced", external_image_id: decision.code, remote_url: item?.url ?? null,
+          is_cover: Boolean(item?.destaque), synced_position: local?.position ?? null,
+          last_op: "insert", last_op_state: "confirmed_by_read",
+          error_class: null, last_error_message: null, attempts: 0, next_retry_at: null,
+          synced_at: new Date().toISOString(),
+          verification: { ...(row?.verification ?? {}), matched_by: "janela_before_codes" },
+        });
+        if (row) Object.assign(row, { status: "synced", external_image_id: decision.code });
+        plan.unknown = plan.unknown.filter((id) => id !== decision.imageId);
+      } else if (decision.action === "resend" && row && shouldResendAbsentUnknown(row, now)) {
+        await persistLink(admin, params, {
+          image_id: decision.imageId, publication_id: publicationId, provider,
+          status: "pending", last_op: "insert", last_op_state: "absent_after_read",
+          external_image_id: null, error_class: null, last_error_message: null,
+          verification: { ...(row.verification ?? {}), resent_after_absent: true, checked_at: new Date(now).toISOString() },
+        });
+        plan.unknown = plan.unknown.filter((id) => id !== decision.imageId);
+        const local = publishable.find((image) => image.id === decision.imageId);
+        if (local) plan.toSend.push(local);
+      }
+    }
+    unknownCount = plan.unknown.length;
   }
 
   // Envio incerto com UMA foto sem dono no site (leitura completa): é a foto
@@ -505,47 +557,26 @@ export async function deliverGallery(
   // incerta e nunca é repetida às cegas.
   const linkCoverKnown = links.some((row) =>
     row.desired_state !== "absent" && row.status === "synced" && Boolean(row.is_cover));
-  // O site mostra cada foto nova logo após a capa. Se uma foto pendente deve
-  // ficar DEPOIS de fotos já no site (ex.: acrescentada no fim), retira (com
-  // confirmação) as já enviadas que ficam antes dela e reenvia tudo em ordem.
-  // Falha numa retirada = não envia nada agora.
+  // O site exibe a capa e depois as fotos na ordem CRESCENTE de envio. Foto
+  // pendente que deveria ficar ANTES de fotos já no site é enviada mesmo assim
+  // (no fim): nenhuma foto é apagada aqui para "abrir espaço" — isso esvaziou o
+  // 3378 M em 09/10/2026. A ordem divergente fica sinalizada e só é corrigida
+  // pela reconstrução (enviar primeiro, apagar depois).
   const coverId = publishable[0]?.id;
   const positionOf = new Map(publishable.map((image) => [image.id, image.position]));
   const pendingPositions = plan.toSend.filter((i) => i.id !== coverId).map((i) => i.position);
-  const lastPending = pendingPositions.length ? Math.max(...pendingPositions) : -Infinity;
-  const displaced = links.filter((row) =>
+  const firstPending = pendingPositions.length ? Math.min(...pendingPositions) : Infinity;
+  const displacedCount = links.filter((row) =>
     row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" &&
     row.external_image_id && row.image_id !== coverId &&
-    (positionOf.get(row.image_id) ?? Infinity) < lastPending);
-  const reordered: typeof plan.toSend = [];
-  let reorderBlocked = false;
-  if (displaced.length && !rebuildingFromCheckpoint && unknownCount === 0 && !holdAll) {
-    if (!gallery.reliable) reorderBlocked = true;
-    for (const row of reorderBlocked ? [] : displaced) {
-      if (outOfBudget()) { reorderBlocked = true; break; }
-      await progress();
-      const code = row.external_image_id as string;
-      const result = gallery.items.some((item) => item.codigoImagem === code)
-        ? await deleteRemoteImage(provider, externalId, code, correlationId)
-        : { confirmed: true, alreadyAbsent: true, message: null };
-      if (!result.confirmed) { reorderBlocked = true; break; }
-      await persistLink(admin, params, {
-        image_id: row.image_id, publication_id: publicationId, provider,
-        status: "pending", external_image_id: null, remote_url: null, is_cover: false,
-        synced_position: null, last_op: "delete", last_op_state: "reorder_reset",
-        error_class: null, last_error_message: null,
-      });
-      const image = publishable.find((i) => i.id === row.image_id);
-      if (image) reordered.push(image);
-    }
-  }
+    (positionOf.get(row.image_id) ?? -Infinity) > firstPending).length;
   // Foto aguardando nova tentativa: não envia outras antes dela (o site
   // ordena pela sequência de envio). Espera o horário e segue em ordem.
   const nowMs = Date.now();
   const waitingRetry = links.some((row) =>
     row.desired_state !== "absent" && !row.deleted_at && row.status === "error" &&
     row.next_retry_at && new Date(String(row.next_retry_at)).getTime() > nowMs);
-  const sendQueue = holdAll || reorderBlocked || waitingRetry ? [] : sendOrderForSite([...plan.toSend, ...reordered], coverId);
+  const sendQueue = holdAll || waitingRetry ? [] : sendOrderForSite(plan.toSend, coverId);
   for (const target of rebuildingFromCheckpoint || unknownCount > 0 ? [] : sendQueue) {
     // A chamada pode durar 90 s; reserve ainda releitura e checkpoint local.
     if (remainingMs() < 95_000) break;
@@ -775,6 +806,10 @@ export async function deliverGallery(
     ? skipped("delivery_unknown")
     : (stillMissing > 0 || missingLinks > 0) && !rebuildingFromCheckpoint
     ? skipped("envio_incompleto")
+    // Reconstrução NOVA só pelo "Reconstruir galeria" (admin). As rodadas
+    // automáticas apenas retomam um checkpoint existente.
+    : !rebuildingFromCheckpoint
+    ? { ...skipped("ordem_divergente"), pending: false }
     : await rebuildRemoteOrderDurable(admin, {
     propertyId,
     provider,
@@ -849,13 +884,17 @@ export async function deliverGallery(
     gallery.reliable &&
     galleryMatchesExactly({
       desiredImageIds: publishable.map((image) => image.id),
-      remote: gallery.items.map((item) => ({
+      // Ordem como o site EXIBE (capa + crescente de envio), não a da lista.
+      remote: displayOrder(gallery.items).map((item) => ({
         codigoImagem: item.codigoImagem,
         imageId: item.codigoImagem ? (codeToImage.get(item.codigoImagem) ?? null) : null,
         destaque: item.destaque,
       })),
     });
   const rebuildPending = rebuild.pending;
+  // Todas as fotos no site, mas a sequência exibida não é a do Gestão.
+  const orderDivergent = gallery.reliable && !exactMatch && syncedTotal === plan.expectedCount &&
+    unknownCount === 0 && !extraRemote;
   const complete =
     syncedTotal === plan.expectedCount &&
     confirmedContent &&
@@ -886,11 +925,12 @@ export async function deliverGallery(
               ? "rebuilding"
               : complete
                 ? "synced"
-                : extraRemote
+                : extraRemote || orderDivergent
                   ? "order_drift"
                   : "partial";
 
   const terminal = ["synced", "blocked_image", "waiting_watermark"].includes(baseStatus);
+  if (!attentionReason && orderDivergent && !rebuildPending) attentionReason = "ordem_divergente";
   const progressed = syncedTotal > priorSynced || sentCount > 0 || deletedCount > 0 || rebuiltCount > 0;
   const stall = noProgressDecision({ priorRuns: priorNoProgress, progressed, terminal });
   if (!attentionReason && stall.needsAttention) {
@@ -919,7 +959,9 @@ export async function deliverGallery(
               ? "fotos_antigas_sobrando"
               : plan.contentDrift.length > 0
                 ? "remote_content_drift"
-                : !complete
+                : orderDivergent
+                  ? "ordem_divergente"
+                  : !complete
                   ? "pending"
                   : "ordem_confirmada_por_leitura";
 

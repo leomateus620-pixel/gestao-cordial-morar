@@ -7,3 +7,5 @@
 
 - NFS-e: perfil fiscal não exige aprovação nem autorização de produção; sem perfil cadastrado vale `defaultRentalFiscalProfile` (administração, tomador = proprietário, endereço = imóvel, valor = comissão mensal, competência = mês anterior) — why: o usuário definiu que aprovação contábil não bloqueia teste nem emissão real.
 - Busca global e Integrações são ferramentas internas de Configurações e exclusivas do administrador; não aparecem como itens próprios na navegação principal — why: mantém a barra lateral simples e centraliza ferramentas administrativas.
+
+- Galeria nos sites ImobiBrasil: a ordem exibida é capa + códigos de imagem em ordem crescente (`displayOrder`); envio sempre crescente, e reconstrução só "envia primeiro, apaga depois" (máx. 2 exclusões/rodada, disjuntor 80%, só com leitura confiável); reconstrução nova só por pedido do admin — why: apagar antes de repor esvaziou galerias e a ordem da lista da API não é a do site.

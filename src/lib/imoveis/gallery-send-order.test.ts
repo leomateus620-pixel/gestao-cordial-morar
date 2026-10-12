@@ -4,12 +4,12 @@ import { sendOrderForSite } from "./gallery-plan";
 
 const img = (id: string, position: number) => ({ id, position });
 
-test("envia a capa primeiro e o resto da última para a primeira", () => {
-  const out = sendOrderForSite([img("a", 0), img("b", 1), img("c", 2), img("d", 3)], "a");
-  assert.deepEqual(out.map((i) => i.id), ["a", "d", "c", "b"]);
+test("envia a capa primeiro e o resto em ordem crescente (o site exibe na ordem de envio)", () => {
+  const out = sendOrderForSite([img("d", 3), img("a", 0), img("c", 2), img("b", 1)], "a");
+  assert.deepEqual(out.map((i) => i.id), ["a", "b", "c", "d"]);
 });
 
-test("sem capa pendente, só inverte as demais", () => {
-  const out = sendOrderForSite([img("b", 1), img("c", 2)], "a");
-  assert.deepEqual(out.map((i) => i.id), ["c", "b"]);
+test("sem capa pendente, mantém a ordem do Gestão", () => {
+  const out = sendOrderForSite([img("c", 2), img("b", 1)], "a");
+  assert.deepEqual(out.map((i) => i.id), ["b", "c"]);
 });

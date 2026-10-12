@@ -173,9 +173,10 @@ export function sendOrderForSite<T extends { id: string; position: number }>(
   coverId: string | null | undefined,
 ): T[] {
   const cover = toSend.filter((image) => image.id === coverId);
+  // O site exibe capa + demais em ordem CRESCENTE de envio (12/10/2026).
   const rest = toSend
     .filter((image) => image.id !== coverId)
-    .sort((a, b) => b.position - a.position || b.id.localeCompare(a.id));
+    .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
   return [...cover, ...rest];
 }
 
