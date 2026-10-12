@@ -150,3 +150,11 @@ export function planCleanRebuild(params: {
     keptPrefix,
   };
 }
+
+type RoleChecker = { rpc: (fn: "has_role", args: { _user_id: string; _role: "admin" }) => PromiseLike<{ data: unknown; error?: unknown }> };
+
+/** "Reenviar fotos" / "Reconstruir galeria": só administrador, conferido no servidor. */
+export async function assertMediaRecoveryAdmin(supabase: RoleChecker, userId: string): Promise<void> {
+  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  if (error || data !== true) throw new Error("Acesso restrito a administradores.");
+}
