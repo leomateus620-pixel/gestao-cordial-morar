@@ -198,7 +198,7 @@ export async function rebuildRemoteOrderDurable(admin: Admin, params: Params): P
     await persistCheckpoint(admin, params, null);
   }
   if (!checkpoint) {
-    const remote: RebuildRemoteItem[] = gallery.items.map((item) => ({
+    const remote: RebuildRemoteItem[] = displayOrder(gallery.items).map((item) => ({
       codigoImagem: item.codigoImagem,
       imageId: item.codigoImagem ? codeToImage.get(item.codigoImagem) ?? null : null,
       destaque: item.destaque,

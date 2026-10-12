@@ -336,7 +336,7 @@ export async function deliverGallery(
         .map((row) => [String(row.external_image_id), row.image_id]));
       const cleanPlan = planCleanRebuild({
         desiredImageIds: publishable.map((image) => image.id),
-        remote: gallery.items.map((item) => ({
+        remote: displayOrder(gallery.items).map((item) => ({
           codigoImagem: item.codigoImagem,
           imageId: item.codigoImagem ? linkedCodes.get(item.codigoImagem) ?? null : null,
           destaque: item.destaque,
@@ -806,6 +806,10 @@ export async function deliverGallery(
     ? skipped("delivery_unknown")
     : (stillMissing > 0 || missingLinks > 0) && !rebuildingFromCheckpoint
     ? skipped("envio_incompleto")
+    // Reconstrução NOVA só pelo "Reconstruir galeria" (admin). As rodadas
+    // automáticas apenas retomam um checkpoint existente.
+    : !rebuildingFromCheckpoint
+    ? { ...skipped("ordem_divergente"), pending: false }
     : await rebuildRemoteOrderDurable(admin, {
     propertyId,
     provider,
@@ -880,7 +884,8 @@ export async function deliverGallery(
     gallery.reliable &&
     galleryMatchesExactly({
       desiredImageIds: publishable.map((image) => image.id),
-      remote: gallery.items.map((item) => ({
+      // Ordem como o site EXIBE (capa + crescente de envio), não a da lista.
+      remote: displayOrder(gallery.items).map((item) => ({
         codigoImagem: item.codigoImagem,
         imageId: item.codigoImagem ? (codeToImage.get(item.codigoImagem) ?? null) : null,
         destaque: item.destaque,
