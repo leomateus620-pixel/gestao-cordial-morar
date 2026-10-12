@@ -58,7 +58,11 @@ export function resolveUnknownByWindows(params: {
     const after = i + 1 < rows.length ? rows[i + 1]!.beforeCodes! : [...params.currentCodes];
     const window = after.filter((code) => !before.has(code));
     const candidates = window.filter((code) => current.has(code) && !taken.has(code));
-    if (candidates.length === 1) {
+    // Lista "depois" vazia com "antes" cheio = leitura falha, não prova nada.
+    const inconsistent = after.length === 0 && before.size > 0;
+    if (inconsistent) {
+      out.push({ imageId: rows[i]!.imageId, action: "keep" });
+    } else if (candidates.length === 1) {
       taken.add(candidates[0]!);
       out.push({ imageId: rows[i]!.imageId, action: "adopt", code: candidates[0]! });
     } else if (window.length === 0) {

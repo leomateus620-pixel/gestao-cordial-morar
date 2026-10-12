@@ -376,6 +376,56 @@ export async function deliverGallery(
     }
   }
 
+  // Entregas incertas resolvidas pela janela de cada envio (before_codes do
+  // envio e do seguinte). Adota a foto que já está no site pelo código; só
+  // reenvia a que comprovadamente não chegou (uma única vez).
+  if (plan.unknown.length > 0 && gallery.reliable && !holdAll) {
+    const linkedCodes = new Set(links
+      .filter((row) => row.desired_state !== "absent" && !row.deleted_at && row.status === "synced" && row.external_image_id)
+      .map((row) => String(row.external_image_id)));
+    const evidence = plan.unknown.map((imageId) => {
+      const v = links.find((row) => row.image_id === imageId)?.verification as Record<string, unknown> | null | undefined;
+      return {
+        imageId,
+        at: typeof v?.["at"] === "string" ? (v["at"] as string) : null,
+        beforeCodes: Array.isArray(v?.["before_codes"]) ? (v!["before_codes"] as unknown[]).map(String) : null,
+      };
+    });
+    const decisions = resolveUnknownByWindows({
+      unknowns: evidence,
+      currentCodes: gallery.items.map((item) => item.codigoImagem).filter((c): c is string => Boolean(c)),
+      linkedCodes,
+    });
+    for (const decision of decisions) {
+      const row = links.find((link) => link.image_id === decision.imageId);
+      if (decision.action === "adopt") {
+        const item = gallery.items.find((g) => g.codigoImagem === decision.code);
+        const local = publishable.find((image) => image.id === decision.imageId);
+        await persistLink(admin, params, {
+          image_id: decision.imageId, publication_id: publicationId, provider,
+          status: "synced", external_image_id: decision.code, remote_url: item?.url ?? null,
+          is_cover: Boolean(item?.destaque), synced_position: local?.position ?? null,
+          last_op: "insert", last_op_state: "confirmed_by_read",
+          error_class: null, last_error_message: null, attempts: 0, next_retry_at: null,
+          synced_at: new Date().toISOString(),
+          verification: { ...(row?.verification ?? {}), matched_by: "janela_before_codes" },
+        });
+        plan.unknown = plan.unknown.filter((id) => id !== decision.imageId);
+      } else if (decision.action === "resend" && row && shouldResendAbsentUnknown(row, now)) {
+        await persistLink(admin, params, {
+          image_id: decision.imageId, publication_id: publicationId, provider,
+          status: "pending", last_op: "insert", last_op_state: "absent_after_read",
+          external_image_id: null, error_class: null, last_error_message: null,
+          verification: { ...(row.verification ?? {}), resent_after_absent: true, checked_at: new Date(now).toISOString() },
+        });
+        plan.unknown = plan.unknown.filter((id) => id !== decision.imageId);
+        const local = publishable.find((image) => image.id === decision.imageId);
+        if (local) plan.toSend.push(local);
+      }
+    }
+    unknownCount = plan.unknown.length;
+  }
+
   // Envio incerto com UMA foto sem dono no site (leitura completa): é a foto
   // enviada. Resolve sem reenviar; com 0 ou 2+ candidatas continua incerto.
   if (plan.unknown.length === 1 && gallery.reliable) {
