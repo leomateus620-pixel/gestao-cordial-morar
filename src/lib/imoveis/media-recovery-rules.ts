@@ -107,7 +107,7 @@ export const ATTENTION_MESSAGES: Record<string, string> = {
   delivery_unknown: "O site não confirmou o envio de algumas fotos. Use \"Reconstruir galeria\" para reenviar sem cópias.",
   leitura_inconclusiva: "O site não respondeu a conferência das fotos várias vezes seguidas. Tente \"Reenviar fotos\" mais tarde.",
   ordem_divergente: "Todas as fotos estão no site, mas fora da ordem do Gestão. Use \"Reconstruir galeria\" para corrigir sem perder fotos.",
-  sem_progresso: ""O envio das fotos parou de avançar. Use \"Reenviar fotos\".",
+  sem_progresso: "O envio das fotos parou de avançar. Use \"Reenviar fotos\".",
 };
 
 export function attentionMessage(reason: string | null | undefined): string {
