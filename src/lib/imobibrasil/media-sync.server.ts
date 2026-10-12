@@ -892,6 +892,9 @@ export async function deliverGallery(
       })),
     });
   const rebuildPending = rebuild.pending;
+  // Todas as fotos no site, mas a sequência exibida não é a do Gestão.
+  const orderDivergent = gallery.reliable && !exactMatch && syncedTotal === plan.expectedCount &&
+    unknownCount === 0 && !extraRemote;
   const complete =
     syncedTotal === plan.expectedCount &&
     confirmedContent &&
@@ -922,11 +925,12 @@ export async function deliverGallery(
               ? "rebuilding"
               : complete
                 ? "synced"
-                : extraRemote
+                : extraRemote || orderDivergent
                   ? "order_drift"
                   : "partial";
 
   const terminal = ["synced", "blocked_image", "waiting_watermark"].includes(baseStatus);
+  if (!attentionReason && orderDivergent && !rebuildPending) attentionReason = "ordem_divergente";
   const progressed = syncedTotal > priorSynced || sentCount > 0 || deletedCount > 0 || rebuiltCount > 0;
   const stall = noProgressDecision({ priorRuns: priorNoProgress, progressed, terminal });
   if (!attentionReason && stall.needsAttention) {
@@ -955,7 +959,9 @@ export async function deliverGallery(
               ? "fotos_antigas_sobrando"
               : plan.contentDrift.length > 0
                 ? "remote_content_drift"
-                : !complete
+                : orderDivergent
+                  ? "ordem_divergente"
+                  : !complete
                   ? "pending"
                   : "ordem_confirmada_por_leitura";
 
