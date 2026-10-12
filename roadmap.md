@@ -7,6 +7,6 @@
 - [x] Busca e Integrações dentro de Configurações, somente para administrador
 - [x] Fotos travadas: (a) checkpoint, (b) órfãs, (c) vaga x falha, (d) unknown múltiplo/clean_rebuild, (e) limite sem progresso, (f) Reenviar fotos admin
 - [x] Fotos travadas (a)–(f) — entregue
-- [ ] Fotos: parar perda (enviar antes de apagar, limite 2/rodada, disjuntor 80%), destravar envios (delivery_unknown por evidência), ordem crescente + conferência real
-- [ ] Recuperação 1401C, 3398M, 3384M, 1277C, 1404C, 3380M, 1350C, 1349C (depende do publish)
-- [ ] Relatório de fotos a mais: 1353, 3349, 1373, 3372, 1308, 781
+- [x] Fotos: parar perda (enviar antes de apagar, limite 2/rodada, disjuntor 80%), destravar envios (delivery_unknown por evidência), ordem crescente + conferência real
+- [ ] Recuperação 1401C, 3398M, 3384M, 1277C, 1404C, 3380M, 1350C, 1349C (bloqueada: a rotina de fotos roda no app publicado; aguarda publish autorizado)
+- [x] Relatório de fotos a mais: 1353, 3349, 1373, 3372, 1308, 781
