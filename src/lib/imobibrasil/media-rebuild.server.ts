@@ -9,6 +9,7 @@ import { boolToImageSimNao } from "./serializers";
 import { fetchDeliveryBytes } from "@/lib/imoveis/delivery.server";
 import { planGalleryRebuild, type RebuildRemoteItem } from "@/lib/imoveis/gallery-rebuild";
 import { safeDeliveryFileName } from "@/lib/imoveis/gallery-plan";
+import { deletionAllowed, displayOrder, MAX_DELETES_PER_RUN } from "@/lib/imoveis/gallery-display";
 
 type Admin = SupabaseClient;
 type Image = {
@@ -35,6 +36,15 @@ type Checkpoint = {
   insertIndex: number;
   keptPrefix: number;
   operation?: Operation;
+  /** Enviar primeiro, apagar depois (12/10/2026). Checkpoints antigos são convertidos. */
+  insertFirst?: boolean;
+  /** Capa antiga a retirar ANTES de enviar a nova (o site só aceita uma capa). */
+  coverCode?: string | null;
+  coverDone?: boolean;
+  /** Fotos no site quando a reconstrução começou (disjuntor de 80%). */
+  startCount?: number;
+  /** Fotos reenviadas por ausência comprovada (no máximo uma vez cada). */
+  absentRetried?: string[];
 };
 
 type Params = {
@@ -131,10 +141,24 @@ async function source(admin: Admin, image: Image): Promise<{ bytes: ArrayBuffer;
   };
 }
 
-async function confirmInsert(admin: Admin, params: Params, checkpoint: Checkpoint, gallery: RemoteGallery): Promise<boolean> {
+export function newCodesSince(beforeCodes: readonly string[], gallery: RemoteGallery, linkedCodes: ReadonlySet<string>): string[] {
+  const before = new Set(beforeCodes);
+  return gallery.items.map((item) => item.codigoImagem)
+    .filter((code): code is string => Boolean(code) && !before.has(code as string) && !linkedCodes.has(code as string));
+}
+
+async function confirmInsert(admin: Admin, params: Params, checkpoint: Checkpoint, gallery: RemoteGallery, linkedCodes: ReadonlySet<string>): Promise<boolean> {
   const op = checkpoint.operation;
   if (!op || op.kind !== "insert") return false;
-  if (!op.externalImageId || !gallery.reliable) return false;
+  if (!gallery.reliable) return false;
+  // O site nem sempre devolve o código no envio: UMA foto nova em relação ao
+  // "antes" gravado, e sem dono no Gestão, é a foto enviada (causa do
+  // travamento de 09/10/2026: sem isso a rodada parava para sempre).
+  if (!op.externalImageId) {
+    const fresh = newCodesSince(op.beforeCodes, gallery, linkedCodes);
+    if (fresh.length !== 1) return false;
+    op.externalImageId = fresh[0]!;
+  }
   const item = gallery.items.find((row) => row.codigoImagem === op.externalImageId);
   if (!item) return false;
   const image = params.byId.get(op.imageId);
@@ -148,7 +172,7 @@ async function confirmInsert(admin: Admin, params: Params, checkpoint: Checkpoin
     desired_state: "present", status: "synced", last_op: "rebuild_insert",
     last_op_state: "confirmed_by_read", error_class: null, last_error_message: null,
     attempts: 0, next_retry_at: null, synced_at: new Date().toISOString(),
-    verification: { matched_by: "codigo_retornado_pela_operacao" },
+    verification: { matched_by: "codigo_ou_janela_before_codes" },
   });
   checkpoint.insertIndex += 1;
   delete checkpoint.operation;
