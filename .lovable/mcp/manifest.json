@@ -12,10 +12,120 @@
   "mcp": {
     "server": {
       "name": "gestao-cordial",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Gestão Cordial"
     },
     "tools": [
+      {
+        "name": "business_insights",
+        "title": "Insights automáticos",
+        "description": "Cruza imóveis, aluguéis, NFS-e, atendimentos e marketing e devolve achados prontos em texto, com os pontos que pedem atenção (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "portfolio_summary",
+        "title": "Resumo da carteira de imóveis",
+        "description": "Totais da carteira de imóveis por situação, finalidade, cidade e empresa (Cordial/Morar), com contagem de anúncios publicados por site (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "cidade": {
+              "description": "Filtrar por cidade.",
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "rentals_financial_summary",
+        "title": "Resumo financeiro de aluguéis",
+        "description": "Resumo dos contratos de aluguel (ativos, valores, comissões, situação de pagamento) e das NFS-e de uma competência, por empresa (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "competencia": {
+              "description": "Competência AAAA-MM para o resumo de NFS-e (padrão: mês anterior).",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "crm_funnel",
+        "title": "Funil de atendimentos",
+        "description": "Funil de atendimentos por etapa, status e imobiliária, com contagem de atendimentos parados sem retorno agendado ou vencidos (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "diasParado": {
+              "description": "Considerar parado após X dias sem retorno (padrão 7).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "marketing_performance",
+        "title": "Desempenho de marketing",
+        "description": "Campanhas de marketing com investimento, leads, CPL e CTR, comparando o mês atual com o anterior, por imobiliária e plataforma (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "imobiliaria": {
+              "description": "Filtrar por imobiliária.",
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
       {
         "name": "search_properties",
         "title": "Buscar imóveis",
