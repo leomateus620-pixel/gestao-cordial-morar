@@ -660,7 +660,7 @@ function sum<T, K extends keyof T>(items: T[], key: K) {
 }
 
 function sumDaily(metrics: MarketingDailyMetric[], key: keyof Omit<MarketingDailyMetric, "date">) {
-  return metrics.reduce((total, metric) => total + metric[key], 0);
+  return metrics.reduce((total, metric) => total + (metric[key] ?? 0), 0);
 }
 
 function cleanNumber(value: unknown) {
