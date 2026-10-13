@@ -35,7 +35,9 @@ export const getReceiptCompanyTaxId = createServerFn({ method: "GET" })
 const receiptRegistration = scope.extend({
   filePath: z.string().max(240),
   fileName: z.string().min(1).max(150),
-  valores: z.record(z.union([z.string().max(200), z.number().finite().min(-999999999).max(999999999)])),
+  valores: z.record(
+    z.union([z.string().max(200), z.number().finite().min(-999999999).max(999999999)]),
+  ),
 });
 export const registerRentalReceipt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
