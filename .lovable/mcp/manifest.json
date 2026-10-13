@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "sdk_version": "3.0.5",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://oowkhftaikxxrmswcply.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "gestao-cordial",
+      "version": "0.1.0",
+      "title": "Gestão Cordial"
+    },
+    "tools": [
+      {
+        "name": "search_properties",
+        "title": "Buscar imóveis",
+        "description": "Busca imóveis da carteira por código, bairro ou cidade (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Código, bairro ou cidade.",
+              "type": "string",
+              "maxLength": 80
+            },
+            "limit": {
+              "description": "Máximo de resultados (padrão 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_clients",
+        "title": "Buscar clientes",
+        "description": "Busca clientes por nome que você pode ver, com status e próximo passo (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "Parte do nome do cliente.",
+              "type": "string",
+              "maxLength": 80
+            },
+            "limit": {
+              "description": "Máximo de resultados (padrão 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_attendances",
+        "title": "Listar atendimentos",
+        "description": "Lista os atendimentos recentes que você pode ver, com etapa e próximo retorno (somente leitura).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filtrar por status exato.",
+              "type": "string",
+              "maxLength": 40
+            },
+            "limit": {
+              "description": "Máximo de resultados (padrão 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
