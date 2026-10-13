@@ -36,9 +36,17 @@ export default defineTool({
       return Object.fromEntries(Object.entries(acc).sort((a, b) => b[1] - a[1]));
     };
 
+    const ABERTOS = new Set([
+      "novo",
+      "aguardando_retorno",
+      "em_atendimento",
+      "visita_agendada",
+      "proposta_enviada",
+      "negociacao",
+    ]);
     const limite = Date.now() - (diasParado ?? 7) * 24 * 60 * 60 * 1000;
     const parados = rows.filter((r) => {
-      if (r.status !== "em_andamento" && r.status !== "novo") return false;
+      if (!ABERTOS.has(r.status)) return false;
       const ref = r.proximo_retorno ?? r.created_at;
       return ref ? new Date(ref).getTime() < limite : false;
     });

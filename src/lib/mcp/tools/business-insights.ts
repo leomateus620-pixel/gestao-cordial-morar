@@ -46,10 +46,11 @@ export default defineTool({
 
     // Imóveis disponíveis há muito tempo
     const ha180 = Date.now() - 180 * 24 * 60 * 60 * 1000;
+    const DISPONIVEL = new Set(["sim", "disponível", "disponivel"]);
     const encalhados = (propsRes.data ?? []).filter(
       (p) =>
-        p.disponibilidade === "disponivel" &&
         p.exibir_imovel &&
+        (!p.disponibilidade || DISPONIVEL.has(p.disponibilidade.trim().toLowerCase())) &&
         p.created_at &&
         new Date(p.created_at).getTime() < ha180,
     );
