@@ -12,7 +12,11 @@ import {
   Receipt,
   RefreshCw,
   XCircle,
+  Eye,
+  Download,
+  Share2,
 } from "lucide-react";
+import { nfseDocActions } from "@/lib/nfse/nfse-share";
 import { Switch } from "@/components/ui/switch";
 import { RentalNfseHistoryState } from "./RentalNfseHistoryState";
 import { parseBRLNumber } from "@/lib/format";
@@ -870,15 +874,33 @@ export function RentalNfseSection({
                               Abrir nota
                             </a>
                           )}
-                          {!row.modoTeste && row.pdfStatus === "salvo" && (
-                            <button
-                              type="button"
-                              onClick={() => void fiscal.openPdf(row.id)}
-                              className={cn(BUTTON, "border border-foreground/20 text-primary")}
-                            >
-                              <ExternalLink aria-hidden className="size-4" />
-                              Abrir PDF
-                            </button>
+                          {nfseDocActions(row).view && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void fiscal.openPdf(row.id)}
+                                className={cn(BUTTON, "border border-foreground/20 text-primary")}
+                              >
+                                <Eye aria-hidden className="size-4" />
+                                Ver
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void fiscal.downloadPdf(row.id)}
+                                className={cn(BUTTON, "border border-foreground/20")}
+                              >
+                                <Download aria-hidden className="size-4" />
+                                Baixar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void fiscal.sharePdf(row.id)}
+                                className={cn(BUTTON, "border border-foreground/20")}
+                              >
+                                <Share2 aria-hidden className="size-4" />
+                                Compartilhar
+                              </button>
+                            </>
                           )}
                           {!row.modoTeste && (row.pdfStatus === "pendente" || row.pdfStatus === "falhou") && (
                             <>
@@ -895,9 +917,9 @@ export function RentalNfseSection({
                               </button>
                             </>
                           )}
-                          {row.modoTeste && (
-                            <span className="self-center text-sm text-foreground/70">
-                              Teste sem PDF oficial
+                          {nfseDocActions(row).testBanner && (
+                            <span className="self-center rounded-md border border-amber-600/40 bg-amber-100 px-2 py-1 text-sm font-bold uppercase tracking-wide text-amber-900">
+                              Nota de teste — sem valor fiscal
                             </span>
                           )}
                           {pending && row.canConsult && (
