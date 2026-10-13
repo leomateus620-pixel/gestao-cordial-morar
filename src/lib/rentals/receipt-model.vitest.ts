@@ -57,17 +57,23 @@ describe("Modelo do recibo", () => {
     ).toThrow();
   });
   it("recusa datas inexistentes", () => {
-    expect(() => buildReceiptModel(contract, {
-      ...defaultReceiptInput(contract, "2026-02"), vencimento: "2026-02-31",
-    })).toThrow("Vencimento inválido");
+    expect(() =>
+      buildReceiptModel(contract, {
+        ...defaultReceiptInput(contract, "2026-02"),
+        vencimento: "2026-02-31",
+      }),
+    ).toThrow("Vencimento inválido");
   });
   it("não simula boleto sem provedor", () => {
     expect(boletoProvider).toBeNull();
   });
   it.each(["cordial", "morar"] as const)("gera A4 com logo da %s e três vias", async (brand) => {
     const model = buildReceiptModel(contract, {
-      ...defaultReceiptInput(contract, "2026-10"), brand,
-      condominio: 166.21, iptu: 239, seguroFianca: 12.5,
+      ...defaultReceiptInput(contract, "2026-10"),
+      brand,
+      condominio: 166.21,
+      iptu: 239,
+      seguroFianca: 12.5,
     });
     const logo = await readFile(`public${model.company.logo}`);
     const bytes = await buildReceiptPdf(model, logo);
