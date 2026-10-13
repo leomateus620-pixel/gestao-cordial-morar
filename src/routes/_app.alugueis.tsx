@@ -16,7 +16,19 @@ import { canSeeFinancialInsights } from "@/lib/access-control";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/_app/alugueis")({
-  head: () => ({ meta: [{ title: "Aluguéis — Gestão Cordial" }] }),
+  head: () => ({
+    meta: [
+      { title: "Aluguéis e Emissões — Gestão Cordial/Morar" },
+      {
+        name: "description",
+        content: "Contratos de aluguel, recibos e histórico de emissões do Gestão Cordial/Morar.",
+      },
+      { property: "og:title", content: "Aluguéis e Emissões — Gestão Cordial/Morar" },
+      { property: "og:description", content: "Contratos, recibos e notas de cada aluguel." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   validateSearch: (
     search: {
       id?: unknown;

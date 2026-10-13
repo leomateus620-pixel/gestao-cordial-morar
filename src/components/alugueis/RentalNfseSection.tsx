@@ -106,10 +106,12 @@ export function RentalNfseSection({
   contract,
   canEmit,
   sectionId,
+  emissionRequest,
 }: {
   contract: RentalContractFull;
   canEmit: boolean;
   sectionId?: string;
+  emissionRequest?: { competencia: string; nonce: number };
 }) {
   const [open, setOpen] = useState(false);
   const [modoTeste, setModoTeste] = useState(true);
@@ -149,6 +151,15 @@ export function RentalNfseSection({
     (row) => !row.modoTeste && ["emitida", "processando", "incerto"].includes(row.status),
   );
   const headingId = `${sectionId ?? `nfse-${contract.id}`}-title`;
+
+  useEffect(() => {
+    if (!emissionRequest || !canEmit) return;
+    setCompetencia(emissionRequest.competencia);
+    setDraft(emptyReview());
+    setReview(undefined);
+    setApprovedToken(null);
+    setOpen(true);
+  }, [emissionRequest, canEmit]);
 
   useEffect(() => {
     setApprovedToken(null);
@@ -902,21 +913,26 @@ export function RentalNfseSection({
                               </button>
                             </>
                           )}
-                          {!row.modoTeste && (row.pdfStatus === "pendente" || row.pdfStatus === "falhou") && (
-                            <>
-                              <span className="self-center text-sm font-semibold text-amber-900">
-                                PDF pendente{row.pdfError ? ` — ${row.pdfError}` : ""}
-                              </span>
-                              <button
-                                type="button"
-                                disabled={fiscal.retryingPdfId === row.id}
-                                onClick={() => void fiscal.retryPdf(row.id).catch(() => undefined)}
-                                className={cn(BUTTON, "border border-foreground/20")}
-                              >
-                                {fiscal.retryingPdfId === row.id ? "Baixando…" : "Baixar PDF novamente"}
-                              </button>
-                            </>
-                          )}
+                          {!row.modoTeste &&
+                            (row.pdfStatus === "pendente" || row.pdfStatus === "falhou") && (
+                              <>
+                                <span className="self-center text-sm font-semibold text-amber-900">
+                                  PDF pendente{row.pdfError ? ` — ${row.pdfError}` : ""}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={fiscal.retryingPdfId === row.id}
+                                  onClick={() =>
+                                    void fiscal.retryPdf(row.id).catch(() => undefined)
+                                  }
+                                  className={cn(BUTTON, "border border-foreground/20")}
+                                >
+                                  {fiscal.retryingPdfId === row.id
+                                    ? "Baixando…"
+                                    : "Baixar PDF novamente"}
+                                </button>
+                              </>
+                            )}
                           {nfseDocActions(row).testBanner && (
                             <span className="self-center rounded-md border border-amber-600/40 bg-amber-100 px-2 py-1 text-sm font-bold uppercase tracking-wide text-amber-900">
                               Nota de teste — sem valor fiscal

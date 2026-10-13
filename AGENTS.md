@@ -9,3 +9,7 @@
 - Busca global e Integrações são ferramentas internas de Configurações e exclusivas do administrador; não aparecem como itens próprios na navegação principal — why: mantém a barra lateral simples e centraliza ferramentas administrativas.
 
 - Galeria nos sites ImobiBrasil: a ordem exibida é capa + códigos de imagem em ordem crescente (`displayOrder`); envio sempre crescente, e reconstrução só "envia primeiro, apaga depois" (máx. 2 exclusões/rodada, disjuntor 80%, só com leitura confiável); reconstrução nova só por pedido do admin — why: apagar antes de repor esvaziou galerias e a ordem da lista da API não é a do site.
+
+- Rental Emissões is a presentation layer: open the existing RentalNfseSection through an explicit UI request, never duplicate or alter NFS-e transmission rules — why: existing fiscal confirmations remain the single flow.
+- Receipts use a pure model and client-side pdf-lib rendering; authenticated server functions register and sign private rental_emissions files under contract-scoped storage policies — why: document generation stays separate from fiscal services and ownership remains enforced.
+- Boleto providers follow the browser-safe provider interface; no configured provider means no financial issuance — why: simulated payment documents must never be mistaken for payable boletos.
