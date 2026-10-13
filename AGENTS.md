@@ -13,3 +13,5 @@
 - Rental Emissões is a presentation layer: open the existing RentalNfseSection through an explicit UI request, never duplicate or alter NFS-e transmission rules — why: existing fiscal confirmations remain the single flow.
 - Receipts use a pure model and client-side pdf-lib rendering; authenticated server functions register and sign private rental_emissions files under contract-scoped storage policies — why: document generation stays separate from fiscal services and ownership remains enforced.
 - Boleto providers follow the browser-safe provider interface; no configured provider means no financial issuance — why: simulated payment documents must never be mistaken for payable boletos.
+- Ad platform tokens (ad_platform_connections) are read only server-side via the admin client inside handlers; the browser sees connections through the `ad_connections_public()` RPC — why: OAuth tokens must never reach the client.
+- Marketing ad connectors live in src/lib/ads (pure link parser + per-platform providers implementing AdProvider); missing secrets surface as `not_configured`, never fake values — why: keeps manual campaigns working without credentials.
