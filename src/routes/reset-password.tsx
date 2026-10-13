@@ -40,7 +40,7 @@ function ResetPasswordPage() {
     try {
       passwordSchema.parse(senha);
     } catch (err) {
-      if (err instanceof z.ZodError) setErro(err.errors[0]?.message ?? "Senha inválida.");
+      if (err instanceof z.ZodError) setErro(err.issues[0]?.message ?? "Senha inválida.");
       return;
     }
     if (senha !== senha2) {

@@ -88,7 +88,7 @@ function LoginPage() {
       }
     } catch (err) {
       if (err instanceof z.ZodError) {
-        setErro(err.errors[0]?.message ?? "Dados inválidos.");
+        setErro(err.issues[0]?.message ?? "Dados inválidos.");
       }
       return;
     }
