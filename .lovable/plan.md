@@ -1,111 +1,68 @@
-# Fotos: parar a perda, destravar os envios e corrigir a ordem
+# NFS-e: guardar e mostrar o documento OFICIAL de cada nota
 
-## O que já está confirmado no código
-- `gallery-plan.ts` linhas 171–180 (`sendOrderForSite`): envia a capa primeiro e depois as demais em ordem **decrescente** de posição. Essa regra parte da ideia de que "o site mostra cada foto nova logo depois da capa" (comentário em `media-sync.server.ts` linha ~508).
-  - O que você mediu no 1377 C mostra o contrário: o site exibe a capa e, depois dela, as fotos em ordem **crescente de envio**. Isso explica a ordem invertida.
-  - O 1406 C, enviado antes da correção, está certo. Isso indica que o fluxo antigo enviava em ordem crescente. Vou confirmar no primeiro passo, comparando com o histórico do arquivo.
-- `media-sync.server.ts` linhas 516–541 ("deslocadas"):
-  - Apaga do site as fotos já enviadas que ficariam antes de uma foto pendente e as marca como `delete/reorder_reset`.
-  - Isso acontece **antes** de reenviar qualquer coisa.
-  - Exige só `gallery.reliable` naquele instante. Não há limite de quantidade nem conferência posterior.
-  - É o caminho que esvaziou o 3378 M.
-- `media-rebuild.server.ts` linha ~250: a reconstrução apaga as fotos (`rebuild_delete`) e só depois reinsere. É o mesmo padrão de apagar primeiro, e foi o que aconteceu no 1401 C e no 3398 M.
-- `media-sync.server.ts` linha ~924: `ordem_confirmada_por_leitura` sai quando a leitura é confiável e todas as fotos estão `synced`. A ordem nunca é comparada com o que o site exibe. Por isso a ordem errada foi aprovada.
-- **Ainda sem confirmação** (é o primeiro passo da implementação, só com leituras):
-  - a causa de nenhuma inserção ter sido confirmada desde 00h de 09/10;
-  - por que o casamento por `before_codes`/`at` não reconheceu as fotos do 3371 M e do 1372 C;
-  - a capa errada do 1404 C.
+## O que já está confirmado (só leitura, feito agora)
+- As 2 notas de teste (729 e 717, de 01/10) têm `link_pdf` = página de autenticidade da prefeitura. Abrir essa página devolve **HTML** (634 KB, ISO-8859-1). É uma tela montada por script, sem link direto de PDF no HTML. O arquivo de impressão sai de uma chamada feita depois que a página carrega.
+- **Código verificador:** a prefeitura devolveu `cod_verificador_autenticidade` (aparece em `response_raw`) e o leitor do retorno lê o campo certo. O campo fica vazio porque a gravação **zera de propósito** número, série, verificador, link e data nas notas de teste (`nfse.functions.ts` ~1124–1145). Em nota real, o valor é gravado. Não é perda do leitor.
+- O "modelo genérico" é o comprovante `pdf-receipt.ts`, gerado quando o link não devolve um PDF. Hoje isso acontece sempre.
 
-## Passo 0 — Diagnóstico só de leitura, antes de qualquer mudança
-- Leio no banco: `property_sync_attempts`/logs de `media_sync` de 08/10 18h até 09/10 06h, com status HTTP, tempo, mensagem e `correlation_id` de `/imagem/inserir` e `/imagem/lista`.
-- Comparo `verification.before_codes` com a galeria real (GET `/imagem/lista` e a página pública) do 3371 M, do 1372 C, do 1401 C, do 3398 M e do 1404 C.
-- Hipóteses que vou testar:
-  - o envio expira (90 s) depois de a foto ter chegado ao site, e por isso fica `delivery_unknown`;
-  - `resolveUnknownDeliveries` exige pelo menos 2 desconhecidas e códigos só numéricos, então uma desconhecida isolada com código não numérico, ou com `before_codes` que já incluía outros órfãos, nunca casa;
-  - a lista vem vazia ou parcial e é tratada como confiável.
-- Comparo a ordem de `/imagem/lista` com a da galeria pública e defino a regra real: ordem de inserção crescente, com o destaque na frente.
-- O resultado vem para você antes dos passos 2 e 3. Se a causa for outra, ajusto o plano.
+## Passo 0: descobrir como baixar o PDF oficial (só GET, sem emitir nem consultar nota real)
+1. Abrir a página de autenticidade da nota de teste 729 num navegador automático. Gravar todas as chamadas de rede ao carregar a página e ao clicar em "Imprimir/Visualizar NFS-e".
+2. Registrar: endereço da chamada que devolve o PDF, parâmetros (identificador, verificador, tipo), método, se pede sessão/cookie, captcha ou token da página, e se responde PDF para nota de teste.
+3. Testar a mesma chamada fora do navegador (GET simples ou GET com cookie da sessão aberta antes) para ver se o servidor consegue repeti-la.
+4. Escrever o achado numa seção nova do `docs/NFSE-IPM-SANTA-ROSA.md`, chamada "Documento oficial (PDF)".
+5. **Apresentar o resultado ao Leonardo antes de seguir.** A partir daqui o caminho se divide:
+   - **A, preferido:** a chamada é repetível, sem captcha. O servidor baixa o **arquivo original** da prefeitura e guarda o arquivo e o link de impressão.
+   - **B:** é preciso captcha ou sessão de pessoa. Nesse caso não dá para baixar automaticamente. A cópia guardada vira o **DANFSe gerado (C)**, e a tela também mostra "Abrir na prefeitura" (link de autenticidade e impressão oficial), sempre visível.
+   - **C, só se A não for possível:** gerar um DANFSe fiel a partir do **XML autorizado** da nota (retorno completo ou consulta). O modelo escolhido é o da **IPM/atende.net de Santa Rosa**, não o DANFSe nacional. Motivo: a nota é emitida no sistema municipal da IPM, e o leiaute da IPM é o que o tomador recebe e confere pelo mesmo link. O documento traz o QR/link e o código de autenticidade e a marca "Representação gerada pelo Gestão — confira a autenticidade no link". Para o XML autorizado: o retorno completo depende de configuração no portal (item do Leonardo). A outra opção, consultar a nota, só é usada em nota real e com autorização dele.
 
-## 1. Perda de fotos: nunca apagar antes de repor
-- **Enviar primeiro, apagar depois:**
-  - No caminho das "deslocadas" e na reconstrução, a foto substituta é enviada e confirmada por uma nova leitura confiável. Só depois a cópia antiga sai do site.
-  - Se a ordem só puder ser corrigida apagando antes, a rodada **não apaga nada**: a publicação fica em atenção, com a mensagem "ordem diferente no site — use Reconstruir galeria".
-- **Sem leitura confiável, nada é apagado:**
-  - Antes de cada exclusão, a galeria do início da rodada precisa ser confiável, não vazia e coerente com os vínculos. Se a contagem cair de forma inesperada entre leituras, é inconsistente.
-  - Leitura inconclusiva, demorada, vazia ou incoerente bloqueia todas as exclusões da rodada e marca atenção.
-- **Limite e disjuntor:**
-  - Máximo de 2 exclusões por rodada, por imóvel e por site.
-  - A rodada guarda a contagem de fotos do site no início da recuperação, no checkpoint. Se o site cair abaixo de 80% desse número, as exclusões ficam bloqueadas até ação manual.
-  - Só aceitam exclusão as fotos duplicadas ou sem vínculo cuja substituta já foi confirmada.
-- **Registro para auditoria:**
-  - Cada rodada grava, no log de tentativas: imóvel, site, `correlation_id`, fotos no site antes e depois, apagadas, enviadas, confirmadas, incertas e o motivo de bloqueio.
-  - O registro usa o `logAttempt` que já existe, com o JSON no campo de detalhes. Não precisa de coluna nova.
+## O que muda na ficha do aluguel (por nota, em "Histórico por competência")
+- Botões **Ver** (abre a cópia guardada com link temporário), **Baixar** e **Compartilhar**. No celular, Compartilhar usa o compartilhamento nativo com o arquivo. Sem esse recurso, aparecem "Copiar link" e "Enviar pelo WhatsApp", com o link oficial de autenticidade, nunca o link temporário.
+- Nome do arquivo: `NFS-e <número> - <Cordial|Morar> - <MM-AAAA>.pdf`. É o padrão atual, a ser confirmado.
+- Selo de origem: "Documento oficial da prefeitura" ou "Representação gerada (confira no link)".
+- **Notas antigas:** o botão "Buscar PDF oficial" refaz só o arquivo, sem nova emissão. A rotina horária `nfse-pdf-retry` passa a substituir comprovantes genéricos pelo oficial quando for possível. A cópia anterior é mantida no histórico, nunca apagada.
+- **Modo teste:** a prefeitura devolve número, link e verificador também em teste (visto nas notas 729/717), mas o sistema não grava esses dados de teste, e isso continua igual. A tela mostra a faixa **"NOTA DE TESTE — sem valor fiscal"**, sem Baixar e sem Compartilhar. Se o Passo 0 mostrar que a prefeitura gera PDF de teste, aparece só "Ver" com a mesma faixa.
 
-## 2. Envios parados
-- A correção depende do Passo 0. Já entra no plano:
-  - **Casamento de entrega incerta:**
-    - Também com uma única desconhecida: a foto é adotada se houver exatamente um código novo no site, fora de `before_codes`, e sem vínculo.
-    - Com várias desconhecidas, a regra atual continua, mas aceita códigos não numéricos ordenando pela posição na lista.
-    - Sem evidência única, nada é adotado.
-  - **Inserção que expira:** é relida antes de virar incerta, para não deixar uma foto que já chegou como incerta.
-  - **Entrega incerta não trava o resto:** uma foto incerta não bloqueia as próximas quando já foi resolvida, e a próxima rodada resolve antes de enviar.
+## O que NÃO muda
+- Emissão, consulta, reenvio, perfis, aprovações, snapshots, assinatura, regras fiscais e o modo teste ligado.
+- Fotos, sincronização com os sites, endereço/complemento, reserva de códigos 1406/3405 e marca d'água 1385.
+- Nenhum dado é alterado e nada é publicado.
 
-## 3. Ordem no site
-- `sendOrderForSite` passa a enviar em ordem **crescente** de posição (capa primeiro). A regra fica num só lugar e é usada pelo envio normal e pela reconstrução.
-- **Nova conferência de ordem:**
-  - Compara a sequência da galeria lida, com o destaque primeiro e o restante na ordem exibida, com a ordem do Gestão.
-  - Só marca `ordem_confirmada_por_leitura` se a sequência for igual e houver exatamente uma capa, que precisa ser a 1ª foto do Gestão.
-  - Se for diferente, fica `ordem_divergente`, e a rodada não apaga nada sozinha (item 1).
-- **Capa:**
-  - Continua a regra de nunca criar uma segunda capa.
-  - Se a capa estiver errada, como no 1404 C, a correção acontece só pela "Reconstruir galeria" manual: primeiro envia a capa nova, depois retira a antiga.
+## Segurança
+- Só são aceitos endereços `https://santarosa.atende.net`. O redirecionamento é seguido manualmente e é recusado se trocar de host.
+- Limite de 10 MB, com conferência da assinatura `%PDF` e do tipo de conteúdo. Tempo máximo de 20 s.
+- Para abrir o arquivo, o link guardado é temporário. As permissões atuais de acesso são mantidas.
 
-## 4. Recuperação (só depois do publish e da sua aprovação, um imóvel por vez)
-- **Ordem dos imóveis:**
-  1. 3378 M
-  2. 1401 C
-  3. 3398 M
-  4. 1404 C
-  5. Os invertidos: 1377 C, 1372 C, 3371 M, 1399 C, 1385 C e 3393 M.
-- **Como cada um é recuperado:** pelo botão "Reenviar fotos" ou "Reconstruir galeria".
-  - Casa as fotos com a galeria real pelo código de cada imagem.
-  - Envia só as que faltam, na ordem do Gestão.
-  - Só depois retira as fora de ordem, até 2 por rodada.
-- **Acompanhamento:** o card da publicação mostra as fotos no site antes → agora, as do Gestão, a capa e as apagadas/enviadas na última rodada.
-- **Parada automática:** se a contagem do site cair abaixo de 80% do início, ou houver 3 rodadas sem confirmar envio, a recuperação para e pede atenção.
+## Detalhes técnicos
+- **Migração (só aditiva, se aprovada):**
+  ```sql
+  ALTER TABLE public.rental_nfse_emissions
+    ADD COLUMN IF NOT EXISTS pdf_source text NULL
+      CHECK (pdf_source IN ('oficial','gerado_xml','comprovante_legado')),
+    ADD COLUMN IF NOT EXISTS link_impressao text NULL,
+    ADD COLUMN IF NOT EXISTS xml_autorizado text NULL;
+  COMMENT ON COLUMN public.rental_nfse_emissions.pdf_source IS 'Origem do PDF guardado';
+  ```
+  `pdf_document_id` passa a apontar para a versão atual. A versão anterior continua em `rental_contract_documents`.
+- **Arquivos:**
+  - `src/lib/nfse/official-pdf.ts`, novo e puro: monta o link de impressão a partir do identificador ou verificador, valida host e PDF.
+  - `src/lib/nfse/pdf-archive.server.ts`: tenta o oficial, depois o DANFSe a partir do XML, e por último o comprovante legado (só quando não há XML). Guarda `pdf_source`.
+  - `src/lib/nfse/danfse-ipm.ts`, novo, só no caminho C: leiaute IPM a partir do XML, com QR (biblioteca `qrcode`, roda no servidor da hospedagem).
+  - `src/lib/nfse/ipm/response.ts`: lê o retorno completo (`<nfse>` e o XML) além do reduzido, sem mudar o que já é lido.
+  - `nfse.functions.ts`: só leitura e visualização (`getNfsePdfUrl` com `download`, `pdfSource` na lista, `refreshOfficialPdf`). Nenhuma mudança no fluxo de emissão.
+  - `src/routes/api/public/hooks/nfse-pdf-retry.ts`: também processa `pdf_source='comprovante_legado'`.
+  - `useRentalNfse.ts` e `RentalNfseSection.tsx`: Ver, Baixar e Compartilhar, selo e faixa de teste.
+  - `docs/NFSE-IPM-SANTA-ROSA.md`: achados do Passo 0.
+- **Testes (dentro de `bun run test`):**
+  - Extração de link e verificador do retorno reduzido e do completo, com fixtures.
+  - Download oficial com dublê: PDF válido, HTML, host diferente, redirect para fora, tamanho acima do limite.
+  - DANFSe a partir do XML de fixture: campos, QR, marca de representação.
+  - Ordem de tentativa e não duplicar o arquivo.
+  - Nome do arquivo, botões e regras de compartilhamento, modo teste.
+  - Teste de regressão que confere que o que é gravado na emissão continua igual.
+  - Suíte inteira e verificação de tipos.
 
-## 5. Proteção até o publish (só descrita, nada aplicado)
-- Opção barata e segura: uma flag `media_delete_block` na tabela de controle de recuperação que já existe. A rodada só apagaria fotos com essa flag desligada.
-  - Isso exige mudar o código, então só passa a valer depois do publish. Não protege antes.
-- Antes do publish, sem mudar código, a única forma é parar os jobs `media_sync` dos 4 imóveis afetados (adiar `next_run_at`). Isso é uma alteração de dados e só seria feita com a sua autorização.
-  - O sync da Imobi não é pausado.
-  - Os envios cadastrais seguem normais.
-
-## Testes
-- Não apaga quando a leitura falha, é inconclusiva, vazia ou incoerente.
-- Não apaga antes de a foto substituta ser confirmada por uma nova leitura.
-- Máximo de 2 exclusões por rodada, e o disjuntor dos 80% bloqueia.
-- Envio em ordem crescente: a ordem final simulada do site é igual à do Gestão, com uma única capa, a 1ª do Gestão.
-- A conferência recusa ordem invertida e capa errada.
-- Entrega incerta: uma única é adotada com evidência única; com várias, só há casamento exato; evidência ambígua não adota nada.
-- `recoverPropertyMedia` recusa quem não é administrador, tanto em "Reenviar fotos" quanto em "Reconstruir galeria", com dublê do backend.
-- Suíte completa e typecheck, sem regressão em: endereço/complemento, reserva de códigos 1406/3405, fallback JS da marca d'água do 1385 e NFS-e.
-
-## Arquivos
-- **Alterados:** `media-sync.server.ts`, `media-rebuild.server.ts`, `gallery-plan.ts`, `gallery-rebuild.ts`, `media-recovery-rules.ts`, `image-ops.server.ts`, `PropertyPublishPanel.tsx`, `package.json`.
-- **Novos:** `gallery-order-check.ts` e testes, e `media-recovery.functions.test.ts`.
-
-## Migração e riscos
-- **Não precisa de migração.** O contador do disjuntor fica no `media_rebuild_state` (JSON), e o log vai no registro de tentativas.
-- A flag do item 5 só seria criada se você escolher essa opção. Seria aditiva: `ALTER TABLE property_provider_recovery_circuit ADD COLUMN media_delete_blocked boolean DEFAULT false;`
-- **Passos que podem apagar foto em produção:**
-  - só as rodadas de recuperação depois do publish, sempre depois de a foto substituta ser confirmada, até 2 por rodada e com o disjuntor ativo;
-  - a "Reconstruir galeria" manual.
-- Nada é apagado durante a implementação nem nos testes.
-
-## Restrições confirmadas
-- Não publico.
-- Não aciono recuperação.
-- Não altero dados.
-- Não pauso o sync.
-- Não toco em NFS-e, locação nem no PR #29.
+## Depende do Leonardo
+1. Aprovar este plano e, depois do Passo 0, escolher entre o caminho A e o C.
+2. Se for C: habilitar "Utiliza Retorno Completo na Importação de XML" em Personalização do Prestador → aba Webservice, no atende.net, para Cordial e Morar.
+3. Autorizar ou não a consulta de nota real, que hoje não existe, para recuperar o XML de notas antigas.
+4. Autorizar a migração aditiva acima e a publicação no final.
