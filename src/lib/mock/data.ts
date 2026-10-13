@@ -400,7 +400,7 @@ function sumMarketingDaily(
   metrics: MarketingDailyMetric[],
   key: keyof Omit<MarketingDailyMetric, "date">,
 ) {
-  return metrics.reduce((total, item) => total + item[key], 0);
+  return metrics.reduce((total, item) => total + (item[key] ?? 0), 0);
 }
 
 function roundMarketingMetric(value: number) {

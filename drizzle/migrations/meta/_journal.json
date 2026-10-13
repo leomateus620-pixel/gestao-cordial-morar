@@ -64,6 +64,13 @@
       "when": 1791888959753,
       "tag": "0008_rental_emissions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791895080276,
+      "tag": "0009_marketing_ads_connectors",
+      "breakpoints": true
     }
   ]
 }

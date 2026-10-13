@@ -14,6 +14,136 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_accounts: {
+        Row: {
+          connection_id: string
+          created_at: string
+          currency: string | null
+          external_account_id: string
+          id: string
+          name: string | null
+          platform: string
+          timezone: string | null
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          currency?: string | null
+          external_account_id: string
+          id?: string
+          name?: string | null
+          platform: string
+          timezone?: string | null
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          currency?: string | null
+          external_account_id?: string
+          id?: string
+          name?: string | null
+          platform?: string
+          timezone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_platform_connections: {
+        Row: {
+          access_token: string | null
+          account_label: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          imobiliaria: string | null
+          last_error: string | null
+          platform: string
+          refresh_token: string | null
+          scopes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_label?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          imobiliaria?: string | null
+          last_error?: string | null
+          platform: string
+          refresh_token?: string | null
+          scopes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          account_label?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          imobiliaria?: string | null
+          last_error?: string | null
+          platform?: string
+          refresh_token?: string | null
+          scopes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ad_sync_jobs: {
+        Row: {
+          campaign_id: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          range_end: string | null
+          range_start: string | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          range_end?: string | null
+          range_start?: string | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          range_end?: string | null
+          range_start?: string | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_sync_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agenciamento_bonuses: {
         Row: {
           achieved_at: string
@@ -2479,16 +2609,23 @@ export type Database = {
           data_fim: string
           data_inicio: string
           diagnostico: string | null
+          external_account_id: string | null
+          external_campaign_id: string | null
           id: string
           imobiliaria: string
           investimento: number
+          last_synced_at: string | null
           leads_esperados: number | null
           nome: string
           objetivo: string
           observacoes: string | null
+          platform: string | null
           referencia_url: string | null
           responsavel: string | null
+          source_url: string | null
           status: string
+          sync_error: string | null
+          sync_status: string | null
           updated_at: string
           user_id: string
         }
@@ -2498,16 +2635,23 @@ export type Database = {
           data_fim: string
           data_inicio: string
           diagnostico?: string | null
+          external_account_id?: string | null
+          external_campaign_id?: string | null
           id?: string
           imobiliaria: string
           investimento?: number
+          last_synced_at?: string | null
           leads_esperados?: number | null
           nome: string
           objetivo: string
           observacoes?: string | null
+          platform?: string | null
           referencia_url?: string | null
           responsavel?: string | null
+          source_url?: string | null
           status?: string
+          sync_error?: string | null
+          sync_status?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2517,16 +2661,23 @@ export type Database = {
           data_fim?: string
           data_inicio?: string
           diagnostico?: string | null
+          external_account_id?: string | null
+          external_campaign_id?: string | null
           id?: string
           imobiliaria?: string
           investimento?: number
+          last_synced_at?: string | null
           leads_esperados?: number | null
           nome?: string
           objetivo?: string
           observacoes?: string | null
+          platform?: string | null
           referencia_url?: string | null
           responsavel?: string | null
+          source_url?: string | null
           status?: string
+          sync_error?: string | null
+          sync_status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2537,11 +2688,19 @@ export type Database = {
           accesses: number
           campaign_id: string
           clicks: number
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
           created_at: string
+          ctr: number | null
           data: string
+          frequency: number | null
           id: string
+          impressions: number | null
           investimento: number
           leads: number
+          reach: number | null
+          spend: number | null
           updated_at: string
           user_id: string
           views: number
@@ -2550,11 +2709,19 @@ export type Database = {
           accesses?: number
           campaign_id: string
           clicks?: number
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
           created_at?: string
+          ctr?: number | null
           data: string
+          frequency?: number | null
           id?: string
+          impressions?: number | null
           investimento?: number
           leads?: number
+          reach?: number | null
+          spend?: number | null
           updated_at?: string
           user_id: string
           views?: number
@@ -2563,11 +2730,19 @@ export type Database = {
           accesses?: number
           campaign_id?: string
           clicks?: number
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
           created_at?: string
+          ctr?: number | null
           data?: string
+          frequency?: number | null
           id?: string
+          impressions?: number | null
           investimento?: number
           leads?: number
+          reach?: number | null
+          spend?: number | null
           updated_at?: string
           user_id?: string
           views?: number
@@ -8262,6 +8437,21 @@ export type Database = {
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
+      ad_connections_public: {
+        Args: never
+        Returns: {
+          account_label: string
+          expires_at: string
+          id: string
+          imobiliaria: string
+          last_error: string
+          platform: string
+          scopes: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       agenciamento_bonus_notify: {
         Args: {
           _bonus: Database["public"]["Tables"]["agenciamento_bonuses"]["Row"]

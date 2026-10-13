@@ -70,6 +70,7 @@ import { Route as SiteNoticiasIndexRouteImport } from './routes/site.noticias.in
 import { Route as SiteNoticiasSlugRouteImport } from './routes/site.noticias.$slug'
 import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
 import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
+import { Route as ApiPublicAdsOauthCallbackRouteImport } from './routes/api/public/ads-oauth.callback'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
@@ -397,6 +398,12 @@ const AppImoveisImovelIdEditarRoute =
     path: '/editar',
     getParentRoute: () => AppImoveisImovelIdRoute,
   } as any)
+const ApiPublicAdsOauthCallbackRoute =
+  ApiPublicAdsOauthCallbackRouteImport.update({
+    id: '/api/public/ads-oauth/callback',
+    path: '/api/public/ads-oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCalendarCallbackRoute =
   ApiPublicGoogleCalendarCallbackRouteImport.update({
     id: '/api/public/google-calendar/callback',
@@ -572,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
+  '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
@@ -649,6 +657,7 @@ export interface FileRoutesByTo {
   '/site-morar/noticias': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias': typeof SiteNoticiasIndexRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
+  '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
@@ -732,6 +741,7 @@ export interface FileRoutesById {
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
+  '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
@@ -815,6 +825,7 @@ export interface FileRouteTypes {
     | '/site-morar/noticias/'
     | '/site/noticias/'
     | '/imoveis/$imovelId/editar'
+    | '/api/public/ads-oauth/callback'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
@@ -892,6 +903,7 @@ export interface FileRouteTypes {
     | '/site-morar/noticias'
     | '/site/noticias'
     | '/imoveis/$imovelId/editar'
+    | '/api/public/ads-oauth/callback'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
@@ -974,6 +986,7 @@ export interface FileRouteTypes {
     | '/site-morar/noticias/'
     | '/site/noticias/'
     | '/_app/imoveis/$imovelId/editar'
+    | '/api/public/ads-oauth/callback'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
@@ -1008,6 +1021,7 @@ export interface RootRouteChildren {
   ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicAdsOauthCallbackRoute: typeof ApiPublicAdsOauthCallbackRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
   ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
@@ -1458,6 +1472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisImovelIdEditarRouteImport
       parentRoute: typeof AppImoveisImovelIdRoute
     }
+    '/api/public/ads-oauth/callback': {
+      id: '/api/public/ads-oauth/callback'
+      path: '/api/public/ads-oauth/callback'
+      fullPath: '/api/public/ads-oauth/callback'
+      preLoaderRoute: typeof ApiPublicAdsOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google-calendar/callback': {
       id: '/api/public/google-calendar/callback'
       path: '/api/public/google-calendar/callback'
@@ -1761,6 +1782,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicAdsOauthCallbackRoute: ApiPublicAdsOauthCallbackRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
   ApiPublicHooksAgendaPhotoDigestRoute: ApiPublicHooksAgendaPhotoDigestRoute,
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
