@@ -51,7 +51,18 @@ export type MarketingDailyMetric = {
   clicks: number;
   views: number;
   accesses: number;
+  impressions?: number;
+  reach?: number;
+  frequency?: number;
+  spend?: number;
+  cpc?: number;
+  cpm?: number;
+  ctr?: number;
+  conversions?: number;
 };
+
+export type MarketingPlatform = "meta" | "google";
+export type MarketingSyncStatus = "manual" | "synced" | "error";
 
 export type MarketingLocationBreakdown = {
   location: string;
@@ -87,6 +98,13 @@ export type MarketingCampaign = {
   createdAt: string;
   updatedAt: string;
   imobiliaria: MarketingAgencyId;
+  platform?: MarketingPlatform | null;
+  externalCampaignId?: string | null;
+  externalAccountId?: string | null;
+  sourceUrl?: string | null;
+  lastSyncedAt?: string | null;
+  syncStatus?: MarketingSyncStatus;
+  syncError?: string | null;
 };
 
 export type MarketingCampaignInput = Omit<
@@ -105,4 +123,11 @@ export type MarketingCampaignInput = Omit<
   | "locationBreakdown"
   | "createdAt"
   | "updatedAt"
+  | "platform"
+  | "externalCampaignId"
+  | "externalAccountId"
+  | "sourceUrl"
+  | "lastSyncedAt"
+  | "syncStatus"
+  | "syncError"
 >;

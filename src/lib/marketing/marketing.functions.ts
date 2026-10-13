@@ -27,6 +27,13 @@ type CampaignRow = {
   leads_esperados: number | null;
   created_at: string;
   updated_at: string;
+  platform?: string | null;
+  external_campaign_id?: string | null;
+  external_account_id?: string | null;
+  source_url?: string | null;
+  last_synced_at?: string | null;
+  sync_status?: string | null;
+  sync_error?: string | null;
 };
 
 type DailyRow = {
@@ -39,7 +46,18 @@ type DailyRow = {
   accesses: number;
   views: number;
   investimento: number | string;
+  impressions?: number | string | null;
+  reach?: number | string | null;
+  frequency?: number | string | null;
+  spend?: number | string | null;
+  cpc?: number | string | null;
+  cpm?: number | string | null;
+  ctr?: number | string | null;
+  conversions?: number | string | null;
 };
+
+const optNum = (v: number | string | null | undefined) =>
+  v === null || v === undefined ? undefined : Number(v) || 0;
 
 export type CampaignInput = {
   imobiliaria: MarketingAgencyId;
@@ -99,6 +117,14 @@ function toDaily(row: DailyRow): MarketingDailyMetric {
     clicks: row.clicks ?? 0,
     accesses: row.accesses ?? 0,
     views: row.views ?? 0,
+    impressions: optNum(row.impressions),
+    reach: optNum(row.reach),
+    frequency: optNum(row.frequency),
+    spend: optNum(row.spend) ?? (Number(row.investimento) || undefined),
+    cpc: optNum(row.cpc),
+    cpm: optNum(row.cpm),
+    ctr: optNum(row.ctr),
+    conversions: optNum(row.conversions),
   };
 }
 
@@ -128,7 +154,7 @@ function buildCampaign(row: CampaignRow, daily: DailyRow[]): MarketingCampaign {
     clicks,
     accesses,
     views,
-    impressions: 0,
+    impressions: dailyMetrics.reduce((s, d) => s + (d.impressions ?? 0), 0),
     conversionRate: accesses > 0 ? round2((leads / accesses) * 100) : 0,
     costPerLead: leads > 0 ? round2(investimento / leads) : 0,
     bestLocation: "—",
@@ -142,6 +168,13 @@ function buildCampaign(row: CampaignRow, daily: DailyRow[]): MarketingCampaign {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     imobiliaria: row.imobiliaria as MarketingAgencyId,
+    platform: (row.platform as MarketingCampaign["platform"]) ?? null,
+    externalCampaignId: row.external_campaign_id ?? null,
+    externalAccountId: row.external_account_id ?? null,
+    sourceUrl: row.source_url ?? null,
+    lastSyncedAt: row.last_synced_at ?? null,
+    syncStatus: (row.sync_status as MarketingCampaign["syncStatus"]) ?? "manual",
+    syncError: row.sync_error ?? null,
   };
 }
 
