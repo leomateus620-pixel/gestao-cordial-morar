@@ -44,9 +44,18 @@ import { RentalNfseSection } from "./RentalNfseSection";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
+import { Button } from "@/components/ui/button";
+import { RentalEmissions } from "./RentalEmissions";
+import { currentRentalCompetence } from "@/lib/rentals/receipt-model";
 
 type DetailSection =
-  "resumo" | "contrato" | "locatarios" | "garantias" | "imovel" | "nfse" | "documentos";
+  | "resumo"
+  | "contrato"
+  | "locatarios"
+  | "garantias"
+  | "imovel"
+  | "nfse"
+  | "documentos";
 
 type PendingAction = "paid" | "renew" | "close" | "delete" | null;
 
@@ -395,6 +404,9 @@ export function RentalExpandedDetails({
   onEdit?: (contract: RentalContractFull) => void;
 }) {
   const [activeSection, setActiveSection] = useState<DetailSection>("resumo");
+  const [view, setView] = useState<"emissions" | "details">("emissions");
+  const [competencia, setCompetencia] = useState(() => currentRentalCompetence());
+  const [nfRequest, setNfRequest] = useState<{ competencia: string; nonce: number }>();
   const canEmitNfse = canSeeFinancialInsights(useSession());
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -412,6 +424,9 @@ export function RentalExpandedDetails({
   useEffect(() => {
     if (!open || !contractId) return;
     setActiveSection("resumo");
+    setView("emissions");
+    setCompetencia(currentRentalCompetence());
+    setNfRequest(undefined);
     setPendingAction(null);
     scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [contractId, open]);
@@ -440,7 +455,7 @@ export function RentalExpandedDetails({
     const nodes = root.querySelectorAll<HTMLElement>("[data-rental-section]");
     nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, [contractId, open]);
+  }, [contractId, open, view]);
 
   if (!contract) return null;
   const rentalId = contract.id;
@@ -551,293 +566,377 @@ export function RentalExpandedDetails({
           </div>
         </SheetHeader>
 
+        <div className="shrink-0 border-b border-border px-4 py-3 sm:px-6 lg:px-8">
+          <div
+            role="tablist"
+            aria-label="Visão do aluguel"
+            className="inline-flex gap-1 rounded-lg bg-muted p-1"
+          >
+            <Button
+              id="rental-emissions-tab"
+              role="tab"
+              aria-selected={view === "emissions"}
+              aria-controls="rental-emissions-panel"
+              variant={view === "emissions" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setView("emissions")}
+            >
+              Emissões
+            </Button>
+            <Button
+              id="rental-details-tab"
+              role="tab"
+              aria-selected={view === "details"}
+              aria-controls="rental-details-panel"
+              variant={view === "details" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setView("details")}
+            >
+              Detalhes
+            </Button>
+          </div>
+        </div>
+
         <div
           ref={scrollRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           data-testid="rental-detail-scroll"
         >
-          <nav
-            aria-label="Seções dos detalhes do aluguel"
-            className="sticky top-0 z-20 border-b border-foreground/[0.07] bg-[#f7f3ed]/94 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8"
-          >
-            <div className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto">
-              {SECTION_NAVIGATION.filter(({ id }) => id !== "nfse" || canEmitNfse).map(
-                ({ id, label, icon: Icon }) => {
-                  const active = activeSection === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => navigateTo(id)}
-                      aria-current={active ? "location" : undefined}
-                      className={cn(
-                        "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
-                        active
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-foreground/58 hover:bg-white/70 hover:text-foreground",
-                      )}
-                    >
-                      <Icon className="size-3.5" />
-                      {label}
-                    </button>
-                  );
-                },
-              )}
-            </div>
-          </nav>
-
-          <div className="space-y-4 px-4 py-4 pb-8 sm:px-6 sm:py-5 lg:px-8">
-            <section
-              id={sectionId("resumo")}
-              data-rental-section="resumo"
-              className="scroll-mt-16"
-              aria-labelledby={`${sectionId("resumo")}-title`}
+          {view === "emissions" && (
+            <div
+              id="rental-emissions-panel"
+              role="tabpanel"
+              aria-labelledby="rental-emissions-tab"
+              className="px-4 py-5 sm:px-6 lg:px-8"
             >
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary/75">
-                    Visão geral
-                  </p>
-                  <h3
-                    id={`${sectionId("resumo")}-title`}
-                    className="mt-1 text-lg font-black tracking-[-0.025em]"
-                  >
-                    Informações essenciais
-                  </h3>
-                </div>
-                <p className="hidden text-[11px] font-medium text-foreground/48 sm:block">
-                  Atualizado com os dados do contrato
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-                <SummaryItem
-                  icon={CircleDollarSign}
-                  label="Valor mensal"
-                  value={brl(contract.valorMensal)}
-                  accent
-                />
-                <SummaryItem
-                  icon={CalendarDays}
-                  label="Início"
-                  value={formatRentalDate(contract.dataInicio)}
-                />
-                <SummaryItem
-                  icon={CalendarDays}
-                  label="Fim"
-                  value={formatRentalDate(contract.dataFim)}
-                />
-                <SummaryItem
-                  icon={WalletCards}
-                  label="Vencimento"
-                  value={`Dia ${contract.diaVencimento}`}
-                />
-                <SummaryItem
-                  icon={CalendarDays}
-                  label="Próximo vencimento"
-                  value={formatRentalDate(contract.proximoVencimento)}
-                />
-                <SummaryItem icon={MapPin} label="Imóvel" value={contract.property.apelido} />
-                <SummaryItem
-                  icon={UserRound}
-                  label="Locatário principal"
-                  value={contract.tenant.nome}
-                />
-                <SummaryItem
-                  icon={Building2}
-                  label="Proprietário"
-                  value={contract.property.proprietarioNome}
-                />
-              </div>
-            </section>
-
-            <div className="grid items-start gap-4 xl:grid-cols-12">
-              <SectionSurface
-                id={sectionId("contrato")}
-                sectionKey="contrato"
-                icon={FileText}
-                title="Contrato e pagamento"
-                description="Vigência, cobrança e condições registradas."
-                className="xl:col-span-5"
-              >
-                <dl className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                  <DetailField label="Valor mensal" value={brl(contract.valorMensal)} emphasis />
-                  <DetailField
-                    label="Comissão mensal"
-                    value={
-                      contract.comissaoMensal
-                        ? `${brl(contract.comissaoMensal)} (${((contract.comissaoMensal / (contract.valorMensal || 1)) * 100).toFixed(2).replace(".", ",")}%)`
-                        : null
-                    }
+              <div className="mb-5 flex justify-end">
+                <label className="flex items-center gap-3 text-xs font-semibold text-muted-foreground">
+                  Competência
+                  <input
+                    aria-label="Competência das emissões"
+                    type="month"
+                    value={competencia}
+                    onChange={(e) => {
+                      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))
+                        setCompetencia(e.target.value);
+                    }}
+                    className="h-10 rounded-lg border border-input bg-emission-surface px-3 text-sm text-foreground"
                   />
-                  <DetailField label="Dia de vencimento" value={`Dia ${contract.diaVencimento}`} />
-                  <DetailField
-                    label="Início do contrato"
+                </label>
+              </div>
+              <RentalEmissions
+                key={contract.id}
+                contract={contract}
+                competencia={competencia}
+                canEmit={canEmitNfse}
+                onNf={() => {
+                  setNfRequest({ competencia, nonce: Date.now() });
+                  setView("details");
+                  setActiveSection("nfse");
+                  requestAnimationFrame(() => navigateTo("nfse"));
+                }}
+              />
+            </div>
+          )}
+          <div
+            id="rental-details-panel"
+            role="tabpanel"
+            aria-labelledby="rental-details-tab"
+            hidden={view !== "details"}
+          >
+            <nav
+              aria-label="Seções dos detalhes do aluguel"
+              className="sticky top-0 z-20 border-b border-foreground/[0.07] bg-[#f7f3ed]/94 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8"
+            >
+              <div className="no-scrollbar flex min-w-0 gap-1 overflow-x-auto">
+                {SECTION_NAVIGATION.filter(({ id }) => id !== "nfse" || canEmitNfse).map(
+                  ({ id, label, icon: Icon }) => {
+                    const active = activeSection === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => navigateTo(id)}
+                        aria-current={active ? "location" : undefined}
+                        className={cn(
+                          "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none",
+                          active
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-foreground/58 hover:bg-white/70 hover:text-foreground",
+                        )}
+                      >
+                        <Icon className="size-3.5" />
+                        {label}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </nav>
+
+            <div className="space-y-4 px-4 py-4 pb-8 sm:px-6 sm:py-5 lg:px-8">
+              <section
+                id={sectionId("resumo")}
+                data-rental-section="resumo"
+                className="scroll-mt-16"
+                aria-labelledby={`${sectionId("resumo")}-title`}
+              >
+                <div className="mb-3 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary/75">
+                      Visão geral
+                    </p>
+                    <h3
+                      id={`${sectionId("resumo")}-title`}
+                      className="mt-1 text-lg font-black tracking-[-0.025em]"
+                    >
+                      Informações essenciais
+                    </h3>
+                  </div>
+                  <p className="hidden text-[11px] font-medium text-foreground/48 sm:block">
+                    Atualizado com os dados do contrato
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+                  <SummaryItem
+                    icon={CircleDollarSign}
+                    label="Valor mensal"
+                    value={brl(contract.valorMensal)}
+                    accent
+                  />
+                  <SummaryItem
+                    icon={CalendarDays}
+                    label="Início"
                     value={formatRentalDate(contract.dataInicio)}
                   />
-                  <DetailField label="Fim do contrato" value={formatRentalDate(contract.dataFim)} />
-                  <DetailField
+                  <SummaryItem
+                    icon={CalendarDays}
+                    label="Fim"
+                    value={formatRentalDate(contract.dataFim)}
+                  />
+                  <SummaryItem
+                    icon={WalletCards}
+                    label="Vencimento"
+                    value={`Dia ${contract.diaVencimento}`}
+                  />
+                  <SummaryItem
+                    icon={CalendarDays}
                     label="Próximo vencimento"
                     value={formatRentalDate(contract.proximoVencimento)}
                   />
-                  <DetailField
-                    label="Situação"
-                    value={`${CONTRACT_STATUS_LABELS[contract.status]} · ${
-                      PAYMENT_STATUS_LABELS[contract.paymentStatus]
-                    }`}
+                  <SummaryItem icon={MapPin} label="Imóvel" value={contract.property.apelido} />
+                  <SummaryItem
+                    icon={UserRound}
+                    label="Locatário principal"
+                    value={contract.tenant.nome}
                   />
-                  {contract.dataEncerramento && (
-                    <DetailField
-                      label="Encerrado em"
-                      value={formatRentalDate(contract.dataEncerramento)}
-                    />
-                  )}
-                  <DetailField
-                    label="Observações"
-                    value={contract.observacoes}
-                    className="sm:col-span-2"
+                  <SummaryItem
+                    icon={Building2}
+                    label="Proprietário"
+                    value={contract.property.proprietarioNome}
                   />
-                </dl>
-              </SectionSurface>
-
-              <SectionSurface
-                id={sectionId("locatarios")}
-                sectionKey="locatarios"
-                icon={UsersRound}
-                title={`Locatários${tenants.length > 1 ? ` (${tenants.length})` : ""}`}
-                description="Pessoas responsáveis por este contrato."
-                className="xl:col-span-7"
-              >
-                <div>
-                  {tenants.map((tenant, index) => (
-                    <TenantDetails key={tenant.id} tenant={tenant} index={index} />
-                  ))}
                 </div>
-              </SectionSurface>
+              </section>
 
-              <SectionSurface
-                id={sectionId("garantias")}
-                sectionKey="garantias"
-                icon={ShieldCheck}
-                title={`Garantias${guarantees.length > 1 ? ` (${guarantees.length})` : ""}`}
-                description="Modalidades e responsáveis vinculados à locação."
-                className="xl:col-span-5"
-              >
-                {guarantees.length ? (
-                  guarantees.map((guarantee, index) => (
-                    <GuaranteeDetails
-                      key={guarantee.id ?? `${guarantee.tipo}-${index}`}
-                      guarantee={guarantee}
-                      index={index}
+              <div className="grid items-start gap-4 xl:grid-cols-12">
+                <SectionSurface
+                  id={sectionId("contrato")}
+                  sectionKey="contrato"
+                  icon={FileText}
+                  title="Contrato e pagamento"
+                  description="Vigência, cobrança e condições registradas."
+                  className="xl:col-span-5"
+                >
+                  <dl className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
+                    <DetailField label="Valor mensal" value={brl(contract.valorMensal)} emphasis />
+                    <DetailField
+                      label="Comissão mensal"
+                      value={
+                        contract.comissaoMensal
+                          ? `${brl(contract.comissaoMensal)} (${((contract.comissaoMensal / (contract.valorMensal || 1)) * 100).toFixed(2).replace(".", ",")}%)`
+                          : null
+                      }
                     />
-                  ))
-                ) : (
-                  <EmptyDetail>Este aluguel não possui garantia cadastrada.</EmptyDetail>
-                )}
-              </SectionSurface>
+                    <DetailField
+                      label="Dia de vencimento"
+                      value={`Dia ${contract.diaVencimento}`}
+                    />
+                    <DetailField
+                      label="Início do contrato"
+                      value={formatRentalDate(contract.dataInicio)}
+                    />
+                    <DetailField
+                      label="Fim do contrato"
+                      value={formatRentalDate(contract.dataFim)}
+                    />
+                    <DetailField
+                      label="Próximo vencimento"
+                      value={formatRentalDate(contract.proximoVencimento)}
+                    />
+                    <DetailField
+                      label="Situação"
+                      value={`${CONTRACT_STATUS_LABELS[contract.status]} · ${
+                        PAYMENT_STATUS_LABELS[contract.paymentStatus]
+                      }`}
+                    />
+                    {contract.dataEncerramento && (
+                      <DetailField
+                        label="Encerrado em"
+                        value={formatRentalDate(contract.dataEncerramento)}
+                      />
+                    )}
+                    <DetailField
+                      label="Observações"
+                      value={contract.observacoes}
+                      className="sm:col-span-2"
+                    />
+                  </dl>
+                </SectionSurface>
 
-              <SectionSurface
-                id={sectionId("imovel")}
-                sectionKey="imovel"
-                icon={Building2}
-                title="Imóvel e proprietário"
-                description="Identificação do bem e dados do titular cadastrado."
-                className="xl:col-span-7"
-              >
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="min-w-0">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="grid size-7 place-items-center rounded-lg bg-primary/8 text-primary">
-                        <Home className="size-3.5" />
-                      </span>
-                      <h4 className="text-xs font-extrabold uppercase tracking-[0.08em] text-foreground/68">
-                        Imóvel
-                      </h4>
-                    </div>
-                    <dl className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
-                      <DetailField
-                        label="Identificação"
-                        value={contract.property.apelido}
-                        emphasis
-                        className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
-                      />
-                      <DetailField
-                        label="Tipo"
-                        value={PROPERTY_TYPE_LABELS[contract.property.tipo]}
-                      />
-                      <DetailField
-                        label="Área"
-                        value={contract.property.areaM2 ? `${contract.property.areaM2} m²` : null}
-                      />
-                      <DetailField
-                        label="Endereço"
-                        value={address}
-                        className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
-                      />
-                      <DetailField
-                        label="Bairro · Cidade/UF"
-                        value={city}
-                        className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
-                      />
-                      <DetailField
-                        label="Cômodos"
-                        value={`${contract.property.quartos ?? 0} quartos · ${
-                          contract.property.banheiros ?? 0
-                        } banheiros · ${contract.property.vagas ?? 0} vagas`}
-                        className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
-                      />
-                    </dl>
+                <SectionSurface
+                  id={sectionId("locatarios")}
+                  sectionKey="locatarios"
+                  icon={UsersRound}
+                  title={`Locatários${tenants.length > 1 ? ` (${tenants.length})` : ""}`}
+                  description="Pessoas responsáveis por este contrato."
+                  className="xl:col-span-7"
+                >
+                  <div>
+                    {tenants.map((tenant, index) => (
+                      <TenantDetails key={tenant.id} tenant={tenant} index={index} />
+                    ))}
                   </div>
+                </SectionSurface>
 
-                  <div className="min-w-0 border-t border-foreground/[0.07] pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="grid size-7 place-items-center rounded-lg bg-amber-500/10 text-amber-800">
-                        <UserRound className="size-3.5" />
-                      </span>
-                      <h4 className="text-xs font-extrabold uppercase tracking-[0.08em] text-foreground/68">
-                        Proprietário
-                      </h4>
-                    </div>
-                    {hasOwner ? (
+                <SectionSurface
+                  id={sectionId("garantias")}
+                  sectionKey="garantias"
+                  icon={ShieldCheck}
+                  title={`Garantias${guarantees.length > 1 ? ` (${guarantees.length})` : ""}`}
+                  description="Modalidades e responsáveis vinculados à locação."
+                  className="xl:col-span-5"
+                >
+                  {guarantees.length ? (
+                    guarantees.map((guarantee, index) => (
+                      <GuaranteeDetails
+                        key={guarantee.id ?? `${guarantee.tipo}-${index}`}
+                        guarantee={guarantee}
+                        index={index}
+                      />
+                    ))
+                  ) : (
+                    <EmptyDetail>Este aluguel não possui garantia cadastrada.</EmptyDetail>
+                  )}
+                </SectionSurface>
+
+                <SectionSurface
+                  id={sectionId("imovel")}
+                  sectionKey="imovel"
+                  icon={Building2}
+                  title="Imóvel e proprietário"
+                  description="Identificação do bem e dados do titular cadastrado."
+                  className="xl:col-span-7"
+                >
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <div className="min-w-0">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="grid size-7 place-items-center rounded-lg bg-primary/8 text-primary">
+                          <Home className="size-3.5" />
+                        </span>
+                        <h4 className="text-xs font-extrabold uppercase tracking-[0.08em] text-foreground/68">
+                          Imóvel
+                        </h4>
+                      </div>
                       <dl className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
                         <DetailField
-                          label="Nome"
-                          value={contract.property.proprietarioNome}
+                          label="Identificação"
+                          value={contract.property.apelido}
                           emphasis
                           className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
                         />
-                        <DetailField label="CPF/CNPJ" value={contract.property.proprietarioCpf} />
                         <DetailField
-                          label="Telefone"
-                          value={contract.property.proprietarioTelefone}
+                          label="Tipo"
+                          value={PROPERTY_TYPE_LABELS[contract.property.tipo]}
                         />
                         <DetailField
-                          label="E-mail"
-                          value={contract.property.proprietarioEmail}
+                          label="Área"
+                          value={contract.property.areaM2 ? `${contract.property.areaM2} m²` : null}
+                        />
+                        <DetailField
+                          label="Endereço"
+                          value={address}
+                          className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
+                        />
+                        <DetailField
+                          label="Bairro · Cidade/UF"
+                          value={city}
+                          className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
+                        />
+                        <DetailField
+                          label="Cômodos"
+                          value={`${contract.property.quartos ?? 0} quartos · ${
+                            contract.property.banheiros ?? 0
+                          } banheiros · ${contract.property.vagas ?? 0} vagas`}
                           className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
                         />
                       </dl>
-                    ) : (
-                      <EmptyDetail>
-                        Nenhuma informação de proprietário foi cadastrada para este imóvel.
-                      </EmptyDetail>
-                    )}
+                    </div>
+
+                    <div className="min-w-0 border-t border-foreground/[0.07] pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="grid size-7 place-items-center rounded-lg bg-amber-500/10 text-amber-800">
+                          <UserRound className="size-3.5" />
+                        </span>
+                        <h4 className="text-xs font-extrabold uppercase tracking-[0.08em] text-foreground/68">
+                          Proprietário
+                        </h4>
+                      </div>
+                      {hasOwner ? (
+                        <dl className="grid grid-cols-1 gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+                          <DetailField
+                            label="Nome"
+                            value={contract.property.proprietarioNome}
+                            emphasis
+                            className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
+                          />
+                          <DetailField label="CPF/CNPJ" value={contract.property.proprietarioCpf} />
+                          <DetailField
+                            label="Telefone"
+                            value={contract.property.proprietarioTelefone}
+                          />
+                          <DetailField
+                            label="E-mail"
+                            value={contract.property.proprietarioEmail}
+                            className="sm:col-span-2 lg:col-span-1 2xl:col-span-2"
+                          />
+                        </dl>
+                      ) : (
+                        <EmptyDetail>
+                          Nenhuma informação de proprietário foi cadastrada para este imóvel.
+                        </EmptyDetail>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </SectionSurface>
+                </SectionSurface>
+              </div>
+
+              <RentalNfseSection
+                key={contract.id}
+                contract={contract}
+                canEmit={canEmitNfse}
+                sectionId={sectionId("nfse")}
+                emissionRequest={nfRequest}
+              />
+
+              <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
             </div>
-
-            <RentalNfseSection
-              key={contract.id}
-              contract={contract}
-              canEmit={canEmitNfse}
-              sectionId={sectionId("nfse")}
-            />
-
-            <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
           </div>
         </div>
 
-        <footer className="shrink-0 border-t border-foreground/[0.07] bg-[#f7f3ed]/96 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 lg:px-8">
+        <footer
+          hidden={view !== "details"}
+          className="shrink-0 border-t border-foreground/[0.07] bg-[#f7f3ed]/96 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-6 lg:px-8"
+        >
           <div className="grid gap-3 lg:flex lg:items-center lg:justify-between">
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {onEdit && (

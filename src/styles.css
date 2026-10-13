@@ -39,6 +39,10 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-emission-nf: var(--emission-nf);
+  --color-emission-boleto: var(--emission-boleto);
+  --color-emission-surface: var(--emission-surface);
+  --color-emission-contrast: var(--emission-contrast);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -68,6 +72,10 @@
 }
 
 :root {
+  --emission-nf: oklch(0.49 0.12 162);
+  --emission-boleto: oklch(0.53 0.12 73);
+  --emission-surface: oklch(1 0 0);
+  --emission-contrast: oklch(1 0 0);
   --radius: 0.625rem;
   /* Gestão Cordial — Sistema Integrado (azul-petróleo + cobre + grafite + areia) */
 
@@ -195,6 +203,10 @@
 }
 
 .dark {
+  --emission-nf: oklch(0.64 0.13 162);
+  --emission-boleto: oklch(0.68 0.13 73);
+  --emission-surface: oklch(0.22 0.015 250);
+  --emission-contrast: oklch(0.16 0.01 250);
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);

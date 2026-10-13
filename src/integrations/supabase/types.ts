@@ -6649,6 +6649,75 @@ export type Database = {
           },
         ]
       }
+      rental_emissions: {
+        Row: {
+          competencia: string
+          contract_id: string
+          copy_value: string | null
+          created_at: string
+          created_by: string
+          external_url: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string
+          nfse_emission_id: string | null
+          numero: string | null
+          provider: string | null
+          status: string
+          tipo: Database["public"]["Enums"]["rental_emission_type"]
+          valores: Json
+        }
+        Insert: {
+          competencia: string
+          contract_id: string
+          copy_value?: string | null
+          created_at?: string
+          created_by?: string
+          external_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          nfse_emission_id?: string | null
+          numero?: string | null
+          provider?: string | null
+          status?: string
+          tipo: Database["public"]["Enums"]["rental_emission_type"]
+          valores?: Json
+        }
+        Update: {
+          competencia?: string
+          contract_id?: string
+          copy_value?: string | null
+          created_at?: string
+          created_by?: string
+          external_url?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          nfse_emission_id?: string | null
+          numero?: string | null
+          provider?: string | null
+          status?: string
+          tipo?: Database["public"]["Enums"]["rental_emission_type"]
+          valores?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_emissions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_emissions_nfse_emission_id_fkey"
+            columns: ["nfse_emission_id"]
+            isOneToOne: false
+            referencedRelation: "rental_nfse_emissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_guarantors: {
         Row: {
           cpf_cnpj: string | null
@@ -9173,6 +9242,7 @@ export type Database = {
         | "vencido"
         | "encerrado"
         | "cancelado"
+      rental_emission_type: "nfse" | "recibo" | "boleto"
       rental_guarantee_type:
         | "sem_garantia"
         | "fiador"
@@ -9402,6 +9472,7 @@ export const Constants = {
         "encerrado",
         "cancelado",
       ],
+      rental_emission_type: ["nfse", "recibo", "boleto"],
       rental_guarantee_type: [
         "sem_garantia",
         "fiador",

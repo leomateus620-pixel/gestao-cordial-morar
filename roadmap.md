@@ -1,5 +1,10 @@
 # Roadmap
 
+- [ ] Emissões como primeira visão; Detalhes preservados e NF reutilizada
+- [ ] Recibo de três vias: modelo, PDF, armazenamento protegido e cópia do link
+- [ ] Boleto sem provedor: abstração e estado indisponível
+- [ ] Validar tela, PDF, permissões e testes sem publicar
+
 - [x] Sidebar "Editorial premium" (Sora + Manrope, itens sem descrição)
 - [x] Cartão em volta de cada grupo de menu da sidebar
 - [x] Navegação fluida: pílula ativa deslizante + transição de página
