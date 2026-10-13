@@ -16,6 +16,7 @@ import {
 } from "@/lib/nfse/nfse.functions";
 import type { FiscalReview } from "@/lib/nfse/fiscal-profile";
 import { PROCESSANDO_STALE_MS } from "@/lib/nfse/emission-rules";
+import { nfseShareText, whatsappShareUrl } from "@/lib/nfse/nfse-share";
 
 const PAGE_SIZE = 20;
 export type RentalFiscalPreviewInput = {
@@ -136,9 +137,54 @@ export function useRentalNfse(contractId: string | null, enabled = true, modoTes
       onFail(err as Error);
     }
   }
+  async function downloadPdf(emissionId: string) {
+    try {
+      const { url, fileName } = await pdfUrlFn({ data: { emissionId, download: true } });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      onFail(err as Error);
+    }
+  }
+  async function sharePdf(emissionId: string) {
+    try {
+      const { url, fileName, officialLink } = await pdfUrlFn({ data: { emissionId } });
+      const text = nfseShareText({ fileName, officialLink });
+      if (typeof navigator.share === "function") {
+        try {
+          const blob = await (await fetch(url)).blob();
+          const file = new File([blob], fileName, { type: "application/pdf" });
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({ files: [file], title: fileName, text });
+            return;
+          }
+          await navigator.share({ title: fileName, text, url: officialLink ?? undefined });
+          return;
+        } catch (e) {
+          if ((e as Error).name === "AbortError") return;
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success("Link oficial copiado.", {
+          action: { label: "WhatsApp", onClick: () => window.open(whatsappShareUrl(text), "_blank") },
+        });
+      } catch {
+        window.open(whatsappShareUrl(text), "_blank");
+      }
+    } catch (err) {
+      onFail(err as Error);
+    }
+  }
 
   return {
     openPdf,
+    downloadPdf,
+    sharePdf,
     retryPdf: retryPdfMutation.mutateAsync,
     retryingPdfId: retryPdfMutation.isPending ? retryPdfMutation.variables : null,
     actionError,
