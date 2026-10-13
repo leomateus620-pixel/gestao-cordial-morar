@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SiteRouteImport } from './routes/site'
 import { Route as SiteMorarRouteImport } from './routes/site-morar'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppAgenciamentosRouteImport } from './routes/_app.agenciamentos'
 import { Route as AppAlugueisRouteImport } from './routes/_app.alugueis'
@@ -51,6 +53,7 @@ import { Route as SiteBairrosRouteImport } from './routes/site.bairros'
 import { Route as SiteBuscarRouteImport } from './routes/site.buscar'
 import { Route as SiteContatoRouteImport } from './routes/site.contato'
 import { Route as SiteFavoritosRouteImport } from './routes/site.favoritos'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
@@ -100,6 +103,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -120,6 +128,12 @@ const UnsubscribeRoute = UnsubscribeRouteImport.update({
   path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -300,6 +314,11 @@ const SiteFavoritosRoute = SiteFavoritosRouteImport.update({
   id: '/favoritos',
   path: '/favoritos',
   getParentRoute: () => SiteRoute,
+} as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
   id: '/agenda/',
@@ -522,10 +541,12 @@ const LovableEmailTransactionalSendRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRouteWithChildren
   '/site-morar': typeof SiteMorarRouteWithChildren
   '/unsubscribe': typeof UnsubscribeRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
@@ -561,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/site/favoritos': typeof SiteFavoritosRoute
   '/site-morar/': typeof SiteMorarIndexRoute
   '/site/': typeof SiteIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
@@ -603,8 +625,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
   '/alugueis': typeof AppAlugueisRoute
   '/atendimentos': typeof AppAtendimentosRoute
@@ -640,6 +664,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/site-morar': typeof SiteMorarIndexRoute
   '/site': typeof SiteIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/novo': typeof AppImoveisNovoRoute
@@ -683,10 +708,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRouteWithChildren
   '/site-morar': typeof SiteMorarRouteWithChildren
   '/unsubscribe': typeof UnsubscribeRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
   '/_app/alugueis': typeof AppAlugueisRoute
   '/_app/atendimentos': typeof AppAtendimentosRoute
@@ -723,6 +750,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/site-morar/': typeof SiteMorarIndexRoute
   '/site/': typeof SiteIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
@@ -768,10 +796,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/mcp'
     | '/reset-password'
     | '/site'
     | '/site-morar'
     | '/unsubscribe'
+    | '/.well-known/oauth-protected-resource'
     | '/agenciamentos'
     | '/alugueis'
     | '/atendimentos'
@@ -807,6 +837,7 @@ export interface FileRouteTypes {
     | '/site/favoritos'
     | '/site-morar/'
     | '/site/'
+    | '/.lovable/oauth/consent'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
@@ -849,8 +880,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/mcp'
     | '/reset-password'
     | '/unsubscribe'
+    | '/.well-known/oauth-protected-resource'
     | '/agenciamentos'
     | '/alugueis'
     | '/atendimentos'
@@ -886,6 +919,7 @@ export interface FileRouteTypes {
     | '/'
     | '/site-morar'
     | '/site'
+    | '/.lovable/oauth/consent'
     | '/agenda/fotos'
     | '/clientes/$clienteId'
     | '/imoveis/novo'
@@ -928,10 +962,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/mcp'
     | '/reset-password'
     | '/site'
     | '/site-morar'
     | '/unsubscribe'
+    | '/.well-known/oauth-protected-resource'
     | '/_app/agenciamentos'
     | '/_app/alugueis'
     | '/_app/atendimentos'
@@ -968,6 +1004,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/site-morar/'
     | '/site/'
+    | '/.lovable/oauth/consent'
     | '/_app/agenda/fotos'
     | '/_app/clientes/$clienteId'
     | '/_app/imoveis/$imovelId'
@@ -1012,12 +1049,15 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SiteRoute: typeof SiteRouteWithChildren
   SiteMorarRoute: typeof SiteMorarRouteWithChildren
   UnsubscribeRoute: typeof UnsubscribeRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AvaliarTokenRoute: typeof AvaliarTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -1059,6 +1099,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -1085,6 +1132,13 @@ declare module '@tanstack/react-router' {
       path: '/unsubscribe'
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -1338,6 +1392,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/site/favoritos'
       preLoaderRoute: typeof SiteFavoritosRouteImport
       parentRoute: typeof SiteRoute
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/agenda/': {
       id: '/_app/agenda/'
@@ -1773,12 +1834,16 @@ const SiteMorarRouteWithChildren = SiteMorarRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SiteRoute: SiteRouteWithChildren,
   SiteMorarRoute: SiteMorarRouteWithChildren,
   UnsubscribeRoute: UnsubscribeRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AvaliarTokenRoute: AvaliarTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,

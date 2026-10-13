@@ -17,8 +17,11 @@ import {
   useSession,
 } from "@/lib/auth-mock";
 import { LoginFeatureShowcase } from "@/components/login-feature-showcase";
+import { oauthReturnPath } from "@/lib/oauth-return-path";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (s: Record<string, unknown>): { next?: string } =>
+    typeof s.next === "string" ? { next: s.next } : {},
   head: () => ({ meta: [{ title: "Entrar — Gestão Cordial & Morar" }] }),
   component: LoginPage,
 });
@@ -34,6 +37,12 @@ const nameSchema = z.string().trim().min(2, "Informe seu nome completo").max(120
 function LoginPage() {
   const navigate = useNavigate();
   const session = useSession();
+  const { next } = Route.useSearch();
+  const returnTo = oauthReturnPath(next);
+  const goNext = () => {
+    if (returnTo !== "/") window.location.assign(returnTo);
+    else navigate({ to: "/" });
+  };
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -52,8 +61,9 @@ function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (session) navigate({ to: "/" });
-  }, [session, navigate]);
+    if (session) goNext();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   function resetMessages() {
     setErro(null);
@@ -78,7 +88,7 @@ function LoginPage() {
       }
     } catch (err) {
       if (err instanceof z.ZodError) {
-        setErro(err.errors[0]?.message ?? "Dados inválidos.");
+        setErro(err.issues[0]?.message ?? "Dados inválidos.");
       }
       return;
     }
@@ -91,7 +101,7 @@ function LoginPage() {
           setErro("E-mail ou senha inválidos.");
           return;
         }
-        navigate({ to: "/" });
+        goNext();
         return;
       }
       if (mode === "signup") {
@@ -107,7 +117,7 @@ function LoginPage() {
           setMode("signin");
           return;
         }
-        navigate({ to: "/" });
+        goNext();
         return;
       }
       // reset

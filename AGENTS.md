@@ -15,3 +15,4 @@
 - Boleto providers follow the browser-safe provider interface; no configured provider means no financial issuance — why: simulated payment documents must never be mistaken for payable boletos.
 - Ad platform tokens (ad_platform_connections) are read only server-side via the admin client inside handlers; the browser sees connections through the `ad_connections_public()` RPC — why: OAuth tokens must never reach the client.
 - Marketing ad connectors live in src/lib/ads (pure link parser + per-platform providers implementing AdProvider); missing secrets surface as `not_configured`, never fake values — why: keeps manual campaigns working without credentials.
+- Agent integrations (MCP) live in src/lib/mcp (one tool per file, OAuth via Supabase, queries via the caller token so RLS applies; read-only tools only) — why: assistants must never see more than the signed-in user.

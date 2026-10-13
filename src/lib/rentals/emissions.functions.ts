@@ -36,6 +36,7 @@ const receiptRegistration = scope.extend({
   filePath: z.string().max(240),
   fileName: z.string().min(1).max(150),
   valores: z.record(
+    z.string().max(60),
     z.union([z.string().max(200), z.number().finite().min(-999999999).max(999999999)]),
   ),
 });
@@ -82,7 +83,7 @@ export const registerRentalReceipt = createServerFn({ method: "POST" })
         competencia: data.competencia,
         file_path: data.filePath,
         file_name: data.fileName,
-        valores: data.valores,
+        valores: data.valores as Record<string, string | number>,
         created_by: context.userId,
         provider: "gestao",
       })
