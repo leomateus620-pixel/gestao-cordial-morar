@@ -1,34 +1,34 @@
-import { useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  MapPinned,
-  Megaphone,
-  Plus,
-  RadioTower,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { CampaignCreateDrawer } from "@/components/marketing/CampaignCreateDrawer";
 import { CampaignDetailsDrawer } from "@/components/marketing/CampaignDetailsDrawer";
-import { MarketingCampaignCard } from "@/components/marketing/MarketingCampaignCard";
-import { MarketingCharts } from "@/components/marketing/MarketingCharts";
 import { MarketingEmptyState } from "@/components/marketing/MarketingEmptyState";
-import { MarketingFilters } from "@/components/marketing/MarketingFilters";
-import { MarketingKpiCards } from "@/components/marketing/MarketingKpiCards";
 import { MarketingSkeleton } from "@/components/marketing/MarketingSkeleton";
-import { Button } from "@/components/ui/button";
-import type {
-  MarketingAgencyId,
-  MarketingCampaign,
-  MarketingChannelFilter,
-  MarketingStatusFilter,
-} from "@/types/marketing";
 import {
-  buildMarketingSummary,
-  filterMarketingCampaigns,
-  formatMarketingNumber,
-  normalizeMarketingCampaigns,
-} from "@/services/marketing";
+  CampaignTable,
+  ConnectionsStrip,
+  InsightsBlock,
+  KpiGrid,
+  LinkImportBar,
+  TrendChart,
+} from "@/components/marketing/MarketingAdsPanels";
+import { Button } from "@/components/ui/button";
+import { useAds } from "@/hooks/useAds";
+import type { AdPlatform } from "@/lib/ads/types";
+import { cn } from "@/lib/utils";
+import { normalizeMarketingCampaigns } from "@/services/marketing";
+import {
+  buildInsights,
+  campaignStats,
+  competenceRange,
+  currentCompetence,
+  dailyTrend,
+  periodKpis,
+  shiftCompetence,
+} from "@/services/marketing-insights";
+import { useApp } from "@/store/app-store";
+import type { MarketingAgencyId, MarketingCampaign } from "@/types/marketing";
 
 type AgencyFilter = MarketingAgencyId | "todas";
 
@@ -41,6 +41,8 @@ type MarketingDashboardProps = {
   canViewFinancialInsights?: boolean;
 };
 
+const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
 export function MarketingDashboard({
   campaigns,
   agency,
@@ -49,254 +51,189 @@ export function MarketingDashboard({
   errorMessage,
   canViewFinancialInsights = true,
 }: MarketingDashboardProps) {
-  const [statusFilter, setStatusFilter] = useState<MarketingStatusFilter>("Todas");
-  const [channelFilter, setChannelFilter] = useState<MarketingChannelFilter>("Todos");
-  const [search, setSearch] = useState("");
-  const [selectedCampaign, setSelectedCampaign] = useState<MarketingCampaign | null>(null);
+  const setAgency = useApp((s) => s.setAgency);
+  const ads = useAds();
+  const [competence, setCompetence] = useState(currentCompetence());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createdCampaigns, setCreatedCampaigns] = useState<MarketingCampaign[]>([]);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
 
-  const allCampaigns = useMemo(
-    () => normalizeMarketingCampaigns([...createdCampaigns, ...campaigns]),
+  useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get("ads");
+    if (!status) return;
+    if (status === "conectado") toast.success("Conta conectada.");
+    else if (status !== "cancelado") toast.error("Não foi possível conectar a conta.");
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
+  const all = useMemo(
+    () => normalizeMarketingCampaigns([...createdCampaigns.filter((c) => !campaigns.some((x) => x.id === c.id)), ...campaigns]),
     [campaigns, createdCampaigns],
   );
-  const hasFilters =
-    statusFilter !== "Todas" || channelFilter !== "Todos" || search.trim().length > 0;
-  const filteredCampaigns = useMemo(
-    () =>
-      filterMarketingCampaigns({
-        campaigns: allCampaigns,
-        status: statusFilter,
-        channel: channelFilter,
-        search,
-      }),
-    [allCampaigns, channelFilter, search, statusFilter],
+  const prevComp = shiftCompetence(competence, -1);
+  const stats = useMemo(
+    () => all.map((c) => campaignStats(c, competence)).sort((a, b) => b.spend - a.spend || b.leads - a.leads),
+    [all, competence],
   );
-  const visibleCampaigns = hasFilters ? filteredCampaigns : allCampaigns;
-  const summary = useMemo(() => buildMarketingSummary(visibleCampaigns), [visibleCampaigns]);
-  const creationAgency: MarketingAgencyId = agency === "morar" ? "morar" : "cordial";
+  const prevStats = useMemo(() => all.map((c) => campaignStats(c, prevComp)), [all, prevComp]);
+  const kpis = useMemo(() => periodKpis(stats), [stats]);
+  const prevKpis = useMemo(() => periodKpis(prevStats), [prevStats]);
+  const insights = useMemo(() => buildInsights(stats, prevStats), [stats, prevStats]);
+  const trend = useMemo(() => dailyTrend(all, competence), [all, competence]);
+  const selected = all.find((c) => c.id === selectedId) ?? null;
+  const importAgency: MarketingAgencyId = agency === "morar" ? "morar" : "cordial";
+  const range = competenceRange(competence);
 
-  function resetFilters() {
-    setStatusFilter("Todas");
-    setChannelFilter("Todos");
-    setSearch("");
+  async function handleConnect(platform: AdPlatform) {
+    const r = await ads.connect(platform, agency === "todas" ? null : agency);
+    if (!r.ok) toast.error(r.message);
   }
 
-  function handleCreateCampaign(campaign: MarketingCampaign) {
-    setCreatedCampaigns((current) => [campaign, ...current]);
-    setSelectedCampaign(campaign);
+  async function handleImport(url: string) {
+    const r = await ads.importCampaign({ url, imobiliaria: importAgency, range }).catch(() => null);
+    if (!r) {
+      toast.error("Falha ao importar.");
+      return false;
+    }
+    if (!r.ok) {
+      toast.error(r.message);
+      return false;
+    }
+    toast.success(`${r.name} importada · ${r.days} dia${r.days === 1 ? "" : "s"}`);
+    return true;
+  }
+
+  async function syncOne(id: string, silent = false) {
+    setSyncingId(id);
+    try {
+      const r = await ads.syncCampaign({ id, range });
+      if (!silent) r.ok ? toast.success("Campanha sincronizada.") : toast.error(r.message);
+      return r.ok;
+    } catch {
+      if (!silent) toast.error("Falha ao sincronizar.");
+      return false;
+    } finally {
+      setSyncingId(null);
+    }
+  }
+
+  async function syncAll() {
+    const ids = all.filter((c) => c.externalCampaignId).map((c) => c.id);
+    if (!ids.length) {
+      toast("Nenhuma campanha conectada para sincronizar.");
+      return;
+    }
+    setSyncingAll(true);
+    let ok = 0;
+    for (const id of ids) if (await syncOne(id, true)) ok++;
+    setSyncingAll(false);
+    ok === ids.length ? toast.success(`${ok} campanha(s) sincronizada(s).`) : toast.error(`${ok}/${ids.length} sincronizadas.`);
   }
 
   if (isLoading) return <MarketingSkeleton />;
-
   if (isError) {
     return (
-      <section className="premium-card mx-auto max-w-2xl p-6 text-center">
-        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-red-500/10 text-red-700">
-          <AlertTriangle className="size-6" />
-        </div>
-        <h1 className="mt-4 text-xl font-black tracking-tight">Falha ao carregar campanhas</h1>
-        <p className="mt-2 text-sm leading-relaxed text-foreground/58">
-          {errorMessage ?? "Atualize a página ou tente novamente em instantes."}
-        </p>
+      <section className="mx-auto max-w-xl rounded-3xl bg-card p-6 text-center ring-1 ring-border/60">
+        <AlertTriangle className="mx-auto size-6 text-red-600" />
+        <h1 className="mt-3 text-lg font-semibold">Falha ao carregar campanhas</h1>
+        {errorMessage && <p className="mt-1 text-sm text-foreground/55">{errorMessage}</p>}
       </section>
     );
   }
 
+  const [y, m] = competence.split("-").map(Number);
+  const isCurrent = competence >= currentCompetence();
+  const activeStats = stats.filter((s) => s.spend > 0 || s.leads > 0 || s.campaign.status === "Ativa");
+
   return (
     <>
-      <div className="mx-auto w-full max-w-[88rem] space-y-5 pb-3 sm:space-y-6">
-        <MarketingHeader agency={agency} summary={summary} onCreate={() => setCreateOpen(true)} />
+      <div className="mx-auto w-full max-w-[88rem] space-y-4 pb-4 sm:space-y-5">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Marketing</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-2xl bg-card ring-1 ring-border/70">
+              <button type="button" aria-label="Mês anterior" className="grid size-9 place-items-center text-foreground/60 hover:text-foreground" onClick={() => setCompetence(shiftCompetence(competence, -1))}>
+                <ChevronLeft className="size-4" />
+              </button>
+              <span className="min-w-[5.5rem] text-center font-mono text-sm font-semibold tabular-nums">
+                {MONTHS[m - 1]}/{y}
+              </span>
+              <button type="button" aria-label="Próximo mês" disabled={isCurrent} className="grid size-9 place-items-center text-foreground/60 hover:text-foreground disabled:opacity-30" onClick={() => setCompetence(shiftCompetence(competence, 1))}>
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+            <div className="inline-flex rounded-2xl bg-card p-0.5 text-xs font-semibold ring-1 ring-border/70">
+              {(["todas", "cordial", "morar"] as const).map((a) => (
+                <button key={a} type="button" onClick={() => setAgency(a)} className={cn("rounded-xl px-3 py-2 capitalize transition", agency === a ? "bg-primary text-primary-foreground" : "text-foreground/55")}>
+                  {a}
+                </button>
+              ))}
+            </div>
+            <Button variant="outline" className="h-9 rounded-2xl" onClick={syncAll} disabled={syncingAll}>
+              <RefreshCw className={cn("size-4", syncingAll && "animate-spin")} /> Sincronizar
+            </Button>
+            <Button variant="ghost" size="icon" className="size-9 rounded-2xl" aria-label="Cadastrar campanha manual" onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+            </Button>
+          </div>
+        </header>
 
-        {!allCampaigns.length ? (
+        <LinkImportBar onImport={handleImport} importing={ads.importing} connections={ads.connections} onConnect={handleConnect} />
+        <ConnectionsStrip connections={ads.connections} loading={ads.connectionsLoading} onConnect={handleConnect} />
+
+        {!all.length ? (
           <MarketingEmptyState
+            title="Nenhuma campanha"
+            description="Cole um link de campanha ou cadastre manualmente."
             action={
-              <Button
-                className="rounded-2xl bg-primary text-white"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus className="size-4" />
-                Cadastrar campanha
+              <Button className="rounded-2xl" onClick={() => setCreateOpen(true)}>
+                <Plus className="size-4" /> Cadastrar campanha
               </Button>
             }
           />
         ) : (
           <>
-            <MarketingKpiCards summary={summary} canViewFinancialInsights={canViewFinancialInsights} />
-
-            <MarketingFilters
-              status={statusFilter}
-              channel={channelFilter}
-              search={search}
-              resultCount={filteredCampaigns.length}
-              onStatusChange={setStatusFilter}
-              onChannelChange={setChannelFilter}
-              onSearchChange={setSearch}
-              onReset={resetFilters}
-            />
-
-            {!visibleCampaigns.length ? (
-              <MarketingEmptyState
-                title="Nenhuma campanha encontrada"
-                description="Ajuste a busca ou os filtros para visualizar campanhas cadastradas."
-                action={
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl border-white/70 bg-white/58"
-                    onClick={resetFilters}
-                  >
-                    Limpar filtros
-                  </Button>
-                }
+            <KpiGrid curr={kpis} prev={prevKpis} showFinancial={canViewFinancialInsights} />
+            <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+              <TrendChart data={trend} />
+              <InsightsBlock insights={canViewFinancialInsights ? insights : insights.filter((i) => !i.text.includes("R$"))} />
+            </div>
+            {activeStats.length ? (
+              <CampaignTable
+                stats={activeStats}
+                showFinancial={canViewFinancialInsights}
+                syncingId={syncingId}
+                onOpen={setSelectedId}
+                onSync={(id) => void syncOne(id)}
               />
             ) : (
-              <>
-                <MarketingCharts campaigns={visibleCampaigns} />
-
-                <section className="space-y-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-black tracking-tight text-foreground">
-                        Campanhas em análise
-                      </h2>
-                      <p className="mt-1 text-sm leading-relaxed text-foreground/56">
-                        Compare investimento, entrega, conversão e sinais de atenção.
-                      </p>
-                    </div>
-                    <span className="w-fit rounded-full bg-white/55 px-3 py-1 text-[11px] font-bold text-foreground/54">
-                      {formatMarketingNumber(visibleCampaigns.length)} resultado
-                      {visibleCampaigns.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
-
-                  <div className="grid min-w-0 gap-3 xl:grid-cols-2">
-                    {visibleCampaigns.map((campaign) => (
-                      <MarketingCampaignCard
-                        key={campaign.id}
-                        campaign={campaign}
-                        onOpenDetails={setSelectedCampaign}
-                        canViewFinancialInsights={canViewFinancialInsights}
-                      />
-                    ))}
-                  </div>
-                </section>
-              </>
+              <div className="rounded-3xl border border-dashed p-8 text-center text-sm text-foreground/50">
+                Sem campanhas nesta competência
+              </div>
             )}
           </>
         )}
       </div>
 
       <CampaignDetailsDrawer
-        campaign={selectedCampaign}
-        open={selectedCampaign !== null}
+        campaign={selected}
+        open={selected !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedCampaign(null);
+          if (!open) setSelectedId(null);
         }}
         canViewFinancialInsights={canViewFinancialInsights}
       />
-
       <CampaignCreateDrawer
         open={createOpen}
-        agency={creationAgency}
+        agency={importAgency}
         onOpenChange={setCreateOpen}
-        onCreate={handleCreateCampaign}
+        onCreate={(c) => {
+          setCreatedCampaigns((cur) => [c, ...cur]);
+          setSelectedId(c.id);
+        }}
       />
     </>
   );
-}
-
-function MarketingHeader({
-  agency,
-  summary,
-  onCreate,
-}: {
-  agency: AgencyFilter;
-  summary: ReturnType<typeof buildMarketingSummary>;
-  onCreate: () => void;
-}) {
-  return (
-    <section className="premium-card overflow-hidden p-4 sm:p-5 lg:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/12 bg-white/45 px-3 py-1 text-[10px] font-bold text-primary shadow-sm">
-            <RadioTower className="size-3.5" />
-            Inteligência de campanhas
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-            Marketing imobiliário
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-foreground/62 sm:text-base">
-            Acompanhe campanhas, canais, entregas, cliques e geração de leads.
-          </p>
-        </div>
-
-        <div className="grid min-w-0 gap-3 lg:w-[min(31rem,42vw)]">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <HeaderPill
-              icon={Megaphone}
-              label="Imobiliária"
-              value={getAgencyLabel(agency)}
-              tone="neutral"
-            />
-            <HeaderPill
-              icon={TrendingUp}
-              label="Melhor canal"
-              value={summary.bestChannel?.label ?? "Sem dados"}
-              tone="success"
-            />
-            <HeaderPill
-              icon={MapPinned}
-              label="Melhor região"
-              value={summary.bestLocation?.location ?? "Sem dados"}
-              tone="primary"
-            />
-          </div>
-          <Button
-            type="button"
-            onClick={onCreate}
-            className="min-h-11 rounded-2xl bg-primary text-white shadow-[0_14px_30px_-22px_rgba(30,100,125,0.9)] transition hover:bg-primary/90 active:scale-[0.99] motion-reduce:transition-none"
-          >
-            <Plus className="size-4" />
-            Cadastrar campanha
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function HeaderPill({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  tone: "primary" | "success" | "neutral";
-}) {
-  const toneClass = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-emerald-500/10 text-emerald-700",
-    neutral: "bg-slate-500/10 text-slate-600",
-  }[tone];
-
-  return (
-    <div className="min-w-0 rounded-2xl bg-white/52 px-3 py-2.5 ring-1 ring-white/66">
-      <p className="flex items-center gap-1 truncate text-[10px] font-bold text-foreground/45">
-        <span className={`grid size-5 shrink-0 place-items-center rounded-lg ${toneClass}`}>
-          <Icon className="size-3" />
-        </span>
-        {label}
-      </p>
-      <p className="mt-1 truncate text-[13px] font-black leading-tight text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function getAgencyLabel(agency: AgencyFilter) {
-  if (agency === "cordial") return "Cordial";
-  if (agency === "morar") return "Morar";
-  return "Todas";
 }
