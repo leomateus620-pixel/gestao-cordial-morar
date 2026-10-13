@@ -103,8 +103,16 @@ export default defineTool({
 
     // Atendimentos parados
     const ha7 = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const ABERTOS = new Set([
+      "novo",
+      "aguardando_retorno",
+      "em_atendimento",
+      "visita_agendada",
+      "proposta_enviada",
+      "negociacao",
+    ]);
     const parados = (attRes.data ?? []).filter((a) => {
-      if (a.status !== "em_andamento" && a.status !== "novo") return false;
+      if (!ABERTOS.has(a.status)) return false;
       const ref = a.proximo_retorno ?? a.created_at;
       return ref ? new Date(ref).getTime() < ha7 : false;
     });
