@@ -34,6 +34,7 @@ import { Route as AppMaisRouteImport } from './routes/_app.mais'
 import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
 import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
 import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppSelecoesRouteImport } from './routes/_app.selecoes'
 import { Route as AppSiteAdministracaoRouteImport } from './routes/_app.site-administracao'
 import { Route as AppSiteMorarAdministracaoRouteImport } from './routes/_app.site-morar-administracao'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
@@ -217,6 +218,11 @@ const AppPesquisaSatisfacaoRoute = AppPesquisaSatisfacaoRouteImport.update({
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSelecoesRoute = AppSelecoesRouteImport.update({
+  id: '/selecoes',
+  path: '/selecoes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSiteAdministracaoRoute = AppSiteAdministracaoRouteImport.update({
@@ -563,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/marketing': typeof AppMarketingRoute
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/selecoes': typeof AppSelecoesRoute
   '/site-administracao': typeof AppSiteAdministracaoRoute
   '/site-morar-administracao': typeof AppSiteMorarAdministracaoRoute
   '/vendas': typeof AppVendasRoute
@@ -644,6 +651,7 @@ export interface FileRoutesByTo {
   '/marketing': typeof AppMarketingRoute
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/selecoes': typeof AppSelecoesRoute
   '/site-administracao': typeof AppSiteAdministracaoRoute
   '/site-morar-administracao': typeof AppSiteMorarAdministracaoRoute
   '/vendas': typeof AppVendasRoute
@@ -730,6 +738,7 @@ export interface FileRoutesById {
   '/_app/marketing': typeof AppMarketingRoute
   '/_app/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
+  '/_app/selecoes': typeof AppSelecoesRoute
   '/_app/site-administracao': typeof AppSiteAdministracaoRoute
   '/_app/site-morar-administracao': typeof AppSiteMorarAdministracaoRoute
   '/_app/vendas': typeof AppVendasRoute
@@ -818,6 +827,7 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/pesquisa-satisfacao'
     | '/relatorios'
+    | '/selecoes'
     | '/site-administracao'
     | '/site-morar-administracao'
     | '/vendas'
@@ -899,6 +909,7 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/pesquisa-satisfacao'
     | '/relatorios'
+    | '/selecoes'
     | '/site-administracao'
     | '/site-morar-administracao'
     | '/vendas'
@@ -984,6 +995,7 @@ export interface FileRouteTypes {
     | '/_app/marketing'
     | '/_app/pesquisa-satisfacao'
     | '/_app/relatorios'
+    | '/_app/selecoes'
     | '/_app/site-administracao'
     | '/_app/site-morar-administracao'
     | '/_app/vendas'
@@ -1258,6 +1270,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/selecoes': {
+      id: '/_app/selecoes'
+      path: '/selecoes'
+      fullPath: '/selecoes'
+      preLoaderRoute: typeof AppSelecoesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/site-administracao': {
@@ -1734,6 +1753,7 @@ interface AppRouteChildren {
   AppMarketingRoute: typeof AppMarketingRoute
   AppPesquisaSatisfacaoRoute: typeof AppPesquisaSatisfacaoRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppSelecoesRoute: typeof AppSelecoesRoute
   AppSiteAdministracaoRoute: typeof AppSiteAdministracaoRoute
   AppSiteMorarAdministracaoRoute: typeof AppSiteMorarAdministracaoRoute
   AppVendasRoute: typeof AppVendasRoute
@@ -1759,6 +1779,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingRoute: AppMarketingRoute,
   AppPesquisaSatisfacaoRoute: AppPesquisaSatisfacaoRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  AppSelecoesRoute: AppSelecoesRoute,
   AppSiteAdministracaoRoute: AppSiteAdministracaoRoute,
   AppSiteMorarAdministracaoRoute: AppSiteMorarAdministracaoRoute,
   AppVendasRoute: AppVendasRoute,
