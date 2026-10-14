@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { peekCatalogAnchor, readCatalogSearch } from "@/lib/imoveis/search-memory";
 import {
   Archive,
   ArchiveRestore,
@@ -97,6 +99,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function DetalhePage() {
+  const router = useRouter();
+  const [backSearch, setBackSearch] = useState<Record<string, unknown>>({});
+  const [cameFromCatalog, setCameFromCatalog] = useState(false);
+  useEffect(() => {
+    setBackSearch(readCatalogSearch() ?? {});
+    setCameFromCatalog(Boolean(peekCatalogAnchor()));
+  }, []);
   const { imovelId } = Route.useParams();
   const session = useSession();
   const isAdmin = isAdminUser(session);
@@ -196,6 +205,14 @@ function DetalhePage() {
       <div className="flex items-center gap-3">
         <Link
           to="/imoveis"
+          search={backSearch}
+          onClick={(event) => {
+            // Veio da busca: volta no histórico (mantém filtros, página e rolagem).
+            if (cameFromCatalog && window.history.length > 1) {
+              event.preventDefault();
+              router.history.back();
+            }
+          }}
           className="glass-panel inline-flex size-10 items-center justify-center rounded-full"
           aria-label="Voltar para o catálogo"
         >

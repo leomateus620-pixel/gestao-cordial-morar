@@ -71,6 +71,13 @@
       "when": 1791895080276,
       "tag": "0009_marketing_ads_connectors",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792015915938,
+      "tag": "0010_shared_selections",
+      "breakpoints": true
     }
   ]
 }

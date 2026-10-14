@@ -34,11 +34,13 @@ import { Route as AppMaisRouteImport } from './routes/_app.mais'
 import { Route as AppMarketingRouteImport } from './routes/_app.marketing'
 import { Route as AppPesquisaSatisfacaoRouteImport } from './routes/_app.pesquisa-satisfacao'
 import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppSelecoesRouteImport } from './routes/_app.selecoes'
 import { Route as AppSiteAdministracaoRouteImport } from './routes/_app.site-administracao'
 import { Route as AppSiteMorarAdministracaoRouteImport } from './routes/_app.site-morar-administracao'
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as SiteMorarIndexRouteImport } from './routes/site-morar.index'
 import { Route as SiteMorarPageRouteImport } from './routes/site-morar.$page'
 import { Route as SiteMorarAnuncieRouteImport } from './routes/site-morar.anuncie'
@@ -219,6 +221,11 @@ const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   path: '/relatorios',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSelecoesRoute = AppSelecoesRouteImport.update({
+  id: '/selecoes',
+  path: '/selecoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSiteAdministracaoRoute = AppSiteAdministracaoRouteImport.update({
   id: '/site-administracao',
   path: '/site-administracao',
@@ -243,6 +250,11 @@ const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const STokenRoute = STokenRouteImport.update({
+  id: '/s/$token',
+  path: '/s/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteMorarIndexRoute = SiteMorarIndexRouteImport.update({
@@ -563,11 +575,13 @@ export interface FileRoutesByFullPath {
   '/marketing': typeof AppMarketingRoute
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/selecoes': typeof AppSelecoesRoute
   '/site-administracao': typeof AppSiteAdministracaoRoute
   '/site-morar-administracao': typeof AppSiteMorarAdministracaoRoute
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/s/$token': typeof STokenRoute
   '/site-morar/$page': typeof SiteMorarPageRoute
   '/site-morar/anuncie': typeof SiteMorarAnuncieRoute
   '/site-morar/bairros': typeof SiteMorarBairrosRoute
@@ -644,11 +658,13 @@ export interface FileRoutesByTo {
   '/marketing': typeof AppMarketingRoute
   '/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/relatorios': typeof AppRelatoriosRoute
+  '/selecoes': typeof AppSelecoesRoute
   '/site-administracao': typeof AppSiteAdministracaoRoute
   '/site-morar-administracao': typeof AppSiteMorarAdministracaoRoute
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/s/$token': typeof STokenRoute
   '/site-morar/$page': typeof SiteMorarPageRoute
   '/site-morar/anuncie': typeof SiteMorarAnuncieRoute
   '/site-morar/bairros': typeof SiteMorarBairrosRoute
@@ -730,11 +746,13 @@ export interface FileRoutesById {
   '/_app/marketing': typeof AppMarketingRoute
   '/_app/pesquisa-satisfacao': typeof AppPesquisaSatisfacaoRoute
   '/_app/relatorios': typeof AppRelatoriosRoute
+  '/_app/selecoes': typeof AppSelecoesRoute
   '/_app/site-administracao': typeof AppSiteAdministracaoRoute
   '/_app/site-morar-administracao': typeof AppSiteMorarAdministracaoRoute
   '/_app/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/s/$token': typeof STokenRoute
   '/site-morar/$page': typeof SiteMorarPageRoute
   '/site-morar/anuncie': typeof SiteMorarAnuncieRoute
   '/site-morar/bairros': typeof SiteMorarBairrosRoute
@@ -818,11 +836,13 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/pesquisa-satisfacao'
     | '/relatorios'
+    | '/selecoes'
     | '/site-administracao'
     | '/site-morar-administracao'
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/s/$token'
     | '/site-morar/$page'
     | '/site-morar/anuncie'
     | '/site-morar/bairros'
@@ -899,11 +919,13 @@ export interface FileRouteTypes {
     | '/marketing'
     | '/pesquisa-satisfacao'
     | '/relatorios'
+    | '/selecoes'
     | '/site-administracao'
     | '/site-morar-administracao'
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/s/$token'
     | '/site-morar/$page'
     | '/site-morar/anuncie'
     | '/site-morar/bairros'
@@ -984,11 +1006,13 @@ export interface FileRouteTypes {
     | '/_app/marketing'
     | '/_app/pesquisa-satisfacao'
     | '/_app/relatorios'
+    | '/_app/selecoes'
     | '/_app/site-administracao'
     | '/_app/site-morar-administracao'
     | '/_app/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/s/$token'
     | '/site-morar/$page'
     | '/site-morar/anuncie'
     | '/site-morar/bairros'
@@ -1057,6 +1081,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AvaliarTokenRoute: typeof AvaliarTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  STokenRoute: typeof STokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
@@ -1260,6 +1285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRelatoriosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/selecoes': {
+      id: '/_app/selecoes'
+      path: '/selecoes'
+      fullPath: '/selecoes'
+      preLoaderRoute: typeof AppSelecoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/site-administracao': {
       id: '/_app/site-administracao'
       path: '/site-administracao'
@@ -1293,6 +1325,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$token': {
+      id: '/s/$token'
+      path: '/s/$token'
+      fullPath: '/s/$token'
+      preLoaderRoute: typeof STokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/site-morar/': {
@@ -1734,6 +1773,7 @@ interface AppRouteChildren {
   AppMarketingRoute: typeof AppMarketingRoute
   AppPesquisaSatisfacaoRoute: typeof AppPesquisaSatisfacaoRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppSelecoesRoute: typeof AppSelecoesRoute
   AppSiteAdministracaoRoute: typeof AppSiteAdministracaoRoute
   AppSiteMorarAdministracaoRoute: typeof AppSiteMorarAdministracaoRoute
   AppVendasRoute: typeof AppVendasRoute
@@ -1759,6 +1799,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingRoute: AppMarketingRoute,
   AppPesquisaSatisfacaoRoute: AppPesquisaSatisfacaoRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  AppSelecoesRoute: AppSelecoesRoute,
   AppSiteAdministracaoRoute: AppSiteAdministracaoRoute,
   AppSiteMorarAdministracaoRoute: AppSiteMorarAdministracaoRoute,
   AppVendasRoute: AppVendasRoute,
@@ -1843,6 +1884,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AvaliarTokenRoute: AvaliarTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  STokenRoute: STokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
