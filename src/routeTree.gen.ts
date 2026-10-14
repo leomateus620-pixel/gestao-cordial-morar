@@ -40,6 +40,7 @@ import { Route as AppSiteMorarAdministracaoRouteImport } from './routes/_app.sit
 import { Route as AppVendasRouteImport } from './routes/_app.vendas'
 import { Route as AvaliarTokenRouteImport } from './routes/avaliar.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as SiteMorarIndexRouteImport } from './routes/site-morar.index'
 import { Route as SiteMorarPageRouteImport } from './routes/site-morar.$page'
 import { Route as SiteMorarAnuncieRouteImport } from './routes/site-morar.anuncie'
@@ -249,6 +250,11 @@ const AvaliarTokenRoute = AvaliarTokenRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const STokenRoute = STokenRouteImport.update({
+  id: '/s/$token',
+  path: '/s/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SiteMorarIndexRoute = SiteMorarIndexRouteImport.update({
@@ -575,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/s/$token': typeof STokenRoute
   '/site-morar/$page': typeof SiteMorarPageRoute
   '/site-morar/anuncie': typeof SiteMorarAnuncieRoute
   '/site-morar/bairros': typeof SiteMorarBairrosRoute
@@ -657,6 +664,7 @@ export interface FileRoutesByTo {
   '/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/s/$token': typeof STokenRoute
   '/site-morar/$page': typeof SiteMorarPageRoute
   '/site-morar/anuncie': typeof SiteMorarAnuncieRoute
   '/site-morar/bairros': typeof SiteMorarBairrosRoute
@@ -744,6 +752,7 @@ export interface FileRoutesById {
   '/_app/vendas': typeof AppVendasRoute
   '/avaliar/$token': typeof AvaliarTokenRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/s/$token': typeof STokenRoute
   '/site-morar/$page': typeof SiteMorarPageRoute
   '/site-morar/anuncie': typeof SiteMorarAnuncieRoute
   '/site-morar/bairros': typeof SiteMorarBairrosRoute
@@ -833,6 +842,7 @@ export interface FileRouteTypes {
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/s/$token'
     | '/site-morar/$page'
     | '/site-morar/anuncie'
     | '/site-morar/bairros'
@@ -915,6 +925,7 @@ export interface FileRouteTypes {
     | '/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/s/$token'
     | '/site-morar/$page'
     | '/site-morar/anuncie'
     | '/site-morar/bairros'
@@ -1001,6 +1012,7 @@ export interface FileRouteTypes {
     | '/_app/vendas'
     | '/avaliar/$token'
     | '/email/unsubscribe'
+    | '/s/$token'
     | '/site-morar/$page'
     | '/site-morar/anuncie'
     | '/site-morar/bairros'
@@ -1069,6 +1081,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AvaliarTokenRoute: typeof AvaliarTokenRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  STokenRoute: typeof STokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
@@ -1312,6 +1325,13 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$token': {
+      id: '/s/$token'
+      path: '/s/$token'
+      fullPath: '/s/$token'
+      preLoaderRoute: typeof STokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/site-morar/': {
@@ -1864,6 +1884,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AvaliarTokenRoute: AvaliarTokenRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  STokenRoute: STokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
