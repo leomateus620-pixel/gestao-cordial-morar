@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { peekCatalogAnchor, readCatalogSearch } from "@/lib/imoveis/search-memory";
+import { readCatalogSearch } from "@/lib/imoveis/search-memory";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +49,7 @@ export function DeletePropertyDialog({
         );
       }
       // Volta preservando a busca, igual à seta da ficha.
-      if (peekCatalogAnchor() && window.history.length > 1) router.history.back();
+      if (window.sessionStorage.getItem("cordial:catalogo:retorno") && window.history.length > 1) router.history.back();
       else navigate({ to: "/imoveis", search: readCatalogSearch() ?? {} });
     } catch (error) {
       toast.error((error as Error)?.message ?? "Não foi possível excluir o imóvel.");
