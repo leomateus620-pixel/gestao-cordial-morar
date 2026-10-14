@@ -15,3 +15,12 @@
 - [x] Fotos: parar perda (enviar antes de apagar, limite 2/rodada, disjuntor 80%), destravar envios (delivery_unknown por evidência), ordem crescente + conferência real
 - [ ] Recuperação 1401C, 3398M, 3384M, 1277C, 1404C, 3380M, 1350C, 1349C (bloqueada: a rotina de fotos roda no app publicado; aguarda publish autorizado)
 - [x] Relatório de fotos a mais: 1353, 3349, 1373, 3372, 1308, 781
+
+## Seleções compartilhadas — correções Leonardo (14/10)
+- [ ] Excluir imóvel volta preservando a busca
+- [ ] Referência pública sem código interno
+- [ ] REVOKE anon/PUBLIC nas tabelas e funções auxiliares
+- [ ] Respeitar localização/valor ocultos no link público
+- [ ] Limite de tentativas + Cache-Control no-store no link público
+- [ ] Teste do retorno público sem dados internos
+- [ ] (opcional) sem id interno no link público
