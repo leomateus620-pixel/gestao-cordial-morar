@@ -1,6 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { PhotoLightbox } from "@/components/imoveis/PhotoLightbox";
+import { SelectionBar, SelectionReviewSheet } from "@/components/selecoes/SelectionPanel";
+import { listCatalogPhotos } from "@/lib/selecoes/selecoes.functions";
+import { bindSelectionDraft, selectionDraft, useSelectionDraft } from "@/lib/selecoes/draft-store";
+import { suggestTitle } from "@/lib/selecoes/rules";
+import { rememberCatalogSearch, takeCatalogAnchor } from "@/lib/imoveis/search-memory";
+import { useSession } from "@/lib/auth-mock";
+import { useApp } from "@/store/app-store";
+import type { Property } from "@/types/property";
 import { SearchX } from "lucide-react";
 import { Fab } from "@/components/fab";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -135,6 +146,48 @@ function Page() {
   const total = query.data?.total ?? 0;
   const hasFilters = countActiveFilters(filters) > 0 || filters.q.trim().length > 0;
 
+  // Memória da busca: guarda a pesquisa atual para o "voltar" da ficha.
+  useEffect(() => {
+    rememberCatalogSearch(serializeCatalogSearch(filters));
+  }, [filters]);
+
+  // Ao voltar da ficha, rola até o imóvel visitado assim que a lista chega.
+  const anchorRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (anchorRef.current === undefined) anchorRef.current = takeCatalogAnchor();
+    const id = anchorRef.current;
+    if (!id || query.isPending) return;
+    anchorRef.current = null;
+    if (!items.some((im) => im.id === id)) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`imovel-${id}`)?.scrollIntoView({ block: "center" });
+    });
+  }, [items, query.isPending]);
+
+  // Fotos da página atual (só URLs; as imagens carregam sob demanda).
+  const fetchPhotos = useServerFn(listCatalogPhotos);
+  const pageIds = useMemo(() => items.map((im) => im.id), [items]);
+  const photos = useQuery({
+    queryKey: ["catalog-photos", pageIds],
+    queryFn: () => fetchPhotos({ data: { ids: pageIds } }),
+    enabled: pageIds.length > 0,
+    staleTime: 30 * 60_000,
+  });
+
+  // Seleção do corretor (rascunho por usuário).
+  const session = useSession();
+  useEffect(() => bindSelectionDraft(session?.id ?? null), [session?.id]);
+  const draft = useSelectionDraft();
+  const selectedSet = useMemo(() => new Set(draft.ids), [draft.ids]);
+  const toggleSelect = useCallback((id: string) => selectionDraft.toggle(id), []);
+  const [sheet, setSheet] = useState<{ open: boolean; step: "review" | "create" }>({ open: false, step: "review" });
+  const agencyFilter = useApp((s) => s.agency);
+
+  const [lightbox, setLightbox] = useState<{ title: string; photos: string[]; index: number } | null>(null);
+  const openLightbox = useCallback((p: Property, list: string[], index: number) => {
+    setLightbox({ title: `${p.tipo ?? "Imóvel"} ${[p.codigoCordial, p.codigoMorar].filter(Boolean).join(" / ")}`.trim(), photos: list, index });
+  }, []);
+
   const gridClass =
     view === "grid"
       ? "grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4"
@@ -172,7 +225,17 @@ function Page() {
           ))}
 
         {!query.isPending &&
-          items.map((im) => <PropertyCatalogCard key={im.id} property={im} view={view} />)}
+          items.map((im) => (
+            <PropertyCatalogCard
+              key={im.id}
+              property={im}
+              view={view}
+              photos={photos.data?.[im.id]}
+              selected={selectedSet.has(im.id)}
+              onToggleSelect={toggleSelect}
+              onExpand={openLightbox}
+            />
+          ))}
       </div>
 
       {query.isError && (
@@ -211,6 +274,30 @@ function Page() {
         total={total}
         onPageChange={goToPage}
         className="pt-2"
+      />
+
+      {draft.ids.length || draft.editingId ? <div aria-hidden className="h-24" /> : null}
+
+      <SelectionBar onReview={(step) => setSheet({ open: true, step })} />
+      <SelectionReviewSheet
+        open={sheet.open}
+        initialStep={sheet.step}
+        onOpenChange={(open) => setSheet((s) => ({ ...s, open }))}
+        suggestedTitle={suggestTitle({
+          tipo: filters.tipo,
+          cidade: filters.cidade,
+          bairro: filters.bairro,
+          operacao: filters.operacao,
+          valorMax: filters.valorMax,
+        })}
+        defaultAgency={agencyFilter === "morar" ? "morar" : "cordial"}
+      />
+      <PhotoLightbox
+        open={!!lightbox}
+        onOpenChange={(open) => !open && setLightbox(null)}
+        photos={lightbox?.photos ?? []}
+        startIndex={lightbox?.index ?? 0}
+        title={lightbox?.title ?? ""}
       />
 
       <Fab
