@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -17,6 +17,9 @@ export function PhotoLightbox({
   onOpenChange: (open: boolean) => void;
 }) {
   const [index, setIndex] = useState(startIndex);
+  const origin = useRef<HTMLElement | null>(null);
+  if (open && !origin.current && typeof document !== "undefined")
+    origin.current = document.activeElement as HTMLElement | null;
   useEffect(() => {
     if (open) setIndex(startIndex);
   }, [open, startIndex]);
@@ -27,6 +30,15 @@ export function PhotoLightbox({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-5xl gap-3 border-none bg-[rgba(16,20,24,0.94)] p-3 text-white sm:p-4"
+        onCloseAutoFocus={(e) => {
+          // Devolve o foco ao botão do card de origem.
+          const el = origin.current;
+          origin.current = null;
+          if (el && document.contains(el)) {
+            e.preventDefault();
+            el.focus();
+          }
+        }}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") go(1);
           if (e.key === "ArrowLeft") go(-1);

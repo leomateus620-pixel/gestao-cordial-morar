@@ -8,7 +8,7 @@ import { SelectionBar, SelectionReviewSheet } from "@/components/selecoes/Select
 import { listCatalogPhotos } from "@/lib/selecoes/selecoes.functions";
 import { bindSelectionDraft, selectionDraft, useSelectionDraft } from "@/lib/selecoes/draft-store";
 import { suggestTitle } from "@/lib/selecoes/rules";
-import { rememberCatalogSearch, takeCatalogAnchor } from "@/lib/imoveis/search-memory";
+import { rememberCatalogSearch, takeCatalogReturn } from "@/lib/imoveis/search-memory";
 import { useSession } from "@/lib/auth-mock";
 import { useApp } from "@/store/app-store";
 import type { Property } from "@/types/property";
@@ -154,7 +154,7 @@ function Page() {
   // Ao voltar da ficha, rola até o imóvel visitado assim que a lista chega.
   const anchorRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (anchorRef.current === undefined) anchorRef.current = takeCatalogAnchor();
+    if (anchorRef.current === undefined) anchorRef.current = takeCatalogReturn();
     const id = anchorRef.current;
     if (!id || query.isPending) return;
     anchorRef.current = null;

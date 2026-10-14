@@ -49,3 +49,30 @@ export function peekCatalogAnchor(): string | null {
     return null;
   }
 }
+
+const RETURN_KEY = "cordial:catalogo:retorno";
+
+/** Chamado pela ficha: o imóvel visitado passa a ser o alvo da volta. */
+export function markCatalogReturn(): string | null {
+  try {
+    const id = window.sessionStorage.getItem(ANCHOR_KEY);
+    if (id) {
+      window.sessionStorage.setItem(RETURN_KEY, id);
+      window.sessionStorage.removeItem(ANCHOR_KEY);
+    }
+    return id ?? window.sessionStorage.getItem(RETURN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Chamado pela busca ao montar: só existe alvo quando voltamos de uma ficha. */
+export function takeCatalogReturn(): string | null {
+  try {
+    const id = window.sessionStorage.getItem(RETURN_KEY);
+    window.sessionStorage.removeItem(RETURN_KEY);
+    return id;
+  } catch {
+    return null;
+  }
+}

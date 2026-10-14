@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { peekCatalogAnchor, readCatalogSearch } from "@/lib/imoveis/search-memory";
+import { markCatalogReturn, readCatalogSearch } from "@/lib/imoveis/search-memory";
 import {
   Archive,
   ArchiveRestore,
@@ -104,7 +104,7 @@ function DetalhePage() {
   const [cameFromCatalog, setCameFromCatalog] = useState(false);
   useEffect(() => {
     setBackSearch(readCatalogSearch() ?? {});
-    setCameFromCatalog(Boolean(peekCatalogAnchor()));
+    setCameFromCatalog(Boolean(markCatalogReturn()));
   }, []);
   const { imovelId } = Route.useParams();
   const session = useSession();

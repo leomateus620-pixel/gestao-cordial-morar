@@ -7642,6 +7642,24 @@ export type Database = {
           },
         ]
       }
+      shared_selection_rate_limits: {
+        Row: {
+          bucket: string
+          expires_at: string
+          hits: number
+        }
+        Insert: {
+          bucket: string
+          expires_at: string
+          hits?: number
+        }
+        Update: {
+          bucket?: string
+          expires_at?: string
+          hits?: number
+        }
+        Relationships: []
+      }
       shared_selections: {
         Row: {
           agency: string
@@ -9465,6 +9483,10 @@ export type Database = {
           p_whatsapp: string
         }
         Returns: Json
+      }
+      shared_selection_take_rate: {
+        Args: { _bucket: string; _limit: number; _seconds: number }
+        Returns: boolean
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

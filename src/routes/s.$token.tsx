@@ -18,6 +18,7 @@ export const Route = createFileRoute("/s/$token")({
   loader: ({ params }) => getPublicSelection({ data: { token: params.token } }),
   staleTime: 0,
   gcTime: 0,
+  headers: () => ({ "Cache-Control": "no-store, private", "X-Robots-Tag": "noindex, nofollow" }),
   head: () => ({
     meta: [
       { title: "Seleção de imóveis" },
@@ -101,6 +102,12 @@ function PublicSelectionPage() {
         <Notice title="Link não encontrado" text="Confira se o endereço foi copiado por completo ou peça um novo link ao seu corretor." />
       </Shell>
     );
+  if (data.state === "rate_limited")
+    return (
+      <Shell agency="cordial">
+        <Notice title="Muitas tentativas" text="Aguarde um minuto e tente abrir o link novamente." retry />
+      </Shell>
+    );
   if (data.state !== "ok")
     return (
       <Shell agency={data.agency}>
@@ -115,7 +122,7 @@ function PublicSelectionPage() {
 }
 
 function SelectionView({ data, token }: { data: Extract<PublicSelection, { state: "ok" }>; token: string }) {
-  const favKey = `cordial:selecao-publica:${token}`;
+  const favKey = `cordial:selecao-publica:v2:${token}`;
   const [favs, setFavs] = useState<string[]>([]);
   const [detail, setDetail] = useState<Available | null>(null);
   const [lightbox, setLightbox] = useState<{ item: Available; index: number } | null>(null);
@@ -133,9 +140,10 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
 
   const available = data.items.filter((i): i is Available => i.available);
   const unavailableCount = data.items.length - available.length;
-  const validFavs = favs.filter((id) => available.some((a) => a.id === id));
+  const validFavs = favs.filter((id) => available.some((a) => String(a.key) === id));
 
-  function toggleFav(id: string) {
+  function toggleFav(key: number) {
+    const id = String(key);
     const next = favs.includes(id) ? favs.filter((x) => x !== id) : [...favs, id];
     setFavs(next);
     try {
@@ -147,7 +155,7 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
 
   const waHref = useMemo(() => {
     const refs = available
-      .filter((a) => validFavs.includes(a.id))
+      .filter((a) => validFavs.includes(String(a.key)))
       .map((a) => a.reference ?? "")
       .filter(Boolean);
     return whatsappUrl(data.whatsapp, buildClientWhatsappText({ title: data.title, link, favoriteRefs: refs }));
@@ -169,10 +177,10 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {available.map((item) => {
-            const fav = favs.includes(item.id);
-            const place = [item.district, item.city].filter(Boolean).join(" · ");
+            const fav = favs.includes(String(item.key));
+            const place = item.location;
             return (
-              <article key={item.id} className="group overflow-hidden rounded-[22px] border border-white/70 bg-white/80 shadow-[0_12px_32px_-18px_rgba(23,27,33,0.28)]">
+              <article key={item.key} className="group overflow-hidden rounded-[22px] border border-white/70 bg-white/80 shadow-[0_12px_32px_-18px_rgba(23,27,33,0.28)]">
                 <div className="relative aspect-[4/3]">
                   <CardGallery
                     photos={item.photos}
@@ -200,7 +208,7 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
                     <button
                       type="button"
                       aria-pressed={fav}
-                      onClick={() => toggleFav(item.id)}
+                      onClick={() => toggleFav(item.key)}
                       className={cn(
                         "inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border-2 text-[13px] font-semibold transition",
                         fav ? "border-rose-500 bg-rose-500 text-white" : "border-foreground/15 text-foreground/75",
@@ -258,20 +266,20 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
                 <p className="text-2xl font-bold text-primary">{priceText(detail)}</p>
                 {detail.condo != null && detail.condo > 0 ? <p className="text-sm text-foreground/65">Condomínio: {brl(detail.condo)}</p> : null}
                 {detail.iptu != null && detail.iptu > 0 ? <p className="text-sm text-foreground/65">IPTU: {brl(detail.iptu)}</p> : null}
-                {[detail.district, detail.city].filter(Boolean).length ? (
+                {detail.location ? (
                   <p className="flex items-center gap-1 text-sm text-foreground/65">
-                    <MapPin className="size-4" /> {[detail.district, detail.city].filter(Boolean).join(" · ")}
+                    <MapPin className="size-4" /> {detail.location}
                   </p>
                 ) : null}
                 <Specs item={detail} />
                 <button
                   type="button"
-                  aria-pressed={favs.includes(detail.id)}
-                  onClick={() => toggleFav(detail.id)}
+                  aria-pressed={favs.includes(String(detail.key))}
+                  onClick={() => toggleFav(detail.key)}
                   className="inline-flex h-10 items-center gap-1.5 rounded-full border-2 border-foreground/15 px-4 text-[13px] font-semibold"
                 >
-                  <Heart className="size-4" fill={favs.includes(detail.id) ? "currentColor" : "none"} />
-                  {favs.includes(detail.id) ? "Gostei" : "Gostei deste imóvel"}
+                  <Heart className="size-4" fill={favs.includes(String(detail.key)) ? "currentColor" : "none"} />
+                  {favs.includes(String(detail.key)) ? "Gostei" : "Gostei deste imóvel"}
                 </button>
               </div>
             </>

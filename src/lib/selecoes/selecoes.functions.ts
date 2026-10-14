@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
+import { photoPathsOf, toPublicSelection, type PublicSelection } from "./public-view";
 
 const BUCKET = "property-images";
 const idsSchema = z.object({ ids: z.array(z.string().uuid()).max(100) });
@@ -202,38 +203,7 @@ export const listSelections = createServerFn({ method: "GET" })
 
 /* ---------------- Página pública ---------------- */
 
-export type PublicSelectionItem =
-  | { available: false }
-  | {
-      available: true;
-      id: string;
-      reference: string | null;
-      type: string | null;
-      operation: string | null;
-      price: number | null;
-      condo: number | null;
-      iptu: number | null;
-      district: string | null;
-      city: string | null;
-      bedrooms: number | null;
-      bathrooms: number | null;
-      parking: number | null;
-      area: number | null;
-      photos: string[];
-    };
-
-export type PublicSelection =
-  | { state: "invalid" }
-  | { state: "closed" | "expired"; agency: "cordial" | "morar" }
-  | {
-      state: "ok";
-      agency: "cordial" | "morar";
-      title: string;
-      message: string;
-      broker: string;
-      whatsapp: string;
-      items: PublicSelectionItem[];
-    };
+export type { PublicSelection, PublicSelectionItem } from "./public-view";
 
 function publicClient() {
   const url = process.env.SUPABASE_URL!;
@@ -254,45 +224,31 @@ function publicClient() {
 export const getPublicSelection = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ token: z.string().max(128) }).parse(d))
   .handler(async ({ data }): Promise<PublicSelection> => {
+    const { getRequestIP, setResponseHeader } = await import("@tanstack/react-start/server");
+    setResponseHeader("Cache-Control", "no-store, private");
+    setResponseHeader("X-Robots-Tag", "noindex, nofollow");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Limite simples por IP e por token (janela de 1 minuto).
+    const ip = getRequestIP({ xForwardedFor: true }) ?? "desconhecido";
+    const ipHash = Array.from(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`sel:${ip}`))),
+    )
+      .slice(0, 12)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const tokenKey = data.token.slice(0, 64).replace(/[^0-9a-f]/g, "") || "invalido";
+    const admin = supabaseAdmin as any;
+    const [{ data: ipOk }, { data: tokenOk }] = await Promise.all([
+      admin.rpc("shared_selection_take_rate", { _bucket: `ip:${ipHash}`, _limit: 60, _seconds: 60 }),
+      admin.rpc("shared_selection_take_rate", { _bucket: `tk:${tokenKey}`, _limit: 120, _seconds: 60 }),
+    ]);
+    if (ipOk === false || tokenOk === false) return { state: "rate_limited" };
     if (!/^[0-9a-f]{64}$/.test(data.token)) return { state: "invalid" };
+
     const supa = publicClient() as any;
     const { data: res, error } = await supa.rpc("shared_selection_public", { p_token: data.token });
     if (error) throw new Error("Não foi possível abrir a seleção agora.");
-    const r = res as any;
-    if (!r || r.state === "invalid") return { state: "invalid" };
-    if (r.state !== "ok") return { state: r.state, agency: r.agency };
     // Assinatura apenas dos caminhos que a função pública liberou.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const paths = (r.items as any[]).flatMap((i) => (i.available ? (i.photos as string[]) : []));
-    const signed = await signPaths(supabaseAdmin, paths, 3 * 3600);
-    const items: PublicSelectionItem[] = (r.items as any[]).map((i) =>
-      i.available
-        ? {
-            available: true,
-            id: i.id,
-            reference: i.reference ?? null,
-            type: i.type ?? null,
-            operation: i.operation ?? null,
-            price: i.price ?? null,
-            condo: i.condo ?? null,
-            iptu: i.iptu ?? null,
-            district: i.district ?? null,
-            city: i.city ?? null,
-            bedrooms: i.bedrooms ?? null,
-            bathrooms: i.bathrooms ?? null,
-            parking: i.parking ?? null,
-            area: i.area ?? null,
-            photos: (i.photos as string[]).map((p) => signed.get(p)).filter(Boolean) as string[],
-          }
-        : { available: false },
-    );
-    return {
-      state: "ok",
-      agency: r.agency,
-      title: r.title,
-      message: r.message ?? "",
-      broker: r.broker ?? "",
-      whatsapp: r.whatsapp ?? "",
-      items,
-    };
+    const signed = await signPaths(admin, photoPathsOf(res), 3 * 3600);
+    return toPublicSelection(res, signed);
   });

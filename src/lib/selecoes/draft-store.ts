@@ -125,6 +125,7 @@ export function clearAllSelectionDrafts() {
     }
     window.sessionStorage.removeItem("cordial:catalogo:busca");
     window.sessionStorage.removeItem("cordial:catalogo:ancora");
+    window.sessionStorage.removeItem("cordial:catalogo:retorno");
   } catch {
     // ignore
   }
