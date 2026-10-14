@@ -7616,6 +7616,86 @@ export type Database = {
           },
         ]
       }
+      shared_selection_items: {
+        Row: {
+          position: number
+          property_id: string
+          selection_id: string
+        }
+        Insert: {
+          position: number
+          property_id: string
+          selection_id: string
+        }
+        Update: {
+          position?: number
+          property_id?: string
+          selection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_selection_items_selection_id_fkey"
+            columns: ["selection_id"]
+            isOneToOne: false
+            referencedRelation: "shared_selections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_selections: {
+        Row: {
+          agency: string
+          client_request_id: string | null
+          corretor_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          internal_client_name: string
+          owner_id: string
+          public_message: string
+          revision: number
+          status: string
+          title: string
+          token: string
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          agency?: string
+          client_request_id?: string | null
+          corretor_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          internal_client_name?: string
+          owner_id: string
+          public_message?: string
+          revision?: number
+          status?: string
+          title: string
+          token: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Update: {
+          agency?: string
+          client_request_id?: string | null
+          corretor_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          internal_client_name?: string
+          owner_id?: string
+          public_message?: string
+          revision?: number
+          status?: string
+          title?: string
+          token?: string
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -9354,6 +9434,37 @@ export type Database = {
           expires_at: string
           reservation_id: string
         }[]
+      }
+      shared_selection_can_manage: {
+        Args: { s: Database["public"]["Tables"]["shared_selections"]["Row"] }
+        Returns: boolean
+      }
+      shared_selection_check: {
+        Args: { p_ids: string[] }
+        Returns: {
+          eligible: boolean
+          property_id: string
+        }[]
+      }
+      shared_selection_close: { Args: { p_id: string }; Returns: undefined }
+      shared_selection_property_eligible: {
+        Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
+        Returns: boolean
+      }
+      shared_selection_public: { Args: { p_token: string }; Returns: Json }
+      shared_selection_save: {
+        Args: {
+          p_agency: string
+          p_client: string
+          p_expires_at: string
+          p_id: string
+          p_message: string
+          p_property_ids: string[]
+          p_request_id: string
+          p_title: string
+          p_whatsapp: string
+        }
+        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
