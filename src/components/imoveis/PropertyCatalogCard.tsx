@@ -1,5 +1,7 @@
-import { Link } from "@tanstack/react-router";
-import { Bath, Bed, Car, Image as ImageIcon, MapPin, Maximize2, Pencil } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Bath, Bed, Car, Check, Image as ImageIcon, MapPin, Maximize2, Pencil, Plus } from "lucide-react";
+import { CardGallery } from "./CardGallery";
+import { rememberCatalogAnchor } from "@/lib/imoveis/search-memory";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -237,13 +239,57 @@ function CardActions({ property, className }: { property: Property; className?: 
 const CARD_SHELL =
   "group relative overflow-hidden rounded-[22px] border border-white/70 bg-white/72 shadow-[0_12px_32px_-18px_rgba(23,27,33,0.28)] backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-white hover:shadow-[0_22px_48px_-20px_rgba(23,27,33,0.32)] focus-within:ring-2 focus-within:ring-primary/35 motion-reduce:transform-none";
 
+/** Botão "Selecionar" — estado indicado por ícone, texto e borda, não só por cor. */
+export function SelectToggle({
+  selected,
+  onToggle,
+  className,
+}: {
+  selected: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle();
+      }}
+      className={cn(
+        "relative z-10 inline-flex h-8 items-center gap-1 rounded-full border-2 px-2.5 text-[11.5px] font-semibold shadow-sm backdrop-blur-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+        selected
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-white/80 bg-white/90 text-foreground/80 hover:bg-white",
+        className,
+      )}
+    >
+      {selected ? <Check className="size-3.5" strokeWidth={3} /> : <Plus className="size-3.5" />}
+      {selected ? "Selecionado" : "Selecionar"}
+    </button>
+  );
+}
+
 export function PropertyCatalogCard({
   property,
   view = "grid",
+  photos,
+  selected = false,
+  onToggleSelect,
+  onExpand,
 }: {
   property: Property;
   view?: CatalogView;
+  /** URLs das fotos na ordem da galeria; ausente = só a capa. */
+  photos?: string[];
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  onExpand?: (property: Property, photos: string[], index: number) => void;
 }) {
+  const navigate = useNavigate();
+  const gallery = photos && photos.length ? photos : property.coverUrl ? [property.coverUrl] : [];
   const localidade = property.localizacaoExibida ?? propertyLocalidade(property);
   const codes = propertyCodes(property);
   const codeLabel = codes.map((code) => code.value).join(" / ");
@@ -253,7 +299,11 @@ export function PropertyCatalogCard({
 
   if (view === "list") {
     return (
-      <article className={cn(CARD_SHELL, "flex items-stretch gap-3 p-2.5 sm:gap-4 sm:p-3")}>
+      <article
+        id={`imovel-${property.id}`}
+        onClickCapture={() => rememberCatalogAnchor(property.id)}
+        className={cn(CARD_SHELL, "flex items-stretch gap-3 p-2.5 sm:gap-4 sm:p-3", selected && "border-primary ring-2 ring-primary/40")}
+      >
         <Link
           to="/imoveis/$imovelId"
           params={{ imovelId: property.id }}
@@ -303,9 +353,14 @@ export function PropertyCatalogCard({
               <Price property={property} className="text-[16px] sm:hidden" />
               <Specs property={property} />
             </div>
-            <div className="hidden items-center gap-2 sm:flex">
-              <PublicationBadges property={property} tone="surface" />
-              <CardActions property={property} />
+            <div className="flex items-center gap-2">
+              <span className="hidden items-center gap-2 sm:flex">
+                <PublicationBadges property={property} tone="surface" />
+                <CardActions property={property} />
+              </span>
+              {onToggleSelect ? (
+                <SelectToggle selected={selected} onToggle={() => onToggleSelect(property.id)} />
+              ) : null}
             </div>
           </div>
         </div>
@@ -314,7 +369,11 @@ export function PropertyCatalogCard({
   }
 
   return (
-    <article className={cn(CARD_SHELL, "flex flex-col")}>
+    <article
+      id={`imovel-${property.id}`}
+      onClickCapture={() => rememberCatalogAnchor(property.id)}
+      className={cn(CARD_SHELL, "flex flex-col", selected && "border-primary ring-2 ring-primary/40")}
+    >
       <Link
         to="/imoveis/$imovelId"
         params={{ imovelId: property.id }}
@@ -322,13 +381,29 @@ export function PropertyCatalogCard({
         className="absolute inset-0 z-[1] rounded-[22px] outline-none"
       />
 
-      <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-[16/10]">
-        <Cover property={property} alt={alt} />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
-        <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          <OperacaoBadge operacao={property.operacao} />
-          <PublicationBadges property={property} />
-        </div>
+      <div className="relative z-[2] aspect-[4/3] w-full overflow-hidden sm:aspect-[16/10]">
+        <CardGallery
+          photos={gallery}
+          alt={alt}
+          onTap={() => navigate({ to: "/imoveis/$imovelId", params: { imovelId: property.id } })}
+          onExpand={onExpand ? (index) => onExpand(property, gallery, index) : undefined}
+          overlay={
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+                <OperacaoBadge operacao={property.operacao} />
+                <PublicationBadges property={property} />
+              </div>
+            </>
+          }
+        />
+        {onToggleSelect ? (
+          <SelectToggle
+            selected={selected}
+            onToggle={() => onToggleSelect(property.id)}
+            className="!absolute bottom-2 left-2"
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3.5 sm:p-4">
