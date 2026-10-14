@@ -159,9 +159,10 @@ function Page() {
     if (!id || query.isPending) return;
     anchorRef.current = null;
     if (!items.some((im) => im.id === id)) return;
-    requestAnimationFrame(() => {
-      document.getElementById(`imovel-${id}`)?.scrollIntoView({ block: "center" });
-    });
+    // Depois da restauração de rolagem do roteador, ancora no imóvel visitado.
+    const scroll = () => document.getElementById(`imovel-${id}`)?.scrollIntoView({ block: "center" });
+    const timers = [window.setTimeout(scroll, 60), window.setTimeout(scroll, 350)];
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [items, query.isPending]);
 
   // Fotos da página atual (só URLs; as imagens carregam sob demanda).
