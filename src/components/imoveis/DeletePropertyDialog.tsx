@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
+import { peekCatalogAnchor, readCatalogSearch } from "@/lib/imoveis/search-memory";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ export function DeletePropertyDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const router = useRouter();
   const remove = useDeleteImovel();
   const [confirmation, setConfirmation] = useState("");
 
@@ -46,7 +48,9 @@ export function DeletePropertyDialog({
           `Remoção solicitada em ${names}. O cadastro será apagado assim que os sites confirmarem.`,
         );
       }
-      navigate({ to: "/imoveis" });
+      // Volta preservando a busca, igual à seta da ficha.
+      if (peekCatalogAnchor() && window.history.length > 1) router.history.back();
+      else navigate({ to: "/imoveis", search: readCatalogSearch() ?? {} });
     } catch (error) {
       toast.error((error as Error)?.message ?? "Não foi possível excluir o imóvel.");
     }
