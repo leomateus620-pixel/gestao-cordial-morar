@@ -82,7 +82,7 @@ export const getSelectionCandidates = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (e2) throw new Error(e2.message);
     const eligible = new Map((checks ?? []).map((c: any) => [c.property_id, !!c.eligible]));
-    const coverPath = new Map((imgs ?? []).map((i: any) => [i.property_id, i.storage_path as string]));
+    const coverPath = new Map<string, string>((imgs ?? []).map((i: any) => [i.property_id, i.storage_path as string]));
     const signed = await signPaths(supabase, Array.from(coverPath.values()), 3600);
     const byId = new Map((props ?? []).map((p: any) => [p.id, p]));
     return data.ids.map((id) => {
