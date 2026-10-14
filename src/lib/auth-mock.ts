@@ -1,3 +1,4 @@
+import { clearAllSelectionDrafts } from "@/lib/selecoes/draft-store";
 // Compatibility shim: keeps the original API surface (useSession, login, logout, mockUsers, MockUser)
 // but reads from real Lovable Cloud auth (Supabase). The "Mock" naming is kept only to avoid
 // touching every existing import site; nothing here is mocked anymore.
@@ -256,6 +257,7 @@ export async function requestPasswordReset(email: string): Promise<{ ok: boolean
 
 export async function logout() {
   await supabase.auth.signOut();
+  clearAllSelectionDrafts();
   current = null;
   notify();
 }

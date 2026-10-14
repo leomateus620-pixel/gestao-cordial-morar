@@ -12,6 +12,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LayoutGrid,
+  ListChecks,
   Megaphone,
   Search,
   Settings,
@@ -111,6 +112,19 @@ export const moduleItems: ModuleItem[] = [
       section: "operacao",
       order: 50,
       desc: "Carteira de imóveis",
+    },
+  },
+  {
+    to: "/selecoes",
+    label: "Seleções compartilhadas",
+    shortLabel: "Seleções",
+    desc: "Links de imóveis para clientes",
+    icon: ListChecks,
+    module: "imoveis",
+    sidebar: {
+      section: "operacao",
+      order: 55,
+      desc: "Links para clientes",
     },
   },
   {

@@ -99,6 +99,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function DetalhePage() {
+  const router = useRouter();
+  const [backSearch, setBackSearch] = useState<Record<string, unknown>>({});
+  const [cameFromCatalog, setCameFromCatalog] = useState(false);
+  useEffect(() => {
+    setBackSearch(readCatalogSearch() ?? {});
+    setCameFromCatalog(Boolean(peekCatalogAnchor()));
+  }, []);
   const { imovelId } = Route.useParams();
   const session = useSession();
   const isAdmin = isAdminUser(session);
