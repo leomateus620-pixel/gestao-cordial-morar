@@ -120,3 +120,35 @@ export function selectionStatus(s: { status: string; expires_at: string | null }
   if (s.expires_at && new Date(s.expires_at).getTime() < now) return "expirada" as const;
   return "ativa" as const;
 }
+
+/* ---------------- Responsável e escopo por papel ---------------- */
+
+export type SelectionRole = "admin" | "secretaria" | "corretor" | "financeiro" | string;
+
+/** Admin e secretária (inclusive com papéis acumulados) escolhem o responsável. */
+export function canChooseResponsible(roles: readonly SelectionRole[]): boolean {
+  return roles.includes("admin") || roles.includes("secretaria");
+}
+
+/** Espelha shared_selection_save: quem não é gestor só pode ser o próprio responsável. */
+export function resolveResponsible(opts: {
+  uid: string;
+  roles: readonly SelectionRole[];
+  requested?: string | null;
+  current?: string | null;
+}): { ok: true; id: string } | { ok: false; error: "responsavel_nao_permitido" } {
+  const base = opts.current ?? opts.uid;
+  const target = opts.requested ?? base;
+  if (target !== base && !canChooseResponsible(opts.roles)) return { ok: false, error: "responsavel_nao_permitido" };
+  return { ok: true, id: target };
+}
+
+/** Espelha a política de leitura: gestor vê todas; demais só as próprias. */
+export function visibleSelections<T extends { owner_id: string; corretor_id: string }>(
+  rows: readonly T[],
+  uid: string,
+  roles: readonly SelectionRole[],
+): T[] {
+  if (canChooseResponsible(roles)) return [...rows];
+  return rows.filter((r) => r.owner_id === uid || r.corretor_id === uid);
+}
