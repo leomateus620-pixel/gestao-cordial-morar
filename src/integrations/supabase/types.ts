@@ -9453,6 +9453,10 @@ export type Database = {
           reservation_id: string
         }[]
       }
+      shared_selection_can_choose_responsible: {
+        Args: { _uid: string }
+        Returns: boolean
+      }
       shared_selection_can_manage: {
         Args: { s: Database["public"]["Tables"]["shared_selections"]["Row"] }
         Returns: boolean
@@ -9470,20 +9474,45 @@ export type Database = {
         Returns: boolean
       }
       shared_selection_public: { Args: { p_token: string }; Returns: Json }
-      shared_selection_save: {
-        Args: {
-          p_agency: string
-          p_client: string
-          p_expires_at: string
-          p_id: string
-          p_message: string
-          p_property_ids: string[]
-          p_request_id: string
-          p_title: string
-          p_whatsapp: string
-        }
-        Returns: Json
+      shared_selection_responsibles: {
+        Args: never
+        Returns: {
+          can_choose: boolean
+          id: string
+          last_whatsapp: string
+          nome: string
+        }[]
       }
+      shared_selection_save:
+        | {
+            Args: {
+              p_agency: string
+              p_client: string
+              p_expires_at: string
+              p_id: string
+              p_message: string
+              p_property_ids: string[]
+              p_request_id: string
+              p_title: string
+              p_whatsapp: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_agency: string
+              p_client: string
+              p_corretor_id: string
+              p_expires_at: string
+              p_id: string
+              p_message: string
+              p_property_ids: string[]
+              p_request_id: string
+              p_title: string
+              p_whatsapp: string
+            }
+            Returns: Json
+          }
       shared_selection_take_rate: {
         Args: { _bucket: string; _limit: number; _seconds: number }
         Returns: boolean
