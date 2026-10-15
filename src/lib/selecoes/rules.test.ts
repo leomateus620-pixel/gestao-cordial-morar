@@ -59,3 +59,30 @@ test("situação considera encerramento e validade", () => {
   assert.equal(selectionStatus({ status: "ativa", expires_at: "2000-01-01T00:00:00Z" }), "expirada");
   assert.equal(selectionStatus({ status: "ativa", expires_at: null }), "ativa");
 });
+
+import { canChooseResponsible, resolveResponsible, visibleSelections } from "./rules";
+
+test("só admin e secretária escolhem o responsável (papéis acumulados contam)", () => {
+  assert.equal(canChooseResponsible(["admin"]), true);
+  assert.equal(canChooseResponsible(["secretaria"]), true);
+  assert.equal(canChooseResponsible(["secretaria", "corretor"]), true);
+  assert.equal(canChooseResponsible(["corretor"]), false);
+  assert.equal(canChooseResponsible(["financeiro"]), false);
+});
+
+test("corretor não atribui a outro; gestora sim", () => {
+  assert.deepEqual(resolveResponsible({ uid: "c1", roles: ["corretor"], requested: "c2" }), { ok: false, error: "responsavel_nao_permitido" });
+  assert.deepEqual(resolveResponsible({ uid: "c1", roles: ["corretor"] }), { ok: true, id: "c1" });
+  assert.deepEqual(resolveResponsible({ uid: "c1", roles: ["corretor"], current: "c3" }), { ok: true, id: "c3" });
+  assert.deepEqual(resolveResponsible({ uid: "s1", roles: ["secretaria", "corretor"], requested: "c2" }), { ok: true, id: "c2" });
+});
+
+test("listagem por papel", () => {
+  const rows = [
+    { id: "a", owner_id: "c1", corretor_id: "c1" },
+    { id: "b", owner_id: "s1", corretor_id: "c1" },
+    { id: "c", owner_id: "s1", corretor_id: "c2" },
+  ];
+  assert.deepEqual(visibleSelections(rows, "c1", ["corretor"]).map((r) => r.id), ["a", "b"]);
+  assert.deepEqual(visibleSelections(rows, "s1", ["secretaria"]).map((r) => r.id), ["a", "b", "c"]);
+});
