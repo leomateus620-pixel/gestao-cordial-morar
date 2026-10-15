@@ -115,6 +115,7 @@ const saveSchema = z.object({
   whatsapp: z.string().regex(/^(\d{10,15})?$/),
   expiresAt: z.string().datetime().nullable(),
   propertyIds: z.array(z.string().uuid()).min(1).max(60),
+  corretorId: z.string().uuid().nullable().optional(),
 });
 
 export type SaveSelectionResult =
@@ -136,8 +137,17 @@ export const saveSelection = createServerFn({ method: "POST" })
       p_whatsapp: data.whatsapp,
       p_expires_at: data.expiresAt,
       p_property_ids: data.propertyIds,
+      p_corretor_id: data.corretorId ?? null,
     });
-    if (error) throw new Error(error.message === "sem_permissao" ? "Sem permissão para criar seleções." : error.message);
+    if (error) {
+      const msg: Record<string, string> = {
+        sem_permissao: "Sem permissão para criar seleções.",
+        responsavel_nao_permitido: "Só administração e secretaria podem escolher outro responsável.",
+        responsavel_invalido: "O responsável escolhido não está ativo na equipe.",
+        nao_encontrada: "Seleção não encontrada.",
+      };
+      throw new Error(msg[error.message] ?? error.message);
+    }
     return res as SaveSelectionResult;
   });
 
@@ -163,6 +173,8 @@ export type SelectionRow = {
   created_at: string;
   updated_at: string;
   corretor_nome: string;
+  corretor_id: string;
+  owner_id: string;
   property_ids: string[];
 };
 
@@ -172,7 +184,7 @@ export const listSelections = createServerFn({ method: "GET" })
     const supabase = context.supabase as any;
     const { data, error } = await supabase
       .from("shared_selections")
-      .select("id, agency, title, public_message, internal_client_name, whatsapp, token, status, expires_at, created_at, updated_at, corretor_id, shared_selection_items(property_id, position)")
+      .select("id, agency, title, public_message, internal_client_name, whatsapp, token, status, expires_at, created_at, updated_at, corretor_id, owner_id, shared_selection_items(property_id, position)")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -195,10 +207,27 @@ export const listSelections = createServerFn({ method: "GET" })
       created_at: r.created_at,
       updated_at: r.updated_at,
       corretor_nome: (names.get(r.corretor_id) as string) ?? "",
+      corretor_id: r.corretor_id,
+      owner_id: r.owner_id,
       property_ids: [...(r.shared_selection_items ?? [])]
         .sort((a: any, b: any) => a.position - b.position)
         .map((i: any) => i.property_id),
     }));
+  });
+
+export type SelectionResponsible = { id: string; nome: string; lastWhatsapp: string };
+
+/** Responsáveis possíveis: gestores recebem a equipe; demais, só a si mesmos. */
+export const listSelectionResponsibles = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ canChoose: boolean; options: SelectionResponsible[] }> => {
+    const { data, error } = await (context.supabase as any).rpc("shared_selection_responsibles");
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as Array<{ id: string; nome: string; can_choose: boolean; last_whatsapp: string }>;
+    return {
+      canChoose: Boolean(rows[0]?.can_choose),
+      options: rows.map((r) => ({ id: r.id, nome: r.nome || "Sem nome", lastWhatsapp: r.last_whatsapp ?? "" })),
+    };
   });
 
 /* ---------------- Página pública ---------------- */

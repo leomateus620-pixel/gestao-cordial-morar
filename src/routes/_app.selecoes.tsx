@@ -24,7 +24,7 @@ import { selectionStatus } from "@/lib/selecoes/rules";
 import {
   closeSelection,
   listSelections,
-  saveSelection,
+  saveSelection, listSelectionResponsibles,
   type SelectionRow,
 } from "@/lib/selecoes/selecoes.functions";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,9 @@ function SelecoesPage() {
   const [closing, setClosing] = useState<SelectionRow | null>(null);
   const [replace, setReplace] = useState<SelectionRow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const fetchResp = useServerFn(listSelectionResponsibles);
+  const resp = useQuery({ queryKey: ["selecoes-responsaveis"], queryFn: () => fetchResp(), staleTime: 60_000 });
+  const canChoose = Boolean(resp.data?.canChoose);
 
   function startEdit(row: SelectionRow) {
     selectionDraft.edit(row.id, row.title, row.property_ids);
@@ -83,6 +86,7 @@ function SelecoesPage() {
           whatsapp: row.whatsapp,
           expiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
           propertyIds: row.property_ids,
+          corretorId: canChoose ? row.corretor_id : null,
         },
       });
       if (!res.ok) {

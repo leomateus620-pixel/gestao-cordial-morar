@@ -47,7 +47,7 @@ import {
 import {
   getSelectionCandidates,
   listSelections,
-  saveSelection,
+  saveSelection, listSelectionResponsibles,
   type SelectionCandidate,
 } from "@/lib/selecoes/selecoes.functions";
 
@@ -176,6 +176,16 @@ export function SelectionReviewSheet({
   const [done, setDone] = useState<Done | null>(null);
   const [shareText, setShareText] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [responsibleId, setResponsibleId] = useState<string | null>(null);
+  const fetchResp = useServerFn(listSelectionResponsibles);
+  const resp = useQuery({ queryKey: ["selecoes-responsaveis"], queryFn: () => fetchResp(), enabled: open, staleTime: 60_000 });
+  const canChoose = Boolean(resp.data?.canChoose);
+
+  function pickResponsible(id: string) {
+    setResponsibleId(id);
+    const opt = resp.data?.options.find((o) => o.id === id);
+    if (opt?.lastWhatsapp) setWhatsapp(opt.lastWhatsapp);
+  }
 
   useEffect(() => {
     if (open) {
@@ -209,11 +219,13 @@ export function SelectionReviewSheet({
       setMessage(existing.public_message);
       setClientName(existing.internal_client_name);
       setWhatsapp(existing.whatsapp);
+      setResponsibleId(existing.corretor_id);
       setAgency(existing.agency);
       setDays(existing.expires_at ? SELECTION_DEFAULT_DAYS : 0);
     } else {
       setTitle((t) => t || suggestedTitle);
       setAgency(defaultAgency);
+      setResponsibleId(null);
       try {
         setWhatsapp((w) => w || window.localStorage.getItem(WA_KEY) || "");
       } catch {
@@ -250,6 +262,7 @@ export function SelectionReviewSheet({
           whatsapp: wa,
           expiresAt: expiresAtFor(days),
           propertyIds: draft.ids,
+          corretorId: canChoose ? responsibleId : null,
         },
       });
       if (!res.ok) {
@@ -431,11 +444,26 @@ export function SelectionReviewSheet({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label>Corretor responsável</Label>
-                      <Input readOnly value={session?.nome ?? ""} />
+                      <Label htmlFor="sel-resp">Responsável</Label>
+                      {canChoose ? (
+                        <select
+                          id="sel-resp"
+                          value={responsibleId ?? session?.id ?? ""}
+                          onChange={(e) => pickResponsible(e.target.value)}
+                          className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+                        >
+                          {(resp.data?.options ?? []).map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.id === session?.id ? `${o.nome} (você)` : o.nome}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input id="sel-resp" readOnly value={(draft.editingId && editing.data?.find((x) => x.id === draft.editingId)?.corretor_nome) || session?.nome || ""} />
+                      )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="sel-wa">WhatsApp do corretor</Label>
+                      <Label htmlFor="sel-wa">WhatsApp do responsável</Label>
                       <Input id="sel-wa" inputMode="tel" placeholder="(55) 99999-0000" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
                     </div>
                     <div className="space-y-1.5">
