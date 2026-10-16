@@ -4,13 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 type OAuthDetails = {
-  client?: { name?: string } | null;
+  client?: { id?: string; name?: string } | null;
+  assistantDelegation?: boolean;
   redirect_url?: string;
   redirect_to?: string;
 };
-type OAuthResult = { data: { redirect_url?: string; redirect_to?: string } | null; error: { message: string } | null };
+type OAuthResult = {
+  data: { redirect_url?: string; redirect_to?: string } | null;
+  error: { message: string } | null;
+};
 type OAuthApi = {
-  getAuthorizationDetails(id: string): Promise<{ data: OAuthDetails | null; error: { message: string } | null }>;
+  getAuthorizationDetails(
+    id: string,
+  ): Promise<{ data: OAuthDetails | null; error: { message: string } | null }>;
   approveAuthorization(id: string): Promise<OAuthResult>;
   denyAuthorization(id: string): Promise<OAuthResult>;
 };
@@ -21,9 +27,15 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   head: () => ({
     meta: [
       { title: "Autorizar acesso — Gestão Cordial" },
-      { name: "description", content: "Autorize um assistente a consultar seus dados no Gestão Cordial." },
+      {
+        name: "description",
+        content: "Autorize um assistente a consultar seus dados no Gestão Cordial.",
+      },
       { property: "og:title", content: "Autorizar acesso — Gestão Cordial" },
-      { property: "og:description", content: "Autorize um assistente a consultar seus dados no Gestão Cordial." },
+      {
+        property: "og:description",
+        content: "Autorize um assistente a consultar seus dados no Gestão Cordial.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -43,12 +55,22 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     if (error) throw new Error(error.message);
     const immediate = data?.redirect_url ?? data?.redirect_to;
     if (immediate && !data?.client) throw redirect({ href: immediate });
-    return data;
+    const { getAssistantOAuthClient } = await import("@/lib/agent/delegation.functions");
+    const configured = await getAssistantOAuthClient().catch(() => ({ clientId: null }));
+    return data
+      ? {
+          ...data,
+          assistantDelegation: Boolean(
+            configured.clientId && data.client?.id === configured.clientId,
+          ),
+        }
+      : data;
   },
   component: Consent,
   errorComponent: ({ error }) => (
     <main className="grid min-h-screen place-items-center p-6 text-sm">
-      Não foi possível carregar este pedido de autorização: {error instanceof Error ? error.message : String(error)}
+      Não foi possível carregar este pedido de autorização:{" "}
+      {error instanceof Error ? error.message : String(error)}
     </main>
   ),
 });
@@ -66,9 +88,17 @@ function Consent() {
     const { data, error } = approve
       ? await oauth().approveAuthorization(authorization_id)
       : await oauth().denyAuthorization(authorization_id);
-    if (error) { setBusy(false); setError(error.message); return; }
+    if (error) {
+      setBusy(false);
+      setError(error.message);
+      return;
+    }
     const target = data?.redirect_url ?? data?.redirect_to;
-    if (!target) { setBusy(false); setError("O servidor não devolveu o endereço de retorno."); return; }
+    if (!target) {
+      setBusy(false);
+      setError("O servidor não devolveu o endereço de retorno.");
+      return;
+    }
     window.location.href = target;
   }
 
@@ -77,12 +107,22 @@ function Consent() {
       <section className="glass-panel w-full max-w-md space-y-4 rounded-3xl p-6">
         <h1 className="text-lg font-semibold">{name} quer acessar sua conta</h1>
         <p className="text-sm text-muted-foreground">
-          Ele poderá consultar, em seu nome, imóveis, clientes e atendimentos que você já vê no Gestão Cordial. Nada será alterado.
+          {details?.assistantDelegation
+            ? "Você autoriza o Assistente Cordial a renovar seu acesso para executar as rotinas de consulta que confirmar, mesmo com o app fechado. Ele mantém suas permissões atuais, avisa somente você e não envia mensagens a clientes. Você pode pausar as rotinas ou revogar esta autorização no Assistente."
+            : "Ele poderá consultar, em seu nome, imóveis, clientes e atendimentos que você já vê no Gestão Cordial. Nada será alterado."}
         </p>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <div className="flex gap-2">
-          <Button disabled={busy} onClick={() => decide(true)}>Autorizar</Button>
-          <Button variant="outline" disabled={busy} onClick={() => decide(false)}>Recusar</Button>
+          <Button disabled={busy} onClick={() => decide(true)}>
+            Autorizar
+          </Button>
+          <Button variant="outline" disabled={busy} onClick={() => decide(false)}>
+            Recusar
+          </Button>
         </div>
       </section>
     </main>

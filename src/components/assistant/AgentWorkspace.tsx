@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Send,
   ShieldCheck,
+  SlidersHorizontal,
   ThumbsUp,
   X,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import {
   useAssistant,
   useAssistantBriefing,
   useAssistantContext,
+  useAssistantActions,
   type AssistantRecordContext,
   type ChatMessage,
 } from "@/lib/agent/use-assistant";
@@ -43,6 +45,15 @@ import { RichToolResult, StepTimeline } from "./RichResults";
 import "./assistant.css";
 import { Composer } from "./Composer";
 import { contextForActiveBot } from "@/lib/agent/context-routing";
+import type { ActionProposal } from "@/lib/agent/actions";
+import { ActionCardView, AssistantActionCard, actionViewState } from "./ActionCard";
+import {
+  useAssistantControls,
+  RoutinesPanelView,
+  MemoryPanelView,
+  RoutineRunResult,
+  type ReadinessView,
+} from "./AssistantControls";
 import { AssistantMark } from "@/components/brand/AssistantMark";
 export { Composer } from "./Composer";
 
@@ -73,14 +84,47 @@ export function ChoiceChips({
     </div>
   );
 }
-export function NeedsYouSection() {
+export function NeedsYouSection({
+  actions = [],
+  error = false,
+  onOpen,
+}: {
+  actions?: ActionProposal[];
+  error?: boolean;
+  onOpen?: () => void;
+}) {
+  const pending = actions.filter((action) => actionViewState(action) === "pending");
   return (
     <section className="my-6 border-y border-border py-4">
-      <h3 className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground">
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!pending.length || !onOpen}
+        className="flex w-full items-center gap-2 text-left text-[10px] font-semibold text-muted-foreground"
+      >
         <span className="size-1.5 rounded-full bg-primary/50" />
         Precisa de você
-      </h3>
-      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Nenhuma pendência.</p>
+        {pending.length > 0 && (
+          <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[9px] text-primary-foreground">
+            {pending.length}
+          </span>
+        )}
+      </button>
+      {error ? (
+        <p role="alert" className="mt-2 text-[10px] text-muted-foreground">
+          Pendências indisponíveis.
+        </p>
+      ) : pending.length ? (
+        <button
+          type="button"
+          className="mt-2 w-full truncate text-left text-[10px] text-primary"
+          onClick={onOpen}
+        >
+          {pending[0].title}
+        </button>
+      ) : (
+        <p className="mt-2 text-[10px] text-muted-foreground">Nenhuma pendência.</p>
+      )}
     </section>
   );
 }
@@ -124,7 +168,13 @@ export function AgentSidebar({
   onBotChange,
   onConversation,
   onNew,
+  actions,
+  actionsError,
+  onPending,
 }: {
+  actions?: ActionProposal[];
+  actionsError?: boolean;
+  onPending?: () => void;
   bots: AgentBot[];
   bot?: AgentBot;
   conversations: ConversationItem[];
@@ -156,7 +206,7 @@ export function AgentSidebar({
         </a>
       </div>
       <WorkerList bots={bots} selected={bot?.id} onSelect={onBotChange} />
-      <NeedsYouSection />
+      <NeedsYouSection actions={actions} error={actionsError} onOpen={onPending} />
       <h2 className="mb-3 text-[10px] font-semibold text-muted-foreground">Conversas recentes</h2>
       <div className="space-y-1">
         {conversations.length ? (
@@ -377,6 +427,12 @@ export type AssistantWorkspaceViewProps = {
   briefing?: React.ReactNode;
   onRecordPick?: (record: AssistantRecordContext) => void;
   onCancel?: () => void;
+  actions?: ActionProposal[];
+  actionsError?: boolean;
+  initialTab?: string;
+  initialActionId?: string;
+  routineContent?: React.ReactNode;
+  memoryContent?: React.ReactNode;
 };
 export function AssistantWorkspaceView({
   name,
@@ -400,9 +456,18 @@ export function AssistantWorkspaceView({
   briefing,
   onRecordPick,
   onCancel,
+  actions = [],
+  actionsError,
+  initialTab = "Conversa",
+  initialActionId,
+  routineContent,
+  memoryContent,
 }: AssistantWorkspaceViewProps) {
   const [draft, setDraft] = useState(initialPrompt);
-  const [tab, setTab] = useState("Conversa");
+  const [tab, setTab] = useState(initialTab);
+  const [pendingOpen, setPendingOpen] = useState(!!initialActionId);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  useEffect(() => setTab(initialTab), [initialTab]);
   const tabsId = useId();
   const tabNames = ["Conversa", "Rotinas", "Resultados", "Sobre"];
   const [sidebar, setSidebar] = useState(false);
@@ -420,6 +485,9 @@ export function AssistantWorkspaceView({
   }
   const sidebarContent = (
     <AgentSidebar
+      actions={actions}
+      actionsError={actionsError}
+      onPending={() => setPendingOpen(true)}
       bots={bots}
       bot={bot}
       conversations={conversations}
@@ -473,7 +541,7 @@ export function AssistantWorkspaceView({
             <span
               className={`size-1.5 rounded-full ${busy ? "bg-primary assistant-pulse" : "bg-emerald-500/70"}`}
             />
-            {busy ? "Consultando" : "Somente leitura"}
+            {busy ? "Trabalhando" : "Você no comando"}
           </span>
           <button
             type="button"
@@ -482,6 +550,14 @@ export function AssistantWorkspaceView({
             onClick={() => setShowContext(true)}
           >
             <ListFilter size={16} />
+          </button>
+          <button
+            type="button"
+            className="assistant-icon-button"
+            aria-label="Preferências do assistente"
+            onClick={() => setMemoryOpen(true)}
+          >
+            <SlidersHorizontal size={16} />
           </button>
           {bot && (
             <a
@@ -649,7 +725,7 @@ export function AssistantWorkspaceView({
             />
           </>
         ) : tab === "Rotinas" ? (
-          <RoutinesTab bot={bot} />
+          (routineContent ?? <RoutinesTab bot={bot} />)
         ) : tab === "Resultados" ? (
           <div className="assistant-conversation">
             {results.length ? (
@@ -707,6 +783,46 @@ export function AssistantWorkspaceView({
           error={contextError}
         />
       </aside>
+      <Sheet open={pendingOpen} onOpenChange={setPendingOpen}>
+        <SheetContent closeLabel="Fechar pendências" className="!w-full !max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Precisa de você</SheetTitle>
+            <SheetDescription className="sr-only">
+              Revise e confirme cada proposta.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            {actions
+              .filter(
+                (action) => actionViewState(action) === "pending" || action.id === initialActionId,
+              )
+              .map((action) => (
+                <AssistantActionCard key={action.id} action={action} />
+              ))}
+            {!actions.some(
+              (action) => actionViewState(action) === "pending" || action.id === initialActionId,
+            ) && <p className="text-xs text-muted-foreground">Nenhuma proposta pendente.</p>}
+          </div>
+        </SheetContent>
+      </Sheet>
+      <Sheet open={memoryOpen} onOpenChange={setMemoryOpen}>
+        <SheetContent
+          closeLabel="Fechar preferências"
+          className="!w-full !max-w-md overflow-y-auto"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Preferências</SheetTitle>
+            <SheetDescription>Preferências que você decidiu guardar.</SheetDescription>
+          </SheetHeader>
+          <div className="pt-7">
+            {memoryContent ?? (
+              <p className="text-xs text-muted-foreground">
+                Preferências indisponíveis nesta revisão.
+              </p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
       <Sheet open={sidebar} onOpenChange={setSidebar}>
         <SheetContent
           side="left"
@@ -752,7 +868,15 @@ export function AgentWorkspace({
   conversationId,
   prompt,
   context,
+  initialTab,
+  routineId,
+  runId,
+  actionId,
 }: {
+  initialTab?: string;
+  routineId?: string;
+  runId?: string;
+  actionId?: string;
   botId?: string;
   conversationId?: string;
   prompt?: string;
@@ -767,6 +891,8 @@ export function AgentWorkspace({
   const activeContext = contextForActiveBot(botId ?? "agenda", selectedContext);
   const chat = useAssistant(botId ?? "agenda", conversationId, activeContext);
   const focus = useAssistantContext(selectedContext);
+  const actions = useAssistantActions();
+  const control = useAssistantControls(routineId ? undefined : botId, runId);
   if (!session) return null;
   if (botId && (!bot || !bot.active || !bots.some((b) => b.id === botId)))
     return (
@@ -780,6 +906,65 @@ export function AgentWorkspace({
   const go = (id: string) => void navigate({ to: "/assistente/$botId", params: { botId: id } });
   return (
     <AssistantWorkspaceView
+      actions={actions.data ?? []}
+      actionsError={actions.isError}
+      initialActionId={actionId}
+      initialTab={initialTab}
+      memoryContent={
+        <MemoryPanelView
+          key={control.memory.data?.updatedAt ?? "new"}
+          preferences={control.memory.data?.preferences}
+          updatedAt={control.memory.data?.updatedAt}
+          loading={control.memory.isLoading}
+          busy={control.busy}
+          error={
+            control.error ||
+            (control.memory.isError ? "Não foi possível carregar suas preferências." : undefined)
+          }
+          onSave={control.memory.isError ? undefined : control.saveMemory}
+          onDelete={control.memory.isError ? undefined : control.deleteMemory}
+        />
+      }
+      routineContent={
+        <>
+          <div className="px-5 pt-4">
+            {runId && (
+              <RoutineRunResult
+                run={
+                  control.selectedRun.data as
+                    | {
+                        status: string;
+                        scheduledAt: string;
+                        items: Array<{ tool: string; data: Record<string, any> }>;
+                      }
+                    | undefined
+                }
+                loading={control.selectedRun.isLoading}
+                error={control.selectedRun.isError}
+              />
+            )}
+          </div>
+          <RoutinesPanelView
+            routines={control.routineRows}
+            selectedRoutineId={routineId}
+            readiness={control.readiness.data as ReadinessView | undefined}
+            loading={control.routines.isLoading}
+            error={
+              control.error ||
+              (control.routines.isError ? "Não foi possível carregar as rotinas." : undefined)
+            }
+            busy={control.busy}
+            proposal={control.proposal}
+            onPrepare={control.prepare}
+            onSave={control.save}
+            onState={control.setState}
+            onDelete={control.remove}
+            onEdit={control.edit}
+            onClearProposal={control.clearProposal}
+            connection={control.connection}
+          />
+        </>
+      }
       name={session.nome.split(" ")[0]}
       bots={bots}
       bot={bot}

@@ -10,6 +10,7 @@ import { GoogleDriveCard } from "@/components/configuracoes/GoogleDriveCard";
 import { PropertyDriveRootCard } from "@/components/configuracoes/PropertyDriveRootCard";
 import { PushDiagnosticsCard } from "@/components/notifications/PushDiagnosticsCard";
 import { PushDeliveryHealthCard } from "@/components/notifications/PushDeliveryHealthCard";
+import { AssistantAdminPanel } from "@/components/configuracoes/AssistantAdminPanel";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { agencies } from "@/lib/mock/data";
@@ -21,9 +22,15 @@ export const Route = createFileRoute("/_app/configuracoes")({
   head: () => ({
     meta: [
       { title: "Configurações — Gestão Cordial" },
-      { name: "description", content: "Preferências, busca global e integrações administrativas do Gestão Cordial." },
+      {
+        name: "description",
+        content: "Preferências, busca global e integrações administrativas do Gestão Cordial.",
+      },
       { property: "og:title", content: "Configurações — Gestão Cordial" },
-      { property: "og:description", content: "Preferências, busca global e integrações administrativas do Gestão Cordial." },
+      {
+        property: "og:description",
+        content: "Preferências, busca global e integrações administrativas do Gestão Cordial.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -62,7 +69,9 @@ function Page() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Busca global</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">Encontre registros em todo o sistema</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Encontre registros em todo o sistema
+              </span>
             </span>
             <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
           </Link>
@@ -76,13 +85,16 @@ function Page() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Integrações</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">Conectores, sincronizações e NFS-e</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Conectores, sincronizações e NFS-e
+              </span>
             </span>
             <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
           </Link>
         </div>
       </section>
 
+      {isAdmin && <AssistantAdminPanel />}
       <section className="mb-5 rounded-xl border bg-card p-5">
         <h2 className="font-semibold">Site público Cordial</h2>
         <p className="mt-1 text-sm text-muted-foreground">

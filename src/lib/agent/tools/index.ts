@@ -16,11 +16,15 @@ import expiringAgenciamentos from "./expiring-agenciamentos";
 import rentalsOverdue from "./rentals-overdue";
 import brokerRanking from "./broker-ranking";
 import getRecordContext from "./get-record-context";
+import { prepareActionTools } from "./prepare-actions";
+import rentalNfseAlerts from "./rental-nfse-alerts";
+import brokerBonusSummary from "./broker-bonus-summary";
+import { routineTools } from "../routines.tools";
 import type { AgentTool, AgentToolResult } from "./types";
 export { loadAgentContext } from "../security";
 export type { AgentContext } from "../security";
 export type { AgentTool, AgentToolResult } from "./types";
-/** This is the only tool registry. No generated SQL, mutations or prepare_* tools in phases 0/1. */
+/** Preparation stores a proposal, never executes a business change. MCP stays read-only. */
 export const agentTools: readonly AgentTool[] = Object.freeze([
   searchProperties,
   searchClients,
@@ -38,6 +42,10 @@ export const agentTools: readonly AgentTool[] = Object.freeze([
   brokerRanking,
   getRecordContext,
   webResearchTool,
+  ...prepareActionTools,
+  rentalNfseAlerts,
+  brokerBonusSummary,
+  ...routineTools,
 ]);
 export function getAllowedTools(ctx: AgentContext): AgentTool[] {
   const role = effectiveRole(ctx);

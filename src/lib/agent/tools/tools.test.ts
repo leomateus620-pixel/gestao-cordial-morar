@@ -298,13 +298,19 @@ for (const [role, agency] of [
   test(`role × tool allowlist: ${role}/${agency}`, async () => {
     const ctx = context(role, agency);
     for (const tool of agentTools) {
+      // Preparation has its own confirmation/transaction matrix; this matrix exercises reads.
+      if (tool.name.startsWith("prepare_")) continue;
       const allowed =
         operational.includes(tool.name) ||
-        (["rentals_financial_summary", "marketing_performance", "rentals_overdue"].includes(
-          tool.name,
-        ) &&
+        ([
+          "rentals_financial_summary",
+          "marketing_performance",
+          "rentals_overdue",
+          "rental_nfse_alerts",
+        ].includes(tool.name) &&
           role !== "corretor") ||
-        (["broker_ranking", "web_research"].includes(tool.name) && role === "admin");
+        (["broker_ranking", "web_research", "broker_bonus_summary"].includes(tool.name) &&
+          role === "admin");
       assert.equal(
         getAllowedTools(ctx).some((t) => t.name === tool.name),
         allowed,
@@ -378,7 +384,7 @@ test("financeiro uses frontend priority and cannot inherit secretary module acce
   ctx.roles.push("secretaria");
   assert.deepEqual(
     getAllowedTools(ctx).map((t) => t.name),
-    ["search_clients", "get_record_context"],
+    ["search_clients", "get_record_context", "prepare_memory"],
   );
   await assert.rejects(
     () => executeAgentTool("get_record_context", { kind: "rental", id: ids.cordial }, ctx),
@@ -399,7 +405,7 @@ test("unknown and mutating tools cannot run; invalid input cannot reach database
     "emit_nfse",
     "publish_property",
     "delete_client",
-    "prepare_agenda_event",
+    "confirm_action",
     "execute_sql",
   ])
     await assert.rejects(() => executeAgentTool(name, {}, ctx), /disponível/);
@@ -487,9 +493,11 @@ test("aborted request never performs a database query", async () => {
   await assert.rejects(() => executeAgentTool("search_properties", {}, ctx));
   assert.equal(ctx.log.length, 0);
 });
-test("all registry names are unique and tools are read only", () => {
+test("registry names are unique and exposes reads/preparations, never execution", () => {
   assert.equal(new Set(agentTools.map((t) => t.name)).size, agentTools.length);
-  assert.ok(agentTools.every((t) => !/(prepare|write|delete|emit|publish|send)_/.test(t.name)));
+  assert.ok(
+    agentTools.every((t) => !/(confirm|execute|write|delete|emit|publish|send)_/.test(t.name)),
+  );
 });
 test("property type matching normalizes accents, spaces, underscores and case", () => {
   assert.equal(

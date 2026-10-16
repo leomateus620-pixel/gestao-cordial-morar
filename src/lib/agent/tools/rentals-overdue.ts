@@ -24,7 +24,7 @@ export default {
   name: "rentals_overdue",
   title: "Aluguéis em atraso",
   description:
-    "Consulta contratos ativos com vencimento anterior a hoje e pagamento fora de em dia. Não emite documentos nem notas.",
+    "Consulta a ocorrência vigente dos contratos ativos cujo próximo vencimento é anterior a hoje. A baixa avança essa data; o status pago pode se referir à ocorrência anterior. Não emite documentos nem notas.",
   roles: ["admin", "secretaria"],
   inputSchema: z.object({ limit: limitSchema }).strict(),
   async handler({ limit = 20 }, ctx) {
@@ -36,7 +36,6 @@ export default {
         false,
       )
         .eq("status", "ativo")
-        .neq("payment_status", "em_dia")
         .lt("proximo_vencimento", saoPauloDay())
         .order("proximo_vencimento", { ascending: true })
         .limit(limit + 1),

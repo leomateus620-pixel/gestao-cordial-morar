@@ -1,0 +1,40 @@
+{
+  "project": "Gestão Cordial",
+  "projectId": "feb646c9-c19a-4360-8cc9-bec5237532ea",
+  "date": "2026-10-16",
+  "connector": "Lovable / Cordial",
+  "rows": [
+    {
+      "verification": {
+        "agencyWrapperAllowed": true,
+        "allAssistantTablesRls": true,
+        "browserProofDenied": true,
+        "browserRefreshDenied": true,
+        "businessCommandsUseInvoker": true,
+        "claimRevalidatesRevision": true,
+        "explicitUserAgencyHelperDenied": true,
+        "ledger": [
+          {
+            "created_at": 1792133548977,
+            "hash": "93a60457f7773911bbb3e4ce520732121987ad723c0f7cc2c655aff0916859c5"
+          },
+          {
+            "created_at": 1792133548978,
+            "hash": "4c7d34342e2aa5db9869c79385cb70214a2bf8046effbb4296e59c8d5bde7352"
+          },
+          {
+            "created_at": 1792134236456,
+            "hash": "399a7146d66a2517b2215f456717259e122bb7468a616d02f1909166ebad27a9"
+          },
+          {
+            "created_at": 1792134658181,
+            "hash": "540124afe633a70538d88ab5df88444012b3992952997f3a7e418f41d4d26454"
+          }
+        ],
+        "oauthSecretConfigured": false,
+        "schedulerEnabled": false,
+        "workerOriginConfigured": false
+      }
+    }
+  ]
+}

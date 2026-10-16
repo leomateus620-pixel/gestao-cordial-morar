@@ -50,7 +50,8 @@ export type NotificationDestination = {
     | "/agenciamentos"
     | "/alugueis"
     | "/documentos"
-    | "/configuracoes";
+    | "/configuracoes"
+    | "/assistente";
   search: Record<string, string>;
 };
 
@@ -67,6 +68,28 @@ const FALLBACK_CONFIG: NotificationTypeConfig = {
 };
 
 export const notificationTypeConfig: Readonly<Record<string, NotificationTypeConfig>> = {
+  assistant_briefing: {
+    category: "system",
+    label: "Seu dia no Gestão",
+    icon: "system",
+    motion: "fade",
+    sound: "soft",
+    ctaLabel: "Abrir assistente",
+    priority: 2,
+    durationMs: 7_000,
+    groupable: false,
+  },
+  assistant_routine: {
+    category: "system",
+    label: "Assistente Cordial",
+    icon: "system",
+    motion: "fade",
+    sound: "soft",
+    ctaLabel: "Ver resultado",
+    priority: 2,
+    durationMs: 7_000,
+    groupable: false,
+  },
   atendimento_atribuido: {
     category: "attendance",
     label: "Atendimento atribuído",
@@ -197,6 +220,7 @@ function safePathFromLink(link: string | null): NotificationDestination["path"] 
       "/alugueis",
       "/documentos",
       "/configuracoes",
+      "/assistente",
     ];
     return allowed.includes(url.pathname as NotificationDestination["path"])
       ? (url.pathname as NotificationDestination["path"])
@@ -214,6 +238,16 @@ export function resolveNotificationDestination(
   notification: Pick<NotificationRecord, "type" | "link" | "entityId">,
 ): NotificationDestination | null {
   const storedPath = safePathFromLink(notification.link);
+  if (notification.type === "assistant_briefing" || notification.type === "assistant_routine") {
+    if (storedPath !== "/assistente") return null;
+    const params = new URL(notification.link!, "https://gestao-cordial.local").searchParams;
+    const search: Record<string, string> = {};
+    for (const key of ["routine", "run", "conversation", "action"]) {
+      const value = params.get(key);
+      if (value && UUID_RE.test(value)) search[key] = value;
+    }
+    return { path: "/assistente", search };
+  }
   const entityId =
     notification.entityId && UUID_RE.test(notification.entityId)
       ? notification.entityId

@@ -10,6 +10,14 @@ import {
   Plus,
   SearchX,
 } from "lucide-react";
+import { AssistantActionCard } from "./ActionCard";
+import {
+  RoutineProposalResult,
+  MemoryProposalResult,
+  type RoutineProposalView,
+  type PreferencesView,
+} from "./AssistantControls";
+import type { ActionProposal } from "@/lib/agent/actions";
 import { useState } from "react";
 import { bindSelectionDraft, selectionDraft, useSelectionDraft } from "@/lib/selecoes/draft-store";
 import { useSession } from "@/lib/auth-mock";
@@ -25,6 +33,7 @@ const text = (row: Row, ...keys: string[]) => {
   return "";
 };
 export function safeRecordHref(value: unknown): string | undefined {
+  if (typeof value === "string" && /^\/s\/[a-f0-9]{64}$/.test(value)) return value;
   return typeof value === "string" &&
     /^\/(imoveis|clientes|atendimentos|agenda|agenciamentos|alugueis|corretores|vendas|selecoes)(\/|\?|$)/.test(
       value,
@@ -220,6 +229,8 @@ const collectionTitles: Record<string, string> = {
   ranking: "Equipe",
   history: "Histórico do atendimento",
   sources: "Fontes consultadas",
+  alerts: "Pendências fiscais",
+  bonuses: "Bônus de captação",
 };
 function RecordList({ kind, rows }: { kind: string; rows: Row[] }) {
   return (
@@ -239,7 +250,7 @@ function RecordList({ kind, rows }: { kind: string; rows: Row[] }) {
             "corretor",
             "brokerName",
             "tipo",
-          ) || "Registro";
+          ) || (kind === "alerts" ? "Pendência de NFS-e" : "Registro");
         return (
           <article key={text(row, "id") || index} className="assistant-record-row">
             <div className="assistant-record-icon">
@@ -250,6 +261,13 @@ function RecordList({ kind, rows }: { kind: string; rows: Row[] }) {
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {[
                   text(row, "etapa", "pipeline_stage", "status", "tipo"),
+                  kind === "alerts" && text(row, "competencia")
+                    ? `Competência ${text(row, "competencia")}`
+                    : "",
+                  kind === "alerts" && row.teste === true ? "Teste" : "",
+                  kind === "bonuses" ? text(row, "categoria") : "",
+                  kind === "bonuses" && text(row, "nivel") ? `Nível ${text(row, "nivel")}` : "",
+                  kind === "bonuses" ? text(row, "periodo") : "",
                   time(
                     row.inicio ??
                       row.start_at ??
@@ -329,6 +347,21 @@ export function RichToolResult({
   const data = result.data;
   if (!data || typeof data !== "object") return null;
   const obj = data as Row;
+  if (obj.action && typeof obj.action === "object")
+    return (
+      <div className="mt-4">
+        <AssistantActionCard action={obj.action as ActionProposal} />
+      </div>
+    );
+  if (obj.routineProposal && typeof obj.routineProposal === "object")
+    return (
+      <RoutineProposalResult
+        proposal={obj.routineProposal as RoutineProposalView}
+        requestId={typeof obj.requestId === "string" ? obj.requestId : undefined}
+      />
+    );
+  if (obj.memoryProposal && typeof obj.memoryProposal === "object")
+    return <MemoryProposalResult preferences={obj.memoryProposal as PreferencesView} />;
   const collections = Object.keys(collectionTitles).filter((k) => Array.isArray(obj[k]));
   const properties = Array.isArray(obj.properties) ? (obj.properties as Row[]) : [];
   const metrics = Object.entries(

@@ -30,7 +30,7 @@ export function assistantReferenceParams(params: unknown): Record<string, unknow
           typeof value === "number" &&
           Number.isFinite(value)) ||
         (typeof value === "string" &&
-          ((["id", "clientId"].includes(key) &&
+          ((["id", "clientId", "actionId"].includes(key) &&
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) ||
             (["date", "competencia"].includes(key) && /^\d{4}-\d{2}(?:-\d{2})?$/.test(value)) ||
             enums[key]?.includes(value))),

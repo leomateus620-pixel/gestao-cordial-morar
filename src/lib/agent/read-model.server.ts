@@ -7,6 +7,7 @@ import { ASSISTANT_HISTORY_TEXT } from "./scope";
 import { assertBotToolScope, getAgentBot } from "./bots";
 
 type ReadDeps = {
+  readAction?(ctx: AgentContext, id: string): Promise<unknown>;
   execute(name: string, input: unknown, ctx: AgentContext): Promise<AgentToolResult>;
   audit(
     tool: string,
@@ -48,6 +49,32 @@ export async function rehydrateAssistantHistory(
         const bot = getAgentBot(row.bot_id ?? "");
         if (!bot) throw new Error("invalid_bot_reference");
         assertBotToolScope(bot, ref.tool, params);
+        // Never replay preparation: that would create new proposals merely by
+        // reopening history. Actions keep only their opaque ID and are reread.
+        if (ref.tool.startsWith("prepare_")) {
+          const id = (params as Record<string, unknown>).actionId;
+          if (
+            typeof id === "string" &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+          ) {
+            const readAction =
+              deps.readAction ?? (await import("./actions.server")).readAssistantAction;
+            const action = await readAction(ctx, id);
+            output[index].results.push({
+              tool: ref.tool,
+              data: { action: maskAgentOutput(action) },
+            });
+          } else {
+            output[index].results.push({
+              tool: ref.tool,
+              data: {
+                status: "refresh_required",
+                message: "Consulte Rotinas e Preferências para ver o estado atual desta proposta.",
+              },
+            });
+          }
+          continue;
+        }
         const result = await deps.execute(ref.tool, params, ctx);
         await deps.audit(ref.tool, {}, { status: "refreshed" }, Date.now() - started);
         output[index].results.push({

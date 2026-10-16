@@ -8,6 +8,7 @@ import {
   getAssistantContext,
 } from "./assistant.functions";
 import { readAssistantStream, type AssistantResult, type AssistantStep } from "./stream";
+import { listAssistantActions } from "./actions.functions";
 import { useSession } from "@/lib/auth-mock";
 export type AssistantRecordContext = {
   kind: "property" | "client" | "attendance" | "rental" | "agenciamento" | "agenda";
@@ -131,6 +132,8 @@ export function useAssistant(
         if (event.type === "error") throw new Error(event.message);
       });
       void qc.invalidateQueries({ queryKey: ["assistant-conversations", session?.id] });
+      void qc.invalidateQueries({ queryKey: ["assistant-actions"] });
+      void qc.invalidateQueries({ queryKey: ["assistant-routines"] });
     } catch (err) {
       if (alive.current && version === generation.current && !activeController.signal.aborted) {
         setError(err instanceof Error ? err.message : "Não foi possível conversar agora.");
@@ -172,5 +175,15 @@ export function useAssistantContext(context?: AssistantRecordContext) {
     enabled: !!session && !!context,
     staleTime: 30_000,
     retry: 1,
+  });
+}
+
+export function useAssistantActions(conversationId?: string) {
+  const session = useSession();
+  return useQuery({
+    queryKey: ["assistant-actions", session?.id, conversationId],
+    queryFn: () => listAssistantActions({ data: { conversationId } }),
+    enabled: !!session,
+    refetchInterval: 15000,
   });
 }
