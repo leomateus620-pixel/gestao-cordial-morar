@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AssistantPersistence } from "./chat.server";
+import type { AssistantPersistence, PendingAction, PendingChoice } from "./chat.server";
 import type { AssistantMessage, AssistantResult } from "./stream";
 import { maskAgentOutput, maskText } from "./masking";
 import { ASSISTANT_HISTORY_TEXT, assistantReferenceParams } from "./scope";
@@ -31,12 +31,23 @@ export async function readOwnedAssistantHistory(
   }
   let query = client
     .from("assistant_conversations")
-    .select("id,bot_id")
+    .select("id,bot_id,pending_choice,pending_action")
     .eq("id", conversationId)
     .eq("user_id", userId)
     .eq("scope_key", scopeKey);
   if (botId) query = query.eq("bot_id", botId);
-  const { data: conversation, error } = await query.maybeSingle();
+  let { data: conversation, error } = await query.maybeSingle();
+  if (error?.message?.includes("pending_")) {
+    // Tolerant path until the A_history.sql migration (pending_choice/pending_action) is applied.
+    let fallback = client
+      .from("assistant_conversations")
+      .select("id,bot_id")
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .eq("scope_key", scopeKey);
+    if (botId) fallback = fallback.eq("bot_id", botId);
+    ({ data: conversation, error } = await fallback.maybeSingle());
+  }
   if (error || !conversation) throw new Error("Conversa não encontrada.");
   const rows = await client
     .from("assistant_messages")
@@ -47,9 +58,15 @@ export async function readOwnedAssistantHistory(
     .order("id", { ascending: false })
     .limit(60);
   if (rows.error) throw new Error("Não foi possível carregar o histórico.");
-  return maskAgentOutput(
-    (rows.data ?? []).reverse().map((row) => ({ ...row, bot_id: conversation.bot_id })),
-  ) as AssistantMessage[];
+  return {
+    messages: maskAgentOutput(
+      (rows.data ?? []).reverse().map((row) => ({ ...row, bot_id: conversation.bot_id })),
+    ) as AssistantMessage[],
+    pending: {
+      choice: (maskAgentOutput((conversation as any).pending_choice ?? null) ?? null) as PendingChoice | null,
+      action: (maskAgentOutput((conversation as any).pending_action ?? null) ?? null) as PendingAction | null,
+    },
+  };
 }
 
 export async function persistAssistantAudit(
