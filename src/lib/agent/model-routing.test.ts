@@ -1,6 +1,6 @@
-import { test } from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
-import { assistantMaxTokens, assistantModel, interimTier } from "./model-routing";
+import { assistantMaxTokens, assistantModel, interimTier } from "./model-routing.ts";
 test("modelos por env com padrões", () => {
   assert.equal(assistantModel("fast", {}), "google/gemini-3.8-flash");
   assert.equal(assistantModel("router", {}), "google/gemini-3.1-flash-lite");
