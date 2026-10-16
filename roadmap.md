@@ -27,9 +27,10 @@
 
 ## Cordial Bot — plano de 16/10/2026
 - [x] Etapa 1.3: modelos por configuração e limite de tokens adaptável (1200/4000)
-- [ ] Etapa 1.1–1.2: histórico real e estado pendente; camada única de ferramentas com MCP
+- [x] Etapa 1.1–1.2: histórico real, retomada de escolhas, paridade de ferramentas com MCP
 - [x] Adaptador Claude (anthropic/claude-sonnet-5) como modelo de análise
-- [ ] Etapa 2: roteador e planejador; filtros de search_properties; busca semântica
+- [x] Etapa 2: roteador, teto de chamadas, filtros de search_properties
+- [ ] Etapa 2.4: busca por significado (embeddings)
 - [ ] Etapa 3: pesquisa externa — pausada pelo Leonardo
-- [ ] Etapa 4: resumo das 8h, assistant_facts
-- [ ] Etapa 5: Estúdio de Conteúdo — vídeo montado no navegador (aceito)
+- [x] Etapa 4: resumo das 8h (com NFS-e pendentes), assistant_facts
+- [x] Etapa 5: Estúdio de Conteúdo (tela, regras, banco)
