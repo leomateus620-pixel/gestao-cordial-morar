@@ -4,7 +4,8 @@ export type AssistantTier = "router" | "fast" | "analysis";
 export const ASSISTANT_MODEL_DEFAULTS: Record<AssistantTier, string> = {
   router: "google/gemini-3.1-flash-lite",
   fast: "google/gemini-3.8-flash",
-  analysis: "anthropic/claude-sonnet-5",
+  // Claude (anthropic/claude-sonnet-5) entra quando o adaptador de mensagens existir.
+  analysis: "google/gemini-3.1-pro-preview",
 };
 
 export function assistantModel(tier: AssistantTier, env: Record<string, string | undefined>) {
@@ -23,4 +24,11 @@ export function assistantMaxTokens(tier: AssistantTier) {
 
 export function isChatCompletionsModel(model: string) {
   return !model.startsWith("anthropic/");
+}
+
+/** Interim tier choice until the Etapa 2 router replaces it. */
+export function interimTier(message: string): AssistantTier {
+  return /analis|compar|carteira|relat[oó]rio|cen[aá]rio|tend[eê]ncia/i.test(message)
+    ? "analysis"
+    : "fast";
 }

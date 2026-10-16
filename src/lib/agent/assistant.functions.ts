@@ -56,10 +56,12 @@ export const chatAssistant = createServerFn({ method: "POST" })
       message: data.message,
       conversationId: data.conversationId,
     });
-    const fastModel = process.env.ASSISTANT_FAST_MODEL || "google/gemini-3-flash-preview";
-    const model = /analis|compar|carteira|relat[oó]rio|cen[aá]rio|tend[eê]ncia/i.test(data.message)
-      ? process.env.ASSISTANT_ANALYSIS_MODEL || "google/gemini-3.1-pro-preview"
-      : fastModel;
+    const routing = await import("./model-routing");
+    const tier = routing.interimTier(data.message);
+    const model = routing.assistantModel(tier, process.env);
+    const maxTokens = routing.assistantMaxTokens(tier);
+    if (!routing.isChatCompletionsModel(model))
+      throw new Error("Este modelo ainda não está habilitado no Cordial Bot.");
     const { memoryPreferences } = await import("./memory.schemas");
     const memory = await ctx.supabase
       .from("assistant_memory")
@@ -83,7 +85,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
       signal: getRequest().signal,
       gateway: async (request) => {
         const started = Date.now();
-        const completion = await lovableCompletion(request, { apiKey: key, model });
+        const completion = await lovableCompletion(request, { apiKey: key, model, maxTokens });
         const { recordAssistantUsage } = await import("./usage.server");
         await recordAssistantUsage({
           userId: ctx.userId,
