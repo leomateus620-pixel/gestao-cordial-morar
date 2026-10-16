@@ -14,7 +14,6 @@ import { getAgentBot } from "./bots";
 import type { AssistantEvent } from "./stream";
 import { readAssistantStream } from "./stream";
 import { chatAssistantInput } from "./schemas";
-import { ASSISTANT_HISTORY_TEXT } from "./scope";
 
 const conversationId = "10000000-0000-4000-8000-000000000001";
 const userId = "10000000-0000-4000-8000-000000000002";
@@ -96,7 +95,7 @@ test("turn queries allowed tools, streams final prose with tools disabled, persi
   assert.equal(text(events), "Encontrei um compromisso. Confira o cartão da agenda.");
   assert(!text(events).includes("Especulação"));
   assert.equal(s.requests.at(-1)?.tools.length, 0);
-  assert.equal(s.saved[0][0], ASSISTANT_HISTORY_TEXT);
+  assert.equal(s.saved[0][0], "Encontrei um compromisso. Confira o cartão da agenda.");
   assert(!JSON.stringify(s.saved).includes("Visita teste"));
   assert(!JSON.stringify(s.saved).includes("href"));
   assert.equal(s.audits[0][0], "agenda_today");
@@ -236,7 +235,7 @@ test("model parameters and all outputs are masked, including fragmented contacts
   assert(!text(events).includes("ana@example.invalid"));
   assert(!text(events).includes("123.456.789-09"));
   assert(!text(events).includes("99999-0000"));
-  assert.equal(s.saved[0][0], ASSISTANT_HISTORY_TEXT);
+  assert.equal(s.saved[0][0], "E-mail: a***@***.invalid. CPF: ***.***.***-09. Fone: (**) *****-0000. ");
 });
 
 test("every possible split of CPF, phone and email stays masked in each emitted chunk", () => {

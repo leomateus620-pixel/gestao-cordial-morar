@@ -31,23 +31,12 @@ export async function readOwnedAssistantHistory(
   }
   let query = client
     .from("assistant_conversations")
-    .select("id,bot_id,pending_choice,pending_action")
+    .select("id,bot_id")
     .eq("id", conversationId)
     .eq("user_id", userId)
     .eq("scope_key", scopeKey);
   if (botId) query = query.eq("bot_id", botId);
-  let { data: conversation, error } = await query.maybeSingle();
-  if (error?.message?.includes("pending_")) {
-    // Tolerant path until the A_history.sql migration (pending_choice/pending_action) is applied.
-    let fallback = client
-      .from("assistant_conversations")
-      .select("id,bot_id")
-      .eq("id", conversationId)
-      .eq("user_id", userId)
-      .eq("scope_key", scopeKey);
-    if (botId) fallback = fallback.eq("bot_id", botId);
-    ({ data: conversation, error } = await fallback.maybeSingle());
-  }
+  const { data: conversation, error } = await query.maybeSingle();
   if (error || !conversation) throw new Error("Conversa não encontrada.");
   const rows = await client
     .from("assistant_messages")
@@ -58,14 +47,31 @@ export async function readOwnedAssistantHistory(
     .order("id", { ascending: false })
     .limit(60);
   if (rows.error) throw new Error("Não foi possível carregar o histórico.");
+  return maskAgentOutput(
+    (rows.data ?? []).reverse().map((row) => ({ ...row, bot_id: conversation.bot_id })),
+  ) as AssistantMessage[];
+}
+
+/** Separate from readOwnedAssistantHistory (consumed by assistant.functions.ts with a
+ * plain-array contract). Tolerant to the pending_choice/pending_action columns being
+ * absent until the A_history.sql migration is applied. */
+async function readPendingState(
+  client: SupabaseClient<any>,
+  userId: string,
+  conversationId: string,
+  scopeKey: string,
+): Promise<{ choice: PendingChoice | null; action: PendingAction | null }> {
+  const { data, error } = await client
+    .from("assistant_conversations")
+    .select("pending_choice,pending_action")
+    .eq("id", conversationId)
+    .eq("user_id", userId)
+    .eq("scope_key", scopeKey)
+    .maybeSingle();
+  if (error || !data) return { choice: null, action: null };
   return {
-    messages: maskAgentOutput(
-      (rows.data ?? []).reverse().map((row) => ({ ...row, bot_id: conversation.bot_id })),
-    ) as AssistantMessage[],
-    pending: {
-      choice: (maskAgentOutput((conversation as any).pending_choice ?? null) ?? null) as PendingChoice | null,
-      action: (maskAgentOutput((conversation as any).pending_action ?? null) ?? null) as PendingAction | null,
-    },
+    choice: (maskAgentOutput((data as any).pending_choice ?? null) ?? null) as PendingChoice | null,
+    action: (maskAgentOutput((data as any).pending_action ?? null) ?? null) as PendingAction | null,
   };
 }
 
@@ -118,6 +124,9 @@ export async function persistAssistantTurn(options: {
         options.scopeKey,
       )
     : [];
+  const pending = options.conversationId
+    ? await readPendingState(client, userId, options.conversationId, options.scopeKey)
+    : { choice: null, action: null };
   const writer = await persistenceWriter();
   const configuredLimit = Number(process.env.ASSISTANT_DAILY_TURNS ?? 80);
   const limit =
@@ -156,9 +165,40 @@ export async function persistAssistantTurn(options: {
       })
       .abortSignal(dbSignal()),
   );
+  const clearPending = async (signal?: AbortSignal) => {
+    const update = await writer
+      .from("assistant_conversations")
+      .update({ pending_choice: null, pending_action: null })
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .abortSignal(signal ?? dbSignal());
+    if (update.error && !update.error.message?.includes("pending_")) requireWrite(update);
+  };
   return {
     conversationId,
     history: history.map((row) => ({ role: row.role, content: row.content })),
+    pending,
+    async savePendingChoice(data: PendingChoice, signal?: AbortSignal) {
+      const update = await writer
+        .from("assistant_conversations")
+        .update({ pending_choice: data, pending_action: null })
+        .eq("id", conversationId)
+        .eq("user_id", userId)
+        .abortSignal(signal ?? dbSignal());
+      // Tolerant path until the A_history.sql migration (pending_choice column) is applied.
+      if (update.error && !update.error.message?.includes("pending_")) requireWrite(update);
+    },
+    async savePendingAction(data: PendingAction, signal?: AbortSignal) {
+      const update = await writer
+        .from("assistant_conversations")
+        .update({ pending_action: data, pending_choice: null })
+        .eq("id", conversationId)
+        .eq("user_id", userId)
+        .abortSignal(signal ?? dbSignal());
+      // Tolerant path until the A_history.sql migration (pending_action column) is applied.
+      if (update.error && !update.error.message?.includes("pending_")) requireWrite(update);
+    },
+    clearPending,
     audit: (tool, params, summary, durationMs, signal) =>
       persistAssistantAudit(
         userId,

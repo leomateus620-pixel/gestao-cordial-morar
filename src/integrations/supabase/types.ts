@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _studio_daily_counter: {
+        Row: {
+          count: number
+          day: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          day?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ad_accounts: {
         Row: {
           connection_id: string
@@ -1061,6 +1079,8 @@ export type Database = {
           bot_id: string
           created_at: string
           id: string
+          pending_action: Json | null
+          pending_choice: Json | null
           scope_key: string
           title: string
           updated_at: string
@@ -1070,6 +1090,8 @@ export type Database = {
           bot_id: string
           created_at?: string
           id?: string
+          pending_action?: Json | null
+          pending_choice?: Json | null
           scope_key: string
           title: string
           updated_at?: string
@@ -1079,6 +1101,8 @@ export type Database = {
           bot_id?: string
           created_at?: string
           id?: string
+          pending_action?: Json | null
+          pending_choice?: Json | null
           scope_key?: string
           title?: string
           updated_at?: string
@@ -1130,6 +1154,36 @@ export type Database = {
           secret_id?: string | null
           status?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_facts: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          ref_id: string | null
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          ref_id?: string | null
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          ref_id?: string | null
+          texto?: string
+          tipo?: string
           user_id?: string
         }
         Relationships: []
@@ -1205,6 +1259,7 @@ export type Database = {
       }
       assistant_messages: {
         Row: {
+          card_summary: Json
           content: string
           conversation_id: string
           created_at: string
@@ -1214,6 +1269,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          card_summary?: Json
           content: string
           conversation_id: string
           created_at?: string
@@ -1223,6 +1279,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          card_summary?: Json
           content?: string
           conversation_id?: string
           created_at?: string
@@ -8289,6 +8346,177 @@ export type Database = {
         }
         Relationships: []
       }
+      studio_assets: {
+        Row: {
+          created_at: string
+          height: number | null
+          id: string
+          kind: string
+          photo_integrity: string
+          project_id: string
+          source_photo_hash: string | null
+          storage_path: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          kind: string
+          photo_integrity?: string
+          project_id: string
+          source_photo_hash?: string | null
+          storage_path: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          kind?: string
+          photo_integrity?: string
+          project_id?: string
+          source_photo_hash?: string | null
+          storage_path?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "studio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_audit: {
+        Row: {
+          action: string
+          actor: string | null
+          created_at: string
+          details: Json
+          id: string
+          project_id: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          project_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_audit_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "studio_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_projects: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          created_at: string
+          formato: string
+          id: string
+          marca: string
+          owner_id: string
+          property_id: string
+          status: string
+          textos: Json
+          updated_at: string
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          formato: string
+          id?: string
+          marca: string
+          owner_id: string
+          property_id: string
+          status?: string
+          textos?: Json
+          updated_at?: string
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          formato?: string
+          id?: string
+          marca?: string
+          owner_id?: string
+          property_id?: string
+          status?: string
+          textos?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_admin_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_projects_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -9252,6 +9480,16 @@ export type Database = {
         }
         Returns: string
       }
+      assistant_fact_put: {
+        Args: {
+          p_expires_at?: string
+          p_ref_id: string
+          p_texto: string
+          p_tipo: string
+        }
+        Returns: string
+      }
+      assistant_facts_purge_expired: { Args: never; Returns: number }
       assistant_mcp_client_permission: {
         Args: never
         Returns: {
@@ -10297,6 +10535,8 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      studio_daily_limit_ok: { Args: { _user_id: string }; Returns: boolean }
+      studio_project_approve: { Args: { p_project_id: string }; Returns: Json }
       submit_satisfaction_response: {
         Args: { _comentario: string; _rating: number; _token: string }
         Returns: Json
