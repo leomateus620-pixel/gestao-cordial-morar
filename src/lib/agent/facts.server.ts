@@ -10,7 +10,7 @@ export const FACT_TEXT_MAX_LENGTH = 280;
 /** `tipo`/texto values that would describe the record owner are rejected: facts
  * are meant for the assistant's working memory about the user's own session,
  * not for storing property-owner data. */
-const OWNER_PATTERN = /\bpropriet[aá]ri[ao]s?\b/i;
+const OWNER_PATTERN = /propriet[aá]ri[ao]s?/i;
 
 export class InvalidFactError extends Error {}
 

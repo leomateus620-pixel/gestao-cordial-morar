@@ -70,6 +70,7 @@ import {
 } from "./AssistantControls";
 import { CordialBotBrand, CordialBotWordmark } from "@/components/brand/CordialBotBrand";
 import { AssistantMark } from "@/components/brand/AssistantMark";
+import { FactsPanel } from "./FactsPanel";
 export { Composer } from "./Composer";
 
 export type ConversationItem = { id: string; bot_id: string; title: string; updated_at: string };
@@ -1125,6 +1126,7 @@ export function AgentWorkspace({
       onActionRetry={() => void linkedAction.refetch()}
       initialTab={initialTab}
       memoryContent={
+        <>
         <MemoryPanelView
           key={control.memory.data?.updatedAt ?? "new"}
           preferences={control.memory.data?.preferences}
@@ -1138,6 +1140,8 @@ export function AgentWorkspace({
           onSave={control.memory.isError ? undefined : control.saveMemory}
           onDelete={control.memory.isError ? undefined : control.deleteMemory}
         />
+        <FactsPanel />
+        </>
       }
       routineContent={
         <>
