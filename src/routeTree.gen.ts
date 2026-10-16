@@ -60,6 +60,7 @@ import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
 import { Route as AppAssistenteIndexRouteImport } from './routes/_app.assistente.index'
 import { Route as AppAssistenteBotIdRouteImport } from './routes/_app.assistente.$botId'
+import { Route as AppAssistenteEstudioRouteImport } from './routes/_app.assistente.estudio'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
@@ -358,6 +359,11 @@ const AppAssistenteBotIdRoute = AppAssistenteBotIdRouteImport.update({
   path: '/assistente/$botId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAssistenteEstudioRoute = AppAssistenteEstudioRouteImport.update({
+  id: '/assistente/estudio',
+  path: '/assistente/estudio',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -639,6 +645,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/assistente/$botId': typeof AppAssistenteBotIdRoute
+  '/assistente/estudio': typeof AppAssistenteEstudioRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
@@ -729,6 +736,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
   '/assistente/$botId': typeof AppAssistenteBotIdRoute
+  '/assistente/estudio': typeof AppAssistenteEstudioRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/novo': typeof AppImoveisNovoRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
@@ -823,6 +831,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
   '/_app/assistente/$botId': typeof AppAssistenteBotIdRoute
+  '/_app/assistente/estudio': typeof AppAssistenteEstudioRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/_app/imoveis/novo': typeof AppImoveisNovoRoute
@@ -918,6 +927,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/agenda/fotos'
     | '/assistente/$botId'
+    | '/assistente/estudio'
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
     | '/imoveis/novo'
@@ -1008,6 +1018,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/agenda/fotos'
     | '/assistente/$botId'
+    | '/assistente/estudio'
     | '/clientes/$clienteId'
     | '/imoveis/novo'
     | '/api/cordial-site/$'
@@ -1101,6 +1112,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/_app/agenda/fotos'
     | '/_app/assistente/$botId'
+    | '/_app/assistente/estudio'
     | '/_app/clientes/$clienteId'
     | '/_app/imoveis/$imovelId'
     | '/_app/imoveis/novo'
@@ -1545,6 +1557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAssistenteBotIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/assistente/estudio': {
+      id: '/_app/assistente/estudio'
+      path: '/assistente/estudio'
+      fullPath: '/assistente/estudio'
+      preLoaderRoute: typeof AppAssistenteEstudioRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clientes/$clienteId': {
       id: '/_app/clientes/$clienteId'
       path: '/$clienteId'
@@ -1900,6 +1919,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAgendaFotosRoute: typeof AppAgendaFotosRoute
   AppAssistenteBotIdRoute: typeof AppAssistenteBotIdRoute
+  AppAssistenteEstudioRoute: typeof AppAssistenteEstudioRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppAssistenteIndexRoute: typeof AppAssistenteIndexRoute
   AppAssistenteEquipeBotIdRoute: typeof AppAssistenteEquipeBotIdRoute
@@ -1930,6 +1950,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAgendaFotosRoute: AppAgendaFotosRoute,
   AppAssistenteBotIdRoute: AppAssistenteBotIdRoute,
+  AppAssistenteEstudioRoute: AppAssistenteEstudioRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppAssistenteIndexRoute: AppAssistenteIndexRoute,
   AppAssistenteEquipeBotIdRoute: AppAssistenteEquipeBotIdRoute,

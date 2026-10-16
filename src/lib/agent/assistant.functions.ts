@@ -57,9 +57,22 @@ export const chatAssistant = createServerFn({ method: "POST" })
       conversationId: data.conversationId,
     });
     const routing = await import("./model-routing");
-    const tier = routing.interimTier(data.message);
+    const { routeMessage } = await import("./orchestrator/router");
+    const routerModel = routing.assistantModel("router", process.env);
+    const { decision, tier } = await routeMessage(data.message, {
+      apiKey: key,
+      model: routerModel,
+      signal: getRequest().signal,
+    });
     const model = routing.assistantModel(tier, process.env);
     const maxTokens = routing.assistantMaxTokens(tier);
+    const routedBot =
+      decision.intent === "pesquisa"
+        ? {
+            ...bot,
+            instructions: `${bot.instructions} A pesquisa na internet ainda não está disponível neste agente: avise a pessoa e não finja ter buscado dados externos.`,
+          }
+        : bot;
     const { modelCompletion } = await import("./llm");
     const { memoryPreferences } = await import("./memory.schemas");
     const memory = await ctx.supabase
@@ -75,7 +88,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
       ? memoryPreferences.safeParse(memory.data.preferences)
       : undefined;
     return createAssistantResponse(data, {
-      bot,
+      bot: routedBot,
       ctx,
       tools: [...agentTools],
       persistence,
