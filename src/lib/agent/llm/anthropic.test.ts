@@ -1,6 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { z } from "zod";
-import { anthropicCompletion, toAnthropicMessages } from "./anthropic";
+import { anthropicCompletion, toAnthropicMessages } from "./anthropic.ts";
 
 const sse = (events: unknown[]) =>
   new Response(
@@ -31,9 +32,9 @@ describe("claude adapter", () => {
       },
       { role: "tool", tool_call_id: "t1", content: "{}" },
     ]);
-    expect(r.system).toBe("S");
-    expect(r.messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
-    expect(r.messages[1]!.content[0]).toEqual({ type: "tool_use", id: "t1", name: "x", input: { a: 1 } });
+    assert.equal(r.system, "S");
+    assert.deepEqual(r.messages.map((m) => m.role), ["user", "assistant", "user"]);
+    assert.deepEqual(r.messages[1]!.content[0], { type: "tool_use", id: "t1", name: "x", input: { a: 1 } });
   });
 
   it("streams text and tool input through split frames", async () => {
@@ -60,10 +61,10 @@ describe("claude adapter", () => {
       },
       { apiKey: "k", model: "anthropic/claude-sonnet-5", fetcher },
     );
-    expect(body.stream).toBe(true);
-    expect(out.text).toBe("Olá.");
-    expect(out.calls).toEqual([{ id: "c1", name: "busca", arguments: '{"q":"x"}' }]);
-    expect(out.usage).toEqual({ promptTokens: 10, completionTokens: 5, cachedTokens: 0 });
+    assert.equal(body.stream, true);
+    assert.equal(out.text, "Olá.");
+    assert.deepEqual(out.calls, [{ id: "c1", name: "busca", arguments: '{"q":"x"}' }]);
+    assert.deepEqual(out.usage, { promptTokens: 10, completionTokens: 5, cachedTokens: 0 });
   });
 
   it("treats refusal as terminal", async () => {
@@ -72,11 +73,12 @@ describe("claude adapter", () => {
         { type: "message_delta", delta: { stop_reason: "refusal" } },
         { type: "message_stop" },
       ])) as unknown as typeof fetch;
-    await expect(
+    await assert.rejects(
       anthropicCompletion(
         { messages: [{ role: "user", content: "x" }], tools: [], signal: new AbortController().signal },
         { apiKey: "k", model: "anthropic/claude-sonnet-5", fetcher },
       ),
-    ).rejects.toThrow("gateway_refused");
+      /gateway_refused/,
+    );
   });
 });
