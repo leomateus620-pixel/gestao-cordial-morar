@@ -25,7 +25,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => chatAssistantInput.parse(value))
   .handler(async ({ data, context }): Promise<Response> => {
     const [
-      { createAssistantResponse, lovableCompletion },
+      { createAssistantResponse },
       { persistAssistantTurn },
       { assertBotContextScope },
       { agentTools, executeAgentTool },
