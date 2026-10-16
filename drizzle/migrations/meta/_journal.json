@@ -92,6 +92,13 @@
       "when": 1792023390160,
       "tag": "0012_shared_selections_responsavel",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792126440962,
+      "tag": "0013_assistant_foundation",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,5 @@
+/* The review toolbar can freeze motion for deterministic screenshots. */
+body:has([data-preview-motion="off"]) * {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}

@@ -1,0 +1,201 @@
+import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assistantContextInput, chatAssistantInput } from "./schemas";
+import type { AssistantConversation, AssistantMessage, AssistantResult } from "./stream";
+import { assistantScopeKey } from "./scope";
+
+/** This is deliberately a new client made with the verified caller token.
+ * No browser-supplied roles or service-role client enter the tools. */
+async function callerContext(userId: string) {
+  const [{ supabaseForUser }, { loadAgentContext }] = await Promise.all([
+    import("@/lib/mcp/supabase"),
+    import("./tools"),
+  ]);
+  const request = getRequest();
+  const token = request.headers.get("authorization")?.replace(/^Bearer /, "");
+  if (!token) throw new Error("Sessão inválida. Entre novamente.");
+  const supabase = supabaseForUser({ getToken: () => token });
+  return loadAgentContext(supabase, userId, request.signal);
+}
+
+export const chatAssistant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) => chatAssistantInput.parse(value))
+  .handler(async ({ data, context }): Promise<Response> => {
+    const [
+      { createAssistantResponse, lovableCompletion },
+      { persistAssistantTurn },
+      { getAgentBot, assertBotContextScope },
+      { agentTools, executeAgentTool },
+      { effectiveRole },
+    ] = await Promise.all([
+      import("./chat.server"),
+      import("./persistence.server"),
+      import("./bots"),
+      import("./tools"),
+      import("./security"),
+    ]);
+    const ctx = await callerContext(context.userId);
+    const bot = getAgentBot(data.botId);
+    if (!bot?.active || !bot.roles.some((role) => role === effectiveRole(ctx)))
+      throw new Error("Este agente não está disponível para seu perfil.");
+    assertBotContextScope(bot, data.context);
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key)
+      throw new Error(
+        "O Assistente Cordial ainda não foi configurado. Solicite a configuração ao administrador.",
+      );
+    const persistence = await persistAssistantTurn({
+      client: ctx.supabase,
+      userId: ctx.userId,
+      botId: bot.id,
+      scopeKey: assistantScopeKey(ctx),
+      message: data.message,
+      conversationId: data.conversationId,
+    });
+    const fastModel = process.env.ASSISTANT_FAST_MODEL || "google/gemini-3-flash-preview";
+    const model = /analis|compar|carteira|relat[oó]rio|cen[aá]rio|tend[eê]ncia/i.test(data.message)
+      ? process.env.ASSISTANT_ANALYSIS_MODEL || "google/gemini-3.1-pro-preview"
+      : fastModel;
+    return createAssistantResponse(data, {
+      bot,
+      ctx,
+      tools: [...agentTools],
+      persistence,
+      signal: getRequest().signal,
+      gateway: (request) => lovableCompletion(request, { apiKey: key, model }),
+      execute: executeAgentTool,
+    });
+  });
+
+export const listAssistantConversations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) =>
+    z
+      .object({
+        botId: z.string().max(24).optional(),
+        limit: z.number().int().min(1).max(50).default(30),
+      })
+      .strict()
+      .parse(value ?? {}),
+  )
+  .handler(async ({ data, context }): Promise<AssistantConversation[]> => {
+    const ctx = await callerContext(context.userId);
+    let query = ctx.supabase
+      .from("assistant_conversations")
+      .select("id,bot_id,title,updated_at")
+      .eq("user_id", ctx.userId)
+      .eq("scope_key", assistantScopeKey(ctx))
+      .order("updated_at", { ascending: false })
+      .limit(data.limit);
+    if (data.botId) query = query.eq("bot_id", data.botId);
+    const rows = await query;
+    if (rows.error) throw new Error("Não foi possível carregar as conversas.");
+    const { maskAgentOutput } = await import("./masking");
+    return maskAgentOutput(rows.data ?? []) as AssistantConversation[];
+  });
+
+export const listAssistantMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) =>
+    z.object({ conversationId: z.string().uuid() }).strict().parse(value),
+  )
+  .handler(async ({ data, context }): Promise<AssistantMessage[]> => {
+    const ctx = await callerContext(context.userId);
+    const [
+      { readOwnedAssistantHistory, persistAssistantAudit },
+      { rehydrateAssistantHistory },
+      { executeAgentTool },
+    ] = await Promise.all([
+      import("./persistence.server"),
+      import("./read-model.server"),
+      import("./tools"),
+    ]);
+    const rows = await readOwnedAssistantHistory(
+      ctx.supabase,
+      ctx.userId,
+      data.conversationId,
+      undefined,
+      assistantScopeKey(ctx),
+    );
+    return rehydrateAssistantHistory(rows, ctx, {
+      execute: executeAgentTool,
+      audit: (tool, params, summary, duration) =>
+        persistAssistantAudit(
+          ctx.userId,
+          "history",
+          data.conversationId,
+          tool,
+          params,
+          summary,
+          duration,
+          undefined,
+          assistantScopeKey(ctx),
+        ),
+    });
+  });
+
+export const getAssistantContext = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) => assistantContextInput.parse(value))
+  .handler(async ({ data, context }) => {
+    const ctx = await callerContext(context.userId);
+    const [{ executeAgentTool }, { persistAssistantAudit }, { readAssistantRecord }] =
+      await Promise.all([
+        import("./tools"),
+        import("./persistence.server"),
+        import("./read-model.server"),
+      ]);
+    return readAssistantRecord(data, ctx, {
+      execute: executeAgentTool,
+      audit: (tool, params, summary, duration) =>
+        persistAssistantAudit(
+          ctx.userId,
+          "context",
+          null,
+          tool,
+          params,
+          summary,
+          duration,
+          undefined,
+          assistantScopeKey(ctx),
+        ),
+    });
+  });
+
+export const getAssistantBriefing = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ items: AssistantResult[]; generatedAt: string }> => {
+    const ctx = await callerContext(context.userId);
+    const [
+      { executeAgentTool, getAllowedTools },
+      { persistAssistantAudit },
+      { collectAssistantBriefing },
+    ] = await Promise.all([
+      import("./tools"),
+      import("./persistence.server"),
+      import("./read-model.server"),
+    ]);
+    const items = await collectAssistantBriefing(
+      ctx,
+      getAllowedTools(ctx).map((tool) => tool.name),
+      {
+        execute: executeAgentTool,
+        audit: (tool, params, summary, duration) =>
+          persistAssistantAudit(
+            ctx.userId,
+            "briefing",
+            null,
+            tool,
+            params,
+            summary,
+            duration,
+            undefined,
+            assistantScopeKey(ctx),
+          ),
+      },
+    );
+    return { items, generatedAt: new Date().toISOString() };
+  });

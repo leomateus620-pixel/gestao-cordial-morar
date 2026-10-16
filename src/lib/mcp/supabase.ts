@@ -48,7 +48,7 @@ function supabasePublishableKey(): string {
   throw new Error("Supabase publishable key is required");
 }
 
-export function supabaseForUser(ctx: ToolContext) {
+export function supabaseForUser(ctx: Pick<ToolContext, "getToken">) {
   const token = ctx.getToken();
   if (!token) throw new Error("supabaseForUser requires a verified OAuth token");
   return createClient(supabaseProjectUrl(), supabasePublishableKey(), {

@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { AppModule, UserProfile } from "@/lib/mock/permissions";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 
 export const sidebarSectionOrder = ["operacao", "relacionamento", "gestao", "sistema"] as const;
 
@@ -67,6 +68,15 @@ export type SidebarNavigationSection = {
 
 /** Fonte única de módulos do app. Bottom nav, sidebar, drawer e "Mais" derivam daqui. */
 export const moduleItems: ModuleItem[] = [
+  {
+    to: "/assistente",
+    label: "Assistente Cordial",
+    shortLabel: "Assistente",
+    desc: "Sua equipe digital no Gestão",
+    icon: AssistantMark,
+    module: "agenda",
+    sidebar: { section: "operacao", order: 15, label: "Assistente", desc: "Sua equipe digital" },
+  },
   {
     to: "/",
     label: "Início",

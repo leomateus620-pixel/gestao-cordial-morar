@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Search, X } from "lucide-react";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import type { BuscaResultado } from "@/types/busca";
 import { cn } from "@/lib/utils";
@@ -86,9 +87,29 @@ export function GlobalSearchBar({ className }: Props) {
         )}
       </div>
 
-      {open && hasQuery ? (
+      {open ? (
         <div className="absolute top-[calc(100%+0.5rem)] right-0 left-0 z-50 max-h-[65vh] overflow-y-auto rounded-3xl border border-white/60 bg-white/95 p-2 shadow-2xl shadow-foreground/10 backdrop-blur-xl">
-          {isLoading ? (
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              navigate({
+                to: "/assistente/agenda",
+                search: { prompt: query.trim() || undefined },
+              } as never);
+            }}
+            className="mb-1 flex w-full items-center gap-2 rounded-2xl bg-primary/5 px-3 py-3 text-left text-xs font-semibold text-primary"
+          >
+            <AssistantMark className="size-4" />
+            {query.trim()
+              ? `Perguntar à equipe: “${query.trim()}”`
+              : "Conversar com o Assistente Cordial"}
+          </button>
+          {!hasQuery ? (
+            <p className="px-3 py-3 text-xs text-foreground/50">
+              Digite para buscar registros ou fazer uma pergunta ao assistente.
+            </p>
+          ) : isLoading ? (
             <p className="flex items-center gap-2 px-3 py-4 text-sm text-foreground/50">
               <Loader2 className="size-4 animate-spin" /> Buscando…
             </p>
