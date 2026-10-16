@@ -59,11 +59,15 @@ export async function executeRoutineTemplate(
     return result.structuredContent;
   };
   if (template === "daily_briefing") {
+    // Read-only snapshot per role: each tool is only reachable when the caller's
+    // role/bot scope allows it (see getAllowedTools), so a corretor never sees
+    // NFS-e or overdue-rent items meant for admin/secretaria.
     for (const tool of [
       "agenda_today",
       "stale_attendances",
       "expiring_agenciamentos",
       "rentals_overdue",
+      "rental_nfse_alerts",
     ])
       if (allowed.has(tool)) await run(tool, tool === "agenda_today" ? {} : { limit: 5 });
   } else if (template === "market_digest")

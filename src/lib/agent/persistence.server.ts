@@ -155,21 +155,39 @@ export async function persistAssistantTurn(options: {
         options.scopeKey,
       ),
     async saveAssistant(content: string, results: AssistantResult[], signal?: AbortSignal) {
-      requireWrite(
-        await writer
-          .from("assistant_messages")
-          .insert({
-            conversation_id: conversationId,
-            user_id: userId,
-            role: "assistant",
-            content: ASSISTANT_HISTORY_TEXT,
-            results: results.map((ref) => ({
-              tool: ref.tool,
-              data: { params: assistantReferenceParams(ref.data.params) },
-            })),
-          })
-          .abortSignal(signal ?? dbSignal()),
-      );
+      const cardSummary = results.map((ref) => ({
+        tool: ref.tool,
+        data: { params: assistantReferenceParams(ref.data.params) },
+      }));
+      const safeContent = maskText(content).slice(0, 16000) || ASSISTANT_HISTORY_TEXT;
+      const insert = await writer
+        .from("assistant_messages")
+        .insert({
+          conversation_id: conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: safeContent,
+          card_summary: cardSummary,
+          results: cardSummary,
+        })
+        .abortSignal(signal ?? dbSignal());
+      if (insert.error?.message?.includes("card_summary")) {
+        // Tolerant path until the A_history.sql migration (card_summary column) is applied.
+        requireWrite(
+          await writer
+            .from("assistant_messages")
+            .insert({
+              conversation_id: conversationId,
+              user_id: userId,
+              role: "assistant",
+              content: safeContent,
+              results: cardSummary,
+            })
+            .abortSignal(signal ?? dbSignal()),
+        );
+      } else {
+        requireWrite(insert);
+      }
       signal?.throwIfAborted();
       requireWrite(
         await writer

@@ -213,6 +213,12 @@ export function AgentSidebar({
         <Plus size={14} />
         Nova conversa
       </button>
+      <a
+        href="/assistente/estudio"
+        className="assistant-small-button mb-6 w-full !rounded-full !py-2.5 !text-[11px]"
+      >
+        Estúdio de conteúdo
+      </a>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[10px] font-semibold text-muted-foreground">Sua equipe</h2>
         <a href="/assistente/equipe" className="text-[9px] text-primary">
