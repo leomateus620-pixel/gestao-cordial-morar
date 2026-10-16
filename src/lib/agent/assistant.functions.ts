@@ -25,7 +25,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => chatAssistantInput.parse(value))
   .handler(async ({ data, context }): Promise<Response> => {
     const [
-      { createAssistantResponse, lovableCompletion },
+      { createAssistantResponse },
       { persistAssistantTurn },
       { assertBotContextScope },
       { agentTools, executeAgentTool },
@@ -60,8 +60,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
     const tier = routing.interimTier(data.message);
     const model = routing.assistantModel(tier, process.env);
     const maxTokens = routing.assistantMaxTokens(tier);
-    if (!routing.isChatCompletionsModel(model))
-      throw new Error("Este modelo ainda não está habilitado no Cordial Bot.");
+    const { modelCompletion } = await import("./llm");
     const { memoryPreferences } = await import("./memory.schemas");
     const memory = await ctx.supabase
       .from("assistant_memory")
@@ -85,7 +84,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
       signal: getRequest().signal,
       gateway: async (request) => {
         const started = Date.now();
-        const completion = await lovableCompletion(request, { apiKey: key, model, maxTokens });
+        const completion = await modelCompletion(request, { apiKey: key, model, maxTokens });
         const { recordAssistantUsage } = await import("./usage.server");
         await recordAssistantUsage({
           userId: ctx.userId,
