@@ -19,6 +19,7 @@ function sidebarPaths(profile: UserProfile) {
 test("derives a flat, ordered admin sidebar from the canonical module registry", () => {
   assert.deepEqual(sidebarPaths("admin_owner"), [
     "/",
+    "/assistente",
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",
@@ -45,6 +46,7 @@ test("derives a flat, ordered admin sidebar from the canonical module registry",
 test("keeps sidebar visibility aligned with every authenticated role", () => {
   assert.deepEqual(sidebarPaths("secretaria"), [
     "/",
+    "/assistente",
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",
@@ -56,6 +58,7 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
   ]);
   assert.deepEqual(sidebarPaths("corretor"), [
     "/",
+    "/assistente",
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",

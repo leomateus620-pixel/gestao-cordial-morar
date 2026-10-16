@@ -58,6 +58,8 @@ import { Route as SiteFavoritosRouteImport } from './routes/site.favoritos'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AppAgendaIndexRouteImport } from './routes/_app.agenda.index'
 import { Route as AppAgendaFotosRouteImport } from './routes/_app.agenda.fotos'
+import { Route as AppAssistenteIndexRouteImport } from './routes/_app.assistente.index'
+import { Route as AppAssistenteBotIdRouteImport } from './routes/_app.assistente.$botId'
 import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes.$clienteId'
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
@@ -73,6 +75,8 @@ import { Route as SiteImovelPublicIdRouteImport } from './routes/site.imovel.$pu
 import { Route as SiteInformacoesSlugRouteImport } from './routes/site.informacoes.$slug'
 import { Route as SiteNoticiasIndexRouteImport } from './routes/site.noticias.index'
 import { Route as SiteNoticiasSlugRouteImport } from './routes/site.noticias.$slug'
+import { Route as AppAssistenteEquipeIndexRouteImport } from './routes/_app.assistente.equipe.index'
+import { Route as AppAssistenteEquipeBotIdRouteImport } from './routes/_app.assistente.equipe.$botId'
 import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
 import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
 import { Route as ApiPublicAdsOauthCallbackRouteImport } from './routes/api/public/ads-oauth.callback'
@@ -342,6 +346,16 @@ const AppAgendaFotosRoute = AppAgendaFotosRouteImport.update({
   path: '/agenda/fotos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAssistenteIndexRoute = AppAssistenteIndexRouteImport.update({
+  id: '/assistente/',
+  path: '/assistente/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssistenteBotIdRoute = AppAssistenteBotIdRouteImport.update({
+  id: '/assistente/$botId',
+  path: '/assistente/$botId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppClientesClienteIdRoute = AppClientesClienteIdRouteImport.update({
   id: '/$clienteId',
   path: '/$clienteId',
@@ -418,6 +432,18 @@ const SiteNoticiasSlugRoute = SiteNoticiasSlugRouteImport.update({
   path: '/noticias/$slug',
   getParentRoute: () => SiteRoute,
 } as any)
+const AppAssistenteEquipeIndexRoute =
+  AppAssistenteEquipeIndexRouteImport.update({
+    id: '/assistente/equipe/',
+    path: '/assistente/equipe/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAssistenteEquipeBotIdRoute =
+  AppAssistenteEquipeBotIdRouteImport.update({
+    id: '/assistente/equipe/$botId',
+    path: '/assistente/equipe/$botId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppImoveisImovelIdIndexRoute = AppImoveisImovelIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -598,6 +624,7 @@ export interface FileRoutesByFullPath {
   '/site/': typeof SiteIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
+  '/assistente/$botId': typeof AppAssistenteBotIdRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
@@ -611,9 +638,11 @@ export interface FileRoutesByFullPath {
   '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
   '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
   '/agenda/': typeof AppAgendaIndexRoute
+  '/assistente/': typeof AppAssistenteIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
+  '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
@@ -635,6 +664,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/assistente/equipe/': typeof AppAssistenteEquipeIndexRoute
   '/imoveis/$imovelId/': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -682,6 +712,7 @@ export interface FileRoutesByTo {
   '/site': typeof SiteIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/agenda/fotos': typeof AppAgendaFotosRoute
+  '/assistente/$botId': typeof AppAssistenteBotIdRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/novo': typeof AppImoveisNovoRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
@@ -694,9 +725,11 @@ export interface FileRoutesByTo {
   '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
   '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
   '/agenda': typeof AppAgendaIndexRoute
+  '/assistente': typeof AppAssistenteIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
   '/site-morar/noticias': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias': typeof SiteNoticiasIndexRoute
+  '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
@@ -718,6 +751,7 @@ export interface FileRoutesByTo {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/assistente/equipe': typeof AppAssistenteEquipeIndexRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRoutesById {
@@ -770,6 +804,7 @@ export interface FileRoutesById {
   '/site/': typeof SiteIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_app/agenda/fotos': typeof AppAgendaFotosRoute
+  '/_app/assistente/$botId': typeof AppAssistenteBotIdRoute
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/_app/imoveis/novo': typeof AppImoveisNovoRoute
@@ -783,9 +818,11 @@ export interface FileRoutesById {
   '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
   '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
+  '/_app/assistente/': typeof AppAssistenteIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
+  '/_app/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
@@ -807,6 +844,7 @@ export interface FileRoutesById {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/_app/assistente/equipe/': typeof AppAssistenteEquipeIndexRoute
   '/_app/imoveis/$imovelId/': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -859,6 +897,7 @@ export interface FileRouteTypes {
     | '/site/'
     | '/.lovable/oauth/consent'
     | '/agenda/fotos'
+    | '/assistente/$botId'
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
     | '/imoveis/novo'
@@ -872,9 +911,11 @@ export interface FileRouteTypes {
     | '/site/informacoes/$slug'
     | '/site/noticias/$slug'
     | '/agenda/'
+    | '/assistente/'
     | '/imoveis/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
+    | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
     | '/api/public/google-calendar/callback'
@@ -896,6 +937,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/assistente/equipe/'
     | '/imoveis/$imovelId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -943,6 +985,7 @@ export interface FileRouteTypes {
     | '/site'
     | '/.lovable/oauth/consent'
     | '/agenda/fotos'
+    | '/assistente/$botId'
     | '/clientes/$clienteId'
     | '/imoveis/novo'
     | '/api/cordial-site/$'
@@ -955,9 +998,11 @@ export interface FileRouteTypes {
     | '/site/informacoes/$slug'
     | '/site/noticias/$slug'
     | '/agenda'
+    | '/assistente'
     | '/imoveis'
     | '/site-morar/noticias'
     | '/site/noticias'
+    | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
     | '/api/public/google-calendar/callback'
@@ -979,6 +1024,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/assistente/equipe'
     | '/imoveis/$imovelId'
   id:
     | '__root__'
@@ -1030,6 +1076,7 @@ export interface FileRouteTypes {
     | '/site/'
     | '/.lovable/oauth/consent'
     | '/_app/agenda/fotos'
+    | '/_app/assistente/$botId'
     | '/_app/clientes/$clienteId'
     | '/_app/imoveis/$imovelId'
     | '/_app/imoveis/novo'
@@ -1043,9 +1090,11 @@ export interface FileRouteTypes {
     | '/site/informacoes/$slug'
     | '/site/noticias/$slug'
     | '/_app/agenda/'
+    | '/_app/assistente/'
     | '/_app/imoveis/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
+    | '/_app/assistente/equipe/$botId'
     | '/_app/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
     | '/api/public/google-calendar/callback'
@@ -1067,6 +1116,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/_app/assistente/equipe/'
     | '/_app/imoveis/$imovelId/'
   fileRoutesById: FileRoutesById
 }
@@ -1453,6 +1503,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaFotosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/assistente/': {
+      id: '/_app/assistente/'
+      path: '/assistente'
+      fullPath: '/assistente/'
+      preLoaderRoute: typeof AppAssistenteIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assistente/$botId': {
+      id: '/_app/assistente/$botId'
+      path: '/assistente/$botId'
+      fullPath: '/assistente/$botId'
+      preLoaderRoute: typeof AppAssistenteBotIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/clientes/$clienteId': {
       id: '/_app/clientes/$clienteId'
       path: '/$clienteId'
@@ -1557,6 +1621,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/site/noticias/$slug'
       preLoaderRoute: typeof SiteNoticiasSlugRouteImport
       parentRoute: typeof SiteRoute
+    }
+    '/_app/assistente/equipe/': {
+      id: '/_app/assistente/equipe/'
+      path: '/assistente/equipe'
+      fullPath: '/assistente/equipe/'
+      preLoaderRoute: typeof AppAssistenteEquipeIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assistente/equipe/$botId': {
+      id: '/_app/assistente/equipe/$botId'
+      path: '/assistente/equipe/$botId'
+      fullPath: '/assistente/equipe/$botId'
+      preLoaderRoute: typeof AppAssistenteEquipeBotIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/imoveis/$imovelId/': {
       id: '/_app/imoveis/$imovelId/'
@@ -1779,7 +1857,11 @@ interface AppRouteChildren {
   AppVendasRoute: typeof AppVendasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAgendaFotosRoute: typeof AppAgendaFotosRoute
+  AppAssistenteBotIdRoute: typeof AppAssistenteBotIdRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
+  AppAssistenteIndexRoute: typeof AppAssistenteIndexRoute
+  AppAssistenteEquipeBotIdRoute: typeof AppAssistenteEquipeBotIdRoute
+  AppAssistenteEquipeIndexRoute: typeof AppAssistenteEquipeIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1805,7 +1887,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppVendasRoute: AppVendasRoute,
   AppIndexRoute: AppIndexRoute,
   AppAgendaFotosRoute: AppAgendaFotosRoute,
+  AppAssistenteBotIdRoute: AppAssistenteBotIdRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
+  AppAssistenteIndexRoute: AppAssistenteIndexRoute,
+  AppAssistenteEquipeBotIdRoute: AppAssistenteEquipeBotIdRoute,
+  AppAssistenteEquipeIndexRoute: AppAssistenteEquipeIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

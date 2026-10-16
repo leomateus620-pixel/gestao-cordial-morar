@@ -20,3 +20,5 @@ jobs:
         run: bun run test
       - name: Site público e política PostgreSQL
         run: bun run test:site
+      - name: Build
+        run: bun run build

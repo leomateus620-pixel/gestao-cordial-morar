@@ -16,6 +16,7 @@ import type { Corretor, CorretoresSummary } from "@/types/corretor";
 import { useState } from "react";
 
 import { AgenciamentosQuickStrip } from "@/components/agenciamentos/AgenciamentosQuickStrip";
+import { DailyBriefing } from "@/components/assistant/AgentWorkspace";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCards";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
@@ -150,6 +151,7 @@ function Dashboard() {
 
       {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
       <DashboardMetricCards />
+      {session && session.perfil !== "financeiro_admin" && <DailyBriefing />}
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}
       {isAdminOwner && <AgenciamentosQuickStrip summary={agenciamentosSummary} />}

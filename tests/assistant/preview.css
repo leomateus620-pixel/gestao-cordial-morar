@@ -1,0 +1,2 @@
+/* Deterministic screenshots only. Production retains its reduced-motion-aware animations. */
+* { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }

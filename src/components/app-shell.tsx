@@ -20,6 +20,7 @@ import { GlobalSearchBar } from "./busca/GlobalSearchBar";
 import { CatalogCarteiraPills, CatalogSearchInput } from "./imoveis/CatalogHeaderControls";
 import { SiteSyncPanel } from "./imoveis/SiteSyncPanel";
 import { isAdminUser } from "@/lib/access-control";
+import { GlobalAssistant } from "./assistant/GlobalAssistant";
 
 import { getPrimaryItemsForProfile, isModuleItemActive } from "./shared/module-menu";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
@@ -59,6 +60,7 @@ export function AppShell() {
   const mainRef = useRef<HTMLDivElement>(null);
   const canSearch = Boolean(session?.modules?.includes("busca"));
   const isCatalogRoute = pathname === "/imoveis";
+  const isAssistantWorkspace = /^\/assistente\/(?!equipe(?:\/|$))[^/]+\/?$/.test(pathname);
   const isAdmin = isAdminUser(session);
 
   const sessionModules = useMemo(
@@ -317,7 +319,7 @@ export function AppShell() {
         </header>
 
 
-        <main className="mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10">
+        <main className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10",isAssistantWorkspace?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
           <NotificationTransientRegion />
           <div key={pathname} className="app-page-enter">
             <Outlet />
@@ -326,7 +328,7 @@ export function AppShell() {
       </div>
 
       {/* Bottom nav mobile */}
-      <nav
+      {!isAssistantWorkspace && <nav
         className="bottom-nav-glass fixed left-1/2 z-40 flex h-16 w-[calc(100vw-1.5rem)] max-w-[26rem] -translate-x-1/2 items-center justify-around rounded-full px-2 lg:hidden"
         style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         aria-label="Navegação rápida"
@@ -355,8 +357,9 @@ export function AppShell() {
             </Link>
           );
         })}
-      </nav>
+      </nav>}
       <NotificationCenter />
+      <GlobalAssistant />
     </div>
   );
 }
