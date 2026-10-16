@@ -41,8 +41,9 @@ export async function renderStudioVideoFallback(opts: VideoRenderOptions): Promi
   const canvas = document.createElement("canvas");
   canvas.width = opts.width;
   canvas.height = opts.height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas_context_indisponivel");
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) throw new Error("canvas_context_indisponivel");
+  const ctx: CanvasRenderingContext2D = ctx2d;
   const stream = (canvas as HTMLCanvasElement).captureStream(fps);
   const mime = ["video/webm;codecs=vp9", "video/webm"].find(
     (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),

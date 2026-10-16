@@ -27,7 +27,7 @@ export function coverCrop(sourceWidth: number, sourceHeight: number, targetAspec
 
 /** SHA-256 em hex da foto de entrada (bytes brutos), usado para rastrear integridade. */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = await crypto.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer);
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
