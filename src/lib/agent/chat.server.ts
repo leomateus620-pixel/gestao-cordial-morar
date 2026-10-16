@@ -461,7 +461,7 @@ export function createAssistantResponse(
                 if (missing.length) {
                   pendingAction = {
                     tool: tool.name,
-                    filled: assistantReferenceParams(
+                    filled: maskAgentOutput(
                       Object.fromEntries(
                         Object.entries(raw).filter(([key]) => !missing.includes(key)),
                       ),

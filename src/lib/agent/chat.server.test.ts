@@ -456,3 +456,119 @@ test("availability is rechecked before consulting any tool", async () => {
   assert.equal(s.executions.length, 0);
   assert(!events.some((e) => e.type === "result"));
 });
+
+test("pending choice then pending action: fake gateway flow across two turns", async () => {
+  const { actionSchemas } = await import("./actions");
+  let pending: { choice?: any; action?: any } = {};
+  const saved: unknown[][] = [];
+  const persistence = {
+    conversationId,
+    history: [] as Array<{ role: "user" | "assistant"; content: string }>,
+    get pending() {
+      return pending;
+    },
+    audit: async () => {},
+    saveAssistant: async (content: string, results: AssistantResult[]) => {
+      saved.push([content, results]);
+      persistence.history.push({ role: "assistant", content });
+    },
+    savePendingChoice: async (data: any) => {
+      pending = { choice: data, action: undefined };
+    },
+    savePendingAction: async (data: any) => {
+      pending = { choice: undefined, action: data };
+    },
+    clearPending: async () => {
+      pending = {};
+    },
+  };
+  const baseDeps: AssistantTurnDeps = {
+    bot: getAgentBot("agenda")!,
+    ctx: { supabase: {} as any, userId, roles: ["admin"], agencies: ["cordial"] },
+    tools: [
+      {
+        name: "prepare_agenda_event",
+        title: "Preparar compromisso",
+        description: "Prepara um compromisso.",
+        roles: ["admin", "secretaria", "corretor"],
+        inputSchema: actionSchemas.agenda_event,
+        handler: async () => {
+          throw new Error("unused");
+        },
+      },
+    ],
+    persistence: persistence as any,
+    gateway: async () => ({ text: "", calls: [] }),
+    execute: async () => {
+      throw new Error("should not execute prepare_* directly in this scenario");
+    },
+  };
+
+  // Turn 1: "lance uma agenda amanhã" -> model asks Visita/Reunião via request_user_choice.
+  const turn1Deps: AssistantTurnDeps = {
+    ...baseDeps,
+    gateway: async (request) => {
+      if (request.tools.length)
+        return {
+          text: "",
+          calls: [
+            call(
+              "request_user_choice",
+              "choose-kind",
+              JSON.stringify({ question: "Que tipo de compromisso?", choices: ["Visita", "Reunião"] }),
+            ),
+          ],
+        };
+      return { text: "", calls: [] };
+    },
+  };
+  const events1 = await run(turn1Deps, "lance uma agenda amanhã");
+  persistence.history.push({ role: "user", content: "lance uma agenda amanhã" });
+  const choiceEvent = events1.find((e) => e.type === "choice");
+  assert(choiceEvent?.type === "choice");
+  assert.deepEqual(choiceEvent.choice.options.map((o) => o.value), ["Visita", "Reunião"]);
+  assert.deepEqual(pending.choice, {
+    question: "Que tipo de compromisso?",
+    options: ["Visita", "Reunião"],
+    tool_context: undefined,
+  });
+
+  // Turn 2: "Visita" -> model receives the pending choice as a system message
+  // (data, not instruction) and calls prepare_agenda_event with incomplete fields.
+  let turn2SystemMessages: string[] = [];
+  const turn2Deps: AssistantTurnDeps = {
+    ...baseDeps,
+    gateway: async (request) => {
+      if (request.tools.length) {
+        turn2SystemMessages = request.messages
+          .filter((m) => m.role === "system")
+          .map((m) => m.content ?? "");
+        return {
+          text: "",
+          calls: [
+            call(
+              "prepare_agenda_event",
+              "prepare-1",
+              JSON.stringify({ title: "Visita", kind: "visita" }),
+            ),
+          ],
+        };
+      }
+      return { text: "", calls: [] };
+    },
+  };
+  const events2 = await run(turn2Deps, "Visita");
+  assert(
+    turn2SystemMessages.some(
+      (m) => m.includes("Pendência anterior") && m.includes("Que tipo de compromisso"),
+    ),
+  );
+  assert.equal(pending.choice, undefined, "the pending choice is cleared once consumed");
+  assert(pending.action, "a pending action is stored for the incomplete prepare_* call");
+  assert.equal(pending.action.tool, "prepare_agenda_event");
+  assert(pending.action.missing.includes("start"));
+  assert(pending.action.missing.includes("end"));
+  assert(pending.action.missing.includes("agency"));
+  assert.deepEqual(pending.action.filled, { title: "Visita", kind: "visita" });
+  assert.equal(events2.at(-1)?.type, "done");
+});
