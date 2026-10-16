@@ -107,7 +107,7 @@ export class PrivateTextStream {
 /** OpenAI-compatible Lovable SSE, including fragmented tool names/arguments. */
 export async function lovableCompletion(
   request: GatewayRequest,
-  config: { apiKey: string; model: string; fetcher?: typeof fetch },
+  config: { apiKey: string; model: string; maxTokens?: number; fetcher?: typeof fetch },
 ): Promise<GatewayCompletion> {
   const response = await (config.fetcher ?? fetch)(
     "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -119,7 +119,7 @@ export async function lovableCompletion(
         model: config.model,
         stream: true,
         stream_options: { include_usage: true },
-        max_tokens: 1800,
+        max_tokens: config.maxTokens ?? 1800,
         messages: request.messages,
         ...(request.tools.length
           ? {
