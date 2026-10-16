@@ -148,6 +148,13 @@
       "when": 1792150000000,
       "tag": "0020_assistant_routine_compatibility",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792175893179,
+      "tag": "0021_assistant_history_facts_studio",
+      "breakpoints": true
     }
   ]
 }

@@ -70,6 +70,7 @@ import {
 } from "./AssistantControls";
 import { CordialBotBrand, CordialBotWordmark } from "@/components/brand/CordialBotBrand";
 import { AssistantMark } from "@/components/brand/AssistantMark";
+import { FactsPanel } from "./FactsPanel";
 export { Composer } from "./Composer";
 
 export type ConversationItem = { id: string; bot_id: string; title: string; updated_at: string };
@@ -213,6 +214,12 @@ export function AgentSidebar({
         <Plus size={14} />
         Nova conversa
       </button>
+      <a
+        href="/assistente/estudio"
+        className="assistant-small-button mb-6 w-full !rounded-full !py-2.5 !text-[11px]"
+      >
+        Estúdio de conteúdo
+      </a>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[10px] font-semibold text-muted-foreground">Sua equipe</h2>
         <a href="/assistente/equipe" className="text-[9px] text-primary">
@@ -1119,6 +1126,7 @@ export function AgentWorkspace({
       onActionRetry={() => void linkedAction.refetch()}
       initialTab={initialTab}
       memoryContent={
+        <>
         <MemoryPanelView
           key={control.memory.data?.updatedAt ?? "new"}
           preferences={control.memory.data?.preferences}
@@ -1132,6 +1140,8 @@ export function AgentWorkspace({
           onSave={control.memory.isError ? undefined : control.saveMemory}
           onDelete={control.memory.isError ? undefined : control.deleteMemory}
         />
+        <FactsPanel />
+        </>
       }
       routineContent={
         <>

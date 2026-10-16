@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AssistantPersistence } from "./chat.server";
+import type { AssistantPersistence, PendingAction, PendingChoice } from "./chat.server";
 import type { AssistantMessage, AssistantResult } from "./stream";
 import { maskAgentOutput, maskText } from "./masking";
 import { ASSISTANT_HISTORY_TEXT, assistantReferenceParams } from "./scope";
@@ -52,6 +52,29 @@ export async function readOwnedAssistantHistory(
   ) as AssistantMessage[];
 }
 
+/** Separate from readOwnedAssistantHistory (consumed by assistant.functions.ts with a
+ * plain-array contract). Tolerant to the pending_choice/pending_action columns being
+ * absent until the A_history.sql migration is applied. */
+async function readPendingState(
+  client: SupabaseClient<any>,
+  userId: string,
+  conversationId: string,
+  scopeKey: string,
+): Promise<{ choice: PendingChoice | null; action: PendingAction | null }> {
+  const { data, error } = await client
+    .from("assistant_conversations")
+    .select("pending_choice,pending_action")
+    .eq("id", conversationId)
+    .eq("user_id", userId)
+    .eq("scope_key", scopeKey)
+    .maybeSingle();
+  if (error || !data) return { choice: null, action: null };
+  return {
+    choice: (maskAgentOutput((data as any).pending_choice ?? null) ?? null) as PendingChoice | null,
+    action: (maskAgentOutput((data as any).pending_action ?? null) ?? null) as PendingAction | null,
+  };
+}
+
 export async function persistAssistantAudit(
   userId: string,
   botId: string,
@@ -101,6 +124,9 @@ export async function persistAssistantTurn(options: {
         options.scopeKey,
       )
     : [];
+  const pending = options.conversationId
+    ? await readPendingState(client, userId, options.conversationId, options.scopeKey)
+    : { choice: null, action: null };
   const writer = await persistenceWriter();
   const configuredLimit = Number(process.env.ASSISTANT_DAILY_TURNS ?? 80);
   const limit =
@@ -139,9 +165,40 @@ export async function persistAssistantTurn(options: {
       })
       .abortSignal(dbSignal()),
   );
+  const clearPending = async (signal?: AbortSignal) => {
+    const update = await writer
+      .from("assistant_conversations")
+      .update({ pending_choice: null, pending_action: null })
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .abortSignal(signal ?? dbSignal());
+    if (update.error && !update.error.message?.includes("pending_")) requireWrite(update);
+  };
   return {
     conversationId,
     history: history.map((row) => ({ role: row.role, content: row.content })),
+    pending,
+    async savePendingChoice(data: PendingChoice, signal?: AbortSignal) {
+      const update = await writer
+        .from("assistant_conversations")
+        .update({ pending_choice: data, pending_action: null })
+        .eq("id", conversationId)
+        .eq("user_id", userId)
+        .abortSignal(signal ?? dbSignal());
+      // Tolerant path until the A_history.sql migration (pending_choice column) is applied.
+      if (update.error && !update.error.message?.includes("pending_")) requireWrite(update);
+    },
+    async savePendingAction(data: PendingAction, signal?: AbortSignal) {
+      const update = await writer
+        .from("assistant_conversations")
+        .update({ pending_action: data, pending_choice: null })
+        .eq("id", conversationId)
+        .eq("user_id", userId)
+        .abortSignal(signal ?? dbSignal());
+      // Tolerant path until the A_history.sql migration (pending_action column) is applied.
+      if (update.error && !update.error.message?.includes("pending_")) requireWrite(update);
+    },
+    clearPending,
     audit: (tool, params, summary, durationMs, signal) =>
       persistAssistantAudit(
         userId,
@@ -155,21 +212,39 @@ export async function persistAssistantTurn(options: {
         options.scopeKey,
       ),
     async saveAssistant(content: string, results: AssistantResult[], signal?: AbortSignal) {
-      requireWrite(
-        await writer
-          .from("assistant_messages")
-          .insert({
-            conversation_id: conversationId,
-            user_id: userId,
-            role: "assistant",
-            content: ASSISTANT_HISTORY_TEXT,
-            results: results.map((ref) => ({
-              tool: ref.tool,
-              data: { params: assistantReferenceParams(ref.data.params) },
-            })),
-          })
-          .abortSignal(signal ?? dbSignal()),
-      );
+      const cardSummary = results.map((ref) => ({
+        tool: ref.tool,
+        data: { params: assistantReferenceParams(ref.data.params) },
+      }));
+      const safeContent = maskText(content).slice(0, 16000) || ASSISTANT_HISTORY_TEXT;
+      const insert = await writer
+        .from("assistant_messages")
+        .insert({
+          conversation_id: conversationId,
+          user_id: userId,
+          role: "assistant",
+          content: safeContent,
+          card_summary: cardSummary,
+          results: cardSummary,
+        })
+        .abortSignal(signal ?? dbSignal());
+      if (insert.error?.message?.includes("card_summary")) {
+        // Tolerant path until the A_history.sql migration (card_summary column) is applied.
+        requireWrite(
+          await writer
+            .from("assistant_messages")
+            .insert({
+              conversation_id: conversationId,
+              user_id: userId,
+              role: "assistant",
+              content: safeContent,
+              results: cardSummary,
+            })
+            .abortSignal(signal ?? dbSignal()),
+        );
+      } else {
+        requireWrite(insert);
+      }
       signal?.throwIfAborted();
       requireWrite(
         await writer

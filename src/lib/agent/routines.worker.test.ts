@@ -178,3 +178,22 @@ test("provider setup failures do not revoke OAuth and grant contention does not 
     else process.env.ASSISTANT_ROUTINES_ENABLED = old;
   }
 });
+
+
+test("daily briefing read-only template includes the NFS-e review tool for roles allowed to see it", async () => {
+  // Static guard: keeps the daily briefing in sync with the read-only NFS-e
+  // review tool (rental_nfse_alerts is role-gated to admin/secretaria by the
+  // tool itself and by getAllowedTools, so a corretor never receives it).
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile(new URL("./routines.worker.server.ts", import.meta.url), "utf8");
+  const match = source.match(/if \(template === "daily_briefing"\) \{[\s\S]*?for \(const tool of \[([\s\S]*?)\]\)/);
+  assert.ok(match, "daily_briefing tool list not found");
+  const tools = match![1].split(",").map((t) => t.trim().replace(/"/g, "")).filter(Boolean);
+  assert.deepEqual(tools, [
+    "agenda_today",
+    "stale_attendances",
+    "expiring_agenciamentos",
+    "rentals_overdue",
+    "rental_nfse_alerts",
+  ]);
+});
