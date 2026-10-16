@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAssistantAdminOverview } from "@/lib/agent/admin.functions";
 import { agentBots } from "@/lib/agent/bots";
-import { AssistantMark } from "@/components/brand/AssistantMark";
+import { CordialBotBrand } from "@/components/brand/CordialBotBrand";
+import { AssistantConfiguration } from "@/components/assistant/AssistantConfiguration";
 import { Button } from "@/components/ui/button";
 
 const statusLabels: Record<string, string> = {
@@ -12,12 +13,11 @@ const statusLabels: Record<string, string> = {
   failed: "Falhou",
   cancelled: "Cancelada",
 };
-export function AssistantAdminPanel() {
+function AssistantUsagePanel({ tab }: { tab: "usage" | "actions" | "audit" }) {
   const [days, setDays] = useState(7);
   const [botId, setBotId] = useState("");
   const [userId, setUserId] = useState("");
   const [status, setStatus] = useState("");
-  const [tab, setTab] = useState<"usage" | "actions" | "audit">("usage");
   const validUser = !userId || /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(userId);
   const query = useQuery({
     queryKey: ["assistant-admin", days, botId, userId, status],
@@ -36,23 +36,7 @@ export function AssistantAdminPanel() {
   const data = query.data;
   const inputClass = "min-h-10 rounded-xl border bg-background px-3 text-sm";
   return (
-    <section
-      className="mb-5 rounded-2xl border bg-card p-4 sm:p-5"
-      aria-label="Administração do Assistente Cordial"
-    >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <AssistantMark size={25} /> Assistente Cordial
-        </h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void query.refetch()}
-          disabled={query.isFetching || !validUser}
-        >
-          Atualizar
-        </Button>
-      </div>
+    <div>
       <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <select
           aria-label="Período da auditoria"
@@ -130,25 +114,6 @@ export function AssistantAdminPanel() {
               {data.summary.unknownCosts} chamada(s) sem estimativa de custo.
             </p>
           )}
-          <div className="mb-3 flex gap-1" role="tablist" aria-label="Auditoria do assistente">
-            {(
-              [
-                ["usage", "Uso"],
-                ["actions", "Ações"],
-                ["audit", "Auditoria"],
-              ] as const
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                role="tab"
-                aria-selected={tab === v}
-                onClick={() => setTab(v)}
-                className={`rounded-full px-4 py-2 text-sm ${tab === v ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <div role="tabpanel" className="max-h-96 overflow-auto rounded-xl border">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-muted">
@@ -200,7 +165,7 @@ export function AssistantAdminPanel() {
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }
 function Metric({ label, value }: { label: string; value: string }) {
@@ -209,5 +174,67 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
     </div>
+  );
+}
+
+export function AssistantAdminPanel() {
+  const cache = useQueryClient();
+  const [tab, setTab] = useState<"team" | "connections" | "usage" | "actions" | "audit">("team");
+  return (
+    <section
+      className="assistant-settings mb-5 min-w-0 rounded-2xl border bg-card p-4 sm:p-5"
+      aria-label="Administração do Cordial Bot"
+    >
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2>
+          <CordialBotBrand />
+        </h2>
+        <Button
+          variant="outline"
+          className="min-h-11"
+          onClick={() => {
+            void cache.invalidateQueries({
+              queryKey:
+                tab === "team" || tab === "connections"
+                  ? ["assistant-admin-config"]
+                  : ["assistant-admin"],
+            });
+          }}
+        >
+          Atualizar
+        </Button>
+      </div>
+      <div
+        className="mb-5 flex gap-1 overflow-x-auto"
+        role="tablist"
+        aria-label="Administração do Cordial Bot"
+      >
+        {(
+          [
+            ["team", "Equipe"],
+            ["connections", "Conexões MCP"],
+            ["usage", "Uso"],
+            ["actions", "Ações"],
+            ["audit", "Auditoria"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={tab === value}
+            className={`min-h-11 shrink-0 rounded-full px-4 text-sm ${tab === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+            onClick={() => setTab(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "team" || tab === "connections" ? (
+        <AssistantConfiguration tab={tab} />
+      ) : (
+        <AssistantUsagePanel tab={tab} />
+      )}
+    </section>
   );
 }

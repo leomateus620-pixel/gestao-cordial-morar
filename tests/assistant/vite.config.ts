@@ -11,6 +11,8 @@ export default defineConfig({
     alias: [
       { find: /^\.\/assistant\.functions$/, replacement: fixture },
       { find: /^\.\/actions\.functions$/, replacement: fixture },
+      { find: /^\.\/bot-config\.functions$/, replacement: fixture },
+      { find: "@/lib/agent/bot-config.functions", replacement: fixture },
       { find: "@/lib/agent/actions.functions", replacement: fixture },
       { find: "@/lib/agent/routines.functions", replacement: fixture },
       { find: "@/lib/agent/memory.functions", replacement: fixture },

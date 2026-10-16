@@ -173,3 +173,24 @@ test("operational timeline announces actual step status and mascots have accessi
   const avatar = renderToStaticMarkup(<WorkerAvatar bot={getAgentBot("agenda")!} />);
   assert.match(avatar, /aria-label="Mascote Agenda"/);
 });
+
+test("choice control is not counted as a business consultation", () => {
+  const waiting = renderToStaticMarkup(
+    <StepTimeline
+      steps={[{ id: "choice", label: "Aguardando sua escolha", status: "done" }]}
+      awaitingChoice
+    />,
+  );
+  assert.match(waiting, /Aguardando sua escolha/);
+  assert.doesNotMatch(waiting, /consulta realizada/);
+  const mixed = renderToStaticMarkup(
+    <StepTimeline
+      steps={[
+        { id: "read", label: "Consultando agenda", status: "done" },
+        { id: "choice", label: "Aguardando sua escolha", status: "done" },
+      ]}
+    />,
+  );
+  assert.match(mixed, /1 etapa concluída/);
+  assert.doesNotMatch(mixed, /2 etapas/);
+});

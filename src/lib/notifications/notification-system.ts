@@ -81,7 +81,7 @@ export const notificationTypeConfig: Readonly<Record<string, NotificationTypeCon
   },
   assistant_routine: {
     category: "system",
-    label: "Assistente Cordial",
+    label: "Cordial Bot",
     icon: "system",
     motion: "fade",
     sound: "soft",

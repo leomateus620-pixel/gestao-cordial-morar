@@ -2,9 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, LockKeyhole, Search } from "lucide-react";
 import { useEffect, useState, type CSSProperties } from "react";
 import { allowedBotsForRole, getAgentBot, neverActions, type AgentBot } from "@/lib/agent/bots";
+import { useAssistantCatalog } from "@/lib/agent/use-assistant";
 import { useSession } from "@/lib/auth-mock";
 import { WorkerAvatar } from "./WorkerAvatar";
-import { AssistantMark } from "@/components/brand/AssistantMark";
+import { CordialBotBrand } from "@/components/brand/CordialBotBrand";
 import "./assistant.css";
 
 export function AgentCard({ bot }: { bot: AgentBot }) {
@@ -27,7 +28,7 @@ export function AgentCard({ bot }: { bot: AgentBot }) {
         <h2 className="text-lg font-semibold tracking-tight">{bot.name}</h2>
         {!bot.active && (
           <span className="rounded-full bg-muted px-2 py-1 text-[9px] font-semibold text-muted-foreground">
-            Em breve
+            Pausado
           </span>
         )}
       </div>
@@ -85,10 +86,7 @@ export function TeamHomeView({
     <div className="assistant-surface p-5 sm:p-8 lg:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="assistant-eyebrow flex items-center gap-2">
-            <AssistantMark size={22} />
-            Assistente Cordial
-          </p>
+          <CordialBotBrand />
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             Conheça a equipe<span className="text-primary">.</span>
           </h1>
@@ -144,6 +142,7 @@ export function TeamHomeView({
 }
 export function TeamHome() {
   const session = useSession();
+  const catalog = useAssistantCatalog();
   useEffect(() => {
     if (session)
       try {
@@ -151,13 +150,22 @@ export function TeamHome() {
       } catch {}
   }, [session?.id]);
   if (!session) return null;
-  return (
-    <TeamHomeView
-      name={session.nome.split(" ")[0]}
-      bots={allowedBotsForRole(session.perfil)}
-      onboarding
-    />
-  );
+  if (catalog.isLoading)
+    return (
+      <div className="assistant-surface p-8" role="status">
+        Carregando sua equipe…
+      </div>
+    );
+  if (catalog.isError)
+    return (
+      <div className="assistant-surface p-8" role="alert">
+        Não foi possível carregar sua equipe.{" "}
+        <button type="button" className="assistant-chip" onClick={() => void catalog.refetch()}>
+          Tentar novamente
+        </button>
+      </div>
+    );
+  return <TeamHomeView name={session.nome.split(" ")[0]} bots={catalog.bots} onboarding />;
 }
 
 export function BotPresentationView({ bot }: { bot: AgentBot }) {
@@ -186,7 +194,7 @@ export function BotPresentationView({ bot }: { bot: AgentBot }) {
             <h1 className="text-4xl font-semibold tracking-tight">{bot.name}</h1>
             {!bot.active && (
               <span className="rounded-full bg-muted px-3 py-1 text-[10px] text-muted-foreground">
-                Em breve
+                Pausado
               </span>
             )}
           </div>
@@ -205,9 +213,7 @@ export function BotPresentationView({ bot }: { bot: AgentBot }) {
       </section>
       <div className="border-t border-border px-6 py-7 sm:px-10">
         <section>
-          <h2 className="text-lg font-semibold tracking-tight">
-            {bot.active ? "Como posso ajudar" : "Habilidades planejadas"}
-          </h2>
+          <h2 className="text-lg font-semibold tracking-tight">Como posso ajudar</h2>
           <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {bot.abilities.map((ability) => (
               <li
@@ -249,7 +255,7 @@ export function BotPresentationView({ bot }: { bot: AgentBot }) {
             {[
               ["Você pede", "Uma pergunta ou um registro."],
               ["Ele consulta", "Informações do Gestão, com fontes."],
-              ["Você decide", "Abra o registro para continuar."],
+              ["Você confirma", "Revise antes de alterar o sistema."],
             ].map(([title, description], index) => (
               <li key={title} className="flex gap-3 rounded-2xl bg-muted/35 p-4">
                 <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/7 text-[10px] font-semibold text-primary">
@@ -365,8 +371,24 @@ export function BotPresentationView({ bot }: { bot: AgentBot }) {
 }
 export function BotPresentation({ botId }: { botId: string }) {
   const session = useSession();
-  const bot = getAgentBot(botId);
-  if (!bot || !session || !allowedBotsForRole(session.perfil).some((b) => b.id === bot.id))
+  const catalog = useAssistantCatalog();
+  const bot = catalog.bots.find((entry) => entry.id === botId);
+  if (catalog.isLoading)
+    return (
+      <div className="assistant-surface p-8" role="status">
+        Carregando agente…
+      </div>
+    );
+  if (catalog.isError)
+    return (
+      <div className="assistant-surface p-8" role="alert">
+        Não foi possível carregar o agente.{" "}
+        <button type="button" className="assistant-chip" onClick={() => void catalog.refetch()}>
+          Tentar novamente
+        </button>
+      </div>
+    );
+  if (!bot || !session)
     return (
       <div className="assistant-surface p-10 text-center">
         <LockKeyhole className="mx-auto mb-4 text-muted-foreground" />

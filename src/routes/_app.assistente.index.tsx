@@ -4,7 +4,7 @@ import { AgentWorkspace } from "@/components/assistant/AgentWorkspace";
 import { useSession } from "@/lib/auth-mock";
 import { MobileAssistantHome } from "@/components/assistant/MobileAssistantHome";
 export const Route = createFileRoute("/_app/assistente/")({
-  head: () => ({ meta: [{ title: "Assistente Cordial — Gestão Cordial" }] }),
+  head: () => ({ meta: [{ title: "Cordial Bot — Gestão Cordial" }] }),
   validateSearch: (
     search: {
       routine?: unknown;

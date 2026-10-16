@@ -5,6 +5,7 @@ import { nextRoutineRun } from "./routines.schemas";
 import { executeAgentTool, getAllowedTools } from "./tools";
 import { clientQuery, rows, saoPauloDay } from "./tools/common";
 import type { AgentContext } from "./security";
+import { botForRoutineTemplate } from "./routine-bot";
 export type RoutineRef = {
   tool: string;
   params: Record<string, unknown>;
@@ -21,7 +22,15 @@ export async function executeRoutineTemplate(
   nextCursor: string | null;
 }> {
   assertRoutineTemplate(template, ctx);
-  const allowed = new Set(getAllowedTools(ctx).map((t) => t.name));
+  const { resolveAgentBots } = await import("./bot-config.server");
+  const available = new Set(
+    (await resolveAgentBots(ctx)).filter((bot) => bot.active).flatMap((bot) => bot.tools),
+  );
+  const allowed = new Set(
+    getAllowedTools(ctx)
+      .map((t) => t.name)
+      .filter((name) => available.has(name)),
+  );
   const refs: RoutineRef[] = [],
     seen: Array<{ client_id: string; property_id: string }> = [];
   let calls = 0;
@@ -64,7 +73,10 @@ export async function executeRoutineTemplate(
       template,
       template === "agenda_today" || template === "broker_ranking" ? {} : { limit: 10 },
     );
-  if (template === "new_matches" || template === "daily_briefing") {
+  if (
+    (template === "new_matches" || template === "daily_briefing") &&
+    allowed.has("match_client_properties")
+  ) {
     let query = clientQuery(ctx).order("id", { ascending: true }).limit(3);
     if (clientCursor) query = query.gt("id", clientCursor);
     let clients = await rows(query, ctx);
@@ -102,6 +114,7 @@ type RoutineWorkerDeps = {
   admin?: ReturnType<typeof adminBookkeeping>;
   contextForUser?: typeof delegatedContext;
   executeTemplate?: typeof executeRoutineTemplate;
+  assertBotEnabled?: (ctx: AgentContext, botId: string) => Promise<void>;
 };
 export async function runAssistantRoutines(limit = 20, deps: RoutineWorkerDeps = {}) {
   if (process.env.ASSISTANT_ROUTINES_ENABLED !== "true")
@@ -155,6 +168,14 @@ export async function runAssistantRoutines(limit = 20, deps: RoutineWorkerDeps =
           routine.data.revision !== run.routine_revision
         )
           throw new Error("routine_cancelled");
+        const botId = botForRoutineTemplate(routine.data.template);
+        const assertBot =
+          deps.assertBotEnabled ?? (await import("./bot-config.server")).assertAssistantBotEnabled;
+        try {
+          await assertBot(ctx, botId);
+        } catch {
+          throw new Error("routine_cancelled");
+        }
         const { refs, seen, nextCursor } = await (deps.executeTemplate ?? executeRoutineTemplate)(
           routine.data.template,
           ctx,

@@ -3,7 +3,7 @@ import { AgentWorkspace } from "@/components/assistant/AgentWorkspace";
 import type { AssistantRecordContext } from "@/lib/agent/use-assistant";
 const kinds = ["property", "client", "attendance", "rental", "agenciamento", "agenda"];
 export const Route = createFileRoute("/_app/assistente/$botId")({
-  head: () => ({ meta: [{ title: "Sua equipe — Assistente Cordial" }] }),
+  head: () => ({ meta: [{ title: "Sua equipe — Cordial Bot" }] }),
   validateSearch: (
     search: {
       prompt?: unknown;

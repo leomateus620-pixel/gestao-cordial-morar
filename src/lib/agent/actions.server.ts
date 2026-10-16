@@ -14,11 +14,11 @@ import { assistantScopeKey } from "./scope";
 import { maskAgentOutput } from "./masking";
 import { persistAssistantAudit } from "./persistence.server";
 
-type ActionRow = {
+export type ActionRow = {
   id: string;
   type: ActionType;
   bot_id: string;
-  conversation_id?: string;
+  conversation_id?: string | null;
   user_id: string;
   scope_key: string;
   payload: ActionPayload;
@@ -29,7 +29,7 @@ type ActionRow = {
   result?: ActionProposal["result"];
   error_code?: string;
 };
-const actionSelect =
+export const actionSelect =
   "id,type,bot_id,conversation_id,user_id,scope_key,payload,expected_state,revision,status,expires_at,result,error_code";
 const friendlyErrors: Record<string, string> = {
   action_unavailable: "Não encontrei esta proposta no seu acesso atual.",
@@ -199,14 +199,17 @@ export async function listActions(
   fail(error);
   return (data ?? []).map((r: any) => toActionProposal(r));
 }
-export async function prepareAssistantAction(
+export async function buildAssistantAction(
   ctx: AgentContext,
   type: ActionType,
   input: unknown,
-): Promise<ActionProposal> {
+): Promise<ActionRow> {
   assertAgentRole(ctx, operationalRoles);
   if (!ctx.agentBotId || !actionBots[type].includes(ctx.agentBotId))
     throw new Error("Este agente não prepara essa ação.");
+  const available = await ctx.supabase.rpc("assistant_bot_available", { _bot_id: ctx.agentBotId });
+  if (available.error || available.data !== true)
+    throw new Error("Este agente não está disponível agora.");
   const payload = parseActionPayload(type, input);
   const expected = await validateActionReferences(ctx, type, payload);
   if (ctx.agentConversationId) {
@@ -230,9 +233,17 @@ export async function prepareAssistantAction(
     payload,
     expected_state: expected,
     revision: 1,
-    status: "pending",
+    status: "pending" as const,
     expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
   };
+  return row;
+}
+export async function prepareAssistantAction(
+  ctx: AgentContext,
+  type: ActionType,
+  input: unknown,
+): Promise<ActionProposal> {
+  const row = await buildAssistantAction(ctx, type, input);
   // Only assistant metadata is written through this isolated administrative client.
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await (supabaseAdmin as any)
@@ -242,8 +253,8 @@ export async function prepareAssistantAction(
   fail(error);
   await persistAssistantAudit(
     ctx.userId,
-    ctx.agentBotId,
-    ctx.agentConversationId ?? null,
+    row.bot_id,
+    row.conversation_id ?? null,
     `prepare_${type}`,
     { id: row.id },
     { status: "pending" },

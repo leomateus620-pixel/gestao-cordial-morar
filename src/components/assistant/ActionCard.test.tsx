@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ActionCardView, ActionEditor, actionViewState } from "./ActionCard";
+import { ActionCardView, ActionEditor, AssistantActionCard, actionViewState } from "./ActionCard";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConnectionPanelView, MemoryPanelView, RoutinesPanelView } from "./AssistantControls";
 import type { ActionProposal } from "../../lib/agent/actions";
 
@@ -18,6 +19,18 @@ const proposal: ActionProposal = {
   payload: { attendanceId: "00000000-0000-4000-8000-000000000101", to: "visita" },
 };
 const now = Date.parse("2026-10-16T18:00:00-03:00");
+test("a denied action lookup hides cached payload in chat and drawer until access is verified", () => {
+  const client = new QueryClient();
+  client.setQueryData(["assistant-action-access", proposal.id], true);
+  const html = renderToStaticMarkup(
+    <QueryClientProvider client={client}>
+      <AssistantActionCard action={proposal} />
+      <AssistantActionCard action={proposal} />
+    </QueryClientProvider>,
+  );
+  assert.equal([...html.matchAll(/Verificar acesso/g)].length, 2);
+  assert.doesNotMatch(html, /Cliente de teste|Primeiro contato|Alterar etapa|>Confirmar</);
+});
 test("the same proposal in chat and pending drawer has unique DOM IDs", () => {
   const html = renderToStaticMarkup(
     <>

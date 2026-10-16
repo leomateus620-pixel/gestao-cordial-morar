@@ -83,3 +83,65 @@ test("routine template role matrix applies to brokers of both agencies", () => {
       }
     }
 });
+
+test("opening an old briefing does not query a disabled colleague's results", async () => {
+  const { readRoutineRun } = await import("./routines.server");
+  const { assistantScopeKey } = await import("./scope");
+  const { agentBots } = await import("./bots");
+  const queried: string[] = [];
+  const current: any = {
+    userId: "00000000-0000-4000-8000-000000000001",
+    roles: ["corretor"],
+    agencies: ["cordial"],
+  };
+  const run = {
+    id: "run",
+    status: "completed",
+    scope_key: assistantScopeKey(current),
+    result_refs: [{ tool: "stale_attendances", params: {}, template: "daily_briefing" }],
+  };
+  current.supabase = {
+    from(table: string) {
+      queried.push(table);
+      if (!["assistant_routine_runs", "assistant_bot_configs"].includes(table))
+        throw new Error("business queries must stay blocked");
+      const result = {
+        data:
+          table === "assistant_bot_configs"
+            ? agentBots
+                .filter((bot) => bot.roles.includes("corretor"))
+                .map((bot) => ({
+                  bot_id: bot.id,
+                  enabled: bot.id !== "lead",
+                  instructions: "",
+                  suggestions: null,
+                  revision: 1,
+                  updated_at: null,
+                }))
+            : run,
+        error: null,
+      };
+      return {
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        in() {
+          return this;
+        },
+        limit() {
+          return this;
+        },
+        maybeSingle: async () => result,
+        then(resolve: any) {
+          return Promise.resolve(result).then(resolve);
+        },
+      };
+    },
+  };
+  const result = await readRoutineRun("run", current);
+  assert.equal(result.items[0].data.status, "unavailable");
+  assert.deepEqual(queried, ["assistant_routine_runs", "assistant_bot_configs"]);
+});

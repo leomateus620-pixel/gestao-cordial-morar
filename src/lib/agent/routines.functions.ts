@@ -85,36 +85,18 @@ export const saveAssistantRoutine = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
     if (!data.id && !data.requestId) throw new Error("Prepare a rotina antes de confirmar.");
-    const client = context.supabase as any;
-    const result = data.id
-      ? await client
-          .from("assistant_routines")
-          .update(row)
-          .eq("id", data.id)
-          .eq("user_id", ctx.userId)
-          .select("id")
-          .maybeSingle()
-      : await client
-          .from("assistant_routines")
-          .upsert({ ...row, id: data.requestId }, { onConflict: "id", ignoreDuplicates: true })
-          .select("id")
-          .maybeSingle();
-    if (result.error) throw new Error("Não foi possível salvar esta rotina.");
-    if (!result.data) {
-      const existing = await client
-        .from("assistant_routines")
-        .select("id,name,template,hour,minute,days,day_of_week")
-        .eq("id", data.id ?? data.requestId)
-        .eq("user_id", ctx.userId)
-        .maybeSingle();
-      if (
-        !existing.data ||
-        Object.keys(existing.data).some(
-          (key) => key !== "id" && existing.data[key] !== row[key as keyof typeof row],
-        )
-      )
-        throw new Error("Esta confirmação não corresponde à proposta original.");
-    }
+    const result = await (context.supabase as any).rpc("assistant_routine_save_configured", {
+      _id: data.id ?? data.requestId,
+      _row: row,
+      _create: !data.id,
+      _confirmed: data.confirmed,
+    });
+    if (result.error)
+      throw new Error(
+        result.error.message === "bot_disabled"
+          ? "Este agente está desativado. A rotina não foi salva."
+          : "Não foi possível salvar esta rotina. Confira a proposta atual.",
+      );
     return listRoutines(ctx);
   });
 export const setAssistantRoutineState = createServerFn({ method: "POST" })
@@ -141,21 +123,18 @@ export const setAssistantRoutineState = createServerFn({ method: "POST" })
     assertRoutineTemplate(current.data.template, ctx);
     if (data.status === "active" && (await assistantReadiness(ctx)).status !== "ready")
       throw new Error("Conecte a autorização de rotinas antes de retomar.");
-    const result = await client
-      .from("assistant_routines")
-      .update({
-        status: data.status,
-        next_run_at: nextRoutineRun(
-          current.data.hour,
-          current.data.minute,
-          new Date(),
-          current.data.days,
-          current.data.day_of_week,
-        ),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", data.id)
-      .eq("user_id", ctx.userId);
+    const result = await client.rpc("assistant_routine_state_configured", {
+      _id: data.id,
+      _status: data.status,
+      _confirmed: data.confirmed,
+      _next: nextRoutineRun(
+        current.data.hour,
+        current.data.minute,
+        new Date(),
+        current.data.days,
+        current.data.day_of_week,
+      ),
+    });
     if (result.error) throw new Error("Não foi possível atualizar esta rotina.");
     return listRoutines(ctx);
   });

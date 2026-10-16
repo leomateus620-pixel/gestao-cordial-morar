@@ -150,3 +150,77 @@ export async function beginAssistantDelegation() {
 export async function revokeAssistantDelegation() {
   return { revoked: true };
 }
+
+import { agentBots } from "../../src/lib/agent/bots";
+export async function getAssistantCatalog() {
+  return agentBots.map(({ instructions: _instructions, ...bot }) => bot);
+}
+export async function getAssistantAction() {
+  return fixtureCurrent;
+}
+let previewConfig = agentBots.map((bot) => ({
+  id: bot.id,
+  enabled: true,
+  instructions: "",
+  suggestions: [...bot.suggestions],
+  revision: 1,
+  updatedAt: null as string | null,
+}));
+let previewClients = [
+  {
+    clientId: "demo-chatgpt",
+    name: "ChatGPT · demonstração",
+    approved: true,
+    revision: 1,
+    updatedAt: "2026-10-16T08:00:00-03:00",
+  },
+  {
+    clientId: "demo-claude",
+    name: "Claude · demonstração",
+    approved: false,
+    revision: 0,
+    updatedAt: null as string | null,
+  },
+];
+export async function adminListAssistantBotConfigs() {
+  return { bots: previewConfig, clients: previewClients, oauthConfigured: true };
+}
+let previewConflictInjected = false;
+export async function adminSaveAssistantBotConfig({ data }: any) {
+  if (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("state") === "admin-conflict" &&
+    !previewConflictInjected
+  ) {
+    previewConflictInjected = true;
+    previewConfig = previewConfig.map((bot) =>
+      bot.id === data.id ? { ...bot, revision: bot.revision + 1 } : bot,
+    );
+    throw new Error("A configuração mudou. Recarregue antes de salvar.");
+  }
+  previewConfig = previewConfig.map((bot) => {
+    if (bot.id !== data.id) return bot;
+    if (bot.revision !== data.expectedRevision)
+      throw new Error("A configuração mudou. Recarregue antes de salvar.");
+    return { ...bot, ...data, revision: bot.revision + 1, updatedAt: "2026-10-16T12:00:00-03:00" };
+  });
+  return adminListAssistantBotConfigs();
+}
+export async function adminResetAssistantBotConfig({ data }: any) {
+  return adminSaveAssistantBotConfig({
+    data: {
+      ...data,
+      enabled: true,
+      instructions: "",
+      suggestions: agentBots.find((b) => b.id === data.id)?.suggestions ?? [],
+    },
+  });
+}
+export async function adminSetAssistantMcpClient({ data }: any) {
+  previewClients = previewClients.map((client) =>
+    client.clientId === data.clientId
+      ? { ...client, approved: data.approved, revision: client.revision + 1 }
+      : client,
+  );
+  return adminListAssistantBotConfigs();
+}

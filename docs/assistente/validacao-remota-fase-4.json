@@ -1,0 +1,194 @@
+{
+  "checkedAt": "2026-10-16",
+  "project": "feb646c9-c19a-4360-8cc9-bec5237532ea",
+  "migration": "4f6f4bbba9defb4e44a4a0805d3796f549e1388da7c312f6492fdbc3ed9496e0",
+  "checks": [
+    {
+      "i": 0,
+      "data": {
+        "rows": [
+          {
+            "created_at": "1792145000000",
+            "hash": "4f6f4bbba9defb4e44a4a0805d3796f549e1388da7c312f6492fdbc3ed9496e0"
+          }
+        ]
+      }
+    },
+    {
+      "i": 1,
+      "data": {
+        "rows": [
+          {
+            "bot_id": "agenda",
+            "enabled": true,
+            "revision": 1
+          },
+          {
+            "bot_id": "caixa",
+            "enabled": true,
+            "revision": 1
+          },
+          {
+            "bot_id": "capta",
+            "enabled": true,
+            "revision": 1
+          },
+          {
+            "bot_id": "lead",
+            "enabled": true,
+            "revision": 1
+          },
+          {
+            "bot_id": "match",
+            "enabled": true,
+            "revision": 1
+          },
+          {
+            "bot_id": "mercado",
+            "enabled": true,
+            "revision": 1
+          },
+          {
+            "bot_id": "time",
+            "enabled": true,
+            "revision": 1
+          }
+        ]
+      }
+    },
+    {
+      "i": 2,
+      "data": {
+        "rows": [
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": true,
+            "proname": "assistant_action_execute",
+            "prosecdef": false
+          },
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": true,
+            "proname": "assistant_bot_config_save",
+            "prosecdef": true
+          },
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": false,
+            "proname": "assistant_configuration_lock",
+            "prosecdef": true
+          },
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": false,
+            "proname": "assistant_external_action_prepare",
+            "prosecdef": true
+          },
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": true,
+            "proname": "assistant_mcp_client_permission",
+            "prosecdef": true
+          },
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": true,
+            "proname": "assistant_mcp_client_set",
+            "prosecdef": true
+          },
+          {
+            "anonymous_execute": false,
+            "authenticated_execute": true,
+            "proname": "assistant_routine_save_configured",
+            "prosecdef": true
+          }
+        ]
+      }
+    },
+    {
+      "i": 3,
+      "data": {
+        "rows": [
+          {
+            "browser_can_insert_routine": false,
+            "browser_can_read_proof": false,
+            "browser_can_update_routine": false,
+            "routine_oauth_secret_configured": false,
+            "scheduler_enabled": false,
+            "worker_origin_configured": false
+          }
+        ]
+      }
+    },
+    {
+      "i": 4,
+      "data": {
+        "rows": [
+          {
+            "policyname": "assistant_actions_read",
+            "qual": "(assistant_action_target_access(type, payload) AND (((NULLIF((auth.jwt() ->> 'client_id'::text), ''::text) IS NULL) AND (NULLIF((auth.jwt() ->> 'azp'::text), ''::text) IS NULL) AND (((user_id = auth.uid()) AND (scope_key = assistant_current_scope())) OR ((user_id <> auth.uid()) AND has_role(auth.uid(), 'admin'::app_role)))) OR ((NULLIF((auth.jwt() ->> 'client_id'::text), ''::text) IS NOT NULL) AND ((NULLIF((auth.jwt() ->> 'azp'::text), ''::text) IS NULL) OR ((auth.jwt() ->> 'azp'::text) = (auth.jwt() ->> 'client_id'::text))) AND (user_id = auth.uid()) AND (scope_key = assistant_current_scope()) AND (origin_client_id = (auth.jwt() ->> 'client_id'::text)) AND (EXISTS ( SELECT 1\n   FROM assistant_mcp_client_permission() permission(client_id, revision, approved)\n  WHERE (permission.approved AND (permission.client_id = assistant_actions.origin_client_id) AND (permission.revision = assistant_actions.origin_client_revision)))))))"
+          }
+        ]
+      }
+    },
+    {
+      "i": 5,
+      "data": {
+        "id": "feb646c9-c19a-4360-8cc9-bec5237532ea",
+        "name": "Gestão Cordial",
+        "latest_commit_sha": "703aa946e6fa97fc302c0d673b152a94ca3f8338",
+        "last_edited_at": "2026-10-16T07:21:57.915Z",
+        "is_published": true
+      }
+    }
+  ],
+  "finalVerification": {
+    "rows": [
+      {
+        "verification": {
+          "latest_migrations": [
+            {
+              "created_at": "1792150000000",
+              "hash": "91f68511bfb9ef5bd1fd1840754637658aa2ea74065f021fe9667a62087cdf9b"
+            },
+            {
+              "created_at": "1792145000000",
+              "hash": "4f6f4bbba9defb4e44a4a0805d3796f549e1388da7c312f6492fdbc3ed9496e0"
+            }
+          ],
+          "legacy_personal_insert": true,
+          "legacy_personal_update": true,
+          "proof_hidden": true,
+          "rls": [
+            {
+              "relname": "assistant_bot_configs",
+              "relrowsecurity": true
+            },
+            {
+              "relname": "assistant_mcp_clients",
+              "relrowsecurity": true
+            }
+          ],
+          "routine_generation": true,
+          "routine_stamp_trigger": true,
+          "run_generation": true,
+          "scheduler_enabled": false
+        }
+      }
+    ]
+  },
+  "tableRls": {
+    "rows": [
+      {
+        "relname": "assistant_bot_configs",
+        "relrowsecurity": true
+      },
+      {
+        "relname": "assistant_mcp_clients",
+        "relrowsecurity": true
+      }
+    ]
+  },
+  "compatibilityMigration": "91f68511bfb9ef5bd1fd1840754637658aa2ea74065f021fe9667a62087cdf9b",
+  "checksStage": "Após aplicar 0019, antes da migration de compatibilidade 0020. A verificação final abaixo é o estado vigente."
+}

@@ -1,3 +1,4 @@
+import { CordialBotBrand } from "@/components/brand/CordialBotBrand";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -105,11 +106,12 @@ function Consent() {
   return (
     <main className="grid min-h-screen place-items-center bg-background p-6">
       <section className="glass-panel w-full max-w-md space-y-4 rounded-3xl p-6">
+        <CordialBotBrand />
         <h1 className="text-lg font-semibold">{name} quer acessar sua conta</h1>
         <p className="text-sm text-muted-foreground">
           {details?.assistantDelegation
-            ? "Você autoriza o Assistente Cordial a renovar seu acesso para executar as rotinas de consulta que confirmar, mesmo com o app fechado. Ele mantém suas permissões atuais, avisa somente você e não envia mensagens a clientes. Você pode pausar as rotinas ou revogar esta autorização no Assistente."
-            : "Ele poderá consultar, em seu nome, imóveis, clientes e atendimentos que você já vê no Gestão Cordial. Nada será alterado."}
+            ? "Você autoriza o Cordial Bot a renovar seu acesso para executar as rotinas de consulta que confirmar, mesmo com o app fechado. Ele mantém suas permissões atuais, avisa somente você e não envia mensagens a clientes. Você pode pausar as rotinas ou revogar esta autorização no Cordial Bot."
+            : "Ele poderá consultar dados e preparar propostas dentro das suas permissões no Gestão. Qualquer alteração exige sua confirmação no Cordial Bot."}
         </p>
         {error && (
           <p role="alert" className="text-sm text-destructive">

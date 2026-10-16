@@ -27,6 +27,7 @@ import {
   confirmAssistantAction,
   editAssistantAction,
   listAssistantActions,
+  getAssistantAction,
 } from "@/lib/agent/actions.functions";
 import { safeRecordHref } from "./RichResults";
 
@@ -438,7 +439,24 @@ export function AssistantActionCard({ action }: { action: ActionProposal }) {
     enabled: false,
   });
   const current = cached.data;
-  const setCurrent = (value: ActionProposal) => qc.setQueryData(actionKey, value);
+  const access = useQuery({
+    queryKey: ["assistant-action-access", action.id],
+    queryFn: async () => false,
+    initialData: false,
+    enabled: false,
+  });
+  const setUnavailable = (value: boolean) =>
+    qc.setQueryData(["assistant-action-access", action.id], value);
+  const setCurrent = (value: ActionProposal) => {
+    qc.setQueryData(actionKey, value);
+    qc.setQueriesData<ActionProposal>(
+      {
+        predicate: (query) =>
+          query.queryKey[0] === "assistant-action" && query.queryKey.includes(value.id),
+      },
+      value,
+    );
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
@@ -469,10 +487,19 @@ export function AssistantActionCard({ action }: { action: ActionProposal }) {
             ? await cancelAssistantAction({ data })
             : await editAssistantAction({ data: { ...data, payload } });
       setCurrent(next as ActionProposal);
+      setUnavailable(false);
       setEditing(false);
       void qc.invalidateQueries({ queryKey: ["assistant-actions"] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível atualizar a proposta.");
+      // Resolve an uncertain outcome by reading, never by repeating the write.
+      try {
+        setCurrent(await getAssistantAction({ data: { actionId: current.id } }));
+        setUnavailable(false);
+      } catch {
+        setUnavailable(true);
+        setEditing(false);
+      }
     } finally {
       setBusy(false);
     }
@@ -480,20 +507,36 @@ export function AssistantActionCard({ action }: { action: ActionProposal }) {
   async function refresh() {
     setBusy(true);
     try {
-      const actions = await listAssistantActions({
-        data: { conversationId: current.conversationId },
-      });
-      const next = (actions as ActionProposal[]).find((value) => value.id === current.id);
-      if (next) {
-        setCurrent(next);
-        setError("");
-      } else setError("Proposta indisponível no seu acesso atual.");
+      const next = await getAssistantAction({ data: { actionId: current.id } });
+      setCurrent(next);
+      setUnavailable(false);
+      setError("");
     } catch {
       setError("Não foi possível verificar o resultado agora.");
+      setUnavailable(true);
+      setEditing(false);
     } finally {
       setBusy(false);
     }
   }
+  if (access.data)
+    return (
+      <section
+        data-action-id={action.id}
+        className="rounded-2xl border border-border bg-muted/30 p-4"
+        role="alert"
+      >
+        <p className="text-sm">Não foi possível consultar esta proposta com seu acesso atual.</p>
+        <button
+          type="button"
+          className="assistant-small-button mt-3"
+          disabled={busy}
+          onClick={() => void refresh()}
+        >
+          {busy ? "Verificando…" : "Verificar acesso"}
+        </button>
+      </section>
+    );
   return (
     <>
       <ActionCardView
@@ -507,7 +550,10 @@ export function AssistantActionCard({ action }: { action: ActionProposal }) {
         onRefresh={() => void refresh()}
       />
       <Sheet open={editing} onOpenChange={setEditing}>
-        <SheetContent closeLabel="Fechar edição" className="!w-full !max-w-md overflow-y-auto">
+        <SheetContent
+          closeLabel="Fechar edição"
+          className="assistant-panel !w-full !max-w-md overflow-y-auto"
+        >
           <SheetHeader>
             <SheetTitle className="text-lg">Editar proposta</SheetTitle>
             <SheetDescription className="text-xs">{current.title}</SheetDescription>

@@ -16,6 +16,8 @@ import {
 } from "../../src/components/assistant/AgentWorkspace";
 import { MobileAssistantHomeView } from "../../src/components/assistant/MobileAssistantHome";
 import { TeamHomeView, BotPresentationView } from "../../src/components/assistant/TeamPages";
+import { AssistantConfiguration } from "../../src/components/assistant/AssistantConfiguration";
+import { CordialBotBrand } from "../../src/components/brand/CordialBotBrand";
 import { ActionCardView, ActionEditor } from "../../src/components/assistant/ActionCard";
 import {
   RoutinesPanelView,
@@ -29,7 +31,7 @@ import {
 import { fixtureAction, subscribeFixtureActions, resetFixtureAction } from "./transport-fixture";
 import type { ActionProposal } from "../../src/lib/agent/actions";
 import { agentBots, getAgentBot } from "../../src/lib/agent/bots";
-import type { ChatMessage } from "../../src/lib/agent/use-assistant";
+import type { ChatMessage, AssistantRecordContext } from "../../src/lib/agent/use-assistant";
 import "../../src/styles.css";
 import "./preview.css";
 
@@ -84,9 +86,14 @@ function Preview() {
     new URLSearchParams(window.location.search).get("state") ?? "empty",
   );
   const [selectedBot, setSelectedBot] = useState("agenda");
+  const [previewContext, setPreviewContext] = useState<AssistantRecordContext | undefined>(
+    new URLSearchParams(window.location.search).get("state") === "conversation"
+      ? { kind: "agenda", id }
+      : undefined,
+  );
   const [role, setRole] = useState("admin");
   const [sent, setSent] = useState<ChatMessage[] | null>(null);
-  const [motion, setMotion] = useState(true);
+  const [motion, setMotion] = useState(!capture);
   const bots = agentBots.filter((bot) => bot.roles.includes(role as "admin"));
   const [routineProposal, setRoutineProposal] = useState<RoutineProposalView>();
   const [routines, setRoutines] = useState<RoutineView[]>([
@@ -165,6 +172,27 @@ function Preview() {
         results: [{ tool: "prepare_agenda_event", data: { action } }],
       },
     ];
+  if (state === "choices")
+    messages = [
+      { ...user, content: "Prepare uma visita amanhã." },
+      {
+        ...completed,
+        content: "",
+        results: [],
+        steps: [],
+        choices: [
+          {
+            id: "choice-preview",
+            question: "Qual período funciona melhor?",
+            options: [
+              { id: "morning", label: "Manhã", value: "Manhã" },
+              { id: "afternoon", label: "Tarde", value: "Tarde" },
+            ],
+            allowOther: true,
+          },
+        ],
+      },
+    ];
   if (sent) messages = sent;
   return (
     <div
@@ -191,6 +219,10 @@ function Preview() {
               ["routines", "Rotinas"],
               ["preferences", "Preferências"],
               ["reconnect", "Reconectar"],
+              ["choices", "Escolhas"],
+              ["admin-team", "Admin equipe"],
+              ["admin-mcp", "Admin MCP"],
+              ["admin-conflict", "Conflito"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -234,7 +266,17 @@ function Preview() {
         </div>
       )}
       <div className="mx-auto max-w-[1380px]">
-        {state === "action-edit" ? (
+        {state.startsWith("admin-") ? (
+          <section className="assistant-settings assistant-surface mx-auto max-w-5xl p-5 sm:p-7">
+            <h1 className="mb-6">
+              <CordialBotBrand />
+            </h1>
+            <h2 className="mb-5 text-lg font-semibold">
+              {state === "admin-mcp" ? "Conexões MCP" : "Equipe"}
+            </h2>
+            <AssistantConfiguration tab={state === "admin-mcp" ? "connections" : "team"} />
+          </section>
+        ) : state === "action-edit" ? (
           <div className="assistant-surface mx-auto max-w-lg p-6">
             <h1 className="text-lg font-semibold">Editar proposta</h1>
             <ActionEditor action={action} onSave={() => setState("action-pending")} />
@@ -344,8 +386,22 @@ function Preview() {
               setState("empty");
             }}
             onCancel={() => setState("error")}
-            context={state === "conversation" ? { kind: "agenda", id } : undefined}
-            contextResult={state === "conversation" ? { record: agenda.data.events[0] } : undefined}
+            context={previewContext}
+            onRecordPick={setPreviewContext}
+            contextResult={
+              previewContext
+                ? {
+                    record:
+                      previewContext.kind === "agenda"
+                        ? agenda.data.events[0]
+                        : {
+                            id: previewContext.id,
+                            nome: "Registro de demonstração",
+                            href: "/atendimentos",
+                          },
+                  }
+                : undefined
+            }
             briefing={
               state === "empty" ? (
                 <DailyBriefingView

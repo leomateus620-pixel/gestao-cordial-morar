@@ -1,9 +1,12 @@
+import type { AssistantChoice } from "./choices";
+export type { AssistantChoice } from "./choices";
 export type AssistantResult = { tool: string; data: Record<string, any> };
 export type AssistantStep = { id: string; label: string; status: "running" | "done" | "error" };
 export type AssistantStreamEvent =
   | { type: "conversation"; id: string }
   | ({ type: "step" } & AssistantStep)
   | { type: "text"; delta: string }
+  | { type: "choice"; choice: AssistantChoice }
   | ({ type: "result" } & AssistantResult)
   | { type: "done" }
   | { type: "error"; message: string };

@@ -2,6 +2,7 @@ import type { AgentContext } from "./security";
 import { effectiveRole } from "./security";
 import { assistantReadiness } from "./readiness.server";
 import { assistantScopeKey } from "./scope";
+import { botForRoutineTemplate } from "./routine-bot";
 export function assertRoutineTemplate(template: string, ctx: AgentContext) {
   const role = effectiveRole(ctx);
   if (
@@ -77,9 +78,27 @@ export async function readRoutineRun(runId: string, ctx: AgentContext) {
   if (row.scope_key && row.scope_key !== assistantScopeKey(ctx))
     throw new Error("Esta execução pertence a um acesso anterior. Faça uma nova consulta.");
   const { executeAgentTool } = await import("./tools");
+  const { resolveAgentBots } = await import("./bot-config.server");
+  const activeBots = (await resolveAgentBots(ctx)).filter((bot) => bot.active);
+  const activeTools = new Set(activeBots.flatMap((bot) => bot.tools));
   const items: Array<{ tool: string; data: Record<string, any> }> = [];
   for (const ref of (Array.isArray(row.result_refs) ? row.result_refs : []).slice(0, 8)) {
     assertRoutineTemplate(ref.template ?? "daily_briefing", ctx);
+    if (
+      !activeBots.some(
+        (bot) => bot.id === botForRoutineTemplate(ref.template ?? "daily_briefing"),
+      ) ||
+      !activeTools.has(ref.tool)
+    ) {
+      items.push({
+        tool: ref.tool,
+        data: {
+          status: "unavailable",
+          message: "Este agente está pausado. O histórico da execução foi preservado.",
+        },
+      });
+      continue;
+    }
     const out = await executeAgentTool(ref.tool, ref.params ?? {}, ctx);
     if (Array.isArray(ref.propertyIds) && Array.isArray(out.structuredContent.properties)) {
       out.structuredContent.properties = (out.structuredContent.properties as any[]).filter((p) =>
