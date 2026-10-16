@@ -644,6 +644,7 @@ export type Database = {
       agenda_events: {
         Row: {
           agenciamento_id: string | null
+          assistant_operation_id: string | null
           atendimento_id: string | null
           cliente_id: string | null
           cliente_nome: string | null
@@ -681,6 +682,7 @@ export type Database = {
         }
         Insert: {
           agenciamento_id?: string | null
+          assistant_operation_id?: string | null
           atendimento_id?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -718,6 +720,7 @@ export type Database = {
         }
         Update: {
           agenciamento_id?: string | null
+          assistant_operation_id?: string | null
           atendimento_id?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -848,6 +851,131 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_action_receipts: {
+        Row: {
+          action_id: string
+          created_at: string
+          result: Json
+          revision: number
+          user_id: string
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          result: Json
+          revision: number
+          user_id: string
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          result?: Json
+          revision?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_action_receipts_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: true
+            referencedRelation: "assistant_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_actions: {
+        Row: {
+          bot_id: string
+          confirmation_proof: string | null
+          confirmed_at: string | null
+          conversation_id: string | null
+          created_at: string
+          error_code: string | null
+          executed_at: string | null
+          expected_state: Json
+          expires_at: string
+          external_request_hash: string | null
+          external_request_id: string | null
+          id: string
+          origin_client_id: string | null
+          origin_client_revision: number | null
+          payload: Json
+          result: Json | null
+          revision: number
+          schema_version: number
+          scope_key: string
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_id: string
+          confirmation_proof?: string | null
+          confirmed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          executed_at?: string | null
+          expected_state?: Json
+          expires_at?: string
+          external_request_hash?: string | null
+          external_request_id?: string | null
+          id?: string
+          origin_client_id?: string | null
+          origin_client_revision?: number | null
+          payload: Json
+          result?: Json | null
+          revision?: number
+          schema_version?: number
+          scope_key: string
+          status?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_id?: string
+          confirmation_proof?: string | null
+          confirmed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          executed_at?: string | null
+          expected_state?: Json
+          expires_at?: string
+          external_request_hash?: string | null
+          external_request_id?: string | null
+          id?: string
+          origin_client_id?: string | null
+          origin_client_revision?: number | null
+          payload?: Json
+          result?: Json | null
+          revision?: number
+          schema_version?: number
+          scope_key?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_actions_conversation_id_user_id_fkey"
+            columns: ["conversation_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_conversations"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "assistant_actions_origin_client_id_fkey"
+            columns: ["origin_client_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_mcp_clients"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       assistant_audit: {
         Row: {
           bot_id: string
@@ -894,6 +1022,39 @@ export type Database = {
             referencedColumns: ["id", "user_id"]
           },
         ]
+      }
+      assistant_bot_configs: {
+        Row: {
+          activation_generation: number
+          bot_id: string
+          enabled: boolean
+          instructions: string
+          revision: number
+          suggestions: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activation_generation?: number
+          bot_id: string
+          enabled?: boolean
+          instructions?: string
+          revision?: number
+          suggestions?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activation_generation?: number
+          bot_id?: string
+          enabled?: boolean
+          instructions?: string
+          revision?: number
+          suggestions?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       assistant_conversations: {
         Row: {
@@ -943,6 +1104,105 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_delegations: {
+        Row: {
+          client_id: string
+          lease_id: string | null
+          lease_until: string | null
+          secret_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          lease_id?: string | null
+          lease_until?: string | null
+          secret_id?: string | null
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          secret_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_match_seen: {
+        Row: {
+          client_id: string
+          property_id: string
+          scope_key: string
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          property_id: string
+          scope_key: string
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          property_id?: string
+          scope_key?: string
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_mcp_clients: {
+        Row: {
+          approved: boolean
+          client_id: string
+          name: string
+          revision: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          approved?: boolean
+          client_id: string
+          name: string
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          approved?: boolean
+          client_id?: string
+          name?: string
+          revision?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      assistant_memory: {
+        Row: {
+          preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          preferences: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assistant_messages: {
         Row: {
           content: string
@@ -980,6 +1240,188 @@ export type Database = {
             referencedColumns: ["id", "user_id"]
           },
         ]
+      }
+      assistant_oauth_states: {
+        Row: {
+          expires_at: string
+          state_hash: string
+          user_id: string
+          verifier_secret_id: string
+        }
+        Insert: {
+          expires_at?: string
+          state_hash: string
+          user_id: string
+          verifier_secret_id: string
+        }
+        Update: {
+          expires_at?: string
+          state_hash?: string
+          user_id?: string
+          verifier_secret_id?: string
+        }
+        Relationships: []
+      }
+      assistant_routine_runs: {
+        Row: {
+          attempts: number
+          bot_generation: number
+          finished_at: string | null
+          id: string
+          lease_id: string | null
+          lease_until: string | null
+          local_day: string
+          next_attempt_at: string
+          result_refs: Json
+          routine_id: string
+          routine_revision: number
+          scheduled_at: string
+          scope_key: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          bot_generation?: number
+          finished_at?: string | null
+          id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          local_day: string
+          next_attempt_at?: string
+          result_refs?: Json
+          routine_id: string
+          routine_revision?: number
+          scheduled_at: string
+          scope_key?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          bot_generation?: number
+          finished_at?: string | null
+          id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          local_day?: string
+          next_attempt_at?: string
+          result_refs?: Json
+          routine_id?: string
+          routine_revision?: number
+          scheduled_at?: string
+          scope_key?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_routine_runs_routine_id_user_id_fkey"
+            columns: ["routine_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_routines"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      assistant_routines: {
+        Row: {
+          bot_generation: number
+          client_cursor: string | null
+          created_at: string
+          day_of_week: number | null
+          days: string
+          hour: number
+          id: string
+          minute: number
+          name: string
+          next_run_at: string
+          revision: number
+          status: string
+          template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_generation?: number
+          client_cursor?: string | null
+          created_at?: string
+          day_of_week?: number | null
+          days?: string
+          hour?: number
+          id?: string
+          minute?: number
+          name: string
+          next_run_at: string
+          revision?: number
+          status?: string
+          template: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_generation?: number
+          client_cursor?: string | null
+          created_at?: string
+          day_of_week?: number | null
+          days?: string
+          hour?: number
+          id?: string
+          minute?: number
+          name?: string
+          next_run_at?: string
+          revision?: number
+          status?: string
+          template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_usage: {
+        Row: {
+          bot_id: string
+          cached_tokens: number | null
+          completion_tokens: number | null
+          conversation_id: string | null
+          created_at: string
+          duration_ms: number
+          estimated_cost_usd: number | null
+          id: string
+          model: string
+          prompt_tokens: number | null
+          rate_version: string | null
+          user_id: string
+        }
+        Insert: {
+          bot_id: string
+          cached_tokens?: number | null
+          completion_tokens?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number
+          estimated_cost_usd?: number | null
+          id?: string
+          model: string
+          prompt_tokens?: number | null
+          rate_version?: string | null
+          user_id: string
+        }
+        Update: {
+          bot_id?: string
+          cached_tokens?: number | null
+          completion_tokens?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number
+          estimated_cost_usd?: number | null
+          id?: string
+          model?: string
+          prompt_tokens?: number | null
+          rate_version?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       attendance_assignments: {
         Row: {
@@ -8696,6 +9138,10 @@ export type Database = {
       agenciamento_can_edit: { Args: { _id: string }; Returns: boolean }
       agenda_can_access: { Args: { _event_id: string }; Returns: boolean }
       agenda_can_edit: { Args: { _event_id: string }; Returns: boolean }
+      agenda_create_assistant_event: {
+        Args: { _operation_id: string; _payload: Json }
+        Returns: string
+      }
       agenda_is_participant: { Args: { _event_id: string }; Returns: boolean }
       allocate_provider_code_for_property: {
         Args: {
@@ -8704,7 +9150,201 @@ export type Database = {
         }
         Returns: string
       }
+      assistant_action_authorize: {
+        Args: {
+          _id: string
+          _nonce: string
+          _revision: number
+          _scope_key: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      assistant_action_begin: {
+        Args: { _id: string; _proof: string; _revision: number }
+        Returns: Json
+      }
+      assistant_action_execute: {
+        Args: { _id: string; _proof: string; _revision: number }
+        Returns: Json
+      }
+      assistant_action_finish: {
+        Args: {
+          _error: string
+          _id: string
+          _proof: string
+          _result: Json
+          _revision: number
+        }
+        Returns: Json
+      }
+      assistant_action_mutate: {
+        Args: {
+          _expected_state: Json
+          _id: string
+          _operation: string
+          _payload: Json
+          _proof: string
+          _revision: number
+        }
+        Returns: Json
+      }
+      assistant_action_mutate_metadata: {
+        Args: {
+          _expected_state: Json
+          _id: string
+          _operation: string
+          _payload: Json
+          _proof: string
+          _revision: number
+        }
+        Returns: Json
+      }
+      assistant_action_target_access: {
+        Args: { _payload: Json; _type: string }
+        Returns: boolean
+      }
+      assistant_bot_available: { Args: { _bot_id: string }; Returns: boolean }
+      assistant_bot_config_save: {
+        Args: {
+          _bot_id: string
+          _confirmed: boolean
+          _enabled: boolean
+          _instructions: string
+          _revision: number
+          _suggestions: Json
+        }
+        Returns: number
+      }
+      assistant_configuration_lock: {
+        Args: {
+          _bot_id: string
+          _client_id?: string
+          _client_revision?: number
+        }
+        Returns: undefined
+      }
       assistant_current_scope: { Args: never; Returns: string }
+      assistant_delegation_acquire: {
+        Args: { p_lease: string; p_user: string }
+        Returns: {
+          client_id: string
+          refresh_token: string
+        }[]
+      }
+      assistant_delegation_put: {
+        Args: { p_client: string; p_refresh: string; p_user: string }
+        Returns: undefined
+      }
+      assistant_delegation_revoke: { Args: never; Returns: undefined }
+      assistant_delegation_rotate: {
+        Args: { p_lease: string; p_refresh: string; p_user: string }
+        Returns: boolean
+      }
+      assistant_external_action_prepare: {
+        Args: {
+          _action: Json
+          _client_id: string
+          _client_revision: number
+          _request_hash: string
+          _request_id: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      assistant_mcp_client_permission: {
+        Args: never
+        Returns: {
+          approved: boolean
+          client_id: string
+          revision: number
+        }[]
+      }
+      assistant_mcp_client_set: {
+        Args: {
+          _approved: boolean
+          _client_id: string
+          _confirmed: boolean
+          _name: string
+          _revision: number
+        }
+        Returns: number
+      }
+      assistant_memory_valid: { Args: { v: Json }; Returns: boolean }
+      assistant_oauth_client_secret: { Args: never; Returns: string }
+      assistant_oauth_consume: {
+        Args: { p_state_hash: string }
+        Returns: {
+          user_id: string
+          verifier: string
+        }[]
+      }
+      assistant_oauth_start: {
+        Args: { p_state_hash: string; p_user: string; p_verifier: string }
+        Returns: undefined
+      }
+      assistant_routine_bot: { Args: { _template: string }; Returns: string }
+      assistant_routine_claim: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          bot_generation: number
+          finished_at: string | null
+          id: string
+          lease_id: string | null
+          lease_until: string | null
+          local_day: string
+          next_attempt_at: string
+          result_refs: Json
+          routine_id: string
+          routine_revision: number
+          scheduled_at: string
+          scope_key: string | null
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "assistant_routine_runs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      assistant_routine_direct_allowed: {
+        Args: { _generation: number; _status: string; _template: string }
+        Returns: boolean
+      }
+      assistant_routine_dispatch: { Args: never; Returns: number }
+      assistant_routine_finish: {
+        Args: {
+          p_cursor?: string
+          p_lease: string
+          p_next: string
+          p_refs: Json
+          p_run: string
+          p_scope: string
+          p_seen?: Json
+        }
+        Returns: boolean
+      }
+      assistant_routine_save_configured: {
+        Args: { _confirmed: boolean; _create: boolean; _id: string; _row: Json }
+        Returns: string
+      }
+      assistant_routine_scheduler_set: {
+        Args: { p_enabled: boolean }
+        Returns: undefined
+      }
+      assistant_routine_scheduler_status: { Args: never; Returns: boolean }
+      assistant_routine_state_configured: {
+        Args: {
+          _confirmed: boolean
+          _id: string
+          _next: string
+          _status: string
+        }
+        Returns: undefined
+      }
       assistant_take_daily_quota: {
         Args: { p_limit?: number; p_user_id: string }
         Returns: boolean
