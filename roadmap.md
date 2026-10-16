@@ -24,3 +24,12 @@
 - [x] Limite de tentativas + Cache-Control no-store no link público
 - [x] Teste do retorno público sem dados internos
 - [x] (opcional) sem id interno no link público
+
+## Cordial Bot — plano de 16/10/2026
+- [x] Etapa 1.3: modelos por configuração e limite de tokens adaptável (1200/4000)
+- [ ] Etapa 1.1–1.2: histórico real e estado pendente; camada única de ferramentas com MCP
+- [ ] Adaptador Claude (anthropic/claude-sonnet-5) — aguarda confirmação do Leonardo
+- [ ] Etapa 2: roteador e planejador; filtros de search_properties; busca semântica
+- [ ] Etapa 3: pesquisa externa — aguarda TAVILY_API_KEY / PERPLEXITY_API_KEY
+- [ ] Etapa 4: resumo das 8h, assistant_facts
+- [ ] Etapa 5: Estúdio de Conteúdo — vídeo no navegador aguarda aceite
