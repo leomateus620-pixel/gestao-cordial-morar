@@ -78,7 +78,7 @@ export const createStudioProject = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => createSchema.parse(d))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as any;
-    const uid = context.user.id as string;
+    const uid = context.userId as string;
     const { data: checks, error: e1 } = await supabase.rpc("shared_selection_check", { p_ids: [data.propertyId] });
     if (e1) throw new Error(e1.message);
     if (!(checks ?? []).some((c: any) => c.property_id === data.propertyId && c.eligible)) {
