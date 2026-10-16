@@ -3,10 +3,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { AgentBot } from "@/lib/agent/bots";
 import { allowedBotsForRole } from "@/lib/agent/bots";
+import { useAssistantCatalog } from "@/lib/agent/use-assistant";
 import { useSession } from "@/lib/auth-mock";
 import { listAssistantConversations } from "@/lib/agent/assistant.functions";
 import { WorkerAvatar } from "./WorkerAvatar";
-import { AssistantMark } from "@/components/brand/AssistantMark";
+import { CordialBotBrand } from "@/components/brand/CordialBotBrand";
 import type { ConversationItem } from "./AgentWorkspace";
 import "./assistant.css";
 
@@ -35,10 +36,7 @@ export function MobileAssistantHomeView({
           {name.slice(0, 1)}
         </span>
         <div>
-          <p className="assistant-eyebrow flex items-center gap-1.5 !text-[8px]">
-            <AssistantMark size={15} />
-            Assistente Cordial
-          </p>
+          <CordialBotBrand compact />
           <h1 className="mt-1 text-xl font-semibold tracking-tight">Olá, {name}.</h1>
         </div>
         <a
@@ -85,7 +83,7 @@ export function MobileAssistantHomeView({
               <a
                 key={bot.id}
                 href={
-                  bot.active
+                  bot.active || recent
                     ? `/assistente/${bot.id}${recent ? `?conversation=${recent.id}` : ""}`
                     : `/assistente/equipe/${bot.id}`
                 }
@@ -97,7 +95,7 @@ export function MobileAssistantHomeView({
                     <h2 className="text-sm font-semibold">{bot.name}</h2>
                     {!bot.active && (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[8px] text-muted-foreground">
-                        Em breve
+                        Pausado
                       </span>
                     )}
                   </div>
@@ -122,7 +120,19 @@ export function MobileAssistantHomeView({
               </a>
             );
           })}
-          {visibleBots.length === 0 && (
+          {loading && !bots.length && (
+            <div
+              role="status"
+              aria-label="Carregando equipe"
+              className="assistant-skeleton my-5 h-40"
+            />
+          )}
+          {error && !bots.length && (
+            <p role="alert" className="py-8 text-sm text-muted-foreground">
+              Não foi possível carregar sua equipe.
+            </p>
+          )}
+          {!loading && !error && visibleBots.length === 0 && (
             <p role="status" className="py-8 text-center text-xs text-muted-foreground">
               Não encontrei um agente com esse nome.
             </p>
@@ -181,6 +191,7 @@ export function MobileAssistantHomeView({
 }
 export function MobileAssistantHome() {
   const session = useSession();
+  const catalog = useAssistantCatalog();
   const history = useQuery({
     queryKey: ["assistant-conversations", session?.id, "all"],
     queryFn: () => listAssistantConversations({ data: { limit: 20 } }),
@@ -191,10 +202,10 @@ export function MobileAssistantHome() {
   return (
     <MobileAssistantHomeView
       name={session.nome.split(" ")[0]}
-      bots={allowedBotsForRole(session.perfil)}
+      bots={catalog.bots}
       conversations={history.data}
-      loading={history.isLoading}
-      error={history.isError}
+      loading={history.isLoading || catalog.isLoading}
+      error={history.isError || catalog.isError}
     />
   );
 }

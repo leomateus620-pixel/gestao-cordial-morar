@@ -1,74 +1,44 @@
-# Revisão visual — Assistente Cordial
+# Cordial Bot — revisão visual da fase 4
 
 final result: passed
 
-## Revisão das interações dos mascotes
+## Referência e comparação
 
-A solicitação seguinte acrescentou piscadas, olhar, movimento e giro por cursor/toque. O componente compartilhado recebeu reações curtas; o usuário explicitamente pediu que movimento reduzido não as desativasse. O comportamento foi verificado no navegador com clique, arraste e foco reais, sem simular eventos por JavaScript.
+Base aprovada: `docs/assistente/screenshots/fases-2-3/acao-pendente-desktop.jpg` (1280×720) e `acao-pendente-mobile.jpg` (390×844). As referências e as capturas finais foram abertas juntas na mesma entrada de comparação. Esta é uma evolução da interface existente, com a marca e os ajustes solicitados; não uma cópia de outra plataforma.
 
-**[P2, resolvido] Animação recriava o alvo do clique.** A primeira implementação remontava o grupo SVG durante `pointerdown`, e clicar no desenho não selecionava o agente. Foi removida a troca de nó; teste posterior confirmou seleção do Match e composer correspondente, além de giro/piscada simultâneos.
+Implementação: `tests/assistant/preview.html`, navegador in-app, dados sintéticos. Evidências em `docs/assistente/screenshots/fase-4/`. Desktop CSS1280×720, captura completa1280×728: os oito pixels adicionais são o padding do documento do harness; a comparação considera a área da aplicação. Mobile CSS390×844/captura390×844, densidade1. Também verificados320×740,430×844,768×844,1024×844 e390×500.
 
-Evidências: `docs/assistente/screenshots/mascotes-interativos.jpg` (captura integral 1440 × 1067, viewport 1440 × 1000, apresentação do Match durante interação), transições `worker-spin`/`worker-blink` observadas no navegador e deslocamento de olhar/inclinação durante arraste. Foco no botão Capta gerou reação de teclado. Estado de consulta exibiu `worker-think` nos dois avatares em trabalho. Detalhes em `docs/assistente/interacoes-mascotes.md`. Nenhum P0/P1/P2 dessa revisão permanece aberto; gesto em aparelho físico segue no roteiro de homologação.
+Comparação principal: `action-pending-desktop.jpg` e `acao-mobile.jpg`; foco ampliado na assinatura da marca, cabeçalho, diff e botões. A altura maior da aplicação mobile é intencional: usa o espaço disponível, sem o vazio inferior da referência. O símbolo/mascotes são os mesmos assets/componentes; não foram redesenhados.
 
-## Revisão da identidade solicitada
+## Achados e iterações
 
-Após a limpeza de descrições, o usuário pediu uma marca própria no lugar da estrela do assistente. Foram pesquisados os sites oficiais da Cordial e da Morar e conferidos os arquivos já usados no app. O novo símbolo une C/casa e M/telhado com azul-petróleo e cobre.
+1. **P2 — nome truncado no cabeçalho móvel.** A primeira inspeção390px cortava “Agenda” pela soma dos controles. Preferências/Sobre foram reunidos em “Mais opções”; a pílula abre a equipe. Revalidação320/390: nome inteiro, cabeçalho sem overflow e controles44px. Evidência final: `acao-320.jpg` e `acao-mobile.jpg`.
+2. **P2 — estado vazio rolava ao fim.** O auto-scroll inicial escondia parte dos mascotes e do cumprimento. Agora só acompanha mensagens; limpar a conversa volta ao topo. O hero é compacto quando há briefing, preservando “Seu dia” visível no desktop. Evidência após correção: `empty-desktop.jpg`, scrollTop0 e nenhum overflow horizontal.
+3. **P2 — inconsistência dos dados de revisão.** A fixture repetia a pergunta antes do cartão e não permitia remover o contexto fixo. A fixture agora acompanha o contrato real: pergunta aparece uma vez, contexto pode ser retirado e uma escolha inclui sua pergunta na resposta. Evidências: `choices-mobile.jpg` e `mencao-contexto-mobile.jpg`.
 
-As marcas de origem (691 × 231 e 728 × 291) e a implementação renderizada foram comparadas no mesmo painel: `/tmp/cordial-runtime/qa-identidade-final.jpg`, 1800 × 1000. Evidência do navegador: `docs/assistente/screenshots/identidade-assistente.jpg`, viewport 1440 × 1000. O novo master é PNG RGBA 1254 × 1254; o WebP lossless do app preserva exatamente os pixels decodificados.
-
-Foram conferidos tamanhos de 16, 24 e 40 px, fundos claro/escuro e aplicação no workspace/mobile. O ícone tem massas amplas e silhueta legível, sem estrela genérica. Os personagens dos agentes permanecem distintos da marca do assistente. Capturas principais foram atualizadas; as comparações desktop/mobile foram reabertas com essa versão.
-
-Tipografia das reconstruções das marcas é uma aproximação visual com pequenos desvios de espaçamento; essas imagens em alta resolução ficam como derivados de revisão, sem substituir as matrizes dos sites. Os resíduos de alfa muito baixo enfatizados no visualizador isolado não apareceram na composição real do navegador. Arte do assistente foi criada pelo ImageGen, sem reconstrução manual em SVG. Não há P0/P1/P2 visual pendente nessa revisão.
-
-## Alvo e evidências
-
-As imagens fornecidas são referências de experiência, não um layout para cópia. A adaptação mantém os componentes e tokens do Gestão, personagens próprios e funções imobiliárias. O pedido permite explicitamente mascotes SVG/CSS; foram usados SVGs autorais, sem marcas, personagens ou assets dos produtos de referência.
-
-| Evidência             | Arquivo                                                                    | Dimensões e estado                            |
-| --------------------- | -------------------------------------------------------------------------- | --------------------------------------------- |
-| Referência desktop    | `/Users/leonardo/Downloads/WhatsApp Image 2026-10-16 at 01.30.22 (2).jpeg` | 1125 × 683 px; tela vazia clara               |
-| Referência mobile     | `/Users/leonardo/Downloads/WhatsApp Image 2026-10-16 at 01.30.21 (1).jpeg` | 591 × 1280 px; lista de personagens           |
-| Implementação desktop | `docs/assistente/screenshots/desktop-vazio.jpg`                            | viewport e captura 1440 × 1000; vazio claro   |
-| Implementação mobile  | `docs/assistente/screenshots/mobile-home-corretor.jpg`                     | viewport e captura 390 × 844; corretor, claro |
-| Conversa e estados    | `docs/assistente/screenshots/`                                             | desktop 1440 × 1000; mobile 390 × 844         |
-
-Renderização no navegador em `http://127.0.0.1:5174/tests/assistant/preview.html`, usando componentes reais e transporte isolado com dados fictícios. Não é evidência de autenticação ou integração completa com o Supabase remoto.
-
-As comparações foram abertas lado a lado na mesma imagem, com recortes de conteúdo e escala proporcional. Fontes têm resolução física diferente; não há comparação pixel a pixel nem reprodução de moldura/status bar. A captura da implementação corresponde a um pixel por CSS px. A home admin usa captura integral de 390 × 1054 para incluir os agentes futuros.
-
-- Composição completa desktop: `/tmp/cordial-runtime/qa-desktop-final.jpg`. Referência recortada em `(0,0,1125,643)`, implementação em `(24,80,1416,930)`; painel comparativo de 1800 × 650.
-- Composição completa mobile: `/tmp/cordial-runtime/qa-mobile-final.jpg`. Referência em `(0,100,591,1115)`, implementação em `(12,162,378,815)`; painel de 800 × 760.
-- Região de controles do composer: `/tmp/cordial-runtime/qa-composer-final.jpg`. Recortes de ambas as fontes, com a largura inteira do composer implementado; painel de 1800 × 240. Essa comparação focada permitiu conferir texto, ícones e espaçamento sem depender da miniatura desktop.
-
-Os painéis temporários incluem referências fornecidas pelo usuário e não são incorporados ao produto. As capturas da implementação estão versionadas.
-
-## Achados corrigidos e comparação posterior
-
-1. **[P2, resolvido] Descrições repetidas competiam com a conversa.** Hero, composer, contexto e cards repetiam orientações e limites. Foram removidas faixas e frases redundantes. As apresentações mantêm habilidades e pedidos visíveis; dados, limites e rotinas ficam em seções expansíveis. Evidência posterior: `desktop-vazio.jpg`, `desktop-apresentacao.jpg`, `mobile-home-corretor.jpg` e `mobile-contexto.jpg`, recapturadas após a limpeza.
-2. **[P2, resolvido] Classes de exibição interferiam nos breakpoints.** CSS da barra e do contexto podia prevalecer sobre os utilitários responsivos. A regra foi corrigida e os painéis se tornaram drawers no celular. Evidência posterior: `mobile-precisa-de-voce.jpg`, `mobile-contexto.jpg` e conversa mobile, sem sobreposição de colunas.
-3. **[P2, resolvido] Altura mínima do workspace prejudicava celulares baixos.** O workspace passou a usar a altura disponível, com área de mensagens rolável e composer acessível. Verificação adicional em 375 × 667: largura do documento igual a 375 e composer entre y=530 e y=575, dentro da tela.
-
-A comparação final, após essas correções, não encontrou P0/P1/P2 visual pendente. Diferenças intencionais: painel de contexto, briefing com dados, abas e disponibilidade honesta de recursos futuros; ausência de criação de bots, envio externo ou indicadores fictícios de atividade.
+Nenhum P0/P1/P2 aberto após as correções.
 
 ## Superfícies verificadas
 
-- **Tipografia:** família herdada do Gestão, hierarquia curta, pesos consistentes, títulos e prévias sem colisão. A referência orienta a clareza; não se tentou identificar ou importar a fonte proprietária dela.
-- **Espaçamento:** composição com respiro, raio e bordas consistentes, conversa central e laterais discretas; lista mobile com área de toque ampla. Estado vazio e mensagens com cartões foram comparados separadamente.
-- **Cores e tokens:** superfícies claras/escuras do app, ação primária e foco pelos tokens existentes; cores pastel identificam os agentes sem substituir os estados semânticos. Modo escuro registrado em `mobile-escuro.jpg`.
-- **Imagens:** mascotes próprios, vetoriais e nítidos; nenhum asset de marca copiado. Fotos ausentes têm ícone, sem imóveis fictícios apresentados como resultado real.
-- **Conteúdo:** português curto, sem texto de marketplace ou negócios dos anexos. Detalhes só onde ajudam uma decisão. Indisponibilidades e erros continuam explícitos.
-- **Ícones e acessibilidade:** controles nomeados, abas navegáveis por setas/Home/End, foco visível, labels em dialogs e descrições acessíveis sem poluição visual. A pedido explícito do usuário, movimento reduzido não desativa as animações dos mascotes; a preferência é preservada nos demais componentes. Não foi executada auditoria externa completa de WCAG.
+- **Tipografia:** Sora600 carregada na marca, capitalização “Cordial Bot”, espaçamento−0.025em; Manrope na interface. Mensagens14px/21px, composer mobile16px. Nome e botões não comprimidos em320px.
+- **Espaçamento/layout:** três colunas no desktop, duas no tablet e uma no celular. Contexto/pendências em drawers. Botões44px, formulário com rolagem natural, carrosséis internos sem overflow do documento. Composer fica dentro do viewport reduzido: bottom475px em altura500px.
+- **Cores/tokens:** mantidos os tokens do Gestão e as duas cores no símbolo. Light/dark verificados; estados de falha, pendência e sucesso distinguíveis. Captura `tema-escuro-mobile.jpg` inclui a barra exclusiva do harness.
+- **Assets:** símbolo1024 original reutilizado sem distorção; mascotes e animações mantidos. Motion é desativado apenas por `capture=1` no harness para evidência determinística.
+- **Conteúdo:** removidas repetições; orientações administrativas e progresso concluído ficam expansíveis. Revisões mostram efeitos da desativação/revogação sem prometer revogar as oito consultas legadas. Aprovação do app e consentimento pessoal são apresentados separadamente.
 
-## Interações e estados
+## Interações e console
 
-Foram verificados vazio, histórico carregando, consulta em andamento, resposta, erro, tema escuro, busca de equipe, perfil de corretor/admin, menção com seleção de registro, drawers, abas, seções expansíveis e envio pelo composer com transporte sintético. Os cartões levam às rotas reais declaradas; o harness não navega pelos módulos de negócio.
+Verificados no navegador: confirmar proposta e contador1→0; abrir Mais opções; “Outro…” foca o composer sem enviar; opção envia pergunta+resposta; busca@ com setas/Enter; remover contexto preservando rascunho; revisão de aprovação MCP; conflito CAS e recarregar configuração. Os cliques usam o transporte sintético do harness, não clientes reais.
 
-Console após recarga limpa: sem novos erros/avisos no harness final. Os logs históricos de edições intermediárias e os avisos do Recharts de outra rota foram distinguidos da sessão final.
+O console mantém registros de invalid-hook-call durante HMR/otimização de dependências às10:21UTC. Após recarregar, não reapareceram nas navegações finais; componentes e menus foram exercitados novamente. Typecheck/build e testes de componentes passaram.
 
-## Checklist de implementação
+## Limites e checklist
 
-- [x] Remover descrições redundantes sem esconder erro ou indisponibilidade.
-- [x] Conferir desktop, mobile, celular baixo e tema escuro.
-- [x] Comparar referência e resultado no mesmo painel, incluindo composer ampliado.
-- [x] Versionar capturas com dados sintéticos.
-- [x] Documentar limites da verificação local; homologação autenticada permanece necessária.
+- [x] Referências e implementação abertas e comparadas.
+- [x] Capturas dos estados principais desktop/mobile e ajustes revalidados.
+- [x] Layout320–1280px, formulário, foco e interação por teclado.
+- [x] Sem erro reproduzível nas navegações finais.
+- [ ] Teclado físico em iOS/Android: validar em homologação; o teste local usa viewport de altura reduzida, não simula um aparelho real.
+- [ ] OAuth/gateway/push reais e latência: dependem de configuração/publicação; não são comprovados pela prévia.
+
+Sem publicação ou deploy nesta revisão.

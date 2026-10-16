@@ -1,13 +1,6 @@
+import { CordialBotWordmark } from "@/components/brand/CordialBotBrand";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  memo,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSidebarSections, type SidebarModuleItem } from "@/components/shared/module-menu";
 import type { AppModule } from "@/lib/mock/permissions";
@@ -158,10 +151,7 @@ export const SidebarMenu = memo(function SidebarMenu({
                 data-navigation-section={section.id}
                 className="app-sidebar-card"
               >
-                <h2
-                  id={headingId}
-                  className={cn("app-sidebar-card-label", collapsed && "sr-only")}
-                >
+                <h2 id={headingId} className={cn("app-sidebar-card-label", collapsed && "sr-only")}>
                   {section.label}
                 </h2>
 
@@ -194,7 +184,13 @@ export const SidebarMenu = memo(function SidebarMenu({
 
                               {!collapsed && (
                                 <span className="app-sidebar-nav-copy">
-                                  <span className="app-sidebar-nav-title">{copy.label}</span>
+                                  <span className="app-sidebar-nav-title">
+                                    {item.to === "/assistente" ? (
+                                      <CordialBotWordmark className="!text-[13px]" />
+                                    ) : (
+                                      copy.label
+                                    )}
+                                  </span>
                                 </span>
                               )}
                             </Link>

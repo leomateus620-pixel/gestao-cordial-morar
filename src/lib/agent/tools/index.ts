@@ -24,7 +24,7 @@ import type { AgentTool, AgentToolResult } from "./types";
 export { loadAgentContext } from "../security";
 export type { AgentContext } from "../security";
 export type { AgentTool, AgentToolResult } from "./types";
-/** Preparation stores a proposal, never executes a business change. MCP stays read-only. */
+/** Preparation stores a proposal, never executes a business change. Approved MCP clients share the same closed preparations. */
 export const agentTools: readonly AgentTool[] = Object.freeze([
   searchProperties,
   searchClients,

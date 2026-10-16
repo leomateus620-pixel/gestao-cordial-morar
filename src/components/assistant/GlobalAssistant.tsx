@@ -1,13 +1,8 @@
+import { AssistantDialogContent as DialogContent } from "./AssistantDialog";
 import { ArrowRight, Command, Expand, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -20,10 +15,16 @@ import { useSession } from "@/lib/auth-mock";
 import {
   useAssistant,
   useAssistantContext,
+  useAssistantCatalog,
   type AssistantRecordContext,
 } from "@/lib/agent/use-assistant";
 import { WorkerAvatar } from "./WorkerAvatar";
+import { CordialBotBrand, CordialBotWordmark } from "@/components/brand/CordialBotBrand";
 import { AssistantMark } from "@/components/brand/AssistantMark";
+import { ChoiceQuestion } from "./ChoiceQuestion";
+import { useWorkspaceViewport } from "./use-workspace-viewport";
+import { saveAssistantDraft } from "./draft-handoff";
+import { contextualSuggestions } from "@/lib/agent/context-suggestions";
 import { ChoiceChips, Composer } from "./AgentWorkspace";
 import { RichToolResult, StepTimeline } from "./RichResults";
 import "./assistant.css";
@@ -41,20 +42,23 @@ export function GlobalAssistant() {
   const location = useRouterState({ select: (s) => s.location });
   const navigate = useNavigate();
   const [copilot, setCopilot] = useState(false);
+  const drawerViewport = useWorkspaceViewport(copilot, true);
   const [command, setCommand] = useState(false);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
+  const [focusRequest, setFocusRequest] = useState(0);
+  const [contextCleared, setContextCleared] = useState(false);
   const routeContext = contextFromLocation(location.pathname, location.searchStr);
   const [pickedContext, setPickedContext] = useState<AssistantRecordContext | undefined>();
-  const context = pickedContext ?? routeContext;
-  const bots = allowedBotsForRole(session?.perfil ?? "");
+  const context = contextCleared ? undefined : (pickedContext ?? routeContext);
+  const catalog = useAssistantCatalog();
+  const bots = catalog.bots;
   const active = bots.filter((b) => b.active);
-  const preferred = getAgentBot(preferredBotForContext(context));
-  const bot =
-    preferred && bots.some((b) => b.id === preferred.id) ? preferred : getAgentBot("agenda")!;
-  const chatBot = bot.active ? bot : (active[0] ?? getAgentBot("agenda")!);
-  const chatContext = contextForActiveBot(chatBot.id, context);
-  const chat = useAssistant(chatBot.id, undefined, chatContext);
+  const preferred = bots.find((entry) => entry.id === preferredBotForContext(context));
+  const bot = preferred ?? bots[0];
+  const chatBot = bot?.active ? bot : active[0];
+  const chatContext = contextForActiveBot(chatBot?.id ?? "agenda", context);
+  const chat = useAssistant(chatBot?.id ?? "agenda", undefined, chatContext);
   const focus = useAssistantContext(copilot ? context : undefined);
   useEffect(() => {
     if (!active.length) return;
@@ -73,9 +77,10 @@ export function GlobalAssistant() {
     setCopilot(false);
     setDraft("");
     setPickedContext(undefined);
+    setContextCleared(false);
     chat.reset();
   }, [location.pathname, location.searchStr]);
-  if (!session || !active.length) return null;
+  if (!session || !active.length || !bot || !chatBot || catalog.isError) return null;
   function openWorkspace(botId: string, prompt?: string, conversation?: string) {
     setCommand(false);
     setCopilot(false);
@@ -97,24 +102,26 @@ export function GlobalAssistant() {
           type="button"
           className="assistant-copilot"
           aria-label="Abrir copiloto contextual"
-          title="Assistente Cordial · ⌘/Ctrl K"
+          title="Cordial Bot · ⌘/Ctrl K"
           onClick={() => setCopilot(true)}
         >
           <AssistantMark size={30} />
-          <span>Conte comigo</span>
+          <CordialBotWordmark className="!text-sm" />
         </button>
       )}
       <Sheet open={copilot} onOpenChange={setCopilot}>
         <SheetContent
+          ref={drawerViewport}
           closeLabel="Fechar copiloto"
-          className="flex !w-full !max-w-[480px] flex-col !gap-0 !p-0"
+          className="assistant-panel assistant-copilot-panel flex !w-full !max-w-[480px] flex-col !gap-0 !p-0"
         >
-          <SheetHeader className="border-b border-border px-5 py-5 text-left">
+          <SheetHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
+            <CordialBotBrand compact className="mb-3" />
             <div className="flex items-center gap-2">
               <WorkerAvatar bot={bot} size={42} working={chat.busy} />
               <div>
                 <SheetTitle className="text-base">
-                  {bot.active ? bot.name : `${bot.name} · em breve`}
+                  {bot.active ? bot.name : `${bot.name} · indisponível`}
                 </SheetTitle>
                 <SheetDescription className="sr-only">
                   Converse com o agente e consulte o registro em foco.
@@ -143,7 +150,7 @@ export function GlobalAssistant() {
             {!bot.active ? (
               <div className="rounded-2xl border border-border bg-card p-4">
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  A consulta de contratos pelo Caixa chega em breve. Continue em Aluguéis.
+                  Este agente está pausado. Continue no módulo ou escolha outro colega.
                 </p>
                 <a href="/alugueis" className="assistant-chip mt-4 text-primary">
                   Abrir Aluguéis <ArrowRight size={12} />
@@ -165,21 +172,50 @@ export function GlobalAssistant() {
               </div>
             ) : chat.messages.length === 0 ? (
               <>
-                <ChoiceChips choices={contextSuggestions(context)} onChoose={setDraft} />
+                <ChoiceChips choices={contextualSuggestions(bot, context)} onChoose={setDraft} />
               </>
             ) : (
-              chat.messages.map((m) => (
+              chat.messages.map((m, index) => (
                 <article key={m.id} className="mb-5">
                   {m.role === "user" ? (
                     <p className="assistant-user">{m.content}</p>
                   ) : (
                     <>
                       <p className="mb-2 text-xs font-semibold">{bot.name}</p>
-                      {m.steps && <StepTimeline steps={m.steps} />}
+                      {m.steps && (
+                        <StepTimeline
+                          steps={m.steps}
+                          awaitingChoice={
+                            !!m.choices?.length && index === chat.messages.length - 1 && !chat.busy
+                          }
+                        />
+                      )}
                       <p className="assistant-message-content">{m.content}</p>
                       {m.results.map((r, i) => (
                         <RichToolResult key={i} result={r} />
                       ))}
+                      {m.choices?.map((choice) => (
+                        <ChoiceQuestion
+                          key={choice.id}
+                          choice={choice}
+                          disabled={chat.busy || index !== chat.messages.length - 1}
+                          onChoose={(option) =>
+                            void chat.send(`Sobre “${choice.question}”: ${option.value}`)
+                          }
+                          onOther={() => {
+                            setFocusRequest((n) => n + 1);
+                          }}
+                        />
+                      ))}
+                      {!chat.busy && index === chat.messages.length - 1 && !m.choices?.length && (
+                        <ChoiceChips
+                          choices={contextualSuggestions(bot, context, m.results).slice(0, 2)}
+                          onChoose={(text) => {
+                            setDraft(text);
+                            setFocusRequest((n) => n + 1);
+                          }}
+                        />
+                      )}
                     </>
                   )}
                 </article>
@@ -195,8 +231,12 @@ export function GlobalAssistant() {
             <>
               <button
                 type="button"
-                className="mx-5 mb-2 inline-flex items-center justify-center gap-2 text-[10px] text-primary"
-                onClick={() => openWorkspace(bot.id, draft || undefined, chat.conversationId)}
+                className="mx-5 mb-2 inline-flex min-h-11 items-center justify-center gap-2 text-xs text-primary disabled:opacity-40"
+                disabled={chat.busy}
+                onClick={() => {
+                  saveAssistantDraft(session.id, bot.id, draft);
+                  openWorkspace(bot.id, undefined, chat.conversationId);
+                }}
               >
                 <Expand size={12} />
                 Abrir conversa
@@ -210,7 +250,12 @@ export function GlobalAssistant() {
                   setDraft("");
                 }}
                 busy={chat.busy}
-                onRecordPick={setPickedContext}
+                context={context}
+                focusRequest={focusRequest}
+                onRecordPick={(record) => {
+                  setPickedContext(record);
+                  setContextCleared(!record);
+                }}
                 onCancel={chat.cancel}
               />
             </>
@@ -240,7 +285,7 @@ export function GlobalAssistant() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               maxLength={4000}
-              aria-label="Pergunte ao Assistente Cordial"
+              aria-label="Pergunte ao Cordial Bot"
               placeholder="Pergunte ou escolha um colega…"
               className="min-w-0 flex-1 bg-transparent text-sm outline-none"
             />

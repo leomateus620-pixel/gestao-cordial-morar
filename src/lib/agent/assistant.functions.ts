@@ -27,7 +27,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
     const [
       { createAssistantResponse, lovableCompletion },
       { persistAssistantTurn },
-      { getAgentBot, assertBotContextScope },
+      { assertBotContextScope },
       { agentTools, executeAgentTool },
       { effectiveRole },
     ] = await Promise.all([
@@ -38,14 +38,15 @@ export const chatAssistant = createServerFn({ method: "POST" })
       import("./security"),
     ]);
     const ctx = await callerContext(context.userId);
-    const bot = getAgentBot(data.botId);
+    const { resolveAgentBot, assertAssistantBotEnabled } = await import("./bot-config.server");
+    const bot = await resolveAgentBot(data.botId, ctx);
     if (!bot?.active || !bot.roles.some((role) => role === effectiveRole(ctx)))
       throw new Error("Este agente não está disponível para seu perfil.");
     assertBotContextScope(bot, data.context);
     const key = process.env.LOVABLE_API_KEY;
     if (!key)
       throw new Error(
-        "O Assistente Cordial ainda não foi configurado. Solicite a configuração ao administrador.",
+        "O Cordial Bot ainda não foi configurado. Solicite a configuração ao administrador.",
       );
     const persistence = await persistAssistantTurn({
       client: ctx.supabase,
@@ -78,6 +79,7 @@ export const chatAssistant = createServerFn({ method: "POST" })
       tools: [...agentTools],
       persistence,
       preferences: preferences?.success ? preferences.data : undefined,
+      validateBot: () => assertAssistantBotEnabled(ctx, bot.id),
       signal: getRequest().signal,
       gateway: async (request) => {
         const started = Date.now();
@@ -148,6 +150,7 @@ export const listAssistantMessages = createServerFn({ method: "POST" })
       assistantScopeKey(ctx),
     );
     return rehydrateAssistantHistory(rows, ctx, {
+      resolveBot: (id) => import("./bot-config.server").then((m) => m.resolveAgentBot(id, ctx)),
       execute: executeAgentTool,
       audit: (tool, params, summary, duration) =>
         persistAssistantAudit(
@@ -169,6 +172,17 @@ export const getAssistantContext = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => assistantContextInput.parse(value))
   .handler(async ({ data, context }) => {
     const ctx = await callerContext(context.userId);
+    const { resolveAgentBots } = await import("./bot-config.server");
+    const bots = await resolveAgentBots(ctx);
+    if (
+      !bots.some(
+        (bot) =>
+          bot.active &&
+          bot.contextKinds.includes(data.kind) &&
+          bot.tools.includes("get_record_context"),
+      )
+    )
+      throw new Error("Nenhum agente disponível para este contexto.");
     const [{ executeAgentTool }, { persistAssistantAudit }, { readAssistantRecord }] =
       await Promise.all([
         import("./tools"),
@@ -205,9 +219,15 @@ export const getAssistantBriefing = createServerFn({ method: "GET" })
       import("./persistence.server"),
       import("./read-model.server"),
     ]);
+    const { resolveAgentBots } = await import("./bot-config.server");
+    const activeTools = new Set(
+      (await resolveAgentBots(ctx)).filter((bot) => bot.active).flatMap((bot) => bot.tools),
+    );
     const items = await collectAssistantBriefing(
       ctx,
-      getAllowedTools(ctx).map((tool) => tool.name),
+      getAllowedTools(ctx)
+        .map((tool) => tool.name)
+        .filter((name) => activeTools.has(name)),
       {
         execute: executeAgentTool,
         audit: (tool, params, summary, duration) =>

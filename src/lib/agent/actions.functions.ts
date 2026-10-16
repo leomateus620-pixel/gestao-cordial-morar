@@ -7,7 +7,7 @@ const key = z
   .object({ actionId: z.string().uuid(), revision: z.number().int().positive() })
   .strict();
 async function actionContext(userId: string, claims: Record<string, unknown>, interactive = true) {
-  if (interactive && claims.client_id)
+  if (interactive && (claims.client_id || claims.azp))
     throw new Error("Confirme a proposta dentro do Gestão, com sua sessão pessoal.");
   const [{ supabaseForUser }, { loadAgentContext }] = await Promise.all([
     import("@/lib/mcp/supabase"),
@@ -32,6 +32,14 @@ export const listAssistantActions = createServerFn({ method: "POST" })
       await actionContext(context.userId, context.claims, false),
       data.conversationId,
     );
+  });
+/** Personal-session lookup for a direct proposal link, independent of list pagination. */
+export const getAssistantAction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ actionId: z.string().uuid() }).strict().parse(v))
+  .handler(async ({ data, context }): Promise<ActionProposal> => {
+    const { readAssistantAction } = await import("./actions.server");
+    return readAssistantAction(await actionContext(context.userId, context.claims), data.actionId);
   });
 export const confirmAssistantAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

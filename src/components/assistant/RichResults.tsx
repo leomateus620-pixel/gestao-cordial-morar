@@ -72,10 +72,24 @@ const time = (value: unknown) => {
       });
 };
 
-export function StepTimeline({ steps }: { steps: AssistantStep[] }) {
+export function StepTimeline({
+  steps,
+  awaitingChoice = false,
+}: {
+  steps: AssistantStep[];
+  awaitingChoice?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   if (!steps.length) return null;
   const running = steps.some((s) => s.status === "running");
+  const operations = steps.filter((step) => step.label !== "Aguardando sua escolha");
+  const summary = awaitingChoice
+    ? "Aguardando sua escolha"
+    : steps.some((step) => step.status === "error")
+      ? "Uma etapa precisa de revisão"
+      : operations.length
+        ? `${operations.length} ${operations.length === 1 ? "etapa concluída" : "etapas concluídas"}`
+        : "Escolha solicitada";
   return (
     <div className="assistant-steps">
       <button
@@ -87,9 +101,7 @@ export function StepTimeline({ steps }: { steps: AssistantStep[] }) {
         <span className={running ? "assistant-pulse" : ""}>
           {running ? <Clock3 size={13} /> : <Check size={13} />}
         </span>
-        {running
-          ? steps.find((s) => s.status === "running")?.label
-          : `${steps.length} ${steps.length === 1 ? "consulta realizada" : "consultas realizadas"}`}
+        {running ? steps.find((s) => s.status === "running")?.label : summary}
         <ChevronDown
           size={13}
           className={`ml-auto transition-transform ${open ? "rotate-180" : ""}`}

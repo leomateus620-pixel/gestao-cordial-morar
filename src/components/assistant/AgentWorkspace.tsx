@@ -9,6 +9,7 @@ import {
   Info,
   ListFilter,
   Menu,
+  MoreHorizontal,
   MessageCircle,
   Mic,
   Paperclip,
@@ -29,15 +30,28 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { allowedBotsForRole, getAgentBot, type AgentBot } from "@/lib/agent/bots";
 import {
   useAssistant,
   useAssistantBriefing,
   useAssistantContext,
   useAssistantActions,
+  useAssistantAction,
+  useAssistantCatalog,
   type AssistantRecordContext,
   type ChatMessage,
 } from "@/lib/agent/use-assistant";
+import { contextualSuggestions } from "@/lib/agent/context-suggestions";
+import { ChoiceQuestion } from "./ChoiceQuestion";
+import { takeAssistantDraft } from "./draft-handoff";
+import { useWorkspaceViewport } from "./use-workspace-viewport";
+import type { AssistantChoice } from "@/lib/agent/stream";
 import type { AssistantResult } from "@/lib/agent/stream";
 import { useSession } from "@/lib/auth-mock";
 import { WorkerAvatar } from "./WorkerAvatar";
@@ -54,6 +68,7 @@ import {
   RoutineRunResult,
   type ReadinessView,
 } from "./AssistantControls";
+import { CordialBotBrand, CordialBotWordmark } from "@/components/brand/CordialBotBrand";
 import { AssistantMark } from "@/components/brand/AssistantMark";
 export { Composer } from "./Composer";
 
@@ -152,7 +167,7 @@ export function WorkerList({
           <div className="min-w-0">
             <p className="text-xs font-semibold">{b.name}</p>
             <p className="mt-0.5 truncate text-[9px] text-muted-foreground">
-              {b.active ? b.modules.slice(0, 2).join(" · ") : "Em breve"}
+              {b.active ? b.modules.slice(0, 2).join(" · ") : "Pausado"}
             </p>
           </div>
           {selected === b.id && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
@@ -188,8 +203,7 @@ export function AgentSidebar({
         href="/assistente/equipe"
         className="mb-6 flex items-center gap-2 text-[10px] font-semibold tracking-wide text-primary"
       >
-        <AssistantMark size={22} />
-        ASSISTENTE CORDIAL
+        <CordialBotBrand compact />
       </a>
       <button
         type="button"
@@ -243,14 +257,18 @@ export function EmptyStateHero({
   bots,
   bot,
   onChoose,
+  context,
+  compact = false,
 }: {
+  compact?: boolean;
+  context?: AssistantRecordContext;
   name: string;
   bots: AgentBot[];
   bot?: AgentBot;
   onChoose: (prompt: string) => void;
 }) {
   return (
-    <div className="assistant-hero">
+    <div className={`assistant-hero ${compact ? "assistant-hero-compact" : ""}`}>
       <div className="assistant-mascot-group">
         {(bot
           ? [
@@ -260,10 +278,16 @@ export function EmptyStateHero({
             ]
           : bots.slice(0, 3)
         ).map((b, i) => (
-          <WorkerAvatar key={`${b.id}${i}`} bot={b} size={i === 1 ? 110 : 79} />
+          <WorkerAvatar
+            key={`${b.id}${i}`}
+            bot={b}
+            size={compact ? (i === 1 ? 76 : 56) : i === 1 ? 110 : 79}
+          />
         ))}
       </div>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-[28px]">
+      <h1
+        className={`${compact ? "mt-0" : "mt-3"} text-2xl font-semibold tracking-tight sm:text-[28px]`}
+      >
         {bot
           ? ({
               agenda: "Vamos organizar seu dia?",
@@ -273,10 +297,10 @@ export function EmptyStateHero({
             }[bot.id] ?? bot.tagline)
           : `Olá, ${name}.`}
       </h1>
-      <div className="h-6" aria-hidden="true" />
+      <div className={compact ? "h-3" : "h-6"} aria-hidden="true" />
       {bot ? (
         <div className="max-w-lg">
-          <ChoiceChips choices={bot.suggestions} onChoose={onChoose} />
+          <ChoiceChips choices={contextualSuggestions(bot, context)} onChoose={onChoose} />
         </div>
       ) : (
         <div className="flex flex-wrap justify-center gap-2">
@@ -294,7 +318,7 @@ export function EmptyStateHero({
   );
 }
 
-function MessageFeedback({ message, onRetry }: { message: ChatMessage; onRetry: () => void }) {
+function MessageFeedback({ message, onRetry }: { message: ChatMessage; onRetry?: () => void }) {
   const [copied, setCopied] = useState(false);
   const [useful, setUseful] = useState(false);
   return (
@@ -314,14 +338,16 @@ function MessageFeedback({ message, onRetry }: { message: ChatMessage; onRetry: 
       >
         {copied ? <Check size={12} /> : <Copy size={12} />}
       </button>
-      <button
-        type="button"
-        className="assistant-icon-button !size-7"
-        aria-label="Refazer consulta"
-        onClick={onRetry}
-      >
-        <RotateCcw size={12} />
-      </button>
+      {onRetry && (
+        <button
+          type="button"
+          className="assistant-icon-button !size-7"
+          aria-label="Refazer consulta"
+          onClick={onRetry}
+        >
+          <RotateCcw size={12} />
+        </button>
+      )}
       <button
         type="button"
         className={`assistant-icon-button !size-7 ${useful ? "text-primary bg-primary/7" : ""}`}
@@ -412,6 +438,7 @@ export type AssistantWorkspaceViewProps = {
   messages: ChatMessage[];
   conversations?: ConversationItem[];
   busy?: boolean;
+  readOnly?: boolean;
   error?: string | null;
   historyLoading?: boolean;
   historyNotice?: boolean;
@@ -425,12 +452,16 @@ export type AssistantWorkspaceViewProps = {
   onConversation?: (id: string) => void;
   onNew: () => void;
   briefing?: React.ReactNode;
-  onRecordPick?: (record: AssistantRecordContext) => void;
+  onRecordPick?: (record?: AssistantRecordContext) => void;
+  onChoice?: (choice: AssistantChoice, option: AssistantChoice["options"][number]) => void;
   onCancel?: () => void;
   actions?: ActionProposal[];
   actionsError?: boolean;
   initialTab?: string;
   initialActionId?: string;
+  actionLoading?: boolean;
+  actionError?: boolean;
+  onActionRetry?: () => void;
   routineContent?: React.ReactNode;
   memoryContent?: React.ReactNode;
 };
@@ -441,6 +472,7 @@ export function AssistantWorkspaceView({
   messages,
   conversations = [],
   busy = false,
+  readOnly = false,
   error,
   historyLoading = false,
   historyNotice = false,
@@ -455,14 +487,20 @@ export function AssistantWorkspaceView({
   onNew,
   briefing,
   onRecordPick,
+  onChoice,
   onCancel,
   actions = [],
   actionsError,
   initialTab = "Conversa",
   initialActionId,
+  actionLoading = false,
+  actionError = false,
+  onActionRetry,
   routineContent,
   memoryContent,
 }: AssistantWorkspaceViewProps) {
+  const viewportRef = useWorkspaceViewport();
+  const [focusRequest, setFocusRequest] = useState(0);
   const [draft, setDraft] = useState(initialPrompt);
   const [tab, setTab] = useState(initialTab);
   const [pendingOpen, setPendingOpen] = useState(!!initialActionId);
@@ -473,12 +511,21 @@ export function AssistantWorkspaceView({
   const [sidebar, setSidebar] = useState(false);
   const [showContext, setShowContext] = useState(false);
   const tail = useRef<HTMLDivElement>(null);
+  const previousMessageCount = useRef(0);
   useEffect(() => setDraft(initialPrompt), [initialPrompt, bot?.id]);
   useEffect(() => {
-    tail.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (messages.length || busy) {
+      tail.current?.scrollIntoView({
+        block: "nearest",
+        behavior: previousMessageCount.current ? "smooth" : "auto",
+      });
+    } else if (previousMessageCount.current > 0) {
+      tail.current?.closest(".assistant-conversation")?.scrollTo({ top: 0 });
+    }
+    previousMessageCount.current = messages.length;
   }, [messages, busy]);
   function send(text: string) {
-    if (!busy) {
+    if (!busy && !readOnly) {
       onSend(text);
       setDraft("");
     }
@@ -507,23 +554,16 @@ export function AssistantWorkspaceView({
   );
   const results = messages.flatMap((m) => m.results);
   return (
-    <div className="assistant-surface assistant-workspace">
+    <div ref={viewportRef} className="assistant-surface assistant-workspace">
       <aside className="assistant-workspace-sidebar" aria-label="Equipe e conversas">
         {sidebarContent}
       </aside>
       <section className="assistant-workspace-main">
-        <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <header className="assistant-workspace-header flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <button
             type="button"
-            className="assistant-icon-button md:hidden"
+            className="assistant-agent-switcher flex min-w-0 items-center gap-2 rounded-full border border-border bg-muted/20 py-1 pl-1.5 pr-3"
             aria-label="Abrir equipe e conversas"
-            onClick={() => setSidebar(true)}
-          >
-            <Menu size={17} />
-          </button>
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-2 rounded-full border border-border bg-muted/20 py-1 pl-1.5 pr-3"
             onClick={() => setSidebar(true)}
           >
             {bot ? (
@@ -531,7 +571,9 @@ export function AssistantWorkspaceView({
             ) : (
               <AssistantMark size={26} className="m-1" />
             )}
-            <span className="truncate text-xs font-semibold">{bot?.name ?? "Sua equipe"}</span>
+            <span className="truncate text-xs font-semibold">
+              {bot?.name ?? <CordialBotWordmark />}
+            </span>
             <span className="hidden text-[10px] text-muted-foreground sm:inline">
               · {bot?.category ?? "Nova conversa"}
             </span>
@@ -543,6 +585,19 @@ export function AssistantWorkspaceView({
             />
             {busy ? "Trabalhando" : "Você no comando"}
           </span>
+          {actions.some((action) => actionViewState(action) === "pending") && (
+            <button
+              type="button"
+              className="assistant-icon-button relative md:hidden"
+              aria-label={`Precisa de você: ${actions.filter((action) => actionViewState(action) === "pending").length} pendências`}
+              onClick={() => setPendingOpen(true)}
+            >
+              <Check size={17} />
+              <span className="absolute right-0 top-0 rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                {actions.filter((action) => actionViewState(action) === "pending").length}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             className="assistant-icon-button xl:hidden"
@@ -553,7 +608,7 @@ export function AssistantWorkspaceView({
           </button>
           <button
             type="button"
-            className="assistant-icon-button"
+            className="assistant-icon-button !hidden md:!inline-flex"
             aria-label="Preferências do assistente"
             onClick={() => setMemoryOpen(true)}
           >
@@ -562,12 +617,40 @@ export function AssistantWorkspaceView({
           {bot && (
             <a
               href={`/assistente/equipe/${bot.id}`}
-              className="assistant-icon-button"
+              className="assistant-icon-button !hidden md:!inline-flex"
               aria-label={`Sobre ${bot.name}`}
             >
               <Info size={16} />
             </a>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="assistant-icon-button md:hidden"
+                aria-label="Mais opções"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-2xl p-1.5">
+              <DropdownMenuItem
+                className="min-h-11 rounded-xl"
+                onSelect={() => setMemoryOpen(true)}
+              >
+                <SlidersHorizontal size={16} />
+                Preferências
+              </DropdownMenuItem>
+              {bot && (
+                <DropdownMenuItem asChild className="min-h-11 rounded-xl">
+                  <a href={`/assistente/equipe/${bot.id}`}>
+                    <Info size={16} />
+                    Sobre {bot.name}
+                  </a>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
         <div className="assistant-tabs" role="tablist" aria-label="Áreas do agente">
           {tabNames.map((t) => (
@@ -632,7 +715,17 @@ export function AssistantWorkspaceView({
                 </div>
               ) : messages.length === 0 ? (
                 <>
-                  <EmptyStateHero name={name} bots={bots} bot={bot} onChoose={setDraft} />
+                  <EmptyStateHero
+                    compact={!!briefing}
+                    name={name}
+                    bots={bots}
+                    bot={bot}
+                    context={context}
+                    onChoose={(text) => {
+                      setDraft(text);
+                      setFocusRequest((n) => n + 1);
+                    }}
+                  />
                   {briefing}
                 </>
               ) : (
@@ -657,7 +750,14 @@ export function AssistantWorkspaceView({
                         <span className="text-[10px] text-muted-foreground">{bot?.modules[0]}</span>
                       </div>
                       <div className="pl-1 sm:pl-9">
-                        {m.steps && <StepTimeline steps={m.steps} />}
+                        {m.steps && (
+                          <StepTimeline
+                            steps={m.steps}
+                            awaitingChoice={
+                              !!m.choices?.length && i === messages.length - 1 && !busy && !readOnly
+                            }
+                          />
+                        )}
                         <div className="assistant-message-content">
                           {m.content ||
                             (!m.failed && busy && i === messages.length - 1 ? (
@@ -674,16 +774,51 @@ export function AssistantWorkspaceView({
                         {m.results.map((r, j) => (
                           <RichToolResult key={j} result={r} />
                         ))}
+                        {m.choices?.map((choice) => (
+                          <ChoiceQuestion
+                            key={choice.id}
+                            choice={choice}
+                            disabled={busy || readOnly || i !== messages.length - 1}
+                            onChoose={(option) =>
+                              onChoice
+                                ? onChoice(choice, option)
+                                : send(`Sobre “${choice.question}”: ${option.value}`)
+                            }
+                            onOther={() => {
+                              setFocusRequest((request) => request + 1);
+                            }}
+                          />
+                        ))}
+                        {!busy &&
+                          !readOnly &&
+                          bot &&
+                          i === messages.length - 1 &&
+                          !m.choices?.length &&
+                          m.results.length > 0 && (
+                            <div className="mt-4">
+                              <ChoiceChips
+                                choices={contextualSuggestions(bot, context, m.results).slice(0, 2)}
+                                onChoose={(text) => {
+                                  setDraft(text);
+                                  setFocusRequest((n) => n + 1);
+                                }}
+                              />
+                            </div>
+                          )}
                         {m.content && !busy && (
                           <MessageFeedback
                             message={m}
-                            onRetry={() => {
-                              const previous = messages
-                                .slice(0, i)
-                                .reverse()
-                                .find((x) => x.role === "user");
-                              if (previous) setDraft(previous.content);
-                            }}
+                            onRetry={
+                              readOnly
+                                ? undefined
+                                : () => {
+                                    const previous = messages
+                                      .slice(0, i)
+                                      .reverse()
+                                      .find((x) => x.role === "user");
+                                    if (previous) setDraft(previous.content);
+                                  }
+                            }
                           />
                         )}
                       </div>
@@ -714,15 +849,28 @@ export function AssistantWorkspaceView({
               )}
               <div ref={tail} />
             </div>
-            <Composer
-              bot={bot}
-              value={draft}
-              onChange={setDraft}
-              onSend={() => send(draft)}
-              busy={busy}
-              onRecordPick={onRecordPick}
-              onCancel={onCancel}
-            />
+            {readOnly ? (
+              <p
+                role="status"
+                className="border-t border-border p-4 text-center text-sm text-muted-foreground"
+              >
+                {bot
+                  ? "Este agente está pausado. Seu histórico continua disponível."
+                  : "A equipe está pausada. Seu histórico continua disponível."}
+              </p>
+            ) : (
+              <Composer
+                bot={bot}
+                value={draft}
+                onChange={setDraft}
+                onSend={() => send(draft)}
+                busy={busy}
+                onRecordPick={onRecordPick}
+                context={context}
+                focusRequest={focusRequest}
+                onCancel={onCancel}
+              />
+            )}
           </>
         ) : tab === "Rotinas" ? (
           (routineContent ?? <RoutinesTab bot={bot} />)
@@ -784,7 +932,10 @@ export function AssistantWorkspaceView({
         />
       </aside>
       <Sheet open={pendingOpen} onOpenChange={setPendingOpen}>
-        <SheetContent closeLabel="Fechar pendências" className="!w-full !max-w-lg overflow-y-auto">
+        <SheetContent
+          closeLabel="Fechar pendências"
+          className="assistant-panel !w-full !max-w-lg overflow-y-auto"
+        >
           <SheetHeader>
             <SheetTitle>Precisa de você</SheetTitle>
             <SheetDescription className="sr-only">
@@ -792,6 +943,21 @@ export function AssistantWorkspaceView({
             </SheetDescription>
           </SheetHeader>
           <div className="mt-6 space-y-4">
+            {actionLoading && (
+              <p role="status" className="text-sm text-muted-foreground">
+                Carregando proposta…
+              </p>
+            )}
+            {actionError && (
+              <div role="alert" className="rounded-xl bg-muted p-3 text-sm">
+                <p>Não foi possível abrir esta proposta com seu acesso atual.</p>
+                {onActionRetry && (
+                  <button type="button" className="assistant-chip mt-3" onClick={onActionRetry}>
+                    Tentar novamente
+                  </button>
+                )}
+              </div>
+            )}
             {actions
               .filter(
                 (action) => actionViewState(action) === "pending" || action.id === initialActionId,
@@ -799,16 +965,18 @@ export function AssistantWorkspaceView({
               .map((action) => (
                 <AssistantActionCard key={action.id} action={action} />
               ))}
-            {!actions.some(
-              (action) => actionViewState(action) === "pending" || action.id === initialActionId,
-            ) && <p className="text-xs text-muted-foreground">Nenhuma proposta pendente.</p>}
+            {!actionLoading &&
+              !actionError &&
+              !actions.some(
+                (action) => actionViewState(action) === "pending" || action.id === initialActionId,
+              ) && <p className="text-xs text-muted-foreground">Nenhuma proposta pendente.</p>}
           </div>
         </SheetContent>
       </Sheet>
       <Sheet open={memoryOpen} onOpenChange={setMemoryOpen}>
         <SheetContent
           closeLabel="Fechar preferências"
-          className="!w-full !max-w-md overflow-y-auto"
+          className="assistant-panel !w-full !max-w-md overflow-y-auto"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Preferências</SheetTitle>
@@ -827,7 +995,7 @@ export function AssistantWorkspaceView({
         <SheetContent
           side="left"
           closeLabel="Fechar equipe"
-          className="!w-[min(86vw,300px)] overflow-y-auto !rounded-r-3xl !p-5"
+          className="assistant-panel !w-[min(86vw,300px)] overflow-y-auto !rounded-r-3xl !p-5"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Equipe e conversas</SheetTitle>
@@ -841,7 +1009,7 @@ export function AssistantWorkspaceView({
       <Sheet open={showContext} onOpenChange={setShowContext}>
         <SheetContent
           closeLabel="Fechar contexto"
-          className="!w-[min(90vw,360px)] overflow-y-auto !rounded-l-3xl"
+          className="assistant-panel !w-[min(90vw,360px)] overflow-y-auto !rounded-l-3xl"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Registro em foco</SheetTitle>
@@ -884,17 +1052,47 @@ export function AgentWorkspace({
 }) {
   const session = useSession();
   const navigate = useNavigate();
-  const bots = allowedBotsForRole(session?.perfil ?? "");
-  const bot = botId ? getAgentBot(botId) : undefined;
+  const catalog = useAssistantCatalog();
+  const bots = catalog.bots;
+  const defaultBot = bots.find((entry) => entry.active);
+  const linkedAction = useAssistantAction(actionId);
+  const effectiveBotId = botId ?? linkedAction.data?.botId;
+  const bot = effectiveBotId ? bots.find((entry) => entry.id === effectiveBotId) : undefined;
+  const [handoffDraft, setHandoffDraft] = useState<string>();
+  useEffect(() => {
+    if (session && botId) setHandoffDraft(takeAssistantDraft(session.id, botId));
+  }, [session?.id, botId]);
   const [selectedContext, setSelectedContext] = useState(context);
   useEffect(() => setSelectedContext(context), [context?.kind, context?.id, botId]);
-  const activeContext = contextForActiveBot(botId ?? "agenda", selectedContext);
-  const chat = useAssistant(botId ?? "agenda", conversationId, activeContext);
+  const conversationBotId = effectiveBotId ?? defaultBot?.id ?? bots[0]?.id;
+  const activeContext = conversationBotId
+    ? contextForActiveBot(conversationBotId, selectedContext)
+    : undefined;
+  const chat = useAssistant(conversationBotId ?? "agenda", conversationId, activeContext);
   const focus = useAssistantContext(selectedContext);
   const actions = useAssistantActions();
   const control = useAssistantControls(routineId ? undefined : botId, runId);
   if (!session) return null;
-  if (botId && (!bot || !bot.active || !bots.some((b) => b.id === botId)))
+  if (catalog.isLoading)
+    return (
+      <div className="assistant-surface p-8" role="status">
+        Carregando sua equipe…
+      </div>
+    );
+  if (catalog.isError)
+    return (
+      <div className="assistant-surface p-8" role="alert">
+        <p>Não foi possível carregar sua equipe.</p>
+        <button
+          type="button"
+          className="assistant-chip mt-4"
+          onClick={() => void catalog.refetch()}
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  if (botId && (!bot || (!bot.active && !conversationId) || !bots.some((b) => b.id === botId)))
     return (
       <div className="assistant-surface p-10 text-center">
         <p className="text-sm">Este agente não está disponível para conversa.</p>
@@ -906,9 +1104,19 @@ export function AgentWorkspace({
   const go = (id: string) => void navigate({ to: "/assistente/$botId", params: { botId: id } });
   return (
     <AssistantWorkspaceView
-      actions={actions.data ?? []}
+      actions={
+        linkedAction.data
+          ? [
+              linkedAction.data,
+              ...(actions.data ?? []).filter((row) => row.id !== linkedAction.data?.id),
+            ]
+          : (actions.data ?? [])
+      }
       actionsError={actions.isError}
       initialActionId={actionId}
+      actionLoading={!!actionId && linkedAction.isLoading}
+      actionError={!!actionId && linkedAction.isError}
+      onActionRetry={() => void linkedAction.refetch()}
       initialTab={initialTab}
       memoryContent={
         <MemoryPanelView
@@ -971,6 +1179,7 @@ export function AgentWorkspace({
       messages={chat.messages}
       conversations={chat.conversations}
       busy={chat.busy}
+      readOnly={(!!bot && !bot.active) || !bots.some((entry) => entry.active)}
       error={
         chat.error ?? (chat.historyError ? "Não foi possível carregar a conversa salva." : null)
       }
@@ -982,12 +1191,13 @@ export function AgentWorkspace({
       contextResult={focus.data}
       contextLoading={focus.isLoading && !!selectedContext}
       contextError={focus.isError}
-      initialPrompt={prompt}
+      initialPrompt={handoffDraft ?? prompt}
       onSend={(text) => {
         if (!bot) {
+          if (!defaultBot) return;
           void navigate({
             to: "/assistente/$botId",
-            params: { botId: "agenda" },
+            params: { botId: defaultBot.id },
             search: { prompt: text },
           });
           return;
@@ -995,16 +1205,22 @@ export function AgentWorkspace({
         void chat.send(text);
       }}
       onBotChange={go}
-      onConversation={(id) =>
-        void navigate({
-          to: "/assistente/$botId",
-          params: { botId: botId ?? "agenda" },
-          search: { conversation: id },
-        })
-      }
+      onConversation={(id) => {
+        const target =
+          chat.conversations.find((conversation) => conversation.id === id)?.bot_id ??
+          conversationBotId;
+        if (target)
+          void navigate({
+            to: "/assistente/$botId",
+            params: { botId: target },
+            search: { conversation: id },
+          });
+      }}
       onNew={() => {
+        const target = bot?.active ? bot : defaultBot;
+        if (!target) return;
         chat.reset();
-        void navigate({ to: "/assistente/$botId", params: { botId: botId ?? "agenda" } });
+        void navigate({ to: "/assistente/$botId", params: { botId: target.id } });
       }}
       briefing={<DailyBriefing compact />}
     />

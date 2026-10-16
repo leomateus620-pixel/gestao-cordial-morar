@@ -42,6 +42,7 @@ test(
       const shared: AgentContext[] = [];
       const result = await runAssistantRoutines(999, {
         admin,
+        assertBotEnabled: async () => {},
         contextForUser: async (userId) => {
           rotations.push(userId);
           const context = {
@@ -157,6 +158,7 @@ test("provider setup failures do not revoke OAuth and grant contention does not 
       };
       const result = await runAssistantRoutines(1, {
         admin,
+        assertBotEnabled: async () => {},
         contextForUser: async () => {
           if (code === "delegation_busy") throw new Error(code);
           return context;

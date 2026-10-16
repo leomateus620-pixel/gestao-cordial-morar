@@ -1,5 +1,5 @@
 import { AtSign, ArrowRight, Check, Loader2, Mic, Paperclip, Square, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AgentBot } from "@/lib/agent/bots";
 import type { AssistantRecordContext } from "@/lib/agent/use-assistant";
 import { searchAssistantRecords } from "@/lib/agent/search.functions";
@@ -36,7 +36,9 @@ export type ComposerProps = {
   onChange(value: string): void;
   onSend(): void;
   busy?: boolean;
-  onRecordPick?(record: AssistantRecordContext): void;
+  onRecordPick?(record?: AssistantRecordContext): void;
+  context?: AssistantRecordContext;
+  focusRequest?: number;
   onCancel?(): void;
 };
 
@@ -49,8 +51,20 @@ export function Composer({
   busy = false,
   onRecordPick,
   onCancel,
+  context,
+  focusRequest = 0,
 }: ComposerProps) {
   const input = useRef<HTMLTextAreaElement>(null);
+  const listId = useId();
+  const [activeRecord, setActiveRecord] = useState(0);
+  useEffect(() => {
+    if (focusRequest) input.current?.focus();
+  }, [focusRequest]);
+  useEffect(() => {
+    setPicked((previous) =>
+      previous?.id === context?.id && previous?.kind === context?.kind ? previous : null,
+    );
+  }, [context?.id, context?.kind]);
   const recognition = useRef<Recognition | null>(null);
   const [menu, setMenu] = useState<"slash" | "mention" | null>(null);
   const mentionKinds = (["client", "property"] as const).filter(
@@ -120,6 +134,17 @@ export function Composer({
       abort.abort();
     };
   }, [menu, kind, query]);
+  useEffect(() => setActiveRecord(0), [records]);
+  useEffect(() => {
+    document.getElementById(`${listId}-${activeRecord}`)?.scrollIntoView({ block: "nearest" });
+  }, [activeRecord, listId]);
+  function chooseRecord(record: Mention) {
+    setPicked(record);
+    onRecordPick?.({ kind: record.kind, id: record.id });
+    onChange(`${value === "@" ? "" : value.trim()} @${record.label} `.trimStart().slice(0, 4000));
+    setMenu(null);
+    input.current?.focus();
+  }
   function submit() {
     if (!busy && value.trim()) {
       recognition.current?.stop();
@@ -176,11 +201,23 @@ export function Composer({
           submit();
         }}
       >
-        {picked && (
-          <p className="mb-2 inline-flex max-w-full items-center gap-1 rounded-full bg-primary/8 px-2.5 py-1 text-[10px] text-primary">
+        {(picked || context) && (
+          <div className="mb-2 inline-flex max-w-full items-center gap-1 rounded-full bg-primary/8 pl-2.5 pr-1 text-xs text-primary">
             <Check size={11} />
-            <span className="truncate">Em foco: {picked.label}</span>
-          </p>
+            <span className="truncate">Em foco: {picked?.label ?? "registro selecionado"}</span>
+            <button
+              type="button"
+              aria-label="Remover registro em foco"
+              className="assistant-icon-button !size-8"
+              disabled={busy}
+              onClick={() => {
+                setPicked(null);
+                onRecordPick?.(undefined);
+              }}
+            >
+              <X size={13} />
+            </button>
+          </div>
         )}
         {menu && (
           <div className="mb-3 rounded-xl border border-border bg-card p-2">
@@ -235,6 +272,32 @@ export function Composer({
                   className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder={kind === "client" ? "Nome do cliente" : "Código, bairro ou cidade"}
                   aria-label="Buscar registro para mencionar"
+                  autoFocus
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={records.length > 0}
+                  aria-controls={listId}
+                  aria-activedescendant={records.length ? `${listId}-${activeRecord}` : undefined}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setMenu(null);
+                      input.current?.focus();
+                    }
+                    if (records.length && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+                      event.preventDefault();
+                      setActiveRecord(
+                        (index) =>
+                          (index + (event.key === "ArrowDown" ? 1 : records.length - 1)) %
+                          records.length,
+                      );
+                    }
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      if (records[activeRecord]) chooseRecord(records[activeRecord]);
+                    }
+                  }}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   maxLength={80}
@@ -249,23 +312,22 @@ export function Composer({
                     {error}
                   </p>
                 ) : records.length ? (
-                  <ul className="max-h-40 overflow-y-auto">
-                    {records.map((record) => (
-                      <li key={record.id}>
+                  <ul
+                    id={listId}
+                    role="listbox"
+                    aria-label="Registros encontrados"
+                    className="max-h-48 overflow-y-auto"
+                  >
+                    {records.map((record, index) => (
+                      <li key={record.id} role="none">
                         <button
                           type="button"
-                          className="w-full rounded-lg p-2 text-left hover:bg-muted focus-visible:outline-ring"
-                          onClick={() => {
-                            setPicked(record);
-                            onRecordPick?.({ kind: record.kind, id: record.id });
-                            onChange(
-                              `${value === "@" ? "" : value.trim()} @${record.label} `
-                                .trimStart()
-                                .slice(0, 4000),
-                            );
-                            setMenu(null);
-                            input.current?.focus();
-                          }}
+                          id={`${listId}-${index}`}
+                          role="option"
+                          aria-selected={activeRecord === index}
+                          className={`min-h-11 w-full rounded-lg p-2 text-left hover:bg-muted focus-visible:outline-ring ${activeRecord === index ? "bg-primary/8" : ""}`}
+                          onPointerMove={() => setActiveRecord(index)}
+                          onClick={() => chooseRecord(record)}
                         >
                           <span className="block text-xs font-medium">{record.label}</span>
                           <span className="mt-1 block text-[10px] text-muted-foreground">
@@ -308,7 +370,10 @@ export function Composer({
               event.preventDefault();
               submit();
             }
-            if (event.key === "Escape") setMenu(null);
+            if (event.key === "Escape" && menu) {
+              event.stopPropagation();
+              setMenu(null);
+            }
           }}
         />
         <div className="flex items-center justify-between">

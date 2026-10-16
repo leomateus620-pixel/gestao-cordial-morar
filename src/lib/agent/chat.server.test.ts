@@ -419,3 +419,41 @@ test("model supplied links and HTML are never actionable output", () => {
     false,
   );
 });
+
+test("structured choice ends the turn without executing later tools or inventing prose", async () => {
+  const s = setup();
+  s.deps.gateway = async () => ({
+    text: "Você tem 99 visitas",
+    calls: [
+      call(
+        "request_user_choice",
+        "choose-period",
+        JSON.stringify({ question: "Qual período?", choices: ["Hoje", "Amanhã"] }),
+      ),
+      call("agenda_today", "should-not-run"),
+    ],
+  });
+  const events = await run(s.deps);
+  assert.equal(s.executions.length, 0);
+  const choice = events.find((e) => e.type === "choice");
+  assert(choice?.type === "choice");
+  assert.deepEqual(
+    choice.choice.options.map((o) => o.value),
+    ["Hoje", "Amanhã"],
+  );
+  assert.equal(text(events), "");
+  assert.equal(s.requests.length, 0);
+  assert.equal(events.at(-1)?.type, "done");
+  assert(!JSON.stringify(s.saved).includes("Qual período"));
+});
+
+test("availability is rechecked before consulting any tool", async () => {
+  const s = setup();
+  let checks = 0;
+  s.deps.validateBot = async () => {
+    if (++checks === 2) throw new Error("bot_disabled");
+  };
+  const events = await run(s.deps);
+  assert.equal(s.executions.length, 0);
+  assert(!events.some((e) => e.type === "result"));
+});

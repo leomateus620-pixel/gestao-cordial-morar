@@ -101,9 +101,7 @@ export function GlobalSearchBar({ className }: Props) {
             className="mb-1 flex w-full items-center gap-2 rounded-2xl bg-primary/5 px-3 py-3 text-left text-xs font-semibold text-primary"
           >
             <AssistantMark className="size-4" />
-            {query.trim()
-              ? `Perguntar à equipe: “${query.trim()}”`
-              : "Conversar com o Assistente Cordial"}
+            {query.trim() ? `Perguntar à equipe: “${query.trim()}”` : "Conversar com o Cordial Bot"}
           </button>
           {!hasQuery ? (
             <p className="px-3 py-3 text-xs text-foreground/50">

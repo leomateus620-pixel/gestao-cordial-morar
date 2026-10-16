@@ -8,8 +8,11 @@ import {
   getAssistantContext,
 } from "./assistant.functions";
 import { readAssistantStream, type AssistantResult, type AssistantStep } from "./stream";
-import { listAssistantActions } from "./actions.functions";
+import { getAssistantAction, listAssistantActions } from "./actions.functions";
 import { useSession } from "@/lib/auth-mock";
+import type { AssistantChoice } from "./choices";
+import { getAssistantCatalog } from "./bot-config.functions";
+import type { AgentBot } from "./bots";
 export type AssistantRecordContext = {
   kind: "property" | "client" | "attendance" | "rental" | "agenciamento" | "agenda";
   id: string;
@@ -22,6 +25,7 @@ export type ChatMessage = {
   steps?: AssistantStep[];
   created_at?: string;
   failed?: boolean;
+  choices?: AssistantChoice[];
 };
 export function useAssistant(
   botId: string,
@@ -64,8 +68,9 @@ export function useAssistant(
     enabled: !!session && !!initialConversation,
   });
   useEffect(() => {
-    if (history.data) setMessages(history.data as ChatMessage[]);
-  }, [history.data]);
+    if (history.isError) setMessages([]);
+    else if (history.data) setMessages(history.data as ChatMessage[]);
+  }, [history.data, history.isError]);
   function cancel() {
     controller.current?.abort();
     generation.current++;
@@ -119,6 +124,8 @@ export function useAssistant(
           return;
         if (event.type === "conversation") setConversationId(event.id);
         if (event.type === "text") update((m) => ({ ...m, content: m.content + event.delta }));
+        if (event.type === "choice")
+          update((m) => ({ ...m, choices: [...(m.choices ?? []), event.choice] }));
         if (event.type === "step")
           update((m) => ({
             ...m,
@@ -138,6 +145,7 @@ export function useAssistant(
       if (alive.current && version === generation.current && !activeController.signal.aborted) {
         setError(err instanceof Error ? err.message : "Não foi possível conversar agora.");
         update((m) => ({ ...m, failed: true }));
+        void qc.invalidateQueries({ queryKey: ["assistant-catalog"] });
       }
     } finally {
       if (alive.current && version === generation.current) setBusy(false);
@@ -169,21 +177,55 @@ export function useAssistantBriefing() {
 }
 export function useAssistantContext(context?: AssistantRecordContext) {
   const session = useSession();
-  return useQuery({
+  const query = useQuery({
     queryKey: ["assistant-context", session?.id, context],
     queryFn: () => getAssistantContext({ data: context! }),
     enabled: !!session && !!context,
     staleTime: 30_000,
     retry: 1,
   });
+  return { ...query, data: query.isError ? undefined : query.data };
 }
 
 export function useAssistantActions(conversationId?: string) {
   const session = useSession();
-  return useQuery({
+  const query = useQuery({
     queryKey: ["assistant-actions", session?.id, conversationId],
     queryFn: () => listAssistantActions({ data: { conversationId } }),
     enabled: !!session,
     refetchInterval: 15000,
   });
+  return { ...query, data: query.isError ? undefined : query.data };
+}
+
+/** The server owns availability and editable prompts. No static fallback on failure. */
+export function useAssistantCatalog() {
+  const session = useSession();
+  const query = useQuery({
+    queryKey: ["assistant-catalog", session?.id, session?.perfil],
+    queryFn: () => getAssistantCatalog(),
+    enabled: !!session,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
+  });
+  return {
+    ...query,
+    bots: (query.isError ? [] : (query.data ?? [])).map((bot) => ({
+      ...bot,
+      instructions: "",
+    })) as AgentBot[],
+  };
+}
+
+export function useAssistantAction(actionId?: string) {
+  const session = useSession();
+  const query = useQuery({
+    queryKey: ["assistant-action", session?.id, actionId],
+    queryFn: () => getAssistantAction({ data: { actionId: actionId! } }),
+    enabled: !!session && !!actionId,
+    staleTime: 0,
+    retry: 1,
+  });
+  return { ...query, data: query.isError ? undefined : query.data };
 }

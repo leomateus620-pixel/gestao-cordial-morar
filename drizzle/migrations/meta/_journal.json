@@ -134,6 +134,20 @@
       "when": 1792134658181,
       "tag": "0018_assistant_routine_revision_claim",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792145000000,
+      "tag": "0019_assistant_bot_configuration",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792150000000,
+      "tag": "0020_assistant_routine_compatibility",
+      "breakpoints": true
     }
   ]
 }

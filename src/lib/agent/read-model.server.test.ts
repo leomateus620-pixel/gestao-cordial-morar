@@ -218,3 +218,29 @@ test("history generic context references remain within the conversation bot's mo
   }
   assert.equal(queries, 0);
 });
+
+test("disabled bots preserve stored history without refreshing business data", async () => {
+  const { getAgentBot } = await import("./bots");
+  let queries = 0;
+  const rows: AssistantMessage[] = [
+    {
+      id: "disabled",
+      role: "assistant",
+      bot_id: "agenda",
+      content: "old",
+      created_at: "2026-10-16T10:00:00Z",
+      results: [{ tool: "agenda_today", data: { params: {} } }],
+    },
+  ];
+  const result = await rehydrateAssistantHistory(rows, ctx, {
+    resolveBot: async () => ({ ...getAgentBot("agenda")!, active: false }),
+    execute: async () => {
+      queries++;
+      throw new Error("must not query");
+    },
+    audit: async () => {},
+  });
+  assert.equal(queries, 0);
+  assert.equal(result[0].results[0].data.status, "unavailable");
+  assert.equal(rows[0].content, "old");
+});

@@ -4,9 +4,10 @@ import type { AgentToolResult } from "./tools/types";
 import type { AssistantMessage, AssistantResult } from "./stream";
 import { maskAgentOutput } from "./masking";
 import { ASSISTANT_HISTORY_TEXT } from "./scope";
-import { assertBotToolScope, getAgentBot } from "./bots";
+import { assertBotToolScope, getAgentBot, type AgentBot } from "./bots";
 
 type ReadDeps = {
+  resolveBot?(id: string): Promise<AgentBot | undefined>;
   readAction?(ctx: AgentContext, id: string): Promise<unknown>;
   execute(name: string, input: unknown, ctx: AgentContext): Promise<AgentToolResult>;
   audit(
@@ -46,8 +47,10 @@ export async function rehydrateAssistantHistory(
         const params = ref.data?.params;
         if (!params || typeof params !== "object" || Array.isArray(params))
           throw new Error("invalid_reference");
-        const bot = getAgentBot(row.bot_id ?? "");
-        if (!bot) throw new Error("invalid_bot_reference");
+        const bot = deps.resolveBot
+          ? await deps.resolveBot(row.bot_id ?? "")
+          : getAgentBot(row.bot_id ?? "");
+        if (!bot?.active) throw new Error("invalid_bot_reference");
         assertBotToolScope(bot, ref.tool, params);
         // Never replay preparation: that would create new proposals merely by
         // reopening history. Actions keep only their opaque ID and are reread.

@@ -12,6 +12,9 @@ export const routineTools: AgentTool[] = [
     roles: ["admin", "secretaria", "corretor"],
     inputSchema: z.object({ message: z.string().trim().min(4).max(1000) }).strict(),
     async handler(input, ctx) {
+      const { assertAssistantBotEnabled } = await import("./bot-config.server");
+      if (!ctx.agentBotId) throw new Error("Escolha um agente para preparar esta rotina.");
+      await assertAssistantBotEnabled(ctx, ctx.agentBotId);
       const out = proposeRoutine(input.message),
         role = effectiveRole(ctx);
       if (
@@ -38,7 +41,10 @@ export const routineTools: AgentTool[] = [
       "Prepara somente tom, bairros de foco e horários pessoais. Nunca guarda proprietários, contatos, documentos ou instruções livres. Exige confirmação na UI.",
     roles: ["admin", "secretaria", "corretor", "financeiro"],
     inputSchema: z.object({ preferences: memoryPreferences }).strict(),
-    async handler(input) {
+    async handler(input, ctx) {
+      const { assertAssistantBotEnabled } = await import("./bot-config.server");
+      if (!ctx.agentBotId) throw new Error("Escolha um agente para preparar esta preferência.");
+      await assertAssistantBotEnabled(ctx, ctx.agentBotId);
       return {
         content: [{ type: "text", text: "Revise suas preferências e confirme para salvar." }],
         structuredContent: { memoryProposal: input.preferences, confirmationRequired: true },

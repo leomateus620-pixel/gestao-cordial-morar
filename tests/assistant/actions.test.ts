@@ -7,7 +7,7 @@ const u = "10000000-0000-4000-8000-000000000001",
   att = "20000000-0000-4000-8000-000000000001",
   prop = "30000000-0000-4000-8000-000000000001";
 const proof = "40000000-0000-4000-8000-000000000001";
-async function setup(withAgencyCorrection = true) {
+async function setup(withAgencyCorrection = true, withEcosystem = false) {
   const db = new PGlite();
   await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY);
  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -67,6 +67,20 @@ async function setup(withAgencyCorrection = true) {
         "utf8",
       ),
     );
+  if (withEcosystem) {
+    await db.exec(`CREATE SCHEMA vault;CREATE TABLE vault.secrets(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),secret text,name text);CREATE VIEW vault.decrypted_secrets AS SELECT id,secret AS decrypted_secret,name FROM vault.secrets;
+      CREATE FUNCTION vault.create_secret(value text) RETURNS uuid LANGUAGE sql AS $$INSERT INTO vault.secrets(secret) VALUES(value) RETURNING id$$;
+      CREATE FUNCTION vault.update_secret(sid uuid,value text) RETURNS void LANGUAGE sql AS $$UPDATE vault.secrets SET secret=value WHERE id=sid$$;
+      CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,tipo text,category text,titulo text,mensagem text,link text,lida boolean,dedup_key text,entity_type text,entity_id uuid);CREATE UNIQUE INDEX notification_dedup ON notifications(dedup_key) WHERE dedup_key IS NOT NULL;`);
+    for (const file of [
+      "0016_assistant_proactive.sql",
+      "0018_assistant_routine_revision_claim.sql",
+      "0019_assistant_bot_configuration.sql",
+    ])
+      await db.exec(
+        await readFile(new URL(`../../drizzle/migrations/${file}`, import.meta.url), "utf8"),
+      );
+  }
   await assume(db, u);
   return db;
 }
@@ -457,6 +471,104 @@ test("agency access keeps the privileged helper private while authenticated acti
       () => db.query("SELECT has_notification_agency_access($1,'cordial')", [u]),
       /permission denied/,
     );
+  } finally {
+    await db.close();
+  }
+});
+
+test("configured external command keeps invoker business effects atomic and never re-executes after revocation/reapproval", async () => {
+  const db = await setup(true, true);
+  const client = "external-test-client",
+    request = crypto.randomUUID(),
+    action = crypto.randomUUID();
+  try {
+    await db.exec("RESET ROLE;");
+    await db.query("UPDATE user_roles SET role='admin' WHERE user_id=$1", [other]);
+    await assume(db, other);
+    await db.query("SELECT assistant_mcp_client_set($1,'Fixture',true,0,true)", [client]);
+    const row = {
+      id: action,
+      type: "attendance_note",
+      bot_id: "lead",
+      scope_key: "corretor:cordial",
+      payload: { attendanceId: att, text: "Nota externa fixture" },
+      expected_state: {},
+    };
+    await db.exec("RESET ROLE;SET ROLE service_role;");
+    await db.query("SELECT assistant_external_action_prepare($1,$2,1,$3,$4,$5)", [
+      u,
+      client,
+      request,
+      "a".repeat(64),
+      row,
+    ]);
+    const authorized = (
+      await db.query<any>(
+        "SELECT assistant_action_authorize($1,$2,'corretor:cordial',1,$3) AS proof",
+        [action, u, proof],
+      )
+    ).rows[0].proof;
+    await assume(db, u);
+    const first = await execute(db, action, 1, authorized);
+    assert.equal(first.status, "executed");
+    assert.equal((await db.query("SELECT * FROM attendance_history")).rows.length, 1);
+    assert.equal((await db.query("SELECT * FROM assistant_action_receipts")).rows.length, 1);
+    assert.equal((await execute(db, action, 1, authorized)).status, "executed");
+    assert.equal((await db.query("SELECT * FROM attendance_history")).rows.length, 1);
+    await assume(db, other);
+    await db.query("SELECT assistant_mcp_client_set($1,'Fixture',false,1,true)", [client]);
+    await assume(db, u);
+    await assert.rejects(() => execute(db, action, 1, authorized), /external_client_unavailable/);
+    await assume(db, other);
+    await db.query("SELECT assistant_mcp_client_set($1,'Fixture',true,2,true)", [client]);
+    await assume(db, u);
+    await assert.rejects(() => execute(db, action, 1, authorized), /external_client_unavailable/);
+    assert.equal(
+      (await db.query<any>("SELECT status FROM assistant_actions WHERE id=$1", [action])).rows[0]
+        .status,
+      "executed",
+    );
+    assert.equal((await db.query("SELECT * FROM attendance_history")).rows.length, 1);
+    await db.exec("RESET ROLE;SET ROLE service_role;");
+    await assert.rejects(
+      () =>
+        db.query("SELECT assistant_external_action_prepare($1,$2,3,$3,$4,$5)", [
+          u,
+          client,
+          request,
+          "a".repeat(64),
+          row,
+        ]),
+      /external_request_conflict/,
+    );
+    const next = crypto.randomUUID();
+    await db.query("SELECT assistant_external_action_prepare($1,$2,3,$3,$4,$5)", [
+      u,
+      client,
+      crypto.randomUUID(),
+      "b".repeat(64),
+      { ...row, id: next },
+    ]);
+    await db.query("SELECT assistant_action_authorize($1,$2,'corretor:cordial',1,$3)", [
+      next,
+      u,
+      proof,
+    ]);
+    await db.exec(
+      `RESET ROLE;CREATE FUNCTION fail_configured_receipt() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'fixture_receipt_failure';END$$;CREATE TRIGGER fail_configured_receipt BEFORE INSERT ON assistant_action_receipts FOR EACH ROW EXECUTE FUNCTION fail_configured_receipt();`,
+    );
+    await assume(db, u);
+    await assert.rejects(() => execute(db, next), /fixture_receipt_failure/);
+    assert.equal((await db.query("SELECT * FROM attendance_history")).rows.length, 1);
+    assert.equal(
+      (await db.query<any>("SELECT status FROM assistant_actions WHERE id=$1", [next])).rows[0]
+        .status,
+      "pending",
+    );
+    await db.exec("RESET ROLE;DROP TRIGGER fail_configured_receipt ON assistant_action_receipts;");
+    await assume(db, u);
+    assert.equal((await execute(db, next)).status, "executed");
+    assert.equal((await db.query("SELECT * FROM attendance_history")).rows.length, 2);
   } finally {
     await db.close();
   }
