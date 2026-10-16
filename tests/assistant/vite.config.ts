@@ -10,6 +10,11 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^\.\/assistant\.functions$/, replacement: fixture },
+      { find: /^\.\/actions\.functions$/, replacement: fixture },
+      { find: "@/lib/agent/actions.functions", replacement: fixture },
+      { find: "@/lib/agent/routines.functions", replacement: fixture },
+      { find: "@/lib/agent/memory.functions", replacement: fixture },
+      { find: "@/lib/agent/delegation.functions", replacement: fixture },
       { find: "@/lib/agent/assistant.functions", replacement: fixture },
       { find: "@/lib/agent/search.functions", replacement: fixture },
       { find: "@", replacement: `${root}src` },

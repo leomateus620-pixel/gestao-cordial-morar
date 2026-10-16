@@ -32,10 +32,11 @@ test("each record suggests a colleague with the matching specialty", () => {
   assert.equal(preferredBotForContext(), "agenda");
 });
 
-test("inactive rental colleague exposes no unsupported chat prompts or context", () => {
+test("rental context is only exposed to the active rental colleague", () => {
   const rental = { kind: "rental", id } as const;
-  assert.deepEqual(contextSuggestions(rental), []);
-  for (const bot of ["agenda", "match", "capta", "lead", "caixa"])
+  assert.ok(contextSuggestions(rental).length > 0);
+  assert.deepEqual(contextForActiveBot("caixa", rental), rental);
+  for (const bot of ["agenda", "match", "capta", "lead"])
     assert.equal(contextForActiveBot(bot, rental), undefined);
 });
 
@@ -44,7 +45,7 @@ test("changing colleagues drops incompatible context without borrowing another m
   const attendance = { kind: "attendance", id } as const;
   assert.deepEqual(contextForActiveBot("match", client), client);
   assert.deepEqual(contextForActiveBot("lead", attendance), attendance);
-  assert.equal(contextForActiveBot("agenda", attendance), undefined);
+  assert.deepEqual(contextForActiveBot("agenda", attendance), attendance);
   assert.equal(contextForActiveBot("capta", client), undefined);
   assert.equal(contextForActiveBot("missing", client), undefined);
   assert.equal(contextForActiveBot("agenda"), undefined);

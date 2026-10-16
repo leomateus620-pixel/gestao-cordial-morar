@@ -63,7 +63,7 @@ export function contextSuggestions(context?: RecordContext): string[] {
         "Quais dados preciso revisar?",
       ];
     case "rental":
-      return [];
+      return ["Resuma este contrato", "Quais pendências registradas preciso conferir?"];
     case "agenciamento":
       return ["Quais pendências há neste agenciamento?", "Resuma esta captação"];
     case "agenda":

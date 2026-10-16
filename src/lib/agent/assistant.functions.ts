@@ -59,13 +59,40 @@ export const chatAssistant = createServerFn({ method: "POST" })
     const model = /analis|compar|carteira|relat[oó]rio|cen[aá]rio|tend[eê]ncia/i.test(data.message)
       ? process.env.ASSISTANT_ANALYSIS_MODEL || "google/gemini-3.1-pro-preview"
       : fastModel;
+    const { memoryPreferences } = await import("./memory.schemas");
+    const memory = await ctx.supabase
+      .from("assistant_memory")
+      .select("preferences")
+      .eq("user_id", ctx.userId)
+      .maybeSingle();
+    if (memory.error)
+      throw new Error(
+        "Não foi possível consultar suas preferências. Confira a configuração do assistente.",
+      );
+    const preferences = memory.data
+      ? memoryPreferences.safeParse(memory.data.preferences)
+      : undefined;
     return createAssistantResponse(data, {
       bot,
       ctx,
       tools: [...agentTools],
       persistence,
+      preferences: preferences?.success ? preferences.data : undefined,
       signal: getRequest().signal,
-      gateway: (request) => lovableCompletion(request, { apiKey: key, model }),
+      gateway: async (request) => {
+        const started = Date.now();
+        const completion = await lovableCompletion(request, { apiKey: key, model });
+        const { recordAssistantUsage } = await import("./usage.server");
+        await recordAssistantUsage({
+          userId: ctx.userId,
+          botId: bot.id,
+          conversationId: persistence.conversationId,
+          model,
+          usage: completion.usage,
+          durationMs: Date.now() - started,
+        });
+        return completion;
+      },
       execute: executeAgentTool,
     });
   });

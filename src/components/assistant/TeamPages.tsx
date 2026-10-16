@@ -275,10 +275,10 @@ export function BotPresentationView({ bot }: { bot: AgentBot }) {
               />
             </summary>
             <div className="mt-4 text-xs leading-relaxed text-muted-foreground">
-              <p>Por enquanto, somente consultas.</p>
+              <p>As ações abaixo são preparadas para sua revisão.</p>
               {bot.futureActions.length > 0 && (
                 <>
-                  <p className="mt-3">Ações planejadas:</p>
+                  <p className="mt-3">Após sua confirmação:</p>
                   <ul className="mt-2 space-y-3">
                     {bot.futureActions.map((action) => (
                       <li key={action}>
@@ -348,7 +348,7 @@ export function BotPresentationView({ bot }: { bot: AgentBot }) {
               />
             </summary>
             <p className="mt-4 text-[11px] text-muted-foreground">
-              Sugestões futuras; nenhuma rotina ativa.
+              Crie e acompanhe suas rotinas na aba Rotinas.
             </p>
             <ul className="mt-3 space-y-2">
               {bot.routines.map((routine) => (

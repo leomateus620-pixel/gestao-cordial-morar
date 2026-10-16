@@ -26,13 +26,12 @@ test("role catalog exposes only operational bots and reserves management capabil
   );
   assert.equal(allowedBotsForRole("admin_owner").length, 7);
   assert.deepEqual(allowedBotsForRole("unknown"), []);
-  for (const role of ["admin", "secretaria", "corretor"]) {
-    assert.deepEqual(
-      allowedBotsForRole(role)
-        .filter((b) => b.active)
-        .map((b) => b.id),
-      ["agenda", "match", "capta", "lead"],
-    );
+  for (const [role, count] of [
+    ["admin", 7],
+    ["secretaria", 5],
+    ["corretor", 4],
+  ] as const) {
+    assert.equal(allowedBotsForRole(role).filter((bot) => bot.active).length, count);
   }
 });
 test("property result links only to a verified internal record and leaves absent photo honest", () => {
@@ -101,6 +100,10 @@ test("rich record and research links reject unsafe or unexpected schemes", () =>
     assert.equal(safeRecordHref(value), undefined);
   }
   assert.equal(safeRecordHref("/atendimentos?id=demo"), "/atendimentos?id=demo");
+  const selection = `/s/${"a".repeat(64)}`;
+  assert.equal(safeRecordHref(selection), selection);
+  assert.equal(safeRecordHref(`${selection}?redirect=https://example.com`), undefined);
+  assert.equal(safeRecordHref("/s/not-a-token"), undefined);
   assert.equal(safeSourceUrl("javascript:alert(1)"), undefined);
   assert.equal(safeSourceUrl("https://user:secret@example.com"), undefined);
   const html = renderToStaticMarkup(
@@ -115,6 +118,51 @@ test("rich record and research links reject unsafe or unexpected schemes", () =>
   );
   assert.match(html, /href="https:\/\/example.com\/indice"/);
   assert.match(html, /noopener noreferrer/);
+});
+test("fiscal and bonus summaries preserve useful fields and real module links", () => {
+  const fiscal = renderToStaticMarkup(
+    <RichToolResult
+      result={{
+        tool: "rental_nfse_alerts",
+        data: {
+          alerts: [
+            {
+              id: "demo",
+              competencia: "2026-09",
+              status: "incerto",
+              teste: true,
+              href: "/alugueis?id=demo",
+            },
+          ],
+        },
+      }}
+    />,
+  );
+  assert.match(fiscal, /Pendência de NFS-e/);
+  assert.match(fiscal, /2026-09/);
+  assert.match(fiscal, /Teste/);
+  assert.match(fiscal, /href="\/alugueis\?id=demo"/);
+  const bonuses = renderToStaticMarkup(
+    <RichToolResult
+      result={{
+        tool: "broker_bonus_summary",
+        data: {
+          bonuses: [
+            {
+              corretor: "Corretor de teste",
+              nivel: 2,
+              status: "conquistado",
+              periodo: "2026-10",
+              href: "/corretores?corretorId=demo",
+            },
+          ],
+        },
+      }}
+    />,
+  );
+  assert.match(bonuses, /Corretor de teste/);
+  assert.match(bonuses, /Nível 2/);
+  assert.match(bonuses, /2026-10/);
 });
 test("operational timeline announces actual step status and mascots have accessible names", () => {
   const steps = renderToStaticMarkup(

@@ -9,6 +9,33 @@ import {
 
 const attendanceId = "11111111-1111-4111-8111-111111111111";
 
+test("assistant links preserve only validated references and never prompts or external destinations", () => {
+  assert.deepEqual(
+    resolveNotificationDestination({
+      type: "assistant_routine",
+      link: `/assistente?routine=${attendanceId}&run=invalid&prompt=secret&next=https://bad`,
+      entityId: null,
+    }),
+    { path: "/assistente", search: { routine: attendanceId } },
+  );
+  assert.equal(
+    resolveNotificationDestination({
+      type: "assistant_briefing",
+      link: "//evil.example/assistente",
+      entityId: null,
+    }),
+    null,
+  );
+  assert.equal(
+    resolveNotificationDestination({
+      type: "assistant_briefing",
+      link: `/alugueis?id=${attendanceId}`,
+      entityId: null,
+    }),
+    null,
+  );
+});
+
 function notification(id: string, overrides: Partial<NotificationRecord> = {}): NotificationRecord {
   return {
     id,

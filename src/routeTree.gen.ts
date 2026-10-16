@@ -80,9 +80,11 @@ import { Route as AppAssistenteEquipeBotIdRouteImport } from './routes/_app.assi
 import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
 import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
 import { Route as ApiPublicAdsOauthCallbackRouteImport } from './routes/api/public/ads-oauth.callback'
+import { Route as ApiPublicAssistantOauthCallbackRouteImport } from './routes/api/public/assistant-oauth.callback'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
 import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
+import { Route as ApiPublicHooksAssistantBriefingWorkerRouteImport } from './routes/api/public/hooks/assistant-briefing-worker'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
@@ -461,6 +463,12 @@ const ApiPublicAdsOauthCallbackRoute =
     path: '/api/public/ads-oauth/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAssistantOauthCallbackRoute =
+  ApiPublicAssistantOauthCallbackRouteImport.update({
+    id: '/api/public/assistant-oauth/callback',
+    path: '/api/public/assistant-oauth/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCalendarCallbackRoute =
   ApiPublicGoogleCalendarCallbackRouteImport.update({
     id: '/api/public/google-calendar/callback',
@@ -477,6 +485,12 @@ const ApiPublicHooksAgendaRemindersRoute =
   ApiPublicHooksAgendaRemindersRouteImport.update({
     id: '/api/public/hooks/agenda-reminders',
     path: '/api/public/hooks/agenda-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksAssistantBriefingWorkerRoute =
+  ApiPublicHooksAssistantBriefingWorkerRouteImport.update({
+    id: '/api/public/hooks/assistant-briefing-worker',
+    path: '/api/public/hooks/assistant-briefing-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksFinanceiroSheetsSyncRoute =
@@ -645,9 +659,11 @@ export interface FileRoutesByFullPath {
   '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
+  '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
+  '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -732,9 +748,11 @@ export interface FileRoutesByTo {
   '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
+  '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
+  '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -825,9 +843,11 @@ export interface FileRoutesById {
   '/_app/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
+  '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
+  '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -918,9 +938,11 @@ export interface FileRouteTypes {
     | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
+    | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
+    | '/api/public/hooks/assistant-briefing-worker'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
@@ -1005,9 +1027,11 @@ export interface FileRouteTypes {
     | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
+    | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
+    | '/api/public/hooks/assistant-briefing-worker'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
@@ -1097,9 +1121,11 @@ export interface FileRouteTypes {
     | '/_app/assistente/equipe/$botId'
     | '/_app/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
+    | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
+    | '/api/public/hooks/assistant-briefing-worker'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
@@ -1137,9 +1163,11 @@ export interface RootRouteChildren {
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicAdsOauthCallbackRoute: typeof ApiPublicAdsOauthCallbackRoute
+  ApiPublicAssistantOauthCallbackRoute: typeof ApiPublicAssistantOauthCallbackRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
   ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
+  ApiPublicHooksAssistantBriefingWorkerRoute: typeof ApiPublicHooksAssistantBriefingWorkerRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGalleryAlignRoute: typeof ApiPublicHooksGalleryAlignRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -1657,6 +1685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAdsOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/assistant-oauth/callback': {
+      id: '/api/public/assistant-oauth/callback'
+      path: '/api/public/assistant-oauth/callback'
+      fullPath: '/api/public/assistant-oauth/callback'
+      preLoaderRoute: typeof ApiPublicAssistantOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google-calendar/callback': {
       id: '/api/public/google-calendar/callback'
       path: '/api/public/google-calendar/callback'
@@ -1676,6 +1711,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/agenda-reminders'
       fullPath: '/api/public/hooks/agenda-reminders'
       preLoaderRoute: typeof ApiPublicHooksAgendaRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/assistant-briefing-worker': {
+      id: '/api/public/hooks/assistant-briefing-worker'
+      path: '/api/public/hooks/assistant-briefing-worker'
+      fullPath: '/api/public/hooks/assistant-briefing-worker'
+      preLoaderRoute: typeof ApiPublicHooksAssistantBriefingWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/financeiro-sheets-sync': {
@@ -1976,9 +2018,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicAdsOauthCallbackRoute: ApiPublicAdsOauthCallbackRoute,
+  ApiPublicAssistantOauthCallbackRoute: ApiPublicAssistantOauthCallbackRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
   ApiPublicHooksAgendaPhotoDigestRoute: ApiPublicHooksAgendaPhotoDigestRoute,
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
+  ApiPublicHooksAssistantBriefingWorkerRoute:
+    ApiPublicHooksAssistantBriefingWorkerRoute,
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
   ApiPublicHooksGalleryAlignRoute: ApiPublicHooksGalleryAlignRoute,

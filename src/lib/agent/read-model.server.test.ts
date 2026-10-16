@@ -15,6 +15,37 @@ const ctx: AgentContext = {
   agencies: ["cordial"],
   supabase: {} as any,
 };
+test("reopening prepares rereads an owned action and never prepares or executes again", async () => {
+  let reads = 0;
+  const messages: AssistantMessage[] = [
+    {
+      id: "m",
+      role: "assistant",
+      bot_id: "agenda",
+      content: "old",
+      created_at: "2026-10-16T08:00:00Z",
+      results: [
+        { tool: "prepare_agenda_event", data: { params: { actionId: ctx.userId } } },
+        { tool: "prepare_routine", data: { params: {} } },
+      ],
+    },
+  ];
+  const out = await rehydrateAssistantHistory(messages, ctx, {
+    execute: async () => {
+      throw new Error("preparation must never be replayed");
+    },
+    readAction: async (current, id) => {
+      assert.equal(current, ctx);
+      assert.equal(id, ctx.userId);
+      reads++;
+      return { id, status: "executed" };
+    },
+    audit: async () => {},
+  });
+  assert.equal(reads, 1);
+  assert.equal(out[0].results[0].data.action.status, "executed");
+  assert.equal(out[0].results[1].data.status, "refresh_required");
+});
 test("briefing uses the real closed schema of each allowed tool and retains role gates", async () => {
   const executed: string[] = [],
     audits: string[] = [];

@@ -7,6 +7,9 @@ export interface AgentContext {
   roles: string[];
   agencies: string[];
   signal?: AbortSignal;
+  /** Assigned by the orchestrator, never accepted from model arguments. */
+  agentBotId?: string;
+  agentConversationId?: string;
 }
 export class AgentAccessError extends Error {
   constructor(message = "Você não tem permissão para esta consulta.") {
