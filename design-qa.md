@@ -2,6 +2,16 @@
 
 final result: passed
 
+## Revisão da identidade solicitada
+
+Após a limpeza de descrições, o usuário pediu uma marca própria no lugar da estrela do assistente. Foram pesquisados os sites oficiais da Cordial e da Morar e conferidos os arquivos já usados no app. O novo símbolo une C/casa e M/telhado com azul-petróleo e cobre.
+
+As marcas de origem (691 × 231 e 728 × 291) e a implementação renderizada foram comparadas no mesmo painel: `/tmp/cordial-runtime/qa-identidade-final.jpg`, 1800 × 1000. Evidência do navegador: `docs/assistente/screenshots/identidade-assistente.jpg`, viewport 1440 × 1000. O novo master é PNG RGBA 1254 × 1254; o WebP lossless do app preserva exatamente os pixels decodificados.
+
+Foram conferidos tamanhos de 16, 24 e 40 px, fundos claro/escuro e aplicação no workspace/mobile. O ícone tem massas amplas e silhueta legível, sem estrela genérica. Os personagens dos agentes permanecem distintos da marca do assistente. Capturas principais foram atualizadas; as comparações desktop/mobile foram reabertas com essa versão.
+
+Tipografia das reconstruções das marcas é uma aproximação visual com pequenos desvios de espaçamento; essas imagens em alta resolução ficam como derivados de revisão, sem substituir as matrizes dos sites. Os resíduos de alfa muito baixo enfatizados no visualizador isolado não apareceram na composição real do navegador. Arte do assistente foi criada pelo ImageGen, sem reconstrução manual em SVG. Não há P0/P1/P2 visual pendente nessa revisão.
+
 ## Alvo e evidências
 
 As imagens fornecidas são referências de experiência, não um layout para cópia. A adaptação mantém os componentes e tokens do Gestão, personagens próprios e funções imobiliárias. O pedido permite explicitamente mascotes SVG/CSS; foram usados SVGs autorais, sem marcas, personagens ou assets dos produtos de referência.

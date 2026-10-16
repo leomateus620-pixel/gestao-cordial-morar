@@ -2,6 +2,8 @@
 
 As referências fornecidas orientam a presença dos personagens, a navegação como uma conversa de trabalho e as respostas compostas por registros. Os mascotes são SVGs autorais leves, com formas e cores próprias. Nenhuma funcionalidade de negócio dos produtos de referência foi incorporada.
 
+A marca própria do Assistente combina a geometria da Cordial e o telhado/M da Morar, nas cores do Gestão. Substitui a estrela genérica no menu, workspace, busca rápida e briefing, e identifica o copiloto e a equipe mobile. O arquivo gerado é compartilhado pelo componente `AssistantMark`; os logos existentes dos sites foram preservados. Fontes e derivados em `identidade/README.md`.
+
 ## Percurso entregue
 
 - `/assistente/equipe`: primeiro acesso, equipe filtrada pelo papel, busca e categorias; cards com função curta, módulos e disponibilidade.

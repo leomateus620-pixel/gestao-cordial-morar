@@ -6,6 +6,7 @@ import { allowedBotsForRole } from "@/lib/agent/bots";
 import { useSession } from "@/lib/auth-mock";
 import { listAssistantConversations } from "@/lib/agent/assistant.functions";
 import { WorkerAvatar } from "./WorkerAvatar";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 import type { ConversationItem } from "./AgentWorkspace";
 import "./assistant.css";
 
@@ -34,7 +35,10 @@ export function MobileAssistantHomeView({
           {name.slice(0, 1)}
         </span>
         <div>
-          <p className="assistant-eyebrow !text-[8px]">Assistente Cordial</p>
+          <p className="assistant-eyebrow flex items-center gap-1.5 !text-[8px]">
+            <AssistantMark size={15} />
+            Assistente Cordial
+          </p>
           <h1 className="mt-1 text-xl font-semibold tracking-tight">Olá, {name}.</h1>
         </div>
         <a

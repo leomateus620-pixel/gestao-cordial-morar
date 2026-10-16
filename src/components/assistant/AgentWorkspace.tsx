@@ -16,7 +16,6 @@ import {
   RotateCcw,
   Send,
   ShieldCheck,
-  Sparkles,
   ThumbsUp,
   X,
 } from "lucide-react";
@@ -44,6 +43,7 @@ import { RichToolResult, StepTimeline } from "./RichResults";
 import "./assistant.css";
 import { Composer } from "./Composer";
 import { contextForActiveBot } from "@/lib/agent/context-routing";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 export { Composer } from "./Composer";
 
 export type ConversationItem = { id: string; bot_id: string; title: string; updated_at: string };
@@ -138,7 +138,7 @@ export function AgentSidebar({
         href="/assistente/equipe"
         className="mb-6 flex items-center gap-2 text-[10px] font-semibold tracking-wide text-primary"
       >
-        <Sparkles size={14} />
+        <AssistantMark size={22} />
         ASSISTENTE CORDIAL
       </a>
       <button
@@ -461,7 +461,7 @@ export function AssistantWorkspaceView({
             {bot ? (
               <WorkerAvatar bot={bot} size={30} />
             ) : (
-              <Sparkles size={16} className="m-2 text-primary" />
+              <AssistantMark size={26} className="m-1" />
             )}
             <span className="truncate text-xs font-semibold">{bot?.name ?? "Sua equipe"}</span>
             <span className="hidden text-[10px] text-muted-foreground sm:inline">
@@ -850,7 +850,7 @@ export function DailyBriefingView({
     >
       <div className="mb-3 flex items-center gap-2">
         <span className="grid size-7 place-items-center rounded-full bg-primary/7 text-primary">
-          <Sparkles size={14} />
+          <AssistantMark size={18} />
         </span>
         <h2 className="text-sm font-semibold tracking-tight">Seu dia</h2>
       </div>

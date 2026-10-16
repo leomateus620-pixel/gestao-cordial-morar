@@ -17,12 +17,12 @@ import {
   Search,
   Settings,
   Star,
-  Sparkles,
   UserCog,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type { AppModule, UserProfile } from "@/lib/mock/permissions";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 
 export const sidebarSectionOrder = ["operacao", "relacionamento", "gestao", "sistema"] as const;
 
@@ -73,7 +73,7 @@ export const moduleItems: ModuleItem[] = [
     label: "Assistente Cordial",
     shortLabel: "Assistente",
     desc: "Sua equipe digital no Gestão",
-    icon: Sparkles,
+    icon: AssistantMark,
     module: "agenda",
     sidebar: { section: "operacao", order: 15, label: "Assistente", desc: "Sua equipe digital" },
   },

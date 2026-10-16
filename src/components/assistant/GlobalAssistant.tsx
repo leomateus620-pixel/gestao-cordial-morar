@@ -23,6 +23,7 @@ import {
   type AssistantRecordContext,
 } from "@/lib/agent/use-assistant";
 import { WorkerAvatar } from "./WorkerAvatar";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 import { ChoiceChips, Composer } from "./AgentWorkspace";
 import { RichToolResult, StepTimeline } from "./RichResults";
 import "./assistant.css";
@@ -99,7 +100,7 @@ export function GlobalAssistant() {
           title="Assistente Cordial · ⌘/Ctrl K"
           onClick={() => setCopilot(true)}
         >
-          <WorkerAvatar bot={bot} size={33} />
+          <AssistantMark size={30} />
           <span>Conte comigo</span>
         </button>
       )}

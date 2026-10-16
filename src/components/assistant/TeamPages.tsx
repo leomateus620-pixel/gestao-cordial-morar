@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { allowedBotsForRole, getAgentBot, neverActions, type AgentBot } from "@/lib/agent/bots";
 import { useSession } from "@/lib/auth-mock";
 import { WorkerAvatar } from "./WorkerAvatar";
+import { AssistantMark } from "@/components/brand/AssistantMark";
 import "./assistant.css";
 
 export function AgentCard({ bot }: { bot: AgentBot }) {
@@ -84,7 +85,10 @@ export function TeamHomeView({
     <div className="assistant-surface p-5 sm:p-8 lg:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="assistant-eyebrow">Assistente Cordial</p>
+          <p className="assistant-eyebrow flex items-center gap-2">
+            <AssistantMark size={22} />
+            Assistente Cordial
+          </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             Conheça a equipe<span className="text-primary">.</span>
           </h1>

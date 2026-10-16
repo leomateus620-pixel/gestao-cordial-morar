@@ -10,7 +10,7 @@ Entrega conjunta das fases 0 e 1: registro único seguro de ferramentas, chat so
 | `bun test --isolate --timeout 30000` | 728 testes, 112 arquivos, zero falhas                          |
 | `bun run test`                       | suítes existentes + recibos + 83 testes do assistente passaram |
 | `bun run test:assistant`             | 83 testes passaram novamente após a limpeza final de UI        |
-| `bun run test:site` | 89 testes passaram, incluindo políticas PostgreSQL dos sites |
+| `bun run test:site`                  | 89 testes passaram, incluindo políticas PostgreSQL dos sites   |
 | `bun run typecheck`                  | passou após a revisão final                                    |
 | `bun run build`                      | cliente, servidor e pacote Nitro passaram após a revisão final |
 | `git diff --check`                   | passou                                                         |
@@ -37,6 +37,8 @@ Cobertura do assistente: matriz papel × ferramenta × imobiliária; máscaras i
 8. Medir primeiro token da conversa integrada e consultas no banco. As medições de primeiro byte do gateway não comprovam os critérios de <2 s e <1 s. Conferir políticas com usuários reais de teste no Supabase antes do merge/deploy.
 
 ## Capturas e revisão visual
+
+A identidade própria também foi conferida no navegador em claro/escuro e tamanhos pequenos: [Marca e reconstruções em alta resolução](screenshots/identidade-assistente.jpg). Fontes e prompts estão em `identidade/`.
 
 As capturas usam o harness separado (`bun x vite --config tests/assistant/vite.config.ts`) com componentes reais e dados fictícios. Não existe rota de teste de autenticação incorporada ao app. O harness não representa teste ponta a ponta autenticado no ambiente remoto.
 
