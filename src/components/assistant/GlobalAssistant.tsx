@@ -111,7 +111,7 @@ export function GlobalAssistant() {
         >
           <SheetHeader className="border-b border-border px-5 py-5 text-left">
             <div className="flex items-center gap-2">
-              <WorkerAvatar bot={bot} size={42} />
+              <WorkerAvatar bot={bot} size={42} working={chat.busy} />
               <div>
                 <SheetTitle className="text-base">
                   {bot.active ? bot.name : `${bot.name} · em breve`}

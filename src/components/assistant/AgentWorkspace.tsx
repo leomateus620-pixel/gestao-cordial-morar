@@ -459,7 +459,7 @@ export function AssistantWorkspaceView({
             onClick={() => setSidebar(true)}
           >
             {bot ? (
-              <WorkerAvatar bot={bot} size={30} />
+              <WorkerAvatar bot={bot} size={30} working={busy} />
             ) : (
               <AssistantMark size={26} className="m-1" />
             )}
@@ -568,7 +568,13 @@ export function AssistantWorkspaceView({
                   ) : (
                     <article key={m.id} className="assistant-message">
                       <div className="mb-3 flex items-center gap-2">
-                        {bot && <WorkerAvatar bot={bot} size={29} />}
+                        {bot && (
+                          <WorkerAvatar
+                            bot={bot}
+                            size={29}
+                            working={busy && i === messages.length - 1}
+                          />
+                        )}
                         <span className="text-xs font-semibold">
                           {bot?.name ?? "Equipe Cordial"}
                         </span>

@@ -4,6 +4,8 @@ As referências fornecidas orientam a presença dos personagens, a navegação c
 
 A marca própria do Assistente combina a geometria da Cordial e o telhado/M da Morar, nas cores do Gestão. Substitui a estrela genérica no menu, workspace, busca rápida e briefing, e identifica o copiloto e a equipe mobile. O arquivo gerado é compartilhado pelo componente `AssistantMark`; os logos existentes dos sites foram preservados. Fontes e derivados em `identidade/README.md`.
 
+Os mascotes respondem ao cursor/toque com olhar, piscada, inclinação e um giro curto. Foco de teclado também provoca reação; durante consultas, o personagem se movimenta suavemente. Não são acrescentadas descrições ou controles ao produto. Tempos e roteiro em `interacoes-mascotes.md`.
+
 ## Percurso entregue
 
 - `/assistente/equipe`: primeiro acesso, equipe filtrada pelo papel, busca e categorias; cards com função curta, módulos e disponibilidade.
@@ -20,7 +22,7 @@ Agenda, Match, Capta e Lead estão disponíveis para consulta. Caixa, Time e Mer
 
 O workspace tem estados vazio, carregando histórico, consultando ferramentas, recebendo resposta, resultado vazio, concluído e erro. A timeline mostra somente operações realmente emitidas pelo servidor. O usuário pode interromper a resposta. “Nova conversa” descarta o estado local da conversa anterior sem excluir o histórico salvo.
 
-`WorkerAvatar`, `WorkerList`, `AgentCard`, `AgentSidebar`, `AssistantWorkspaceView`, `EmptyStateHero`, `ChoiceChips`, `Composer`, `StepTimeline`, `RichPropertyCard`, `RichToolResult`, `ContextPanel`, `NeedsYouSection`, `DailyBriefingView`, `MobileAssistantHomeView`, `RoutinesTab` e o copiloto usam os componentes e tokens do Gestão. A interface respeita movimento reduzido, estados de foco, nomes acessíveis dos controles e anúncios de carregamento e erro.
+`WorkerAvatar`, `WorkerList`, `AgentCard`, `AgentSidebar`, `AssistantWorkspaceView`, `EmptyStateHero`, `ChoiceChips`, `Composer`, `StepTimeline`, `RichPropertyCard`, `RichToolResult`, `ContextPanel`, `NeedsYouSection`, `DailyBriefingView`, `MobileAssistantHomeView`, `RoutinesTab` e o copiloto usam os componentes e tokens do Gestão. A interface oferece estados de foco, nomes acessíveis dos controles e anúncios de carregamento e erro. Por solicitação explícita do usuário, as animações dos mascotes permanecem ativas mesmo com movimento reduzido; os demais componentes mantêm a preferência existente.
 
 A hierarquia privilegia a conversa, os registros e as ações. A equipe apresenta uma frase curta por agente, sem faixas explicativas ou avisos repetidos. Nas apresentações, habilidades e exemplos ficam visíveis; ações futuras, dados e papéis, limites e rotinas ficam em seções expansíveis acessíveis pelo teclado. O conteúdo obrigatório continua disponível sem ocupar a tela inicial. Erros reais e indisponibilidades, como o Caixa ainda inativo, permanecem explícitos no ponto em que afetam uma decisão.
 

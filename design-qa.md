@@ -2,6 +2,14 @@
 
 final result: passed
 
+## Revisão das interações dos mascotes
+
+A solicitação seguinte acrescentou piscadas, olhar, movimento e giro por cursor/toque. O componente compartilhado recebeu reações curtas; o usuário explicitamente pediu que movimento reduzido não as desativasse. O comportamento foi verificado no navegador com clique, arraste e foco reais, sem simular eventos por JavaScript.
+
+**[P2, resolvido] Animação recriava o alvo do clique.** A primeira implementação remontava o grupo SVG durante `pointerdown`, e clicar no desenho não selecionava o agente. Foi removida a troca de nó; teste posterior confirmou seleção do Match e composer correspondente, além de giro/piscada simultâneos.
+
+Evidências: `docs/assistente/screenshots/mascotes-interativos.jpg` (captura integral 1440 × 1067, viewport 1440 × 1000, apresentação do Match durante interação), transições `worker-spin`/`worker-blink` observadas no navegador e deslocamento de olhar/inclinação durante arraste. Foco no botão Capta gerou reação de teclado. Estado de consulta exibiu `worker-think` nos dois avatares em trabalho. Detalhes em `docs/assistente/interacoes-mascotes.md`. Nenhum P0/P1/P2 dessa revisão permanece aberto; gesto em aparelho físico segue no roteiro de homologação.
+
 ## Revisão da identidade solicitada
 
 Após a limpeza de descrições, o usuário pediu uma marca própria no lugar da estrela do assistente. Foram pesquisados os sites oficiais da Cordial e da Morar e conferidos os arquivos já usados no app. O novo símbolo une C/casa e M/telhado com azul-petróleo e cobre.
@@ -49,7 +57,7 @@ A comparação final, após essas correções, não encontrou P0/P1/P2 visual pe
 - **Cores e tokens:** superfícies claras/escuras do app, ação primária e foco pelos tokens existentes; cores pastel identificam os agentes sem substituir os estados semânticos. Modo escuro registrado em `mobile-escuro.jpg`.
 - **Imagens:** mascotes próprios, vetoriais e nítidos; nenhum asset de marca copiado. Fotos ausentes têm ícone, sem imóveis fictícios apresentados como resultado real.
 - **Conteúdo:** português curto, sem texto de marketplace ou negócios dos anexos. Detalhes só onde ajudam uma decisão. Indisponibilidades e erros continuam explícitos.
-- **Ícones e acessibilidade:** controles nomeados, abas navegáveis por setas/Home/End, foco visível, labels em dialogs, descrições acessíveis sem poluição visual e movimento reduzido. Não foi executada auditoria externa completa de WCAG.
+- **Ícones e acessibilidade:** controles nomeados, abas navegáveis por setas/Home/End, foco visível, labels em dialogs e descrições acessíveis sem poluição visual. A pedido explícito do usuário, movimento reduzido não desativa as animações dos mascotes; a preferência é preservada nos demais componentes. Não foi executada auditoria externa completa de WCAG.
 
 ## Interações e estados
 

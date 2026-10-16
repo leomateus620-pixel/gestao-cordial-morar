@@ -38,6 +38,8 @@ Cobertura do assistente: matriz papel × ferramenta × imobiliária; máscaras i
 
 ## Capturas e revisão visual
 
+As interações dos mascotes foram verificadas com clique, arraste e teclado no navegador. Typecheck, os 83 testes do assistente e o build passaram novamente após essa revisão. [Interações](interacoes-mascotes.md) e [captura](screenshots/mascotes-interativos.jpg).
+
 A identidade própria também foi conferida no navegador em claro/escuro e tamanhos pequenos: [Marca e reconstruções em alta resolução](screenshots/identidade-assistente.jpg). Fontes e prompts estão em `identidade/`.
 
 As capturas usam o harness separado (`bun x vite --config tests/assistant/vite.config.ts`) com componentes reais e dados fictícios. Não existe rota de teste de autenticação incorporada ao app. O harness não representa teste ponta a ponta autenticado no ambiente remoto.

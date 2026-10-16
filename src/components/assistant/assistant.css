@@ -303,13 +303,48 @@
 .assistant-pulse {
   animation: assistant-pulse 1.4s ease-in-out infinite;
 }
-.worker-working .worker-body {
-  animation: worker-think 1.2s ease-in-out infinite;
-  transform-origin: 50% 75%;
+.worker-reaction,
+.worker-character {
+  transform-origin: 50px 58px;
+  transform-box: view-box;
+}
+.worker-character {
+  transform: translateY(var(--worker-lift, 0px)) rotate(var(--worker-tilt, 0deg));
+  transition: transform 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.worker-face {
+  transform: translate(var(--worker-look-x, 0px), var(--worker-look-y, 0px));
+  transition: transform 150ms ease-out;
+}
+.worker-shadow {
+  transform-origin: 50px 96px;
+  transform-box: view-box;
+  transition: transform 220ms ease-out;
+}
+.worker-avatar:hover .worker-shadow {
+  transform: scaleX(0.88);
+}
+.worker-working .worker-character {
+  animation: worker-think 1.8s ease-in-out infinite;
 }
 .worker-eyes {
-  animation: worker-blink 8s infinite;
-  transform-origin: 50% 50%;
+  transform-origin: 50px 52px;
+  transform-box: view-box;
+}
+.worker-reaction[data-reaction="greet"] {
+  animation: worker-greet 520ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.worker-reaction[data-reaction="spin"] {
+  animation: worker-spin 820ms cubic-bezier(0.35, 0.05, 0.2, 1);
+}
+.worker-reaction:not([data-reaction="idle"]) .worker-eyes,
+:is(button, a, [role="button"]):focus-visible .worker-eyes,
+.assistant-worker-card:has(a:focus-visible) .worker-eyes {
+  animation: worker-blink 380ms ease-out;
+}
+:is(button, a, [role="button"]):focus-visible .worker-reaction,
+.assistant-worker-card:has(a:focus-visible) .worker-reaction {
+  animation: worker-greet 520ms cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 .assistant-skeleton {
   background: linear-gradient(
@@ -367,22 +402,51 @@
 }
 @keyframes worker-blink {
   0%,
-  44%,
-  46%,
+  18%,
+  66%,
   100% {
     transform: scaleY(1);
   }
-  45% {
+  38% {
     transform: scaleY(0.12);
   }
 }
 @keyframes worker-think {
   0%,
   100% {
-    transform: rotate(-3deg);
+    transform: translateY(-1px) rotate(-2deg);
   }
   50% {
-    transform: rotate(3deg) translateY(-3px);
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+@keyframes worker-greet {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  22% {
+    transform: translateY(1px) scale(1.03, 0.97);
+  }
+  52% {
+    transform: translateY(-5px) scale(0.98, 1.02);
+  }
+  78% {
+    transform: translateY(1px) scale(1.01, 0.99);
+  }
+}
+@keyframes worker-spin {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  18% {
+    transform: translateY(-3px) rotate(-12deg) scale(0.98, 1.02);
+  }
+  62% {
+    transform: translateY(-5px) rotate(215deg) scale(0.93);
+  }
+  100% {
+    transform: translateY(0) rotate(360deg) scale(1);
   }
 }
 @keyframes assistant-arrive {
@@ -472,8 +536,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .assistant-message,
-  .worker-eyes,
-  .worker-working .worker-body,
   .assistant-pulse,
   .assistant-skeleton {
     animation: none;

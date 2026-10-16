@@ -69,6 +69,7 @@ function Preview() {
   const [selectedBot, setSelectedBot] = useState("agenda");
   const [role, setRole] = useState("admin");
   const [sent, setSent] = useState<ChatMessage[] | null>(null);
+  const [motion, setMotion] = useState(true);
   const bots = agentBots.filter((bot) => bot.roles.includes(role as "admin"));
   const busy = state === "streaming";
   let messages: ChatMessage[] =
@@ -89,7 +90,10 @@ function Preview() {
           : [];
   if (sent) messages = sent;
   return (
-    <div className="min-h-dvh bg-background p-3 text-foreground sm:p-6">
+    <div
+      data-preview-motion={motion ? "on" : "off"}
+      className="min-h-dvh bg-background p-3 text-foreground sm:p-6"
+    >
       <div className="mx-auto mb-4 flex max-w-[1380px] flex-wrap items-center justify-between gap-3 border-b border-border pb-3 text-[11px]">
         <p className="font-medium">Revisão local · dados fictícios</p>
         <div className="flex flex-wrap gap-1.5">
@@ -130,6 +134,14 @@ function Preview() {
             onClick={() => document.documentElement.classList.toggle("dark")}
           >
             Tema
+          </button>
+          <button
+            type="button"
+            aria-pressed={motion}
+            className="rounded-full border border-border px-3 py-1"
+            onClick={() => setMotion((value) => !value)}
+          >
+            Animações
           </button>
         </div>
       </div>
