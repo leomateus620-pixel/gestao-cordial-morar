@@ -848,6 +848,139 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_audit: {
+        Row: {
+          bot_id: string
+          conversation_id: string | null
+          created_at: string
+          duration_ms: number
+          id: string
+          params: Json
+          result_summary: Json
+          scope_key: string
+          tool: string
+          user_id: string
+        }
+        Insert: {
+          bot_id: string
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          params?: Json
+          result_summary?: Json
+          scope_key: string
+          tool: string
+          user_id: string
+        }
+        Update: {
+          bot_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          params?: Json
+          result_summary?: Json
+          scope_key?: string
+          tool?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_audit_conversation_id_user_id_fkey"
+            columns: ["conversation_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_conversations"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      assistant_conversations: {
+        Row: {
+          bot_id: string
+          created_at: string
+          id: string
+          scope_key: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_id: string
+          created_at?: string
+          id?: string
+          scope_key: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_id?: string
+          created_at?: string
+          id?: string
+          scope_key?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_daily_usage: {
+        Row: {
+          turns: number
+          usage_day: string
+          user_id: string
+        }
+        Insert: {
+          turns: number
+          usage_day: string
+          user_id: string
+        }
+        Update: {
+          turns?: number
+          usage_day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assistant_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          results: Json
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          results?: Json
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          results?: Json
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_messages_conversation_id_user_id_fkey"
+            columns: ["conversation_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_conversations"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       attendance_assignments: {
         Row: {
           assigned_at: string
@@ -8570,6 +8703,11 @@ export type Database = {
           _provider: Database["public"]["Enums"]["imobi_provider"]
         }
         Returns: string
+      }
+      assistant_current_scope: { Args: never; Returns: string }
+      assistant_take_daily_quota: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: boolean
       }
       attendance_add_note: {
         Args: { _attendance_id: string; _texto: string }
