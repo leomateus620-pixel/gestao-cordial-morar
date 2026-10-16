@@ -11,7 +11,7 @@ import {
   type GatewayRequest,
 } from "./chat.server";
 import { getAgentBot } from "./bots";
-import type { AssistantEvent } from "./stream";
+import type { AssistantEvent, AssistantResult } from "./stream";
 import { readAssistantStream } from "./stream";
 import { chatAssistantInput } from "./schemas";
 
