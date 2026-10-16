@@ -4,8 +4,7 @@ export type AssistantTier = "router" | "fast" | "analysis";
 export const ASSISTANT_MODEL_DEFAULTS: Record<AssistantTier, string> = {
   router: "google/gemini-3.1-flash-lite",
   fast: "google/gemini-3.8-flash",
-  // Claude (anthropic/claude-sonnet-5) entra quando o adaptador de mensagens existir.
-  analysis: "google/gemini-3.1-pro-preview",
+  analysis: "anthropic/claude-sonnet-5",
 };
 
 export function assistantModel(tier: AssistantTier, env: Record<string, string | undefined>) {
