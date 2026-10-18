@@ -13,7 +13,7 @@ import {
   Share2,
   X,
 } from "lucide-react";
-import type { PublicDetail, SiteCatalog } from "@/lib/cordial-site/contract";
+import type { PublicDetail, PublicVideo, SiteCatalog } from "@/lib/cordial-site/contract";
 import {
   areaLabels,
   areaLabel,
@@ -27,8 +27,21 @@ import { getSiteBrand } from "@/lib/cordial-site/brand";
 import { WhatsAppIcon } from "./SocialIcons";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyCard, PropertyImage } from "./PropertyCard";
-import { externalSitePath } from "@/lib/cordial-site/routing";
 import { ContactForm } from "./ContactForm";
+import { loadCatalog, loadVideos } from "@/lib/cordial-site/data";
+import {
+  photoIndexFromHash,
+  propertyUrl,
+  propertyWhatsapp,
+  readSearchOrigin,
+  readSearchOriginContext,
+  trackSiteEvent,
+} from "@/lib/cordial-site/experience";
+import { rememberPublicProperty } from "@/lib/selecoes/recent-store";
+import { VisitorSelectionButton } from "./VisitorSelectionButton";
+import { PropertyVideo } from "./PropertyVideo";
+import { PropertyTour } from "./PropertyTour";
+import { PropertyShare } from "./PropertyShare";
 export function DetailPage({
   property: p,
   related,
@@ -40,8 +53,13 @@ export function DetailPage({
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
   const [index, setIndex] = useState(0);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [recommendations, setRecommendations] = useState(related);
+  const [returnTo, setReturnTo] = useState(sitePath("/buscar", brand));
+  const [contactOpen, setContactOpen] = useState(false);
+  const [videos, setVideos] = useState<PublicVideo[]>([]);
   const galleryTrigger = useRef<HTMLButtonElement | null>(null);
   const touch = useRef<number | null>(null);
   const shareRef = useRef<HTMLInputElement>(null);
@@ -50,19 +68,67 @@ export function DetailPage({
     if (!canonicalOrigin) setPreviewOrigin(window.location.origin);
   }, [canonicalOrigin]);
   useEffect(() => {
+    setReturnTo(readSearchOrigin(p.id, brand));
+    if (brand !== "cordial") return;
+    rememberPublicProperty(p.id, brand);
+    trackSiteEvent("property_open", { propertyId: p.id, reference: p.reference, source: "detail" });
+  }, [p.id, p.city, p.type, p.operation, p.reference, brand]);
+  useEffect(() => {
+    if (brand === "morar") setRecommendations(related);
+  }, [brand, related]);
+  useEffect(() => {
+    if (brand !== "cordial") return;
+    let abort: AbortController;
+    const refresh = () => {
+      abort?.abort();
+      const current = new AbortController();
+      abort = current;
+      setRecommendations(null);
+      setVideos([]);
+      loadCatalog(
+        { cidade: p.city ?? undefined, tipo: p.type ?? undefined, finalidade: p.operation },
+        current.signal,
+        brand,
+      )
+        .then((result) => {
+          if (!current.signal.aborted) setRecommendations(result);
+        })
+        .catch(() => {});
+      loadVideos(p.id, current.signal, brand)
+        .then((result) => {
+          if (!current.signal.aborted) setVideos(result);
+        })
+        .catch(() => {});
+    };
+    refresh();
+    window.addEventListener(`${brand}:availability-refresh`, refresh);
+    return () => {
+      abort?.abort();
+      window.removeEventListener(`${brand}:availability-refresh`, refresh);
+    };
+  }, [p.id, p.city, p.type, p.operation, brand]);
+  useEffect(() => {
     setIndex((i) => (i < p.images.length ? i : 0));
     if (!p.images.length) setOpen(false);
   }, [p.images.length]);
+  useEffect(() => {
+    const initial = photoIndexFromHash(window.location.hash, p.images.length) ?? 0;
+    setIndex(initial);
+    setPreviewIndex(initial);
+    const restorePhoto = () => {
+      const requested = photoIndexFromHash(window.location.hash, p.images.length);
+      if (requested !== null) {
+        setIndex(requested);
+        setPreviewIndex(requested);
+      }
+    };
+    window.addEventListener("hashchange", restorePhoto);
+    return () => window.removeEventListener("hashchange", restorePhoto);
+  }, [p.id, p.images.length]);
   const move = (n: number) =>
     setIndex((i) => (p.images.length ? (i + n + p.images.length) % p.images.length : 0));
-  const publicPath = externalSitePath(propertyPath(p, brand), brand);
-  const url =
-    (canonicalOrigin ?? previewOrigin)
-      ? (canonicalOrigin ?? previewOrigin) + publicPath
-      : publicPath;
-  const whatsapp = settings.whatsapp
-    ? `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel ${p.reference}. ${url}`)}`
-    : null;
+  const url = propertyUrl(p, canonicalOrigin ?? previewOrigin ?? "", brand);
+  const whatsapp = propertyWhatsapp(p, settings.whatsapp, url);
   return (
     <>
       <div className="cs-container cs-detail-page">
@@ -74,16 +140,28 @@ export function DetailPage({
           <span>Ref. {p.reference}</span>
         </nav>
         <div className="cs-detail-top">
-          <button
+          <SiteLink
             className="cs-text-link"
-            onClick={() => {
-              if (history.length > 1) history.back();
-              else location.assign(sitePath("/buscar", brand));
+            to={returnTo}
+            onClick={(event) => {
+              if (
+                brand === "cordial" &&
+                readSearchOriginContext(p.id, brand) &&
+                event.button === 0 &&
+                !event.ctrlKey &&
+                !event.metaKey &&
+                !event.shiftKey &&
+                !event.altKey &&
+                (!event.currentTarget.target || event.currentTarget.target === "_self")
+              ) {
+                event.preventDefault();
+                window.history.back();
+              }
             }}
           >
             <ArrowLeft size={17} />
             Voltar à busca
-          </button>
+          </SiteLink>
           <div>
             <button
               className="cs-text-link"
@@ -100,29 +178,34 @@ export function DetailPage({
               <Copy size={17} />
               <span>Copiar link</span>
             </button>
-            <button
-              className="cs-text-link"
-              onClick={async () => {
-                try {
-                  if (navigator.share)
-                    await navigator.share({
-                      title: `${p.type ?? "Imóvel"} · ${config.shortName} ${p.reference}`,
-                      url,
-                    });
-                  else {
-                    await navigator.clipboard.writeText(url);
-                    setMessage("Link copiado.");
+            {brand === "cordial" ? (
+              <PropertyShare url={url} />
+            ) : (
+              <button
+                className="cs-text-link"
+                onClick={async () => {
+                  try {
+                    if (navigator.share)
+                      await navigator.share({
+                        title: `${p.type ?? "Imóvel"} · ${config.shortName} ${p.reference}`,
+                        url,
+                      });
+                    else {
+                      await navigator.clipboard.writeText(url);
+                      setMessage("Link copiado.");
+                    }
+                  } catch (error) {
+                    if (error instanceof Error && error.name === "AbortError") return;
+                    setMessage("Copie o endereço abaixo para compartilhar.");
                   }
-                } catch (error) {
-                  if (error instanceof Error && error.name === "AbortError") return;
-                  setMessage("Copie o endereço abaixo para compartilhar.");
-                }
-              }}
-            >
-              <Share2 size={17} />
-              Compartilhar
-            </button>
+                }}
+              >
+                <Share2 size={17} />
+                Compartilhar
+              </button>
+            )}
             <FavoriteButton id={p.id} />
+            {brand === "cordial" && <VisitorSelectionButton id={p.id} />}
           </div>
         </div>
         {message && (
@@ -139,33 +222,82 @@ export function DetailPage({
             )}
           </div>
         )}
+        {brand === "cordial" && (
+          <div className="cs-detail-essentials">
+            <div>
+              <p className="cs-eyebrow">
+                {p.operation === "venda" ? "À venda" : "Para alugar"} · REF {p.reference}
+              </p>
+              <h1>
+                {p.type ?? "Imóvel"}
+                {p.district ? ` em ${p.district}` : ""}
+              </h1>
+              <p>{locationLabel({ ...p, district: null })}</p>
+            </div>
+            <div>
+              <strong>{priceLabel(p)}</strong>
+              {whatsapp ? (
+                <a
+                  className="cs-button"
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    trackSiteEvent("whatsapp_click", {
+                      propertyId: p.id,
+                      reference: p.reference,
+                      source: "detail_top",
+                    })
+                  }
+                >
+                  <WhatsAppIcon width={18} height={18} /> Conversar
+                </a>
+              ) : (
+                <a className="cs-button cs-button-light" href="#fale-sobre-imovel">
+                  Ver atendimento
+                </a>
+              )}
+            </div>
+          </div>
+        )}
         <div className="cs-gallery">
           {p.images.length ? (
-            p.images.slice(0, 3).map((m, i) => (
-              <button
-                key={m.id}
-                className={`cs-gallery-tile cs-gallery-tile-${i}`}
-                onClick={(e) => {
-                  galleryTrigger.current = e.currentTarget;
-                  setIndex(i);
-                  setOpen(true);
-                }}
-                aria-label={`Ampliar foto ${i + 1} de ${p.images.length}`}
-              >
-                <PropertyImage
-                  media={m}
-                  alt={`Foto ${i + 1} do imóvel ${p.reference}`}
-                  size={i === 0 ? "full" : "card"}
-                  priority={i === 0}
-                />
-                {i === 0 && (
-                  <span className="cs-gallery-count">
-                    <Expand size={16} />
-                    Ver {p.images.length} fotos
-                  </span>
-                )}
-              </button>
-            ))
+            Array.from({ length: Math.min(p.images.length, 3) }, (_, tile) => {
+              // Keep the approved array order; an explicit #foto-N starts this window at N.
+              const i = brand === "cordial" ? (previewIndex + tile) % p.images.length : tile;
+              const m = p.images[i];
+              return (
+                <button
+                  key={m.id}
+                  className={`cs-gallery-tile cs-gallery-tile-${tile}`}
+                  onClick={(e) => {
+                    galleryTrigger.current = e.currentTarget;
+                    setIndex(i);
+                    setOpen(true);
+                    if (brand === "cordial")
+                      trackSiteEvent("gallery_open", {
+                        propertyId: p.id,
+                        reference: p.reference,
+                        source: "detail",
+                      });
+                  }}
+                  aria-label={`Ampliar foto ${i + 1} de ${p.images.length}`}
+                >
+                  <PropertyImage
+                    media={m}
+                    alt={`Foto ${i + 1} do imóvel ${p.reference}`}
+                    size={tile === 0 ? "full" : "card"}
+                    priority={tile === 0}
+                  />
+                  {tile === 0 && (
+                    <span className="cs-gallery-count">
+                      <Expand size={16} />
+                      Ver {p.images.length} fotos
+                    </span>
+                  )}
+                </button>
+              );
+            })
           ) : (
             <PropertyImage media={null} alt="" />
           )}
@@ -237,23 +369,27 @@ export function DetailPage({
                 {index + 1} / {p.images.length}
               </p>
               <div className="cs-thumbnails">
-                {p.images.map((m, i) => (
-                  <button
-                    aria-label={`Ver foto ${i + 1}`}
-                    aria-current={index === i ? "true" : undefined}
-                    key={m.id}
-                    onClick={() => setIndex(i)}
-                  >
-                    <PropertyImage media={m} alt="" size="thumb" />
-                  </button>
-                ))}
+                {p.images.map((m, i) =>
+                  Math.abs(i - index) <= 3 ? (
+                    <button
+                      aria-label={`Ver foto ${i + 1}`}
+                      aria-current={index === i ? "true" : undefined}
+                      key={m.id}
+                      onClick={() => setIndex(i)}
+                    >
+                      <PropertyImage media={m} alt="" size="thumb" />
+                    </button>
+                  ) : null,
+                )}
               </div>
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
         <div className="cs-detail-layout">
           <div>
-            <div className="cs-detail-title">
+            <div
+              className={`cs-detail-title ${brand === "cordial" ? "cs-detail-secondary-title" : ""}`}
+            >
               <p className="cs-eyebrow">
                 {p.operation === "venda" ? "À venda" : "Para alugar"} · Referência {p.reference}
               </p>
@@ -265,7 +401,7 @@ export function DetailPage({
                 <MapPin size={18} />
                 {locationLabel(p) || "Localização sob consulta"}
               </p>
-              {p.address && <p>{p.address}</p>}
+              {brand === "morar" && p.address && <p>{p.address}</p>}
               <strong className="cs-detail-price">{priceLabel(p)}</strong>
             </div>
             <div className="cs-detail-attributes">
@@ -276,7 +412,7 @@ export function DetailPage({
                 [CarFront, p.parking, p.parking === 1 ? "Vaga" : "Vagas"],
               ].map(([Icon, value, label]) => {
                 const I = Icon as typeof Bath;
-                return value != null ? (
+                return value != null && (brand === "morar" || Number(value) > 0) ? (
                   <div key={String(label)}>
                     <I size={26} strokeWidth={1.4} />
                     <strong>{String(value)}</strong>
@@ -300,12 +436,22 @@ export function DetailPage({
                 </dl>
               </section>
             )}
+            {brand === "cordial" &&
+              videos.map((video) => <PropertyVideo key={video.id} video={video} />)}
+            <PropertyTour key={p.id} publicId={p.id} available={p.hasTour} />
             <section className="cs-detail-section">
               <p className="cs-eyebrow">Conheça os detalhes</p>
               <h2>Um pouco mais sobre este imóvel.</h2>
               <div className="cs-prose">
-                {p.description ||
-                  "A descrição deste imóvel ainda não foi disponibilizada. Nossa equipe pode ajudar com mais informações."}
+                {(
+                  p.description ||
+                  "A descrição deste imóvel ainda não foi disponibilizada. Nossa equipe pode ajudar com mais informações."
+                )
+                  .split(/\n\s*\n|\n/)
+                  .filter(Boolean)
+                  .map((paragraph, i) => (
+                    <p key={i}>{paragraph}</p>
+                  ))}
               </div>
             </section>
             {(p.features.length > 0 ||
@@ -334,28 +480,87 @@ export function DetailPage({
           <aside id="fale-sobre-imovel" className="cs-detail-contact">
             <div className="cs-contact-panel">
               <p className="cs-eyebrow">Gostou deste lugar?</p>
-              <h2>Vamos conversar.</h2>
+              <h2>{p.responsible?.name ?? `Equipe ${config.shortName}`}</h2>
+              {brand === "cordial" && p.responsible?.photoUrl && (
+                <img
+                  className="cs-responsible-photo"
+                  src={p.responsible.photoUrl}
+                  alt={p.responsible.name}
+                  width={64}
+                  height={64}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              {p.responsible?.role && <p>{p.responsible.role}</p>}
               <p>Peça mais informações ou manifeste seu interesse em uma visita.</p>
               {whatsapp && (
-                <a className="cs-button" href={whatsapp} target="_blank" rel="noopener noreferrer">
+                <a
+                  className="cs-button"
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    trackSiteEvent("whatsapp_click", {
+                      propertyId: p.id,
+                      reference: p.reference,
+                      source: "detail_contact",
+                    })
+                  }
+                >
                   <WhatsAppIcon width={20} height={20} />
                   Conversar pelo WhatsApp
                 </a>
               )}
-              <ContactForm kind="interesse" property={p} />
+              {!whatsapp && (
+                <p className="cs-channel-status">
+                  O canal comercial deste imóvel ainda não foi publicado.
+                </p>
+              )}
+              {brand === "morar" ? (
+                <ContactForm kind="interesse" property={p} />
+              ) : (
+                <>
+                  <Dialog.Root open={contactOpen} onOpenChange={setContactOpen}>
+                    <Dialog.Trigger className="cs-button cs-button-light">
+                      Prefiro enviar uma mensagem
+                    </Dialog.Trigger>
+                    <Dialog.Portal>
+                      <Dialog.Overlay className={`${config.themeClass} cs-dialog-overlay`} />
+                      <Dialog.Content
+                        className={`${config.themeClass} cs-drawer cs-contact-drawer`}
+                      >
+                        <Dialog.Title>Mensagem sobre REF {p.reference}</Dialog.Title>
+                        <Dialog.Description>
+                          Recebida pela equipe para triagem e distribuição. Uma solicitação de
+                          visita ainda precisa de confirmação.
+                        </Dialog.Description>
+                        <Dialog.Close
+                          className="cs-icon-button cs-dialog-close"
+                          aria-label="Fechar formulário"
+                        >
+                          <X />
+                        </Dialog.Close>
+                        <ContactForm kind="interesse" property={p} />
+                      </Dialog.Content>
+                    </Dialog.Portal>
+                  </Dialog.Root>
+                </>
+              )}
             </div>
           </aside>
         </div>
-        {related && related.items.filter((x) => x.id !== p.id).length > 0 && (
+        {recommendations && recommendations.items.filter((x) => x.id !== p.id).length > 0 && (
           <section className="cs-section">
             <div className="cs-section-heading">
               <div>
                 <p className="cs-eyebrow">Continue explorando</p>
-                <h2>Outros lugares, novas possibilidades.</h2>
+                <h2>Outros imóveis para conhecer.</h2>
+                <p>Mesma finalidade, cidade e tipo, quando informados.</p>
               </div>
             </div>
             <div className="cs-property-grid">
-              {related.items
+              {recommendations.items
                 .filter((x) => x.id !== p.id)
                 .slice(0, 3)
                 .map((x) => (
@@ -367,8 +572,21 @@ export function DetailPage({
       </div>
       <div className="cs-mobile-contact">
         <strong>{priceLabel(p)}</strong>
-        <a className="cs-button" href="#fale-sobre-imovel">
-          Tenho interesse <ArrowRight size={18} />
+        <a
+          className="cs-button"
+          href={whatsapp ?? "#fale-sobre-imovel"}
+          target={whatsapp ? "_blank" : undefined}
+          rel={whatsapp ? "noopener noreferrer" : undefined}
+          onClick={() => {
+            if (whatsapp)
+              trackSiteEvent("whatsapp_click", {
+                propertyId: p.id,
+                reference: p.reference,
+                source: "detail_mobile",
+              });
+          }}
+        >
+          {whatsapp ? "WhatsApp" : "Atendimento"} <ArrowRight size={18} />
         </a>
       </div>
     </>

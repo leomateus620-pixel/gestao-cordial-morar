@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { loadCatalog, loadDetail, loadDetailState } from "@/lib/cordial-site/data";
+import { loadDetail, loadDetailState } from "@/lib/cordial-site/data";
 import { detailHead, siteHead, listingJsonLd, siteMatchData } from "@/lib/cordial-site/seo";
 import { safeJsonLd, sitePath } from "@/lib/cordial-site/presentation";
 import { DetailPage } from "@/components/cordial-site/DetailPage";
@@ -13,20 +13,9 @@ export const Route = createFileRoute("/site/imovel/$publicId")({
       if (status === "missing") throw notFound();
       return { property: null, related: null };
     }
-    let related = null;
-    try {
-      related = await loadCatalog(
-        {
-          cidade: property.city ?? undefined,
-          tipo: property.type ?? undefined,
-          finalidade: property.operation,
-        },
-        abortController.signal,
-      );
-    } catch {
-      /* Related offers must not hide the requested property. */
-    }
-    return { property, related };
+    // Recommendations are secondary and load inside DetailPage after the useful
+    // SSR property. Their failure never delays this route or its SEO content.
+    return { property, related: null };
   },
   headers: ({ loaderData }) =>
     loaderData && !loaderData.property ? { "X-Cordial-Page-Status": "410" } : undefined,

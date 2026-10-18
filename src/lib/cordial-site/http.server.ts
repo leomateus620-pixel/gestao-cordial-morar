@@ -3,6 +3,13 @@ import { leadSchema } from "./contract";
 import { readSite, siteDb, siteEnvironment, SiteUnavailable } from "./service.server";
 import type { SiteBrand } from "./brand";
 import { siteChannel } from "./channel.server";
+import {
+  derivativeKey,
+  derivativeOptions,
+  derivativeStore,
+  resolveDerivative,
+  type MediaSize,
+} from "./media-derivatives.server";
 
 const headers = {
   "Cache-Control": "no-store",
@@ -64,6 +71,7 @@ export async function mediaResponse(
   version: string,
   size: string,
   brand: SiteBrand = "cordial",
+  request?: Request,
 ): Promise<Response> {
   if (
     !z.string().uuid().safeParse(id).success ||
@@ -80,30 +88,48 @@ export async function mediaResponse(
     .maybeSingle();
   if (error) throw new SiteUnavailable();
   if (!data) return json({ error: "Imagem não disponível." }, 404);
-  const { data: blob, error: storageError } = await db.storage
-    .from("property-images")
-    .download(data.storage_path);
-  if (storageError || !blob) return json({ error: "Imagem temporariamente indisponível." }, 503);
-  if (blob.size > 25 * 1024 * 1024) return json({ error: "Imagem não disponível." }, 422);
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  // Pure JS: the published runtime cannot load the Photon WASM module.
-  const { decodeRaster, resizeRaster, encodeJpeg } =
-    await import("@/lib/imoveis/watermark-purejs.server");
-  const type = bytes[0] === 0x89 && bytes[1] === 0x50 ? "image/png" : "image/jpeg";
-  let photo;
-  try {
-    photo = decodeRaster(bytes, type);
-  } catch {
-    return json({ error: "Imagem não disponível." }, 422);
-  }
-  if (photo.width * photo.height > 60_000_000)
-    return json({ error: "Imagem não disponível." }, 422);
-  const width = Math.min(size === "thumb" ? 480 : size === "card" ? 960 : 1920, photo.width);
-  const resized =
-    width === photo.width
-      ? photo
-      : resizeRaster(photo, width, Math.max(1, Math.round((photo.height * width) / photo.width)));
-  const output = encodeJpeg(resized, size === "full" ? 88 : 80);
+  const etag = `"${version}-${size}-purejs-v2"`;
+  // A conditional browser reuse still performs a fresh authorization; withdrawn
+  // versions never receive a 304. No storage read or transformation is needed.
+  if (request?.headers.get("If-None-Match") === etag)
+    return new Response(null, {
+      status: 304,
+      headers: { ...headers, "Cache-Control": "private, max-age=30, must-revalidate", ETag: etag },
+    });
+  const output = await resolveDerivative(
+    derivativeKey(brand, id, version, size as MediaSize),
+    derivativeStore(db),
+    async () => {
+      const { data: blob, error: storageError } = await db.storage
+        .from("property-images")
+        .download(data.storage_path);
+      if (storageError || !blob) throw new Error("Original unavailable");
+      if (blob.size > 25 * 1024 * 1024) throw new Error("Invalid original");
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      // Pure JS: the published runtime cannot load the Photon WASM module.
+      const { decodeRaster, resizeRaster, encodeJpeg } =
+        await import("@/lib/imoveis/watermark-purejs.server");
+      const type = bytes[0] === 0x89 && bytes[1] === 0x50 ? "image/png" : "image/jpeg";
+      let photo;
+      try {
+        photo = decodeRaster(bytes, type);
+      } catch {
+        throw new Error("Invalid original");
+      }
+      if (photo.width * photo.height > 60_000_000) throw new Error("Invalid original");
+      const options = derivativeOptions(size as MediaSize);
+      const width = Math.min(options.width, photo.width);
+      const resized =
+        width === photo.width
+          ? photo
+          : resizeRaster(
+              photo,
+              width,
+              Math.max(1, Math.round((photo.height * width) / photo.width)),
+            );
+      return new Uint8Array(encodeJpeg(resized, options.quality));
+    },
+  );
   // A withdrawal or image revision may happen while downloading/encoding. Check
   // the same channel object again before releasing any bytes to the visitor.
   const { data: stillAuthorized, error: authorizationError } = await db
@@ -121,9 +147,76 @@ export async function mediaResponse(
       "Content-Type": "image/jpeg",
       "Cache-Control": "private, max-age=30, must-revalidate",
       "Content-Disposition": "inline",
-      ETag: `"${version}-${size}"`,
+      ETag: etag,
     },
   });
+}
+export async function videoResponse(
+  request: Request,
+  id: string,
+  version: string,
+  brand: SiteBrand = "cordial",
+) {
+  if (
+    brand !== "cordial" ||
+    !z.string().uuid().safeParse(id).success ||
+    !/^[a-f0-9]{32}$/.test(version)
+  )
+    return json({ error: "Vidéo não disponível." }, 404);
+  const range = request.headers.get("Range");
+  if (range && !/^bytes=(?:\d+-\d*|-\d+)$/.test(range))
+    return json({ error: "Faixa inválida." }, 416);
+  const db = siteDb();
+  const authorized = () =>
+    db
+      .from("cordial_site_authorized_videos")
+      .select("storage_path,size_bytes")
+      .eq("id", id)
+      .eq("version", version)
+      .maybeSingle();
+  const selected = await authorized();
+  if (selected.error) throw new SiteUnavailable();
+  if (!selected.data) return json({ error: "Vídeo não disponível." }, 404);
+  const signed = await db.storage
+    .from("property-videos")
+    .createSignedUrl(selected.data.storage_path, 60);
+  if (signed.error || !signed.data)
+    return json({ error: "Vídeo temporariamente indisponível." }, 503);
+  // The signed storage URL stays server-side. Range requests pass through the same authorization gate.
+  const upstream = await fetch(signed.data.signedUrl, {
+    headers: range ? { Range: range } : {},
+    signal: request.signal,
+    redirect: "error",
+  });
+  if (upstream.status === 416) {
+    await upstream.body?.cancel();
+    return json({ error: "Faixa inválida." }, 416);
+  }
+  if (
+    !upstream.ok ||
+    ![200, 206].includes(upstream.status) ||
+    !upstream.headers.get("content-type")?.startsWith("video/mp4")
+  ) {
+    await upstream.body?.cancel();
+    return json({ error: "Vídeo temporariamente indisponível." }, 503);
+  }
+  const final = await authorized();
+  if (final.error || !final.data) {
+    await upstream.body?.cancel();
+    return json({ error: "Vídeo não disponível." }, 404);
+  }
+  const responseHeaders = new Headers({
+    ...headers,
+    "Content-Type": "video/mp4",
+    "Content-Disposition": "inline",
+    "Accept-Ranges": "bytes",
+    "Cache-Control": "private, no-store",
+  });
+  for (const name of ["Content-Length", "Content-Range"]) {
+    const value = upstream.headers.get(name);
+    if (value) responseHeaders.set(name, value);
+  }
+  return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
 }
 function xml(value: string) {
   return value.replace(
@@ -203,12 +296,37 @@ export async function handleSiteRequest(
       if (route.startsWith("media/")) {
         const [, id, version, size, ...rest] = route.split("/");
         if (rest.length) return json({ error: "Não encontrado." }, 404);
-        return mediaResponse(id ?? "", version ?? "", size ?? "", brand);
+        return mediaResponse(id ?? "", version ?? "", size ?? "", brand, request);
       }
-      if (!["bootstrap", "properties", "detail", "detail-state", "pages", "page"].includes(route))
+      if (route.startsWith("video/")) {
+        const [, id, version, ...rest] = route.split("/");
+        if (rest.length) return json({ error: "Não encontrado." }, 404);
+        return videoResponse(request, id ?? "", version ?? "", brand);
+      }
+      if (
+        ![
+          "bootstrap",
+          "properties",
+          "detail",
+          "detail-state",
+          "pages",
+          "page",
+          "count",
+          "facets",
+          "summaries",
+          "gallery",
+          "videos",
+          "tours",
+        ].includes(route)
+      )
         return json({ error: "Não encontrado." }, 404);
       return json(
-        await readSite(route, JSON.parse(url.searchParams.get("input") ?? "null"), brand),
+        await readSite(
+          route,
+          JSON.parse(url.searchParams.get("input") ?? "null"),
+          brand,
+          request.signal,
+        ),
       );
     }
     if (request.method !== "POST" || route !== "leads")

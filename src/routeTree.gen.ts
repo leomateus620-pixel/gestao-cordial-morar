@@ -76,6 +76,8 @@ import { Route as SiteImovelPublicIdRouteImport } from './routes/site.imovel.$pu
 import { Route as SiteInformacoesSlugRouteImport } from './routes/site.informacoes.$slug'
 import { Route as SiteNoticiasIndexRouteImport } from './routes/site.noticias.index'
 import { Route as SiteNoticiasSlugRouteImport } from './routes/site.noticias.$slug'
+import { Route as SiteSelecaoIndexRouteImport } from './routes/site.selecao.index'
+import { Route as SiteSelecaoTokenRouteImport } from './routes/site.selecao.$token'
 import { Route as AppAssistenteEquipeIndexRouteImport } from './routes/_app.assistente.equipe.index'
 import { Route as AppAssistenteEquipeBotIdRouteImport } from './routes/_app.assistente.equipe.$botId'
 import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
@@ -99,6 +101,7 @@ import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './route
 import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
 import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
+import { Route as ApiPublicHooksSiteMediaWorkerRouteImport } from './routes/api/public/hooks/site-media-worker'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -440,6 +443,16 @@ const SiteNoticiasSlugRoute = SiteNoticiasSlugRouteImport.update({
   path: '/noticias/$slug',
   getParentRoute: () => SiteRoute,
 } as any)
+const SiteSelecaoIndexRoute = SiteSelecaoIndexRouteImport.update({
+  id: '/selecao/',
+  path: '/selecao/',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteSelecaoTokenRoute = SiteSelecaoTokenRouteImport.update({
+  id: '/selecao/$token',
+  path: '/selecao/$token',
+  getParentRoute: () => SiteRoute,
+} as any)
 const AppAssistenteEquipeIndexRoute =
   AppAssistenteEquipeIndexRouteImport.update({
     id: '/assistente/equipe/',
@@ -577,6 +590,12 @@ const ApiPublicHooksSalePaymentRemindersRoute =
     path: '/api/public/hooks/sale-payment-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSiteMediaWorkerRoute =
+  ApiPublicHooksSiteMediaWorkerRouteImport.update({
+    id: '/api/public/hooks/site-media-worker',
+    path: '/api/public/hooks/site-media-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -658,11 +677,13 @@ export interface FileRoutesByFullPath {
   '/site/imovel/$publicId': typeof SiteImovelPublicIdRoute
   '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
   '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
+  '/site/selecao/$token': typeof SiteSelecaoTokenRoute
   '/agenda/': typeof AppAgendaIndexRoute
   '/assistente/': typeof AppAssistenteIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
+  '/site/selecao/': typeof SiteSelecaoIndexRoute
   '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
@@ -684,6 +705,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
+  '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -748,11 +770,13 @@ export interface FileRoutesByTo {
   '/site/imovel/$publicId': typeof SiteImovelPublicIdRoute
   '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
   '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
+  '/site/selecao/$token': typeof SiteSelecaoTokenRoute
   '/agenda': typeof AppAgendaIndexRoute
   '/assistente': typeof AppAssistenteIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
   '/site-morar/noticias': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias': typeof SiteNoticiasIndexRoute
+  '/site/selecao': typeof SiteSelecaoIndexRoute
   '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
@@ -774,6 +798,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
+  '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -844,11 +869,13 @@ export interface FileRoutesById {
   '/site/imovel/$publicId': typeof SiteImovelPublicIdRoute
   '/site/informacoes/$slug': typeof SiteInformacoesSlugRoute
   '/site/noticias/$slug': typeof SiteNoticiasSlugRoute
+  '/site/selecao/$token': typeof SiteSelecaoTokenRoute
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/assistente/': typeof AppAssistenteIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
+  '/site/selecao/': typeof SiteSelecaoIndexRoute
   '/_app/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
@@ -870,6 +897,7 @@ export interface FileRoutesById {
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
+  '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -940,11 +968,13 @@ export interface FileRouteTypes {
     | '/site/imovel/$publicId'
     | '/site/informacoes/$slug'
     | '/site/noticias/$slug'
+    | '/site/selecao/$token'
     | '/agenda/'
     | '/assistente/'
     | '/imoveis/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
+    | '/site/selecao/'
     | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
@@ -966,6 +996,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
+    | '/api/public/hooks/site-media-worker'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -1030,11 +1061,13 @@ export interface FileRouteTypes {
     | '/site/imovel/$publicId'
     | '/site/informacoes/$slug'
     | '/site/noticias/$slug'
+    | '/site/selecao/$token'
     | '/agenda'
     | '/assistente'
     | '/imoveis'
     | '/site-morar/noticias'
     | '/site/noticias'
+    | '/site/selecao'
     | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
@@ -1056,6 +1089,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
+    | '/api/public/hooks/site-media-worker'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -1125,11 +1159,13 @@ export interface FileRouteTypes {
     | '/site/imovel/$publicId'
     | '/site/informacoes/$slug'
     | '/site/noticias/$slug'
+    | '/site/selecao/$token'
     | '/_app/agenda/'
     | '/_app/assistente/'
     | '/_app/imoveis/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
+    | '/site/selecao/'
     | '/_app/assistente/equipe/$botId'
     | '/_app/imoveis/$imovelId/editar'
     | '/api/public/ads-oauth/callback'
@@ -1151,6 +1187,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
+    | '/api/public/hooks/site-media-worker'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -1193,6 +1230,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
   ApiPublicHooksPushWorkerRoute: typeof ApiPublicHooksPushWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
+  ApiPublicHooksSiteMediaWorkerRoute: typeof ApiPublicHooksSiteMediaWorkerRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -1669,6 +1707,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SiteNoticiasSlugRouteImport
       parentRoute: typeof SiteRoute
     }
+    '/site/selecao/': {
+      id: '/site/selecao/'
+      path: '/selecao'
+      fullPath: '/site/selecao/'
+      preLoaderRoute: typeof SiteSelecaoIndexRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/site/selecao/$token': {
+      id: '/site/selecao/$token'
+      path: '/selecao/$token'
+      fullPath: '/site/selecao/$token'
+      preLoaderRoute: typeof SiteSelecaoTokenRouteImport
+      parentRoute: typeof SiteRoute
+    }
     '/_app/assistente/equipe/': {
       id: '/_app/assistente/equipe/'
       path: '/assistente/equipe'
@@ -1830,6 +1882,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSalePaymentRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/site-media-worker': {
+      id: '/api/public/hooks/site-media-worker'
+      path: '/api/public/hooks/site-media-worker'
+      fullPath: '/api/public/hooks/site-media-worker'
+      preLoaderRoute: typeof ApiPublicHooksSiteMediaWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -1970,7 +2029,9 @@ interface SiteRouteChildren {
   SiteImovelPublicIdRoute: typeof SiteImovelPublicIdRoute
   SiteInformacoesSlugRoute: typeof SiteInformacoesSlugRoute
   SiteNoticiasSlugRoute: typeof SiteNoticiasSlugRoute
+  SiteSelecaoTokenRoute: typeof SiteSelecaoTokenRoute
   SiteNoticiasIndexRoute: typeof SiteNoticiasIndexRoute
+  SiteSelecaoIndexRoute: typeof SiteSelecaoIndexRoute
 }
 
 const SiteRouteChildren: SiteRouteChildren = {
@@ -1984,7 +2045,9 @@ const SiteRouteChildren: SiteRouteChildren = {
   SiteImovelPublicIdRoute: SiteImovelPublicIdRoute,
   SiteInformacoesSlugRoute: SiteInformacoesSlugRoute,
   SiteNoticiasSlugRoute: SiteNoticiasSlugRoute,
+  SiteSelecaoTokenRoute: SiteSelecaoTokenRoute,
   SiteNoticiasIndexRoute: SiteNoticiasIndexRoute,
+  SiteSelecaoIndexRoute: SiteSelecaoIndexRoute,
 }
 
 const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
@@ -2065,6 +2128,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksPushWorkerRoute: ApiPublicHooksPushWorkerRoute,
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,
+  ApiPublicHooksSiteMediaWorkerRoute: ApiPublicHooksSiteMediaWorkerRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,

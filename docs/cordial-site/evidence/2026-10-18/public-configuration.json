@@ -1,0 +1,12 @@
+{
+  "checkedAtUtc": "2026-10-18T21:03:18.1526335Z",
+  "source": "https://cordialgestao.com/api/cordial-site/bootstrap?input=null",
+  "readOnly": true,
+  "available": true,
+  "indexable": false,
+  "whatsappConfigured": false,
+  "phoneConfigured": false,
+  "emailConfigured": false,
+  "privacyConfigured": false,
+  "remoteWrites": false
+}

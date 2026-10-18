@@ -11,7 +11,7 @@ const MIGRATIONS = [
 ];
 
 /** Banco isolado em memória com as funções reais de arquivamento. */
-export async function archiveDatabase() {
+export async function archiveDatabase(options: { currentSync?: boolean } = {}) {
   const db = new PGlite();
   const read = (u: URL) => readFile(u, "utf8");
   await db.exec(await read(new URL("../cordial-site/schema.sql", import.meta.url)));
@@ -19,5 +19,14 @@ export async function archiveDatabase() {
   for (const file of MIGRATIONS) {
     await db.exec(await read(new URL(`../../supabase/migrations/${file}`, import.meta.url)));
   }
+  if (options.currentSync !== false)
+    await db.exec(
+      await read(
+        new URL(
+          "../../supabase/migrations/20261018173000_cordial_sync_trigger_record_access.sql",
+          import.meta.url,
+        ),
+      ),
+    );
   return db;
 }

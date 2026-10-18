@@ -1,0 +1,310 @@
+{
+  "date": "2026-10-18",
+  "browser": "Codex in-app Chromium on Windows; exact version unavailable",
+  "cpuNetworkEmulation": false,
+  "physicalDevice": false,
+  "cssWidthsVerified": [360, 390, 768, 1367, 1440],
+  "rasterHeightMayBeClippedByInAppViewport": true,
+  "captures": [
+    {
+      "file": "after-contact-local-qa.jpg",
+      "format": "image/jpeg",
+      "width": 404,
+      "height": 824,
+      "bytes": 17600,
+      "sha256": "5292f09f0ab172d05c26441f15a1269acb60a00695a1c8d4ff01603bee02972d",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-detail-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 140530,
+      "sha256": "d24dd0ddf8c139b47c5446a395790f33e2bd9641ac185c81d90453173d346db2",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-detail-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 795,
+      "bytes": 42864,
+      "sha256": "1e0570452e1aed9a5e570b1a507c498ba259d61cdc6de3a47e5fc3ecceb532ad",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-districts-360.jpg",
+      "format": "image/jpeg",
+      "width": 361,
+      "height": 773,
+      "bytes": 34766,
+      "sha256": "49405a6608c6da80875187cd72569aa4eef34705af883aac0f209c6e5f228fc5",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-favorites-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 75033,
+      "sha256": "dd1e3bf7adc8081c6fff194c5013c3a0c3277ab000f2dd8a96e4e1ae2c48ae7f",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-favorites-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 795,
+      "bytes": 45501,
+      "sha256": "ec249eb0d12fb5f83f6223628c1b0af0fc0b7d754d0a7b5f15898ae4ad556cb9",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-filters-390.jpg",
+      "format": "image/jpeg",
+      "width": 404,
+      "height": 844,
+      "bytes": 23958,
+      "sha256": "08b867c88214d02fc60ec9205aa8e874c6e7516096737112a5b5a68a5bee4a29",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-filters-768-short.jpg",
+      "format": "image/jpeg",
+      "width": 782,
+      "height": 600,
+      "bytes": 30429,
+      "sha256": "eb5bd8cf1719434398cff2c4fb853d73610b6f53fa7751352b88f334f7b6a1f1",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-gallery-390.jpg",
+      "format": "image/jpeg",
+      "width": 404,
+      "height": 824,
+      "bytes": 32045,
+      "sha256": "b1fa7551e306e8a3444b0b6f5720039b4293bfa7a117bf1726cbd6d26295a501",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-gallery-photo-8.jpg",
+      "format": "image/jpeg",
+      "width": 1454,
+      "height": 823,
+      "bytes": 83173,
+      "sha256": "1e65cb86619bc310aa5d5fcd3959146791adb8bfd12cc0d9d83d3941464145ec",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-home-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 120177,
+      "sha256": "d978c5be5f4cf0d23540ca6522a142eae65c3a223c18ca4607b3d59367f383e2",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-home-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 816,
+      "bytes": 35915,
+      "sha256": "1ef849870856aa42af9e66f60e40b14315a8e53125dad067ed2feaf1dd3d2bc5",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-preview-390.jpg",
+      "format": "image/jpeg",
+      "width": 404,
+      "height": 824,
+      "bytes": 47489,
+      "sha256": "dad4b84008260c3fe867090345898356dc811f00803bff7c9c9e29093bd4edde",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-return-focus-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 795,
+      "bytes": 43811,
+      "sha256": "4b5687a0ce45e013fbbb49fef3640539daa4b40c13d36f68788ce7336cc91dbd",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-search-1367.jpg",
+      "format": "image/jpeg",
+      "width": 1367,
+      "height": 793,
+      "bytes": 129202,
+      "sha256": "82e3f6a403567b4986d16429404cbf17a81f3a27f411f8151c92fd08a0cd3b1e",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-search-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 138395,
+      "sha256": "34a3cf2218e87504ad9dae78e9fcc6f4d8284631b7b3b5f0cdfa0c55e139d4c9",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-search-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 816,
+      "bytes": 38328,
+      "sha256": "db51a27fe2e5d3b7b9f4a142662dfac315803d485e67442f4cc1625149f5276b",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "after-shared-selection-independent-origin.jpg",
+      "format": "image/jpeg",
+      "width": 1265,
+      "height": 712,
+      "bytes": 112884,
+      "sha256": "058fb01b9ce67350013831b69237627627e0dbd59f8a55152a2d99a560a79668",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-detail-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 143961,
+      "sha256": "706104f3a940812ce818e805677cd789939bf106c054b28e1fde6199bf8f39cb",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-detail-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 816,
+      "bytes": 43774,
+      "sha256": "60b768f247bdea1264f2a6470ba3f512c3771111f5e716547ba0b3ab50195548",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-favorites-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 74974,
+      "sha256": "a99f4cb1794ef03b413cbf692b080ce3d720eb64149c8951bedaddc83081329e",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-favorites-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 816,
+      "bytes": 39506,
+      "sha256": "5511ab36643e7ec3e3351a6af9dd526abb255eaf9d99456bc6105ab42f55e07c",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-home-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 113771,
+      "sha256": "926c6a89a0c498a47698f6cccb1ef6de6b752dcd059d6bfd45d7afefb2b915cb",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-home-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 816,
+      "bytes": 33251,
+      "sha256": "3f9498d27b2fd75c18e6f1f6680b353d057dc3ccdd7a443af4922c7e418d7ae4",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-search-1440.jpg",
+      "format": "image/jpeg",
+      "width": 1440,
+      "height": 815,
+      "bytes": 109228,
+      "sha256": "567789dad714c63f64f19192baa3a574e231de856983be70291c0e5f47a9f8d1",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "before-search-390.jpg",
+      "format": "image/jpeg",
+      "width": 390,
+      "height": 816,
+      "bytes": 38194,
+      "sha256": "ca6bf219ba746b7d1f3e62e72f4e50bdd1532a15eecea22a549fbd019f36ef65",
+      "reviewed": true,
+      "environment": "Isolated local historical property sample; no remote publication"
+    },
+    {
+      "file": "tour-before-intent.jpg",
+      "format": "image/jpeg",
+      "width": 1280,
+      "height": 720,
+      "bytes": 51564,
+      "sha256": "6f4749e364c43a3f9967ec945045ee8a37bec2e73418f0c70133b526e73de0ff",
+      "reviewed": true,
+      "environment": "Isolated synthetic panorama viewer lab; no property record"
+    },
+    {
+      "file": "tour-fallback.jpg",
+      "format": "image/jpeg",
+      "width": 1265,
+      "height": 712,
+      "bytes": 71675,
+      "sha256": "a375e6fd423f34759021ca9abe90cbf7b9d77fb5d6b375be00288c1cfd159b1b",
+      "reviewed": true,
+      "environment": "Isolated synthetic panorama viewer lab; no property record"
+    },
+    {
+      "file": "tour-webgl-drag.jpg",
+      "format": "image/jpeg",
+      "width": 1265,
+      "height": 712,
+      "bytes": 48570,
+      "sha256": "97abdd69ef6064c6a14b147242e8ded8927e965481407b09a5304b3599a0be7d",
+      "reviewed": true,
+      "environment": "Isolated synthetic panorama viewer lab; no property record"
+    },
+    {
+      "file": "tour-webgl-right.jpg",
+      "format": "image/jpeg",
+      "width": 1265,
+      "height": 712,
+      "bytes": 46702,
+      "sha256": "0ec977d74d9e8c6891f9b897c1e4551afa822590a60803208e6059c92b2b29fc",
+      "reviewed": true,
+      "environment": "Isolated synthetic panorama viewer lab; no property record"
+    }
+  ]
+}

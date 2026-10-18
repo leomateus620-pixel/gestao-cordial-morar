@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-18",
+  "environment": "Local Chromium in-app browser, Windows; PGlite loopback historical sample",
+  "physicalDevice": false,
+  "unmeasured": [
+    "Field p75 LCP/INP/CLS",
+    "Navigation LCP/long tasks/hydration/total network bytes",
+    "Local command latency approximately 100ms",
+    "Physical Safari/iOS, Chrome/Android, mobile keyboard, accessibility zoom and reduced-motion setting"
+  ],
+  "observed": [
+    {
+      "flow": "Home → city + official district → search",
+      "result": "4 matching properties; URL reconstructs filters"
+    },
+    {
+      "flow": "Advanced filter draft → cancel → reopen",
+      "result": "Applied city/district retained; focus returned to filter trigger"
+    },
+    {
+      "flow": "Card next photo, favorite and selection",
+      "result": "Independent controls; no unintended detail navigation"
+    },
+    {
+      "flow": "Preview → gallery → Escape → close",
+      "result": "One modal, photo2 retained, focus expand then card trigger"
+    },
+    {
+      "flow": "Browser Forward after closing a known preview",
+      "result": "Preview then gallery restored without extra push; photo2 retained"
+    },
+    {
+      "flow": "Preview → full sheet → Back to search",
+      "beforeScrollTop": 732.4561767578125,
+      "afterScrollTop": 733.3333129882812,
+      "focus": "Cover link of public ref939",
+      "result": "Filters, presentation and origin card retained; subpixel rounding below1px"
+    },
+    {
+      "flow": "Direct same-property reentry after prior search visit",
+      "result": "Fallback /site/buscar; old search not inherited"
+    },
+    {
+      "flow": "Direct #foto-8 → gallery → Escape",
+      "result": "Photo8 retained; focus returned to photo8 trigger"
+    },
+    {
+      "flow": "Create five-item visitor selection → open from independent origin",
+      "result": "Same five refs939/965/984/975/972, empty local draft in reader"
+    },
+    {
+      "flow": "Controlled contact submission",
+      "result": "One local persisted lead, triage/distribution message; no real contact sent"
+    },
+    {
+      "flow": "Short tablet drawer and 360px directory",
+      "result": "Internal scrolling and action footer visible; literal districts remain distinct"
+    }
+  ]
+}

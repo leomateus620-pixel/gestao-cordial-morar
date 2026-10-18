@@ -12,6 +12,7 @@ import { sitePath } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
+import { trackSiteEvent } from "@/lib/cordial-site/experience";
 export function ContactForm({
   kind = "contato",
   property,
@@ -84,8 +85,8 @@ export function ContactForm({
         <CheckCircle2 size={35} />
         <h3>Mensagem recebida.</h3>
         <p>
-          A equipe {config.shortName} dará continuidade ao seu contato. Se você pediu uma visita, o
-          horário ainda será combinado.
+          Sua mensagem entrou na fila da equipe {config.shortName} para triagem e distribuição. Se
+          você pediu uma visita, o horário ainda será combinado.
         </p>
         <button
           className="cs-button cs-button-light"
@@ -144,6 +145,12 @@ export function ContactForm({
             throw new Error(result.error || "Não foi possível enviar.");
           clearContactDraft(draftKey);
           setDone(true);
+          if (brand === "cordial")
+            trackSiteEvent("form_persisted", {
+              propertyId: property?.id,
+              reference: property?.reference,
+              source: kind,
+            });
         } catch (error) {
           setFailure(
             error instanceof Error && error.name !== "TimeoutError"

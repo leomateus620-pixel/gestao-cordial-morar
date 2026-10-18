@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown } from "lucide-react";
+import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown, ListChecks } from "lucide-react";
 import type { SiteBootstrap } from "@/lib/cordial-site/contract";
 import { searchSchema } from "@/lib/cordial-site/contract";
 import { sitePath } from "@/lib/cordial-site/presentation";
@@ -9,6 +9,16 @@ import { sitePath } from "@/lib/cordial-site/presentation";
 import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
 import { WhatsAppIcon, InstagramIcon } from "./SocialIcons";
 import { SiteContext, SiteBrandContext, useSiteBrand } from "@/lib/cordial-site/context";
+import { useVisitorSelection } from "@/lib/selecoes/visitor-store";
+import {
+  searchNavigationContext,
+  rememberSearchCardOrigin,
+  trackSiteEvent,
+  whatsappNumber,
+} from "@/lib/cordial-site/experience";
+import { SitePerformance } from "./SitePerformance";
+import { SiteAnalytics } from "./SiteAnalytics";
+import { loadBootstrap } from "@/lib/cordial-site/data";
 const destinationsFor = (name: string) => [
   [`Sobre a ${name}`, "/sobre"],
   ["Bairros", "/bairros"],
@@ -20,10 +30,17 @@ const destinationsFor = (name: string) => [
 export function SiteLink({
   to,
   children,
+  originScrollTop,
   ...rest
-}: Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & { to: string }) {
+}: Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+  to: string;
+  originScrollTop?: number;
+}) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
+  const source = useRouterState({
+    select: (s) => s.location.pathname + s.location.searchStr,
+  });
   const scoped =
     brand === "morar" && (to === "/site" || to.startsWith("/site/") || to.startsWith("/site?"))
       ? config.basePath + to.slice(5)
@@ -36,8 +53,31 @@ export function SiteLink({
         Object.keys(raw).map((key) => [key, parsed.data[key as keyof typeof parsed.data]]),
       )
     : raw;
+  const searchOrigin = searchNavigationContext(path, source, brand);
   return (
-    <Link to={path} search={search} hash={hash.slice(1)} {...rest}>
+    <Link
+      to={path}
+      search={search}
+      hash={hash.slice(1)}
+      state={(current) => ({ ...current, publicSiteSearch: searchOrigin })}
+      {...rest}
+      data-public-property={searchOrigin?.propertyId}
+      onClick={(event) => {
+        rest.onClick?.(event);
+        if (
+          brand === "cordial" &&
+          searchOrigin &&
+          !event.defaultPrevented &&
+          event.button === 0 &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.shiftKey &&
+          !event.altKey &&
+          (!event.currentTarget.target || event.currentTarget.target === "_self")
+        )
+          rememberSearchCardOrigin(searchOrigin, originScrollTop);
+      }}
+    >
       {children}
     </Link>
   );
@@ -47,8 +87,28 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
   const destinations = destinationsFor(config.shortName);
   const pathFor = (path = "") => sitePath(path, brand);
   const [open, setOpen] = useState(false);
+  const [currentData, setCurrentData] = useState(data);
+  useEffect(() => setCurrentData(data), [data]);
+  const { ids: selectedIds } = useVisitorSelection();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
+  useEffect(() => {
+    if (brand !== "cordial") return;
+    const viewport = window.visualViewport;
+    const update = () =>
+      document.documentElement.style.setProperty(
+        "--cs-visible-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+    update();
+    viewport?.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    return () => {
+      viewport?.removeEventListener("resize", update);
+      window.removeEventListener("resize", update);
+      document.documentElement.style.removeProperty("--cs-visible-height");
+    };
+  }, [brand]);
   useEffect(() => {
     setOpen(false);
   }, [path]);
@@ -58,19 +118,59 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
     const relative = path.slice(config.basePath.length);
     if (
       !["", "/", "/buscar", "/favoritos", "/bairros"].includes(relative) &&
-      !relative.startsWith("/imovel/")
+      !relative.startsWith("/imovel/") &&
+      !relative.startsWith("/selecao")
     )
       return;
+    let bootstrapAbort: AbortController | null = null;
     const refresh = () => {
-      if (document.visibilityState === "visible") void router.invalidate();
+      const active = document.activeElement;
+      const interacting =
+        active instanceof HTMLElement &&
+        (active.matches("input,textarea,select,[contenteditable=true]") ||
+          !!active.closest("form"));
+      if (
+        document.visibilityState !== "visible" ||
+        interacting ||
+        document.querySelector('[role="dialog"][data-state="open"]')
+      )
+        return;
+      // Background refresh touches only this brand's offer route, preserving the
+      // shell, its focus, and drafts. Every actual media/API read still authorizes.
+      void router
+        .invalidate({
+          filter: (match) => match.routeId.startsWith(`${config.basePath}/`),
+          sync: false,
+        })
+        .catch(() => {});
+      bootstrapAbort?.abort();
+      bootstrapAbort = new AbortController();
+      const signal = bootstrapAbort.signal;
+      void loadBootstrap(signal, brand)
+        .then((next) => {
+          if (
+            !signal.aborted &&
+            next.available &&
+            !document.querySelector('[role="dialog"][data-state="open"]') &&
+            !(
+              document.activeElement instanceof HTMLElement &&
+              document.activeElement.matches("input,textarea,select")
+            )
+          ) {
+            setCurrentData(next);
+            window.dispatchEvent(new Event(`${brand}:availability-refresh`));
+          }
+        })
+        .catch(() => {});
     };
     const timer = window.setInterval(refresh, 45_000);
     window.addEventListener("focus", refresh);
     return () => {
       clearInterval(timer);
       window.removeEventListener("focus", refresh);
+      bootstrapAbort?.abort();
     };
-  }, [router, path, config.basePath]);
+  }, [router, path, config.basePath, brand]);
   useEffect(() => {
     const nodes = document.querySelectorAll(".cs-reveal");
     if (
@@ -94,11 +194,12 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
     });
     return () => observer.disconnect();
   }, [path]);
-  const { settings } = data;
+  const { settings } = currentData;
   return (
     <SiteBrandContext.Provider value={brand}>
-      <SiteContext.Provider value={data}>
+      <SiteContext.Provider value={currentData}>
         <div className={config.themeClass}>
+          {brand === "cordial" && <SitePerformance />}
           <a className="cs-skip" href="#conteudo">
             Ir para o conteúdo
           </a>
@@ -122,6 +223,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
               <nav className="cs-desktop-nav" aria-label="Navegação principal">
                 <SiteLink to={pathFor("/buscar?finalidade=venda")}>Comprar</SiteLink>
                 <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>Alugar</SiteLink>
+                {brand === "cordial" && <SiteLink to={pathFor("/bairros")}>Bairros</SiteLink>}
                 <SiteLink to={pathFor("/anuncie")}>Anunciar meu imóvel</SiteLink>
                 <details
                   className="cs-menu"
@@ -153,6 +255,16 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 <SiteLink to={pathFor("/contato")}>Contato</SiteLink>
               </nav>
               <div className="cs-header-actions">
+                {brand === "cordial" && (
+                  <SiteLink
+                    to={pathFor("/selecao")}
+                    className="cs-icon-button cs-header-selection"
+                    aria-label={`Minha seleção, ${selectedIds.length} imóveis`}
+                  >
+                    <ListChecks size={20} />
+                    {selectedIds.length > 0 && <span>{selectedIds.length}</span>}
+                  </SiteLink>
+                )}
                 <SiteLink
                   to={pathFor("/favoritos")}
                   className="cs-icon-button"
@@ -190,6 +302,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                           ...destinations,
                           ["Contato", "/contato"],
                           ["Favoritos", "/favoritos"],
+                          ...(brand === "cordial" ? [["Minha seleção", "/selecao"]] : []),
                         ].map(([label, to]) => (
                           <SiteLink key={to} to={pathFor(to)} onClick={() => setOpen(false)}>
                             {label}
@@ -239,6 +352,9 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                   </SiteLink>
                   <SiteLink to={pathFor("/bairros")}>Encontre por bairro</SiteLink>
                   <SiteLink to={pathFor("/buscar")}>Pesquisa completa</SiteLink>
+                  {brand === "cordial" && (
+                    <SiteLink to={pathFor("/selecao")}>Minha seleção</SiteLink>
+                  )}
                 </div>
                 <div>
                   <h2>Conte com a {config.shortName}</h2>
@@ -260,6 +376,15 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                     </a>
                   )}
                   {settings.email && <a href={`mailto:${settings.email}`}>{settings.email}</a>}
+                  {whatsappNumber(settings.whatsapp) && (
+                    <a
+                      href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      WhatsApp da equipe <ArrowUpRight size={16} />
+                    </a>
+                  )}
                   {settings.address && <p>{settings.address}</p>}
                   {settings.hours && <p>{settings.hours}</p>}
                   <SiteLink to={pathFor("/contato")}>
@@ -272,21 +397,31 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                   © {new Date().getFullYear()} {settings.brand}
                 </span>
                 <SiteLink to={pathFor("/privacidade")}>Privacidade</SiteLink>
+                {brand === "cordial" && <SiteAnalytics settings={settings} />}
                 {settings.instagram && (
                   <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
                     <InstagramIcon width={18} height={18} /> Instagram <ArrowUpRight size={14} />
                   </a>
                 )}
+                {settings.facebook && (
+                  <a href={settings.facebook} target="_blank" rel="noopener noreferrer">
+                    Facebook <ArrowUpRight size={14} />
+                  </a>
+                )}
               </div>
             </div>
           </footer>
-          {settings.whatsapp && (
+          {whatsappNumber(settings.whatsapp) && !path.startsWith(`${config.basePath}/imovel/`) && (
             <a
               className="cs-whatsapp"
-              href={`https://wa.me/${settings.whatsapp}`}
+              href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Conversar com a ${config.shortName} no WhatsApp`}
+              onClick={() => {
+                if (brand === "cordial")
+                  trackSiteEvent("whatsapp_click", { source: "institutional" });
+              }}
             >
               <WhatsAppIcon width={23} height={23} />
               <span>Vamos conversar</span>

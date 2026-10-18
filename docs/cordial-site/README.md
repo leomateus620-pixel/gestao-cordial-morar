@@ -1,6 +1,6 @@
 # Site próprio Cordial — implementação e homologação
 
-Esta entrega adiciona uma superfície pública em `/site`, um canal de publicação independente e administração em `/site-administracao` dentro do layout autenticado. **Não é uma ativação em produção.** A migração não foi aplicada ao Supabase remoto; nenhum imóvel foi autorizado ou alterado em produção por esta tarefa.
+Este diretório documenta a superfície pública `/site`, seu canal de publicação e a administração autenticada `/site-administracao`. A revisão de experiência de 18/10/2026 está em [entrega e QA](experience-delivery.md), com a matriz, capturas e limites de desempenho. **Não é uma ativação em produção:** as novas migrações desta revisão não foram aplicadas remotamente e nenhum imóvel foi autorizado ou alterado em produção por esta tarefa.
 
 O PR deve permanecer em **draft** enquanto os critérios operacionais e de aceitação abaixo estiverem pendentes. As fotos e os imóveis usados nas capturas posteriores vêm de uma amostra real do Gestão em banco local isolado; não comprovam migração integral.
 
@@ -12,6 +12,9 @@ O PR deve permanecer em **draft** enquanto os critérios operacionais e de aceit
 - [Mídia, cache e retirada](media-cache.md).
 - [Execução, ativação e autonomia](operations.md).
 - [Validação](validation.md) e [evidências](evidence/).
+- [Entrega, capturas comparáveis e QA](experience-delivery.md).
+- [Matriz da experiência pública](experience-requirements.md): 17 seções, 15 percursos, superfícies, evidências e pendências de ativação.
+- [Dados, contatos e mídia](public-data-experience.md) e [seleções de visitantes](visitor-selections.md).
 
 ## Execução local
 

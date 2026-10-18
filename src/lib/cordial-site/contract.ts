@@ -80,6 +80,29 @@ export const mediaSchema = z.object({
   position: z.number().int().min(0),
 });
 const nullableNumber = z.number().finite().nonnegative().nullable();
+export const publicResponsibleSchema = z.object({
+  kind: z.enum(["person", "team"]),
+  name: z.string().min(1).max(100),
+  role: z.string().max(100),
+  whatsapp: z.string().regex(/^\d{10,15}$/),
+  photoUrl: z
+    .string()
+    .url()
+    .startsWith("https://")
+    .max(1000)
+    .refine((value) => {
+      const url = new URL(value);
+      return (
+        !url.username &&
+        !url.password &&
+        !url.search &&
+        !url.hash &&
+        !/\/storage\/v1\/object\/(?:sign|authenticated)\//.test(url.pathname)
+      );
+    }, "Use uma foto pública aprovada, sem credenciais ou link privado assinado.")
+    .nullable(),
+});
+export type PublicResponsible = z.infer<typeof publicResponsibleSchema>;
 // This allowlist is also parsed on the server. Internal data cannot survive serialization.
 export const publicPropertySchema = z.object({
   id: z.string().uuid(),
@@ -112,10 +135,31 @@ export const publicPropertySchema = z.object({
   features: z.array(z.string()),
   cover: mediaSchema.nullable(),
   photoCount: z.number().int().nonnegative(),
+  hasTour: z.boolean().optional(),
+  responsible: publicResponsibleSchema.nullable().optional(),
 });
 export type PublicProperty = z.infer<typeof publicPropertySchema>;
 export type PublicMedia = z.infer<typeof mediaSchema>;
-export type PublicDetail = PublicProperty & { images: PublicMedia[] };
+export const publicVideoSchema = z.object({
+  id: z.string().uuid(),
+  version: z.string().regex(/^[a-f0-9]{32}$/),
+  type: z.literal("video"),
+  mime: z.literal("video/mp4"),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  duration: z.number().positive().max(180),
+  poster: mediaSchema.nullable(),
+});
+export type PublicVideo = z.infer<typeof publicVideoSchema>;
+export const publicTourSchema = z.object({
+  type: z.literal("equirectangular"),
+  media: mediaSchema.refine(
+    (media) => media.width != null && media.height != null && media.width === media.height * 2,
+    "Panorama requer dimensão 2:1 verificada.",
+  ),
+});
+export type PublicTour = z.infer<typeof publicTourSchema>;
+export type PublicDetail = PublicProperty & { images: PublicMedia[]; videos?: PublicVideo[] };
 const publicFacet = z.object({ value: z.string().max(100), count: z.number().int().nonnegative() });
 export const publicFacetsSchema = z.object({
   types: z.array(publicFacet),
@@ -137,6 +181,15 @@ export type SiteCatalog = {
   page: number;
   pageSize: number;
 };
+export type PublicSummaries = { items: PublicProperty[]; missingIds: string[] };
+const priceStepsSchema = z
+  .array(z.number().finite().positive().max(1e12))
+  .min(1)
+  .max(12)
+  .refine(
+    (steps) => steps.every((value, index) => index === 0 || value > steps[index - 1]),
+    "Informe tetos distintos em ordem crescente.",
+  );
 export const settingsSchema = z.object({
   brand: z.string().max(80).default("Cordial Imóveis"),
   tagline: z.string().max(140).default("Sentir-se em casa!"),
@@ -154,6 +207,22 @@ export const settingsSchema = z.object({
   instagram: z.union([z.string().url().startsWith("https://"), z.literal("")]).default(""),
   facebook: z.union([z.string().url().startsWith("https://"), z.literal("")]).default(""),
   heroPropertyId: z.string().uuid().nullable().default(null),
+  featuredPropertyIds: z
+    .array(z.string().uuid())
+    .max(9)
+    .refine((ids) => new Set(ids).size === ids.length, "Não repita imóveis na seleção editorial.")
+    .default([]),
+  analyticsMeasurementId: z
+    .string()
+    .regex(/^G-[A-Z0-9]{5,20}$|^$/)
+    .default(""),
+  analyticsManualEventsOnly: z.boolean().default(false),
+  priceSteps: z
+    .object({
+      venda: priceStepsSchema.default([200000, 400000, 600000, 1000000]),
+      aluguel: priceStepsSchema.default([1000, 2000, 3000, 5000]),
+    })
+    .default({ venda: [200000, 400000, 600000, 1000000], aluguel: [1000, 2000, 3000, 5000] }),
   links: z
     .array(z.object({ label: z.string().max(100), url: z.string().url().startsWith("https://") }))
     .max(12)

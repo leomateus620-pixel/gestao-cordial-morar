@@ -1,7 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Heart, Mail, MapPin, Phone, ArrowRight } from "lucide-react";
-import type { PublicDetail, SitePage } from "@/lib/cordial-site/contract";
-import { loadDetail } from "@/lib/cordial-site/data";
+import {
+  defaultSearch,
+  searchParams,
+  type PublicDetail,
+  type PublicProperty,
+  type SiteFacets,
+  type SitePage,
+  type SiteSearch,
+} from "@/lib/cordial-site/contract";
+import { loadDetail, loadFacets, loadSummaries } from "@/lib/cordial-site/data";
+import { foldSearchText, latestRequest, searchQueryKey } from "@/lib/cordial-site/search-state";
 import { sitePath } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
@@ -163,6 +172,14 @@ export function EditorialPage({ slug, content }: { slug: string; content: SitePa
   );
 }
 export function DistrictsPage({ pages }: { pages: SitePage[] }) {
+  const brand = useSiteBrand();
+  return brand === "cordial" ? (
+    <CordialDistrictsPage pages={pages} />
+  ) : (
+    <ExistingDistrictsPage pages={pages} />
+  );
+}
+function ExistingDistrictsPage({ pages }: { pages: SitePage[] }) {
   const { facets } = useSite();
   return (
     <div className="cs-container cs-content-page">
@@ -213,6 +230,177 @@ export function DistrictsPage({ pages }: { pages: SitePage[] }) {
     </div>
   );
 }
+function CordialDistrictsPage({ pages }: { pages: SitePage[] }) {
+  const { facets } = useSite();
+  const [text, setText] = useState("");
+  const [city, setCity] = useState("");
+  const [operation, setOperation] = useState<"" | "venda" | "aluguel">("");
+  const [type, setType] = useState("");
+  const [order, setOrder] = useState("nome");
+  const [retry, setRetry] = useState(0);
+  const criteria: SiteSearch = {
+    ...defaultSearch,
+    cidade: city || undefined,
+    finalidade: operation || undefined,
+    tipo: type || undefined,
+  };
+  const key = searchQueryKey(criteria, true);
+  const [confirmed, setConfirmed] = useState<{
+    key: string;
+    facets: SiteFacets;
+    criteria: SiteSearch;
+  }>({ key, facets, criteria });
+  const [failure, setFailure] = useState<string | null>(null);
+  const requests = useRef(latestRequest());
+  useEffect(() => {
+    if (key === searchQueryKey(defaultSearch, true) && retry === 0) {
+      setConfirmed({ key, facets, criteria: defaultSearch });
+      return;
+    }
+    const requestTracker = requests.current;
+    const sequence = requestTracker.next();
+    const abort = new AbortController();
+    setFailure(null);
+    const requested = { ...defaultSearch, ...Object.fromEntries(JSON.parse(key)) };
+    void loadFacets(requested, abort.signal)
+      .then((result) => {
+        if (!abort.signal.aborted && requestTracker.current(sequence))
+          setConfirmed({ key, facets: result, criteria: requested });
+      })
+      .catch(() => {
+        if (!abort.signal.aborted && requestTracker.current(sequence)) setFailure(key);
+      });
+    return () => {
+      abort.abort();
+      requestTracker.invalidate();
+    };
+  }, [key, retry, facets]);
+  const pending = key !== confirmed.key && failure !== key;
+  const districts = confirmed.facets.districts
+    .filter((district) =>
+      foldSearchText(`${district.value} ${district.city}`).includes(foldSearchText(text)),
+    )
+    .sort((a, b) =>
+      order === "quantidade"
+        ? b.count - a.count || a.value.localeCompare(b.value, "pt-BR")
+        : a.value.localeCompare(b.value, "pt-BR") || a.city.localeCompare(b.city, "pt-BR"),
+    );
+  return (
+    <div className="cs-container cs-content-page cs-district-directory">
+      <PageIntro
+        eyebrow="Perto do que importa"
+        title="Bairros e loteamentos"
+        description="Escolha a região e encontre os imóveis públicos disponíveis. Os nomes seguem o cadastro, sem unir regiões diferentes."
+      />
+      <div className="cs-directory-controls">
+        <label className="cs-field">
+          <span>Buscar bairro ou loteamento</span>
+          <input
+            type="search"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Nome da região ou cidade"
+          />
+        </label>
+        <label className="cs-field">
+          <span>Cidade</span>
+          <select value={city} onChange={(event) => setCity(event.target.value)}>
+            <option value="">Todas as cidades</option>
+            {facets.cities.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="cs-field">
+          <span>Finalidade</span>
+          <select
+            value={operation}
+            onChange={(event) => setOperation(event.target.value as typeof operation)}
+          >
+            <option value="">Comprar ou alugar</option>
+            <option value="venda">Comprar</option>
+            <option value="aluguel">Alugar</option>
+          </select>
+        </label>
+        <label className="cs-field">
+          <span>Tipo de imóvel</span>
+          <select value={type} onChange={(event) => setType(event.target.value)}>
+            <option value="">Todos os tipos</option>
+            {facets.types.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="cs-field">
+          <span>Ordenar regiões</span>
+          <select value={order} onChange={(event) => setOrder(event.target.value)}>
+            <option value="nome">Nome A–Z</option>
+            <option value="quantidade">Quantidade de imóveis</option>
+          </select>
+        </label>
+      </div>
+      <p role="status" className="cs-directory-status">
+        {pending
+          ? "Atualizando as regiões. Abaixo, o último recorte confirmado."
+          : `${districts.length} ${districts.length === 1 ? "região encontrada" : "regiões encontradas"}. Quantidades de imóveis públicos no recorte confirmado.`}
+      </p>
+      {failure === key && (
+        <p className="cs-inline-state" role="alert">
+          Não foi possível atualizar as regiões. O recorte anterior foi preservado.{" "}
+          <button type="button" onClick={() => setRetry((value) => value + 1)}>
+            Tentar novamente
+          </button>
+        </p>
+      )}
+      <div className="cs-district-grid" aria-busy={pending}>
+        {districts.map((district) => (
+          <SiteLink
+            className="cs-district-card"
+            key={`${district.city}:${district.value}`}
+            to={sitePath(
+              `/buscar?${searchParams({ ...confirmed.criteria, cidade: district.city, bairro: district.value, pagina: 1 })}`,
+            )}
+          >
+            <div>
+              <small>{district.city} · Região cadastrada</small>
+              <h2>{district.value}</h2>
+              <span>
+                {district.count}{" "}
+                {district.count === 1 ? "imóvel disponível" : "imóveis disponíveis"}
+              </span>
+            </div>
+            <ArrowUpRight />
+          </SiteLink>
+        ))}
+      </div>
+      {!pending && districts.length === 0 && (
+        <p className="cs-inline-state">
+          Nenhuma região corresponde a este recorte. Ajuste a busca ou remova um filtro.
+        </p>
+      )}
+      {pages.length > 0 && (
+        <section className="cs-section">
+          <h2>Conheça a região</h2>
+          {pages.map((page) => (
+            <SiteLink
+              className="cs-article-card"
+              key={page.slug}
+              to={sitePath(`/informacoes/${page.slug}`)}
+            >
+              <h3>{page.title}</h3>
+              <p>{page.summary}</p>
+              <ArrowUpRight />
+            </SiteLink>
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}
 export function NewsPage({ pages }: { pages: SitePage[] }) {
   const config = getSiteBrand(useSiteBrand());
   return (
@@ -254,6 +442,118 @@ export function NewsPage({ pages }: { pages: SitePage[] }) {
   );
 }
 export function FavoritesPage() {
+  const brand = useSiteBrand();
+  return brand === "cordial" ? <CordialFavoritesPage /> : <ExistingFavoritesPage />;
+}
+function CordialFavoritesPage() {
+  const [items, setItems] = useState<PublicProperty[]>([]);
+  const [missing, setMissing] = useState(0);
+  const [pending, setPending] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [progress, setProgress] = useState({ read: 0, total: 0 });
+  useEffect(() => {
+    const requests = latestRequest();
+    let active: AbortController | null = null;
+    async function refresh() {
+      active?.abort();
+      const abort = new AbortController();
+      active = abort;
+      const request = requests.next();
+      const ids = readFavorites("cordial");
+      setPending(true);
+      setFailed(false);
+      setMissing(0);
+      setProgress({ read: 0, total: ids.length });
+      setItems((old) => old.filter((item) => ids.includes(item.id)));
+      const loaded: PublicProperty[] = [];
+      let missingCount = 0;
+      try {
+        for (let offset = 0; offset < ids.length; offset += 20) {
+          const result = await loadSummaries(
+            ids.slice(offset, offset + 20),
+            abort.signal,
+            "cordial",
+          );
+          if (abort.signal.aborted || !requests.current(request)) return;
+          loaded.push(...result.items);
+          missingCount += result.missingIds.length;
+          setItems([...loaded]);
+          setMissing(missingCount);
+          setProgress({ read: Math.min(offset + 20, ids.length), total: ids.length });
+        }
+        if (!ids.length) setItems([]);
+      } catch {
+        if (!abort.signal.aborted && requests.current(request)) setFailed(true);
+      } finally {
+        if (!abort.signal.aborted && requests.current(request)) setPending(false);
+      }
+    }
+    const storage = (event: StorageEvent) => {
+      if (!event.key || event.key === getSiteBrand("cordial").favoritesKey) void refresh();
+    };
+    void refresh();
+    window.addEventListener(getSiteBrand("cordial").favoritesEvent, refresh);
+    window.addEventListener("storage", storage);
+    window.addEventListener("cordial:availability-refresh", refresh);
+    return () => {
+      active?.abort();
+      requests.invalidate();
+      window.removeEventListener(getSiteBrand("cordial").favoritesEvent, refresh);
+      window.removeEventListener("storage", storage);
+      window.removeEventListener("cordial:availability-refresh", refresh);
+    };
+  }, [retry]);
+  return (
+    <div className="cs-container cs-content-page">
+      <PageIntro
+        eyebrow="Guardados por você"
+        title="Seus imóveis favoritos"
+        description="Os corações ficam neste navegador, entre visitas. Para enviar um conjunto a alguém, use Minha seleção."
+      />
+      {pending && (
+        <p role="status">
+          Atualizando a disponibilidade… {progress.read} de {progress.total} favoritos consultados.
+        </p>
+      )}
+      {failed && (
+        <p className="cs-inline-state" role="alert">
+          Não foi possível consultar todos os favoritos. Os itens já carregados continuam
+          disponíveis.{" "}
+          <button type="button" onClick={() => setRetry((value) => value + 1)}>
+            Tentar novamente
+          </button>
+        </p>
+      )}
+      {missing > 0 && (
+        <p role="status">
+          {missing} {missing === 1 ? "favorito está indisponível" : "favoritos estão indisponíveis"}{" "}
+          no catálogo atual.
+        </p>
+      )}
+      {items.length > 0 ? (
+        <div className="cs-property-grid" aria-busy={pending}>
+          {items.map((property) => (
+            <PropertyCard key={property.id} property={property} />
+          ))}
+        </div>
+      ) : (
+        !pending &&
+        !failed && (
+          <div className="cs-state">
+            <Heart size={38} />
+            <h2>Guarde o que combina com você.</h2>
+            <p>Toque no coração de um imóvel para encontrá-lo aqui na próxima visita.</p>
+            <SiteLink className="cs-button" to={sitePath("/buscar")}>
+              Explorar imóveis <ArrowRight size={18} />
+            </SiteLink>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+function ExistingFavoritesPage() {
   const brand = useSiteBrand();
   const [items, setItems] = useState<PublicDetail[]>([]);
   const [missing, setMissing] = useState(0);
