@@ -11081,6 +11081,7 @@ export type Database = {
         | "error"
         | "out_of_sync"
         | "unpublished"
+        | "conflict"
       property_sync_action:
         | "publish"
         | "update"
@@ -11307,6 +11308,7 @@ export const Constants = {
         "error",
         "out_of_sync",
         "unpublished",
+        "conflict",
       ],
       property_sync_action: [
         "publish",
