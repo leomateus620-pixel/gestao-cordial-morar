@@ -1,0 +1,1 @@
+- Agent integrations (MCP) live in src/lib/mcp (one tool per file, OAuth via Supabase, queries via the caller token so RLS applies; read tools and approved OAuth clients may prepare proposals; execution only after a click in a personal Gestão session) — why: assistants must never see more than the signed-in user or execute business writes from an external credential.

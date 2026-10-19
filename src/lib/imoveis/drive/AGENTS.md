@@ -1,0 +1,1 @@
+- Drive property folders are adopted only when not registered to another property and not tagged (appProperties.cordialPropertyId) for another; shared folders are never renamed — why: a same-name lookup merged two properties' folders.
