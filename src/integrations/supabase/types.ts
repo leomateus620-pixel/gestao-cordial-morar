@@ -8292,6 +8292,33 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_selection_visitors: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          public_ids: string[]
+          request_hash: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          public_ids: string[]
+          request_hash: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          public_ids?: string[]
+          request_hash?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       shared_selections: {
         Row: {
           agency: string
@@ -10532,6 +10559,18 @@ export type Database = {
       shared_selection_take_rate: {
         Args: { _bucket: string; _limit: number; _seconds: number }
         Returns: boolean
+      }
+      shared_selection_visitor_create: {
+        Args: {
+          p_public_ids: string[]
+          p_request_hash: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
+      shared_selection_visitor_public: {
+        Args: { p_token_hash: string }
+        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
