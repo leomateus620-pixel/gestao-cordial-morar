@@ -139,15 +139,17 @@ export function EditorialPage({ slug, content }: { slug: string; content: SitePa
           {body && slug === "privacidade"
             ? body
                 .split(/\n{2,}/)
-                .map((block, i) =>
-                  block.startsWith("## ") ? (
-                    <h2 key={i}>{block.slice(3).trim()}</h2>
-                  ) : (
-                    <p key={i} style={{ whiteSpace: "pre-line" }}>
-                      {block.trim()}
-                    </p>
-                  ),
-                )
+                .map((block, i) => {
+                  const [first, ...rest] = block.trim().split("\n");
+                  const heading = first.startsWith("## ") ? first.slice(3).trim() : null;
+                  const text = (heading ? rest : [first, ...rest]).join("\n").trim();
+                  return (
+                    <section key={i}>
+                      {heading && <h2>{heading}</h2>}
+                      {text && <p style={{ whiteSpace: "pre-line" }}>{text}</p>}
+                    </section>
+                  );
+                })
             : body || (
             <>
               <h2>Vamos conversar sobre isso?</h2>
