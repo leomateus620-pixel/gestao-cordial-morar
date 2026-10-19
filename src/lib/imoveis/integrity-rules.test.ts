@@ -34,7 +34,8 @@ describe("código manual", () => {
   it("recusa código reservado para outro imóvel", () => {
     assert.equal(
       manualCodeConflict({ code: "3408", propertyId: CASA, otherPropertyIds: [], reservations: [{ status: "committed", property_id: AP }] }),
-    , AP);
+      AP,
+    );
   });
   it("aceita o próprio código (1406/3405 e 1385 continuam válidos para o dono)", () => {
     assert.equal(manualCodeConflict({ code: "1406", propertyId: AP, otherPropertyIds: [AP], reservations: [{ status: "committed", property_id: AP }] }), null);
