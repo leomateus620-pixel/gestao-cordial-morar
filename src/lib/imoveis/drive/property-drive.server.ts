@@ -1161,54 +1161,77 @@ export async function runDriveWorker(
         (["horizontal", "vertical", "video"] as DriveCategory[]).some(
           (c) => result.totals[c].pending > 0,
         );
-      if (stillPending && job.attempts < job.max_attempts) {
-        // hasMore = sobrou lote; waiting = a marca ainda está sendo aplicada.
-        // Em nenhum dos casos o original sem marca sobe ao Drive.
-        const delay = result.hasMore ? 2_000 : 20_000 * Math.max(1, job.attempts);
+      const outcome = driveJobOutcome({
+        stillPending,
+        hasMore: result.hasMore,
+        attempts: job.attempts,
+        maxAttempts: job.max_attempts,
+      });
+      const pendingCount = (["horizontal", "vertical", "video"] as DriveCategory[]).reduce(
+        (n, c) => n + result.totals[c].pending + result.totals[c].failed,
+        0,
+      );
+      if (outcome === "continue" || outcome === "retry") {
+        // continue = sobrou lote (não consome tentativa); retry = espera progressiva.
+        const delay = outcome === "continue" ? 2_000 : 20_000 * Math.max(1, job.attempts);
         await admin
           .from("property_drive_jobs")
           .update({
             status: "retry",
             run_after: new Date(Date.now() + delay).toISOString(),
             lease_expires_at: null,
-            // Continuar o mesmo lote não consome tentativa: só falha real consome.
-            attempts: result.hasMore ? Math.max(0, job.attempts - 1) : job.attempts,
-            // Continuar de onde parou é responsabilidade do próprio vínculo
-            // de cada arquivo (drive_file_id + checkpoint resumível).
-            cursor: { has_more: result.hasMore, at: new Date().toISOString() },
+            attempts: outcome === "continue" ? Math.max(0, job.attempts - 1) : job.attempts,
+            cursor: { has_more: result.hasMore, at: new Date().toISOString(), pending: pendingCount },
           } as never)
-          .eq("id", job.id);
-
-      } else {
-
+          .eq("id", job.id)
+          .eq("locked_by", worker);
+      } else if (outcome === "failed") {
+        // Pendência com tentativas esgotadas é falha explícita, nunca sucesso.
         await admin
           .from("property_drive_jobs")
-          .update({ status: "succeeded", lease_expires_at: null } as never)
-          .eq("id", job.id);
+          .update({
+            status: "failed",
+            lease_expires_at: null,
+            last_error_code: "max_attempts_pending",
+            last_error_message: `Tentativas esgotadas com ${pendingCount} arquivo(s) ainda pendente(s).`,
+            cursor: { has_more: result.hasMore, at: new Date().toISOString(), pending: pendingCount },
+          } as never)
+          .eq("id", job.id)
+          .eq("locked_by", worker);
+      } else {
+        await admin
+          .from("property_drive_jobs")
+          .update({ status: "succeeded", lease_expires_at: null, last_error_code: null, last_error_message: null } as never)
+          .eq("id", job.id)
+          .eq("locked_by", worker);
       }
       await applyDriveChecklist(admin, job.property_id, result);
       synced += 1;
     } catch (e) {
       failed += 1;
       const message = e instanceof Error ? e.message : String(e);
-      const terminal = job.attempts >= job.max_attempts;
+      const identity = e instanceof DriveIdentityError;
+      const terminal = identity || job.attempts >= job.max_attempts;
       await admin
         .from("property_drive_jobs")
         .update({
           status: terminal ? "failed" : "retry",
           run_after: new Date(Date.now() + 30_000 * Math.pow(2, job.attempts)).toISOString(),
           lease_expires_at: null,
-          last_error_code: terminal ? "max_attempts" : "sync_failed",
+          last_error_code: identity ? (e as DriveIdentityError).code : terminal ? "max_attempts" : "sync_failed",
           last_error_message: message.slice(0, 400),
         } as never)
-        .eq("id", job.id);
-      await admin
-        .from("property_drive_folders")
-        .update({
-          status: terminal ? "error" : "pending",
-          last_error_message: message.slice(0, 400),
-        } as never)
-        .eq("property_id", job.property_id);
+        .eq("id", job.id)
+        .eq("locked_by", worker);
+      if (!identity) {
+        await admin
+          .from("property_drive_folders")
+          .update({
+            status: terminal ? "error" : "pending",
+            last_error_message: message.slice(0, 400),
+          } as never)
+          .eq("property_id", job.property_id);
+      }
     }
   }
 
