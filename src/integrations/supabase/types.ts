@@ -2804,6 +2804,39 @@ export type Database = {
           },
         ]
       }
+      cordial_site_responsibles: {
+        Row: {
+          active: boolean
+          display_name: string
+          display_role: string
+          photo_url: string | null
+          profile_id: string
+          reviewed_by: string | null
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          active?: boolean
+          display_name: string
+          display_role?: string
+          photo_url?: string | null
+          profile_id: string
+          reviewed_by?: string | null
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          active?: boolean
+          display_name?: string
+          display_role?: string
+          photo_url?: string | null
+          profile_id?: string
+          reviewed_by?: string | null
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       cordial_site_settings: {
         Row: {
           content: Json
@@ -6887,6 +6920,54 @@ export type Database = {
         }
         Relationships: []
       }
+      public_site_derivatives: {
+        Row: {
+          checksum: string | null
+          key: string
+          lease: string | null
+          lease_until: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          checksum?: string | null
+          key: string
+          lease?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          checksum?: string | null
+          key?: string
+          lease?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      public_site_media_worker_health: {
+        Row: {
+          id: boolean
+          last_config_error: string | null
+          last_dispatched_at: string | null
+          last_request_id: number | null
+        }
+        Insert: {
+          id?: boolean
+          last_config_error?: string | null
+          last_dispatched_at?: string | null
+          last_request_id?: number | null
+        }
+        Update: {
+          id?: boolean
+          last_config_error?: string | null
+          last_dispatched_at?: string | null
+          last_request_id?: number | null
+        }
+        Relationships: []
+      }
       push_outbox: {
         Row: {
           attempts: number
@@ -9362,6 +9443,16 @@ export type Database = {
         }
         Relationships: []
       }
+      public_site_derivative_candidates: {
+        Row: {
+          brand: string | null
+          id: string | null
+          priority: number | null
+          size: string | null
+          version: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
@@ -9626,10 +9717,74 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string
       }
+      cordial_site_count: { Args: { f?: Json }; Returns: number }
+      cordial_site_decode_public_text: {
+        Args: { _text: string }
+        Returns: string
+      }
       cordial_site_facets: { Args: never; Returns: Json }
+      cordial_site_filtered: {
+        Args: { f?: Json }
+        Returns: {
+          aceita_financiamento: boolean | null
+          area_construida: number | null
+          area_terreno: number | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          cidade: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          dormitorios: number | null
+          endereco: string | null
+          estagio_empreendimento: string | null
+          mobiliado: boolean | null
+          operacao: string | null
+          permuta: boolean | null
+          pontos_fortes: string | null
+          property_id: string | null
+          public_id: string | null
+          public_reference: string | null
+          published_at: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          vagas: number | null
+          valor: number | null
+          valor_modo: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cordial_site_eligible"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cordial_site_filtered_facets: { Args: { f?: Json }; Returns: Json }
+      cordial_site_has_hidden_address: {
+        Args: {
+          _text: string
+          p: Database["public"]["Tables"]["properties"]["Row"]
+        }
+        Returns: boolean
+      }
       cordial_site_image_signature: {
         Args: { i: Database["public"]["Tables"]["property_images"]["Row"] }
         Returns: string
+      }
+      cordial_site_normalize_public_text: {
+        Args: { _text: string }
+        Returns: string
+      }
+      cordial_site_public_features: {
+        Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
+        Returns: string[]
+      }
+      cordial_site_public_responsible: {
+        Args: { _property_id: string }
+        Returns: Json
       }
       cordial_site_review: {
         Args: {
@@ -9645,6 +9800,17 @@ export type Database = {
       }
       cordial_site_save_content: {
         Args: { _content: Json; _key: string; _kind: string }
+        Returns: boolean
+      }
+      cordial_site_save_responsible: {
+        Args: {
+          _active: boolean
+          _name: string
+          _photo: string
+          _profile_id: string
+          _role: string
+          _whatsapp: string
+        }
         Returns: boolean
       }
       cordial_site_search: { Args: { f?: Json }; Returns: Json }
@@ -9848,11 +10014,52 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string
       }
+      morar_site_count: { Args: { f?: Json }; Returns: number }
       morar_site_decode_public_text: {
         Args: { _text: string }
         Returns: string
       }
       morar_site_facets: { Args: never; Returns: Json }
+      morar_site_filtered: {
+        Args: { f?: Json }
+        Returns: {
+          aceita_financiamento: boolean | null
+          area_construida: number | null
+          area_terreno: number | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          cidade: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          dormitorios: number | null
+          endereco: string | null
+          estagio_empreendimento: string | null
+          mobiliado: boolean | null
+          operacao: string | null
+          permuta: boolean | null
+          pontos_fortes: string | null
+          property_id: string | null
+          public_id: string | null
+          public_reference: string | null
+          published_at: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          vagas: number | null
+          valor: number | null
+          valor_modo: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "morar_site_eligible"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      morar_site_filtered_facets: { Args: { f?: Json }; Returns: Json }
       morar_site_has_hidden_address: {
         Args: {
           _text: string
@@ -10412,6 +10619,11 @@ export type Database = {
           provider: Database["public"]["Enums"]["imobi_provider"]
           rate_limited_until: string
         }[]
+      }
+      public_site_claim_derivative: { Args: { _key: string }; Returns: string }
+      public_site_finish_derivative: {
+        Args: { _checksum: string; _key: string; _lease: string }
+        Returns: boolean
       }
       push_outbox_claim: {
         Args: { _limit?: number }

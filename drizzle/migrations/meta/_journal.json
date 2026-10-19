@@ -169,6 +169,13 @@
       "when": 1792379390392,
       "tag": "0023_cordial_sync_trigger_record_access",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792380144220,
+      "tag": "0024_cordial_public_experience_a1",
+      "breakpoints": true
     }
   ]
 }
