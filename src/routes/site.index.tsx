@@ -6,17 +6,16 @@ export const Route = createFileRoute("/site/")({
   loader: async ({ abortController, parentMatchPromise }) => {
     const parent = await parentMatchPromise;
     const settings = (parent?.loaderData as SiteBootstrap | undefined)?.settings;
-    const ids = settings?.featuredPropertyIds ?? [];
-    const featured: Promise<SiteCatalog | null> = (
-      ids.length
-        ? loadSummaries(ids, abortController.signal).then(({ items }) => ({
-            items: items.map((p) => ({ ...p, featured: true })),
-            total: items.length,
-            page: 1,
-            pageSize: 9,
-          }))
-        : loadCatalog({ destaque: "sim" }, abortController.signal)
-    ).catch(() => null);
+    // Destaques = sempre os 5 imóveis publicados mais recentemente no site.
+    const featured: Promise<SiteCatalog | null> = loadCatalog(
+      { ordem: "recentes" },
+      abortController.signal,
+    )
+      .then((catalog) => {
+        const items = catalog.items.slice(0, 5).map((p) => ({ ...p, featured: true }));
+        return { ...catalog, items, total: items.length, page: 1, pageSize: 5 };
+      })
+      .catch(() => null);
     return {
       featured,
       choices: featured.then(async (selected) => {
