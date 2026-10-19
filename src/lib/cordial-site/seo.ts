@@ -1,13 +1,14 @@
 import { getSiteBrand, type SiteBrand } from "./brand";
 import type { SiteBootstrap, PublicDetail } from "./contract";
 import { locationLabel, mediaPath, propertyPath, priceLabel, plainText } from "./presentation";
-import { externalSitePath } from "./routing";
+import { publicSiteUrl, propertyUrl } from "./experience";
 export function siteMatchData(
   matches: readonly { routeId: string; loaderData?: unknown }[],
   brand: SiteBrand = "cordial",
 ): SiteBootstrap | undefined {
   return matches.find((m) => m.routeId === getSiteBrand(brand).basePath)?.loaderData as
-    SiteBootstrap | undefined;
+    | SiteBootstrap
+    | undefined;
 }
 export function siteHead(
   title: string,
@@ -18,9 +19,7 @@ export function siteHead(
   image?: string,
   brand: SiteBrand = "cordial",
 ) {
-  const canonical = data?.canonicalOrigin
-    ? data.canonicalOrigin + externalSitePath(path, brand)
-    : null;
+  const canonical = data?.canonicalOrigin ? publicSiteUrl(path, data.canonicalOrigin, brand) : null;
   return {
     meta: [
       { title: `${title} | ${getSiteBrand(brand).name}` },
@@ -54,7 +53,7 @@ export function detailHead(p: PublicDetail, data?: SiteBootstrap, brand: SiteBra
   );
 }
 export function listingJsonLd(p: PublicDetail, origin: string, brand: SiteBrand = "cordial") {
-  const url = origin + externalSitePath(propertyPath(p, brand), brand);
+  const url = propertyUrl(p, origin, brand);
   return {
     "@context": "https://schema.org",
     "@type": "RealEstateListing",

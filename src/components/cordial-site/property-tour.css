@@ -1,0 +1,69 @@
+.cs-tour-frame {
+  position: relative;
+  aspect-ratio: 16/10;
+  min-height: 220px;
+  max-height: 520px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #153c43;
+  color: #fff;
+}
+.cs-tour-frame canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+  cursor: grab;
+}
+.cs-tour-frame canvas:active {
+  cursor: grabbing;
+}
+.cs-tour-frame canvas:focus-visible {
+  outline: 3px solid #92d7cb;
+  outline-offset: -4px;
+}
+.cs-tour-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  pointer-events: none;
+}
+.cs-tour-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.cs-tour-controls button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px;
+}
+.cs-tour-viewer > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2/1;
+  object-fit: contain;
+  border-radius: 12px;
+}
+@media (max-width: 600px) {
+  .cs-tour-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .cs-tour-frame {
+    aspect-ratio: 4/3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-tour-viewer * {
+    animation: none;
+    transition: none;
+  }
+}

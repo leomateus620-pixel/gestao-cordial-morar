@@ -10,6 +10,10 @@ import {
   reviewSiteProperty,
   saveSiteContent,
   triageSiteLead,
+  saveSiteResponsible,
+  prepareSitePropertyMedia,
+  manageSiteVideo,
+  saveSiteTour,
 } from "@/lib/cordial-site/admin.functions";
 import type { SiteSettings } from "@/lib/cordial-site/contract";
 
@@ -61,6 +65,7 @@ function Page() {
         {[
           ["publicacoes", "Publicação de imóveis"],
           ["configuracoes", "Identidade e contatos"],
+          ["responsaveis", "Responsáveis públicos"],
           ["conteudo", "Páginas e notícias"],
           ["contatos", "Contatos recebidos"],
           ["historico", "Histórico"],
@@ -132,7 +137,14 @@ function Page() {
               </>
             )}
             {tab === "configuracoes" && (
-              <SettingsForm current={query.data.settings} onSaved={refresh} />
+              <SettingsForm
+                current={query.data.settings}
+                options={query.data.featuredOptions}
+                onSaved={refresh}
+              />
+            )}
+            {tab === "responsaveis" && (
+              <ResponsibleEditor snapshot={query.data} onSaved={refresh} />
             )}
             {tab === "conteudo" && <ContentEditor pages={query.data.pages} onSaved={refresh} />}
             {tab === "contatos" && (
@@ -175,6 +187,12 @@ function Publication({
   onSaved: () => Promise<unknown>;
 }) {
   const review = useServerFn(reviewSiteProperty);
+  const prepare = useServerFn(prepareSitePropertyMedia);
+  const manageVideo = useServerFn(manageSiteVideo);
+  const saveTour = useServerFn(saveSiteTour);
+  const [selectedTour, setSelectedTour] = useState(p.tour?.media_id ?? "");
+  const [declaredTour, setDeclaredTour] = useState(false);
+  const [mediaMessage, setMediaMessage] = useState("");
   const [checks, setChecks] = useState({
     authorize: false,
     available: false,
@@ -241,6 +259,10 @@ function Publication({
         Sem revisão de fotos ou áreas, esses dados permanecem ocultos. Alterar conteúdo ou mídia
         exige nova revisão.
       </p>
+      <p className="text-xs text-muted-foreground">
+        Endereço exato e mapa do imóvel ficam no Gestão. Revise também textos e fotos que possam
+        revelar a localização.
+      </p>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -269,18 +291,342 @@ function Publication({
             Retirar do site
           </button>
         )}
+        {p.publication?.state === "published" && (
+          <button
+            type="button"
+            className="rounded-lg border px-3 py-2 text-sm"
+            disabled={pending}
+            onClick={async () => {
+              setPending(true);
+              setMediaMessage("Preparando imagens fora da navegação pública…");
+              try {
+                const result = await prepare({ data: { publicId: p.publication!.public_id } });
+                setMediaMessage(
+                  `${result.prepared} tamanhos preparados para as duas primeiras fotos. O worker prepara as demais.`,
+                );
+              } catch {
+                setMediaMessage(
+                  "Não foi possível preparar. Confira a migração, o armazenamento privado e o worker.",
+                );
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            Preparar as 2 primeiras fotos
+          </button>
+        )}
       </div>
+      {mediaMessage && (
+        <p role="status" className="text-xs">
+          {mediaMessage}
+        </p>
+      )}
+      {(!!p.tourCandidates.length || p.tour) && (
+        <fieldset className="space-y-3 border-t pt-3 text-sm">
+          <legend className="font-semibold">Tour 360° equiretangular</legend>
+          <p className="text-xs text-muted-foreground">
+            Somente fotografia pública autorizada com dimensão 2:1. A proporção não prova que a
+            imagem é um panorama: confira o formato, direitos e privacidade antes de declarar. O
+            servidor também mede a imagem entregue.
+          </p>
+          <label className="grid gap-1">
+            Panorama aprovado
+            <select
+              value={selectedTour}
+              className={input}
+              onChange={(e) => {
+                setSelectedTour(e.target.value);
+                setDeclaredTour(false);
+              }}
+            >
+              <option value="">Selecione uma foto 2:1</option>
+              {p.tourCandidates.map((m) => (
+                <option key={m.id} value={m.id}>
+                  Foto {m.position + 1} · {m.width}×{m.height}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={declaredTour}
+              onChange={(e) => setDeclaredTour(e.target.checked)}
+            />
+            Confirmei que esta é uma captura panorâmica equiretangular 360°, com exposição pública
+            aprovada.
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={button}
+              disabled={pending || !selectedTour || !declaredTour}
+              onClick={async () => {
+                const current = p.tourCandidates.find((m) => m.id === selectedTour);
+                if (!current) return;
+                setPending(true);
+                try {
+                  await saveTour({
+                    data: {
+                      mediaId: current.id,
+                      signature: current.version,
+                      approve: true,
+                      declared: declaredTour,
+                    },
+                  });
+                  await onSaved();
+                  setDeclaredTour(false);
+                  setMediaMessage(
+                    "Tour revisado e autorizado. A visualização carrega só por solicitação do visitante.",
+                  );
+                } catch {
+                  setMediaMessage(
+                    "Não foi possível publicar: confira formato 2:1, revisão e autorização atuais.",
+                  );
+                } finally {
+                  setPending(false);
+                }
+              }}
+            >
+              Medir e publicar tour revisado
+            </button>
+            {p.tour?.approved && (
+              <button
+                type="button"
+                className="rounded border px-3 py-2"
+                disabled={pending}
+                onClick={async () => {
+                  setPending(true);
+                  try {
+                    await saveTour({
+                      data: {
+                        mediaId: p.tour!.media_id,
+                        signature: p.tour!.signature,
+                        approve: false,
+                        declared: false,
+                      },
+                    });
+                    await onSaved();
+                    setMediaMessage("Tour retirado da visualização pública.");
+                  } catch {
+                    setMediaMessage("Não foi possível retirar o tour. Tente novamente.");
+                  } finally {
+                    setPending(false);
+                  }
+                }}
+              >
+                Retirar tour
+              </button>
+            )}
+          </div>
+        </fieldset>
+      )}
+      {!!p.videos.length && (
+        <div className="space-y-3 border-t pt-3 text-sm">
+          <h3 className="font-semibold">Vídeos do cadastro</h3>
+          <p className="text-xs text-muted-foreground">
+            Upload já disponível na etapa Arquivos do cadastro. Publicação exige MP4 H.264/AAC sem
+            metadados, até 150 MB e 3 minutos, seguido de revisão. A solicitação entra na fila; ela
+            depende de um processador real configurado. Fotos continuam disponíveis.
+          </p>
+          {p.videos.map((video) => (
+            <div key={video.id} className="rounded-lg border p-3">
+              <p>{video.file_name}</p>
+              <p className="text-xs">
+                {video.asset
+                  ? ({
+                      uploaded: "Aguardando processador",
+                      processing: "Processando",
+                      ready: video.asset.approved ? "Pronto e publicado" : "Pronto para revisão",
+                      error: "Erro no processamento",
+                    }[video.asset.state as "uploaded" | "processing" | "ready" | "error"] ??
+                    video.asset.state)
+                  : "Arquivo recebido; ainda não solicitado"}
+              </p>
+              {(!video.asset || video.asset.state === "error") && (
+                <button
+                  type="button"
+                  className="mt-2 rounded border px-3 py-2"
+                  disabled={pending}
+                  onClick={async () => {
+                    setPending(true);
+                    try {
+                      await manageVideo({ data: { action: "prepare", id: video.id } });
+                      await onSaved();
+                      setMediaMessage(
+                        "Solicitação registrada. A publicação aguarda processamento real e revisão.",
+                      );
+                    } catch {
+                      setMediaMessage(
+                        "Confira se o upload está pronto, o formato e o limite de 150 MB.",
+                      );
+                    } finally {
+                      setPending(false);
+                    }
+                  }}
+                >
+                  Solicitar preparação
+                </button>
+              )}
+              {video.asset?.state === "ready" && (
+                <button
+                  type="button"
+                  className="mt-2 rounded border px-3 py-2"
+                  disabled={pending}
+                  onClick={async () => {
+                    setPending(true);
+                    try {
+                      await manageVideo({
+                        data: {
+                          action: "review",
+                          id: video.asset!.id,
+                          approve: !video.asset!.approved,
+                        },
+                      });
+                      await onSaved();
+                    } catch {
+                      setMediaMessage("Revise o vídeo processado antes de autorizar a publicação.");
+                    } finally {
+                      setPending(false);
+                    }
+                  }}
+                >
+                  {video.asset.approved ? "Retirar vídeo" : "Vídeo revisado: autorizar publicação"}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+function ResponsibleEditor({
+  snapshot,
+  onSaved,
+}: {
+  snapshot: Snapshot;
+  onSaved: () => Promise<unknown>;
+}) {
+  const save = useServerFn(saveSiteResponsible);
+  const [profileId, setProfileId] = useState("");
+  const [values, setValues] = useState({
+    name: "",
+    role: "Atendimento comercial",
+    whatsapp: "",
+    photoUrl: "",
+    active: false,
+  });
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  return (
+    <form
+      className="grid max-w-3xl gap-4 rounded-xl border bg-card p-5"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setPending(true);
+        setMessage("");
+        try {
+          await save({ data: { profileId, ...values, photoUrl: values.photoUrl || null } });
+          await onSaved();
+          setMessage(
+            "Projeção comercial salva. Ela só é usada nos imóveis vinculados a essa pessoa e com perfil ativo na equipe.",
+          );
+        } catch {
+          setMessage("Confira os campos e se a pessoa mantém um papel comercial ativo no Gestão.");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h2 className="font-semibold">Contato comercial publicado</h2>
+      <p className="text-sm text-muted-foreground">
+        O responsável é o corretor vinculado no cadastro do imóvel. A aprovação abaixo publica
+        somente nome, função, foto e WhatsApp comerciais informados. Sem responsável publicado e
+        ativo, o site usa o WhatsApp institucional configurado.
+      </p>
+      <label className="grid gap-1 text-sm">
+        Pessoa da equipe
+        <select
+          required
+          className={input}
+          value={profileId}
+          onChange={(e) => {
+            const id = e.target.value;
+            setProfileId(id);
+            setMessage("");
+            const current = snapshot.responsibles.find((r) => r.profile_id === id);
+            setValues({
+              name: current?.display_name ?? snapshot.profiles.find((p) => p.id === id)?.nome ?? "",
+              role: current?.display_role ?? "Atendimento comercial",
+              whatsapp: current?.whatsapp ?? "",
+              photoUrl: current?.photo_url ?? "",
+              active: current?.active ?? false,
+            });
+          }}
+        >
+          <option value="">Selecione a pessoa responsável</option>
+          {snapshot.profiles.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+      {(
+        [
+          ["name", "Nome público aprovado"],
+          ["role", "Função pública"],
+          ["whatsapp", "WhatsApp comercial com país e DDD (somente números)"],
+          ["photoUrl", "URL HTTPS da foto aprovada (opcional)"],
+        ] as const
+      ).map(([key, label]) => (
+        <label className="grid gap-1 text-sm" key={key}>
+          {label}
+          <input
+            className={input}
+            required={key !== "photoUrl"}
+            value={values[key]}
+            type={key === "photoUrl" ? "url" : "text"}
+            maxLength={key === "photoUrl" ? 1000 : 100}
+            onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
+          />
+        </label>
+      ))}
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={values.active}
+          onChange={(e) => setValues((v) => ({ ...v, active: e.target.checked }))}
+        />
+        Dados comerciais conferidos e autorizados para publicação
+      </label>
+      <button className={button} disabled={pending || !profileId}>
+        Salvar contato público
+      </button>
+      {message && (
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+      )}
+    </form>
   );
 }
 function SettingsForm({
   current,
+  options,
   onSaved,
 }: {
   current: SiteSettings;
+  options: Snapshot["featuredOptions"];
   onSaved: () => Promise<unknown>;
 }) {
   const [values, setValues] = useState(current);
+  const [priceDraft, setPriceDraft] = useState({
+    venda: current.priceSteps.venda.join("\n"),
+    aluguel: current.priceSteps.aluguel.join("\n"),
+  });
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const save = useServerFn(saveSiteContent);
@@ -292,7 +638,11 @@ function SettingsForm({
         setPending(true);
         setMessage("");
         try {
-          await save({ data: { kind: "settings", content: values } });
+          const priceSteps = {
+            venda: priceDraft.venda.split(/\s+/).filter(Boolean).map(Number),
+            aluguel: priceDraft.aluguel.split(/\s+/).filter(Boolean).map(Number),
+          };
+          await save({ data: { kind: "settings", content: { ...values, priceSteps } } });
           await onSaved();
           setMessage("Configurações salvas.");
         } catch {
@@ -308,19 +658,45 @@ function SettingsForm({
         ["phone", "Telefone"],
         ["whatsapp", "WhatsApp com país e DDD (somente números)"],
         ["email", "E-mail"],
+        [
+          "analyticsMeasurementId",
+          "Google Analytics 4 — ID real G-… (opcional, exige consentimento)",
+        ],
         ["address", "Endereço da empresa"],
         ["hours", "Horários"],
         ["creci", "CRECI"],
         ["instagram", "Instagram (URL https)"],
       ].map(([k, label]) => (
-        <label key={k} className="text-sm">
-          {label}
-          <input
-            className={input}
-            value={String(values[k as keyof SiteSettings])}
-            onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
-          />
-        </label>
+        <div key={k} className={k === "analyticsMeasurementId" ? "space-y-3 md:col-span-2" : ""}>
+          <label className="block text-sm">
+            {label}
+            <input
+              className={input}
+              value={String(values[k as keyof SiteSettings])}
+              onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+            />
+          </label>
+          {k === "analyticsMeasurementId" && (
+            <>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={values.analyticsManualEventsOnly}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, analyticsManualEventsOnly: e.target.checked }))
+                  }
+                />
+                Confirmei no fluxo de dados do Google Analytics que a medição automática de páginas,
+                mudanças de histórico, pesquisa interna e interações com formulários estão
+                desativadas.
+              </label>
+              <p className="text-xs text-muted-foreground">
+                O carregamento do Google Analytics exige esta confirmação e o consentimento do
+                visitante. O site envia somente os eventos explícitos permitidos.
+              </p>
+            </>
+          )}
+        </div>
       ))}
       {[
         ["about", "Apresentação institucional"],
@@ -336,6 +712,112 @@ function SettingsForm({
           />
         </label>
       ))}
+      <fieldset className="space-y-3 md:col-span-2">
+        <legend className="text-sm font-semibold">Destaques editoriais da home</legend>
+        <p className="text-xs text-muted-foreground">
+          Escolha até nove imóveis públicos e ordene a apresentação. A lista vazia mantém os
+          destaques já marcados no cadastro. Itens retirados não aparecem no site e não são
+          substituídos automaticamente.
+        </p>
+        <label className="grid gap-1 text-sm">
+          Adicionar imóvel publicado
+          <select
+            className={input}
+            value=""
+            disabled={values.featuredPropertyIds.length >= 9}
+            onChange={(e) => {
+              if (e.target.value)
+                setValues((v) => ({
+                  ...v,
+                  featuredPropertyIds: [...v.featuredPropertyIds, e.target.value],
+                }));
+            }}
+          >
+            <option value="">Selecione uma referência disponível</option>
+            {options
+              .filter((p) => !values.featuredPropertyIds.includes(p.public_id))
+              .map((p) => (
+                <option value={p.public_id} key={p.public_id}>
+                  REF. {p.public_reference} · {p.tipo} · {p.bairro} · {p.cidade}
+                </option>
+              ))}
+          </select>
+        </label>
+        <ol className="space-y-2">
+          {values.featuredPropertyIds.map((id, index) => {
+            const selected = options.find((p) => p.public_id === id);
+            const move = (offset: number) =>
+              setValues((v) => {
+                const ids = [...v.featuredPropertyIds];
+                [ids[index], ids[index + offset]] = [ids[index + offset], ids[index]];
+                return { ...v, featuredPropertyIds: ids };
+              });
+            return (
+              <li key={id} className="flex flex-wrap items-center gap-2 rounded border p-2 text-sm">
+                <span className="mr-auto">
+                  {index + 1}.{" "}
+                  {selected
+                    ? `REF. ${selected.public_reference} · ${selected.tipo} · ${selected.bairro}`
+                    : "Imóvel indisponível no canal público"}
+                </span>
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2"
+                  disabled={index === 0}
+                  aria-label={`Subir destaque ${index + 1}`}
+                  onClick={() => move(-1)}
+                >
+                  Subir
+                </button>
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2"
+                  disabled={index === values.featuredPropertyIds.length - 1}
+                  aria-label={`Descer destaque ${index + 1}`}
+                  onClick={() => move(1)}
+                >
+                  Descer
+                </button>
+                <button
+                  type="button"
+                  className="rounded border px-3 py-2"
+                  aria-label={`Remover destaque ${index + 1}`}
+                  onClick={() =>
+                    setValues((v) => ({
+                      ...v,
+                      featuredPropertyIds: v.featuredPropertyIds.filter(
+                        (current) => current !== id,
+                      ),
+                    }))
+                  }
+                >
+                  Remover
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </fieldset>
+      <fieldset className="space-y-3 md:col-span-2">
+        <legend className="text-sm font-semibold">Atalhos de valor na busca</legend>
+        <p className="text-xs text-muted-foreground">
+          Tetos em reais, um por linha, sem separador de milhar, em ordem crescente. Venda e aluguel
+          usam valores próprios. O visitante também pode informar valores personalizados.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {(["venda", "aluguel"] as const).map((operation) => (
+            <label key={operation} className="grid gap-1 text-sm">
+              {operation === "venda" ? "Tetos de venda" : "Tetos de aluguel mensal"}
+              <textarea
+                className={input}
+                rows={4}
+                value={priceDraft[operation]}
+                onChange={(e) => setPriceDraft((d) => ({ ...d, [operation]: e.target.value }))}
+              />
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <fieldset className="space-y-3 md:col-span-2">
         <legend className="text-sm font-semibold">Links de financiamento aprovados</legend>
         {values.links.map((link, i) => (

@@ -68,6 +68,28 @@ test("empty or invalid settings never throw outside Zod validation", () => {
     false,
   );
 });
+test("analytics manual-event confirmation is a strict opt-in even when a measurement ID is present", () => {
+  assert.equal(settingsSchema.parse({}).analyticsManualEventsOnly, false);
+  assert.equal(
+    settingsSchema.parse({ analyticsMeasurementId: "G-QATEST12345" }).analyticsManualEventsOnly,
+    false,
+  );
+  assert.equal(
+    settingsSchema.parse({
+      analyticsMeasurementId: "G-QATEST12345",
+      analyticsManualEventsOnly: false,
+    }).analyticsManualEventsOnly,
+    false,
+  );
+  assert.equal(
+    settingsSchema.parse({
+      analyticsMeasurementId: "G-QATEST12345",
+      analyticsManualEventsOnly: true,
+    }).analyticsManualEventsOnly,
+    true,
+  );
+  assert.equal(settingsSchema.safeParse({ analyticsManualEventsOnly: "true" }).success, false);
+});
 
 test("clearing optional enum filters returns to valid default semantics", () => {
   const parsed = searchSchema.parse({

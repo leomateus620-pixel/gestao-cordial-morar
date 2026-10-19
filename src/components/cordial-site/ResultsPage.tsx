@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   LayoutGrid,
@@ -23,18 +23,77 @@ import { searchLabels } from "@/lib/cordial-site/search-labels";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
 import { useSiteBrand } from "@/lib/cordial-site/context";
 import { SiteLink } from "./SiteShell";
-export function ResultsPage({ result, search }: { result: SiteCatalog; search: SiteSearch }) {
+import {
+  readSearchCardOrigin,
+  readSearchCardScroll,
+  trackSiteEvent,
+} from "@/lib/cordial-site/experience";
+export function ResultsPage({
+  result,
+  search,
+  failed = false,
+  hasPrevious = false,
+  onRetry,
+}: {
+  result: SiteCatalog;
+  search: SiteSearch;
+  failed?: boolean;
+  hasPrevious?: boolean;
+  onRetry?: () => void;
+}) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
   const [filters, setFilters] = useState(false);
+  const [referenceOpen, setReferenceOpen] = useState(!!search.referencia);
   const [expanded, setExpanded] = useState(brand === "morar" || result.total === 0);
+  const refreshing = useRouterState({
+    select: (state) => state.isLoading && state.location.pathname.endsWith("/buscar"),
+  });
+  const restoredCard = useRef<string | null>(null);
+  useEffect(() => {
+    if (brand !== "cordial" || refreshing) return;
+    const propertyId = readSearchCardOrigin(brand);
+    const originScroll = readSearchCardScroll(brand);
+    if (!propertyId) {
+      restoredCard.current = null;
+      return;
+    }
+    const restoration = `${location.pathname}${location.search}:${propertyId}`;
+    if (restoredCard.current === restoration) return;
+    const frame = requestAnimationFrame(() => {
+      // A user who already chose a field/modal must not be refocused by a later refresh.
+      restoredCard.current = restoration;
+      if (
+        (document.activeElement && document.activeElement !== document.body) ||
+        document.querySelector(
+          '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [aria-modal="true"]',
+        )
+      )
+        return;
+      const origin = document.querySelector<HTMLAnchorElement>(
+        `a[data-public-property="${propertyId}"]`,
+      );
+      if (origin) {
+        if (originScroll !== null) window.scrollTo({ top: originScroll, behavior: "instant" });
+        origin.focus({ preventScroll: true });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [brand, result.items, refreshing]);
   const navigate = useNavigate();
-  const change = (patch: Partial<SiteSearch>) =>
-    void navigate({ to: `${config.basePath}/buscar`, search: { ...search, ...patch, pagina: 1 } });
+  const change = (patch: Partial<SiteSearch>) => {
+    if (brand === "cordial")
+      trackSiteEvent("filter_changed", { source: `results:${Object.keys(patch).join(",")}` });
+    void navigate({
+      to: `${config.basePath}/buscar`,
+      search: { ...search, ...patch, pagina: 1 },
+      resetScroll: false,
+    });
+  };
   const chips = Object.entries(search).filter(
     ([k, v]) => k in searchLabels && v != null && v !== defaultSearch[k as keyof SiteSearch],
   );
-  const pageCount = Math.ceil(result.total / result.pageSize);
+  const pageCount = failed ? 0 : Math.ceil(result.total / result.pageSize);
   const title =
     search.finalidade === "venda"
       ? "Um lugar para chamar de seu."
@@ -57,33 +116,70 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
                 ? "Imóveis à venda"
                 : "Comprar ou alugar"}
           </p>
-          <h1>{title}</h1>
+          <h1>{brand === "cordial" ? "Encontre seu imóvel" : title}</h1>
         </div>
-        <button
-          className="cs-button cs-filter-desktop"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-        >
-          <SlidersHorizontal size={18} />
-          Pesquisa completa
-        </button>
+        {brand === "morar" && (
+          <button
+            className="cs-button cs-filter-desktop"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            <SlidersHorizontal size={18} />
+            Pesquisa completa
+          </button>
+        )}
       </div>
       <div className="cs-quick-filters">
-        <label>
-          <span>Referência {config.shortName}</span>
-          <input
-            id="referencia"
-            key={search.referencia ?? ""}
-            defaultValue={search.referencia ?? ""}
-            placeholder="Buscar por código"
-            maxLength={80}
-            onKeyDown={(e) => {
-              if (e.key === "Enter")
-                change({ referencia: e.currentTarget.value || undefined, exata: "sim" });
-            }}
-          />
-          <small>Digite a referência e pressione Enter</small>
-        </label>
+        {brand === "cordial" && !search.referencia && (
+          <button
+            className="cs-button cs-button-light cs-reference-toggle"
+            aria-expanded={referenceOpen}
+            onClick={() => setReferenceOpen((value) => !value)}
+          >
+            Buscar por referência
+          </button>
+        )}
+        {(brand === "morar" || referenceOpen || search.referencia) && (
+          <label>
+            <span>Referência {config.shortName}</span>
+            <input
+              id="referencia"
+              key={search.referencia ?? ""}
+              defaultValue={search.referencia ?? ""}
+              placeholder="Buscar por código"
+              maxLength={80}
+              onKeyDown={(e) => {
+                if (e.key === "Enter")
+                  change({ referencia: e.currentTarget.value || undefined, exata: "sim" });
+              }}
+            />
+            <small>
+              Digite a referência e pressione Enter
+              {search.referencia && chips.some(([key]) => !["referencia", "exata"].includes(key))
+                ? "; os demais filtros também se aplicam."
+                : ""}
+            </small>
+            {search.referencia && chips.some(([key]) => !["referencia", "exata"].includes(key)) && (
+              <button
+                type="button"
+                className="cs-text-link"
+                onClick={() =>
+                  void navigate({
+                    to: `${config.basePath}/buscar`,
+                    search: {
+                      ...defaultSearch,
+                      referencia: search.referencia,
+                      exata: search.exata,
+                      visualizacao: search.visualizacao,
+                    },
+                  })
+                }
+              >
+                Pesquisar somente esta referência
+              </button>
+            )}
+          </label>
+        )}
         <div className="cs-result-purpose">
           {[
             ["", "Todos"],
@@ -101,7 +197,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
           ))}
         </div>
       </div>
-      {expanded && (
+      {brand === "morar" && expanded && (
         <div className="cs-desktop-filter-panel">
           <SearchForm
             key={searchParams(search)}
@@ -111,13 +207,26 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
         </div>
       )}
       <div className="cs-results-toolbar">
-        <p role="status" aria-live="polite">
-          <strong>{result.total}</strong>{" "}
-          {result.total === 1 ? "imóvel encontrado" : "imóveis encontrados"}
+        <p role="status" aria-live="polite" aria-busy={refreshing}>
+          {failed ? (
+            hasPrevious ? (
+              "Resultados da última busca confirmada"
+            ) : (
+              "Quantidade não confirmada"
+            )
+          ) : (
+            <>
+              <strong>{result.total}</strong>{" "}
+              {result.total === 1 ? "imóvel encontrado" : "imóveis encontrados"}
+            </>
+          )}
+          {refreshing && <span className="cs-results-updating"> · Atualizando resultados…</span>}
         </p>
         <div>
           <Dialog.Root open={filters} onOpenChange={setFilters}>
-            <Dialog.Trigger className="cs-button cs-button-light cs-mobile-filter">
+            <Dialog.Trigger
+              className={`cs-button cs-button-light ${brand === "morar" ? "cs-mobile-filter" : "cs-filter-trigger"}`}
+            >
               <SlidersHorizontal size={18} />
               Filtros{chips.length > 0 ? ` (${chips.length})` : ""}
             </Dialog.Trigger>
@@ -126,7 +235,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
               <Dialog.Content className={`${config.themeClass} cs-drawer cs-filter-drawer`}>
                 <Dialog.Title>Encontre seu imóvel</Dialog.Title>
                 <Dialog.Description>
-                  Combine filtros e aplique para ver os resultados.
+                  Combine filtros e aplique uma vez. Fechar sem aplicar descarta as alterações.
                 </Dialog.Description>
                 <Dialog.Close
                   className="cs-icon-button cs-dialog-close"
@@ -166,6 +275,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
                     void navigate({
                       to: `${config.basePath}/buscar`,
                       search: { ...search, visualizacao: v as SiteSearch["visualizacao"] },
+                      resetScroll: false,
                     })
                   }
                 >
@@ -193,6 +303,19 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
           <SiteLink to={sitePath("/buscar")}>Limpar tudo</SiteLink>
         </div>
       )}
+      {failed && (
+        <div className="cs-inline-state cs-results-error" role="alert">
+          <p>
+            Não foi possível atualizar esta busca. Seus filtros foram preservados.
+            {hasPrevious
+              ? " Os imóveis abaixo pertencem à última busca confirmada."
+              : " Tente novamente para consultar os imóveis."}
+          </p>
+          <button className="cs-button cs-button-light" type="button" onClick={onRetry}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
       {result.items.length ? (
         <div
           className={`cs-property-grid ${search.visualizacao === "lista" ? "cs-property-list" : ""}`}
@@ -201,7 +324,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
             <PropertyCard property={p} key={p.id} priority={i === 0} />
           ))}
         </div>
-      ) : (
+      ) : !failed ? (
         <div className="cs-state">
           <SearchX size={38} />
           <h2>
@@ -218,7 +341,7 @@ export function ResultsPage({ result, search }: { result: SiteCatalog; search: S
             Ver todos os imóveis <ArrowRight size={18} />
           </SiteLink>
         </div>
-      )}
+      ) : null}
       {pageCount > 1 && (
         <nav className="cs-pagination" aria-label="Paginação dos imóveis">
           {search.pagina > 1 ? (

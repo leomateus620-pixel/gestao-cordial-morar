@@ -59,6 +59,8 @@ test("server boundaries use a closed brand and isolate public data, settings and
   let mediaMode: "absent" | "authorized" | "withdrawDuringDownload" = "absent";
   let mediaAuthorized = true;
   let mediaChecks = 0;
+  let persistedPhoto: Uint8Array | null = null;
+  let persistedChecksum: string | null = null;
   const photo = encodeJpeg({ width: 1, height: 1, data: new Uint8Array([20, 30, 40, 255]) }, 80);
   globalThis.fetch = async (input, init) => {
     const url = new URL(
@@ -66,11 +68,30 @@ test("server boundaries use a closed brand and isolate public data, settings and
     );
     requests.push(url.pathname);
     if (!available) return Response.json({ message: "database unavailable" }, { status: 503 });
+    if (
+      url.pathname.startsWith("/storage/v1/object/public-site-derivatives/") &&
+      init?.method === "POST"
+    ) {
+      persistedPhoto = new Uint8Array(await new Response(init.body as BodyInit).arrayBuffer());
+      return Response.json({ Key: "private-derived-test" });
+    }
     if (url.pathname.startsWith("/storage/v1/object/")) {
       if (mediaMode === "withdrawDuringDownload") mediaAuthorized = false;
-      return new Response(new Blob([photo], { type: "image/jpeg" }));
+      const bytes =
+        url.pathname.includes("public-site-derivatives") && persistedPhoto ? persistedPhoto : photo;
+      return new Response(new Blob([new Uint8Array(bytes)], { type: "image/jpeg" }));
     }
     const name = url.pathname.split("/").at(-1)!;
+    if (name === "public_site_derivatives")
+      return Response.json(
+        persistedChecksum ? { state: "ready", checksum: persistedChecksum } : null,
+      );
+    if (name === "public_site_claim_derivative")
+      return Response.json("00000000-0000-4000-8000-000000000005");
+    if (name === "public_site_finish_derivative") {
+      persistedChecksum = JSON.parse(String(init?.body))._checksum;
+      return Response.json(true);
+    }
     if (name.endsWith("take_rate")) return Response.json(true);
     if (name === "morar_site_search") return Response.json({ items: [property], total: 1 });
     if (name === "morar_site_facets")

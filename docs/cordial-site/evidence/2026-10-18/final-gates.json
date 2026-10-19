@@ -1,0 +1,122 @@
+{
+  "checkedAtUtc": "2026-10-18T21:36:21.2423696Z",
+  "baseCommit": "5ebc58cc8b109ac333a9eb55834d2f7359600f7a",
+  "branch": "codex/cordial-experiencia-cliente",
+  "workingTreeChanges": true,
+  "generalTests": {
+    "exitCode": 0,
+    "nodeTests": 529,
+    "receiptsVitest": 23,
+    "assistantTests": 169,
+    "total": 721,
+    "log": "final-test.log",
+    "note": "Executed earlier in this implementation; final affected public-site changes were validated again by siteTests below."
+  },
+  "siteTests": {
+    "exitCode": 0,
+    "tests": 140,
+    "passed": 140,
+    "failed": 0,
+    "durationMs": 34851.176,
+    "scope": "Cordial, Morar and archive test suites",
+    "log": "final-test-site.log"
+  },
+  "focusedEvidence": {
+    "analyticsConsent": {
+      "tests": 10,
+      "mockSdkTests": 9,
+      "locationRedactionTests": 1,
+      "source": "tests/cordial-site/analytics-consent.test.ts",
+      "log": "final-test-site.log"
+    },
+    "experience": {
+      "tests": 8,
+      "source": "tests/cordial-site/experience.test.ts",
+      "covers": [
+        "current history-entry origin",
+        "recognized return destination",
+        "photo handoff",
+        "public-root normalization",
+        "scroll/focus context",
+        "WhatsApp",
+        "event privacy"
+      ],
+      "log": "final-test-site.log"
+    },
+    "currentSynchronization": {
+      "tests": 3,
+      "source": "tests/cordial-site/current-sync.test.ts",
+      "log": "final-test-site.log"
+    },
+    "settingsContract": {
+      "tests": 7,
+      "source": "tests/cordial-site/contract.test.ts",
+      "includesAnalyticsManualEventsOnlyDefaultFalse": true,
+      "log": "final-test-site.log"
+    },
+    "routerPresentation": {
+      "source": "tests/cordial-site/search-state.test.ts",
+      "covers": [
+        "same catalog reads for grid/list and preview/gallery",
+        "distinct Router history keys",
+        "availability invalidation retained"
+      ],
+      "log": "final-test-site.log"
+    }
+  },
+  "format": {
+    "exitCode": 0,
+    "scope": "Changed and new scoped TS/TSX",
+    "log": "final-format.log"
+  },
+  "typecheck": {
+    "exitCode": 0,
+    "includesFinalQuickViewStrictModePatch": true,
+    "includesFinalRouterSurfaceAndReturnFocusPatch": true,
+    "includesFinalConsentAndTokenRedactionPatch": true,
+    "log": "final-typecheck.log"
+  },
+  "scopedLint": {
+    "exitCode": 0,
+    "warnings": 0,
+    "files": 59,
+    "scope": "Changed/new public frontend, backend, admin, visitor module, scripts, Cordial/Morar/archive fixtures and tests; generated route tree excluded",
+    "fileList": "final-scoped-files.txt",
+    "log": "final-lint-scoped.log"
+  },
+  "globalLintCurrentCheckout": {
+    "exitCode": 1,
+    "errors": 154698,
+    "warnings": 43,
+    "ignored": ".local/** historical checkout",
+    "log": "final-lint-current.log",
+    "note": "Earlier global run found inherited broad formatting/type-style failures. Not rerun after final scoped fixes; unrelated modules were not reformatted."
+  },
+  "rawGlobalLint": {
+    "exitCode": 1,
+    "errors": 326684,
+    "warnings": 88,
+    "log": "final-lint.log",
+    "note": "Original eslint . also scanned the historical .local/baseline copy."
+  },
+  "build": {
+    "exitCode": 0,
+    "command": "node --max-old-space-size=4096 node_modules/vite/bin/vite.js build",
+    "heapMiB": 4096,
+    "includesFinalRouterSurfaceAndReturnFocusPatch": true,
+    "includesFinalConsentAndTokenRedactionPatch": true,
+    "log": "final-build.log",
+    "defaultHeapFailure": "final-build-default-heap.log",
+    "note": "Default local Node heap approximately 2 GiB exhausted during an earlier Nitro bundle. Project build configuration unchanged. Final client, SSR and Nitro build passed."
+  },
+  "dependencyRepair": {
+    "exitCode": 0,
+    "command": "bun install --frozen-lockfile --backend=copyfile",
+    "webVitalsVersion": "6.2.3",
+    "originalPackageLockUnchanged": true,
+    "windowsWorkaround": "Ignored node_modules MCP plugin assertContains resolves parent and child paths before comparison.",
+    "log": "dependency-repair.log"
+  },
+  "remoteMigrationsApplied": false,
+  "deployed": false
+}

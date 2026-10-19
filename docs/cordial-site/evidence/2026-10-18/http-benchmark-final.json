@@ -1,0 +1,823 @@
+{
+  "generatedAt": "2026-10-18T20:57:19.169Z",
+  "repetitions": 5,
+  "versions": {
+    "before": "Historical HEAD archive served on 5174",
+    "after": "Current working tree served on 5173"
+  },
+  "code": {
+    "start": {
+      "revision": "5ebc58cc8b109ac333a9eb55834d2f7359600f7a",
+      "changedFilesSha256": "913803be8383eb091866a6e07f4b6400491e80745dab6efc9fc38c16af14e311",
+      "changedFileCount": 64
+    },
+    "end": {
+      "revision": "5ebc58cc8b109ac333a9eb55834d2f7359600f7a",
+      "changedFilesSha256": "913803be8383eb091866a6e07f4b6400491e80745dab6efc9fc38c16af14e311",
+      "changedFileCount": 64
+    },
+    "sourceStable": true
+  },
+  "conditions": {
+    "runtime": "v24.15.0",
+    "client": "Node fetch on same Windows host; loopback HTTP",
+    "viewport": "Not applicable to HTTP-only checks",
+    "cpu": {
+      "model": "Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz",
+      "logicalCores": 4,
+      "memoryGiB": 7.8,
+      "emulation": "None; shared local host"
+    },
+    "network": "Loopback; no throttling",
+    "applicationModules": "Warmed before recorded repetitions",
+    "browserCache": "Absent (Node fetch no-store)",
+    "derivativeCache": "Explicitly cleared before each coldDerivative pair; populated for each warmDerivative pair",
+    "originalFileSystemCache": "Uncontrolled operating-system filesystem cache",
+    "serverState": "Two existing Vite development servers and the same isolated PGlite backend; not restarted",
+    "limitations": [
+      "HTTP timings and bytes do not measure image paint, LCP, INP, CLS, hydration or mobile devices.",
+      "Favorites shell SSR does not include its browser-side data loading; favoritesFive separately measures that data workflow.",
+      "The five-request favorites workflow has no single headers/TTFB measurement; its medianHeadersMs is null, not zero.",
+      "No production or field-p75 claim follows from these local development results."
+    ]
+  },
+  "probes": {
+    "reads": {
+      "catalogCount": 30,
+      "countEqual": true,
+      "facetCountEqual": true,
+      "summariesOrdered": true,
+      "galleryAuthorized": true,
+      "exactAddressAbsent": true
+    },
+    "withdrawal": {
+      "warmMediaStatus": 404,
+      "detailRemoved": true,
+      "galleryRemoved": true,
+      "summaryMarkedMissing": true
+    }
+  },
+  "summary": {
+    "pages": {
+      "home": {
+        "before": {
+          "medianMs": 501.87,
+          "minMs": 495.82,
+          "maxMs": 513.56,
+          "medianHeadersMs": 501.28,
+          "bytes": [
+            54212
+          ],
+          "statuses": [
+            200
+          ]
+        },
+        "after": {
+          "medianMs": 224.21,
+          "minMs": 221.77,
+          "maxMs": 227.29,
+          "medianHeadersMs": 223.8,
+          "bytes": [
+            49025
+          ],
+          "statuses": [
+            200
+          ]
+        }
+      },
+      "search": {
+        "before": {
+          "medianMs": 648.94,
+          "minMs": 617.39,
+          "maxMs": 796.43,
+          "medianHeadersMs": 648.25,
+          "bytes": [
+            94857
+          ],
+          "statuses": [
+            200
+          ]
+        },
+        "after": {
+          "medianMs": 660.41,
+          "minMs": 643.75,
+          "maxMs": 668.93,
+          "medianHeadersMs": 659.5,
+          "bytes": [
+            123688
+          ],
+          "statuses": [
+            200
+          ]
+        }
+      },
+      "detail": {
+        "before": {
+          "medianMs": 445.13,
+          "minMs": 389.89,
+          "maxMs": 575.36,
+          "medianHeadersMs": 444.75,
+          "bytes": [
+            55894
+          ],
+          "statuses": [
+            200
+          ]
+        },
+        "after": {
+          "medianMs": 229.73,
+          "minMs": 213.18,
+          "maxMs": 307.76,
+          "medianHeadersMs": 229.5,
+          "bytes": [
+            36518
+          ],
+          "statuses": [
+            200
+          ]
+        }
+      },
+      "favoritesShell": {
+        "before": {
+          "medianMs": 115.83,
+          "minMs": 109.75,
+          "maxMs": 137.08,
+          "medianHeadersMs": 115.58,
+          "bytes": [
+            13294
+          ],
+          "statuses": [
+            200
+          ]
+        },
+        "after": {
+          "medianMs": 122.69,
+          "minMs": 115.29,
+          "maxMs": 141.01,
+          "medianHeadersMs": 122.5,
+          "bytes": [
+            14360
+          ],
+          "statuses": [
+            200
+          ]
+        }
+      }
+    },
+    "countPreview": {
+      "before": {
+        "medianMs": 298.94,
+        "minMs": 290.08,
+        "maxMs": 475.87,
+        "medianHeadersMs": 298.8,
+        "bytes": [
+          7758
+        ],
+        "statuses": [
+          200
+        ]
+      },
+      "after": {
+        "medianMs": 34.7,
+        "minMs": 34.53,
+        "maxMs": 41.39,
+        "medianHeadersMs": 34.58,
+        "bytes": [
+          12
+        ],
+        "statuses": [
+          200
+        ]
+      }
+    },
+    "favoritesFive": {
+      "before": {
+        "medianMs": 333.29,
+        "minMs": 328.49,
+        "maxMs": 336.34,
+        "medianHeadersMs": null,
+        "bytes": [
+          12323
+        ],
+        "statuses": [
+          200
+        ]
+      },
+      "after": {
+        "medianMs": 131.36,
+        "minMs": 127.64,
+        "maxMs": 145.69,
+        "medianHeadersMs": 131.23,
+        "bytes": [
+          3329
+        ],
+        "statuses": [
+          200
+        ]
+      }
+    },
+    "media": {
+      "coldDerivative": {
+        "before": {
+          "medianMs": 275.67,
+          "minMs": 260.33,
+          "maxMs": 349.92,
+          "medianHeadersMs": 269.06,
+          "bytes": [
+            194439
+          ],
+          "statuses": [
+            200
+          ]
+        },
+        "after": {
+          "medianMs": 354.76,
+          "minMs": 285.8,
+          "maxMs": 412.1,
+          "medianHeadersMs": 354.07,
+          "bytes": [
+            194439
+          ],
+          "statuses": [
+            200
+          ]
+        }
+      },
+      "warmDerivative": {
+        "before": {
+          "medianMs": 306.13,
+          "minMs": 257.95,
+          "maxMs": 343.45,
+          "medianHeadersMs": 305.45,
+          "bytes": [
+            194439
+          ],
+          "statuses": [
+            200
+          ]
+        },
+        "after": {
+          "medianMs": 57.18,
+          "minMs": 55.74,
+          "maxMs": 61.45,
+          "medianHeadersMs": 56.59,
+          "bytes": [
+            194439
+          ],
+          "statuses": [
+            200
+          ]
+        }
+      }
+    }
+  },
+  "raw": {
+    "pages": {
+      "home": {
+        "before": [
+          {
+            "headersMs": 512.9314999999999,
+            "totalMs": 513.5552,
+            "bytes": 54212,
+            "status": 200
+          },
+          {
+            "headersMs": 501.2769000000003,
+            "totalMs": 501.86529999999993,
+            "bytes": 54212,
+            "status": 200
+          },
+          {
+            "headersMs": 496.38020000000006,
+            "totalMs": 496.7642999999998,
+            "bytes": 54212,
+            "status": 200
+          },
+          {
+            "headersMs": 495.43190000000004,
+            "totalMs": 495.82469999999967,
+            "bytes": 54212,
+            "status": 200
+          },
+          {
+            "headersMs": 503.35609999999997,
+            "totalMs": 503.72429999999986,
+            "bytes": 54212,
+            "status": 200
+          }
+        ],
+        "after": [
+          {
+            "headersMs": 221.40470000000005,
+            "totalMs": 221.77079999999978,
+            "bytes": 49025,
+            "status": 200
+          },
+          {
+            "headersMs": 223.79669999999987,
+            "totalMs": 224.20929999999998,
+            "bytes": 49025,
+            "status": 200
+          },
+          {
+            "headersMs": 226.86250000000018,
+            "totalMs": 227.28510000000006,
+            "bytes": 49025,
+            "status": 200
+          },
+          {
+            "headersMs": 224.07230000000072,
+            "totalMs": 224.39400000000023,
+            "bytes": 49025,
+            "status": 200
+          },
+          {
+            "headersMs": 223.3764000000001,
+            "totalMs": 223.67439999999988,
+            "bytes": 49025,
+            "status": 200
+          }
+        ]
+      },
+      "search": {
+        "before": [
+          {
+            "headersMs": 616.6355999999996,
+            "totalMs": 617.3856999999998,
+            "bytes": 94857,
+            "status": 200
+          },
+          {
+            "headersMs": 648.2515000000003,
+            "totalMs": 648.9403000000002,
+            "bytes": 94857,
+            "status": 200
+          },
+          {
+            "headersMs": 795.6749,
+            "totalMs": 796.433500000001,
+            "bytes": 94857,
+            "status": 200
+          },
+          {
+            "headersMs": 633.2909,
+            "totalMs": 633.8342999999986,
+            "bytes": 94857,
+            "status": 200
+          },
+          {
+            "headersMs": 655.077299999999,
+            "totalMs": 655.8084999999992,
+            "bytes": 94857,
+            "status": 200
+          }
+        ],
+        "after": [
+          {
+            "headersMs": 661.0036,
+            "totalMs": 662.2592999999997,
+            "bytes": 123688,
+            "status": 200
+          },
+          {
+            "headersMs": 655.9560000000001,
+            "totalMs": 656.7453999999998,
+            "bytes": 123688,
+            "status": 200
+          },
+          {
+            "headersMs": 668.0817999999999,
+            "totalMs": 668.9335999999985,
+            "bytes": 123688,
+            "status": 200
+          },
+          {
+            "headersMs": 659.4984000000004,
+            "totalMs": 660.4148000000005,
+            "bytes": 123688,
+            "status": 200
+          },
+          {
+            "headersMs": 643.1571000000004,
+            "totalMs": 643.7541999999994,
+            "bytes": 123688,
+            "status": 200
+          }
+        ]
+      },
+      "detail": {
+        "before": [
+          {
+            "headersMs": 389.51430000000073,
+            "totalMs": 389.8852999999999,
+            "bytes": 55894,
+            "status": 200
+          },
+          {
+            "headersMs": 574.8959999999988,
+            "totalMs": 575.3590999999997,
+            "bytes": 55894,
+            "status": 200
+          },
+          {
+            "headersMs": 507.5463,
+            "totalMs": 508.0222999999987,
+            "bytes": 55894,
+            "status": 200
+          },
+          {
+            "headersMs": 444.7465999999986,
+            "totalMs": 445.1340999999993,
+            "bytes": 55894,
+            "status": 200
+          },
+          {
+            "headersMs": 406.9380999999994,
+            "totalMs": 407.4300000000003,
+            "bytes": 55894,
+            "status": 200
+          }
+        ],
+        "after": [
+          {
+            "headersMs": 212.89810000000034,
+            "totalMs": 213.1826000000001,
+            "bytes": 36518,
+            "status": 200
+          },
+          {
+            "headersMs": 307.46969999999965,
+            "totalMs": 307.7621999999992,
+            "bytes": 36518,
+            "status": 200
+          },
+          {
+            "headersMs": 252.04599999999846,
+            "totalMs": 252.34159999999974,
+            "bytes": 36518,
+            "status": 200
+          },
+          {
+            "headersMs": 229.49790000000212,
+            "totalMs": 229.72660000000178,
+            "bytes": 36518,
+            "status": 200
+          },
+          {
+            "headersMs": 217.25,
+            "totalMs": 217.51789999999892,
+            "bytes": 36518,
+            "status": 200
+          }
+        ]
+      },
+      "favoritesShell": {
+        "before": [
+          {
+            "headersMs": 109.63229999999749,
+            "totalMs": 109.7464,
+            "bytes": 13294,
+            "status": 200
+          },
+          {
+            "headersMs": 114.55200000000332,
+            "totalMs": 114.69180000000051,
+            "bytes": 13294,
+            "status": 200
+          },
+          {
+            "headersMs": 118.22789999999804,
+            "totalMs": 118.39929999999731,
+            "bytes": 13294,
+            "status": 200
+          },
+          {
+            "headersMs": 136.95609999999942,
+            "totalMs": 137.08199999999852,
+            "bytes": 13294,
+            "status": 200
+          },
+          {
+            "headersMs": 115.57809999999881,
+            "totalMs": 115.83209999999963,
+            "bytes": 13294,
+            "status": 200
+          }
+        ],
+        "after": [
+          {
+            "headersMs": 115.45739999999932,
+            "totalMs": 115.66589999999997,
+            "bytes": 14360,
+            "status": 200
+          },
+          {
+            "headersMs": 115.14709999999832,
+            "totalMs": 115.28709999999774,
+            "bytes": 14360,
+            "status": 200
+          },
+          {
+            "headersMs": 126.56940000000031,
+            "totalMs": 126.73250000000189,
+            "bytes": 14360,
+            "status": 200
+          },
+          {
+            "headersMs": 122.50170000000071,
+            "totalMs": 122.68540000000212,
+            "bytes": 14360,
+            "status": 200
+          },
+          {
+            "headersMs": 140.83990000000267,
+            "totalMs": 141.01320000000123,
+            "bytes": 14360,
+            "status": 200
+          }
+        ]
+      }
+    },
+    "countPreview": {
+      "before": [
+        {
+          "headersMs": 475.6815999999999,
+          "totalMs": 475.8713000000025,
+          "bytes": 7758,
+          "status": 200
+        },
+        {
+          "headersMs": 393.8063000000002,
+          "totalMs": 393.95720000000074,
+          "bytes": 7758,
+          "status": 200
+        },
+        {
+          "headersMs": 298.8029000000024,
+          "totalMs": 298.9403999999995,
+          "bytes": 7758,
+          "status": 200
+        },
+        {
+          "headersMs": 294.71710000000166,
+          "totalMs": 294.86119999999937,
+          "bytes": 7758,
+          "status": 200
+        },
+        {
+          "headersMs": 289.9351999999999,
+          "totalMs": 290.08320000000094,
+          "bytes": 7758,
+          "status": 200
+        }
+      ],
+      "after": [
+        {
+          "headersMs": 41.23080000000118,
+          "totalMs": 41.39140000000043,
+          "bytes": 12,
+          "status": 200
+        },
+        {
+          "headersMs": 34.70249999999942,
+          "totalMs": 34.829900000000634,
+          "bytes": 12,
+          "status": 200
+        },
+        {
+          "headersMs": 34.41240000000107,
+          "totalMs": 34.53120000000126,
+          "bytes": 12,
+          "status": 200
+        },
+        {
+          "headersMs": 34.54520000000048,
+          "totalMs": 34.653699999998935,
+          "bytes": 12,
+          "status": 200
+        },
+        {
+          "headersMs": 34.5795999999973,
+          "totalMs": 34.69679999999789,
+          "bytes": 12,
+          "status": 200
+        }
+      ]
+    },
+    "favoritesFive": {
+      "before": [
+        {
+          "headersMs": null,
+          "totalMs": 336.34289999999964,
+          "bytes": 12323,
+          "status": 200
+        },
+        {
+          "headersMs": null,
+          "totalMs": 335.23449999999866,
+          "bytes": 12323,
+          "status": 200
+        },
+        {
+          "headersMs": null,
+          "totalMs": 329.43659999999727,
+          "bytes": 12323,
+          "status": 200
+        },
+        {
+          "headersMs": null,
+          "totalMs": 333.29049999999916,
+          "bytes": 12323,
+          "status": 200
+        },
+        {
+          "headersMs": null,
+          "totalMs": 328.4853000000003,
+          "bytes": 12323,
+          "status": 200
+        }
+      ],
+      "after": [
+        {
+          "headersMs": 135.75400000000081,
+          "totalMs": 135.88290000000052,
+          "bytes": 3329,
+          "status": 200
+        },
+        {
+          "headersMs": 131.22710000000006,
+          "totalMs": 131.3589000000029,
+          "bytes": 3329,
+          "status": 200
+        },
+        {
+          "headersMs": 145.5760999999984,
+          "totalMs": 145.6867999999995,
+          "bytes": 3329,
+          "status": 200
+        },
+        {
+          "headersMs": 129.60189999999784,
+          "totalMs": 129.71549999999843,
+          "bytes": 3329,
+          "status": 200
+        },
+        {
+          "headersMs": 127.53340000000026,
+          "totalMs": 127.64069999999992,
+          "bytes": 3329,
+          "status": 200
+        }
+      ]
+    },
+    "media": {
+      "coldDerivative": {
+        "before": [
+          {
+            "headersMs": 348.3239999999969,
+            "totalMs": 349.92039999999906,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 268.7433999999994,
+            "totalMs": 269.47190000000046,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 312.604800000001,
+            "totalMs": 313.1867999999995,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 269.0571000000018,
+            "totalMs": 275.6713000000018,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 259.73159999999916,
+            "totalMs": 260.33050000000003,
+            "bytes": 194439,
+            "status": 200
+          }
+        ],
+        "after": [
+          {
+            "headersMs": 396.29659999999785,
+            "totalMs": 412.09749999999985,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 354.0705999999991,
+            "totalMs": 354.76450000000114,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 327.77520000000004,
+            "totalMs": 328.27360000000044,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 354.6764000000003,
+            "totalMs": 355.2069999999985,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 285.1720999999998,
+            "totalMs": 285.7968000000001,
+            "bytes": 194439,
+            "status": 200
+          }
+        ]
+      },
+      "warmDerivative": {
+        "before": [
+          {
+            "headersMs": 305.4497999999985,
+            "totalMs": 306.1258999999991,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 342.8690999999999,
+            "totalMs": 343.45270000000164,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 257.3744000000006,
+            "totalMs": 257.94650000000183,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 291.1292999999969,
+            "totalMs": 291.8208999999988,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 335.9464999999982,
+            "totalMs": 336.5114999999969,
+            "bytes": 194439,
+            "status": 200
+          }
+        ],
+        "after": [
+          {
+            "headersMs": 56.59259999999995,
+            "totalMs": 57.17669999999998,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 60.78830000000016,
+            "totalMs": 61.45079999999871,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 60.004000000000815,
+            "totalMs": 60.64500000000044,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 56.03069999999934,
+            "totalMs": 56.66560000000027,
+            "bytes": 194439,
+            "status": 200
+          },
+          {
+            "headersMs": 55.20920000000115,
+            "totalMs": 55.738100000002305,
+            "bytes": 194439,
+            "status": 200
+          }
+        ]
+      }
+    }
+  },
+  "mediaCounters": {
+    "unavailable": false,
+    "leads": 1,
+    "metrics": {
+      "originalReads": 15,
+      "derivativeReads": 5,
+      "derivativeWrites": 5,
+      "rpc": {
+        "cordial_site_take_rate": 20,
+        "public_site_claim_derivative": 5,
+        "public_site_finish_derivative": 5
+      }
+    },
+    "derivatives": 1
+  }
+}
