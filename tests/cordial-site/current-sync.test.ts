@@ -151,3 +151,28 @@ test("current reconciliation respects manual withdrawal after property and provi
     0,
   );
 });
+test("image insertion and deletion reconcile through NEW and OLD without invalid record fields", async () => {
+  const listing = await providerListing();
+  const image = randomUUID();
+  await db.query(
+    "UPDATE cordial_site_publications SET reviewed_content_hash='stale' WHERE property_id=$1",
+    [listing.property],
+  );
+  await db.query(
+    "INSERT INTO property_images(id,property_id,storage_path,position,width,height) VALUES($1,$2,'controlled/insert-delete.jpg',1,2000,1000)",
+    [image, listing.property],
+  );
+  assert.equal((await db.query("SELECT image_id FROM cordial_site_media WHERE image_id=$1", [image])).rows.length, 1);
+  const current = async () => (await db.query<{ current: boolean }>(
+    "SELECT s.reviewed_content_hash=cordial_site_content_hash(p) current FROM cordial_site_publications s JOIN properties p ON p.id=s.property_id WHERE p.id=$1",
+    [listing.property],
+  )).rows[0].current;
+  assert.equal(await current(), true);
+  await db.query(
+    "UPDATE cordial_site_publications SET reviewed_content_hash='stale' WHERE property_id=$1",
+    [listing.property],
+  );
+  await db.query("DELETE FROM property_images WHERE id=$1", [image]);
+  assert.equal(await current(), true, "DELETE must obtain the property identifier from OLD");
+  assert.equal((await db.query("SELECT image_id FROM cordial_site_media WHERE image_id=$1", [image])).rows.length, 0);
+});
