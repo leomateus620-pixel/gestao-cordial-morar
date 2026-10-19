@@ -176,6 +176,13 @@
       "when": 1792380144220,
       "tag": "0024_cordial_public_experience_a1",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792380203312,
+      "tag": "0025_cordial_public_video_pipeline",
+      "breakpoints": true
     }
   ]
 }

@@ -2785,6 +2785,13 @@ export type Database = {
             foreignKeyName: "cordial_site_redirects_publication_id_fkey"
             columns: ["publication_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_authorized_videos"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
             referencedRelation: "cordial_site_documents"
             referencedColumns: ["public_id"]
           },
@@ -2854,6 +2861,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      cordial_site_video_assets: {
+        Row: {
+          approved: boolean
+          duration_seconds: number | null
+          error_code: string | null
+          height: number | null
+          id: string
+          output_version: string | null
+          processed_storage_path: string | null
+          processing_token: string | null
+          processing_until: string | null
+          reviewed_by: string | null
+          size_bytes: number | null
+          source_signature: string
+          state: string
+          updated_at: string
+          video_id: string
+          width: number | null
+        }
+        Insert: {
+          approved?: boolean
+          duration_seconds?: number | null
+          error_code?: string | null
+          height?: number | null
+          id?: string
+          output_version?: string | null
+          processed_storage_path?: string | null
+          processing_token?: string | null
+          processing_until?: string | null
+          reviewed_by?: string | null
+          size_bytes?: number | null
+          source_signature: string
+          state?: string
+          updated_at?: string
+          video_id: string
+          width?: number | null
+        }
+        Update: {
+          approved?: boolean
+          duration_seconds?: number | null
+          error_code?: string | null
+          height?: number | null
+          id?: string
+          output_version?: string | null
+          processed_storage_path?: string | null
+          processing_token?: string | null
+          processing_until?: string | null
+          reviewed_by?: string | null
+          size_bytes?: number | null
+          source_signature?: string
+          state?: string
+          updated_at?: string
+          video_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_video_assets_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "property_videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_dispatch_claims: {
         Row: {
@@ -8783,6 +8855,19 @@ export type Database = {
           },
         ]
       }
+      cordial_site_authorized_videos: {
+        Row: {
+          duration: number | null
+          height: number | null
+          id: string | null
+          public_id: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          version: string | null
+          width: number | null
+        }
+        Relationships: []
+      }
       cordial_site_documents: {
         Row: {
           aceita_financiamento: boolean | null
@@ -9713,6 +9798,7 @@ export type Database = {
         Args: { _attendance_id: string }
         Returns: boolean
       }
+      cordial_site_claim_video: { Args: never; Returns: Json }
       cordial_site_content_hash: {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string
@@ -9763,6 +9849,10 @@ export type Database = {
         }
       }
       cordial_site_filtered_facets: { Args: { f?: Json }; Returns: Json }
+      cordial_site_finish_video: {
+        Args: { _id: string; _report: Json; _token: string }
+        Returns: boolean
+      }
       cordial_site_has_hidden_address: {
         Args: {
           _text: string
@@ -9776,6 +9866,10 @@ export type Database = {
       }
       cordial_site_normalize_public_text: {
         Args: { _text: string }
+        Returns: string
+      }
+      cordial_site_prepare_video: {
+        Args: { _video_id: string }
         Returns: string
       }
       cordial_site_public_features: {
@@ -9797,6 +9891,10 @@ export type Database = {
           _review_media?: boolean
         }
         Returns: string
+      }
+      cordial_site_review_video: {
+        Args: { _approve: boolean; _id: string }
+        Returns: boolean
       }
       cordial_site_save_content: {
         Args: { _content: Json; _key: string; _kind: string }
@@ -9828,6 +9926,10 @@ export type Database = {
       }
       cordial_site_triage: {
         Args: { _lead_id: string; _operation: string; _type: string }
+        Returns: string
+      }
+      cordial_site_video_signature: {
+        Args: { v: Database["public"]["Tables"]["property_videos"]["Row"] }
         Returns: string
       }
       current_user_has_notification_agency_access: {
