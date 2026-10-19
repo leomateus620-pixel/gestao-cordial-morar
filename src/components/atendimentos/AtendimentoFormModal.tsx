@@ -1,3 +1,4 @@
+import { retryRead } from "@/lib/net/retry-read";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChevronRight, Trash2, UserCheck, X } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
@@ -243,9 +244,11 @@ export function AtendimentoFormModal({
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        const result = await findExistingAttendanceByContact({
-          data: { phone: form.telefone, email: email.includes("@") ? email : undefined },
-        });
+        const result = await retryRead(() =>
+          findExistingAttendanceByContact({
+            data: { phone: form.telefone, email: email.includes("@") ? email : undefined },
+          }),
+        );
         if (cancelled) return;
         setMatchError(false);
         setMatches(result);
