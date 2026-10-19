@@ -13,7 +13,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useAuthReady, useHasAuthSession, useSession } from "@/lib/auth-mock";
+import {
+  retryProfileLoad,
+  useAuthReady,
+  useHasAuthSession,
+  useProfileLoadFailed,
+  useSession,
+} from "@/lib/auth-mock";
+import { SystemUnavailable } from "./shared/SystemUnavailable";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearchBar } from "./busca/GlobalSearchBar";
@@ -51,6 +58,7 @@ export function AppShell() {
   const session = useSession();
   const authReady = useAuthReady();
   const hasAuthSession = useHasAuthSession();
+  const profileLoadFailed = useProfileLoadFailed();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -141,7 +149,14 @@ export function AppShell() {
     [session, sessionModules],
   );
 
-  if (!session) return null;
+  if (!session) {
+    if (profileLoadFailed) return <SystemUnavailable onRetry={retryProfileLoad} />;
+    return (
+      <div role="status" className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      </div>
+    );
+  }
 
   return (
     <div

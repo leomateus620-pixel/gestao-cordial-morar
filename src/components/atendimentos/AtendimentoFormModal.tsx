@@ -1,3 +1,4 @@
+import { retryRead } from "@/lib/net/retry-read";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChevronRight, Trash2, UserCheck, X } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
@@ -243,9 +244,11 @@ export function AtendimentoFormModal({
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        const result = await findExistingAttendanceByContact({
-          data: { phone: form.telefone, email: email.includes("@") ? email : undefined },
-        });
+        const result = await retryRead(() =>
+          findExistingAttendanceByContact({
+            data: { phone: form.telefone, email: email.includes("@") ? email : undefined },
+          }),
+        );
         if (cancelled) return;
         setMatchError(false);
         setMatches(result);
@@ -556,7 +559,7 @@ export function AtendimentoFormModal({
 
               {isNew && matchError && (
                 <p className="rounded-xl bg-muted px-3 py-2 text-[11px] text-muted-foreground">
-                  Não foi possível verificar agora se o cliente já está cadastrado.
+                  Não foi possível conferir duplicidade agora; você pode seguir e o sistema confere ao salvar.
                 </p>
               )}
               {isNew && matches.length > 0 && (

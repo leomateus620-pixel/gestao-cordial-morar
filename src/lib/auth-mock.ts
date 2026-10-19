@@ -5,6 +5,7 @@ import { clearAllSelectionDrafts } from "@/lib/selecoes/draft-store";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { retryRead } from "@/lib/net/retry-read";
 import {
   roleDefinitions,
   type AppModule,
@@ -71,10 +72,18 @@ function buildSession(profile: ProfileRow, perfil: UserProfile): MockUser {
 }
 
 async function loadSession(userId: string): Promise<MockUser | null> {
-  const [{ data: profile }, { data: roles }] = await Promise.all([
-    supabase.from("profiles").select("id,nome,email,cargo,iniciais").eq("id", userId).maybeSingle(),
-    supabase.from("user_roles").select("role").eq("user_id", userId),
+  const [profileRes, rolesRes] = await Promise.all([
+    retryRead(() =>
+      Promise.resolve(
+        supabase.from("profiles").select("id,nome,email,cargo,iniciais").eq("id", userId).maybeSingle(),
+      ),
+    ),
+    retryRead(() => Promise.resolve(supabase.from("user_roles").select("role").eq("user_id", userId))),
   ]);
+  if (profileRes.error) throw profileRes.error;
+  if (rolesRes.error) throw rolesRes.error;
+  const profile = profileRes.data;
+  const roles = rolesRes.data;
   if (!profile) return null;
   const mapped = (roles ?? []).map((r) => mapDbRole(r.role));
   const perfil = pickHighestRole(mapped.length ? mapped : ["corretor"]);
@@ -88,23 +97,19 @@ let ready = false;
 let hasAuthSession = false;
 let initialized = false;
 let profileLoadInFlight = false;
+let profileLoadFailed = false;
 
 function notify() {
   listeners.forEach((l) => l());
 }
 
 async function loadProfileWithRetry(userId: string): Promise<MockUser | null> {
-  const delays = [0, 400, 1200];
-  for (let i = 0; i < delays.length; i++) {
-    if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
-    try {
-      const session = await loadSession(userId);
-      if (session) return session;
-    } catch (err) {
-      console.warn("[auth] loadSession attempt failed", i + 1, err);
-    }
+  try {
+    return await loadSession(userId);
+  } catch (err) {
+    console.warn("[auth] loadSession failed", err);
+    return null;
   }
-  return null;
 }
 
 async function refresh() {
@@ -123,17 +128,45 @@ async function refresh() {
     // Mark ready immediately so the shell doesn't kick the user to /login
     // while we're still fetching the profile row.
     ready = true;
+    profileLoadFailed = false;
     notify();
     const profile = await loadProfileWithRetry(data.session.user.id);
     // Only overwrite `current` when we successfully loaded a profile.
     // A transient DB failure must NOT clear the session and log the user out.
     if (profile) {
       current = profile;
-      notify();
+    } else if (!current) {
+      profileLoadFailed = true;
     }
+    notify();
+  } catch (err) {
+    console.warn("[auth] refresh failed", err);
+    if (!current) profileLoadFailed = true;
+    ready = true;
+    notify();
   } finally {
     profileLoadInFlight = false;
   }
+}
+
+/** Nova tentativa manual/automática de carregar perfil e permissões. */
+export function retryProfileLoad() {
+  void refresh();
+}
+
+/** Verdadeiro quando há login válido, mas perfil/permissões não puderam ser lidos. */
+export function useProfileLoadFailed(): boolean {
+  const [, force] = useState(0);
+  useEffect(() => {
+    ensureInitialized();
+    const cb = () => force((n) => n + 1);
+    listeners.add(cb);
+    cb();
+    return () => {
+      listeners.delete(cb);
+    };
+  }, []);
+  return profileLoadFailed;
 }
 
 function ensureInitialized() {
