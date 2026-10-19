@@ -136,7 +136,19 @@ export function EditorialPage({ slug, content }: { slug: string; content: SitePa
       <PageIntro eyebrow={eyebrow} title={content?.title ?? title} description={content?.summary} />
       <div className="cs-editorial-layout">
         <article className="cs-prose">
-          {body || (
+          {body && slug === "privacidade"
+            ? body
+                .split(/\n{2,}/)
+                .map((block, i) =>
+                  block.startsWith("## ") ? (
+                    <h2 key={i}>{block.slice(3).trim()}</h2>
+                  ) : (
+                    <p key={i} style={{ whiteSpace: "pre-line" }}>
+                      {block.trim()}
+                    </p>
+                  ),
+                )
+            : body || (
             <>
               <h2>Vamos conversar sobre isso?</h2>
               <p>
