@@ -1,0 +1,1 @@
+ALTER TYPE public.property_publication_status ADD VALUE IF NOT EXISTS 'conflict';

@@ -10068,6 +10068,7 @@ export type Database = {
         Args: { v: Database["public"]["Tables"]["property_videos"]["Row"] }
         Returns: string
       }
+      cron_history_prune: { Args: { p_batch?: number }; Returns: number }
       current_user_has_notification_agency_access: {
         Args: { _agency: string }
         Returns: boolean
@@ -11081,6 +11082,7 @@ export type Database = {
         | "error"
         | "out_of_sync"
         | "unpublished"
+        | "conflict"
       property_sync_action:
         | "publish"
         | "update"
@@ -11307,6 +11309,7 @@ export const Constants = {
         "error",
         "out_of_sync",
         "unpublished",
+        "conflict",
       ],
       property_sync_action: [
         "publish",
