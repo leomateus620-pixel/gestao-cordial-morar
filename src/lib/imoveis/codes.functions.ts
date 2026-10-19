@@ -95,6 +95,22 @@ export const commitPropertyCodes = createServerFn({ method: "POST" })
   .inputValidator((data: { propertyId: string; reservationIds: string[] }) => data)
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     if (!data.reservationIds.length) return { ok: true };
+    const { reservationCommitError } = await import("./integrity-rules");
+    const { data: rows, error: readErr } = await context.supabase
+      .from("provider_code_reservations")
+      .select("id, status, property_id, reserved_by, code")
+      .in("id", data.reservationIds);
+    if (readErr) throw new Error(readErr.message);
+    const list = (rows ?? []) as Array<{
+      id: string; status: string; property_id: string | null; reserved_by: string | null; code: string | null;
+    }>;
+    if (list.length !== data.reservationIds.length) throw new Error("Reserva de código não encontrada.");
+    for (const r of list) {
+      const problem = reservationCommitError(r, data.propertyId, context.userId);
+      if (problem) throw new Error(problem);
+    }
+    const ids = list.filter((r) => r.status === "reserved").map((r) => r.id);
+    if (!ids.length) return { ok: true };
     const { error } = await context.supabase
       .from("provider_code_reservations")
       .update({
@@ -102,7 +118,8 @@ export const commitPropertyCodes = createServerFn({ method: "POST" })
         property_id: data.propertyId,
         committed_at: new Date().toISOString(),
       })
-      .in("id", data.reservationIds);
+      .in("id", ids)
+      .eq("status", "reserved");
     if (error) throw new Error(error.message);
     return { ok: true };
   });
