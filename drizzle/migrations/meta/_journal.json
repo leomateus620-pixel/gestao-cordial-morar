@@ -162,6 +162,13 @@
       "when": 1792364400000,
       "tag": "0022_cordial_visitor_selections",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792379390392,
+      "tag": "0023_cordial_sync_trigger_record_access",
+      "breakpoints": true
     }
   ]
 }

@@ -34,3 +34,7 @@
 - [ ] Etapa 3: pesquisa externa — pausada pelo Leonardo
 - [x] Etapa 4: resumo das 8h (com NFS-e pendentes), assistant_facts
 - [x] Etapa 5: Estúdio de Conteúdo (tela, regras, banco)
+
+## Sincronização do site próprio Cordial
+- [ ] Aplicar a correção existente de leitura do identificador no gatilho
+- [ ] Conferir regressões com dados fictícios e recuperar publicações pendentes
