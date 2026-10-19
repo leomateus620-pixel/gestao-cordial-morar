@@ -2785,6 +2785,20 @@ export type Database = {
             foreignKeyName: "cordial_site_redirects_publication_id_fkey"
             columns: ["publication_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_authorized_tours"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_authorized_videos"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
             referencedRelation: "cordial_site_documents"
             referencedColumns: ["public_id"]
           },
@@ -2804,6 +2818,39 @@ export type Database = {
           },
         ]
       }
+      cordial_site_responsibles: {
+        Row: {
+          active: boolean
+          display_name: string
+          display_role: string
+          photo_url: string | null
+          profile_id: string
+          reviewed_by: string | null
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          active?: boolean
+          display_name: string
+          display_role?: string
+          photo_url?: string | null
+          profile_id: string
+          reviewed_by?: string | null
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          active?: boolean
+          display_name?: string
+          display_role?: string
+          photo_url?: string | null
+          profile_id?: string
+          reviewed_by?: string | null
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       cordial_site_settings: {
         Row: {
           content: Json
@@ -2821,6 +2868,178 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      cordial_site_tours: {
+        Row: {
+          approved: boolean
+          measured_height: number
+          measured_width: number
+          media_id: string
+          property_id: string
+          reviewed_by: string
+          signature: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          approved?: boolean
+          measured_height: number
+          measured_width: number
+          media_id: string
+          property_id: string
+          reviewed_by: string
+          signature: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          approved?: boolean
+          measured_height?: number
+          measured_width?: number
+          media_id?: string
+          property_id?: string
+          reviewed_by?: string
+          signature?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_tours_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_authorized_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_authorized_tours"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_admin_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_video_assets: {
+        Row: {
+          approved: boolean
+          duration_seconds: number | null
+          error_code: string | null
+          height: number | null
+          id: string
+          output_version: string | null
+          processed_storage_path: string | null
+          processing_token: string | null
+          processing_until: string | null
+          reviewed_by: string | null
+          size_bytes: number | null
+          source_signature: string
+          state: string
+          updated_at: string
+          video_id: string
+          width: number | null
+        }
+        Insert: {
+          approved?: boolean
+          duration_seconds?: number | null
+          error_code?: string | null
+          height?: number | null
+          id?: string
+          output_version?: string | null
+          processed_storage_path?: string | null
+          processing_token?: string | null
+          processing_until?: string | null
+          reviewed_by?: string | null
+          size_bytes?: number | null
+          source_signature: string
+          state?: string
+          updated_at?: string
+          video_id: string
+          width?: number | null
+        }
+        Update: {
+          approved?: boolean
+          duration_seconds?: number | null
+          error_code?: string | null
+          height?: number | null
+          id?: string
+          output_version?: string | null
+          processed_storage_path?: string | null
+          processing_token?: string | null
+          processing_until?: string | null
+          reviewed_by?: string | null
+          size_bytes?: number | null
+          source_signature?: string
+          state?: string
+          updated_at?: string
+          video_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_video_assets_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "property_videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_dispatch_claims: {
         Row: {
@@ -6887,6 +7106,54 @@ export type Database = {
         }
         Relationships: []
       }
+      public_site_derivatives: {
+        Row: {
+          checksum: string | null
+          key: string
+          lease: string | null
+          lease_until: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          checksum?: string | null
+          key: string
+          lease?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          checksum?: string | null
+          key?: string
+          lease?: string | null
+          lease_until?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      public_site_media_worker_health: {
+        Row: {
+          id: boolean
+          last_config_error: string | null
+          last_dispatched_at: string | null
+          last_request_id: number | null
+        }
+        Insert: {
+          id?: boolean
+          last_config_error?: string | null
+          last_dispatched_at?: string | null
+          last_request_id?: number | null
+        }
+        Update: {
+          id?: boolean
+          last_config_error?: string | null
+          last_dispatched_at?: string | null
+          last_request_id?: number | null
+        }
+        Relationships: []
+      }
       push_outbox: {
         Row: {
           attempts: number
@@ -8702,6 +8969,30 @@ export type Database = {
           },
         ]
       }
+      cordial_site_authorized_tours: {
+        Row: {
+          height: number | null
+          id: string | null
+          position: number | null
+          public_id: string | null
+          version: string | null
+          width: number | null
+        }
+        Relationships: []
+      }
+      cordial_site_authorized_videos: {
+        Row: {
+          duration: number | null
+          height: number | null
+          id: string | null
+          public_id: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          version: string | null
+          width: number | null
+        }
+        Relationships: []
+      }
       cordial_site_documents: {
         Row: {
           aceita_financiamento: boolean | null
@@ -9362,6 +9653,16 @@ export type Database = {
         }
         Relationships: []
       }
+      public_site_derivative_candidates: {
+        Row: {
+          brand: string | null
+          id: string | null
+          priority: number | null
+          size: string | null
+          version: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _try_uuid: { Args: { _txt: string }; Returns: string }
@@ -9622,14 +9923,87 @@ export type Database = {
         Args: { _attendance_id: string }
         Returns: boolean
       }
+      cordial_site_claim_video: { Args: never; Returns: Json }
       cordial_site_content_hash: {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string
       }
+      cordial_site_count: { Args: { f?: Json }; Returns: number }
+      cordial_site_decode_public_text: {
+        Args: { _text: string }
+        Returns: string
+      }
       cordial_site_facets: { Args: never; Returns: Json }
+      cordial_site_filtered: {
+        Args: { f?: Json }
+        Returns: {
+          aceita_financiamento: boolean | null
+          area_construida: number | null
+          area_terreno: number | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          cidade: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          dormitorios: number | null
+          endereco: string | null
+          estagio_empreendimento: string | null
+          mobiliado: boolean | null
+          operacao: string | null
+          permuta: boolean | null
+          pontos_fortes: string | null
+          property_id: string | null
+          public_id: string | null
+          public_reference: string | null
+          published_at: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          vagas: number | null
+          valor: number | null
+          valor_modo: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cordial_site_eligible"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cordial_site_filtered_facets: { Args: { f?: Json }; Returns: Json }
+      cordial_site_finish_video: {
+        Args: { _id: string; _report: Json; _token: string }
+        Returns: boolean
+      }
+      cordial_site_has_hidden_address: {
+        Args: {
+          _text: string
+          p: Database["public"]["Tables"]["properties"]["Row"]
+        }
+        Returns: boolean
+      }
       cordial_site_image_signature: {
         Args: { i: Database["public"]["Tables"]["property_images"]["Row"] }
         Returns: string
+      }
+      cordial_site_normalize_public_text: {
+        Args: { _text: string }
+        Returns: string
+      }
+      cordial_site_prepare_video: {
+        Args: { _video_id: string }
+        Returns: string
+      }
+      cordial_site_public_features: {
+        Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
+        Returns: string[]
+      }
+      cordial_site_public_responsible: {
+        Args: { _property_id: string }
+        Returns: Json
       }
       cordial_site_review: {
         Args: {
@@ -9643,8 +10017,34 @@ export type Database = {
         }
         Returns: string
       }
+      cordial_site_review_video: {
+        Args: { _approve: boolean; _id: string }
+        Returns: boolean
+      }
       cordial_site_save_content: {
         Args: { _content: Json; _key: string; _kind: string }
+        Returns: boolean
+      }
+      cordial_site_save_responsible: {
+        Args: {
+          _active: boolean
+          _name: string
+          _photo: string
+          _profile_id: string
+          _role: string
+          _whatsapp: string
+        }
+        Returns: boolean
+      }
+      cordial_site_save_tour: {
+        Args: {
+          _approve: boolean
+          _declared_equirectangular: boolean
+          _height: number
+          _media_id: string
+          _signature: string
+          _width: number
+        }
         Returns: boolean
       }
       cordial_site_search: { Args: { f?: Json }; Returns: Json }
@@ -9662,6 +10062,10 @@ export type Database = {
       }
       cordial_site_triage: {
         Args: { _lead_id: string; _operation: string; _type: string }
+        Returns: string
+      }
+      cordial_site_video_signature: {
+        Args: { v: Database["public"]["Tables"]["property_videos"]["Row"] }
         Returns: string
       }
       current_user_has_notification_agency_access: {
@@ -9848,11 +10252,52 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string
       }
+      morar_site_count: { Args: { f?: Json }; Returns: number }
       morar_site_decode_public_text: {
         Args: { _text: string }
         Returns: string
       }
       morar_site_facets: { Args: never; Returns: Json }
+      morar_site_filtered: {
+        Args: { f?: Json }
+        Returns: {
+          aceita_financiamento: boolean | null
+          area_construida: number | null
+          area_terreno: number | null
+          area_total: number | null
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          caracteristicas: string[] | null
+          cidade: string | null
+          descricao_imovel: string | null
+          destaque_inicial: boolean | null
+          dormitorios: number | null
+          endereco: string | null
+          estagio_empreendimento: string | null
+          mobiliado: boolean | null
+          operacao: string | null
+          permuta: boolean | null
+          pontos_fortes: string | null
+          property_id: string | null
+          public_id: string | null
+          public_reference: string | null
+          published_at: string | null
+          suites: number | null
+          tipo: string | null
+          uf: string | null
+          vagas: number | null
+          valor: number | null
+          valor_modo: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "morar_site_eligible"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      morar_site_filtered_facets: { Args: { f?: Json }; Returns: Json }
       morar_site_has_hidden_address: {
         Args: {
           _text: string
@@ -10412,6 +10857,11 @@ export type Database = {
           provider: Database["public"]["Enums"]["imobi_provider"]
           rate_limited_until: string
         }[]
+      }
+      public_site_claim_derivative: { Args: { _key: string }; Returns: string }
+      public_site_finish_derivative: {
+        Args: { _checksum: string; _key: string; _lease: string }
+        Returns: boolean
       }
       push_outbox_claim: {
         Args: { _limit?: number }
