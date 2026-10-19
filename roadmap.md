@@ -36,5 +36,5 @@
 - [x] Etapa 5: Estúdio de Conteúdo (tela, regras, banco)
 
 ## Sincronização do site próprio Cordial
-- [ ] Aplicar a correção existente de leitura do identificador no gatilho
-- [ ] Conferir regressões com dados fictícios e recuperar publicações pendentes
+- [x] Aplicar a correção existente de leitura do identificador no gatilho (Drizzle 0023)
+- [x] Conferir regressões com dados fictícios e recuperar publicações pendentes (29 testes; recuperação executada sem falhas)
