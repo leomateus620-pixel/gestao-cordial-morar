@@ -143,6 +143,7 @@ export const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "pending", label: "Pendente" },
   { value: "error", label: "Com erro" },
   { value: "out_of_sync", label: "Divergente" },
+  { value: "conflict", label: "Conflito de código" },
   { value: "draft", label: "Rascunho" },
 ];
 

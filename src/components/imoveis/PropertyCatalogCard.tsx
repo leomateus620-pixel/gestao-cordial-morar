@@ -19,7 +19,7 @@ const PROVIDER_INITIAL: Record<string, string> = { cordial: "C", morar: "M" };
 
 function statusTone(status: string, tone: "overlay" | "surface" = "overlay") {
   if (status === "published") return "bg-emerald-400";
-  if (status === "error" || status === "out_of_sync") return "bg-amber-400";
+  if (status === "error" || status === "out_of_sync" || status === "conflict") return "bg-amber-400";
   if (status === "unpublished" || status === "draft")
     return tone === "overlay" ? "bg-white/60" : "bg-foreground/30";
   return "bg-sky-300";
