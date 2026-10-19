@@ -11024,6 +11024,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      site_media_worker_dispatch: { Args: never; Returns: number }
       studio_daily_limit_ok: { Args: { _user_id: string }; Returns: boolean }
       studio_project_approve: { Args: { p_project_id: string }; Returns: Json }
       submit_satisfaction_response: {
