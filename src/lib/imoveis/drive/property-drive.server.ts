@@ -2,7 +2,19 @@
 // Reutiliza a conexão de workspace já existente (mesmo gateway/credenciais do
 // módulo Aluguéis) — nenhuma segunda autenticação, nenhum token no navegador.
 
-import { canAdoptDriveFolder, isStaleDriveJob } from "@/lib/imoveis/integrity-rules";
+import {
+  canAdoptDriveFolder,
+  driveFolderIdentityProblem,
+  driveJobOutcome,
+  isStaleDriveJob,
+} from "@/lib/imoveis/integrity-rules";
+
+/** Pasta registrada para outro imóvel: falha terminal, sem novo envio. */
+export class DriveIdentityError extends Error {
+  constructor(public code: string) {
+    super("Pasta do Drive vinculada também a outro imóvel. Envio suspenso para conferência.");
+  }
+}
 import { DRIVE_ENDPOINTS, driveFetch, driveJson } from "@/lib/google-drive/drive.server";
 import {
   DRIVE_SUBFOLDERS,
@@ -523,6 +535,18 @@ export async function ensurePropertyDriveStructure(
     if (id) {
       const meta = await getFileMeta(id);
       if (!meta || meta.trashed) id = null;
+      // Subpasta fora da pasta principal deste imóvel não é usada (nem apagada):
+      // uma nova subpasta é criada no lugar certo.
+      else if (
+        driveFolderIdentityProblem({
+          propertyId,
+          registeredTo: [],
+          appPropertyId: meta.appProperties?.cordialPropertyId ?? null,
+          expectedParentId: propertyFolderId,
+          parents: meta.parents ?? null,
+        })
+      )
+        id = null;
     }
     if (!id) {
       const name = DRIVE_SUBFOLDERS[category];
