@@ -559,7 +559,7 @@ export function AtendimentoFormModal({
 
               {isNew && matchError && (
                 <p className="rounded-xl bg-muted px-3 py-2 text-[11px] text-muted-foreground">
-                  Não foi possível verificar agora se o cliente já está cadastrado.
+                  Não foi possível conferir duplicidade agora; você pode seguir e o sistema confere ao salvar.
                 </p>
               )}
               {isNew && matches.length > 0 && (
