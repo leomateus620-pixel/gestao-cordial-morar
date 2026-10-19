@@ -218,6 +218,13 @@
       "when": 1792436356948,
       "tag": "0030_publication_status_conflict",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792436396368,
+      "tag": "0031_cron_history_prune_and_image_recovery_index",
+      "breakpoints": true
     }
   ]
 }
