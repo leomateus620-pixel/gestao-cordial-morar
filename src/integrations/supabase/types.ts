@@ -2785,6 +2785,13 @@ export type Database = {
             foreignKeyName: "cordial_site_redirects_publication_id_fkey"
             columns: ["publication_id"]
             isOneToOne: false
+            referencedRelation: "cordial_site_authorized_tours"
+            referencedColumns: ["public_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_redirects_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
             referencedRelation: "cordial_site_authorized_videos"
             referencedColumns: ["public_id"]
           },
@@ -2861,6 +2868,113 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      cordial_site_tours: {
+        Row: {
+          approved: boolean
+          measured_height: number
+          measured_width: number
+          media_id: string
+          property_id: string
+          reviewed_by: string
+          signature: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          approved?: boolean
+          measured_height: number
+          measured_width: number
+          media_id: string
+          property_id: string
+          reviewed_by: string
+          signature: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          approved?: boolean
+          measured_height?: number
+          measured_width?: number
+          media_id?: string
+          property_id?: string
+          reviewed_by?: string
+          signature?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_tours_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_authorized_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_authorized_tours"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_admin_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_tours_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cordial_site_video_assets: {
         Row: {
@@ -8855,6 +8969,17 @@ export type Database = {
           },
         ]
       }
+      cordial_site_authorized_tours: {
+        Row: {
+          height: number | null
+          id: string | null
+          position: number | null
+          public_id: string | null
+          version: string | null
+          width: number | null
+        }
+        Relationships: []
+      }
       cordial_site_authorized_videos: {
         Row: {
           duration: number | null
@@ -9908,6 +10033,17 @@ export type Database = {
           _profile_id: string
           _role: string
           _whatsapp: string
+        }
+        Returns: boolean
+      }
+      cordial_site_save_tour: {
+        Args: {
+          _approve: boolean
+          _declared_equirectangular: boolean
+          _height: number
+          _media_id: string
+          _signature: string
+          _width: number
         }
         Returns: boolean
       }

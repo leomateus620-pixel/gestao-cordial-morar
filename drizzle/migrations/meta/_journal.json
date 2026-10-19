@@ -183,6 +183,13 @@
       "when": 1792380203312,
       "tag": "0025_cordial_public_video_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792380255578,
+      "tag": "0026_cordial_public_tours",
+      "breakpoints": true
     }
   ]
 }
