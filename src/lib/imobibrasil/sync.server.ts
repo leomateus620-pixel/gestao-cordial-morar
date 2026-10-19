@@ -1825,6 +1825,30 @@ export async function runSyncWorker(
         results.push({ jobId: job.id, provider: job.provider, status: "superseded" });
         continue;
       }
+      // Conflito de código ainda existente: não envia de novo (evita o loop de
+      // ~100 tentativas). Corrigido o código, o envio segue normalmente.
+      if (["publish", "update", "media_sync"].includes(job.action)) {
+        const { data: pub } = await admin
+          .from("property_provider_publications")
+          .select("status")
+          .eq("property_id", job.property_id)
+          .eq("provider", job.provider)
+          .maybeSingle();
+        const owner =
+          (pub as { status?: string } | null)?.status === "conflict"
+            ? await findConflictingOwner(admin, job.property_id, job.provider)
+            : null;
+        if (owner) {
+          await finishJob(admin, job, {
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            last_error_category: "conflict",
+            last_error_message: `Código já usado pelo imóvel ${owner.slice(0, 8)}; envio bloqueado até a correção.`,
+          });
+          results.push({ jobId: job.id, provider: job.provider, status: "conflict" });
+          continue;
+        }
+      }
       const outcome = await processJob(admin, job, { updatesPaused });
       const outcomeStatus = (outcome as { status?: string } | undefined)?.status;
       let remoteReadStreak = 0;
