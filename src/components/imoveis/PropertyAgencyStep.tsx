@@ -1,3 +1,4 @@
+import { purposeMatchesOperation } from "@/lib/imoveis/integrity-rules";
 import { useEffect, useMemo, useState } from "react";
 import { Building2, ClipboardCheck, Pencil, User2 } from "lucide-react";
 import { AgencyChecklist, type ProviderChecklistState } from "@/components/agenciamentos/AgencyChecklist";
@@ -80,9 +81,11 @@ export function PropertyAgencyStep({
   const operacaoFinalidade: AgenciamentoFinalidade =
     values.operacao === "aluguel" ? "aluguel" : "venda";
   useEffect(() => {
-    if (state.finalidadeTouched || state.finalidade === operacaoFinalidade) return;
-    onChange({ ...state, finalidade: operacaoFinalidade });
-  }, [operacaoFinalidade, state, onChange]);
+    if (state.finalidade === operacaoFinalidade) return;
+    // Escolha manual só é mantida se combinar com a operação (ex.: venda e aluguel).
+    if (state.finalidadeTouched && purposeMatchesOperation(values.operacao, state.finalidade)) return;
+    onChange({ ...state, finalidade: operacaoFinalidade, finalidadeTouched: false });
+  }, [operacaoFinalidade, state, onChange, values.operacao]);
 
   function toggle(key: ChecklistKey, value: boolean) {
     onChange({
