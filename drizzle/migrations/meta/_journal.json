@@ -225,6 +225,13 @@
       "when": 1792436396368,
       "tag": "0031_cron_history_prune_and_image_recovery_index",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792439687306,
+      "tag": "0032_drive_claim_fix_offset_and_incident_audit",
+      "breakpoints": true
     }
   ]
 }

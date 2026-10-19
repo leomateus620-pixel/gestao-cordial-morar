@@ -2,7 +2,19 @@
 // Reutiliza a conexão de workspace já existente (mesmo gateway/credenciais do
 // módulo Aluguéis) — nenhuma segunda autenticação, nenhum token no navegador.
 
-import { canAdoptDriveFolder, isStaleDriveJob } from "@/lib/imoveis/integrity-rules";
+import {
+  canAdoptDriveFolder,
+  driveFolderIdentityProblem,
+  driveJobOutcome,
+  isStaleDriveJob,
+} from "@/lib/imoveis/integrity-rules";
+
+/** Pasta registrada para outro imóvel: falha terminal, sem novo envio. */
+export class DriveIdentityError extends Error {
+  constructor(public code: string) {
+    super("Pasta do Drive vinculada também a outro imóvel. Envio suspenso para conferência.");
+  }
+}
 import { DRIVE_ENDPOINTS, driveFetch, driveJson } from "@/lib/google-drive/drive.server";
 import {
   DRIVE_SUBFOLDERS,
@@ -451,14 +463,28 @@ export async function ensurePropertyDriveStructure(
     if (!meta || meta.trashed) {
       propertyFolderId = null;
       propertyFolderUrl = null;
-    } else if (meta.name !== folderName) {
-      // Código mudou: renomeia a MESMA pasta pelo ID — nunca uma pasta
-      // compartilhada com outro imóvel.
+    } else {
+      // Identidade comprovada a cada execução, mesmo com nome correto:
+      // pasta registrada/marcada para outro imóvel nunca recebe arquivos.
       const shared = await folderOwners(admin, propertyFolderId);
-      const markedFor = meta.appProperties?.cordialPropertyId ?? null;
-      if (canAdoptDriveFolder({ propertyId, registeredTo: shared, appPropertyId: markedFor })) {
-        await renameFile(propertyFolderId, folderName);
+      const problem = driveFolderIdentityProblem({
+        propertyId,
+        registeredTo: shared,
+        appPropertyId: meta.appProperties?.cordialPropertyId ?? null,
+      });
+      if (problem) {
+        await admin
+          .from("property_drive_folders")
+          .update({
+            status: "error",
+            last_error_code: problem,
+            last_error_message: "Pasta do Drive vinculada também a outro imóvel. Envio suspenso para conferência.",
+          } as never)
+          .eq("property_id", propertyId);
+        throw new DriveIdentityError(problem);
       }
+      if (!meta.appProperties?.cordialPropertyId) await markFolder(propertyFolderId, propertyId);
+      if (meta.name !== folderName) await renameFile(propertyFolderId, folderName);
     }
   }
   if (!propertyFolderId) {
@@ -509,6 +535,18 @@ export async function ensurePropertyDriveStructure(
     if (id) {
       const meta = await getFileMeta(id);
       if (!meta || meta.trashed) id = null;
+      // Subpasta fora da pasta principal deste imóvel não é usada (nem apagada):
+      // uma nova subpasta é criada no lugar certo.
+      else if (
+        driveFolderIdentityProblem({
+          propertyId,
+          registeredTo: [],
+          appPropertyId: meta.appProperties?.cordialPropertyId ?? null,
+          expectedParentId: propertyFolderId,
+          parents: meta.parents ?? null,
+        })
+      )
+        id = null;
     }
     if (!id) {
       const name = DRIVE_SUBFOLDERS[category];
@@ -1123,54 +1161,77 @@ export async function runDriveWorker(
         (["horizontal", "vertical", "video"] as DriveCategory[]).some(
           (c) => result.totals[c].pending > 0,
         );
-      if (stillPending && job.attempts < job.max_attempts) {
-        // hasMore = sobrou lote; waiting = a marca ainda está sendo aplicada.
-        // Em nenhum dos casos o original sem marca sobe ao Drive.
-        const delay = result.hasMore ? 2_000 : 20_000 * Math.max(1, job.attempts);
+      const outcome = driveJobOutcome({
+        stillPending,
+        hasMore: result.hasMore,
+        attempts: job.attempts,
+        maxAttempts: job.max_attempts,
+      });
+      const pendingCount = (["horizontal", "vertical", "video"] as DriveCategory[]).reduce(
+        (n, c) => n + result.totals[c].pending + result.totals[c].failed,
+        0,
+      );
+      if (outcome === "continue" || outcome === "retry") {
+        // continue = sobrou lote (não consome tentativa); retry = espera progressiva.
+        const delay = outcome === "continue" ? 2_000 : 20_000 * Math.max(1, job.attempts);
         await admin
           .from("property_drive_jobs")
           .update({
             status: "retry",
             run_after: new Date(Date.now() + delay).toISOString(),
             lease_expires_at: null,
-            // Continuar o mesmo lote não consome tentativa: só falha real consome.
-            attempts: result.hasMore ? Math.max(0, job.attempts - 1) : job.attempts,
-            // Continuar de onde parou é responsabilidade do próprio vínculo
-            // de cada arquivo (drive_file_id + checkpoint resumível).
-            cursor: { has_more: result.hasMore, at: new Date().toISOString() },
+            attempts: outcome === "continue" ? Math.max(0, job.attempts - 1) : job.attempts,
+            cursor: { has_more: result.hasMore, at: new Date().toISOString(), pending: pendingCount },
           } as never)
-          .eq("id", job.id);
-
-      } else {
-
+          .eq("id", job.id)
+          .eq("locked_by", worker);
+      } else if (outcome === "failed") {
+        // Pendência com tentativas esgotadas é falha explícita, nunca sucesso.
         await admin
           .from("property_drive_jobs")
-          .update({ status: "succeeded", lease_expires_at: null } as never)
-          .eq("id", job.id);
+          .update({
+            status: "failed",
+            lease_expires_at: null,
+            last_error_code: "max_attempts_pending",
+            last_error_message: `Tentativas esgotadas com ${pendingCount} arquivo(s) ainda pendente(s).`,
+            cursor: { has_more: result.hasMore, at: new Date().toISOString(), pending: pendingCount },
+          } as never)
+          .eq("id", job.id)
+          .eq("locked_by", worker);
+      } else {
+        await admin
+          .from("property_drive_jobs")
+          .update({ status: "succeeded", lease_expires_at: null, last_error_code: null, last_error_message: null } as never)
+          .eq("id", job.id)
+          .eq("locked_by", worker);
       }
       await applyDriveChecklist(admin, job.property_id, result);
       synced += 1;
     } catch (e) {
       failed += 1;
       const message = e instanceof Error ? e.message : String(e);
-      const terminal = job.attempts >= job.max_attempts;
+      const identity = e instanceof DriveIdentityError;
+      const terminal = identity || job.attempts >= job.max_attempts;
       await admin
         .from("property_drive_jobs")
         .update({
           status: terminal ? "failed" : "retry",
           run_after: new Date(Date.now() + 30_000 * Math.pow(2, job.attempts)).toISOString(),
           lease_expires_at: null,
-          last_error_code: terminal ? "max_attempts" : "sync_failed",
+          last_error_code: identity ? (e as DriveIdentityError).code : terminal ? "max_attempts" : "sync_failed",
           last_error_message: message.slice(0, 400),
         } as never)
-        .eq("id", job.id);
-      await admin
-        .from("property_drive_folders")
-        .update({
-          status: terminal ? "error" : "pending",
-          last_error_message: message.slice(0, 400),
-        } as never)
-        .eq("property_id", job.property_id);
+        .eq("id", job.id)
+        .eq("locked_by", worker);
+      if (!identity) {
+        await admin
+          .from("property_drive_folders")
+          .update({
+            status: terminal ? "error" : "pending",
+            last_error_message: message.slice(0, 400),
+          } as never)
+          .eq("property_id", job.property_id);
+      }
     }
   }
 
@@ -1204,10 +1265,11 @@ export async function applyDriveChecklist(
         endereco: string | null;
       }
     | undefined;
-  if (!agenciamento || agenciamento.fotos_drive) return;
+  if (!agenciamento) return;
 
-  const patch: Record<string, unknown> = { fotos_drive: true };
-  // Vídeo tem regra própria: só marca quando existir vídeo confirmado.
+  const patch: Record<string, unknown> = {};
+  if (!agenciamento.fotos_drive) patch.fotos_drive = true;
+  // Vídeo tem regra própria e é avaliado mesmo depois das fotos já marcadas.
   if (
     !agenciamento.video_realizado &&
     result.totals.video.total > 0 &&
@@ -1215,12 +1277,13 @@ export async function applyDriveChecklist(
   ) {
     patch.video_realizado = true;
   }
+  if (Object.keys(patch).length === 0) return;
   await admin
     .from("agenciamentos")
     .update(patch as never)
     .eq("id", agenciamento.id);
 
-  if (agenciamento.corretor_id) {
+  if (agenciamento.corretor_id && patch.fotos_drive) {
     try {
       await admin.from("notifications").insert({
         user_id: agenciamento.corretor_id,

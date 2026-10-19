@@ -6285,6 +6285,42 @@ export type Database = {
         }
         Relationships: []
       }
+      property_incident_audit: {
+        Row: {
+          action: string
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          entity: string
+          entity_id: string
+          id: string
+          incident: string
+          revert_hint: string | null
+        }
+        Insert: {
+          action: string
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          entity: string
+          entity_id: string
+          id?: string
+          incident: string
+          revert_hint?: string | null
+        }
+        Update: {
+          action?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          id?: string
+          incident?: string
+          revert_hint?: string | null
+        }
+        Relationships: []
+      }
       property_provider_publications: {
         Row: {
           archive_intent_revision: number | null
