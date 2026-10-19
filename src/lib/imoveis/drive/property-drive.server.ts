@@ -1265,10 +1265,11 @@ export async function applyDriveChecklist(
         endereco: string | null;
       }
     | undefined;
-  if (!agenciamento || agenciamento.fotos_drive) return;
+  if (!agenciamento) return;
 
-  const patch: Record<string, unknown> = { fotos_drive: true };
-  // Vídeo tem regra própria: só marca quando existir vídeo confirmado.
+  const patch: Record<string, unknown> = {};
+  if (!agenciamento.fotos_drive) patch.fotos_drive = true;
+  // Vídeo tem regra própria e é avaliado mesmo depois das fotos já marcadas.
   if (
     !agenciamento.video_realizado &&
     result.totals.video.total > 0 &&
@@ -1276,12 +1277,13 @@ export async function applyDriveChecklist(
   ) {
     patch.video_realizado = true;
   }
+  if (Object.keys(patch).length === 0) return;
   await admin
     .from("agenciamentos")
     .update(patch as never)
     .eq("id", agenciamento.id);
 
-  if (agenciamento.corretor_id) {
+  if (agenciamento.corretor_id && patch.fotos_drive) {
     try {
       await admin.from("notifications").insert({
         user_id: agenciamento.corretor_id,
