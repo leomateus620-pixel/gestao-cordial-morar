@@ -94,6 +94,42 @@ function toDbPayload(input: Partial<PropertyWriteInput>): Record<string, unknown
   return payload;
 }
 
+/** Recusa código Cordial/Morar já usado por outro imóvel ou reservado para outro. */
+async function assertCodesFree(propertyId: string | null, payload: Record<string, unknown>) {
+  const { manualCodeConflict, normalizeCode } = await import("./integrity-rules");
+  const pairs: Array<["cordial" | "morar", string]> = [];
+  for (const [provider, column] of [["cordial", "codigo_cordial"], ["morar", "codigo_morar"]] as const) {
+    const v = payload[column];
+    if (typeof v === "string" && normalizeCode(v)) pairs.push([provider, v.trim()]);
+  }
+  if (!pairs.length) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  for (const [provider, code] of pairs) {
+    const column = provider === "cordial" ? "codigo_cordial" : "codigo_morar";
+    const [{ data: props }, { data: res }] = await Promise.all([
+      supabaseAdmin.from("properties").select("id").ilike(column, code),
+      supabaseAdmin
+        .from("provider_code_reservations")
+        .select("status, property_id")
+        .eq("provider", provider)
+        .eq("code", code),
+    ]);
+    const other = manualCodeConflict({
+      code,
+      propertyId,
+      otherPropertyIds: ((props ?? []) as Array<{ id: string }>).map((p) => p.id),
+      reservations: (res ?? []) as Array<{ status: string; property_id: string | null }>,
+    });
+    if (other) {
+      throw new Error(
+        `O código ${provider === "cordial" ? "Cordial" : "Morar"} ${code} já é usado pelo imóvel ${other.slice(0, 8)}.`,
+      );
+    }
+  }
+}
+
+
+
 
 /** Recusa número acima do limite dos sites, sem truncar. */
 export function assertAddressNumber(numero: string | null | undefined): void {
@@ -559,6 +595,7 @@ export async function createImovelCore(context: AuthedCtx, data: CreateImovelInp
 
     const { asDraft, clientIntentKey: _k, ...writeData } = data;
     assertAddressNumber(writeData.numero);
+    await assertCodesFree(null, toDbPayload(writeData));
     const payload: Record<string, unknown> = {
       ...toDbPayload(writeData),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
@@ -637,6 +674,7 @@ export async function updateImovelCore(
 ): Promise<{ property: PropertyDetail | null; queued: string[] }> {
     const { id, expectedRevision, changedFields, ...rest } = data;
     const payload = toDbPayload(rest);
+    await assertCodesFree(id, payload);
     if (rest.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
       payload["localizacao_maps_coords"] = await resolveMapsCoords(rest.localizacaoMapsUrl);

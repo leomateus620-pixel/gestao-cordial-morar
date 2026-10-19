@@ -5,6 +5,7 @@
  * verificação remota. Nada é marcado como `published` sem confirmação por GET.
  */
 
+import { isUniquenessConflict } from "@/lib/imoveis/integrity-rules";
 import { precheckAddressPayload } from "./address-precheck";
 import { confirmedLocalFieldsAfterSend, confirmedSnapshotAfterSend } from "./confirm-snapshot";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1824,6 +1825,30 @@ export async function runSyncWorker(
         results.push({ jobId: job.id, provider: job.provider, status: "superseded" });
         continue;
       }
+      // Conflito de código ainda existente: não envia de novo (evita o loop de
+      // ~100 tentativas). Corrigido o código, o envio segue normalmente.
+      if (["publish", "update", "media_sync"].includes(job.action)) {
+        const { data: pub } = await admin
+          .from("property_provider_publications")
+          .select("status")
+          .eq("property_id", job.property_id)
+          .eq("provider", job.provider)
+          .maybeSingle();
+        const owner =
+          (pub as { status?: string } | null)?.status === "conflict"
+            ? await findConflictingOwner(admin, job.property_id, job.provider)
+            : null;
+        if (owner) {
+          await finishJob(admin, job, {
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            last_error_category: "conflict",
+            last_error_message: `Código já usado pelo imóvel ${owner.slice(0, 8)}; envio bloqueado até a correção.`,
+          });
+          results.push({ jobId: job.id, provider: job.provider, status: "conflict" });
+          continue;
+        }
+      }
       const outcome = await processJob(admin, job, { updatesPaused });
       const outcomeStatus = (outcome as { status?: string } | undefined)?.status;
       let remoteReadStreak = 0;
@@ -1983,6 +2008,34 @@ export async function runSyncWorker(
         results.push({ jobId: job.id, provider: job.provider, status: "pending_mapping" });
         continue;
       }
+      // Unicidade/conflito de referência (ex.: ppp_provider_external_id_idx):
+      // repetir nunca resolve. Job termina como falha, publicação vira
+      // "conflict" e o alerta fica visível; nada mais é reagendado.
+      if (isUniquenessConflict(error)) {
+        const owner = await findConflictingOwner(admin, job.property_id, job.provider);
+        const message = owner
+          ? `Código já usado pelo imóvel ${owner.slice(0, 8)}. Corrija o código antes de reenviar.`
+          : "Código ou anúncio já vinculado a outro imóvel. Corrija o código antes de reenviar.";
+        const owned = await finishJob(admin, job, {
+          status: "failed",
+          finished_at: new Date().toISOString(),
+          last_error_category: "conflict",
+          last_error_message: message,
+        });
+        if (owned) {
+          await admin
+            .from("property_provider_publications")
+            .update({ status: "conflict", last_error_category: "conflict", last_error_message: message })
+            .eq("property_id", job.property_id)
+            .eq("provider", job.provider);
+        }
+        await logAttempt(admin, job, {
+          step: job.action, ok: false, durationMs: Date.now() - started,
+          errorCategory: "conflict", errorMessage: message, outcome: owned ? "failed" : "lease_lost",
+        });
+        results.push({ jobId: job.id, provider: job.provider, status: "conflict" });
+        continue;
+      }
       const normalized = toImobiError(error);
       // Limite de requisições não consome tentativa: reagenda respeitando
       // `Retry-After` (ou a espera pedida pelo controle de limite).
@@ -2063,4 +2116,24 @@ export async function runSyncWorker(
   }
 
   return { claimed: claimed.length, results };
+}
+
+
+/** Outro imóvel que já tem o mesmo código do provedor (para a mensagem de conflito). */
+async function findConflictingOwner(
+  admin: typeof import("@/integrations/supabase/client.server").supabaseAdmin,
+  propertyId: string,
+  provider: string,
+): Promise<string | null> {
+  const column = provider === "morar" ? "codigo_morar" : "codigo_cordial";
+  const { data: self } = await admin.from("properties").select(column).eq("id", propertyId).maybeSingle();
+  const code = (self as Record<string, string | null> | null)?.[column];
+  if (!code) return null;
+  const { data } = await admin
+    .from("properties")
+    .select("id")
+    .ilike(column, code.trim())
+    .neq("id", propertyId)
+    .limit(1);
+  return ((data ?? []) as Array<{ id: string }>)[0]?.id ?? null;
 }

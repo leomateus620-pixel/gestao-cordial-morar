@@ -1,0 +1,1 @@
+- Marketing ad connectors live in src/lib/ads (pure link parser + per-platform providers implementing AdProvider); missing secrets surface as `not_configured`, never fake values — why: keeps manual campaigns working without credentials.

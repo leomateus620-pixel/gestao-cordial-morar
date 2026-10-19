@@ -2,6 +2,7 @@
 // Reutiliza a conexão de workspace já existente (mesmo gateway/credenciais do
 // módulo Aluguéis) — nenhuma segunda autenticação, nenhum token no navegador.
 
+import { canAdoptDriveFolder, isStaleDriveJob } from "@/lib/imoveis/integrity-rules";
 import { DRIVE_ENDPOINTS, driveFetch, driveJson } from "@/lib/google-drive/drive.server";
 import {
   DRIVE_SUBFOLDERS,
@@ -162,7 +163,7 @@ export async function validateRootFolder(folderId: string): Promise<RootValidati
 
 // ============ Primitivas do Drive ============
 
-async function createFolder(name: string, parentId: string) {
+async function createFolder(name: string, parentId: string, propertyId?: string) {
   return driveJson<{ id: string; name: string; webViewLink: string }>(
     `${DRIVE_API}/files?${ALL_DRIVES}&fields=id,name,webViewLink`,
     {
@@ -172,6 +173,7 @@ async function createFolder(name: string, parentId: string) {
         name,
         mimeType: "application/vnd.google-apps.folder",
         parents: [parentId],
+        ...(propertyId ? { appProperties: { cordialPropertyId: propertyId } } : {}),
       }),
     },
   );
@@ -179,7 +181,7 @@ async function createFolder(name: string, parentId: string) {
 
 async function getFileMeta(fileId: string) {
   const res = await driveFetch(
-    `${DRIVE_API}/files/${encodeURIComponent(fileId)}?${ALL_DRIVES}&fields=id,name,trashed,mimeType,size,parents,webViewLink`,
+    `${DRIVE_API}/files/${encodeURIComponent(fileId)}?${ALL_DRIVES}&fields=id,name,trashed,mimeType,size,parents,webViewLink,appProperties`,
   );
   if (!res.ok) return null;
   return (await res.json()) as {
@@ -190,7 +192,26 @@ async function getFileMeta(fileId: string) {
     size?: string;
     parents?: string[];
     webViewLink?: string;
+    appProperties?: Record<string, string>;
   };
+}
+
+/** Marca a pasta com o ID do imóvel (appProperties), sem mudar nome nem conteúdo. */
+async function markFolder(folderId: string, propertyId: string) {
+  await driveFetch(`${DRIVE_API}/files/${encodeURIComponent(folderId)}?${ALL_DRIVES}&fields=id`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ appProperties: { cordialPropertyId: propertyId } }),
+  });
+}
+
+/** Imóveis que já registraram esta pasta principal. */
+async function folderOwners(admin: Admin, folderId: string): Promise<string[]> {
+  const { data } = await admin
+    .from("property_drive_folders")
+    .select("property_id")
+    .eq("property_folder_id", folderId);
+  return ((data ?? []) as Array<{ property_id: string }>).map((r) => r.property_id);
 }
 
 async function renameFile(fileId: string, name: string) {
@@ -431,13 +452,30 @@ export async function ensurePropertyDriveStructure(
       propertyFolderId = null;
       propertyFolderUrl = null;
     } else if (meta.name !== folderName) {
-      // Código mudou: renomeia a MESMA pasta pelo ID.
-      await renameFile(propertyFolderId, folderName);
+      // Código mudou: renomeia a MESMA pasta pelo ID — nunca uma pasta
+      // compartilhada com outro imóvel.
+      const shared = await folderOwners(admin, propertyFolderId);
+      const markedFor = meta.appProperties?.cordialPropertyId ?? null;
+      if (canAdoptDriveFolder({ propertyId, registeredTo: shared, appPropertyId: markedFor })) {
+        await renameFile(propertyFolderId, folderName);
+      }
     }
   }
   if (!propertyFolderId) {
+    // Pasta com o mesmo nome só é adotada se não for de outro imóvel.
     const found = await findChildFolder(folderName, root.id);
-    const folder = found ?? (await createFolder(folderName, root.id));
+    let adopt = false;
+    if (found) {
+      const shared = await folderOwners(admin, found.id);
+      const meta = await getFileMeta(found.id);
+      adopt = canAdoptDriveFolder({
+        propertyId,
+        registeredTo: shared,
+        appPropertyId: meta?.appProperties?.cordialPropertyId ?? null,
+      });
+    }
+    const folder = found && adopt ? found : await createFolder(folderName, root.id, propertyId);
+    await markFolder(folder.id, propertyId);
     propertyFolderId = folder.id;
     propertyFolderUrl = folder.webViewLink ?? `https://drive.google.com/drive/folders/${folder.id}`;
     await admin
@@ -1037,11 +1075,22 @@ async function syncOneFile(
 export async function enqueueDriveJob(admin: Admin, propertyId: string): Promise<void> {
   const { data: active } = await admin
     .from("property_drive_jobs")
-    .select("id")
+    .select("id, status, lease_expires_at")
     .eq("property_id", propertyId)
     .in("status", ["pending", "processing", "retry"])
     .maybeSingle();
-  if (active) return;
+  if (active) {
+    const job = active as { id: string; status: string; lease_expires_at: string | null };
+    // Job "ativo" com lease vencido não bloqueia: volta para a fila agora.
+    if (isStaleDriveJob(job)) {
+      await admin
+        .from("property_drive_jobs")
+        .update({ status: "retry", run_after: new Date().toISOString(), lease_expires_at: null } as never)
+        .eq("id", job.id)
+        .eq("status", "processing");
+    }
+    return;
+  }
   await admin.from("property_drive_jobs").insert({ property_id: propertyId } as never);
 }
 

@@ -107,15 +107,45 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
     // atribuídos na publicação, como no painel.
     const ids = (data.reservationIds ?? []).filter(Boolean);
     if (ids.length) {
-      const { error } = await context.supabase
+      const { reservationCommitError } = await import("./integrity-rules");
+      const { data: resRows, error: readErr } = await context.supabase
         .from("provider_code_reservations")
-        .update({
-          status: "committed",
-          property_id: propertyId,
-          committed_at: new Date().toISOString(),
-        })
-        .in("id", ids)
-        .in("status", ["reserved", "committed"]);
+        .select("id, status, property_id, reserved_by, code")
+        .in("id", ids);
+      const rows = (resRows ?? []) as Array<{
+        id: string;
+        status: string;
+        property_id: string | null;
+        reserved_by: string | null;
+        code: string | null;
+      }>;
+      const problems = rows
+        .map((r) => reservationCommitError(r, propertyId, context.userId))
+        .filter(Boolean) as string[];
+      if (readErr || rows.length !== ids.length || problems.length) {
+        steps.codes = "error";
+        messages.push(problems[0] ?? "Os códigos reservados não foram confirmados.");
+        throw new Error(problems[0] ?? "Reserva de código inválida para este imóvel.");
+      }
+      const toCommit = rows.filter((r) => r.status === "reserved").map((r) => r.id);
+      let error: { message: string } | null = null;
+      if (toCommit.length) {
+        const res = await context.supabase
+          .from("provider_code_reservations")
+          .update({
+            status: "committed",
+            property_id: propertyId,
+            committed_at: new Date().toISOString(),
+          })
+          .in("id", toCommit)
+          .eq("status", "reserved")
+          .or(`property_id.is.null,property_id.eq.${propertyId}`)
+          .select("id");
+        error = res.error;
+        if (!error && (res.data?.length ?? 0) !== toCommit.length) {
+          error = { message: "Reserva alterada durante a confirmação." };
+        }
+      }
       steps.codes = error ? "error" : "ok";
       if (error)
         messages.push(

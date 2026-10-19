@@ -63,6 +63,8 @@ export type FinalizePropertyAgencyInput = {
   dataAgenciamento?: string;
   /** Só é respeitado para admin/secretaria; corretor sempre fica com o próprio ID. */
   corretorId?: string | null;
+  /** Confirmação explícita para finalidade diferente da operação do imóvel. */
+  confirmIncoherentPurpose?: boolean;
 };
 
 type PropertyRow = {
@@ -79,6 +81,7 @@ type PropertyRow = {
   publish_targets: string[] | null;
   proprietario_nome: string | null;
   proprietario_telefone: string | null;
+  operacao: string | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,13 +95,19 @@ export async function finalizePropertyAgencyCore(
     const { data: propertyRow, error: propertyError } = await context.supabase
       .from("properties")
       .select(
-        "id, tipo, logradouro, numero, bairro, cidade, codigo, codigo_cordial, codigo_morar, carteira, publish_targets, proprietario_nome, proprietario_telefone",
+        "id, tipo, logradouro, numero, bairro, cidade, codigo, codigo_cordial, codigo_morar, carteira, publish_targets, proprietario_nome, proprietario_telefone, operacao",
       )
       .eq("id", data.propertyId)
       .maybeSingle();
     if (propertyError) throw new Error(propertyError.message);
     if (!propertyRow) throw new Error("Imóvel não encontrado ou sem permissão de acesso.");
     const property = propertyRow as unknown as PropertyRow;
+    const { purposeMatchesOperation } = await import("@/lib/imoveis/integrity-rules");
+    if (!data.confirmIncoherentPurpose && !purposeMatchesOperation(property.operacao, data.finalidade)) {
+      throw new Error(
+        `A finalidade "${data.finalidade}" não combina com a operação do imóvel (${property.operacao}). Ajuste ou confirme explicitamente.`,
+      );
+    }
 
     // Identidade sempre derivada do backend: o frontend não escolhe o responsável.
     const brokerId = canManage && data.corretorId ? data.corretorId : context.userId;
