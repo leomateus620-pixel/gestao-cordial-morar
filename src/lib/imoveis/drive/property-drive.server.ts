@@ -451,14 +451,28 @@ export async function ensurePropertyDriveStructure(
     if (!meta || meta.trashed) {
       propertyFolderId = null;
       propertyFolderUrl = null;
-    } else if (meta.name !== folderName) {
-      // Código mudou: renomeia a MESMA pasta pelo ID — nunca uma pasta
-      // compartilhada com outro imóvel.
+    } else {
+      // Identidade comprovada a cada execução, mesmo com nome correto:
+      // pasta registrada/marcada para outro imóvel nunca recebe arquivos.
       const shared = await folderOwners(admin, propertyFolderId);
-      const markedFor = meta.appProperties?.cordialPropertyId ?? null;
-      if (canAdoptDriveFolder({ propertyId, registeredTo: shared, appPropertyId: markedFor })) {
-        await renameFile(propertyFolderId, folderName);
+      const problem = driveFolderIdentityProblem({
+        propertyId,
+        registeredTo: shared,
+        appPropertyId: meta.appProperties?.cordialPropertyId ?? null,
+      });
+      if (problem) {
+        await admin
+          .from("property_drive_folders")
+          .update({
+            status: "error",
+            last_error_code: problem,
+            last_error_message: "Pasta do Drive vinculada também a outro imóvel. Envio suspenso para conferência.",
+          } as never)
+          .eq("property_id", propertyId);
+        throw new DriveIdentityError(problem);
       }
+      if (!meta.appProperties?.cordialPropertyId) await markFolder(propertyFolderId, propertyId);
+      if (meta.name !== folderName) await renameFile(propertyFolderId, folderName);
     }
   }
   if (!propertyFolderId) {
