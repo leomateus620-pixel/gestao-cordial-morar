@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   canAdoptDriveFolder,
+  driveFolderIdentityProblem,
+  driveJobOutcome,
   isStaleDriveJob,
   isUniquenessConflict,
   manualCodeConflict,
@@ -68,5 +70,33 @@ describe("Drive", () => {
     const now = Date.parse("2026-10-19T12:00:00Z");
     assert.equal(isStaleDriveJob({ status: "processing", lease_expires_at: "2026-10-15T00:00:00Z" }, now), true);
     assert.equal(isStaleDriveJob({ status: "processing", lease_expires_at: "2026-10-19T12:05:00Z" }, now), false);
+  });
+});
+
+
+describe("incidente 1409/3408 — identidade e fila do Drive", () => {
+  it("pasta com nome certo mas registrada em outro imóvel é recusada", () => {
+    assert.equal(driveFolderIdentityProblem({ propertyId: "casa", registeredTo: ["casa", "ap"], appPropertyId: null }), "shared_folder");
+  });
+  it("pasta marcada para outro imóvel é recusada", () => {
+    assert.equal(driveFolderIdentityProblem({ propertyId: "casa", registeredTo: ["casa"], appPropertyId: "ap" }), "foreign_mark");
+  });
+  it("subpasta com parent de outro imóvel é recusada", () => {
+    assert.equal(driveFolderIdentityProblem({ propertyId: "casa", registeredTo: [], appPropertyId: null, expectedParentId: "p-casa", parents: ["p-ap"] }), "wrong_parent");
+  });
+  it("pasta própria é aceita", () => {
+    assert.equal(driveFolderIdentityProblem({ propertyId: "ap", registeredTo: ["ap"], appPropertyId: "ap", expectedParentId: "r", parents: ["r"] }), null);
+  });
+  it("tentativas esgotadas com pendência = falha, nunca sucesso", () => {
+    assert.equal(driveJobOutcome({ stillPending: true, hasMore: false, attempts: 6, maxAttempts: 6 }), "failed");
+  });
+  it("lote restante continua sem depender de tentativas", () => {
+    assert.equal(driveJobOutcome({ stillPending: true, hasMore: true, attempts: 6, maxAttempts: 6 }), "continue");
+  });
+  it("pendência com tentativas restantes = nova tentativa", () => {
+    assert.equal(driveJobOutcome({ stillPending: true, hasMore: false, attempts: 2, maxAttempts: 6 }), "retry");
+  });
+  it("tudo confirmado = sucesso", () => {
+    assert.equal(driveJobOutcome({ stillPending: false, hasMore: false, attempts: 1, maxAttempts: 6 }), "succeeded");
   });
 });
