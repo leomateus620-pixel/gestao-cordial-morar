@@ -168,6 +168,7 @@ export const PUBLICATION_STATUS_LABEL: Record<string, string> = {
   partial: "Parcial",
   error: "Erro",
   out_of_sync: "Divergente",
+  conflict: "Conflito de código",
   unpublished: "Despublicado",
 };
 
