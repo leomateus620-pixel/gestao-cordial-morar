@@ -70,3 +70,32 @@ describe("Drive", () => {
     assert.equal(isStaleDriveJob({ status: "processing", lease_expires_at: "2026-10-19T12:05:00Z" }, now), false);
   });
 });
+
+import { driveFolderIdentityProblem, driveJobOutcome } from "./integrity-rules";
+
+describe("incidente 1409/3408 — identidade e fila do Drive", () => {
+  it("pasta com nome certo mas registrada em outro imóvel é recusada", () => {
+    expect(driveFolderIdentityProblem({ propertyId: "casa", registeredTo: ["casa", "ap"], appPropertyId: null })).toBe("shared_folder");
+  });
+  it("pasta marcada para outro imóvel é recusada", () => {
+    expect(driveFolderIdentityProblem({ propertyId: "casa", registeredTo: ["casa"], appPropertyId: "ap" })).toBe("foreign_mark");
+  });
+  it("subpasta com parent de outro imóvel é recusada", () => {
+    expect(driveFolderIdentityProblem({ propertyId: "casa", registeredTo: [], appPropertyId: null, expectedParentId: "p-casa", parents: ["p-ap"] })).toBe("wrong_parent");
+  });
+  it("pasta própria é aceita", () => {
+    expect(driveFolderIdentityProblem({ propertyId: "ap", registeredTo: ["ap"], appPropertyId: "ap", expectedParentId: "r", parents: ["r"] })).toBeNull();
+  });
+  it("tentativas esgotadas com pendência = falha, nunca sucesso", () => {
+    expect(driveJobOutcome({ stillPending: true, hasMore: false, attempts: 6, maxAttempts: 6 })).toBe("failed");
+  });
+  it("lote restante continua sem depender de tentativas", () => {
+    expect(driveJobOutcome({ stillPending: true, hasMore: true, attempts: 6, maxAttempts: 6 })).toBe("continue");
+  });
+  it("pendência com tentativas restantes = nova tentativa", () => {
+    expect(driveJobOutcome({ stillPending: true, hasMore: false, attempts: 2, maxAttempts: 6 })).toBe("retry");
+  });
+  it("tudo confirmado = sucesso", () => {
+    expect(driveJobOutcome({ stillPending: false, hasMore: false, attempts: 1, maxAttempts: 6 })).toBe("succeeded");
+  });
+});
