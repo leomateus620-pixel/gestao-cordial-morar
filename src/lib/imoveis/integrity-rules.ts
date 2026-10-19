@@ -90,6 +90,37 @@ export function canAdoptDriveFolder(args: {
   return true;
 }
 
+/**
+ * Identidade de uma pasta já registrada: o nome nunca basta. Retorna o motivo
+ * quando a pasta (ou subpasta) não pode receber arquivos deste imóvel.
+ */
+export function driveFolderIdentityProblem(args: {
+  propertyId: string;
+  registeredTo: string[];
+  appPropertyId: string | null | undefined;
+  expectedParentId?: string | null;
+  parents?: string[] | null;
+}): "shared_folder" | "foreign_mark" | "wrong_parent" | null {
+  if (args.registeredTo.some((id) => id !== args.propertyId)) return "shared_folder";
+  if (args.appPropertyId && args.appPropertyId !== args.propertyId) return "foreign_mark";
+  if (args.expectedParentId && args.parents && !args.parents.includes(args.expectedParentId)) {
+    return "wrong_parent";
+  }
+  return null;
+}
+
+/** Decisão do worker ao fim de um lote: pendência esgotada nunca é sucesso. */
+export function driveJobOutcome(args: {
+  stillPending: boolean;
+  hasMore: boolean;
+  attempts: number;
+  maxAttempts: number;
+}): "succeeded" | "continue" | "retry" | "failed" {
+  if (!args.stillPending) return "succeeded";
+  if (args.hasMore) return "continue";
+  return args.attempts < args.maxAttempts ? "retry" : "failed";
+}
+
 /** Job "ativo" com lease vencido não bloqueia uma nova execução. */
 export function isStaleDriveJob(
   job: { status: string; lease_expires_at: string | null },
