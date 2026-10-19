@@ -38,3 +38,9 @@
 ## Sincronização do site próprio Cordial
 - [x] Aplicar a correção existente de leitura do identificador no gatilho (Drizzle 0023)
 - [x] Conferir regressões com dados fictícios e recuperar publicações pendentes (29 testes; recuperação executada sem falhas)
+
+## Incidente 19/10 (tela branca / banco)
+- [x] Tela resiliente, repetição curta de leituras, mensagens em português
+- [ ] Migrações: status conflito, limpeza do histórico de rotinas, índice de recuperação de fotos — bloqueado: banco inacessível
+- [ ] Reescalonar rotinas automáticas — bloqueado: banco inacessível
+- [ ] Diagnóstico de pressão do banco e custo de instância maior (pedido do Leonardo)
