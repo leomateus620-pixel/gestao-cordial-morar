@@ -1,3 +1,4 @@
+import { friendlyErrorMessage } from "@/lib/net/retry-read";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -87,7 +88,7 @@ export function NovoAtendimentoSheet({
         })();
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao salvar atendimento.");
+      toast.error(friendlyErrorMessage(err, "Erro ao salvar atendimento."), { id: "atendimento-save-error" });
       throw err;
     }
   }
