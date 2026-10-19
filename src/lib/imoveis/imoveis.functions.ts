@@ -595,6 +595,7 @@ export async function createImovelCore(context: AuthedCtx, data: CreateImovelInp
 
     const { asDraft, clientIntentKey: _k, ...writeData } = data;
     assertAddressNumber(writeData.numero);
+    await assertCodesFree(null, toDbPayload(writeData));
     const payload: Record<string, unknown> = {
       ...toDbPayload(writeData),
       valor_modo: data.valorModo ?? (data.valor === null || data.valor === undefined ? "consulte" : "fixo"),
@@ -673,6 +674,7 @@ export async function updateImovelCore(
 ): Promise<{ property: PropertyDetail | null; queued: string[] }> {
     const { id, expectedRevision, changedFields, ...rest } = data;
     const payload = toDbPayload(rest);
+    await assertCodesFree(id, payload);
     if (rest.localizacaoMapsUrl !== undefined) {
       const { resolveMapsCoords } = await import("./maps-link.server");
       payload["localizacao_maps_coords"] = await resolveMapsCoords(rest.localizacaoMapsUrl);
