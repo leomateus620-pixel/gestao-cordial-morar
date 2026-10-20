@@ -50,6 +50,7 @@ import {
   type CommercialTrack,
 } from "@/lib/atendimentos/track";
 import { cn } from "@/lib/utils";
+import { useApp } from "@/store/app-store";
 import type {
   Atendimento,
   AtendimentoCreateInput,
