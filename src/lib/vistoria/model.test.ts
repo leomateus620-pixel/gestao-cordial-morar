@@ -2,24 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildRoomPlan,
+  canFinalize,
   canOpenInspection,
-  meterText,
   mediaPath,
+  meterText,
   pathBelongsTo,
+  progress,
   propertyFamily,
   resolveResponsible,
   reviewIssues,
-  canFinalize,
   shouldApplyVoiceResult,
   sniffImageMime,
-  progress,
   type ReviewInput,
 } from "./model.ts";
 
 const names = (p: ReturnType<typeof buildRoomPlan>) => p.map((r) => r.name);
 
 test("casa: 3 dormitórios com 1 suíte não duplica quartos (dormitórios incluem suítes)", () => {
-  const plan = buildRoomPlan({ tipo: "Casa", dormitorios: 3, suites: 1, banheiros: 2, vagas: 1, salas: null });
+  const plan = buildRoomPlan({
+    tipo: "Casa",
+    dormitorios: 3,
+    suites: 1,
+    banheiros: 2,
+    vagas: 1,
+    salas: null,
+  });
   const n = names(plan);
   assert.equal(n.filter((x) => x.startsWith("Suíte")).length, 1);
   assert.equal(n.filter((x) => x.startsWith("Dormitório")).length, 2);
@@ -30,15 +37,39 @@ test("casa: 3 dormitórios com 1 suíte não duplica quartos (dormitórios inclu
 });
 
 test("apartamento sem quartos informados não inventa dormitórios", () => {
-  const n = names(buildRoomPlan({ tipo: "Apartamento", dormitorios: 0, suites: 0, banheiros: null, vagas: 0, salas: 0 }));
-  assert.equal(n.some((x) => x.startsWith("Dormitório") || x.startsWith("Suíte")), false);
-  assert.equal(n.some((x) => x.startsWith("Banheiro")), false);
+  const n = names(
+    buildRoomPlan({
+      tipo: "Apartamento",
+      dormitorios: 0,
+      suites: 0,
+      banheiros: null,
+      vagas: 0,
+      salas: 0,
+    }),
+  );
+  assert.equal(
+    n.some((x) => x.startsWith("Dormitório") || x.startsWith("Suíte")),
+    false,
+  );
+  assert.equal(
+    n.some((x) => x.startsWith("Banheiro")),
+    false,
+  );
   assert.equal(n.includes("Área externa"), false);
   assert.equal(n.includes("Vaga de garagem"), false);
 });
 
 test("suítes acima de dormitórios contam como dormitórios", () => {
-  const n = names(buildRoomPlan({ tipo: "Apartamento", dormitorios: 1, suites: 2, banheiros: 2, vagas: 1, salas: 1 }));
+  const n = names(
+    buildRoomPlan({
+      tipo: "Apartamento",
+      dormitorios: 1,
+      suites: 2,
+      banheiros: 2,
+      vagas: 1,
+      salas: 1,
+    }),
+  );
   assert.equal(n.filter((x) => x.startsWith("Suíte")).length, 2);
   assert.equal(n.filter((x) => x.startsWith("Dormitório")).length, 0);
   assert.equal(n.filter((x) => x.startsWith("Banheiro social")).length, 0);
@@ -46,23 +77,53 @@ test("suítes acima de dormitórios contam como dormitórios", () => {
 });
 
 test("comercial e terreno não geram cômodos residenciais", () => {
-  const com = names(buildRoomPlan({ tipo: "Sala comercial", dormitorios: 2, suites: 0, banheiros: 1, vagas: 0, salas: 2 }));
+  const com = names(
+    buildRoomPlan({
+      tipo: "Sala comercial",
+      dormitorios: 2,
+      suites: 0,
+      banheiros: 1,
+      vagas: 0,
+      salas: 2,
+    }),
+  );
   assert.deepEqual(com, ["Sala comercial 1", "Sala comercial 2", "Banheiro", "Fachada e acesso"]);
-  const ter = buildRoomPlan({ tipo: "Terreno", dormitorios: 3, suites: 1, banheiros: 2, vagas: 2, salas: 1 });
+  const ter = buildRoomPlan({
+    tipo: "Terreno",
+    dormitorios: 3,
+    suites: 1,
+    banheiros: 2,
+    vagas: 2,
+    salas: 1,
+  });
   assert.deepEqual(names(ter), ["Terreno"]);
   assert.ok(ter[0].items.some((i) => i.name === "Muros e cercas"));
   assert.equal(propertyFamily("Lote em condomínio"), "terreno");
-  assert.deepEqual(buildRoomPlan({ tipo: "", dormitorios: 2, suites: 0, banheiros: 1, vagas: 0, salas: 1 }), []);
+  assert.deepEqual(
+    buildRoomPlan({ tipo: "", dormitorios: 2, suites: 0, banheiros: 1, vagas: 0, salas: 1 }),
+    [],
+  );
 });
 
 test("cozinha e banheiro trazem itens hidráulicos; mobiliado adiciona inventário", () => {
-  const plan = buildRoomPlan({ tipo: "Casa", dormitorios: 1, suites: 0, banheiros: 1, vagas: 0, salas: 1, furnished: true });
+  const plan = buildRoomPlan({
+    tipo: "Casa",
+    dormitorios: 1,
+    suites: 0,
+    banheiros: 1,
+    vagas: 0,
+    salas: 1,
+    furnished: true,
+  });
   const coz = plan.find((r) => r.kind === "cozinha")!;
   assert.ok(coz.items.some((i) => i.name === "Hidráulica e vazamentos"));
   assert.ok(coz.items.some((i) => i.category === "mobilia"));
   const ban = plan.find((r) => r.kind === "banheiro")!;
   assert.ok(ban.items.some((i) => i.name === "Ralos"));
-  assert.equal(ban.items.some((i) => i.category === "mobilia"), false);
+  assert.equal(
+    ban.items.some((i) => i.category === "mobilia"),
+    false,
+  );
 });
 
 test("medidor não informado nunca vira zero; N/A e desligado são explícitos", () => {
@@ -78,7 +139,13 @@ const base = (): ReviewInput => ({
   rooms: [{ id: "r1", name: "Sala" }],
   items: [
     { id: "i1", room_id: "r1", name: "Piso", state: "bom" },
-    { id: "i2", room_id: "r1", name: "Tomadas", state: "nao_testado", untested_reason: "Sem energia" },
+    {
+      id: "i2",
+      room_id: "r1",
+      name: "Tomadas",
+      state: "nao_testado",
+      untested_reason: "Sem energia",
+    },
     { id: "i3", room_id: "r1", name: "Teto", state: "nao_se_aplica" },
   ],
   media: [{ id: "m1", room_id: "r1", status: "confirmada" }],
@@ -161,9 +228,52 @@ test("validação de tipo real da imagem pelos bytes", () => {
 test("corretor só abre as próprias/atribuídas e não atribui a outro", () => {
   const insp = { responsible_id: "outro", created_by: "outro" };
   assert.equal(canOpenInspection({ id: "eu", perfil: "corretor" }, insp), false);
-  assert.equal(canOpenInspection({ id: "eu", perfil: "corretor" }, { responsible_id: "eu", created_by: "outro" }), true);
+  assert.equal(
+    canOpenInspection(
+      { id: "eu", perfil: "corretor" },
+      { responsible_id: "eu", created_by: "outro" },
+    ),
+    true,
+  );
   assert.equal(canOpenInspection({ id: "eu", perfil: "secretaria" }, insp), true);
-  assert.equal(canOpenInspection({ id: "eu", perfil: "financeiro_admin" }, { responsible_id: "eu", created_by: "eu" }), false);
+  assert.equal(
+    canOpenInspection(
+      { id: "eu", perfil: "financeiro_admin" },
+      { responsible_id: "eu", created_by: "eu" },
+    ),
+    false,
+  );
   assert.equal(resolveResponsible("corretor", "eu", "outro"), "eu");
   assert.equal(resolveResponsible("admin_owner", "eu", "outro"), "outro");
+});
+
+test("preenchido distingue avaliação, N/A e não testado; alertas não alteram estados", async () => {
+  const { assessmentSummary, qualityAlerts } = await import("./model.ts");
+  const items = [
+    { id: "1", room_id: "sala", name: "Piso", state: "bom" as const, damage: "Avaria confirmada" },
+    { id: "2", room_id: "sala", name: "Ar", state: "nao_se_aplica" as const },
+    {
+      id: "3",
+      room_id: "sala",
+      name: "Luz",
+      state: "nao_testado" as const,
+      untested_reason: "Sem energia",
+    },
+  ];
+  assert.deepEqual(assessmentSummary(items), {
+    total: 3,
+    filled: 3,
+    evaluated: 1,
+    untested: 1,
+    notApplicable: 1,
+    pending: 0,
+  });
+  const alerts = qualityAlerts({
+    rooms: [{ id: "sala", name: "Sala" }],
+    items,
+    media: [],
+    notes: [],
+  });
+  assert.equal(alerts.length, 3);
+  assert.equal(items[0].state, "bom");
 });

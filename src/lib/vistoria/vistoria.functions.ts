@@ -1,6 +1,8 @@
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   INSPECTION_KINDS,
   INSPECTION_STATUSES,
@@ -11,6 +13,15 @@ import {
   sniffImageMime,
   type RoomKind,
 } from "./model";
+import type {
+  InspectionData,
+  InspectionRow,
+  ItemRow,
+  MediaRow,
+  NoteRow,
+  PropertySnapshot,
+  RoomRow,
+} from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const INSPECTION_BUCKET = "inspection-media";
@@ -19,26 +30,42 @@ const text = (max: number) => z.string().trim().max(max).nullable().optional();
 
 class ConflictError extends Error {
   constructor() {
-    super("CONFLITO: esta informação mudou em outra tela. Atualize para ver a versão mais recente.");
+    super(
+      "CONFLITO: esta informação mudou em outra tela. Atualize para ver a versão mais recente.",
+    );
   }
 }
-function fail(error: { message?: string; code?: string } | null, fallback = "Não foi possível salvar.") {
+function fail(
+  error: { message?: string; code?: string } | null,
+  fallback = "Não foi possível salvar.",
+) {
   if (!error) return;
   if (error.code === "42501") throw new Error("Você não tem acesso a esta vistoria.");
   throw new Error(error.message || fallback);
 }
-async function roles(sb: any, userId: string): Promise<string[]> {
+type InspectionClient = SupabaseClient<Database>;
+async function roles(sb: InspectionClient, userId: string): Promise<string[]> {
   const { data } = await sb.from("user_roles").select("role").eq("user_id", userId);
-  return (data ?? []).map((r: any) => String(r.role));
+  return (data ?? []).map((r) => String(r.role));
 }
-async function requireInspectionRole(sb: any, userId: string) {
+async function requireInspectionRole(sb: InspectionClient, userId: string) {
   const r = await roles(sb, userId);
   if (!r.some((x) => x === "admin" || x === "secretaria" || x === "corretor"))
-    throw new Error("Vistoria inteligente disponível apenas para administração, secretaria e corretores.");
+    throw new Error(
+      "Vistoria inteligente disponível apenas para administração, secretaria e corretores.",
+    );
   return { all: r.includes("admin") || r.includes("secretaria") };
 }
-async function logEvent(sb: any, inspectionId: string, userId: string, event: string, details: Record<string, unknown> = {}) {
-  await sb.from("inspection_events").insert({ inspection_id: inspectionId, event, details, actor_id: userId });
+async function logEvent(
+  sb: any,
+  inspectionId: string,
+  userId: string,
+  event: string,
+  details: Record<string, unknown> = {},
+) {
+  await sb
+    .from("inspection_events")
+    .insert({ inspection_id: inspectionId, event, details, actor_id: userId });
 }
 
 /* ---------------- Imóveis ---------------- */
@@ -102,7 +129,10 @@ export const listInspectionResponsibles = createServerFn({ method: "GET" })
     fail(error);
     return {
       canChoose: true,
-      options: ((data ?? []) as any[]).map((r) => ({ id: String(r.id), nome: String(r.nome || "Sem nome") })),
+      options: ((data ?? []) as any[]).map((r) => ({
+        id: String(r.id),
+        nome: String(r.nome || "Sem nome"),
+      })),
     };
   });
 
@@ -120,7 +150,7 @@ export type InspectionListRow = {
   responsible_name: string | null;
   current_version: number;
   property_id: string;
-  property_snapshot: any;
+  property_snapshot: PropertySnapshot;
 };
 
 export const listInspections = createServerFn({ method: "POST" })
@@ -134,35 +164,48 @@ export const listInspections = createServerFn({ method: "POST" })
         from: z.string().date().optional(),
         to: z.string().date().optional(),
         page: z.number().int().min(0).max(500).default(0),
+        agency: z.enum(["cordial", "morar"]).optional(),
+        dateField: z.enum(["inspected_at", "created_at"]).default("inspected_at"),
+        responsibleId: uuid.optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const sb = context.supabase as any;
+    const sb = context.supabase;
     await requireInspectionRole(sb, context.userId);
-    const size = 20;
-    let query = sb
-      .from("inspections")
-      .select(
-        "id, numero, kind, status, agency, inspected_at, created_at, updated_at, responsible_name, current_version, property_id, property_snapshot",
-        { count: "exact" },
-      )
-      .order("created_at", { ascending: false })
-      .range(data.page * size, data.page * size + size - 1);
-    if (data.status) query = query.eq("status", data.status);
-    if (data.kind) query = query.eq("kind", data.kind);
-    if (data.from) query = query.gte("created_at", `${data.from}T00:00:00-03:00`);
-    if (data.to) query = query.lte("created_at", `${data.to}T23:59:59-03:00`);
-    if (data.q) {
-      const q = data.q.toLowerCase().replace(/[%,()*]/g, " ").trim();
-      if (q) query = query.ilike("property_snapshot->>search_text", `%${q}%`);
-    }
-    const { data: rows, error, count } = await query;
+    if (data.responsibleId && !(await requireInspectionRole(sb, context.userId)).all)
+      throw new Error("Filtro de responsável reservado à administração.");
+    const nextDay = data.to ? new Date(`${data.to}T00:00:00-03:00`) : null;
+    if (nextDay) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const { data: result, error } = await sb.rpc(
+      "inspection_list" as never,
+      {
+        p_q: data.q?.replace(/[%,()*]/g, " ").trim() || null,
+        p_status: data.status ?? null,
+        p_kind: data.kind ?? null,
+        p_agency: data.agency ?? null,
+        p_from: data.from ? `${data.from}T00:00:00-03:00` : null,
+        p_to: nextDay?.toISOString() ?? null,
+        p_date_field: data.dateField,
+        p_responsible: data.responsibleId ?? null,
+        p_page: data.page,
+      } as never,
+    );
     fail(error);
-    const { data: counts } = await sb.from("inspections").select("status");
-    const byStatus: Record<string, number> = {};
-    for (const r of (counts ?? []) as any[]) byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
-    return { rows: (rows ?? []) as InspectionListRow[], total: count ?? 0, pageSize: size, byStatus };
+    return result as unknown as {
+      rows: InspectionListRow[];
+      total: number;
+      scopeTotal: number;
+      pageSize: number;
+      byStatus: Record<string, number>;
+      continueInspection:
+        | (InspectionListRow & {
+            last_room: string | null;
+            pending_items: number;
+            pending_media: number;
+          })
+        | null;
+    };
   });
 
 /* ---------------- Criação ---------------- */
@@ -173,8 +216,17 @@ const meterSchema = z.object({
   number: text(40),
 });
 const metersSchema = z.object({ agua: meterSchema, luz: meterSchema, gas: meterSchema });
-const participantsSchema = z.array(z.object({ nome: z.string().trim().min(1).max(120), papel: z.string().trim().max(60) })).max(10);
-const keysSchema = z.array(z.object({ descricao: z.string().trim().min(1).max(120), quantidade: z.number().int().min(0).max(99) })).max(30);
+const participantsSchema = z
+  .array(z.object({ nome: z.string().trim().min(1).max(120), papel: z.string().trim().max(60) }))
+  .max(10);
+const keysSchema = z
+  .array(
+    z.object({
+      descricao: z.string().trim().min(1).max(120),
+      quantidade: z.number().int().min(0).max(99),
+    }),
+  )
+  .max(30);
 
 const createSchema = z.object({
   id: uuid,
@@ -197,7 +249,15 @@ const createSchema = z.object({
     salas: z.number().int().min(0).max(30).nullable(),
   }),
   rooms: z
-    .array(z.object({ name: z.string().trim().min(1).max(80), kind: z.string().max(30), items: z.array(z.object({ name: z.string().trim().min(1).max(80), category: z.string().max(20) })).max(60) }))
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(80),
+        kind: z.string().max(30),
+        items: z
+          .array(z.object({ name: z.string().trim().min(1).max(80), category: z.string().max(20) }))
+          .max(60),
+      }),
+    )
     .max(60)
     .optional(),
   planConfirmed: z.boolean(),
@@ -207,30 +267,45 @@ export const createInspection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => createSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const sb = context.supabase as any;
+    const sb = context.supabase;
     const { all } = await requireInspectionRole(sb, context.userId);
-    // Idempotência: o id é gerado no aparelho; repetir o pedido devolve a mesma vistoria.
-    const existing = await sb.from("inspections").select("id").eq("id", data.id).maybeSingle();
-    if (existing.data) return { id: data.id as string, reused: true };
 
-    const { data: prop, error: pe } = await sb.from("properties").select(PROPERTY_COLS).eq("id", data.propertyId).maybeSingle();
+    const { data: prop, error: pe } = await sb
+      .from("properties")
+      .select(PROPERTY_COLS)
+      .eq("id", data.propertyId)
+      .maybeSingle();
     fail(pe);
     if (!prop) throw new Error("Imóvel não encontrado ou sem acesso.");
     const responsibleId = all ? data.responsibleId || context.userId : context.userId;
-    const { data: profile } = await sb.from("profiles").select("nome").eq("id", responsibleId).maybeSingle();
+    const { data: profile } = await sb
+      .from("profiles")
+      .select("nome")
+      .eq("id", responsibleId)
+      .maybeSingle();
 
     const address = [prop.logradouro, prop.numero, prop.complemento].filter(Boolean).join(", ");
     const snapshot = {
       captured_at: new Date().toISOString(),
       cadastro: prop,
       confirmado: data.confirmed,
-      endereco: [address, prop.bairro, [prop.cidade, prop.uf].filter(Boolean).join("/")].filter(Boolean).join(" · "),
-      search_text: [prop.codigo, prop.codigo_cordial, prop.codigo_morar, prop.logradouro, prop.numero, prop.bairro, prop.cidade]
+      endereco: [address, prop.bairro, [prop.cidade, prop.uf].filter(Boolean).join("/")]
+        .filter(Boolean)
+        .join(" · "),
+      search_text: [
+        prop.codigo,
+        prop.codigo_cordial,
+        prop.codigo_morar,
+        prop.logradouro,
+        prop.numero,
+        prop.bairro,
+        prop.cidade,
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase(),
     };
-    const { error } = await sb.from("inspections").insert({
+    const inspection = {
       id: data.id,
       property_id: data.propertyId,
       agency: data.agency,
@@ -246,54 +321,79 @@ export const createInspection = createServerFn({ method: "POST" })
       meters: data.meters,
       property_snapshot: snapshot,
       plan_confirmed: data.planConfirmed,
-    });
-    if (error?.code === "23505") return { id: data.id, reused: true };
-    fail(error);
-
+    };
     const plan =
       data.rooms ??
-      buildRoomPlan({ ...data.confirmed, furnished: data.furnished === "mobiliado" || data.furnished === "semimobiliado" });
-    for (const [pos, r] of plan.entries()) {
-      const { data: room, error: re } = await sb
-        .from("inspection_rooms")
-        .insert({ inspection_id: data.id, name: r.name, kind: r.kind, position: pos })
-        .select("id")
-        .single();
-      fail(re);
-      if (r.items.length) {
-        const { error: ie } = await sb.from("inspection_items").insert(
-          r.items.map((it, i) => ({ inspection_id: data.id, room_id: room.id, name: it.name, category: it.category, position: i })),
-        );
-        fail(ie);
-      }
-    }
-    await logEvent(sb, data.id, context.userId, "criada", { kind: data.kind, rooms: plan.length });
-    return { id: data.id as string, reused: false };
+      buildRoomPlan({
+        ...data.confirmed,
+        furnished: data.furnished === "mobiliado" || data.furnished === "semimobiliado",
+      });
+    const { data: result, error } = await sb.rpc(
+      "inspection_create" as never,
+      {
+        p_inspection: inspection,
+        p_rooms: plan,
+      } as never,
+    );
+    fail(error);
+    return result as unknown as { id: string; reused: boolean };
   });
 
 /* ---------------- Leitura completa ---------------- */
 
-export type InspectionFull = Awaited<ReturnType<typeof loadFull>>;
-async function loadFull(sb: any, id: string) {
+export type InspectionFull = InspectionData;
+async function loadFull(sb: InspectionClient, id: string): Promise<InspectionData> {
   const [insp, rooms, items, media, notes, docs, events] = await Promise.all([
-    sb.from("inspections").select("*").eq("id", id).maybeSingle(),
-    sb.from("inspection_rooms").select("*").eq("inspection_id", id).order("position"),
-    sb.from("inspection_items").select("*").eq("inspection_id", id).order("position"),
-    sb.from("inspection_media").select("*").eq("inspection_id", id).order("position").order("created_at"),
-    sb.from("inspection_notes").select("*").eq("inspection_id", id).order("created_at"),
-    sb.from("inspection_documents").select("id, version, byte_size, created_at, created_by").eq("inspection_id", id).order("version"),
-    sb.from("inspection_events").select("id, event, details, created_at, actor_id").eq("inspection_id", id).order("created_at", { ascending: false }).limit(40),
+    sb
+      .from("inspections" as never)
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+    sb
+      .from("inspection_rooms" as never)
+      .select("*")
+      .eq("inspection_id", id)
+      .order("position"),
+    sb
+      .from("inspection_items" as never)
+      .select("*")
+      .eq("inspection_id", id)
+      .order("position"),
+    sb
+      .from("inspection_media" as never)
+      .select("*")
+      .eq("inspection_id", id)
+      .order("position")
+      .order("created_at")
+      .order("id"),
+    sb
+      .from("inspection_notes" as never)
+      .select("*")
+      .eq("inspection_id", id)
+      .order("created_at"),
+    sb
+      .from("inspection_documents" as never)
+      .select("id, version, byte_size, created_at, created_by")
+      .eq("inspection_id", id)
+      .order("version"),
+    sb
+      .from("inspection_events" as never)
+      .select("id, event, details, created_at, actor_id")
+      .eq("inspection_id", id)
+      .order("created_at", { ascending: false })
+      .limit(40),
   ]);
-  for (const r of [insp, rooms, items, media, notes, docs, events]) fail(r.error, "Não foi possível carregar a vistoria.");
+  for (const r of [insp, rooms, items, media, notes, docs, events])
+    fail(r.error, "Não foi possível carregar a vistoria.");
   if (!insp.data) throw new Error("Vistoria não encontrada ou sem acesso.");
   return {
-    inspection: insp.data as any,
-    rooms: (rooms.data ?? []) as any[],
-    items: (items.data ?? []) as any[],
-    media: (media.data ?? []) as any[],
-    notes: (notes.data ?? []) as any[],
-    documents: (docs.data ?? []) as any[],
-    events: (events.data ?? []) as any[],
+    inspection: insp.data as unknown as InspectionRow,
+    rooms: (rooms.data ?? []) as unknown as RoomRow[],
+    items: (items.data ?? []) as unknown as ItemRow[],
+    media: (media.data ?? []) as unknown as MediaRow[],
+    notes: (notes.data ?? []) as unknown as NoteRow[],
+    documents: (docs.data ?? []) as unknown as InspectionData["documents"],
+    events: (events.data ?? []) as unknown as InspectionData["events"],
     serverTime: new Date().toISOString(),
   };
 }
@@ -303,13 +403,24 @@ export const getInspection = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data, context }) => {
     await requireInspectionRole(context.supabase, context.userId);
-    return loadFull(context.supabase as any, data.id);
+    return loadFull(context.supabase, data.id);
   });
 
 /* ---------------- Atualizações com controle de revisão ---------------- */
 
-async function casUpdate(sb: any, table: string, id: string, expectedRevision: number, patch: Record<string, unknown>) {
-  const { data, error } = await sb.from(table).update(patch).eq("id", id).eq("revision", expectedRevision).select("*");
+async function casUpdate(
+  sb: any,
+  table: string,
+  id: string,
+  expectedRevision: number,
+  patch: Record<string, unknown>,
+) {
+  const { data, error } = await sb
+    .from(table)
+    .update(patch)
+    .eq("id", id)
+    .eq("revision", expectedRevision)
+    .select("*");
   fail(error);
   if (!data?.length) throw new ConflictError();
   return data[0];
@@ -348,37 +459,66 @@ export const updateInspectionBasics = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = { ...data.patch };
     if (patch.responsible_id) {
       if (!all) throw new Error("Somente administração ou secretaria trocam o responsável.");
-      const { data: p } = await sb.from("profiles").select("nome").eq("id", patch.responsible_id).maybeSingle();
+      const { data: p } = await sb
+        .from("profiles")
+        .select("nome")
+        .eq("id", patch.responsible_id)
+        .maybeSingle();
       patch.responsible_name = p?.nome ?? null;
     }
     const row = await casUpdate(sb, "inspections", data.id, data.expectedRevision, patch);
-    if (data.patch.status) await logEvent(sb, data.id, context.userId, "status", { status: data.patch.status });
+    if (data.patch.status)
+      await logEvent(sb, data.id, context.userId, "status", { status: data.patch.status });
     return row;
   });
 
 export const addRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ inspectionId: uuid, name: z.string().trim().min(1).max(80), kind: z.string().max(30), furnished: z.boolean() }).parse(d),
+    z
+      .object({
+        inspectionId: uuid,
+        name: z.string().trim().min(1).max(80),
+        kind: z.string().max(30),
+        furnished: z.boolean(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    const { count } = await sb.from("inspection_rooms").select("id", { count: "exact", head: true }).eq("inspection_id", data.inspectionId);
+    const { count } = await sb
+      .from("inspection_rooms")
+      .select("id", { count: "exact", head: true })
+      .eq("inspection_id", data.inspectionId);
     const { data: room, error } = await sb
       .from("inspection_rooms")
-      .insert({ inspection_id: data.inspectionId, name: data.name, kind: data.kind, position: count ?? 0 })
+      .insert({
+        inspection_id: data.inspectionId,
+        name: data.name,
+        kind: data.kind,
+        position: count ?? 0,
+      })
       .select("*")
       .single();
     fail(error);
     const { itemsForRoom } = await import("./model");
     const items = itemsForRoom(data.kind as RoomKind, data.furnished);
     if (items.length) {
-      const { error: ie } = await sb
-        .from("inspection_items")
-        .insert(items.map((it, i) => ({ inspection_id: data.inspectionId, room_id: room.id, name: it.name, category: it.category, position: i })));
+      const { error: ie } = await sb.from("inspection_items").insert(
+        items.map((it, i) => ({
+          inspection_id: data.inspectionId,
+          room_id: room.id,
+          name: it.name,
+          category: it.category,
+          position: i,
+        })),
+      );
       fail(ie);
     }
-    await logEvent(sb, data.inspectionId, context.userId, "ambiente_adicionado", { room_id: room.id, name: data.name });
+    await logEvent(sb, data.inspectionId, context.userId, "ambiente_adicionado", {
+      room_id: room.id,
+      name: data.name,
+    });
     return room;
   });
 
@@ -389,19 +529,30 @@ export const updateRoom = createServerFn({ method: "POST" })
       .object({
         id: uuid,
         expectedRevision: z.number().int(),
-        patch: z.object({ name: z.string().trim().min(1).max(80), no_photo_reason: text(500) }).partial().strict(),
+        patch: z
+          .object({ name: z.string().trim().min(1).max(80), no_photo_reason: text(500) })
+          .partial()
+          .strict(),
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => casUpdate(context.supabase, "inspection_rooms", data.id, data.expectedRevision, data.patch));
+  .handler(async ({ data, context }) =>
+    casUpdate(context.supabase, "inspection_rooms", data.id, data.expectedRevision, data.patch),
+  );
 
 export const reorderRooms = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ inspectionId: uuid, order: z.array(uuid).max(60) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ inspectionId: uuid, order: z.array(uuid).max(60) }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     for (const [i, id] of data.order.entries()) {
-      const { error } = await sb.from("inspection_rooms").update({ position: i }).eq("id", id).eq("inspection_id", data.inspectionId);
+      const { error } = await sb
+        .from("inspection_rooms")
+        .update({ position: i })
+        .eq("id", id)
+        .eq("inspection_id", data.inspectionId);
       fail(error);
     }
     return { ok: true };
@@ -409,28 +560,66 @@ export const reorderRooms = createServerFn({ method: "POST" })
 
 export const deleteRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: uuid, inspectionId: uuid, confirmed: z.literal(true) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ id: uuid, inspectionId: uuid, confirmed: z.literal(true) }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    const { data: media } = await sb.from("inspection_media").select("storage_path").eq("room_id", data.id).eq("inspection_id", data.inspectionId);
-    const { data: notes } = await sb.from("inspection_notes").select("audio_path").eq("room_id", data.id).eq("inspection_id", data.inspectionId);
-    const { error } = await sb.from("inspection_rooms").delete().eq("id", data.id).eq("inspection_id", data.inspectionId);
+    const { data: media } = await sb
+      .from("inspection_media")
+      .select("storage_path")
+      .eq("room_id", data.id)
+      .eq("inspection_id", data.inspectionId);
+    const { data: notes } = await sb
+      .from("inspection_notes")
+      .select("audio_path")
+      .eq("room_id", data.id)
+      .eq("inspection_id", data.inspectionId);
+    const { error } = await sb
+      .from("inspection_rooms")
+      .delete()
+      .eq("id", data.id)
+      .eq("inspection_id", data.inspectionId);
     fail(error);
-    const paths = [...(media ?? []).map((m: any) => m.storage_path), ...(notes ?? []).map((n: any) => n.audio_path)].filter(Boolean);
+    const paths = [
+      ...(media ?? []).map((m: any) => m.storage_path),
+      ...(notes ?? []).map((n: any) => n.audio_path),
+    ].filter(Boolean);
     if (paths.length) await sb.storage.from(INSPECTION_BUCKET).remove(paths);
-    await logEvent(sb, data.inspectionId, context.userId, "ambiente_removido", { room_id: data.id, arquivos: paths.length });
+    await logEvent(sb, data.inspectionId, context.userId, "ambiente_removido", {
+      room_id: data.id,
+      arquivos: paths.length,
+    });
     return { ok: true };
   });
 
 export const addItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ inspectionId: uuid, roomId: uuid, name: z.string().trim().min(1).max(80), category: z.string().max(20) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        inspectionId: uuid,
+        roomId: uuid,
+        name: z.string().trim().min(1).max(80),
+        category: z.string().max(20),
+      })
+      .parse(d),
+  )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    const { count } = await sb.from("inspection_items").select("id", { count: "exact", head: true }).eq("room_id", data.roomId);
+    const { count } = await sb
+      .from("inspection_items")
+      .select("id", { count: "exact", head: true })
+      .eq("room_id", data.roomId);
     const { data: row, error } = await sb
       .from("inspection_items")
-      .insert({ inspection_id: data.inspectionId, room_id: data.roomId, name: data.name, category: data.category, position: count ?? 0 })
+      .insert({
+        inspection_id: data.inspectionId,
+        room_id: data.roomId,
+        name: data.name,
+        category: data.category,
+        position: count ?? 0,
+      })
       .select("*")
       .single();
     fail(error);
@@ -460,13 +649,18 @@ export const updateItem = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => casUpdate(context.supabase, "inspection_items", data.id, data.expectedRevision, data.patch));
+  .handler(async ({ data, context }) =>
+    casUpdate(context.supabase, "inspection_items", data.id, data.expectedRevision, data.patch),
+  );
 
 export const deleteItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: uuid }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).from("inspection_items").delete().eq("id", data.id);
+    const { error } = await (context.supabase as any)
+      .from("inspection_items")
+      .delete()
+      .eq("id", data.id);
     fail(error);
     return { ok: true };
   });
@@ -502,9 +696,15 @@ export const registerMedia = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     if (!pathBelongsTo(data.storagePath, data.inspectionId, data.roomId))
       throw new Error("A foto não pertence a este ambiente.");
-    const existing = await sb.from("inspection_media").select("*").eq("inspection_id", data.inspectionId).eq("client_key", data.clientKey).maybeSingle();
+    const existing = await sb
+      .from("inspection_media")
+      .select("*")
+      .eq("inspection_id", data.inspectionId)
+      .eq("client_key", data.clientKey)
+      .maybeSingle();
     if (existing.data) {
-      if (existing.data.room_id !== data.roomId) throw new Error("Foto já registrada em outro ambiente.");
+      if (existing.data.room_id !== data.roomId)
+        throw new Error("Foto já registrada em outro ambiente.");
       return existing.data;
     }
     const { head, size } = await readObjectHead(sb, data.storagePath);
@@ -514,7 +714,10 @@ export const registerMedia = createServerFn({ method: "POST" })
       throw new Error("Arquivo enviado não é uma imagem válida.");
     }
     if (size > 25 * 1024 * 1024) throw new Error("Foto acima de 25 MB.");
-    const { count } = await sb.from("inspection_media").select("id", { count: "exact", head: true }).eq("room_id", data.roomId);
+    const { count } = await sb
+      .from("inspection_media")
+      .select("id", { count: "exact", head: true })
+      .eq("room_id", data.roomId);
     const { data: row, error } = await sb
       .from("inspection_media")
       .insert({
@@ -537,7 +740,12 @@ export const registerMedia = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error?.code === "23505") {
-      const again = await sb.from("inspection_media").select("*").eq("inspection_id", data.inspectionId).eq("client_key", data.clientKey).maybeSingle();
+      const again = await sb
+        .from("inspection_media")
+        .select("*")
+        .eq("inspection_id", data.inspectionId)
+        .eq("client_key", data.clientKey)
+        .maybeSingle();
       if (again.data) return again.data;
     }
     fail(error);
@@ -551,18 +759,30 @@ export const updateMedia = createServerFn({ method: "POST" })
       .object({
         id: uuid,
         expectedRevision: z.number().int(),
-        patch: z.object({ caption: text(300), position: z.number().int().min(0).max(999), item_id: uuid.nullable() }).partial().strict(),
+        patch: z
+          .object({
+            caption: text(300),
+            item_id: uuid.nullable(),
+          })
+          .partial()
+          .strict(),
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => casUpdate(context.supabase, "inspection_media", data.id, data.expectedRevision, data.patch));
+  .handler(async ({ data, context }) =>
+    casUpdate(context.supabase, "inspection_media", data.id, data.expectedRevision, data.patch),
+  );
 
 export const deleteMedia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: uuid, confirmed: z.literal(true) }).parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    const { data: row } = await sb.from("inspection_media").select("storage_path, inspection_id").eq("id", data.id).maybeSingle();
+    const { data: row } = await sb
+      .from("inspection_media")
+      .select("storage_path, inspection_id")
+      .eq("id", data.id)
+      .maybeSingle();
     if (!row) return { ok: true };
     const { error } = await sb.from("inspection_media").delete().eq("id", data.id);
     fail(error);
@@ -573,11 +793,15 @@ export const deleteMedia = createServerFn({ method: "POST" })
 
 export const signInspectionFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ inspectionId: uuid, paths: z.array(z.string().max(300)).max(400) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ inspectionId: uuid, paths: z.array(z.string().max(300)).max(400) }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const paths = data.paths.filter((p) => p.startsWith(`${data.inspectionId}/`));
     if (!paths.length) return {} as Record<string, string>;
-    const { data: signed, error } = await (context.supabase as any).storage.from(INSPECTION_BUCKET).createSignedUrls(paths, 3600);
+    const { data: signed, error } = await (context.supabase as any).storage
+      .from(INSPECTION_BUCKET)
+      .createSignedUrls(paths, 3600);
     fail(error);
     const out: Record<string, string> = {};
     for (const s of (signed ?? []) as any[]) if (s.path && s.signedUrl) out[s.path] = s.signedUrl;
@@ -605,10 +829,16 @@ export const createNote = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
-    const existing = await sb.from("inspection_notes").select("*").eq("inspection_id", data.inspectionId).eq("client_key", data.clientKey).maybeSingle();
+    const existing = await sb
+      .from("inspection_notes")
+      .select("*")
+      .eq("inspection_id", data.inspectionId)
+      .eq("client_key", data.clientKey)
+      .maybeSingle();
     if (existing.data) return existing.data;
     if (data.audioPath) {
-      if (!pathBelongsTo(data.audioPath, data.inspectionId, data.roomId)) throw new Error("O áudio não pertence a este ambiente.");
+      if (!pathBelongsTo(data.audioPath, data.inspectionId, data.roomId))
+        throw new Error("O áudio não pertence a este ambiente.");
       const { head } = await readObjectHead(sb, data.audioPath);
       if (!sniffAudio(head)) throw new Error("Arquivo de áudio inválido.");
     }
@@ -624,14 +854,19 @@ export const createNote = createServerFn({ method: "POST" })
         audio_path: data.audioPath,
         audio_mime: data.audioMime,
         audio_seconds: data.audioSeconds,
-        transcript_original: isText ? data.text ?? null : null,
+        transcript_original: isText ? (data.text ?? null) : null,
         status: isText ? "transcrito" : "pendente_transcricao",
         created_by: context.userId,
       })
       .select("*")
       .single();
     if (error?.code === "23505") {
-      const again = await sb.from("inspection_notes").select("*").eq("inspection_id", data.inspectionId).eq("client_key", data.clientKey).maybeSingle();
+      const again = await sb
+        .from("inspection_notes")
+        .select("*")
+        .eq("inspection_id", data.inspectionId)
+        .eq("client_key", data.clientKey)
+        .maybeSingle();
       if (again.data) return again.data;
     }
     fail(error);
@@ -656,41 +891,154 @@ export const updateNote = createServerFn({ method: "POST" })
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => casUpdate(context.supabase, "inspection_notes", data.id, data.expectedRevision, data.patch));
+  .handler(async ({ data, context }) =>
+    casUpdate(context.supabase, "inspection_notes", data.id, data.expectedRevision, data.patch),
+  );
 
 /* ---------------- Conclusão e documentos ---------------- */
 
+/** The client submits only the revision it reviewed. PDF and snapshot originate here. */
 export const finalizeInspection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: uuid, expectedRevision: z.number().int(), reviewed: z.literal(true) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase;
+    await requireInspectionRole(sb, context.userId);
+    const { data: snapshot, error } = await sb.rpc(
+      "inspection_snapshot" as never,
+      { p_id: data.id } as never,
+    );
+    fail(error);
+    const canonical = snapshot as unknown as InspectionFull;
+    if (canonical.inspection.status === "concluida") {
+      const { data: doc, error: de } = await sb
+        .from("inspection_documents" as never)
+        .select("version,snapshot")
+        .eq("inspection_id", data.id)
+        .eq("version", canonical.inspection.current_version)
+        .maybeSingle();
+      fail(de);
+      const previous = doc as unknown as { version: number; snapshot: InspectionFull } | null;
+      if (previous?.snapshot?.inspection?.revision === data.expectedRevision)
+        return { version: previous.version };
+      throw new ConflictError();
+    }
+    if (canonical.inspection.revision !== data.expectedRevision) throw new ConflictError();
+    const [{ buildInspectionPdf }, { toPdfModel }, { createHash }] = await Promise.all([
+      import("./pdf"),
+      import("./pdf-model"),
+      import("node:crypto"),
+    ]);
+    const version = canonical.inspection.current_version + 1;
+    const model = toPdfModel(canonical, {
+      draft: false,
+      version,
+      generatedAt: canonical.inspection.updated_at,
+    });
+    const bytes = await buildInspectionPdf(model, async (path) => {
+      const { data: blob, error: downloadError } = await sb.storage
+        .from(INSPECTION_BUCKET)
+        .download(path);
+      fail(downloadError);
+      if (!blob) throw new Error("Foto não encontrada");
+      return { bytes: new Uint8Array(await blob.arrayBuffer()), mime: blob.type };
+    });
+    const sha = createHash("sha256").update(bytes).digest("hex");
+    const path = `${data.id}/docs/v${version}-${sha.slice(0, 16)}.pdf`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const upload = await supabaseAdmin.storage
+      .from(INSPECTION_BUCKET)
+      .upload(path, bytes, { contentType: "application/pdf", upsert: false });
+    if (upload.error && !/exists|duplicate/i.test(upload.error.message)) fail(upload.error);
+    if (upload.error) {
+      const { data: stored, error: readError } = await sb.storage
+        .from(INSPECTION_BUCKET)
+        .download(path);
+      fail(readError);
+      if (
+        !stored ||
+        createHash("sha256")
+          .update(new Uint8Array(await stored.arrayBuffer()))
+          .digest("hex") !== sha
+      )
+        throw new Error(
+          "O arquivo existente não corresponde ao laudo gerado. Nenhuma versão foi substituída.",
+        );
+    }
+    const { data: result, error: finalError } = await supabaseAdmin.rpc(
+      "inspection_finalize_server" as never,
+      {
+        p_actor: context.userId,
+        p_id: data.id,
+        p_expected_revision: data.expectedRevision,
+        p_storage_path: path,
+        p_byte_size: bytes.byteLength,
+        p_sha256: sha,
+        p_snapshot: snapshot,
+      } as never,
+    );
+    if (finalError) {
+      const existing = await sb
+        .from("inspection_documents" as never)
+        .select("version,sha256,snapshot")
+        .eq("inspection_id", data.id)
+        .eq("version", version)
+        .maybeSingle();
+      const document = existing.data as unknown as {
+        sha256: string;
+        snapshot: InspectionFull;
+      } | null;
+      if (
+        document?.sha256 === sha &&
+        document.snapshot?.inspection?.revision === data.expectedRevision
+      )
+        return { version };
+      if (finalError.code === "40001" || finalError.code === "42501") throw new ConflictError();
+      fail(finalError);
+    }
+    return result as unknown as { version: number };
+  });
+
+export const reorderMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        inspectionId: uuid,
+        roomId: uuid,
+        expectedRevision: z.number().int(),
+        order: z.array(uuid).max(1000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc(
+      "inspection_reorder_media" as never,
+      {
+        p_id: data.inspectionId,
+        p_room: data.roomId,
+        p_revision: data.expectedRevision,
+        p_order: data.order,
+      } as never,
+    );
+    if (error?.code === "40001") throw new ConflictError();
+    fail(error);
+    return { ok: true };
+  });
+
+export const reopenInspection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
       .object({
         id: uuid,
         expectedRevision: z.number().int(),
-        storagePath: z.string().max(300),
-        byteSize: z.number().int().positive(),
-        sha256: z.string().regex(/^[0-9a-f]{64}$/),
-        snapshot: z.record(z.string(), z.unknown()),
+        reason: z.string().trim().min(3).max(500),
       })
       .parse(d),
   )
-  .handler(async ({ data, context }) => {
-    const { data: res, error } = await (context.supabase as any).rpc("inspection_finalize", {
-      p_id: data.id,
-      p_expected_revision: data.expectedRevision,
-      p_storage_path: data.storagePath,
-      p_byte_size: data.byteSize,
-      p_sha256: data.sha256,
-      p_snapshot: data.snapshot,
-    });
-    if (error?.code === "40001") throw new ConflictError();
-    fail(error);
-    return res as { version: number };
-  });
-
-export const reopenInspection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: uuid, expectedRevision: z.number().int(), reason: z.string().trim().min(3).max(500) }).parse(d))
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase as any).rpc("inspection_reopen", {
       p_id: data.id,
@@ -704,7 +1052,9 @@ export const reopenInspection = createServerFn({ method: "POST" })
 
 export const signInspectionDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ inspectionId: uuid, version: z.number().int().min(1) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ inspectionId: uuid, version: z.number().int().min(1) }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     const { data: doc, error } = await sb
@@ -715,7 +1065,9 @@ export const signInspectionDocument = createServerFn({ method: "POST" })
       .maybeSingle();
     fail(error);
     if (!doc) throw new Error("Versão do laudo não encontrada.");
-    const { data: s, error: se } = await sb.storage.from(INSPECTION_BUCKET).createSignedUrl(doc.storage_path, 600);
+    const { data: s, error: se } = await sb.storage
+      .from(INSPECTION_BUCKET)
+      .createSignedUrl(doc.storage_path, 600);
     fail(se);
     return { url: s.signedUrl as string };
   });

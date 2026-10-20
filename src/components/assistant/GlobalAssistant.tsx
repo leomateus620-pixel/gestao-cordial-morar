@@ -1,3 +1,4 @@
+import { inspectionLayout } from "@/lib/vistoria/layout";
 import { AssistantDialogContent as DialogContent } from "./AssistantDialog";
 import { ArrowRight, Command, Expand, Search } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -97,7 +98,7 @@ export function GlobalAssistant() {
   }
   return (
     <>
-      {!location.pathname.startsWith("/assistente") && !/^\/vistorias\/[0-9a-f-]{36}/i.test(location.pathname) && (
+      {!location.pathname.startsWith("/assistente") && !inspectionLayout(location.pathname) && (
         <button
           type="button"
           className="assistant-copilot"

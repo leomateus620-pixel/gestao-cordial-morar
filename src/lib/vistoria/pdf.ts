@@ -1,7 +1,28 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFImage } from "pdf-lib";
-import { ITEM_STATE_LABEL, KIND_LABEL, METER_LABEL, meterText, type InspectionKind, type ItemState, type Meters } from "./model";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from "pdf-lib";
+import {
+  ITEM_STATE_LABEL,
+  KIND_LABEL,
+  METER_LABEL,
+  meterText,
+  type InspectionKind,
+  type ItemState,
+  type Meters,
+} from "./model";
 
-export type PdfPhoto = { path: string; caption: string | null; takenAt: string | null; timeSource: "captura" | "importacao"; itemId: string | null };
+export type PdfPhoto = {
+  path: string;
+  caption: string | null;
+  takenAt: string | null;
+  timeSource: "captura" | "importacao";
+  itemId: string | null;
+};
 export type PdfItem = {
   id: string;
   name: string;
@@ -26,6 +47,7 @@ export type PdfModel = {
   kind: InspectionKind;
   statusLabel: string;
   version: number | null;
+  officialVersion?: number;
   draft: boolean;
   generatedAt: string;
   property: { codes: string; tipo: string; endereco: string };
@@ -43,8 +65,12 @@ export type PdfModel = {
 export type ImageLoader = (path: string) => Promise<{ bytes: Uint8Array; mime: string }>;
 
 export class PdfPhotoError extends Error {
-  constructor(public failed: Array<{ number: number; room: string; path: string; reason: string }>) {
-    super(`${failed.length} foto(s) não puderam ser carregadas para o laudo final.`);
+  constructor(
+    public failed: Array<{ number: number; room: string; path: string; reason: string }>,
+  ) {
+    super(
+      `${failed.length} foto(s) não puderam ser carregadas para o laudo final: ${failed.map((f) => `foto ${f.number} (${f.room})`).join(", ")}. Tente novamente.`,
+    );
   }
 }
 
@@ -57,7 +83,7 @@ const M = 42;
 const INK = rgb(0.12, 0.13, 0.15);
 const MUTED = rgb(0.42, 0.44, 0.48);
 
-/** Fontes padrão do PDF usam WinAnsi: acentos do português funcionam; outros símbolos viram equivalentes. */
+/** WinAnsi covers Portuguese. Unsupported codepoints are preserved visibly as Unicode codes, never question marks or silently dropped. */
 export function pdfSafe(input: string | null | undefined): string {
   if (!input) return "";
   return input
@@ -70,7 +96,7 @@ export function pdfSafe(input: string | null | undefined): string {
     .replace(/\t/g, "  ")
     .replace(/[^\n\x20-\x7E\u00A1-\u00FF\u20AC]/gu, (ch) => {
       const base = ch.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return /^[\x20-\x7E]$/.test(base) ? base : "?";
+      return `[U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}]`;
     });
 }
 
@@ -103,14 +129,25 @@ export function wrapText(text: string, font: PDFFont, size: number, width: numbe
 }
 
 const fmtDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "Não informado";
+  iso
+    ? new Date(iso).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        dateStyle: "short",
+        timeStyle: "short",
+      })
+    : "Não informado";
 
 const maxPhotoBlock = 260;
 
-export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader): Promise<Uint8Array> {
+export async function buildInspectionPdf(
+  model: PdfModel,
+  loadImage: ImageLoader,
+): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(pdfSafe(`Laudo de vistoria nº ${model.numero}`));
   pdf.setProducer("Gestão Cordial");
+  pdf.setCreationDate(new Date(model.generatedAt));
+  pdf.setModificationDate(new Date(model.generatedAt));
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const brand = BRAND[model.brand];
@@ -120,27 +157,67 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
 
   let page!: PDFPage;
   let y = 0;
+  let activeRoom: string | null = null;
   const newPage = () => {
     page = pdf.addPage([A4.w, A4.h]);
     page.drawRectangle({ x: 0, y: A4.h - 6, width: A4.w, height: 6, color: brand.color });
-    page.drawText(pdfSafe(brand.name), { x: M, y: A4.h - M + 6, size: 10, font: bold, color: brand.color });
-    const right = pdfSafe(`Vistoria nº ${model.numero} · ${KIND_LABEL[model.kind]}${model.version ? ` · v${model.version}` : ""}`);
-    page.drawText(right, { x: A4.w - M - font.widthOfTextAtSize(right, 9), y: A4.h - M + 6, size: 9, font, color: MUTED });
+    page.drawText(pdfSafe(brand.name), {
+      x: M,
+      y: A4.h - M + 6,
+      size: 10,
+      font: bold,
+      color: brand.color,
+    });
+    const right = pdfSafe(
+      `Vistoria nº ${model.numero} · ${KIND_LABEL[model.kind]}${model.version ? ` · v${model.version}` : ""}`,
+    );
+    page.drawText(right, {
+      x: A4.w - M - font.widthOfTextAtSize(right, 9),
+      y: A4.h - M + 6,
+      size: 9,
+      font,
+      color: MUTED,
+    });
     if (model.draft) {
-      page.drawText("RASCUNHO - SEM VALOR DE LAUDO FINAL", { x: M, y: A4.h - M - 8, size: 9, font: bold, color: rgb(0.75, 0.2, 0.15) });
+      page.drawText("RASCUNHO - SEM VALOR DE LAUDO FINAL", {
+        x: M,
+        y: A4.h - M - 8,
+        size: 9,
+        font: bold,
+        color: rgb(0.75, 0.2, 0.15),
+      });
     }
     y = top;
+    if (activeRoom) {
+      const lines = wrapText(`${activeRoom} - continuação`, bold, 11, contentW);
+      for (const line of lines) {
+        page.drawText(line, { x: M, y: y - 11, size: 11, font: bold, color: brand.color });
+        y -= 15;
+      }
+      y -= 7;
+    }
   };
   const ensure = (h: number) => {
     if (y - h < bottom) newPage();
   };
-  const para = (t: string, opts: { size?: number; f?: PDFFont; color?: ReturnType<typeof rgb>; indent?: number; gap?: number } = {}) => {
-    const size = opts.size ?? 10;
+  const para = (
+    t: string,
+    opts: {
+      size?: number;
+      f?: PDFFont;
+      color?: ReturnType<typeof rgb>;
+      indent?: number;
+      gap?: number;
+    } = {},
+  ) => {
+    const size = opts.size ?? 10.5;
     const f = opts.f ?? font;
     const indent = opts.indent ?? 0;
     const lh = size * 1.35;
-    for (const line of wrapText(t, f, size, contentW - indent)) {
-      ensure(lh);
+    const lines = wrapText(t, f, size, contentW - indent);
+    if (lines.length <= 4) ensure(lines.length * lh);
+    for (const [index, line] of lines.entries()) {
+      ensure(lh * Math.min(2, lines.length - index));
       page.drawText(line, { x: M + indent, y: y - size, size, font: f, color: opts.color ?? INK });
       y -= lh;
     }
@@ -150,14 +227,28 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
     ensure(40);
     y -= 8;
     para(t, { size: 13, f: bold, color: brand.color, gap: 4 });
-    page.drawLine({ start: { x: M, y: y + 2 }, end: { x: A4.w - M, y: y + 2 }, thickness: 0.6, color: brand.color });
+    page.drawLine({
+      start: { x: M, y: y + 2 },
+      end: { x: A4.w - M, y: y + 2 },
+      thickness: 0.6,
+      color: brand.color,
+    });
     y -= 6;
   };
   const kv = (k: string, v: string) => para(`${k}: ${v || "Não informado"}`);
 
   newPage();
   para(`Laudo de vistoria - ${KIND_LABEL[model.kind]}`, { size: 18, f: bold, gap: 4 });
-  para(`Nº ${model.numero} · Status: ${model.statusLabel}${model.version ? ` · Versão ${model.version}` : " · Sem versão emitida"}`, { color: MUTED });
+  para(
+    model.draft
+      ? "Documento: prévia não emitida"
+      : `Documento: laudo oficial - versão ${model.version}`,
+    { f: bold, color: model.draft ? rgb(0.65, 0.18, 0.1) : brand.color },
+  );
+  para(
+    `Situação da vistoria: ${model.statusLabel}${model.draft && model.officialVersion ? `; laudo oficial disponível em v${model.officialVersion}` : ""}`,
+    { color: MUTED },
+  );
   para(`Gerado em ${fmtDate(model.generatedAt)}`, { color: MUTED, gap: 8 });
 
   heading("Identificação do imóvel");
@@ -167,7 +258,11 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
   heading("Vistoria");
   kv("Data e hora", fmtDate(model.inspectedAt));
   kv("Responsável", model.responsible);
-  kv("Participantes", model.participants.map((p) => `${p.nome}${p.papel ? ` (${p.papel})` : ""}`).join("; ") || "Nenhum informado");
+  kv(
+    "Participantes",
+    model.participants.map((p) => `${p.nome}${p.papel ? ` (${p.papel})` : ""}`).join("; ") ||
+      "Nenhum informado",
+  );
   kv("Mobiliado", model.furnished);
   kv("Limpeza", model.cleaning);
   heading("Medidores e chaves");
@@ -175,7 +270,10 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
     const m = model.meters[k];
     kv(METER_LABEL[k], `${meterText(m)}${m?.number ? ` · medidor ${m.number}` : ""}`);
   }
-  kv("Chaves e controles", model.keys.map((k) => `${k.quantidade}x ${k.descricao}`).join("; ") || "Não informado");
+  kv(
+    "Chaves e controles",
+    model.keys.map((k) => `${k.quantidade}x ${k.descricao}`).join("; ") || "Não informado",
+  );
 
   // Numeração global das fotos e referência a avarias
   let n = 0;
@@ -186,87 +284,140 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
   const allItems = model.rooms.flatMap((r) => r.items);
   const count = (s: ItemState) => allItems.filter((i) => i.state === s).length;
   para(
-    `${model.rooms.length} ambientes · ${allItems.length} itens · Bom ${count("bom")} · Regular ${count("regular")} · Ruim ${count("ruim")} · Não testado ${count("nao_testado")} · Não se aplica ${count("nao_se_aplica")} · Pendente ${count("pendente")} · ${n} fotos`,
+    `${model.rooms.length} ambientes · ${allItems.length} itens registrados · ${allItems.filter((i) => ["bom", "regular", "ruim"].includes(i.state)).length} avaliados · Bom ${count("bom")} · Regular ${count("regular")} · Ruim ${count("ruim")} · Não testado ${count("nao_testado")} · Não se aplica ${count("nao_se_aplica")} · Pendente ${count("pendente")} · ${n} fotos`,
   );
   if (model.generalNotes) para(`Observações gerais: ${model.generalNotes}`);
 
-  heading("Ambientes e itens");
-  for (const r of model.rooms) {
-    ensure(50);
-    para(r.name, { size: 12, f: bold, gap: 2 });
-    if (!r.items.length) para("Sem itens cadastrados.", { color: MUTED, indent: 8 });
-    for (const i of r.items) {
-      const refs = r.photos.filter((p) => p.itemId === i.id).map((p) => `foto ${photoNumbers.get(p.path)}`);
-      para(`${i.name} - ${ITEM_STATE_LABEL[i.state]}${i.quantity != null ? ` · qtd. ${i.quantity}` : ""}`, { f: bold, size: 10, indent: 8, gap: 0 });
-      const details = [
+  // Images and their complete captions stay in the same room as the observations.
+  const failed: Array<{ number: number; room: string; path: string; reason: string }> = [];
+  const colW = (contentW - 14) / 2;
+  const photo = async (p: PdfPhoto, r: PdfRoom, roomIndex: number) => {
+    const number = photoNumbers.get(p.path)!;
+    let img: PDFImage | null = null;
+    try {
+      const { bytes, mime } = await loadImage(p.path);
+      img = mime === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    } catch (e) {
+      failed.push({
+        number,
+        room: r.name,
+        path: p.path,
+        reason: e instanceof Error ? e.message : "Falha ao carregar",
+      });
+    }
+    const item = r.items.find((i) => i.id === p.itemId);
+    const caption = `Foto F${String(number).padStart(3, "0")} · A${roomIndex + 1} ${r.name}${item ? ` · ${item.name}${item.damage ? " (avaria registrada)" : ""}` : " · Foto geral"}${p.caption ? ` - ${p.caption}` : ""} · ${p.timeSource === "captura" ? "capturada" : "importada"}${p.takenAt ? ` em ${fmtDate(p.takenAt)}` : " (data não registrada)"}`;
+    return { img, caption, number };
+  };
+  const renderSingle = (p: Awaited<ReturnType<typeof photo>>) => {
+    const scale = p.img ? Math.min(contentW / p.img.width, 235 / p.img.height) : 1;
+    const h = p.img ? p.img.height * scale : 70,
+      w = p.img ? p.img.width * scale : contentW;
+    ensure(h + 50);
+    if (p.img) page.drawImage(p.img, { x: M + (contentW - w) / 2, y: y - h, width: w, height: h });
+    else
+      page.drawText(`Foto F${String(p.number).padStart(3, "0")} indisponível`, {
+        x: M,
+        y: y - 30,
+        font: bold,
+        size: 11,
+        color: rgb(0.7, 0.15, 0.1),
+      });
+    y -= h + 7;
+    para(p.caption, { size: 9.5, color: MUTED, gap: 10 });
+  };
+  for (const [ri, r] of model.rooms.entries()) {
+    activeRoom = null;
+    ensure(70);
+    activeRoom = `A${ri + 1} · ${r.name}`;
+    heading(activeRoom);
+    if (!r.items.length) para("Sem itens cadastrados.", { color: MUTED });
+    for (const [ii, i] of r.items.entries()) {
+      const refs = r.photos
+        .filter((p) => p.itemId === i.id)
+        .map((p) => `F${String(photoNumbers.get(p.path)).padStart(3, "0")}`);
+      ensure(35);
+      para(
+        `A${ri + 1}.I${ii + 1} · ${i.name} - ${ITEM_STATE_LABEL[i.state]}${i.quantity != null ? ` · quantidade ${i.quantity}` : ""}`,
+        { f: bold, size: 10.5, gap: 1 },
+      );
+      const characteristics = [
         i.material && `Material: ${i.material}`,
         i.color && `Cor: ${i.color}`,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      if (characteristics) para(characteristics, { size: 10, indent: 10, gap: 1 });
+      for (const detail of [
         i.notes && `Observação: ${i.notes}`,
         i.damage && `Avaria: ${i.damage}`,
-        i.state === "nao_testado" && `Motivo de não testar: ${i.untested_reason || "não informado"}`,
-        refs.length ? `Ver ${refs.join(", ")}` : null,
-      ].filter(Boolean) as string[];
-      for (const d of details) para(d, { size: 9.5, indent: 18, gap: 0 });
+        i.state === "nao_testado" &&
+          `Motivo de não testar: ${i.untested_reason || "não informado"}`,
+        refs.length && `Evidências: ${refs.join(", ")}`,
+      ].filter(Boolean) as string[])
+        para(detail, { size: 10, indent: 10, gap: 1 });
       y -= 3;
     }
     for (const note of r.notes)
-      para(`${note.kind === "aprovado" ? "Relato revisado" : "Transcrição ainda não revisada"}: ${note.text}`, { size: 9.5, indent: 8, color: note.kind === "aprovado" ? INK : MUTED });
-    if (!r.photos.length) para(`Sem foto: ${r.noPhotoReason || "motivo não registrado"}`, { size: 9.5, indent: 8, color: MUTED });
-    y -= 6;
-  }
-
-  if (model.rooms.some((r) => r.photos.length)) ensure(maxPhotoBlock + 60);
-  heading("Registro fotográfico");
-  const failed: Array<{ number: number; room: string; path: string; reason: string }> = [];
-  const colW = (contentW - 12) / 2;
-  const maxH = 210;
-  for (const r of model.rooms) {
-    if (!r.photos.length) continue;
-    ensure(maxH + 50);
-    para(r.name, { size: 11, f: bold });
-    let col = 0;
-    let rowH = 0;
-    for (const p of r.photos) {
-      const num = photoNumbers.get(p.path)!;
-      let img: PDFImage | null = null;
-      try {
-        const { bytes, mime } = await loadImage(p.path);
-        img = mime === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
-      } catch (e) {
-        failed.push({ number: num, room: r.name, path: p.path, reason: e instanceof Error ? e.message : "falha" });
-      }
-      const scale = img ? Math.min(colW / img.width, maxH / img.height) : 1;
-      const w = img ? img.width * scale : colW;
-      const h = img ? img.height * scale : 80;
-      const captionLines = wrapText(
-        `Foto ${num}${p.caption ? ` - ${p.caption}` : ""} · ${p.timeSource === "captura" ? "capturada" : "importada"}${p.takenAt ? ` em ${fmtDate(p.takenAt)}` : " (data não registrada)"}`,
-        font,
-        8.5,
-        colW,
+      para(
+        `${note.kind === "aprovado" ? "Relato aprovado" : "Relato ainda não revisado"}: ${note.text}`,
+        { size: 10, gap: 6 },
       );
-      const blockH = h + 6 + captionLines.length * 11;
-      if (col === 0) {
-        ensure(blockH + 8);
-        rowH = 0;
+    if (!r.photos.length)
+      para(`Sem foto: ${r.noPhotoReason || "motivo não registrado"}`, { size: 10, color: MUTED });
+    for (let j = 0; j < r.photos.length; j += 2) {
+      const row = await Promise.all(r.photos.slice(j, j + 2).map((p) => photo(p, r, ri)));
+      const measured = row.map((p) => {
+        const scale = p.img ? Math.min(colW / p.img.width, 195 / p.img.height) : 1;
+        const w = p.img ? p.img.width * scale : colW,
+          h = p.img ? p.img.height * scale : 70;
+        const lines = wrapText(p.caption, font, 9, colW);
+        return { ...p, w, h, lines, height: h + 7 + lines.length * 12 };
+      });
+      const rowHeight = Math.max(...measured.map((p) => p.height));
+      // Both columns are measured before deciding the page break. Very long
+      // captions use the full width and may continue with the room heading.
+      if (rowHeight > top - bottom - 55) {
+        for (const p of row) renderSingle(p);
+        continue;
       }
-      const x = M + col * (colW + 12);
-      const top0 = y;
-      if (img) page.drawImage(img, { x: x + (colW - w) / 2, y: top0 - h, width: w, height: h });
-      else {
-        page.drawRectangle({ x, y: top0 - h, width: colW, height: h, borderColor: rgb(0.75, 0.2, 0.15), borderWidth: 1 });
-        page.drawText(pdfSafe(`Foto ${num} indisponível - gerar novamente`), { x: x + 8, y: top0 - h / 2, size: 9, font: bold, color: rgb(0.75, 0.2, 0.15) });
-      }
-      captionLines.forEach((l, li) => page.drawText(l, { x, y: top0 - h - 12 - li * 11, size: 8.5, font, color: MUTED }));
-      rowH = Math.max(rowH, blockH);
-      img = null; // libera referência cedo (memória no celular)
-      if (col === 1) {
-        y -= rowH + 10;
-        col = 0;
-      } else col = 1;
+      ensure(rowHeight + 14);
+      measured.forEach((p, c) => {
+        const x = M + c * (colW + 14);
+        if (p.img)
+          page.drawImage(p.img, { x: x + (colW - p.w) / 2, y: y - p.h, width: p.w, height: p.h });
+        else {
+          page.drawRectangle({
+            x,
+            y: y - p.h,
+            width: colW,
+            height: p.h,
+            borderWidth: 1,
+            borderColor: rgb(0.7, 0.15, 0.1),
+          });
+          page.drawText(`Foto F${String(p.number).padStart(3, "0")} indisponível`, {
+            x: x + 8,
+            y: y - 35,
+            font: bold,
+            size: 10,
+            color: rgb(0.7, 0.15, 0.1),
+          });
+        }
+        p.lines.forEach((line, li) =>
+          page.drawText(line, { x, y: y - p.h - 16 - li * 12, font, size: 9, color: MUTED }),
+        );
+      });
+      y -= rowHeight + 14;
     }
-    if (col === 1) y -= rowH + 10;
+    y -= 8;
   }
+  activeRoom = null;
   if (!model.draft && failed.length) throw new PdfPhotoError(failed);
+  if (/\[U\+[A-F0-9]+\]/.test(pdfSafe(JSON.stringify(model))))
+    para(
+      "Caracteres sem glifo na fonte são preservados como códigos Unicode [U+XXXX]. O código identifica integralmente o caractere original.",
+      { size: 9, color: MUTED },
+    );
 
   heading("Conclusão");
   para(model.conclusion || "Sem conclusão registrada.");
@@ -278,21 +429,41 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
   );
   const signers = [{ nome: model.responsible, papel: "Vistoriador(a)" }, ...model.participants];
   for (let i = 0; i < signers.length; i += 2) {
-    ensure(60);
-    for (let c = 0; c < 2 && i + c < signers.length; c++) {
-      const s = signers[i + c];
-      const x = M + c * (contentW / 2 + 6);
-      page.drawLine({ start: { x, y: y - 30 }, end: { x: x + contentW / 2 - 18, y: y - 30 }, thickness: 0.6, color: INK });
-      page.drawText(pdfSafe(`${s.nome}${s.papel ? ` - ${s.papel}` : ""}`).slice(0, 70), { x, y: y - 42, size: 8.5, font, color: MUTED });
-    }
-    y -= 60;
+    const col = (contentW - 16) / 2;
+    const labels = signers
+      .slice(i, i + 2)
+      .map((s) => wrapText(`${s.nome}${s.papel ? ` - ${s.papel}` : ""}`, font, 9.5, col));
+    const h = 40 + Math.max(...labels.map((l) => l.length)) * 13;
+    ensure(h);
+    labels.forEach((lines, c) => {
+      const x = M + c * (col + 16);
+      page.drawLine({
+        start: { x, y: y - 26 },
+        end: { x: x + col, y: y - 26 },
+        thickness: 0.6,
+        color: INK,
+      });
+      lines.forEach((line, li) =>
+        page.drawText(line, { x, y: y - 40 - li * 13, size: 9.5, font, color: MUTED }),
+      );
+    });
+    y -= h + 10;
   }
 
   const pages = pdf.getPages();
   pages.forEach((pg, idx) => {
     const t = pdfSafe(`Página ${idx + 1} de ${pages.length}`);
-    pg.drawText(t, { x: A4.w - M - font.widthOfTextAtSize(t, 8), y: M - 10, size: 8, font, color: MUTED });
-    pg.drawText(pdfSafe(`${brand.name} · Laudo nº ${model.numero}${model.draft ? " · RASCUNHO" : ""}`), { x: M, y: M - 10, size: 8, font, color: MUTED });
+    pg.drawText(t, {
+      x: A4.w - M - font.widthOfTextAtSize(t, 8),
+      y: M - 10,
+      size: 8,
+      font,
+      color: MUTED,
+    });
+    pg.drawText(
+      pdfSafe(`${brand.name} · Laudo nº ${model.numero}${model.draft ? " · RASCUNHO" : ""}`),
+      { x: M, y: M - 10, size: 8, font, color: MUTED },
+    );
   });
   return pdf.save();
 }
