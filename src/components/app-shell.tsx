@@ -69,6 +69,8 @@ export function AppShell() {
   const canSearch = Boolean(session?.modules?.includes("busca"));
   const isCatalogRoute = pathname === "/imoveis";
   const isAssistantWorkspace = /^\/assistente\/(?!equipe(?:\/|$))[^/]+\/?$/.test(pathname);
+  // A execução da vistoria tem barra de ações própria no rodapé do celular.
+  const hideBottomNav = isAssistantWorkspace || /^\/vistorias\/[0-9a-f-]{36}\/?$/i.test(pathname);
   const isAdmin = isAdminUser(session);
 
   const sessionModules = useMemo(
@@ -334,7 +336,7 @@ export function AppShell() {
         </header>
 
 
-        <main className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10",isAssistantWorkspace?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
+        <main className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10",hideBottomNav?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
           <NotificationTransientRegion />
           <div key={pathname} className="app-page-enter">
             <Outlet />
@@ -343,7 +345,7 @@ export function AppShell() {
       </div>
 
       {/* Bottom nav mobile */}
-      {!isAssistantWorkspace && <nav
+      {!hideBottomNav && <nav
         className="bottom-nav-glass fixed left-1/2 z-40 flex h-16 w-[calc(100vw-1.5rem)] max-w-[26rem] -translate-x-1/2 items-center justify-around rounded-full px-2 lg:hidden"
         style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         aria-label="Navegação rápida"

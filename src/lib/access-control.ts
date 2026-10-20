@@ -115,3 +115,17 @@ export function getPrimaryMobileModulesForProfile(profile: UserProfile | undefin
       return ["dashboard", "atendimentos", "imoveis", "agenda"];
   }
 }
+
+/** Vistoria inteligente: admin, secretaria e corretor. Espelha a RLS de inspections. */
+export function canUseInspections(session: SessionLike): boolean {
+  return (
+    session?.perfil === "admin_owner" ||
+    session?.perfil === "secretaria" ||
+    session?.perfil === "corretor"
+  );
+}
+
+/** Admin e secretaria veem e gerenciam todas as vistorias; corretor só as próprias/atribuídas. */
+export function canSeeAllInspections(session: SessionLike): boolean {
+  return session?.perfil === "admin_owner" || session?.perfil === "secretaria";
+}
