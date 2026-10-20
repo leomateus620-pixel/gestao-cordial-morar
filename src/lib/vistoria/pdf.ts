@@ -105,6 +105,8 @@ export function wrapText(text: string, font: PDFFont, size: number, width: numbe
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "Não informado";
 
+const maxPhotoBlock = 260;
+
 export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(pdfSafe(`Laudo de vistoria nº ${model.numero}`));
@@ -213,6 +215,7 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
     y -= 6;
   }
 
+  if (model.rooms.some((r) => r.photos.length)) ensure(maxPhotoBlock + 60);
   heading("Registro fotográfico");
   const failed: Array<{ number: number; room: string; path: string; reason: string }> = [];
   const colW = (contentW - 12) / 2;
