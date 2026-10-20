@@ -99,6 +99,7 @@ export type OrigemLeadAtendimento =
   | "portal"
   | "presencial"
   | "porta_fria"
+  | "patrocinio"
   | "outro";
 
 export type PrioridadeAtendimento = "baixa" | "media" | "alta" | "urgente";
@@ -328,6 +329,7 @@ export const atendimentoOrigemOptions = [
   { value: "portal", label: "Portal" },
   { value: "presencial", label: "Atendimento presencial" },
   { value: "porta_fria", label: "Porta fria" },
+  { value: "patrocinio", label: "Patrocínio" },
   { value: "outro", label: "Outro" },
 ] as const;
 

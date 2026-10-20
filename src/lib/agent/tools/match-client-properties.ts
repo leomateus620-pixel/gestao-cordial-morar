@@ -20,9 +20,14 @@ const normalized = (v: unknown) =>
 export function scoreProperty(client: any, property: any): { score: number; motivos: string[] } {
   let score = 0;
   const motivos: string[] = [];
-  if (client.property_type && normalized(client.property_type) === normalized(property.tipo)) {
+  const wanted = normalized(client.property_type);
+  const offered = normalized(property.tipo);
+  if (wanted && wanted === offered) {
     score += 30;
     motivos.push("Tipo de imóvel solicitado");
+  } else if (wanted === "kitnet" && offered === "apartamento") {
+    score += 15;
+    motivos.push("Apartamento (próximo de Kitnet)");
   }
   const price = Number(property.valor);
   if (

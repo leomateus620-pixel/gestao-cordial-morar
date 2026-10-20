@@ -643,3 +643,12 @@ test("short attendance history reports complete data and rejects unknown type as
   assert.equal(out.structuredContent.historyLimited, false);
   assert.equal((out.structuredContent.history as Row[])[0].titulo, "Atualização do atendimento");
 });
+
+test("kitnet sugere apartamento com nota menor", () => {
+  const k = scoreProperty({ property_type: "kitnet" }, { tipo: "Kitnet" }).score;
+  const a = scoreProperty({ property_type: "kitnet" }, { tipo: "Apartamento" }).score;
+  assert.equal(k, 30);
+  assert.equal(a, 15);
+  assert.equal(scoreProperty({ property_type: "apartamento" }, { tipo: "Kitnet" }).score, 0);
+  assert.equal(scoreProperty({ property_type: "kitnet" }, { tipo: "Casa" }).score, 0);
+});

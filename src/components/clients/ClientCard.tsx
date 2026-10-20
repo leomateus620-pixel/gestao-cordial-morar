@@ -53,6 +53,7 @@ const originTone: Record<LeadOrigin, string> = {
   site: "bg-sky-600/10 text-sky-800",
   portal: "bg-indigo-600/10 text-indigo-800",
   presencial: "bg-amber-600/12 text-amber-800",
+  patrocinio: "bg-orange-600/10 text-orange-800",
   outro: "bg-zinc-600/10 text-zinc-700",
 };
 

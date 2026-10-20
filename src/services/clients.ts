@@ -345,6 +345,7 @@ function mapLeadOriginToLegacy(origin: LeadOrigin): OrigemLead {
   if (origin === "site") return "Site";
   if (origin === "portal") return "Portal imobiliário";
   if (origin === "presencial") return "Captação ativa";
+  if (origin === "patrocinio") return "Facebook Ads";
   if (origin === "outro") return "Carteira antiga";
   return "WhatsApp";
 }
@@ -362,6 +363,7 @@ function mapLegacyLeadOrigin(origin?: OrigemLead): LeadOrigin {
   ) {
     return "presencial";
   }
+  if (normalized.includes("ads") || normalized.includes("patrocin")) return "patrocinio";
   if (
     normalized.includes("google") ||
     normalized.includes("facebook") ||

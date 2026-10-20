@@ -2007,6 +2007,7 @@ function leadOriginLabel(value: string) {
     portal: "Portal imobiliário",
     presencial: "Atendimento presencial",
     porta_fria: "Porta fria",
+    patrocinio: "Patrocínio",
     outro: "Outro",
   };
   return labels[value] ?? labelFromKey(value);
