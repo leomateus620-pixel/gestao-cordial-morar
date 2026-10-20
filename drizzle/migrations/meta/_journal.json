@@ -232,6 +232,13 @@
       "when": 1792439687306,
       "tag": "0032_drive_claim_fix_offset_and_incident_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792480558876,
+      "tag": "0033_vistoria_inteligente",
+      "breakpoints": true
     }
   ]
 }
