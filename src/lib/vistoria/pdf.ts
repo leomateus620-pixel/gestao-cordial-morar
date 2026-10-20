@@ -219,7 +219,7 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
   const maxH = 210;
   for (const r of model.rooms) {
     if (!r.photos.length) continue;
-    ensure(30);
+    ensure(maxH + 50);
     para(r.name, { size: 11, f: bold });
     let col = 0;
     let rowH = 0;
@@ -236,7 +236,7 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
       const w = img ? img.width * scale : colW;
       const h = img ? img.height * scale : 80;
       const captionLines = wrapText(
-        `Foto ${num}${p.caption ? ` - ${p.caption}` : ""} · ${p.timeSource === "captura" ? "capturada" : "importada"} em ${fmtDate(p.takenAt)}`,
+        `Foto ${num}${p.caption ? ` - ${p.caption}` : ""} · ${p.timeSource === "captura" ? "capturada" : "importada"} ${p.takenAt ? ` em ${fmtDate(p.takenAt)}` : " (data não registrada)"}`,
         font,
         8.5,
         colW,
