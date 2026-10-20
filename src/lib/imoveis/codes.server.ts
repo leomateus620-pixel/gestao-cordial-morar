@@ -16,13 +16,7 @@ export async function remoteCodeTaken(provider: ImobiProvider, code: string): Pr
       { method: "GET" },
     );
     const raw = response.data as unknown;
-    const container =
-      Array.isArray(raw)
-        ? raw
-        : ((raw as Record<string, unknown>)?.["resultSet"] ??
-           (raw as Record<string, unknown>)?.["data"] ??
-           []);
-    const list = Array.isArray(container) ? container : [];
+    const list = extractListItems(raw);
     return list.some((item) => {
       if (!item || typeof item !== "object") return false;
       const record = item as Record<string, unknown>;
