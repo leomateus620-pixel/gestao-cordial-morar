@@ -23,12 +23,12 @@ test("derives a flat, ordered admin sidebar from the canonical module registry",
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",
-    "/vistorias",
     "/imoveis",
     "/selecoes",
     "/atendimentos",
-    "/alugueis",
     "/vendas",
+    "/alugueis",
+    "/vistorias",
     "/corretores",
     "/financeiro",
     "/relatorios",
@@ -51,11 +51,11 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",
-    "/vistorias",
     "/imoveis",
     "/selecoes",
     "/atendimentos",
     "/alugueis",
+    "/vistorias",
     "/marketing",
   ]);
   assert.deepEqual(sidebarPaths("corretor"), [
@@ -64,17 +64,40 @@ test("keeps sidebar visibility aligned with every authenticated role", () => {
     "/agenda",
     "/agenda/fotos",
     "/agenciamentos",
-    "/vistorias",
     "/imoveis",
     "/selecoes",
     "/atendimentos",
     "/vendas",
+    "/vistorias",
   ]);
-  assert.deepEqual(sidebarPaths("financeiro_admin"), [
-    "/",
-    "/financeiro",
-    "/relatorios",
-  ]);
+  assert.deepEqual(sidebarPaths("financeiro_admin"), ["/", "/financeiro", "/relatorios"]);
+});
+
+test("groups rentals and inspections together and gates the contract shortcut by rental access", () => {
+  for (const profile of Object.keys(roleDefinitions) as UserProfile[]) {
+    const modules = roleDefinitions[profile].modules;
+    const sections = getSidebarSections(modules);
+    const rentalSection = sections.find((section) => section.id === "locacao");
+
+    assert.deepEqual(
+      rentalSection?.items.map((item) => item.to) ?? [],
+      [
+        modules.includes("alugueis") && "/alugueis",
+        modules.includes("vistorias") && "/vistorias",
+      ].filter(Boolean),
+      profile,
+    );
+    assert.equal(Boolean(rentalSection?.newRentalContract), modules.includes("alugueis"), profile);
+    assert.ok(sections.every((section) => section.items.length > 0));
+    assert.equal(
+      sections
+        .filter((section) => section.id !== "locacao")
+        .some((section) =>
+          section.items.some((item) => item.module === "alugueis" || item.module === "vistorias"),
+        ),
+      false,
+    );
+  }
 });
 
 test("keeps search and integrations inside admin settings instead of the sidebar", () => {

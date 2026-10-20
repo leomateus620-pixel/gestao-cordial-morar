@@ -1,10 +1,12 @@
 import { CordialBotWordmark } from "@/components/brand/CordialBotBrand";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { FilePlus2, Plus } from "lucide-react";
+import { memo, useEffect, useId, useMemo, useRef, type RefObject } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSidebarSections, type SidebarModuleItem } from "@/components/shared/module-menu";
 import type { AppModule } from "@/lib/mock/permissions";
 import { cn } from "@/lib/utils";
+import { useRentalFormRequest } from "@/lib/rentals/rental-form-ui";
 
 type SidebarMenuProps = {
   allowedModules: AppModule[];
@@ -52,72 +54,6 @@ function ActiveItemVisibility({ navRef }: { navRef: RefObject<HTMLElement | null
   return null;
 }
 
-type PillBox = { x: number; y: number; w: number; h: number };
-
-function ActivePill({
-  navRef,
-  collapsed,
-}: {
-  navRef: RefObject<HTMLElement | null>;
-  collapsed: boolean;
-}) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [box, setBox] = useState<PillBox | null>(null);
-  const [animated, setAnimated] = useState(false);
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const nav = navRef.current;
-      const row = nav?.querySelector<HTMLElement>('[data-active="true"]');
-      if (!nav || !row) {
-        setBox(null);
-        return;
-      }
-
-      const navRect = nav.getBoundingClientRect();
-      const rowRect = row.getBoundingClientRect();
-      setBox({
-        x: rowRect.left - navRect.left + nav.scrollLeft,
-        y: rowRect.top - navRect.top + nav.scrollTop,
-        w: rowRect.width,
-        h: rowRect.height,
-      });
-    };
-
-    // Mede após a pintura e de novo quando a largura da sidebar termina de transitar.
-    const frame = window.requestAnimationFrame(measure);
-    const settle = window.setTimeout(measure, 260);
-    const observer = new ResizeObserver(() => measure());
-    if (navRef.current) observer.observe(navRef.current);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(settle);
-      observer.disconnect();
-    };
-  }, [navRef, pathname, collapsed]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setAnimated(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-
-  if (!box) return null;
-
-  return (
-    <span
-      aria-hidden="true"
-      className="app-sidebar-active-pill"
-      data-animated={animated ? "true" : "false"}
-      style={{
-        transform: `translate3d(${box.x}px, ${box.y}px, 0)`,
-        width: box.w,
-        height: box.h,
-      }}
-    />
-  );
-}
-
 export const SidebarMenu = memo(function SidebarMenu({
   allowedModules,
   className,
@@ -125,7 +61,15 @@ export const SidebarMenu = memo(function SidebarMenu({
   onNavigate,
 }: SidebarMenuProps) {
   const navRef = useRef<HTMLElement>(null);
+  const navigationId = useId();
+  const navigate = useNavigate();
   const visibleSections = useMemo(() => getSidebarSections(allowedModules), [allowedModules]);
+
+  async function openNewRentalContract() {
+    await navigate({ to: "/alugueis" });
+    useRentalFormRequest.getState().request();
+    onNavigate?.();
+  }
 
   return (
     <TooltipProvider delayDuration={collapsed ? 100 : 500}>
@@ -139,10 +83,9 @@ export const SidebarMenu = memo(function SidebarMenu({
         data-collapsed={collapsed ? "true" : "false"}
       >
         <ActiveItemVisibility navRef={navRef} />
-        <ActivePill navRef={navRef} collapsed={collapsed} />
         <div className="app-sidebar-sections">
           {visibleSections.map((section) => {
-            const headingId = `sidebar-section-${section.id}`;
+            const headingId = `${navigationId}-section-${section.id}`;
 
             return (
               <section
@@ -186,7 +129,7 @@ export const SidebarMenu = memo(function SidebarMenu({
                                 <span className="app-sidebar-nav-copy">
                                   <span className="app-sidebar-nav-title">
                                     {item.to === "/assistente" ? (
-                                      <CordialBotWordmark className="!text-[13px]" />
+                                      <CordialBotWordmark className="!text-[length:inherit] !text-inherit" />
                                     ) : (
                                       copy.label
                                     )}
@@ -207,6 +150,48 @@ export const SidebarMenu = memo(function SidebarMenu({
                       </li>
                     );
                   })}
+                  {section.newRentalContract && (
+                    <li className="app-sidebar-action-item">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={openNewRentalContract}
+                            aria-label={
+                              collapsed ? "Novo contrato: abrir cadastro de locação" : undefined
+                            }
+                            className="app-sidebar-nav-row app-sidebar-contract-action group"
+                            data-navigation-action="novo-contrato"
+                          >
+                            <span className="app-sidebar-nav-icon" aria-hidden="true">
+                              <FilePlus2 className="size-[18px]" strokeWidth={1.75} />
+                            </span>
+                            {!collapsed && (
+                              <>
+                                <span className="app-sidebar-nav-copy">
+                                  <span className="app-sidebar-nav-title">Novo contrato</span>
+                                </span>
+                                <Plus
+                                  className="app-sidebar-action-indicator size-3.5"
+                                  aria-hidden="true"
+                                />
+                              </>
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          sideOffset={10}
+                          className="app-sidebar-tooltip"
+                        >
+                          <p className="app-sidebar-tooltip-title">Novo contrato</p>
+                          <p className="app-sidebar-tooltip-description">
+                            Abrir cadastro de contrato em Aluguéis
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </li>
+                  )}
                 </ul>
               </section>
             );

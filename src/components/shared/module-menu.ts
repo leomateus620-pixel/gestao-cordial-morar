@@ -5,7 +5,6 @@ import {
   Cable,
   CalendarCheck2,
   Camera,
-  FileText,
   FolderArchive,
   HousePlus,
   Inbox,
@@ -26,14 +25,21 @@ import type { AppModule, UserProfile } from "@/lib/mock/permissions";
 import { CORDIAL_BOT_NAME } from "@/components/brand/CordialBotBrand";
 import { AssistantMark } from "@/components/brand/AssistantMark";
 
-export const sidebarSectionOrder = ["operacao", "relacionamento", "gestao", "sistema"] as const;
+export const sidebarSectionOrder = [
+  "operacao",
+  "relacionamento",
+  "locacao",
+  "gestao",
+  "sistema",
+] as const;
 
 export type SidebarSectionId = (typeof sidebarSectionOrder)[number];
 
 export const sidebarSectionLabels: Record<SidebarSectionId, string> = {
   operacao: "Operação",
-  relacionamento: "Relacionamento e negócios",
-  gestao: "Gestão e crescimento",
+  relacionamento: "Comercial",
+  locacao: "Locação",
+  gestao: "Gestão",
   sistema: "Sistema",
 };
 
@@ -66,6 +72,8 @@ export type SidebarNavigationSection = {
   id: SidebarSectionId;
   label: string;
   items: SidebarModuleItem[];
+  /** Atalho de interface do módulo autorizado; não cria outra rota. */
+  newRentalContract?: boolean;
 };
 
 /** Fonte única de módulos do app. Bottom nav, sidebar, drawer e "Mais" derivam daqui. */
@@ -141,6 +149,7 @@ export const moduleItems: ModuleItem[] = [
     sidebar: {
       section: "operacao",
       order: 55,
+      label: "Seleções de imóveis",
       desc: "Links para clientes",
     },
   },
@@ -165,7 +174,7 @@ export const moduleItems: ModuleItem[] = [
     desc: "Laudos de entrada, saída e constatação",
     icon: ClipboardCheck,
     module: "vistorias",
-    sidebar: { section: "operacao", order: 45, desc: "Laudos com fotos" },
+    sidebar: { section: "locacao", order: 20, desc: "Laudos de entrada e saída com fotos" },
   },
   {
     to: "/agenda",
@@ -213,7 +222,7 @@ export const moduleItems: ModuleItem[] = [
     desc: "Locações e repasses",
     icon: KeyRound,
     module: "alugueis",
-    sidebar: { section: "relacionamento", order: 20 },
+    sidebar: { section: "locacao", order: 10 },
   },
   {
     to: "/vendas",
@@ -336,7 +345,15 @@ export function getSidebarSections(modules: AppModule[] | undefined): SidebarNav
       .sort((a, b) => a.sidebar.order - b.sidebar.order);
 
     return sectionItems.length
-      ? [{ id, label: sidebarSectionLabels[id], items: sectionItems }]
+      ? [
+          {
+            id,
+            label: sidebarSectionLabels[id],
+            items: sectionItems,
+            newRentalContract:
+              id === "locacao" && sectionItems.some((item) => item.module === "alugueis"),
+          },
+        ]
       : [];
   });
 }

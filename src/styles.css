@@ -119,7 +119,7 @@
   --app-sidebar-tooltip-background: #2d3f46;
   --app-sidebar-shadow: 0 18px 38px -28px rgba(8, 20, 25, 0.58);
   --app-sidebar-active-shadow: 0 6px 16px -14px rgba(6, 18, 22, 0.55);
-  --app-sidebar-width-expanded: 14.25rem;
+  --app-sidebar-width-expanded: 17rem;
   --app-sidebar-width-collapsed: 4.25rem;
   --app-sidebar-mobile-width: 18.5rem;
   --app-sidebar-inset: 0.75rem;
@@ -127,26 +127,25 @@
   --app-sidebar-padding: 0.5rem;
   --app-sidebar-radius: 1.25rem;
   --app-sidebar-row-height: 2.75rem;
-  --app-sidebar-row-radius: 1rem;
+  --app-sidebar-row-radius: 0.75rem;
   --app-sidebar-icon-size: 1.75rem;
   --app-sidebar-icon-radius: 0.625rem;
   --app-sidebar-duotone-rest: 34%;
   --app-sidebar-duotone-hover: 50%;
   --app-sidebar-duotone-active: 62%;
-  --app-sidebar-row-gap: 0.375rem;
-  --app-sidebar-section-gap: 0.875rem;
+  --app-sidebar-row-gap: 0.0625rem;
+  --app-sidebar-section-gap: 0.5rem;
   --app-sidebar-scrollbar-width: 0.1875rem;
   --app-sidebar-motion-duration: 150ms;
   --app-sidebar-motion-easing: cubic-bezier(0.2, 0.75, 0.25, 1);
   --app-sidebar-card-surface: rgba(238, 246, 243, 0.05);
-  --app-sidebar-card-surface-soft: rgba(238, 246, 243, 0.022);
   --app-sidebar-card-border: rgba(215, 231, 227, 0.1);
-  --app-sidebar-card-radius: 1.1rem;
+  --app-sidebar-card-radius: 0.875rem;
   --app-sidebar-card-accent-operacao: #79c9b8;
   --app-sidebar-card-accent-relacionamento: #e2a878;
+  --app-sidebar-card-accent-locacao: #e4c28e;
   --app-sidebar-card-accent-gestao: #8ec6de;
   --app-sidebar-card-accent-sistema: #d3c39c;
-  --app-sidebar-pill-duration: 280ms;
 
   /* Contextos das imobiliárias (acentos) */
   --cordial-primary: #2b7fa3;
@@ -442,9 +441,9 @@
 }
 
 .app-sidebar-header {
-  min-height: 2.375rem;
+  min-height: 2.75rem;
   margin-bottom: 0.5rem;
-  padding: 0.125rem 0.25rem;
+  padding: 0.25rem;
 }
 
 .app-sidebar-header[data-collapsed="true"] {
@@ -492,17 +491,17 @@
 .app-sidebar-brand-eyebrow {
   color: var(--app-sidebar-accent);
   font-family: var(--font-display);
-  font-size: 0.56rem;
+  font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.2em;
-  line-height: 0.8rem;
+  letter-spacing: 0.12em;
+  line-height: 1rem;
   text-transform: uppercase;
 }
 
 .app-sidebar-brand-title {
   color: var(--app-sidebar-primary-text);
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: -0.005em;
   line-height: 1rem;
@@ -510,8 +509,8 @@
 
 .app-sidebar-toggle {
   display: grid;
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   flex-shrink: 0;
   place-items: center;
   border: 1px solid var(--app-sidebar-icon-border);
@@ -554,10 +553,10 @@
   border-top: 1px solid var(--app-sidebar-border);
   padding: 0.55rem 0.375rem 0;
   color: var(--app-sidebar-muted-text);
-  font-size: 0.52rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  line-height: 0.7rem;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 0.875rem;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -568,6 +567,7 @@
 }
 
 .app-sidebar-drawer {
+  gap: 0;
   padding: max(0.75rem, env(safe-area-inset-top)) 0.625rem max(0.75rem, env(safe-area-inset-bottom));
   border-color: var(--app-sidebar-border) !important;
   border-radius: 0 var(--app-sidebar-radius) var(--app-sidebar-radius) 0;
@@ -610,14 +610,13 @@
   overflow: hidden;
   border: 1px solid var(--app-sidebar-card-border);
   border-radius: var(--app-sidebar-card-radius);
-  background: linear-gradient(
-    180deg,
-    var(--app-sidebar-card-surface),
-    var(--app-sidebar-card-surface-soft)
-  );
-  padding: 0.4rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  background: var(--app-sidebar-card-surface);
+  padding: 0.3125rem;
   transition: border-color var(--app-sidebar-motion-duration) ease-out;
+}
+
+.app-sidebar-card:has([data-active="true"]) {
+  border-color: color-mix(in oklab, var(--app-sidebar-card-accent) 35%, transparent);
 }
 
 .app-sidebar-card[data-navigation-section="operacao"] {
@@ -626,6 +625,10 @@
 
 .app-sidebar-card[data-navigation-section="relacionamento"] {
   --app-sidebar-card-accent: var(--app-sidebar-card-accent-relacionamento);
+}
+
+.app-sidebar-card[data-navigation-section="locacao"] {
+  --app-sidebar-card-accent: var(--app-sidebar-card-accent-locacao);
 }
 
 .app-sidebar-card[data-navigation-section="gestao"] {
@@ -639,20 +642,21 @@
 .app-sidebar-card-label {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.5rem 0.45rem;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem 0.375rem;
   color: var(--app-sidebar-section-text);
-  font-family: var(--font-display);
-  font-size: 0.56rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  line-height: 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 0.875rem;
   text-transform: uppercase;
 }
 
 .app-sidebar-card-label::before {
   width: 0.875rem;
   height: 2px;
+  flex-shrink: 0;
   border-radius: 9999px;
   background: var(--app-sidebar-card-accent, var(--app-sidebar-accent));
   opacity: 0.9;
@@ -704,7 +708,7 @@
   inset-inline-start: 0;
   width: 0.1875rem;
   border-radius: 0 9999px 9999px 0;
-  background: var(--app-sidebar-accent);
+  background: var(--app-sidebar-card-accent, var(--app-sidebar-accent));
   content: "";
   transform: scaleY(0);
   transform-origin: center;
@@ -712,9 +716,10 @@
 }
 
 .app-sidebar-nav-row[data-active="true"] {
-  border-color: transparent;
-  background: transparent;
+  border-color: var(--app-sidebar-active-border);
+  background: var(--app-sidebar-active-surface);
   color: var(--app-sidebar-primary-text);
+  box-shadow: var(--app-sidebar-active-shadow);
 }
 
 .app-sidebar-nav-row[data-active="true"]::before {
@@ -729,8 +734,8 @@
   }
 
   .app-sidebar-nav-row[data-active="true"]:hover {
-    border-color: transparent;
-    background: transparent;
+    border-color: var(--app-sidebar-active-border);
+    background: var(--app-sidebar-active-surface);
   }
 }
 
@@ -843,14 +848,28 @@
 
 .app-sidebar-nav-title {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: inherit;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: -0.004em;
-  line-height: 1.05rem;
+  line-height: 1.25rem;
+}
+
+.app-sidebar-action-item {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--app-sidebar-card-border);
+  padding-top: 0.25rem;
+}
+
+.app-sidebar-contract-action {
+  cursor: pointer;
+}
+
+.app-sidebar-action-indicator {
+  flex-shrink: 0;
+  color: var(--app-sidebar-card-accent);
 }
 
 .app-sidebar-nav-row[data-active="true"] .app-sidebar-nav-title {
@@ -867,7 +886,7 @@
 }
 
 .app-sidebar-tooltip-title {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 650;
   line-height: 1rem;
 }
@@ -875,37 +894,25 @@
 .app-sidebar-tooltip-description {
   margin-top: 0.125rem;
   color: var(--app-sidebar-secondary-text);
-  font-size: 0.625rem;
-  line-height: 0.875rem;
-}
-
-.app-sidebar-active-pill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 0;
-  border: 1px solid var(--app-sidebar-active-border);
-  border-radius: var(--app-sidebar-row-radius);
-  background: var(--app-sidebar-active-surface);
-  box-shadow: var(--app-sidebar-active-shadow);
-  pointer-events: none;
-}
-
-.app-sidebar-active-pill[data-animated="false"] {
-  transition: none;
-}
-
-.app-sidebar-active-pill[data-animated="true"] {
-  transition:
-    transform var(--app-sidebar-pill-duration) var(--app-sidebar-motion-easing),
-    width var(--app-sidebar-pill-duration) var(--app-sidebar-motion-easing),
-    height var(--app-sidebar-pill-duration) var(--app-sidebar-motion-easing),
-    opacity 160ms ease-out;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-sidebar-active-pill[data-animated="true"] {
+  .app-sidebar-shell,
+  .app-shell-content,
+  .app-sidebar-brand-copy,
+  .app-sidebar-toggle,
+  .app-sidebar-card,
+  .app-sidebar-nav-row,
+  .app-sidebar-nav-row::before,
+  .app-sidebar-nav-icon,
+  .app-sidebar-nav-icon-fill {
     transition: none;
+  }
+
+  .premium-sidebar-scroll {
+    scroll-behavior: auto;
   }
 }
 

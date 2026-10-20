@@ -14,6 +14,7 @@ import type { RentalContractFull, RentalFilter, RentalPeriodFilter } from "@/typ
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import { brl } from "@/lib/format";
+import { useRentalFormRequest } from "@/lib/rentals/rental-form-ui";
 
 export const Route = createFileRoute("/_app/alugueis")({
   head: () => ({
@@ -70,6 +71,15 @@ function Page() {
   const [editing, setEditing] = useState<RentalContractFull | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(highlightedId ?? null);
   const selected = r.allContracts.find((contract) => contract.id === selectedId) ?? null;
+  const newContractRequested = useRentalFormRequest((state) => state.requested);
+
+  useEffect(() => {
+    if (!newContractRequested) return;
+    useRentalFormRequest.getState().consume();
+    setEditing(null);
+    setSelectedId(null);
+    setOpenForm(true);
+  }, [newContractRequested]);
 
   useEffect(() => {
     setSelectedId(highlightedId ?? null);
