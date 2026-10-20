@@ -16,6 +16,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Tipos
         run: bun run typecheck
+      - name: Tipos do aplicador de migração da vistoria
+        run: bun run typecheck:vistoria-migration
       - name: Testes
         run: bun run test
       - name: Site público e política PostgreSQL

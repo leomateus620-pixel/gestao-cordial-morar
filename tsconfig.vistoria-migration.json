@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "scripts/vistoria/**/*.ts",
+    "tests/vistoria/migration.test.ts",
+    "tests/vistoria/database.ts"
+  ],
+  "compilerOptions": { "types": ["node", "vite/client"] }
+}
