@@ -236,7 +236,7 @@ export async function buildInspectionPdf(model: PdfModel, loadImage: ImageLoader
       const w = img ? img.width * scale : colW;
       const h = img ? img.height * scale : 80;
       const captionLines = wrapText(
-        `Foto ${num}${p.caption ? ` - ${p.caption}` : ""} · ${p.timeSource === "captura" ? "capturada" : "importada"} ${p.takenAt ? ` em ${fmtDate(p.takenAt)}` : " (data não registrada)"}`,
+        `Foto ${num}${p.caption ? ` - ${p.caption}` : ""} · ${p.timeSource === "captura" ? "capturada" : "importada"}${p.takenAt ? ` em ${fmtDate(p.takenAt)}` : " (data não registrada)"}`,
         font,
         8.5,
         colW,

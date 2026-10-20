@@ -17,7 +17,8 @@ export type AppModule =
   | "busca"
   | "integracoes"
   | "configuracoes"
-  | "pesquisa_satisfacao";
+  | "pesquisa_satisfacao"
+  | "vistorias";
 
 export type Permission =
   | "clientes:read"
@@ -75,6 +76,7 @@ const allModules: AppModule[] = [
   "integracoes",
   "configuracoes",
   "pesquisa_satisfacao",
+  "vistorias",
 ];
 
 const allPermissions: Permission[] = [
@@ -129,6 +131,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "agenciamentos",
       "agenda",
       "imoveis",
+      "vistorias",
     ],
     permissions: [
       "atendimentos:read",
@@ -161,6 +164,7 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
       "agenda",
       "vendas",
       "imoveis",
+      "vistorias",
     ],
     permissions: [
       "atendimentos:read",

@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   ListChecks,
+  ClipboardCheck,
   Megaphone,
   Search,
   Settings,
@@ -156,6 +157,15 @@ export const moduleItems: ModuleItem[] = [
       order: 40,
       desc: "Captação e imóveis",
     },
+  },
+  {
+    to: "/vistorias",
+    label: "Vistoria inteligente",
+    shortLabel: "Vistorias",
+    desc: "Laudos de entrada, saída e constatação",
+    icon: ClipboardCheck,
+    module: "vistorias",
+    sidebar: { section: "operacao", order: 45, desc: "Laudos com fotos" },
   },
   {
     to: "/agenda",
