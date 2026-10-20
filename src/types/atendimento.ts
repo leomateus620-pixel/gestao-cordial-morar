@@ -82,6 +82,7 @@ export type AtendimentoFinalidade = "compra" | "aluguel" | "ambos";
 export type TipoImovelInteresse =
   | "casa"
   | "apartamento"
+  | "kitnet"
   | "terreno"
   | "sala_comercial"
   | "area_rural"
@@ -309,6 +310,7 @@ export const atendimentoFinalidadeOptions = [
 export const atendimentoTipoImovelOptions = [
   { value: "casa", label: "Casa" },
   { value: "apartamento", label: "Apartamento" },
+  { value: "kitnet", label: "Kitnet" },
   { value: "terreno", label: "Terreno" },
   { value: "sala_comercial", label: "Sala comercial" },
   { value: "area_rural", label: "Área rural" },

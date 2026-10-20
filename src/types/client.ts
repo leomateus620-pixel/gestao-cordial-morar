@@ -18,6 +18,7 @@ export type RealEstateBrand = "cordial" | "morar" | "ambas";
 export type PropertyType =
   | "casa"
   | "apartamento"
+  | "kitnet"
   | "terreno"
   | "sala_comercial"
   | "area_rural"
@@ -109,6 +110,7 @@ export const clientPurposeOptions = [
 export const propertyTypeOptions = [
   { value: "casa", label: "Casa" },
   { value: "apartamento", label: "Apartamento" },
+  { value: "kitnet", label: "Kitnet" },
   { value: "terreno", label: "Terreno" },
   { value: "sala_comercial", label: "Sala comercial" },
   { value: "area_rural", label: "Área rural" },

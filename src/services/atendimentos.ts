@@ -610,8 +610,9 @@ function normalizeFinalidade(value: unknown): AtendimentoFinalidade {
   return "compra";
 }
 
-function normalizeTipoImovel(value: unknown): TipoImovelInteresse {
+export function normalizeTipoImovel(value: unknown): TipoImovelInteresse {
   const normalized = normalizeText(stringValue(value));
+  if (/kitnet|kitinete|quitinete|kitchenette/.test(normalized)) return "kitnet";
   if (normalized.includes("casa")) return "casa";
   if (normalized.includes("terreno")) return "terreno";
   if (normalized.includes("sala") || normalized.includes("comercial")) return "sala_comercial";
