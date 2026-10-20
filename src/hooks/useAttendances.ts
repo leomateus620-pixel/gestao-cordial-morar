@@ -220,8 +220,17 @@ export function useAttendances(
 
   const stats = useMemo(() => getStats(filteredAtendimentos), [filteredAtendimentos]);
 
+  // Resultados da busca que estão fora da aba/imobiliária atual (para avisar o usuário).
+  const searchOutsideScope = useMemo(() => {
+    if (!query.trim()) return [] as Atendimento[];
+    const inScope = new Set(filteredAtendimentos.map((a) => a.id));
+    return atendimentos.filter((a) => !inScope.has(a.id) && atendimentoMatchesSearch(a, query));
+  }, [atendimentos, filteredAtendimentos, query]);
+
   return {
     agency,
+    allAtendimentos: atendimentos,
+    searchOutsideScope,
     atendimentos: agencyAtendimentos,
     trackAtendimentos,
     trackCounts,

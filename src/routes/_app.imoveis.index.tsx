@@ -120,17 +120,13 @@ function Page() {
   );
 
   const resetFilters = useCallback(() => {
-    // Busca e carteira vivem no cabeçalho — limpar filtros não deve apagá-las.
+    // Limpar zera tudo, inclusive carteira e busca, para nenhum imóvel ficar escondido.
     navigate({
       to: "/imoveis",
-      search: serializeCatalogSearch({
-        ...DEFAULT_FILTERS,
-        q: filters.q,
-        carteira: filters.carteira,
-      }),
+      search: serializeCatalogSearch({ ...DEFAULT_FILTERS }),
       replace: true,
     });
-  }, [filters.carteira, filters.q, navigate]);
+  }, [navigate]);
 
   const goToPage = useCallback(
     (page: number) => {

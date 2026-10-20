@@ -338,6 +338,7 @@ export const listImoveis = createServerFn({ method: "GET" })
           `logradouro.ilike.${like}`,
           `bairro.ilike.${like}`,
           `cidade.ilike.${like}`,
+          `proprietario_nome.ilike.${like}`,
         ].join(","),
       );
     }
