@@ -1,42 +1,44 @@
-# Novo atendimento: opção "Kitnet" no Tipo de imóvel
+# Origem "Patrocínio", sugestão Kitnet → Apartamento e teste do Kitnet na suíte
 
 ## O que muda para quem usa
-- "Kitnet" aparece logo depois de "Apartamento" no Novo atendimento, na edição, e nos filtros de Atendimentos.
-- Ao reabrir um atendimento salvo como Kitnet, ele continua Kitnet (hoje viraria "Outro").
-- Lista, detalhe, e-mail ao cliente, histórico em PDF e relatórios mostram "Kitnet".
-- Ao converter atendimento em cliente, o tipo Kitnet é mantido.
+- "Patrocínio" aparece no campo "Origem do lead" (novo atendimento e edição), logo antes de "Outro", e também nos filtros de Atendimentos e Clientes.
+- Ao reabrir um atendimento salvo como Patrocínio, ele continua Patrocínio (hoje viraria "Outro").
+- Converter o atendimento em cliente mantém a origem Patrocínio.
+- O card "Origem dos leads" mostra Patrocínio com ícone de megafone e cor própria; relatórios, detalhe e histórico em PDF mostram "Patrocínio".
+- Um atendimento ou cliente Kitnet também sugere apartamentos, com nota menor que a dos imóveis Kitnet.
 
 ## Confirmado no código
-- Listas: `src/types/atendimento.ts` (`TipoImovelInteresse`, `atendimentoTipoImovelOptions`, rótulo) e `src/types/client.ts` (`PropertyType`, `propertyTypeOptions`).
-- Risco real: `normalizeTipoImovel` em `src/services/atendimentos.ts` (~613) e a função equivalente em `src/services/clients.ts` (~417) não reconhecem "kitnet" e caem em "outro".
-- O atendimento copia o tipo para o cliente (`services/atendimentos.ts` ~346, `propertyType: atendimento.tipoImovel`), por isso Clientes também precisam da opção.
-- Servidor (`attendances.functions.ts` 217/274/511): só exige que exista um tipo; não há lista fechada nem zod restringindo valores. Nada a mudar ali além do tipo TS.
-- Rótulos do e-mail/PDF: mapa em `src/lib/attendances/email.functions.ts` (~175).
-- Banco: `attendances.tipo_imovel` é texto livre (conferido antes por você). **Sem migração.**
+- Opções/tipo: `src/types/atendimento.ts` (`OrigemLeadAtendimento` linha 92, `atendimentoOrigemOptions` linha 321).
+- Servidor (`attendances.functions.ts` 214/506): grava `origem` como veio, sem lista fechada nem zod. Nada a mudar além do tipo.
+- Reabertura: `normalizeOrigem` (`services/atendimentos.ts` 631) não reconhece patrocínio e cai em "outro".
+- Conversão: `mapOriginToClient` (703) e `ORIGIN_MAP` (`useAttendances.ts` 304, exige todas as chaves).
+- Clientes: `LeadOrigin`/`leadOriginOptions` próprios (`types/client.ts`) e conversão legada `mapLeadOriginToLegacy`/`mapLegacyLeadOrigin` (`services/clients.ts` 342/352).
+- Rótulos: `services/reports.ts` (~2000), `LeadOriginCard.tsx` (~76), PDF do histórico usa `atendimentoOrigemLabel` (entra automaticamente).
+- Banco: origem é texto livre (conferido por você). **Sem migração.**
+- Teste do Kitnet: `bun run test` lista arquivos para `tsx --test`; `test:receipts` (vitest) só inclui `*.vitest.ts`. O arquivo `atendimentos-kitnet.test.ts` hoje não roda.
 
 ## Alterações
-1. `src/types/atendimento.ts`: `"kitnet"` no tipo e `{ value: "kitnet", label: "Kitnet" }` após Apartamento.
-2. `src/types/client.ts`: idem em `PropertyType` / `propertyTypeOptions`.
-3. `src/services/atendimentos.ts` e `src/services/clients.ts`: reconhecer `kitnet`, `kitinete`, `quitinete`, `kitchenette` antes das demais regras.
-4. `src/lib/attendances/email.functions.ts`: rótulo `kitnet: "Kitnet"`.
-5. Filtros (`AtendimentoFilters`, `ClientFilters`) usam as listas acima — entram automaticamente.
-6. Revisar e, se houver mapa de rótulos/contagem por tipo, incluir Kitnet em: `src/lib/busca/busca.server.ts`, relatórios, `src/lib/agent/tools/common.ts` e pontuação `scoreProperty` (assistente/MCP compartilham as mesmas ferramentas).
-
-## Sugestão de imóveis (decisão sua)
-- Padrão proposto: atendimento Kitnet sugere imóveis Kitnet com pontuação cheia.
-- Opcional: também sugerir Apartamento com pontuação menor (kitnet é um apartamento compacto). **Não aplico sem seu ok.**
+1. `src/types/atendimento.ts`: `"patrocinio"` no tipo e `{ value: "patrocinio", label: "Patrocínio" }` antes de "Outro".
+2. `src/types/client.ts`: idem em `LeadOrigin` e `leadOriginOptions`. Decisão: adicionar no cliente (recomendado), senão a origem se perde na conversão e nos relatórios de clientes.
+3. `src/services/clients.ts`: incluir patrocinio nas duas funções de conversão legada (ida e volta mantêm o valor).
+4. `src/services/atendimentos.ts`:
+   - `normalizeOrigem`: reconhecer `patrocin*`, `trafego pago`, `anuncio pago` e o valor exato `ads`/`meta ads`/`google ads` (palavra inteira, não substring), colocado no início, sem afetar site/portal/porta fria.
+   - `mapOriginToClient`: patrocinio → patrocinio.
+5. `src/hooks/useAttendances.ts`: `ORIGIN_MAP.patrocinio = "patrocinio"`.
+6. `src/services/reports.ts`: rótulo `patrocinio: "Patrocínio"`.
+7. `LeadOriginCard.tsx`: `patrocinio: { cor da paleta do projeto, Icon: Megaphone }`.
+8. `ClientCard.tsx`/assistente: conferir se há mapa de cores ou agrupamento por origem; incluir onde houver (usam os rótulos acima quando não houver mapa).
+9. Kitnet → Apartamento: em `scoreProperty` (`match-client-properties.ts`), tipo igual = 30 pontos; cliente kitnet + imóvel apartamento = 15 pontos com motivo "Apartamento (próximo de Kitnet)". Caminho inverso (apartamento → kitnet) não muda. Conferir se `common.ts` ou outra sugestão da tela de atendimento compara tipo; aplicar a mesma regra se houver.
+10. Teste do Kitnet: converter `atendimentos-kitnet.test.ts` para `node:test` + `node:assert` (padrão dos demais) e adicioná-lo ao script `test`.
 
 ## Fora do escopo (sem alteração)
-- Cadastro de imóveis e sync Imobi: já têm "Kitnet" e salvam o mesmo valor `kitnet`.
-- Formulários de contato dos sites Cordial/Morar: as funções de lead aceitam lista fixa (`casa…outro`) e os formulários não oferecem Kitnet. Ficam como estão; se quiser Kitnet no site, é uma migração aditiva separada.
-- Endereço, NFS-e, fotos, códigos, Drive, publicação.
+- Funções de lead dos sites Cordial/Morar (gravam 'site'), origem de agenciamentos, cadastro de imóveis, sync Imobi, NFS-e, endereço, fotos, códigos, Drive, publicação. Nenhum dado alterado.
 
-## Testes
-- `normalizeTipoImovel`: "kitnet", "Kitinete", "quitinete" → kitnet; casa/apartamento/terreno/sala/rural/sítio/outro inalterados (atendimento e cliente).
-- Leitura/edição: atendimento com `kitnet` volta como `kitnet`; conversão para cliente mantém `kitnet`.
-- Rótulos: `atendimentoTipoImovelLabel("kitnet")` e mapa do e-mail = "Kitnet"; opção presente e logo após Apartamento.
-- Sugestão: Kitnet pontua imóvel Kitnet.
-- Rodar `bun run test` e typecheck.
+## Testes (node:test, no script `test`)
+- `src/services/atendimentos-origem.test.ts`: "Patrocínio", "patrocinado", "Tráfego pago", "anúncio pago", "Meta Ads" → patrocinio; whatsapp/site/portal/porta fria/instagram/email/ligacao/outro inalterados; opção antes de "Outro" com rótulo "Patrocínio"; conversão atendimento → cliente mantém patrocinio; ida e volta legada de clientes mantém patrocinio; rótulo de relatório.
+- Exportar `normalizeOrigem`/`mapOriginToClient` para teste (sem mudar comportamento).
+- `src/lib/agent/tools/tools.test.ts` (já em test:assistant): Kitnet→Kitnet = 30, Kitnet→Apartamento = 15 e menor, Apartamento→Kitnet = 0, Casa inalterada.
+- Rodar `bun run test` completo e typecheck.
 
 ## Riscos
-- Baixo. Atendimentos antigos não mudam. Único cuidado: a regra "kitnet" vir antes das regras genéricas para não cair em "outro".
+- Baixo. Registros antigos não mudam. Cuidado principal: "ads" só por palavra inteira, para não capturar outros textos. `ORIGIN_MAP` com chave obrigatória quebra o typecheck se esquecida (é a proteção desejada).
