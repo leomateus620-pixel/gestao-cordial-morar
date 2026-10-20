@@ -68,7 +68,7 @@ export function pdfSafe(input: string | null | undefined): string {
     .replace(/\u2026/g, "...")
     .replace(/[\u00A0\u2007\u202F]/g, " ")
     .replace(/\t/g, "  ")
-    .replace(/[^\n\x20-\x7E\u00A1-\u00FF\u20AC]/g, (ch) => {
+    .replace(/[^\n\x20-\x7E\u00A1-\u00FF\u20AC]/gu, (ch) => {
       const base = ch.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       return /^[\x20-\x7E]$/.test(base) ? base : "?";
     });
