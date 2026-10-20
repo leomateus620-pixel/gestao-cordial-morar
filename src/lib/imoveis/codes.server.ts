@@ -27,3 +27,13 @@ export async function remoteCodeTaken(provider: ImobiProvider, code: string): Pr
     return null; // indisponibilidade da API não bloqueia o cadastro
   }
 }
+
+/** A API responde `{ resultSet: { data: [...] } }`; aceita também lista direta. */
+export function extractListItems(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  const r = raw as Record<string, unknown> | null;
+  const rs = r?.["resultSet"] ?? r?.["data"];
+  if (Array.isArray(rs)) return rs;
+  const inner = (rs as Record<string, unknown> | null)?.["data"];
+  return Array.isArray(inner) ? inner : [];
+}
