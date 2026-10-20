@@ -253,6 +253,13 @@
       "when": 1792482000000,
       "tag": "0035_vistoria_field_upgrade",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792494004421,
+      "tag": "0036_vistoria_0035_verify",
+      "breakpoints": true
     }
   ]
 }

@@ -10675,6 +10675,10 @@ export type Database = {
       }
       inspection_can_access: { Args: { p_id: string }; Returns: boolean }
       inspection_can_edit: { Args: { p_id: string }; Returns: boolean }
+      inspection_create: {
+        Args: { p_inspection: Json; p_rooms: Json }
+        Returns: Json
+      }
       inspection_finalize: {
         Args: {
           p_byte_size: number
@@ -10686,11 +10690,47 @@ export type Database = {
         }
         Returns: Json
       }
+      inspection_finalize_server: {
+        Args: {
+          p_actor: string
+          p_byte_size: number
+          p_expected_revision: number
+          p_id: string
+          p_sha256: string
+          p_snapshot: Json
+          p_storage_path: string
+        }
+        Returns: Json
+      }
+      inspection_list: {
+        Args: {
+          p_agency: string
+          p_date_field: string
+          p_from: string
+          p_kind: string
+          p_page: number
+          p_q: string
+          p_responsible: string
+          p_status: string
+          p_to: string
+        }
+        Returns: Json
+      }
       inspection_reopen: {
         Args: { p_expected_revision: number; p_id: string; p_reason: string }
         Returns: undefined
       }
+      inspection_reorder_media: {
+        Args: {
+          p_id: string
+          p_order: string[]
+          p_revision: number
+          p_room: string
+        }
+        Returns: undefined
+      }
       inspection_review_issues: { Args: { p_id: string }; Returns: Json }
+      inspection_snapshot: { Args: { p_id: string }; Returns: Json }
       internal_worker_headers: { Args: never; Returns: Json }
       internal_worker_token_matches: {
         Args: { _token: string }
