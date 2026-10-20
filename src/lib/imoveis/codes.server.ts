@@ -16,13 +16,7 @@ export async function remoteCodeTaken(provider: ImobiProvider, code: string): Pr
       { method: "GET" },
     );
     const raw = response.data as unknown;
-    const container =
-      Array.isArray(raw)
-        ? raw
-        : ((raw as Record<string, unknown>)?.["resultSet"] ??
-           (raw as Record<string, unknown>)?.["data"] ??
-           []);
-    const list = Array.isArray(container) ? container : [];
+    const list = extractListItems(raw);
     return list.some((item) => {
       if (!item || typeof item !== "object") return false;
       const record = item as Record<string, unknown>;
@@ -32,4 +26,14 @@ export async function remoteCodeTaken(provider: ImobiProvider, code: string): Pr
   } catch {
     return null; // indisponibilidade da API não bloqueia o cadastro
   }
+}
+
+/** A API responde `{ resultSet: { data: [...] } }`; aceita também lista direta. */
+export function extractListItems(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  const r = raw as Record<string, unknown> | null;
+  const rs = r?.["resultSet"] ?? r?.["data"];
+  if (Array.isArray(rs)) return rs;
+  const inner = (rs as Record<string, unknown> | null)?.["data"];
+  return Array.isArray(inner) ? inner : [];
 }
