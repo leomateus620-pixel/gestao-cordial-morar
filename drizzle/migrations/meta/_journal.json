@@ -239,6 +239,13 @@
       "when": 1792480558876,
       "tag": "0033_vistoria_inteligente",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792481066543,
+      "tag": "0034_vistoria_finalize_doc_name",
+      "breakpoints": true
     }
   ]
 }
