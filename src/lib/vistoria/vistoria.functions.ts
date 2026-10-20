@@ -670,7 +670,7 @@ export const finalizeInspection = createServerFn({ method: "POST" })
         storagePath: z.string().max(300),
         byteSize: z.number().int().positive(),
         sha256: z.string().regex(/^[0-9a-f]{64}$/),
-        snapshot: z.record(z.unknown()),
+        snapshot: z.record(z.string(), z.unknown()),
       })
       .parse(d),
   )

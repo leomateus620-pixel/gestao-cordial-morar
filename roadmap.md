@@ -44,3 +44,6 @@
 - [ ] Migrações: status conflito, limpeza do histórico de rotinas, índice de recuperação de fotos — bloqueado: banco inacessível
 - [ ] Reescalonar rotinas automáticas — bloqueado: banco inacessível
 - [ ] Diagnóstico de pressão do banco e custo de instância maior (pedido do Leonardo)
+
+- [x] Vistoria inteligente: menu/permissões, criação, checklist, fotos com fila local, relatos voz/texto, revisão, PDF versionado, histórico
+- [ ] Vistoria: ligar transcrição (VISTORIA_VOZ_ATIVA) e GPT-Live — aguarda ativação pelo usuário
