@@ -301,7 +301,14 @@ export function atendimentoMatchesSearch(atendimento: Atendimento, query: string
     .filter(Boolean)
     .join(" ");
 
-  return normalizeText(haystack).includes(q);
+  if (normalizeText(haystack).includes(q)) return true;
+  // Telefone digitado só com números (ou em outro formato) também encontra.
+  const qDigits = query.replace(/\D/g, "");
+  if (qDigits.length >= 4 && qDigits.length === query.replace(/[\s().+-]/g, "").length) {
+    const phoneDigits = (atendimento.telefone ?? "").replace(/\D/g, "");
+    if (phoneDigits.includes(qDigits)) return true;
+  }
+  return false;
 }
 
 export function atendimentoMatchesAgency(
