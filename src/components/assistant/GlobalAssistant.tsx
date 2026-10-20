@@ -97,7 +97,7 @@ export function GlobalAssistant() {
   }
   return (
     <>
-      {!location.pathname.startsWith("/assistente") && (
+      {!location.pathname.startsWith("/assistente") && !/^\/vistorias\/[0-9a-f-]{36}/i.test(location.pathname) && (
         <button
           type="button"
           className="assistant-copilot"

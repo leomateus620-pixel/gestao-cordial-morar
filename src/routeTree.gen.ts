@@ -65,6 +65,9 @@ import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
+import { Route as AppVistoriasIndexRouteImport } from './routes/_app.vistorias.index'
+import { Route as AppVistoriasVistoriaIdRouteImport } from './routes/_app.vistorias.$vistoriaId'
+import { Route as AppVistoriasNovaRouteImport } from './routes/_app.vistorias.nova'
 import { Route as ApiCordialSiteSplatRouteImport } from './routes/api/cordial-site/$'
 import { Route as ApiMorarSiteSplatRouteImport } from './routes/api/morar-site/$'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -387,6 +390,21 @@ const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => AppImoveisRoute,
 } as any)
+const AppVistoriasIndexRoute = AppVistoriasIndexRouteImport.update({
+  id: '/vistorias/',
+  path: '/vistorias/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVistoriasVistoriaIdRoute = AppVistoriasVistoriaIdRouteImport.update({
+  id: '/vistorias/$vistoriaId',
+  path: '/vistorias/$vistoriaId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVistoriasNovaRoute = AppVistoriasNovaRouteImport.update({
+  id: '/vistorias/nova',
+  path: '/vistorias/nova',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiCordialSiteSplatRoute = ApiCordialSiteSplatRouteImport.update({
   id: '/api/cordial-site/$',
   path: '/api/cordial-site/$',
@@ -668,6 +686,8 @@ export interface FileRoutesByFullPath {
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/imoveis/novo': typeof AppImoveisNovoRoute
+  '/vistorias/$vistoriaId': typeof AppVistoriasVistoriaIdRoute
+  '/vistorias/nova': typeof AppVistoriasNovaRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/api/morar-site/$': typeof ApiMorarSiteSplatRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -681,6 +701,7 @@ export interface FileRoutesByFullPath {
   '/agenda/': typeof AppAgendaIndexRoute
   '/assistente/': typeof AppAssistenteIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
+  '/vistorias/': typeof AppVistoriasIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
   '/site/selecao/': typeof SiteSelecaoIndexRoute
@@ -761,6 +782,8 @@ export interface FileRoutesByTo {
   '/assistente/estudio': typeof AppAssistenteEstudioRoute
   '/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/imoveis/novo': typeof AppImoveisNovoRoute
+  '/vistorias/$vistoriaId': typeof AppVistoriasVistoriaIdRoute
+  '/vistorias/nova': typeof AppVistoriasNovaRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/api/morar-site/$': typeof ApiMorarSiteSplatRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -774,6 +797,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AppAgendaIndexRoute
   '/assistente': typeof AppAssistenteIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
+  '/vistorias': typeof AppVistoriasIndexRoute
   '/site-morar/noticias': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias': typeof SiteNoticiasIndexRoute
   '/site/selecao': typeof SiteSelecaoIndexRoute
@@ -860,6 +884,8 @@ export interface FileRoutesById {
   '/_app/clientes/$clienteId': typeof AppClientesClienteIdRoute
   '/_app/imoveis/$imovelId': typeof AppImoveisImovelIdRouteWithChildren
   '/_app/imoveis/novo': typeof AppImoveisNovoRoute
+  '/_app/vistorias/$vistoriaId': typeof AppVistoriasVistoriaIdRoute
+  '/_app/vistorias/nova': typeof AppVistoriasNovaRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/api/morar-site/$': typeof ApiMorarSiteSplatRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -873,6 +899,7 @@ export interface FileRoutesById {
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/assistente/': typeof AppAssistenteIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
+  '/_app/vistorias/': typeof AppVistoriasIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
   '/site/selecao/': typeof SiteSelecaoIndexRoute
@@ -959,6 +986,8 @@ export interface FileRouteTypes {
     | '/clientes/$clienteId'
     | '/imoveis/$imovelId'
     | '/imoveis/novo'
+    | '/vistorias/$vistoriaId'
+    | '/vistorias/nova'
     | '/api/cordial-site/$'
     | '/api/morar-site/$'
     | '/lovable/email/suppression'
@@ -972,6 +1001,7 @@ export interface FileRouteTypes {
     | '/agenda/'
     | '/assistente/'
     | '/imoveis/'
+    | '/vistorias/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
     | '/site/selecao/'
@@ -1052,6 +1082,8 @@ export interface FileRouteTypes {
     | '/assistente/estudio'
     | '/clientes/$clienteId'
     | '/imoveis/novo'
+    | '/vistorias/$vistoriaId'
+    | '/vistorias/nova'
     | '/api/cordial-site/$'
     | '/api/morar-site/$'
     | '/lovable/email/suppression'
@@ -1065,6 +1097,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/assistente'
     | '/imoveis'
+    | '/vistorias'
     | '/site-morar/noticias'
     | '/site/noticias'
     | '/site/selecao'
@@ -1150,6 +1183,8 @@ export interface FileRouteTypes {
     | '/_app/clientes/$clienteId'
     | '/_app/imoveis/$imovelId'
     | '/_app/imoveis/novo'
+    | '/_app/vistorias/$vistoriaId'
+    | '/_app/vistorias/nova'
     | '/api/cordial-site/$'
     | '/api/morar-site/$'
     | '/lovable/email/suppression'
@@ -1163,6 +1198,7 @@ export interface FileRouteTypes {
     | '/_app/agenda/'
     | '/_app/assistente/'
     | '/_app/imoveis/'
+    | '/_app/vistorias/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
     | '/site/selecao/'
@@ -1630,6 +1666,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisNovoRouteImport
       parentRoute: typeof AppImoveisRoute
     }
+    '/_app/vistorias/': {
+      id: '/_app/vistorias/'
+      path: '/vistorias'
+      fullPath: '/vistorias/'
+      preLoaderRoute: typeof AppVistoriasIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/vistorias/$vistoriaId': {
+      id: '/_app/vistorias/$vistoriaId'
+      path: '/vistorias/$vistoriaId'
+      fullPath: '/vistorias/$vistoriaId'
+      preLoaderRoute: typeof AppVistoriasVistoriaIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/vistorias/nova': {
+      id: '/_app/vistorias/nova'
+      path: '/vistorias/nova'
+      fullPath: '/vistorias/nova'
+      preLoaderRoute: typeof AppVistoriasNovaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/cordial-site/$': {
       id: '/api/cordial-site/$'
       path: '/api/cordial-site/$'
@@ -1979,8 +2036,11 @@ interface AppRouteChildren {
   AppAgendaFotosRoute: typeof AppAgendaFotosRoute
   AppAssistenteBotIdRoute: typeof AppAssistenteBotIdRoute
   AppAssistenteEstudioRoute: typeof AppAssistenteEstudioRoute
+  AppVistoriasVistoriaIdRoute: typeof AppVistoriasVistoriaIdRoute
+  AppVistoriasNovaRoute: typeof AppVistoriasNovaRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppAssistenteIndexRoute: typeof AppAssistenteIndexRoute
+  AppVistoriasIndexRoute: typeof AppVistoriasIndexRoute
   AppAssistenteEquipeBotIdRoute: typeof AppAssistenteEquipeBotIdRoute
   AppAssistenteEquipeIndexRoute: typeof AppAssistenteEquipeIndexRoute
 }
@@ -2010,8 +2070,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaFotosRoute: AppAgendaFotosRoute,
   AppAssistenteBotIdRoute: AppAssistenteBotIdRoute,
   AppAssistenteEstudioRoute: AppAssistenteEstudioRoute,
+  AppVistoriasVistoriaIdRoute: AppVistoriasVistoriaIdRoute,
+  AppVistoriasNovaRoute: AppVistoriasNovaRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppAssistenteIndexRoute: AppAssistenteIndexRoute,
+  AppVistoriasIndexRoute: AppVistoriasIndexRoute,
   AppAssistenteEquipeBotIdRoute: AppAssistenteEquipeBotIdRoute,
   AppAssistenteEquipeIndexRoute: AppAssistenteEquipeIndexRoute,
 }
