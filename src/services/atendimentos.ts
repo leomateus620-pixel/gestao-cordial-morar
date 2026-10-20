@@ -628,8 +628,15 @@ export function normalizeTipoImovel(value: unknown): TipoImovelInteresse {
   return "outro";
 }
 
-function normalizeOrigem(value: unknown): OrigemLeadAtendimento {
+export function normalizeOrigem(value: unknown): OrigemLeadAtendimento {
   const normalized = normalizeText(stringValue(value));
+  if (
+    normalized.includes("patrocin") ||
+    normalized.includes("trafego pago") ||
+    normalized.includes("anuncio pago") ||
+    /(^|[^a-z0-9])ads($|[^a-z0-9])/.test(normalized)
+  )
+    return "patrocinio";
   if (normalized.includes("instagram")) return "instagram";
   if (normalized.includes("indic")) return "indicacao";
   if (normalized.includes("site")) return "site";
@@ -700,7 +707,7 @@ function normalizeHistoryType(value: unknown): Atendimento["historico"][number][
   return "observacao";
 }
 
-function mapOriginToClient(value: OrigemLeadAtendimento): LeadOrigin {
+export function mapOriginToClient(value: OrigemLeadAtendimento): LeadOrigin {
   if (value === "porta_fria" || value === "presencial") return "presencial";
   if (value === "ligacao" || value === "email") return "outro";
   return value;

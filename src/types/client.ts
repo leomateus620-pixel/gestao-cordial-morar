@@ -11,6 +11,7 @@ export type LeadOrigin =
   | "site"
   | "portal"
   | "presencial"
+  | "patrocinio"
   | "outro";
 
 export type RealEstateBrand = "cordial" | "morar" | "ambas";
@@ -90,6 +91,7 @@ export const leadOriginOptions = [
   { value: "site", label: "Site" },
   { value: "portal", label: "Portal" },
   { value: "presencial", label: "Atendimento presencial" },
+  { value: "patrocinio", label: "Patrocínio" },
   { value: "outro", label: "Outro" },
 ] as const;
 

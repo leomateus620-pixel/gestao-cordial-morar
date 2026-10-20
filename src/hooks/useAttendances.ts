@@ -311,6 +311,7 @@ const ORIGIN_MAP: Record<OrigemLeadAtendimento, LeadOrigin> = {
   portal: "portal",
   presencial: "presencial",
   porta_fria: "outro",
+  patrocinio: "patrocinio",
   outro: "outro",
 };
 
