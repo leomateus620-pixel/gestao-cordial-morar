@@ -6,7 +6,7 @@ export const userId = "20000000-0000-4000-8000-000000000001",
   id = "10000000-0000-4000-8000-000000000001",
   roomId = "40000000-0000-4000-8000-000000000001",
   itemId = "50000000-0000-4000-8000-000000000001";
-export async function inspectionDatabase() {
+export async function inspectionDatabase(through: 32 | 33 | 34 | 35 = 35) {
   const db = new PGlite();
   await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;CREATE SCHEMA auth;CREATE SCHEMA storage;
  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
@@ -24,9 +24,11 @@ export async function inspectionDatabase() {
     "0034_vistoria_finalize_doc_name",
     "0035_vistoria_field_upgrade",
   ])
-    await db.exec(
-      await readFile(new URL(`../../drizzle/migrations/${file}.sql`, import.meta.url), "utf8"),
-    );
+    if (Number(file.slice(0, 4)) <= through)
+      await db.exec(
+        await readFile(new URL(`../../drizzle/migrations/${file}.sql`, import.meta.url), "utf8"),
+      );
+  if (through < 33) return db;
   await db.exec(`INSERT INTO inspections(id,property_id,kind,responsible_id,created_by,property_snapshot,inspected_at,plan_confirmed) VALUES('${id}','30000000-0000-4000-8000-000000000001','entrada','${userId}','${userId}','{"search_text":"demo 1409 3408"}', '2026-10-20T12:00:00Z',true);
  INSERT INTO inspection_rooms(id,inspection_id,name,no_photo_reason) VALUES('${roomId}','${id}','Sala','Sem acesso para fotografia');
  INSERT INTO inspection_items(id,inspection_id,room_id,name,state) VALUES('${itemId}','${id}','${roomId}','Piso','bom');UPDATE inspections SET plan_confirmed=true WHERE id='${id}';`);

@@ -51,6 +51,8 @@ Módulo de vistorias (entrada, saída, periódica, constatação) com checklist 
 
 A migração está no journal Drizzle. **Não foi aplicada ao banco de produção nesta revisão.** Servidor, cliente e migração devem ser disponibilizados juntos pelo fluxo existente.
 
+Para conferir e aplicar o upgrade pelo mesmo journal, consulte o [procedimento de aplicação da 0035](vistoria-migracao-0035.md). O comando `db:vistoria:check` é somente leitura; `db:vistoria:apply` exige confirmação explícita. O workflow manual não é acionado pelo CI nem pelo merge.
+
 1. Triggers de INSERT/UPDATE/DELETE em ambientes/itens/fotos/relatos bloqueiam a raiz e avançam sua revisão. A revisão vista na tela abrange todos os filhos.
 2. O cliente envia apenas ID, revisão revisada e confirmação do corretor. `finalizeInspection` obtém `inspection_snapshot` no servidor, gera o PDF com imagens privadas e calcula SHA-256; nenhum snapshot/PDF declarado pelo cliente é aceito para emissão.
 3. Renderização usa timestamp do snapshot e metadados determinísticos, permitindo retomar a mesma emissão. Upload é exclusivo do servidor, sem upsert, em `docs/v<n>-<sha16>.pdf`; um caminho já existente tem seus bytes conferidos por SHA-256.

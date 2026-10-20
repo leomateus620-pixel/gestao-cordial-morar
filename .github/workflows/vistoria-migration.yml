@@ -1,0 +1,60 @@
+name: Vistoria — migração 0035
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Ambiente existente com a conexão PostgreSQL de migração
+        type: environment
+        required: true
+      mode:
+        description: Conferir sem escrita ou aplicar as pendências da vistoria
+        type: choice
+        options: [check, apply]
+        default: check
+        required: true
+      confirmation:
+        description: Para apply, informe 0035_vistoria_field_upgrade
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vistoria-migration-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validar execução manual e branch publicada
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "Execute pela main após integrar as PRs."; exit 1; }
+          if [[ "$MODE" == "apply" ]]; then
+            [[ "$CONFIRMATION" == "0035_vistoria_field_upgrade" ]] || { echo "Confirmação da migração incorreta."; exit 1; }
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Conferir ou aplicar pelo journal existente
+        env:
+          LOVABLE_DB_MIGRATION_URL: ${{ secrets.LOVABLE_DB_MIGRATION_URL }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [[ "$MODE" == "apply" ]]; then
+            bun run db:vistoria:apply --confirm=0035_vistoria_field_upgrade
+          else
+            bun run db:vistoria:check
+          fi
