@@ -1,3 +1,4 @@
+import { inspectionLayout } from "@/lib/vistoria/layout";
 import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { BrandMark } from "./brand/BrandMark";
@@ -70,7 +71,8 @@ export function AppShell() {
   const isCatalogRoute = pathname === "/imoveis";
   const isAssistantWorkspace = /^\/assistente\/(?!equipe(?:\/|$))[^/]+\/?$/.test(pathname);
   // A execução da vistoria tem barra de ações própria no rodapé do celular.
-  const hideBottomNav = isAssistantWorkspace || /^\/vistorias\/[0-9a-f-]{36}\/?$/i.test(pathname);
+  const vistoriaLayout = inspectionLayout(pathname);
+  const hideBottomNav = isAssistantWorkspace || vistoriaLayout === "workspace";
   const isAdmin = isAdminUser(session);
 
   const sessionModules = useMemo(
@@ -210,6 +212,7 @@ export function AppShell() {
         ref={mainRef}
         className="app-shell-content relative z-10 flex min-h-screen w-full flex-col"
       >
+        {!vistoriaLayout && <>
         {/* Header mobile — sticky com blur ao rolar */}
         <header
           className={cn(
@@ -335,8 +338,9 @@ export function AppShell() {
           </div>
         </header>
 
+        </>}
 
-        <main className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10",hideBottomNav?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
+        <main data-inspection-layout={vistoriaLayout ?? undefined} className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10",hideBottomNav?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
           <NotificationTransientRegion />
           <div key={pathname} className="app-page-enter">
             <Outlet />

@@ -1,45 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
-import { writeFileSync, mkdirSync } from "node:fs";
 import { PDFDocument, StandardFonts } from "pdf-lib";
-import { buildInspectionPdf, PdfPhotoError, pdfSafe, wrapText, type PdfModel } from "./pdf.ts";
 import { emptyMeters } from "./model.ts";
+import { buildInspectionPdf, PdfPhotoError, pdfSafe, wrapText, type PdfModel } from "./pdf.ts";
 
-// JPEG mínimos (gerados via pdf-lib-compatíveis): usamos PNG 1x1 escalado em proporções diferentes.
-async function pngOf(w: number, h: number): Promise<Uint8Array> {
-  // PNG sólido gerado com zlib nativo
-  const { deflateSync } = await import("node:zlib");
-  const raw = Buffer.alloc((w * 3 + 1) * h);
-  for (let y = 0; y < h; y++) {
-    raw[y * (w * 3 + 1)] = 0;
-    for (let x = 0; x < w; x++) raw.set([40 + (x % 200), 90, 120 + (y % 100)], y * (w * 3 + 1) + 1 + x * 3);
-  }
-  const crcTable = Array.from({ length: 256 }, (_, n) => {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    return c >>> 0;
-  });
-  const crc = (b: Buffer) => {
-    let c = 0xffffffff;
-    for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8);
-    return (c ^ 0xffffffff) >>> 0;
-  };
-  const chunk = (type: string, data: Buffer) => {
-    const len = Buffer.alloc(4);
-    len.writeUInt32BE(data.length);
-    const td = Buffer.concat([Buffer.from(type), data]);
-    const c = Buffer.alloc(4);
-    c.writeUInt32BE(crc(td));
-    return Buffer.concat([len, td, c]);
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
-  ihdr.set([8, 2, 0, 0, 0], 8);
-  return new Uint8Array(
-    Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]),
-  );
-}
+import { pngOf } from "../../../tests/vistoria/png";
 
 const longWord = "https://exemplo.com.br/" + "caminho-muito-longo-".repeat(20);
 const model = (draft: boolean): PdfModel => ({
@@ -50,14 +16,22 @@ const model = (draft: boolean): PdfModel => ({
   version: draft ? null : 1,
   draft,
   generatedAt: "2026-10-20T10:00:00Z",
-  property: { codes: "Cordial 1409 · Morar 3408", tipo: "Apartamento", endereco: "Rua Ação Ñandú, 100 · Centro · Santa Rosa/RS" },
+  property: {
+    codes: "Cordial 1409 · Morar 3408",
+    tipo: "Apartamento",
+    endereco: "Rua Ação Ñandú, 100 · Centro · Santa Rosa/RS",
+  },
   responsible: "João Conceição",
   inspectedAt: "2026-10-20T09:30:00-03:00",
   participants: [{ nome: "Inquilina Açucena", papel: "Locatária" }],
   furnished: "Não",
   cleaning: "Limpo",
   keys: [{ descricao: "Chave da porta “principal”", quantidade: 2 }],
-  meters: { ...emptyMeters(), agua: { status: "informado", reading: "00123" }, gas: { status: "nao_aplicavel" } },
+  meters: {
+    ...emptyMeters(),
+    agua: { status: "informado", reading: "00123" },
+    gas: { status: "nao_aplicavel" },
+  },
   generalNotes: `Observação com acentuação: ção, ã, é, ü — e emoji 🙂. ${longWord}`,
   conclusion: "Imóvel entregue conforme relatado.",
   rooms: Array.from({ length: 6 }, (_, r) => ({
@@ -66,7 +40,8 @@ const model = (draft: boolean): PdfModel => ({
     items: Array.from({ length: 10 }, (_, i) => ({
       id: `i${r}-${i}`,
       name: `Item ${i} parede`,
-      state: i % 3 === 0 ? ("ruim" as const) : i % 3 === 1 ? ("nao_testado" as const) : ("bom" as const),
+      state:
+        i % 3 === 0 ? ("ruim" as const) : i % 3 === 1 ? ("nao_testado" as const) : ("bom" as const),
       quantity: i,
       material: "Cerâmica",
       color: "Branco gelo",
@@ -76,15 +51,33 @@ const model = (draft: boolean): PdfModel => ({
     })),
     notes: [{ text: "Relato revisado com ç e ã.", kind: "aprovado" as const }],
     photos: [
-      { path: `p${r}-v`, caption: "Vertical", takenAt: "2026-10-20T12:00:00Z", timeSource: "captura" as const, itemId: `i${r}-0` },
-      { path: `p${r}-h`, caption: "Horizontal", takenAt: "2026-10-20T12:00:00Z", timeSource: "importacao" as const, itemId: null },
-      { path: `p${r}-x`, caption: null, takenAt: null, timeSource: "importacao" as const, itemId: null },
+      {
+        path: `p${r}-v`,
+        caption: "Vertical",
+        takenAt: "2026-10-20T12:00:00Z",
+        timeSource: "captura" as const,
+        itemId: `i${r}-0`,
+      },
+      {
+        path: `p${r}-h`,
+        caption: "Horizontal",
+        takenAt: "2026-10-20T12:00:00Z",
+        timeSource: "importacao" as const,
+        itemId: null,
+      },
+      {
+        path: `p${r}-x`,
+        caption: null,
+        takenAt: null,
+        timeSource: "importacao" as const,
+        itemId: null,
+      },
     ],
   })),
 });
 
-test("pdfSafe mantém acentos do português e substitui símbolos sem glifo", () => {
-  assert.equal(pdfSafe("ação “x” — 🙂"), 'ação "x" - ?');
+test("pdfSafe mantém acentos do português e preserva símbolos sem glifo como códigos Unicode", () => {
+  assert.equal(pdfSafe("ação “x” — 🙂"), 'ação "x" - [U+1F642]');
 });
 
 test("wrapText quebra palavras maiores que a largura", async () => {
@@ -98,7 +91,10 @@ test("wrapText quebra palavras maiores que a largura", async () => {
 test("PDF final com textos longos, acentos e fotos vertical/horizontal abre e tem páginas", async () => {
   const vertical = await pngOf(60, 120);
   const horizontal = await pngOf(160, 80);
-  const bytes = await buildInspectionPdf(model(false), async (p) => ({ bytes: p.endsWith("v") ? vertical : horizontal, mime: "image/png" }));
+  const bytes = await buildInspectionPdf(model(false), async (p) => ({
+    bytes: p.endsWith("v") ? vertical : horizontal,
+    mime: "image/png",
+  }));
   const loaded = await PDFDocument.load(bytes);
   assert.ok(loaded.getPageCount() >= 4);
   mkdirSync("/tmp/vistoria", { recursive: true });
@@ -111,8 +107,64 @@ test("PDF final é bloqueado se alguma foto falhar; rascunho mostra placeholder"
     if (p === "p2-x") throw new Error("download falhou");
     return { bytes: ok, mime: "image/png" };
   };
-  await assert.rejects(buildInspectionPdf(model(false), loader), (e) => e instanceof PdfPhotoError && e.failed.length === 1 && e.failed[0].number === 9);
+  await assert.rejects(
+    buildInspectionPdf(model(false), loader),
+    (e) => e instanceof PdfPhotoError && e.failed.length === 1 && e.failed[0].number === 9,
+  );
   const draft = await buildInspectionPdf(model(true), loader);
   assert.ok((await PDFDocument.load(draft)).getPageCount() >= 4);
   writeFileSync("/tmp/vistoria/laudo-rascunho.pdf", draft);
+});
+test("mesmo snapshot e imagens geram exatamente os mesmos bytes na retomada", async () => {
+  const fixture = model(false);
+  fixture.rooms = fixture.rooms.slice(0, 1);
+  const image = await pngOf(60, 120);
+  const loader = async () => ({ bytes: image, mime: "image/png" });
+  const first = await buildInspectionPdf(fixture, loader);
+  const retry = await buildInspectionPdf(fixture, loader);
+  assert.deepEqual(retry, first);
+});
+
+test("todas as colunas, legendas extensas e assinaturas ficam nas margens", async () => {
+  const { PDFPage } = await import("pdf-lib");
+  const original = PDFPage.prototype.drawText,
+    drawImage = PDFPage.prototype.drawImage;
+  const texts: string[] = [];
+  const failures: string[] = [];
+  PDFPage.prototype.drawText = function (text, options) {
+    texts.push(text);
+    const x = options?.x ?? 0,
+      y = options?.y ?? 0,
+      size = options?.size ?? 10,
+      f = options?.font;
+    if (y < 29 || x < 41 || (f && x + f.widthOfTextAtSize(text, size) > 554)) failures.push(text);
+    return original.call(this, text, options);
+  };
+  PDFPage.prototype.drawImage = function (image, options) {
+    if ((options?.y ?? 0) < 69) failures.push("imagem ultrapassou a margem");
+    return drawImage.call(this, image, options);
+  };
+  try {
+    const fixture = model(false);
+    fixture.rooms = fixture.rooms.slice(0, 2);
+    fixture.rooms[0].photos.reverse();
+    fixture.rooms[0].photos[1].caption =
+      "Legenda muito extensa: " + "observação integral ".repeat(250);
+    fixture.participants = [
+      { nome: "Pessoa de demonstração ".repeat(6) + "FINAL_DO_NOME", papel: "Acompanhante" },
+    ];
+    const vertical = await pngOf(30, 100),
+      horizontal = await pngOf(150, 50);
+    await buildInspectionPdf(fixture, async (p) => ({
+      bytes: p.endsWith("v") ? vertical : horizontal,
+      mime: "image/png",
+    }));
+    assert.deepEqual(failures, []);
+    assert.ok(texts.some((t) => t.includes("continuação")));
+    assert.ok(texts.some((t) => t.includes("FINAL_DO_NOME")));
+    assert.ok(texts.join(" ").includes("Legenda muito extensa"));
+  } finally {
+    PDFPage.prototype.drawText = original;
+    PDFPage.prototype.drawImage = drawImage;
+  }
 });

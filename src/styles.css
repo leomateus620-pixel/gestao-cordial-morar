@@ -3385,3 +3385,17 @@ html,
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Field workspace: local to inspections, with one operational footer. */
+.inspection-workspace { --field-muted: #54616a; --destructive: oklch(0.52 0.18 22); color: var(--foreground); }
+.inspection-workspace .premium-card { background: var(--popover); border: 1px solid var(--border); box-shadow: none; backdrop-filter: none; }
+.dark .inspection-workspace { --field-muted: #a9b7c3; --destructive: oklch(0.704 0.191 22.216); }
+.inspection-workspace input:not([type=checkbox]):not([type=radio]), .inspection-workspace textarea, .inspection-workspace select { font-size: 16px; }
+.inspection-workspace :is(button,a,input,textarea,select):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.inspection-workspace :is(input,textarea,select,[id]) { scroll-margin-top: 230px; scroll-margin-bottom: 150px; }
+.inspection-workspace :is(.text-foreground\/50, .text-foreground\/55, .text-foreground\/60, .text-foreground\/65, .text-foreground\/70) { color: var(--field-muted); }
+.inspection-footer { padding-bottom: calc(.75rem + env(safe-area-inset-bottom)); background: #faf9f6; border-top: 1px solid #dbe1e2; }
+@media (max-height: 500px) { .inspection-workspace > header { position: relative; } .inspection-footer { position: sticky; } }
+@media (prefers-reduced-motion: reduce) { .inspection-workspace *, .inspection-workspace *::before { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.inspection-footer { bottom: var(--inspection-keyboard-inset, 0px); }
+html[data-inspection-keyboard] .inspection-workspace > header { position: relative; }

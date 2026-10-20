@@ -19,7 +19,14 @@ export const STATUS_LABEL: Record<InspectionStatus, string> = {
   concluida: "Concluída",
 };
 
-export const ITEM_STATES = ["pendente", "bom", "regular", "ruim", "nao_testado", "nao_se_aplica"] as const;
+export const ITEM_STATES = [
+  "pendente",
+  "bom",
+  "regular",
+  "ruim",
+  "nao_testado",
+  "nao_se_aplica",
+] as const;
 export type ItemState = (typeof ITEM_STATES)[number];
 export const ITEM_STATE_LABEL: Record<ItemState, string> = {
   pendente: "Pendente",
@@ -66,7 +73,8 @@ export function propertyFamily(tipo: string | null | undefined): PropertyFamily 
   if (!t.trim()) return "outro";
   if (/(terreno|lote|area de terra|gleba)/.test(t)) return "terreno";
   if (/(apart|kitnet|kitinete|flat|cobertura|studio|loft|duplex)/.test(t)) return "apartamento";
-  if (/(sala|loja|comercial|galpao|pavilhao|predio|deposito|escritorio|ponto)/.test(t)) return "comercial";
+  if (/(sala|loja|comercial|galpao|pavilhao|predio|deposito|escritorio|ponto)/.test(t))
+    return "comercial";
   if (/(casa|sobrado|chacara|sitio|residencia|geminad)/.test(t)) return "casa";
   return "outro";
 }
@@ -98,7 +106,14 @@ const BASE = [
   "Iluminação",
 ];
 const EXTRA: Partial<Record<RoomKind, string[]>> = {
-  cozinha: ["Pia e bancada", "Torneiras", "Ralos", "Hidráulica e vazamentos", "Armários", "Revestimentos"],
+  cozinha: [
+    "Pia e bancada",
+    "Torneiras",
+    "Ralos",
+    "Hidráulica e vazamentos",
+    "Armários",
+    "Revestimentos",
+  ],
   banheiro: [
     "Vaso sanitário",
     "Lavatório e louças",
@@ -142,8 +157,10 @@ export type PlanInput = {
   furnished?: boolean;
 };
 
-const n = (v: number | null | undefined) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
-const numbered = (base: string, count: number, i: number) => (count > 1 ? `${base} ${i + 1}` : base);
+const n = (v: number | null | undefined) =>
+  typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+const numbered = (base: string, count: number, i: number) =>
+  count > 1 ? `${base} ${i + 1}` : base;
 
 /**
  * Convenção do cadastro (ImobiBrasil/Gestão): `dormitorios` já inclui as suítes
@@ -155,14 +172,19 @@ const numbered = (base: string, count: number, i: number) => (count > 1 ? `${bas
 export function buildRoomPlan(input: PlanInput): PlanRoom[] {
   const family = propertyFamily(input.tipo);
   const furnished = Boolean(input.furnished);
-  const room = (name: string, kind: RoomKind): PlanRoom => ({ name, kind, items: itemsForRoom(kind, furnished) });
+  const room = (name: string, kind: RoomKind): PlanRoom => ({
+    name,
+    kind,
+    items: itemsForRoom(kind, furnished),
+  });
   if (family === "terreno") return [room("Terreno", "terreno")];
   if (family === "outro") return [];
 
   const rooms: PlanRoom[] = [];
   if (family === "comercial") {
     const salas = Math.max(1, n(input.salas));
-    for (let i = 0; i < salas; i++) rooms.push(room(numbered("Sala comercial", salas, i), "comercial"));
+    for (let i = 0; i < salas; i++)
+      rooms.push(room(numbered("Sala comercial", salas, i), "comercial"));
     const ban = n(input.banheiros);
     for (let i = 0; i < ban; i++) rooms.push(room(numbered("Banheiro", ban, i), "banheiro"));
     if (n(input.vagas)) rooms.push(room("Garagem / vagas", "garagem"));
@@ -182,11 +204,14 @@ export function buildRoomPlan(input: PlanInput): PlanRoom[] {
     rooms.push(room(numbered("Suíte", suites, i), "suite"));
     rooms.push(room(numbered("Banheiro da suíte", suites, i), "banheiro"));
   }
-  for (let i = 0; i < simples; i++) rooms.push(room(numbered("Dormitório", simples, i), "dormitorio"));
+  for (let i = 0; i < simples; i++)
+    rooms.push(room(numbered("Dormitório", simples, i), "dormitorio"));
   const social = Math.max(0, n(input.banheiros) - suites);
-  for (let i = 0; i < social; i++) rooms.push(room(numbered("Banheiro social", social, i), "banheiro"));
+  for (let i = 0; i < social; i++)
+    rooms.push(room(numbered("Banheiro social", social, i), "banheiro"));
   rooms.push(room("Área de serviço", "servico"));
-  if (n(input.vagas)) rooms.push(room(family === "apartamento" ? "Vaga de garagem" : "Garagem", "garagem"));
+  if (n(input.vagas))
+    rooms.push(room(family === "apartamento" ? "Vaga de garagem" : "Garagem", "garagem"));
   if (family === "casa") rooms.push(room("Área externa", "externa"));
   return rooms;
 }
@@ -204,7 +229,11 @@ export type ItemLike = {
 export type RoomLike = { id: string; name: string; no_photo_reason?: string | null };
 export type MediaLike = { id: string; room_id: string; status: "pendente" | "confirmada" };
 export type NoteLike = { id: string; room_id: string; status: string };
-export type LocalPendingLike = { room_id: string; kind: "photo" | "audio"; status: "local" | "enviando" | "erro" };
+export type LocalPendingLike = {
+  room_id: string;
+  kind: "photo" | "audio";
+  status: "local" | "enviando" | "erro";
+};
 
 const blank = (s: string | null | undefined) => !s || !s.trim();
 
@@ -222,7 +251,13 @@ export function progress(rooms: RoomLike[], items: ItemLike[]) {
     const own = items.filter((i) => i.room_id === r.id);
     return own.length > 0 && own.every(itemResolved);
   }).length;
-  return { total, done, rooms: rooms.length, roomsDone, percent: total ? Math.floor((done / total) * 100) : 0 };
+  return {
+    total,
+    done,
+    rooms: rooms.length,
+    roomsDone,
+    percent: total ? Math.floor((done / total) * 100) : 0,
+  };
 }
 
 export type ReviewIssue = {
@@ -253,31 +288,62 @@ export type ReviewInput = {
 
 export function reviewIssues(input: ReviewInput): ReviewIssue[] {
   const out: ReviewIssue[] = [];
-  if (!input.basics.inspected_at) out.push({ kind: "dados_basicos", message: "Informe data e hora da vistoria." });
-  if (!input.basics.responsible_id) out.push({ kind: "dados_basicos", message: "Informe o responsável." });
+  if (!input.basics.inspected_at)
+    out.push({ kind: "dados_basicos", message: "Informe data e hora da vistoria." });
+  if (!input.basics.responsible_id)
+    out.push({ kind: "dados_basicos", message: "Informe o responsável." });
   if (!input.basics.plan_confirmed)
     out.push({ kind: "planta_nao_confirmada", message: "Confirme a planta (lista de ambientes)." });
-  if (!input.rooms.length) out.push({ kind: "sem_ambientes", message: "Adicione ao menos um ambiente." });
+  if (!input.rooms.length)
+    out.push({ kind: "sem_ambientes", message: "Adicione ao menos um ambiente." });
   const roomName = new Map(input.rooms.map((r) => [r.id, r.name]));
   for (const i of input.items) {
     const where = `${roomName.get(i.room_id) ?? "Ambiente"} · ${i.name}`;
-    if (i.state === "pendente") out.push({ kind: "item_pendente", message: `${where}: sem avaliação.`, roomId: i.room_id, itemId: i.id });
+    if (i.state === "pendente")
+      out.push({
+        kind: "item_pendente",
+        message: `${where}: sem avaliação.`,
+        roomId: i.room_id,
+        itemId: i.id,
+      });
     else if (i.state === "nao_testado" && blank(i.untested_reason))
-      out.push({ kind: "nao_testado_sem_motivo", message: `${where}: informe por que não foi testado.`, roomId: i.room_id, itemId: i.id });
+      out.push({
+        kind: "nao_testado_sem_motivo",
+        message: `${where}: informe por que não foi testado.`,
+        roomId: i.room_id,
+        itemId: i.id,
+      });
     else if (i.state === "ruim" && blank(i.damage))
-      out.push({ kind: "avaria_sem_descricao", message: `${where}: descreva a avaria.`, roomId: i.room_id, itemId: i.id });
+      out.push({
+        kind: "avaria_sem_descricao",
+        message: `${where}: descreva a avaria.`,
+        roomId: i.room_id,
+        itemId: i.id,
+      });
   }
   for (const r of input.rooms) {
     const has = input.media.some((m) => m.room_id === r.id && m.status === "confirmada");
     if (!has && blank(r.no_photo_reason))
-      out.push({ kind: "ambiente_sem_foto", message: `${r.name}: sem foto confirmada nem motivo registrado.`, roomId: r.id });
+      out.push({
+        kind: "ambiente_sem_foto",
+        message: `${r.name}: sem foto confirmada nem motivo registrado.`,
+        roomId: r.id,
+      });
   }
   for (const m of input.media)
     if (m.status !== "confirmada")
-      out.push({ kind: "midia_pendente", message: `${roomName.get(m.room_id) ?? "Ambiente"}: foto ainda não confirmada.`, roomId: m.room_id });
+      out.push({
+        kind: "midia_pendente",
+        message: `${roomName.get(m.room_id) ?? "Ambiente"}: foto ainda não confirmada.`,
+        roomId: m.room_id,
+      });
   for (const note of input.notes)
     if (note.status !== "revisado" && note.status !== "descartado")
-      out.push({ kind: "relato_pendente", message: `${roomName.get(note.room_id) ?? "Ambiente"}: relato ainda não revisado.`, roomId: note.room_id });
+      out.push({
+        kind: "relato_pendente",
+        message: `${roomName.get(note.room_id) ?? "Ambiente"}: relato ainda não revisado.`,
+        roomId: note.room_id,
+      });
   for (const p of input.localPending ?? [])
     out.push({
       kind: "envio_local",
@@ -291,16 +357,30 @@ export const canFinalize = (input: ReviewInput) => reviewIssues(input).length ==
 
 /* ------------------------ Voz: contexto travado ------------------------ */
 
-export type VoiceContext = { inspectionId: string; roomId: string; sessionId: string };
+export type VoiceContext = {
+  inspectionId: string;
+  roomId: string;
+  sessionId: string;
+  itemId?: string | null;
+};
 export function sameVoiceContext(a: VoiceContext | null, b: VoiceContext | null): boolean {
-  return Boolean(a && b && a.inspectionId === b.inspectionId && a.roomId === b.roomId && a.sessionId === b.sessionId);
+  return Boolean(
+    a &&
+    b &&
+    a.inspectionId === b.inspectionId &&
+    a.roomId === b.roomId &&
+    a.sessionId === b.sessionId,
+  );
 }
 /**
  * Uma resposta de transcrição/organização só preenche a tela se ainda estivermos
  * no mesmo cômodo e sessão de gravação. Caso contrário, ela fica salva no relato
  * do cômodo de origem para revisão, sem tocar o cômodo atual.
  */
-export function shouldApplyVoiceResult(current: VoiceContext | null, origin: VoiceContext): boolean {
+export function shouldApplyVoiceResult(
+  current: VoiceContext | null,
+  origin: VoiceContext,
+): boolean {
   return sameVoiceContext(current, origin);
 }
 
@@ -331,7 +411,12 @@ export function observationText(o: OrganizedObservation): string {
 /* ------------------------ Mídias e caminhos ------------------------ */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export function mediaPath(inspectionId: string, roomId: string, clientKey: string, ext: "jpg" | "wav" | "webm" | "mp4") {
+export function mediaPath(
+  inspectionId: string,
+  roomId: string,
+  clientKey: string,
+  ext: "jpg" | "wav" | "webm" | "mp4",
+) {
   if (!UUID.test(inspectionId) || !UUID.test(roomId)) throw new Error("Identificador inválido");
   if (!/^[a-zA-Z0-9_-]{8,120}$/.test(clientKey)) throw new Error("Chave local inválida");
   return `${inspectionId}/${roomId}/${clientKey}.${ext}`;
@@ -344,10 +429,24 @@ export function documentPath(inspectionId: string, version: number) {
   return `${inspectionId}/docs/v${version}.pdf`;
 }
 
-export function sniffImageMime(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
-  if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP")
+export function sniffImageMime(
+  bytes: Uint8Array,
+): "image/jpeg" | "image/png" | "image/webp" | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return "image/jpeg";
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  )
+    return "image/png";
+  if (
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+  )
     return "image/webp";
   return null;
 }
@@ -377,7 +476,95 @@ export function canOpenInspection(
   if (canSeeAllInspections(user.perfil)) return true;
   return insp.responsible_id === user.id || insp.created_by === user.id;
 }
-export function resolveResponsible(perfil: Perfil, selfId: string, requested: string | null | undefined) {
+export function resolveResponsible(
+  perfil: Perfil,
+  selfId: string,
+  requested: string | null | undefined,
+) {
   if (perfil === "corretor") return selfId;
   return requested || selfId;
 }
+
+/** Filling a checklist is distinct from evaluating conservation/function. */
+export function assessmentSummary(items: ItemLike[]) {
+  const count = (s: ItemState) => items.filter((i) => i.state === s).length;
+  return {
+    total: items.length,
+    filled: items.filter(itemResolved).length,
+    evaluated: count("bom") + count("regular") + count("ruim"),
+    untested: count("nao_testado"),
+    notApplicable: count("nao_se_aplica"),
+    pending: count("pendente"),
+  };
+}
+export type QualityAlert = { key: string; message: string; roomId: string; itemId?: string };
+export function qualityAlerts(input: {
+  rooms: RoomLike[];
+  items: ItemLike[];
+  media: Array<MediaLike & { item_id?: string | null }>;
+  notes: Array<
+    NoteLike & {
+      item_id?: string | null;
+      suggestion?: { observacoes: OrganizedObservation[] } | null;
+    }
+  >;
+}): QualityAlert[] {
+  const out: QualityAlert[] = [];
+  for (const r of input.rooms) {
+    const own = input.items.filter((i) => i.room_id === r.id),
+      na = own.filter((i) => i.state === "nao_se_aplica").length;
+    if (na)
+      out.push({
+        key: `na:${r.id}`,
+        roomId: r.id,
+        message: `${r.name}: ${na} de ${own.length} itens não se aplicam. Confirme a aplicabilidade ou ajuste os itens do ambiente.`,
+      });
+    for (const i of own) {
+      const structuredDamage =
+        Boolean(i.damage?.trim()) ||
+        input.notes.some(
+          (n) =>
+            n.item_id === i.id &&
+            n.status !== "descartado" &&
+            n.suggestion?.observacoes.some((o) => o.avaria?.trim()),
+        );
+      if (structuredDamage && i.state === "bom")
+        out.push({
+          key: `state:${i.id}`,
+          roomId: r.id,
+          itemId: i.id,
+          message: `${r.name} · ${i.name}: há avaria registrada junto à avaliação Bom. Confirme ou ajuste.`,
+        });
+      if (
+        structuredDamage &&
+        !input.media.some((m) => m.item_id === i.id && m.status === "confirmada")
+      )
+        out.push({
+          key: `photo:${i.id}`,
+          roomId: r.id,
+          itemId: i.id,
+          message: `${r.name} · ${i.name}: avaria sem foto de detalhe vinculada. Confira a evidência.`,
+        });
+    }
+  }
+  return out;
+}
+export const REVIEW_GROUPS = [
+  {
+    id: "dados",
+    label: "Dados do imóvel e da vistoria",
+    kinds: ["dados_basicos", "sem_ambientes", "planta_nao_confirmada"],
+  },
+  { id: "itens", label: "Itens e avaliações", kinds: ["item_pendente", "nao_testado_sem_motivo"] },
+  {
+    id: "evidencias",
+    label: "Avarias e evidências",
+    kinds: ["avaria_sem_descricao", "ambiente_sem_foto"],
+  },
+  { id: "relatos", label: "Relatos a revisar", kinds: ["relato_pendente"] },
+  {
+    id: "envios",
+    label: "Fotos, áudios e textos aguardando envio",
+    kinds: ["midia_pendente", "envio_local"],
+  },
+] as const;
