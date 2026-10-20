@@ -1,4 +1,48 @@
-# Cordial Bot — revisão visual da fase 4
+# Sidebar — organização da locação · 20/10/2026
+
+final result: passed
+
+## Referência, estado e evidências
+
+Fonte: `docs/sidebar/referencia-sidebar.jpeg`, cópia da imagem enviada pelo usuário. Implementação: `tests/sidebar/preview.html`, navegador in-app, componentes reais `SidebarMenu`, `BrandMark`, `Sheet` e `RentalFormModal`, transporte isolado sem dados reais.
+
+Comparação principal: referência original de 186×848 px e `docs/sidebar/screenshots/desktop-secretaria.png` de 1280×848 px; mesmo perfil Secretária, item Vistoria inteligente ativo e tema claro. A barra foi recortada em `sidebar-secretaria.png` (272×824 px) para comparação de toda a navegação, além do detalhe `locacao-detalhe.png` (250×180 px). Fonte, barra final, detalhe e mobile foram abertos juntos na mesma entrada de comparação.
+
+A referência é a interface anterior a ser melhorada. O aumento de largura, o bloco Locação, os títulos curtos, a legibilidade e o novo atalho são mudanças intencionais do pedido, não desvios de fidelidade. A imagem original é um recorte sem escala CSS conhecida; não foi esticada para simular igualdade de densidade. Capturas da implementação usam densidade 1. Desktop CSS 1280×848, mobile CSS 390×844 e 320×740; capturas nos mesmos tamanhos em pixels após estabilizar as animações.
+
+## Achados e histórico de correções
+
+1. **P2 — densidade da primeira versão escondia Marketing em 848 px.** A navegação da Secretária tinha conteúdo de 763 px para uma janela interna de 713 px. Reduzidos espaços entre linhas e cards e altura dos cabeçalhos, preservando itens de 44 px. Revalidação: conteúdo e janela interna de 721 px, todos os quatro grupos visíveis, sem corte. Evidência: `desktop-secretaria.png`.
+2. **P2 — marca mobile perdia as cores.** Os SVGs desktop/mobile compartilhavam IDs de gradientes; o SVG oculto interferia no drawer. IDs agora são próprios de cada instância, sem mudar os traços/cores da marca. Revalidação visual: `mobile-390.png` e `mobile-320.png`, símbolo completo nas duas larguras.
+3. **P2 — espaço herdado entre filhos do drawer cortava o último bloco.** Removido o gap genérico do Sheet apenas na navegação. Em 390×844 a área útil passou de 701 para 733 px e todos os grupos da Secretária ficam visíveis. Em 320×740 a lista rola internamente, com cabeçalho, botão de fechar e rodapé preservados. Evidência: capturas mobile finais.
+
+Não há P0/P1/P2 aberto após a comparação final. Estados animando não foram usados como evidência final.
+
+## Superfícies verificadas
+
+- **Fontes/tipografia:** Manrope carregada, itens 14 px/20 px, peso 600/700; títulos 10 px com hierarquia discreta. Sora da marca preservada; Cordial Bot herda a cor clara do menu. Nomes completos sem reticências; quebra de linha disponível em telas estreitas.
+- **Espaçamento/layout:** sidebar 272 px, rail 68 px; cards, alinhamentos, ícones e rodapé consistentes. Sem overflow horizontal em 1280, 390 ou 320 px. Itens de 44 px também em 320 px. Rolagem administrativa mantém Configurações acessível sem rolar o documento (`admin-rolagem.png`).
+- **Cores/tokens:** azul-petróleo original e acentos por grupo; Locação com acento areia. Testes de contraste de texto principal/secundário passam em repouso, hover e ativo. Seleção tem fundo, borda e indicador, além da cor.
+- **Assets:** marca e ícones existentes preservados, sem imagens substitutas. Corrigida apenas a unicidade dos identificadores da marca. Símbolo do assistente continua sendo o asset existente.
+- **Conteúdo:** Operação, Comercial, Locação, Gestão e Sistema. Locação reúne Aluguéis, Vistoria inteligente e Novo contrato; este último abre o cadastro atual, conforme confirmado pelo usuário. Nada anuncia geração de documento ou operação fiscal nova.
+
+## Interações, verificações e limites
+
+No navegador: navegação entre módulos; expansão/recolhimento; foco visível por Tab e tooltip do rail; Novo contrato por clique e Enter no modo recolhido; abertura do formulário real a partir de Vistoria e da própria tela Aluguéis; fechar e abrir novamente; menu mobile fecha ao abrir contrato; quatro perfis e ausência do atalho para corretor/financeiro. Cabeçalhos de grupos e gradientes sem IDs duplicados com desktop e drawer montados juntos. Console sem erros ou avisos nas interações finais.
+
+Tipos, build e lint dos arquivos de produção alterados passaram. O lint da página de Aluguéis foi executado com a regra de formatação desligada para não reformatar o arquivo legado inteiro. Os 12 testes focados de menu, contraste e preferências passaram. O build mantém avisos preexistentes de depreciação do TanStack e tamanho de chunks.
+
+- [x] Comparação principal e detalhe do bloco Locação abertos com a referência.
+- [x] Desktop, rail, drawer e perfis conferidos no navegador.
+- [x] Atalho exercitado com o formulário real, sem envio de dados.
+- [x] Definições/URLs de produção, permissões, serviços e banco preservados.
+- [ ] Conferir a tela autenticada completa em homologação: a prévia isola a navegação e o formulário, sem backend real.
+
+Não houve publicação, migração ou emissão financeira/fiscal. A revisão anterior do Cordial Bot é preservada abaixo como histórico.
+
+---
+
+# Cordial Bot — revisão visual da fase 4 (histórico)
 
 final result: passed
 
