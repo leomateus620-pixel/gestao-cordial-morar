@@ -411,6 +411,7 @@ function buildFollowUpReminder(client: Client): Cliente["lembretes"] {
 
 function inferPropertyType(interesse?: string): PropertyType {
   const normalized = normalizeSearch(interesse ?? "");
+  if (/k[iy]tn?e?t|kitinete|quitinete|kitchenette/.test(normalized)) return "kitnet";
   if (normalized.includes("casa")) return "casa";
   if (normalized.includes("terreno")) return "terreno";
   if (normalized.includes("sala")) return "sala_comercial";

@@ -167,6 +167,7 @@ const finalidadeLabelMap: Record<string, string> = {
 };
 const tipoImovelLabelMap: Record<string, string> = {
   apartamento: "Apartamento",
+  kitnet: "Kitnet",
   casa: "Casa",
   cobertura: "Cobertura",
   studio: "Studio",
