@@ -1,5 +1,6 @@
 /** Rótulos e formatação da linha do tempo do imóvel (puro, sem servidor). */
-export type HistoryChange = { field: string; from?: unknown; to?: unknown; sensitive?: boolean };
+export type HistoryValue = string | number | boolean | null | HistoryValue[];
+export type HistoryChange = { field: string; from?: HistoryValue; to?: HistoryValue; sensitive?: boolean };
 
 export const HISTORY_CATEGORY_LABEL: Record<string, string> = {
   criacao: "Cadastro",
