@@ -29,6 +29,7 @@ import { contextualSuggestions } from "@/lib/agent/context-suggestions";
 import { ChoiceChips, Composer } from "./AgentWorkspace";
 import { RichToolResult, StepTimeline } from "./RichResults";
 import "./assistant.css";
+import { useAssistantLauncher } from "./AssistantLauncher";
 
 export { contextFromLocation, contextSuggestions } from "@/lib/agent/context-routing";
 import {
@@ -42,7 +43,7 @@ export function GlobalAssistant() {
   const session = useSession();
   const location = useRouterState({ select: (s) => s.location });
   const navigate = useNavigate();
-  const [copilot, setCopilot] = useState(false);
+  const { isOpen: copilot, setOpen: setCopilot } = useAssistantLauncher();
   const drawerViewport = useWorkspaceViewport(copilot, true);
   const [command, setCommand] = useState(false);
   const [query, setQuery] = useState("");
@@ -98,18 +99,6 @@ export function GlobalAssistant() {
   }
   return (
     <>
-      {!location.pathname.startsWith("/assistente") && !inspectionLayout(location.pathname) && (
-        <button
-          type="button"
-          className="assistant-copilot"
-          aria-label="Abrir copiloto contextual"
-          title="Cordial Bot · ⌘/Ctrl K"
-          onClick={() => setCopilot(true)}
-        >
-          <AssistantMark size={30} />
-          <CordialBotWordmark className="!text-sm" />
-        </button>
-      )}
       <Sheet open={copilot} onOpenChange={setCopilot}>
         <SheetContent
           ref={drawerViewport}

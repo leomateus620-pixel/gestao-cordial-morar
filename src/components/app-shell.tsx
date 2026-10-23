@@ -29,6 +29,7 @@ import { CatalogCarteiraPills, CatalogSearchInput } from "./imoveis/CatalogHeade
 import { SiteSyncPanel } from "./imoveis/SiteSyncPanel";
 import { isAdminUser } from "@/lib/access-control";
 import { GlobalAssistant } from "./assistant/GlobalAssistant";
+import { AssistantLauncherButton } from "./assistant/AssistantLauncher";
 
 import { getPrimaryItemsForProfile, isModuleItemActive } from "./shared/module-menu";
 import { useHydrateCorretores } from "@/hooks/useHydrateCorretores";
@@ -273,6 +274,7 @@ export function AppShell() {
                 </SheetContent>
               </Sheet>
               {isCatalogRoute ? <SiteSyncPanel isAdmin={isAdmin} /> : null}
+              <AssistantLauncherButton variant="mobile" />
               <NotificationBell />
               <Link
                 to="/mais"
@@ -325,6 +327,7 @@ export function AppShell() {
                 </div>
               )}
               {isCatalogRoute ? <SiteSyncPanel isAdmin={isAdmin} /> : null}
+              <AssistantLauncherButton variant="desktop" />
               <NotificationBell />
               <Link
                 to="/mais"
