@@ -106,6 +106,7 @@ export function useUpdateImovel(id?: string) {
       qc.invalidateQueries({ queryKey: ["imovel-detalhe", id] });
       qc.invalidateQueries({ queryKey: ["imovel", id] });
       qc.invalidateQueries({ queryKey: ["property-sync", id] });
+      qc.invalidateQueries({ queryKey: ["imovel-historico", id] });
       qc.invalidateQueries({ queryKey: ["imoveis"] });
     },
   });
