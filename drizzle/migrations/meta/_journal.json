@@ -260,6 +260,20 @@
       "when": 1792494004421,
       "tag": "0036_vistoria_0035_verify",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792764479202,
+      "tag": "0037_property_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792764746321,
+      "tag": "0038_property_history_photo_merge",
+      "breakpoints": true
     }
   ]
 }

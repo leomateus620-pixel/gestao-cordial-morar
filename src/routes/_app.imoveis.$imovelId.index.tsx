@@ -26,6 +26,7 @@ import { PropertyGallery } from "@/components/imoveis/PropertyGallery";
 import { usePropertyMedia } from "@/hooks/usePropertyMedia";
 import { PropertyMapsCard } from "@/components/imoveis/PropertyMapsCard";
 import { PropertyPublishPanel } from "@/components/imoveis/PropertyPublishPanel";
+import { PropertyHistoryTimeline } from "@/components/imoveis/PropertyHistoryTimeline";
 import { EmptyState } from "@/components/shared/empty-state";
 import { usePropertyDetail } from "@/hooks/useImoveis";
 import { useSession } from "@/lib/auth-mock";
@@ -507,6 +508,8 @@ function DetalhePage() {
             isAdmin={isAdmin}
           />
 
+
+          <PropertyHistoryTimeline propertyId={imovel.id} />
 
           {isAdmin && (
             <details className="rounded-2xl px-2 text-xs text-foreground/40">
