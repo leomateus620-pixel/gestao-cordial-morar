@@ -5744,6 +5744,101 @@ export type Database = {
           },
         ]
       }
+      property_history: {
+        Row: {
+          actor_kind: string
+          actor_name: string
+          actor_user_id: string | null
+          category: string
+          changes: Json
+          created_at: string
+          id: string
+          property_id: string
+          request_id: string | null
+          summary: string | null
+          title: string
+          tx_id: number
+        }
+        Insert: {
+          actor_kind?: string
+          actor_name?: string
+          actor_user_id?: string | null
+          category: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          property_id: string
+          request_id?: string | null
+          summary?: string | null
+          title: string
+          tx_id?: number
+        }
+        Update: {
+          actor_kind?: string
+          actor_name?: string
+          actor_user_id?: string | null
+          category?: string
+          changes?: Json
+          created_at?: string
+          id?: string
+          property_id?: string
+          request_id?: string | null
+          summary?: string | null
+          title?: string
+          tx_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_admin_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_hotspot_cleanup: {
         Row: {
           check_result: Json | null
@@ -11004,6 +11099,45 @@ export type Database = {
       property_expected_watermark_hash: {
         Args: { _targets: string[] }
         Returns: string
+      }
+      property_history_fields: {
+        Args: never
+        Returns: {
+          col: string
+          ord: number
+          s: string
+          sensitive: boolean
+        }[]
+      }
+      property_history_list: {
+        Args: {
+          _before?: string
+          _before_id?: string
+          _category?: string
+          _limit?: number
+          _property_id: string
+        }
+        Returns: {
+          actor_kind: string
+          actor_name: string
+          category: string
+          changes: Json
+          created_at: string
+          id: string
+          private_hidden: boolean
+          summary: string
+          title: string
+        }[]
+      }
+      property_history_record: {
+        Args: {
+          _category: string
+          _changes: Json
+          _property_id: string
+          _summary?: string
+          _title: string
+        }
+        Returns: undefined
       }
       property_image_batch_bump: {
         Args: { _batch_id: string; _column: string }
