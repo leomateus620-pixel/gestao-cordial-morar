@@ -31,7 +31,7 @@ let db: PGlite;
 before(async () => {
   db = new PGlite();
   await db.exec(SCHEMA);
-  await db.exec(await readFile(new URL("../../drizzle/migrations/0037_property_history.sql", import.meta.url), "utf8"));
+  for (const f of ["0037_property_history.sql", "0038_property_history_photo_merge.sql"]) await db.exec(await readFile(new URL(`../../drizzle/migrations/${f}`, import.meta.url), "utf8"));
   await db.query("INSERT INTO user_roles VALUES ($1,'admin'),($2,'corretor')", [ADMIN, CORRETOR]);
   await db.query("INSERT INTO profiles VALUES ($1,'Bianca'),($2,'Felipe')", [ADMIN, CORRETOR]);
 });
