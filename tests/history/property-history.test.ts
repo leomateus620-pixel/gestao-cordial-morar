@@ -134,7 +134,7 @@ test("publicação: só transição relevante, sem repetir o mesmo estado", asyn
 });
 
 test("formatação legível", () => {
-  assert.equal(formatHistoryValue("valor", 350000), "R$ 350.000,00");
+  assert.equal(formatHistoryValue("valor", 350000), "R$\u00a0350.000,00");
   assert.equal(formatHistoryValue("permuta", true), "Sim");
   assert.equal(formatHistoryValue("area_total", 120.5), "120,5 m²");
   assert.equal(formatHistoryValue("operacao", "aluguel"), "Aluguel");
