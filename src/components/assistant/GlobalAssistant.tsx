@@ -1,4 +1,3 @@
-import { inspectionLayout } from "@/lib/vistoria/layout";
 import { AssistantDialogContent as DialogContent } from "./AssistantDialog";
 import { ArrowRight, Command, Expand, Search } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -20,8 +19,7 @@ import {
   type AssistantRecordContext,
 } from "@/lib/agent/use-assistant";
 import { WorkerAvatar } from "./WorkerAvatar";
-import { CordialBotBrand, CordialBotWordmark } from "@/components/brand/CordialBotBrand";
-import { AssistantMark } from "@/components/brand/AssistantMark";
+import { CordialBotBrand } from "@/components/brand/CordialBotBrand";
 import { ChoiceQuestion } from "./ChoiceQuestion";
 import { useWorkspaceViewport } from "./use-workspace-viewport";
 import { saveAssistantDraft } from "./draft-handoff";
