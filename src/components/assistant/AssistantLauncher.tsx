@@ -27,11 +27,11 @@ export function AssistantLauncherButton({ variant }: { variant: "desktop" | "mob
       title="Cordial Bot"
       className={cn(
         "glass-panel inline-flex shrink-0 items-center rounded-full text-primary transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        variant === "desktop" ? "h-9 gap-2 pl-1 pr-3" : "size-10 justify-center",
+        variant === "desktop" ? "h-9 gap-2 px-1 2xl:pr-3" : "size-10 justify-center",
       )}
     >
       <AssistantMark size={variant === "desktop" ? 28 : 26} />
-      {variant === "desktop" ? <CordialBotWordmark className="!text-sm" /> : null}
+      {variant === "desktop" ? <CordialBotWordmark className="hidden !text-sm 2xl:inline" /> : null}
     </button>
   );
 }
