@@ -365,23 +365,6 @@
   animation: assistant-skeleton 1.7s linear infinite;
   border-radius: 10px;
 }
-.assistant-copilot {
-  position: fixed;
-  bottom: 104px;
-  right: 20px;
-  z-index: 39;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 13px 6px 6px;
-  background: var(--card);
-  box-shadow: 0 5px 25px -10px #25384266;
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 700;
-}
 .assistant-tabs {
   display: flex;
   gap: 20px;
@@ -477,12 +460,6 @@
     background-position: -200% 0;
   }
 }
-@media (min-width: 1024px) {
-  .assistant-copilot {
-    bottom: 24px;
-    right: 28px;
-  }
-}
 @media (max-width: 1279px) {
   .assistant-workspace {
     grid-template-columns: 180px minmax(0, 1fr);
@@ -534,12 +511,6 @@
   }
   .assistant-property-grid .assistant-property:last-child {
     margin-right: 2px;
-  }
-  .assistant-copilot {
-    right: 14px;
-  }
-  .assistant-copilot > span {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
