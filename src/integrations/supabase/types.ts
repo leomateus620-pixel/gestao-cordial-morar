@@ -11129,6 +11129,7 @@ export type Database = {
           title: string
         }[]
       }
+      property_history_photo_kind: { Args: { _title: string }; Returns: string }
       property_history_record: {
         Args: {
           _category: string
