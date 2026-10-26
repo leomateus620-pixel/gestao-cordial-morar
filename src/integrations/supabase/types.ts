@@ -14,180 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_oauth_states: {
-        Row: {
-          nonce_hash: string;
-          user_id: string;
-          platform: string;
-          imobiliaria: string | null;
-          expires_at: string;
-          used_at: string | null;
-        };
-        Insert: {
-          nonce_hash: string;
-          user_id: string;
-          platform: string;
-          imobiliaria?: string | null;
-          expires_at: string;
-          used_at?: string | null;
-        };
-        Update: {
-          nonce_hash?: string;
-          user_id?: string;
-          platform?: string;
-          imobiliaria?: string | null;
-          expires_at?: string;
-          used_at?: string | null;
-        };
-        Relationships: [];
-      };
-      meta_lead_form_mappings: {
-        Row: {
-          app_id: string;
-          id: string;
-          connection_id: string;
-          page_id: string;
-          form_id: string;
-          imobiliaria: string;
-          field_mapping: Json;
-          finalidade: string | null;
-          tipo_imovel: string | null;
-          property_id: string | null;
-          broker_id: string | null;
-          created_by: string;
-          enabled: boolean;
-          updated_at: string;
-        };
-        Insert: {
-          app_id?: string;
-          id?: string;
-          connection_id: string;
-          page_id: string;
-          form_id: string;
-          imobiliaria: string;
-          field_mapping?: Json;
-          finalidade?: string | null;
-          tipo_imovel?: string | null;
-          property_id?: string | null;
-          broker_id?: string | null;
-          created_by: string;
-          enabled?: boolean;
-          updated_at?: string;
-        };
-        Update: {
-          app_id?: string;
-          id?: string;
-          connection_id?: string;
-          page_id?: string;
-          form_id?: string;
-          imobiliaria?: string;
-          field_mapping?: Json;
-          finalidade?: string | null;
-          tipo_imovel?: string | null;
-          property_id?: string | null;
-          broker_id?: string | null;
-          created_by?: string;
-          enabled?: boolean;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      meta_lead_submissions: {
-        Row: {
-          id: string;
-          app_id: string;
-          page_id: string;
-          leadgen_id: string;
-          form_id: string | null;
-          ad_id: string | null;
-          adset_id: string | null;
-          external_campaign_id: string | null;
-          connection_id: string | null;
-          imobiliaria: string | null;
-          campaign_id: string | null;
-          meta_created_at: string | null;
-          received_at: string;
-          status: string;
-          attempts: number;
-          next_attempt_at: string;
-          worker_id: string | null;
-          lease_until: string | null;
-          last_error: string | null;
-          full_name: string | null;
-          phone: string | null;
-          email: string | null;
-          field_data: Json | null;
-          broker_id: string | null;
-          client_id: string | null;
-          attendance_id: string | null;
-          completed_at: string | null;
-          privacy_deleted_at: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          app_id: string;
-          page_id: string;
-          leadgen_id: string;
-          form_id?: string | null;
-          ad_id?: string | null;
-          adset_id?: string | null;
-          external_campaign_id?: string | null;
-          connection_id?: string | null;
-          imobiliaria?: string | null;
-          campaign_id?: string | null;
-          meta_created_at?: string | null;
-          received_at?: string;
-          status: string;
-          attempts?: number;
-          next_attempt_at?: string;
-          worker_id?: string | null;
-          lease_until?: string | null;
-          last_error?: string | null;
-          full_name?: string | null;
-          phone?: string | null;
-          email?: string | null;
-          field_data?: Json | null;
-          broker_id?: string | null;
-          client_id?: string | null;
-          attendance_id?: string | null;
-          completed_at?: string | null;
-          privacy_deleted_at?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          app_id?: string;
-          page_id?: string;
-          leadgen_id?: string;
-          form_id?: string | null;
-          ad_id?: string | null;
-          adset_id?: string | null;
-          external_campaign_id?: string | null;
-          connection_id?: string | null;
-          imobiliaria?: string | null;
-          campaign_id?: string | null;
-          meta_created_at?: string | null;
-          received_at?: string;
-          status?: string;
-          attempts?: number;
-          next_attempt_at?: string;
-          worker_id?: string | null;
-          lease_until?: string | null;
-          last_error?: string | null;
-          full_name?: string | null;
-          phone?: string | null;
-          email?: string | null;
-          field_data?: Json | null;
-          broker_id?: string | null;
-          client_id?: string | null;
-          attendance_id?: string | null;
-          completed_at?: string | null;
-          privacy_deleted_at?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       _studio_daily_counter: {
         Row: {
           count: number
@@ -249,17 +75,6 @@ export type Database = {
       }
       ad_platform_connections: {
         Row: {
-          credential_mode: string;
-          credential_ref: string | null;
-          page_credential_ref: string | null;
-          app_secret_ref: string | null;
-          encrypted_access_token: string | null;
-          encrypted_refresh_token: string | null;
-          app_id: string | null;
-          page_id: string | null;
-          external_account_id: string | null;
-          capabilities: Json;
-          last_diagnosed_at: string | null;
           access_token: string | null
           account_label: string | null
           created_at: string
@@ -275,17 +90,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          credential_mode?: string;
-          credential_ref?: string | null;
-          page_credential_ref?: string | null;
-          app_secret_ref?: string | null;
-          encrypted_access_token?: string | null;
-          encrypted_refresh_token?: string | null;
-          app_id?: string | null;
-          page_id?: string | null;
-          external_account_id?: string | null;
-          capabilities?: Json;
-          last_diagnosed_at?: string | null;
           access_token?: string | null
           account_label?: string | null
           created_at?: string
@@ -301,17 +105,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          credential_mode?: string;
-          credential_ref?: string | null;
-          page_credential_ref?: string | null;
-          app_secret_ref?: string | null;
-          encrypted_access_token?: string | null;
-          encrypted_refresh_token?: string | null;
-          app_id?: string | null;
-          page_id?: string | null;
-          external_account_id?: string | null;
-          capabilities?: Json;
-          last_diagnosed_at?: string | null;
           access_token?: string | null
           account_label?: string | null
           created_at?: string
@@ -330,13 +123,6 @@ export type Database = {
       }
       ad_sync_jobs: {
         Row: {
-          ad_account_id: string | null;
-          worker_id: string | null;
-          lease_until: string | null;
-          attempts: number;
-          next_attempt_at: string;
-          requested_by: string | null;
-          checkpoint: Json | null;
           campaign_id: string
           error: string | null
           finished_at: string | null
@@ -347,13 +133,6 @@ export type Database = {
           status: string
         }
         Insert: {
-          ad_account_id?: string | null;
-          worker_id?: string | null;
-          lease_until?: string | null;
-          attempts?: number;
-          next_attempt_at?: string;
-          requested_by?: string | null;
-          checkpoint?: Json | null;
           campaign_id: string
           error?: string | null
           finished_at?: string | null
@@ -364,13 +143,6 @@ export type Database = {
           status?: string
         }
         Update: {
-          ad_account_id?: string | null;
-          worker_id?: string | null;
-          lease_until?: string | null;
-          attempts?: number;
-          next_attempt_at?: string;
-          requested_by?: string | null;
-          checkpoint?: Json | null;
           campaign_id?: string
           error?: string | null
           finished_at?: string | null
@@ -4158,9 +3930,6 @@ export type Database = {
       }
       marketing_campaigns: {
         Row: {
-          connection_id: string | null;
-          ad_account_id: string | null;
-          period_insights: Json | null;
           canal: string
           created_at: string
           data_fim: string
@@ -4187,9 +3956,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          connection_id?: string | null;
-          ad_account_id?: string | null;
-          period_insights?: Json | null;
           canal: string
           created_at?: string
           data_fim: string
@@ -4216,9 +3982,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          connection_id?: string | null;
-          ad_account_id?: string | null;
-          period_insights?: Json | null;
           canal?: string
           created_at?: string
           data_fim?: string
@@ -4248,10 +4011,6 @@ export type Database = {
       }
       marketing_daily_metrics: {
         Row: {
-          metric_source: string;
-          provider_actions: Json | null;
-          lead_action_type: string | null;
-          landing_page_views: number | null;
           accesses: number
           campaign_id: string
           clicks: number
@@ -4273,10 +4032,6 @@ export type Database = {
           views: number
         }
         Insert: {
-          metric_source?: string;
-          provider_actions?: Json | null;
-          lead_action_type?: string | null;
-          landing_page_views?: number | null;
           accesses?: number
           campaign_id: string
           clicks?: number
@@ -4298,10 +4053,6 @@ export type Database = {
           views?: number
         }
         Update: {
-          metric_source?: string;
-          provider_actions?: Json | null;
-          lead_action_type?: string | null;
-          landing_page_views?: number | null;
           accesses?: number
           campaign_id?: string
           clicks?: number
@@ -10520,93 +10271,10 @@ export type Database = {
       }
     }
     Functions: {
-      ad_sync_fail: {
-        Args: {
-          p_job_id: string;
-          p_worker_id: string;
-          p_status: string;
-          p_error: string;
-          p_next_attempt_at: string;
-        };
-        Returns: undefined;
-      };
-      marketing_can_operate: {
-        Args: { p_agency: string };
-        Returns: boolean;
-      };
-      marketing_campaigns_safe: {
-        Args: {
-          p_imobiliaria?: string;
-          p_since?: string;
-          p_until?: string;
-          p_page?: number;
-          p_page_size?: number;
-          p_search?: string;
-          p_platform?: string;
-          p_status?: string;
-          p_campaign_id?: string;
-          p_account_id?: string;
-          p_current_since?: string;
-          p_previous_until?: string;
-          p_owned_only?: boolean;
-        };
-        Returns: Json;
-      };
-      ad_oauth_consume: {
-        Args: { p_nonce_hash: string; p_user_id: string };
-        Returns: boolean;
-      };
-      ad_sync_enqueue: {
-        Args: {
-          p_campaign_id: string;
-          p_range_start: string;
-          p_range_end: string;
-          p_requested_by: string;
-        };
-        Returns: string;
-      };
-      ad_sync_claim: {
-        Args: { p_worker_id: string; p_limit?: number };
-        Returns: Database["public"]["Tables"]["ad_sync_jobs"]["Row"][];
-      };
-      ad_sync_commit: {
-        Args: { p_job_id: string; p_worker_id: string; p_metrics: Json; p_campaign: Json };
-        Returns: undefined;
-      };
-      meta_lead_ingest: {
-        Args: { p_app_id: string; p_events: Json };
-        Returns: number;
-      };
-      meta_lead_claim: {
-        Args: { p_worker_id: string; p_limit?: number };
-        Returns: Database["public"]["Tables"]["meta_lead_submissions"]["Row"][];
-      };
-      meta_lead_complete: {
-        Args: { p_id: string; p_worker_id: string; p_fields: Json };
-        Returns: string;
-      };
-      meta_lead_retry: {
-        Args: { p_id: string };
-        Returns: undefined;
-      };
-      meta_lead_assign: {
-        Args: { p_id: string; p_broker_id: string; p_actor_id: string };
-        Returns: undefined;
-      };
-      meta_lead_resolve: {
-        Args: { p_id: string; p_attendance_id: string; p_actor_id: string };
-        Returns: undefined;
-      };
       _try_uuid: { Args: { _txt: string }; Returns: string }
       ad_connections_public: {
         Args: never
         Returns: {
-          credential_mode: string;
-          app_id: string | null;
-          page_id: string | null;
-          external_account_id: string | null;
-          capabilities: Json;
-          last_diagnosed_at: string | null;
           account_label: string
           expires_at: string
           id: string
