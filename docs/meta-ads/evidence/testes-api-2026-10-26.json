@@ -5622,5 +5622,29 @@
   "range": {
     "since": "2026-09-28",
     "until": "2026-10-25"
+  },
+  "ended_at": "2026-10-26T17:30:23.257359+00:00",
+  "unique_requests_verified": 147,
+  "family_counts": {
+    "campaign_discovery": 1,
+    "account_reporting_timezone": 1,
+    "campaign_publisher_platform": 57,
+    "campaign_impression_device": 57,
+    "campaign_device_platform": 31
+  },
+  "official_verification": {
+    "source": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights/breakdowns",
+    "verified_before_campaign_calls": true,
+    "breakdowns_requested_separately": [
+      "publisher_platform",
+      "impression_device",
+      "device_platform"
+    ],
+    "metrics": [
+      "impressions",
+      "clicks",
+      "spend"
+    ],
+    "notice": "impression_device synchronous empty responses can reflect unavailable breakdown for some accounts effective 2026-08-06; not proof of zero delivery"
   }
 }
