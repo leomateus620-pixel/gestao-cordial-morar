@@ -6,11 +6,11 @@
 ## Nova matriz
 Descoberta atual de campanhas e relatórios independentes por campanha + segmentação. Sem repetição de detalhes de campanhas/conjuntos/anúncios. Concorrência 1; teto preventivo de qualquer métrica de uso: 85%; parada em qualquer erro, sem troca de conta/token/app.
 
-Início: 2026-10-26T17:21:28.834298+00:00; última atualização: 2026-10-26T17:21:29.512509+00:00
-Estado: awaiting official breakdown verification
+Início: 2026-10-26T17:21:28.834298+00:00; última atualização: 2026-10-26T17:30:23.266610+00:00
+Estado: target reached
 Fuso: America/Sao_Paulo; intervalo: {'since': '2026-09-28', 'until': '2026-10-25'}
-Incremento: 2 GET Marketing API, 2 sucessos, 0 erros.
-Acumulado: 366 GET; 356 Marketing API; 366 sucessos; 0 erros.
+Incremento: 147 GET Marketing API, 147 sucessos, 0 erros.
+Acumulado: 511 GET; 501 Marketing API; 511 sucessos; 0 erros.
 
 ## Limites observados
 ```json
@@ -38,10 +38,10 @@ Acumulado: 366 GET; 356 Marketing API; 366 sucessos; 0 erros.
     "X-Business-Use-Case-Usage": {
       "1010379113136989": [
         {
-          "type": "ads_management",
-          "call_count": 0,
-          "total_cputime": 0,
-          "total_time": 0,
+          "type": "ads_insights",
+          "call_count": 1,
+          "total_cputime": 4,
+          "total_time": 12,
           "estimated_time_to_regain_access": 0,
           "ads_api_access_tier": "development_access"
         }
@@ -53,6 +53,8 @@ Acumulado: 366 GET; 356 Marketing API; 366 sucessos; 0 erros.
 ```
 
 ## Fontes oficiais
+https://developers.facebook.com/docs/marketing-api/insights/breakdowns/
+https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adsinsights.py
 
 ## Evidências e limites
 Registro sanitizado por chamada: `evidence/testes-api-2026-10-26.json` (campos, recorte, identificador empresarial de campanha, status, quantidade de linhas e uso; sem nomes, pessoas, tokens, corpos ou URLs autenticadas). Resposta vazia bem-sucedida significa nenhum resultado registrado nesse recorte. Nenhum teste simulado. Escopos historicamente concedidos não foram revalidados nesta matriz. GET exercita leitura, não prova escrita ads_management. Contador Testing não observado; atualização pode demorar 24h. Nada continuará automaticamente.
