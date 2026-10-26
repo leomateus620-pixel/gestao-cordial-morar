@@ -1184,7 +1184,7 @@ function rankMarketingCampaigns(
     bucket.set(campaign.id, {
       name: campaign.name,
       leads: 0,
-      investment: campaign.investment,
+      investment: campaign.investment ?? 0,
     });
   });
 
@@ -1254,7 +1254,7 @@ function buildPeriodFacts(scoped: ScopedReportData, range: ReportsDateRange): Pe
   const marketingLeads = sum(marketingDays, (item) => item.leads);
   const marketingClicks = sum(marketingDays, (item) => item.clicks);
   const marketingViews = sum(marketingDays, (item) => item.views);
-  const marketingInvestment = sum(campaigns, (item) => item.investment);
+  const marketingInvestment = sum(campaigns, (item) => item.investment ?? 0);
   const opportunityBase = marketingLeads + atendimentos.length + clients.length;
   const closedOutcome = closedSales.length + closedRentals.length;
   const overallConversion = opportunityBase > 0 ? (closedOutcome / opportunityBase) * 100 : 0;
@@ -1766,7 +1766,7 @@ function flattenMarketingDays(campaigns: MarketingCampaign[]): MarketingDay[] {
       campaignId: campaign.id,
       campaignName: campaign.name,
       channel: campaign.channel,
-      investment: campaign.investment,
+      investment: campaign.investment ?? 0,
     })),
   );
 }

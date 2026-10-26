@@ -1,0 +1,138 @@
+[
+  {
+    "label": "overview",
+    "requestedWidth": 360,
+    "active": null,
+    "client": 360,
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "label": "overview",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "overview",
+    "requestedWidth": 768,
+    "active": null,
+    "client": 768,
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "label": "overview",
+    "requestedWidth": 1440,
+    "active": null,
+    "client": 1440,
+    "scroll": 1440,
+    "width": 1440
+  },
+  {
+    "label": "leads",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "leads",
+    "requestedWidth": 1440,
+    "active": null,
+    "client": 1440,
+    "scroll": 1440,
+    "width": 1440
+  },
+  {
+    "label": "integrations-partial",
+    "requestedWidth": 360,
+    "active": null,
+    "client": 360,
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "label": "integrations-partial",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "integrations-partial",
+    "requestedWidth": 768,
+    "active": null,
+    "client": 768,
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "label": "integrations-partial",
+    "requestedWidth": 1440,
+    "active": null,
+    "client": 1440,
+    "scroll": 1440,
+    "width": 1440
+  },
+  {
+    "label": "integrations-configuration",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "overview-secretaria",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "manual-secretaria",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "leads",
+    "requestedWidth": 360,
+    "active": null,
+    "client": 360,
+    "scroll": 360,
+    "width": 360
+  },
+  {
+    "label": "leads",
+    "requestedWidth": 768,
+    "active": null,
+    "client": 768,
+    "scroll": 768,
+    "width": 768
+  },
+  {
+    "label": "empty",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  },
+  {
+    "label": "error",
+    "requestedWidth": 390,
+    "active": null,
+    "client": 390,
+    "scroll": 390,
+    "width": 390
+  }
+]

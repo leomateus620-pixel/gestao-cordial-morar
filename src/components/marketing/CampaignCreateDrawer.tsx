@@ -1,5 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Plus } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { createCampaign } from "@/lib/marketing/marketing.functions";
 import {
   Sheet,
   SheetContent,
@@ -8,12 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import {
-  createDraftMarketingCampaign,
-  marketingChannels,
-  marketingObjectives,
-  marketingStatuses,
-} from "@/services/marketing";
+import { marketingChannels, marketingObjectives, marketingStatuses } from "@/services/marketing";
 import type {
   MarketingAgencyId,
   MarketingCampaign,
@@ -27,6 +25,8 @@ type CampaignCreateDrawerProps = {
   agency: MarketingAgencyId;
   onOpenChange: (open: boolean) => void;
   onCreate: (campaign: MarketingCampaign) => void;
+  onRestoreFocus?: () => void;
+  canViewFinancialInsights?: boolean;
 };
 
 type CampaignFormState = {
@@ -49,7 +49,11 @@ export function CampaignCreateDrawer({
   agency,
   onOpenChange,
   onCreate,
+  onRestoreFocus,
+  canViewFinancialInsights = true,
 }: CampaignCreateDrawerProps) {
+  const save = useServerFn(createCampaign);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CampaignFormState>(() => createInitialForm());
 
   useEffect(() => {
@@ -66,31 +70,49 @@ export function CampaignCreateDrawer({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const campaign = createDraftMarketingCampaign({
-      name: form.name,
-      channel: form.channel,
-      objective: form.objective,
-      status: form.status,
-      startDate: form.startDate || todayInput(),
-      endDate: form.endDate || form.startDate || todayInput(),
-      investment: Number(form.investment || 0),
-      targetRegion: form.targetRegion,
-      notes: form.notes,
-      responsiblePerson: form.responsiblePerson,
-      expectedLeads: Number(form.expectedLeads || 0) || undefined,
-      referenceUrl: form.referenceUrl,
-      agency,
-    });
-    onCreate(campaign);
-    setForm(createInitialForm());
-    onOpenChange(false);
+    setSaving(true);
+    try {
+      const campaign = await save({
+        data: {
+          imobiliaria: agency,
+          nome: form.name,
+          canal: form.channel,
+          objetivo: form.objective,
+          status: form.status,
+          dataInicio: form.startDate || todayInput(),
+          dataFim: form.endDate || form.startDate || todayInput(),
+          investimento: canViewFinancialInsights ? Number(form.investment || 0) : 0,
+          observacoes: [form.notes, form.targetRegion ? `Região alvo: ${form.targetRegion}` : ""]
+            .filter(Boolean)
+            .join("\n"),
+          responsavel: form.responsiblePerson,
+          leadsEsperados: Number(form.expectedLeads || 0) || null,
+          referenciaUrl: form.referenceUrl,
+        },
+      });
+      onCreate(campaign);
+      toast.success("Campanha cadastrada.");
+      setForm(createInitialForm());
+      onOpenChange(false);
+    } catch {
+      toast.error("Não foi possível salvar a campanha. Confira os campos e tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
+        closeLabel="Fechar"
+        onCloseAutoFocus={(event) => {
+          if (onRestoreFocus) {
+            event.preventDefault();
+            onRestoreFocus();
+          }
+        }}
         side="right"
         className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[42rem]"
       >
@@ -103,7 +125,9 @@ export function CampaignCreateDrawer({
               Cadastrar campanha
             </SheetTitle>
             <SheetDescription className="text-sm leading-relaxed text-foreground/58">
-              Registre a origem, objetivo, período e orçamento inicial da campanha imobiliária.
+              {canViewFinancialInsights
+                ? "Registre a origem, objetivo, período e investimento da campanha imobiliária."
+                : "Registre a origem, objetivo, período e responsável pela campanha imobiliária."}
             </SheetDescription>
           </SheetHeader>
 
@@ -189,17 +213,19 @@ export function CampaignCreateDrawer({
               />
             </Field>
 
-            <Field label="Investimento">
-              <input
-                type="number"
-                min="0"
-                step="50"
-                value={form.investment}
-                onChange={(event) => update("investment", event.target.value)}
-                placeholder="0"
-                className={inputClassName}
-              />
-            </Field>
+            {canViewFinancialInsights && (
+              <Field label="Investimento">
+                <input
+                  type="number"
+                  min="0"
+                  step="50"
+                  value={form.investment}
+                  onChange={(event) => update("investment", event.target.value)}
+                  placeholder="0"
+                  className={inputClassName}
+                />
+              </Field>
+            )}
 
             <Field label="Leads esperados">
               <input
@@ -246,14 +272,18 @@ export function CampaignCreateDrawer({
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl border-white/70 bg-white/58"
+              className="min-h-11 rounded-2xl border-white/70 bg-white/58"
               onClick={() => onOpenChange(false)}
             >
               Cancelar
             </Button>
-            <Button type="submit" className="rounded-2xl bg-primary text-white">
+            <Button
+              type="submit"
+              disabled={saving}
+              className="min-h-11 rounded-2xl bg-primary text-white"
+            >
               <Plus className="size-4" />
-              Cadastrar campanha
+              {saving ? "Salvando…" : "Cadastrar campanha"}
             </Button>
           </div>
         </form>

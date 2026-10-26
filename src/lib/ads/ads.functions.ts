@@ -1,252 +1,564 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
+import { getRequest, setCookie } from "@tanstack/react-start/server";
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { parseCampaignLink as parseLink } from "./link-parser";
-import { AD_ERROR_MESSAGES, AdProviderError, type AdErrorCode, type AdPlatform, type DailyInsight, type ParsedCampaignLink } from "./types";
+import { canonicalCampaignUrl, parseCampaignLink as parseLink } from "./link-parser";
+import {
+  AD_ERROR_MESSAGES,
+  AdProviderError,
+  type AdErrorCode,
+  type AdPlatform,
+  type ParsedCampaignLink,
+} from "./types";
+import { requireAdsAdmin, requireMarketingAccess, type AdsContext } from "./authorization.server";
 
+export type AdCapabilities = {
+  credential_present: boolean;
+  token_valid: boolean | null;
+  ads_readable: boolean | null;
+  page_readable: boolean | null;
+  leads_readable: boolean | null;
+  app_webhook_configured: boolean | null;
+  page_subscribed: boolean | null;
+  expires_at: string | null;
+  scopes: string[];
+  checked_at: string;
+  last_successful_sync: string | null;
+  webhook_callback_url?: string | null;
+  errors: Array<{ capability: string; code: AdErrorCode }>;
+};
 export type AdConnectionPublic = {
+  id?: string;
+  imobiliaria?: string | null;
   platform: AdPlatform;
   configured: boolean;
   status: "connected" | "expired" | "error" | "not_connected" | "not_configured";
   accountLabel: string | null;
+  accountId?: string | null;
+  pageId?: string | null;
+  appId?: string | null;
+  credentialMode?: string;
+  capabilities?: AdCapabilities | null;
   expiresAt: string | null;
   lastError: string | null;
 };
-
 export type AdActionResult =
-  | { ok: true; campaignId: string; name: string; days: number }
+  | { ok: true; campaignId: string; name: string; days: number; queued?: boolean; jobId?: string }
   | { ok: false; code: AdErrorCode; message: string; platform?: AdPlatform };
-
-const rangeSchema = z.object({
-  since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
-
-function fail(e: unknown, platform?: AdPlatform): AdActionResult {
-  if (e instanceof AdProviderError) return { ok: false, code: e.code, message: AD_ERROR_MESSAGES[e.code], platform };
-  console.error("[ads]", e);
-  return { ok: false, code: "provider_error", message: AD_ERROR_MESSAGES.provider_error, platform };
+const rangeSchema = z
+  .object({ since: z.iso.date(), until: z.iso.date() })
+  .refine(
+    (r) => r.since <= r.until && Date.parse(r.until) - Date.parse(r.since) <= 93 * 86400000,
+    "Selecione até 93 dias.",
+  );
+function fail(e: unknown, platform?: AdPlatform): Extract<AdActionResult, { ok: false }> {
+  const code = e instanceof AdProviderError ? e.code : "provider_error";
+  return { ok: false, code, message: AD_ERROR_MESSAGES[code], platform };
 }
-
-type Ctx = { supabase: any; userId: string };
-
-async function getToken(ctx: Ctx, platform: AdPlatform) {
-  const { adsConfig, refreshGoogle } = await import("./oauth.server");
-  if (!adsConfig(platform)) throw new AdProviderError("not_configured", "not configured");
-  const { data: isAdmin } = await ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: "admin" });
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  let q = supabaseAdmin.from("ad_platform_connections").select("*").eq("platform", platform).order("updated_at", { ascending: false });
-  if (!isAdmin) q = q.eq("user_id", ctx.userId);
-  const { data: rows } = await q;
-  const own = (rows ?? []).find((r) => r.user_id === ctx.userId) ?? rows?.[0];
-  if (!own?.access_token) throw new AdProviderError("not_connected", "not connected");
-  const expired = own.expires_at && new Date(own.expires_at).getTime() < Date.now() + 60_000;
-  if (!expired) return { token: own.access_token as string, connectionId: own.id as string };
-  if (platform === "google" && own.refresh_token) {
-    try {
-      const t = await refreshGoogle(own.refresh_token);
-      await supabaseAdmin
-        .from("ad_platform_connections")
-        .update({ access_token: t.accessToken, expires_at: t.expiresAt, status: "connected", last_error: null, updated_at: new Date().toISOString() })
-        .eq("id", own.id);
-      return { token: t.accessToken, connectionId: own.id as string };
-    } catch {
-      /* fall through */
-    }
-  }
-  await supabaseAdmin.from("ad_platform_connections").update({ status: "expired" }).eq("id", own.id);
-  throw new AdProviderError("token_expired", "expired");
+async function dbAdmin() {
+  return (await import("@/integrations/supabase/client.server"))
+    .supabaseAdmin as unknown as SupabaseClient;
 }
-
-async function provider(platform: AdPlatform) {
-  return platform === "meta" ? (await import("./providers/meta.server")).metaProvider : (await import("./providers/google.server")).googleProvider;
+async function connectionForScope(
+  ctx: AdsContext,
+  platform: AdPlatform,
+  imobiliaria: string,
+  connectionId?: string,
+) {
+  await requireMarketingAccess(ctx, imobiliaria);
+  const db = await dbAdmin();
+  let query = db
+    .from("ad_platform_connections")
+    .select("id,platform,imobiliaria,external_account_id")
+    .eq("platform", platform)
+    .eq("imobiliaria", imobiliaria);
+  if (connectionId) query = query.eq("id", connectionId);
+  const { data, error } = await query;
+  // An absent explicit ID is compatible only with ONE exact brand/platform connection.
+  if (error || data?.length !== 1)
+    throw new AdProviderError("not_connected", "Selecione uma conexão da imobiliária.");
+  return data[0] as {
+    id: string;
+    platform: AdPlatform;
+    imobiliaria: string;
+    external_account_id: string | null;
+  };
 }
-
-const OBJECTIVE_MAP: Record<string, string> = {
-  OUTCOME_LEADS: "Leads qualificados",
-  LEAD_GENERATION: "Leads qualificados",
-  OUTCOME_TRAFFIC: "Visitas",
-  OUTCOME_SALES: "Venda",
-  OUTCOME_AWARENESS: "Reconhecimento",
-  OUTCOME_ENGAGEMENT: "Relacionamento",
-};
-
-async function writeInsights(ctx: Ctx, campaignId: string, insights: DailyInsight[]) {
-  if (!insights.length) return;
-  const rows = insights.map((d) => ({
-    campaign_id: campaignId,
-    user_id: ctx.userId,
-    data: d.date,
-    leads: d.leads,
-    clicks: d.clicks,
-    accesses: d.clicks,
-    views: d.impressions,
-    investimento: d.spend,
-    impressions: d.impressions,
-    reach: d.reach,
-    frequency: d.frequency,
-    spend: d.spend,
-    cpc: d.cpc,
-    cpm: d.cpm,
-    ctr: d.ctr,
-    conversions: d.leads,
-  }));
-  const { error } = await ctx.supabase.from("marketing_daily_metrics").upsert(rows, { onConflict: "campaign_id,data" });
-  if (error) throw new Error(error.message);
-}
-
-async function totalSpend(ctx: Ctx, campaignId: string) {
-  const { data } = await ctx.supabase.from("marketing_daily_metrics").select("spend").eq("campaign_id", campaignId);
-  return Math.round(((data ?? []) as Array<{ spend: number | null }>).reduce((s, r) => s + Number(r.spend ?? 0), 0) * 100) / 100;
-}
-
 export const parseCampaignLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { url: string }) => z.object({ url: z.string().max(4000) }).parse(d))
-  .handler(async ({ data }): Promise<ParsedCampaignLink> => parseLink(data.url));
-
+  .handler(async ({ data, context }): Promise<ParsedCampaignLink> => {
+    await requireMarketingAccess(context);
+    return parseLink(data.url);
+  });
 export const listAdConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdConnectionPublic[]> => {
-    const { adsConfig } = await import("./oauth.server");
-    const { data } = await context.supabase.rpc("ad_connections_public");
-    const rows = (data ?? []) as Array<{ user_id: string; platform: string; status: string; account_label: string | null; expires_at: string | null; last_error: string | null }>;
-    return (["meta", "google"] as const).map((platform) => {
-      const configured = !!adsConfig(platform);
-      const row = rows.find((r) => r.platform === platform && r.user_id === context.userId) ?? rows.find((r) => r.platform === platform);
-      const expired = row?.expires_at && new Date(row.expires_at).getTime() < Date.now() && platform === "meta";
-      return {
-        platform,
-        configured,
-        status: !configured ? "not_configured" : !row ? "not_connected" : expired ? "expired" : (row.status as AdConnectionPublic["status"]),
-        accountLabel: row?.account_label ?? null,
-        expiresAt: row?.expires_at ?? null,
-        lastError: row?.last_error ?? null,
-      };
+    await requireMarketingAccess(context);
+    const { data: admin, error: roleError } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
     });
-  });
+    if (roleError) throw new Error("Não foi possível validar o acesso às conexões.");
+    if (admin !== true) return [];
 
+    const { adsConfig } = await import("./oauth.server");
+    const { data, error } = await context.supabase.rpc("ad_connections_public");
+    if (error) throw new Error("Não foi possível consultar as conexões.");
+    const rows = (data ?? []) as Array<{
+      id: string;
+      imobiliaria: string | null;
+      platform: AdPlatform;
+      credential_mode: string;
+      status: AdConnectionPublic["status"];
+      account_label: string | null;
+      external_account_id: string | null;
+      page_id: string | null;
+      app_id: string | null;
+      capabilities: AdCapabilities | null;
+      expires_at: string | null;
+      last_error: string | null;
+    }>;
+    const result: AdConnectionPublic[] = rows.map((r) => ({
+      id: r.id,
+      imobiliaria: r.imobiliaria,
+      platform: r.platform,
+      configured: r.credential_mode === "system_user" ? true : !!adsConfig(r.platform),
+      status: r.status,
+      accountLabel: r.account_label,
+      accountId: r.external_account_id,
+      pageId: r.page_id,
+      appId: r.app_id,
+      credentialMode: r.credential_mode,
+      capabilities: r.capabilities ?? null,
+      expiresAt: r.expires_at,
+      lastError: r.last_error ? "Revise o diagnóstico da conexão." : null,
+    }));
+    for (const platform of ["meta", "google"] as const)
+      if (!rows.some((r) => r.platform === platform))
+        result.push({
+          platform,
+          configured: !!adsConfig(platform),
+          status: adsConfig(platform) ? "not_connected" : "not_configured",
+          accountLabel: null,
+          expiresAt: null,
+          lastError: null,
+        });
+    return result;
+  });
 export const startAdOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { platform: AdPlatform; imobiliaria?: string | null }) =>
-    z.object({ platform: z.enum(["meta", "google"]), imobiliaria: z.enum(["cordial", "morar"]).nullish() }).parse(d),
+    z
+      .object({
+        platform: z.enum(["meta", "google"]),
+        imobiliaria: z.enum(["cordial", "morar"]).nullish(),
+      })
+      .parse(d),
   )
-  .handler(async ({ data, context }): Promise<{ ok: true; url: string } | { ok: false; code: AdErrorCode; message: string }> => {
-    const { adsConfig, signState, authorizeUrl } = await import("./oauth.server");
-    if (!adsConfig(data.platform)) return { ok: false, code: "not_configured", message: AD_ERROR_MESSAGES.not_configured };
-    const origin = new URL(getRequest().url).origin;
-    const state = await signState({ u: context.userId, p: data.platform, i: data.imobiliaria ?? null, t: Date.now() });
-    return { ok: true, url: authorizeUrl(data.platform, `${origin}/api/public/ads-oauth/callback`, state) };
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{ ok: true; url: string } | { ok: false; code: AdErrorCode; message: string }> => {
+      try {
+        await requireAdsAdmin(context);
+        if (!data.imobiliaria)
+          throw new AdProviderError("invalid_link", "Selecione a imobiliária.");
+        const { adsConfig, signState, authorizeUrl } = await import("./oauth.server");
+        const { encryptCredential } = await import("./credentials.server");
+        encryptCredential("configuration-probe");
+        if (!adsConfig(data.platform))
+          throw new AdProviderError("not_configured", "Configuração pendente.");
+        const origin = new URL(getRequest().url).origin;
+        const nonce = randomBytes(32).toString("hex");
+        const { error } = await (await dbAdmin()).from("ad_oauth_states").insert({
+          nonce_hash: createHash("sha256").update(nonce).digest("hex"),
+          user_id: context.userId,
+          platform: data.platform,
+          imobiliaria: data.imobiliaria,
+          expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+        });
+        if (error) throw new Error();
+        const state = await signState({
+          u: context.userId,
+          p: data.platform,
+          i: data.imobiliaria,
+          t: Date.now(),
+          n: nonce,
+        });
+        setCookie("ads_oauth_nonce", nonce, {
+          path: "/api/public/ads-oauth/callback",
+          httpOnly: true,
+          secure: origin.startsWith("https:"),
+          sameSite: "lax",
+          maxAge: 900,
+        });
+        return {
+          ok: true,
+          url: authorizeUrl(data.platform, `${origin}/api/public/ads-oauth/callback`, state),
+        };
+      } catch (e) {
+        return fail(e);
+      }
+    },
+  );
+const systemSchema = z.object({
+  imobiliaria: z.enum(["cordial", "morar"]),
+  appId: z.string().regex(/^\d{1,80}$/),
+  pageId: z.string().regex(/^\d{1,80}$/),
+  accountId: z.string().regex(/^(act_)?\d{1,80}$/),
+  credentialRef: z.string().default("META_ACCESS_TOKEN"),
+  pageCredentialRef: z.string().optional(),
+  appSecretRef: z.string().default("META_APP_SECRET"),
+});
+export const configureMetaSystemConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: z.input<typeof systemSchema>) => systemSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await requireAdsAdmin(context);
+    const { credentialReference } = await import("./credentials.server");
+    const { normalizeAccountId } = await import("./meta.graph.server");
+    credentialReference(data.credentialRef);
+    if (data.pageCredentialRef) credentialReference(data.pageCredentialRef);
+    if (!/^META_(?:[A-Z0-9]+_)*APP_SECRET$/.test(data.appSecretRef))
+      throw new Error("Referência de aplicativo inválida.");
+    if (
+      data.imobiliaria !== "cordial" &&
+      [data.credentialRef, data.pageCredentialRef].includes("META_ACCESS_TOKEN")
+    )
+      throw new Error("A Morar exige referência de credencial própria.");
+    if (data.appSecretRef === "META_APP_SECRET" && data.appId !== process.env.META_APP_ID)
+      throw new Error("Aplicativo não corresponde à configuração do servidor.");
+    const db = await dbAdmin();
+    const { data: existing, error: lookupError } = await db
+      .from("ad_platform_connections")
+      .select("id,user_id,credential_mode")
+      .eq("platform", "meta")
+      .eq("imobiliaria", data.imobiliaria)
+      .eq("external_account_id", normalizeAccountId(data.accountId))
+      .maybeSingle();
+    if (lookupError) throw new Error("Conexões ambíguas. Revise os vínculos existentes.");
+    // Linking metadata does not certify any capability or overwrite legacy credentials.
+    const row = {
+      user_id: existing?.user_id ?? context.userId,
+      platform: "meta",
+      imobiliaria: data.imobiliaria,
+      credential_mode: "system_user",
+      credential_ref: data.credentialRef,
+      page_credential_ref: data.pageCredentialRef ?? null,
+      app_secret_ref: data.appSecretRef,
+      app_id: data.appId,
+      page_id: data.pageId,
+      external_account_id: normalizeAccountId(data.accountId),
+      account_label: `Meta Ads · ${data.imobiliaria === "cordial" ? "Cordial" : "Morar"}`,
+      status: "error",
+      capabilities: {},
+      last_diagnosed_at: null,
+      last_error: "Diagnóstico pendente",
+      updated_at: new Date().toISOString(),
+    };
+    const result = existing
+      ? await db
+          .from("ad_platform_connections")
+          .update(row)
+          .eq("id", existing.id)
+          .select("id")
+          .single()
+      : await db.from("ad_platform_connections").insert(row).select("id").single();
+    if (result.error)
+      throw new Error("Não foi possível salvar a conexão. Revise os vínculos existentes.");
+    return { connectionId: result.data.id as string };
   });
-
+export const diagnoseMetaConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { connectionId: string }) => z.object({ connectionId: z.uuid() }).parse(d))
+  .handler(async ({ data, context }): Promise<AdCapabilities> => {
+    await requireAdsAdmin(context);
+    const { diagnoseConnection } = await import("./diagnostics.server");
+    return diagnoseConnection(data.connectionId);
+  });
+export const listMetaAccounts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { connectionId: string }) => z.object({ connectionId: z.uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireAdsAdmin(context);
+    const { resolveConnectionCredential } = await import("./credentials.server");
+    const { discoverMetaAccounts } = await import("./providers/meta.server");
+    const { token, connection } = await resolveConnectionCredential(data.connectionId, {
+      platform: "meta",
+    });
+    const accounts = (await discoverMetaAccounts(token)).filter(
+      (a) => !connection.external_account_id || a.account_id === connection.external_account_id,
+    );
+    const db = await dbAdmin();
+    if (accounts.length) {
+      const { error } = await db.from("ad_accounts").upsert(
+        accounts.map((a) => ({
+          connection_id: data.connectionId,
+          platform: "meta",
+          external_account_id: a.account_id,
+          name: a.name,
+          currency: a.currency,
+          timezone: a.timezone_name,
+        })),
+        { onConflict: "connection_id,external_account_id" },
+      );
+      if (error) throw new Error("Não foi possível registrar as contas.");
+    }
+    return accounts.map((a) => ({
+      id: a.account_id,
+      name: a.name,
+      currency: a.currency,
+      timezone: a.timezone_name,
+    }));
+  });
+export const listMetaCampaigns = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { connectionId: string; accountId: string }) =>
+    z.object({ connectionId: z.uuid(), accountId: z.string().regex(/^(act_)?\d{1,80}$/) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireMarketingAccess(context);
+    const { resolveConnectionCredential } = await import("./credentials.server");
+    const { discoverMetaCampaigns, getMetaAccount } = await import("./providers/meta.server");
+    const { token, connection } = await resolveConnectionCredential(data.connectionId, {
+      platform: "meta",
+      accountId: data.accountId,
+    });
+    if (!connection.imobiliaria)
+      throw new AdProviderError("no_permission", "Vincule a imobiliária primeiro.");
+    await requireMarketingAccess(context, connection.imobiliaria);
+    await getMetaAccount(data.accountId, token);
+    return discoverMetaCampaigns(data.accountId, token);
+  });
+const importSchema = z.object({
+  connectionId: z.uuid().optional(),
+  accountId: z
+    .string()
+    .regex(/^(act_)?\d{1,80}$/)
+    .optional(),
+  url: z.string().max(4000),
+  imobiliaria: z.enum(["cordial", "morar"]),
+  range: rangeSchema,
+});
 export const importCampaignFromLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { url: string; imobiliaria: "cordial" | "morar"; range: { since: string; until: string } }) =>
-    z.object({ url: z.string().max(4000), imobiliaria: z.enum(["cordial", "morar"]), range: rangeSchema }).parse(d),
-  )
+  .inputValidator((d: z.input<typeof importSchema>) => importSchema.parse(d))
   .handler(async ({ data, context }): Promise<AdActionResult> => {
     const parsed = parseLink(data.url);
     if (!parsed.platform || !parsed.campaignId)
-      return { ok: false, code: "invalid_link", message: parsed.error ?? AD_ERROR_MESSAGES.invalid_link, platform: parsed.platform };
-    const platform = parsed.platform;
+      return fail(new AdProviderError("invalid_link", "Link inválido."), parsed.platform);
     try {
-      const { token } = await getToken(context, platform);
-      const p = await provider(platform);
-      const ext = await p.getCampaign(parsed.accountId, parsed.campaignId, token);
-      const insights = await p.getInsights(parsed.accountId, parsed.campaignId, data.range, token);
-      const payload = {
-        imobiliaria: data.imobiliaria,
-        nome: ext.name,
-        canal: platform === "meta" ? "Facebook" : "Google",
-        objetivo: OBJECTIVE_MAP[ext.objective ?? ""] ?? "Leads qualificados",
-        status: ext.status,
-        data_inicio: ext.startDate ?? data.range.since,
-        data_fim: ext.endDate ?? data.range.until,
-        platform,
-        external_campaign_id: ext.id,
-        external_account_id: parsed.accountId ?? null,
-        source_url: data.url.trim(),
-        last_synced_at: new Date().toISOString(),
-        sync_status: "synced",
-        sync_error: null,
-      };
-      const { data: existing } = await context.supabase
-        .from("marketing_campaigns")
-        .select("id")
-        .eq("user_id", context.userId)
-        .eq("platform", platform)
-        .eq("external_campaign_id", ext.id)
-        .maybeSingle();
-      let id: string;
-      if (existing) {
-        const { error } = await context.supabase.from("marketing_campaigns").update(payload).eq("id", existing.id);
-        if (error) throw new Error(error.message);
-        id = existing.id;
-      } else {
-        const { data: row, error } = await context.supabase
-          .from("marketing_campaigns")
-          .insert({ ...payload, user_id: context.userId, investimento: 0 })
-          .select("id")
-          .single();
-        if (error) throw new Error(error.message);
-        id = row.id;
-      }
-      await writeInsights(context, id, insights);
-      await context.supabase.from("marketing_campaigns").update({ investimento: await totalSpend(context, id) }).eq("id", id);
-      return { ok: true, campaignId: id, name: ext.name, days: insights.length };
+      return await importCampaign(context, {
+        ...data,
+        platform: parsed.platform,
+        campaignId: parsed.campaignId,
+        accountId: data.accountId ?? parsed.accountId,
+      });
     } catch (e) {
-      return fail(e, platform);
+      return fail(e, parsed.platform);
     }
   });
-
+const discoveredSchema = z.object({
+  connectionId: z.uuid(),
+  accountId: z.string().regex(/^(act_)?\d{1,80}$/),
+  campaignId: z.string().regex(/^\d{1,80}$/),
+  imobiliaria: z.enum(["cordial", "morar"]),
+  range: rangeSchema,
+});
+export const importDiscoveredMetaCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: z.input<typeof discoveredSchema>) => discoveredSchema.parse(d))
+  .handler(async ({ data, context }): Promise<AdActionResult> => {
+    try {
+      return await importCampaign(context, { ...data, platform: "meta" });
+    } catch (e) {
+      return fail(e, "meta");
+    }
+  });
+async function importCampaign(
+  ctx: AdsContext,
+  data: {
+    platform: AdPlatform;
+    imobiliaria: string;
+    connectionId?: string;
+    accountId?: string;
+    campaignId: string;
+    url?: string;
+    range: { since: string; until: string };
+  },
+): Promise<AdActionResult> {
+  const conn = await connectionForScope(ctx, data.platform, data.imobiliaria, data.connectionId);
+  const accountId = data.accountId ?? conn.external_account_id;
+  if (!accountId) throw new AdProviderError("invalid_link", "Selecione uma conta de anúncios.");
+  const { resolveConnectionCredential } = await import("./credentials.server");
+  const { token } = await resolveConnectionCredential(conn.id, {
+    platform: data.platform,
+    imobiliaria: data.imobiliaria,
+    accountId,
+  });
+  const p =
+    data.platform === "meta"
+      ? (await import("./providers/meta.server")).metaProvider
+      : (await import("./providers/google.server")).googleProvider;
+  const ext = await p.getCampaign(accountId, data.campaignId, token);
+  const db = await dbAdmin();
+  const a =
+    data.platform === "meta"
+      ? await (await import("./providers/meta.server")).getMetaAccount(accountId, token)
+      : await (await import("./providers/google.server")).getGoogleAccount(accountId, token);
+  const resultAccount = await db
+    .from("ad_accounts")
+    .upsert(
+      {
+        connection_id: conn.id,
+        platform: data.platform,
+        external_account_id: a.account_id,
+        name: a.name,
+        currency: a.currency,
+        timezone: "timezone_name" in a ? a.timezone_name : a.timezone,
+      },
+      { onConflict: "connection_id,external_account_id" },
+    )
+    .select("id")
+    .single();
+  if (resultAccount.error) throw new Error();
+  const account = resultAccount.data;
+  const normalizedAccount = accountId.replace(/^act_/, "");
+  const { data: existing, error: findError } = await db
+    .from("marketing_campaigns")
+    .select("id,connection_id")
+    .eq("platform", data.platform)
+    .eq("imobiliaria", data.imobiliaria)
+    .eq("external_account_id", normalizedAccount)
+    .eq("external_campaign_id", ext.id)
+    .maybeSingle();
+  if (findError || (existing?.connection_id && existing.connection_id !== conn.id))
+    throw new AdProviderError("no_permission", "Campanha já vinculada a outra conexão.");
+  const payload = {
+    imobiliaria: data.imobiliaria,
+    nome: ext.name,
+    canal: data.platform === "meta" ? "Facebook" : "Google",
+    objetivo: "Leads qualificados",
+    status: ext.status,
+    data_inicio: ext.startDate ?? data.range.since,
+    data_fim: ext.endDate ?? data.range.until,
+    platform: data.platform,
+    connection_id: conn.id,
+    ad_account_id: account?.id ?? null,
+    external_campaign_id: ext.id,
+    external_account_id: normalizedAccount,
+    source_url: canonicalCampaignUrl(data.platform, normalizedAccount, ext.id),
+    sync_status: "error",
+    sync_error: "Sincronização ainda não agendada.",
+  };
+  const result = existing
+    ? await db
+        .from("marketing_campaigns")
+        .update(payload)
+        .eq("id", existing.id)
+        .select("id")
+        .single()
+    : await db
+        .from("marketing_campaigns")
+        .insert({ ...payload, user_id: ctx.userId, investimento: 0 })
+        .select("id")
+        .single();
+  if (result.error) throw new Error();
+  return enqueueCampaign(ctx, result.data.id, ext.name, data.range);
+}
+async function enqueueCampaign(
+  ctx: AdsContext,
+  id: string,
+  name: string,
+  range: { since: string; until: string },
+): Promise<AdActionResult> {
+  const { data: jobId, error } = await (
+    await dbAdmin()
+  ).rpc("ad_sync_enqueue", {
+    p_campaign_id: id,
+    p_range_start: range.since,
+    p_range_end: range.until,
+    p_requested_by: ctx.userId,
+  });
+  if (error || !jobId) throw new Error();
+  return {
+    ok: true,
+    campaignId: id,
+    name,
+    days: 0,
+    queued: true,
+    jobId: typeof jobId === "string" ? jobId : jobId.id,
+  };
+}
 export const syncCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string; range: { since: string; until: string } }) =>
-    z.object({ id: z.string().uuid(), range: rangeSchema }).parse(d),
+    z.object({ id: z.uuid(), range: rangeSchema }).parse(d),
   )
   .handler(async ({ data, context }): Promise<AdActionResult> => {
-    const { data: c } = await context.supabase
-      .from("marketing_campaigns")
-      .select("id, nome, platform, external_campaign_id, external_account_id")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (!c) return { ok: false, code: "campaign_not_found", message: AD_ERROR_MESSAGES.campaign_not_found };
-    if (!c.platform || !c.external_campaign_id)
-      return { ok: false, code: "invalid_link", message: "Campanha manual — não há o que sincronizar." };
-    const platform = c.platform as AdPlatform;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: job } = await supabaseAdmin
-      .from("ad_sync_jobs")
-      .insert({ campaign_id: c.id, range_start: data.range.since, range_end: data.range.until })
-      .select("id")
-      .single();
-    const finishJob = (status: "done" | "error", error?: string) =>
-      job ? supabaseAdmin.from("ad_sync_jobs").update({ status, error: error ?? null, finished_at: new Date().toISOString() }).eq("id", job.id) : null;
     try {
-      const { token } = await getToken(context, platform);
-      const p = await provider(platform);
-      const ext = await p.getCampaign(c.external_account_id ?? undefined, c.external_campaign_id, token);
-      const insights = await p.getInsights(c.external_account_id ?? undefined, c.external_campaign_id, data.range, token);
-      await writeInsights(context, c.id, insights);
-      await context.supabase
+      await requireMarketingAccess(context);
+      const { data: c, error } = await (await dbAdmin())
         .from("marketing_campaigns")
-        .update({
-          nome: ext.name,
-          status: ext.status,
-          investimento: await totalSpend(context, c.id),
-          last_synced_at: new Date().toISOString(),
-          sync_status: "synced",
-          sync_error: null,
-        })
-        .eq("id", c.id);
-      await finishJob("done");
-      return { ok: true, campaignId: c.id, name: ext.name, days: insights.length };
+        .select(
+          "id,nome,platform,connection_id,external_campaign_id,external_account_id,imobiliaria",
+        )
+        .eq("id", data.id)
+        .maybeSingle();
+      if (error || !c) throw new AdProviderError("campaign_not_found", "Campanha não encontrada.");
+      if (!c.platform || !c.external_campaign_id)
+        throw new AdProviderError("invalid_link", "Campanha manual.");
+      if (!c.connection_id || !c.external_account_id)
+        throw new AdProviderError("not_connected", "Vincule a campanha a uma conexão e conta.");
+      await connectionForScope(context, c.platform, c.imobiliaria, c.connection_id);
+      return enqueueCampaign(context, c.id, c.nome, data.range);
     } catch (e) {
-      const r = fail(e, platform);
-      const msg = r.ok ? "" : r.message;
-      await context.supabase.from("marketing_campaigns").update({ sync_status: "error", sync_error: msg }).eq("id", c.id);
-      await finishJob("error", msg);
-      return r;
+      return fail(e);
     }
+  });
+
+export const listAdSyncJobs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { campaignIds?: string[] }) =>
+    z.object({ campaignIds: z.array(z.uuid()).max(100).optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireMarketingAccess(context);
+    const agencies: string[] = [];
+    for (const agency of ["cordial", "morar"]) {
+      try {
+        await requireMarketingAccess(context, agency);
+        agencies.push(agency);
+      } catch {
+        /* omitted scope */
+      }
+    }
+    if (!agencies.length) return [];
+    let q = (await dbAdmin())
+      .from("ad_sync_jobs")
+      .select(
+        "id,campaign_id,status,error,started_at,finished_at,attempts,next_attempt_at,marketing_campaigns!inner(imobiliaria)",
+      )
+      .in("marketing_campaigns.imobiliaria", agencies)
+      .order("started_at", { ascending: false })
+      .limit(100);
+    if (data.campaignIds?.length) q = q.in("campaign_id", data.campaignIds);
+    const { data: rows, error } = await q;
+    if (error) throw new Error("Não foi possível consultar a sincronização.");
+    return (rows ?? []).map((r) => ({
+      id: r.id,
+      campaign_id: r.campaign_id,
+      status: r.status,
+      started_at: r.started_at,
+      finished_at: r.finished_at,
+      attempts: r.attempts,
+      next_attempt_at: r.next_attempt_at,
+      error: r.error
+        ? "A sincronização precisa de atenção. Revise a conexão ou tente novamente."
+        : null,
+    }));
   });

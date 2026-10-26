@@ -39,7 +39,7 @@ export function MarketingCampaignCard({
 }: MarketingCampaignCardProps) {
   const ChannelIcon = getChannelIcon(campaign.channel);
   const strength = getCampaignStrength(campaign);
-  const cpl = campaign.costPerLead > 0 ? brl(campaign.costPerLead) : "Sem leads";
+  const cpl = campaign.costPerLead !== null ? brl(campaign.costPerLead) : "Indisponível";
 
   return (
     <article className="group relative min-w-0 overflow-hidden rounded-[1.45rem] border border-white/68 bg-white/58 p-4 shadow-[0_16px_42px_-30px_rgba(23,27,33,0.3)] backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:bg-white/68 hover:shadow-xl hover:shadow-slate-950/8 motion-reduce:transition-none sm:p-5">
@@ -75,7 +75,11 @@ export function MarketingCampaignCard({
             value={formatMarketingNumber(campaign.leads)}
           />
           {canViewFinancialInsights && (
-            <CardMetric icon={Wallet} label="Investimento" value={brl(campaign.investment)} />
+            <CardMetric
+              icon={Wallet}
+              label="Investimento"
+              value={campaign.investment === null ? "Indisponível" : brl(campaign.investment)}
+            />
           )}
           <CardMetric
             icon={MousePointerClick}
@@ -102,7 +106,6 @@ export function MarketingCampaignCard({
         {canViewFinancialInsights && <InfoPill icon={Wallet} label="CPL" value={cpl} />}
         <InfoPill icon={MapPin} label="Melhor região" value={campaign.bestLocation} />
       </div>
-
 
       <div className="mt-4 flex flex-col gap-3 border-t border-white/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">

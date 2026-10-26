@@ -1,110 +1,200 @@
 import type { MarketingCampaign } from "@/types/marketing";
 
-export type Competence = string; // YYYY-MM
+export type Competence = string;
+export type DateRange = { since: string; until: string };
 
-export function currentCompetence(now = new Date()): Competence {
-  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).formatToParts(now);
+export function currentCompetence(now = new Date(), timeZone = "America/Sao_Paulo"): Competence {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
   return `${p.find((x) => x.type === "year")!.value}-${p.find((x) => x.type === "month")!.value}`;
 }
-
-export function shiftCompetence(c: Competence, delta: number): Competence {
+export function shiftCompetence(c: Competence, amount: number): Competence {
   const [y, m] = c.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  const d = new Date(Date.UTC(y, m - 1 + amount, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
-
-export function competenceRange(c: Competence) {
+export function competenceRange(c: Competence): DateRange {
   const [y, m] = c.split("-").map(Number);
-  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return { since: `${c}-01`, until: `${c}-${String(last).padStart(2, "0")}` };
+  return {
+    since: `${c}-01`,
+    until: `${c}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`,
+  };
 }
+/** Compare month-to-date with the same number of account-calendar days. */
+export function comparisonRanges(c: Competence, now = new Date(), timeZone = "America/Sao_Paulo") {
+  const current = competenceRange(c);
+  const previous = competenceRange(shiftCompetence(c, -1));
+  if (c === currentCompetence(now, timeZone)) {
+    const day = Number(new Intl.DateTimeFormat("en-US", { timeZone, day: "2-digit" }).format(now));
+    current.until = `${c}-${String(day).padStart(2, "0")}`;
+    const previousLast = Number(previous.until.slice(-2));
+    previous.until = `${previous.since.slice(0, 7)}-${String(Math.min(day, previousLast)).padStart(2, "0")}`;
+  }
+  return { current, previous };
+}
+const round = (v: number) => Math.round(v * 100) / 100;
+const ratio = (numerator: number | null, denominator: number, scale = 1) =>
+  numerator === null || denominator <= 0 ? null : round((numerator / denominator) * scale);
 
 export type CampaignPeriodStats = {
   campaign: MarketingCampaign;
-  spend: number;
+  spend: number | null;
   leads: number;
   clicks: number;
   impressions: number;
-  reach: number;
-  cpl: number;
-  ctr: number;
-  frequency: number;
+  reach: number | null;
+  cpl: number | null;
+  ctr: number | null;
+  frequency: number | null;
+  currency: string | null;
+  hasData: boolean;
 };
-
 export type PeriodKpis = {
-  spend: number;
+  spend: number | null;
   leads: number;
-  cpl: number;
-  ctr: number;
-  cpc: number;
-  cpm: number;
-  reach: number;
-  frequency: number;
+  cpl: number | null;
+  ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  reach: number | null;
+  frequency: number | null;
   impressions: number;
   clicks: number;
+  activeCampaigns: number;
+  currency: string | null;
+  mixedCurrencies: boolean;
+  hasData?: boolean;
 };
 
-const r2 = (v: number) => Math.round(v * 100) / 100;
-
-function overlaps(c: MarketingCampaign, range: { since: string; until: string }) {
-  return c.startDate <= range.until && (c.endDate || "9999") >= range.since;
-}
-
-export function campaignStats(c: MarketingCampaign, comp: Competence): CampaignPeriodStats {
-  const range = competenceRange(comp);
+export function campaignStats(
+  c: MarketingCampaign,
+  comp: Competence,
+  requestedRange?: DateRange,
+): CampaignPeriodStats {
+  const range = requestedRange ?? competenceRange(comp);
   const days = c.dailyMetrics.filter((d) => d.date >= range.since && d.date <= range.until);
-  const hasSpend = c.dailyMetrics.some((d) => d.spend !== undefined);
-  let spend = days.reduce((s, d) => s + (d.spend ?? 0), 0);
-  // Manual campaigns without daily spend: count the full investment in months the campaign runs.
-  if (!hasSpend && overlaps(c, range)) spend = c.investment;
+  const hasDailySpend = c.dailyMetrics.some((d) => d.spend !== undefined);
+  let spend: number | null =
+    c.financialVisible === false || c.investment === null
+      ? null
+      : days.reduce((s, d) => s + (d.spend ?? 0), 0);
+  if (spend !== null && !hasDailySpend) {
+    const contained = c.startDate >= range.since && Boolean(c.endDate) && c.endDate <= range.until;
+    spend = !c.platform && contained ? c.investment : null;
+  }
   const leads = days.reduce((s, d) => s + d.leads, 0);
   const clicks = days.reduce((s, d) => s + d.clicks, 0);
-  const impressions = days.reduce((s, d) => s + (d.impressions ?? d.views ?? 0), 0);
-  const reach = days.reduce((s, d) => s + (d.reach ?? 0), 0);
+  const impressions = days.reduce((s, d) => s + (d.impressions ?? 0), 0);
+  const aggregate =
+    c.periodAggregate?.since === range.since && c.periodAggregate.until === range.until
+      ? c.periodAggregate
+      : null;
+  // Reach is non-additive: daily reach is never a substitute for a period aggregate.
+  const reach = aggregate?.reach ?? null;
   return {
     campaign: c,
-    spend: r2(spend),
+    spend: spend === null ? null : round(spend),
     leads,
     clicks,
     impressions,
     reach,
-    cpl: leads > 0 ? r2(spend / leads) : 0,
-    ctr: impressions > 0 ? r2((clicks / impressions) * 100) : 0,
-    frequency: reach > 0 ? r2(impressions / reach) : 0,
+    cpl: ratio(spend, leads),
+    ctr: ratio(clicks, impressions, 100),
+    frequency: aggregate?.frequency ?? ratio(impressions, reach ?? 0),
+    hasData: days.length > 0 || spend !== null,
+    currency: c.currency ?? (c.platform ? null : "BRL"),
   };
 }
-
 export function periodKpis(stats: CampaignPeriodStats[]): PeriodKpis {
-  const sum = (k: keyof CampaignPeriodStats) => stats.reduce((s, x) => s + (x[k] as number), 0);
-  const spend = r2(sum("spend"));
-  const leads = sum("leads");
-  const clicks = sum("clicks");
-  const impressions = sum("impressions");
-  const reach = sum("reach");
+  const currencies = new Set(stats.filter((s) => s.hasData).map((s) => s.currency));
+  const mixedCurrencies = currencies.size > 1 || currencies.has(null);
+  const protectedSpend = stats.some((s) => s.spend === null);
+  const spend =
+    mixedCurrencies || protectedSpend ? null : round(stats.reduce((s, x) => s + (x.spend ?? 0), 0));
+  const leads = stats.reduce((s, x) => s + x.leads, 0);
+  const clicks = stats.reduce((s, x) => s + x.clicks, 0);
+  const impressions = stats.reduce((s, x) => s + x.impressions, 0);
+  // Several campaigns may reach the same people. Only one exact-scope aggregate is safe here.
+  const reach = stats.length === 1 ? stats[0].reach : null;
   return {
     spend,
     leads,
     clicks,
     impressions,
     reach,
-    cpl: leads > 0 ? r2(spend / leads) : 0,
-    ctr: impressions > 0 ? r2((clicks / impressions) * 100) : 0,
-    cpc: clicks > 0 ? r2(spend / clicks) : 0,
-    cpm: impressions > 0 ? r2((spend / impressions) * 1000) : 0,
-    frequency: reach > 0 ? r2(impressions / reach) : 0,
+    cpl: ratio(spend, leads),
+    ctr: ratio(clicks, impressions, 100),
+    cpc: ratio(spend, clicks),
+    cpm: ratio(spend, impressions, 1000),
+    frequency: stats.length === 1 ? stats[0].frequency : null,
+    activeCampaigns: stats.filter((s) => s.campaign.status === "Ativa").length,
+    currency: !mixedCurrencies ? ([...currencies][0] ?? "BRL") : null,
+    mixedCurrencies,
+    hasData: stats.some((s) => s.hasData),
   };
 }
-
-export function delta(curr: number, prev: number): number | null {
-  if (!prev) return null;
-  return Math.round(((curr - prev) / prev) * 1000) / 10;
+export function summaryKpis(summary: {
+  spend: number | null;
+  leads: number;
+  clicks: number;
+  impressions: number;
+  active_campaigns: number;
+  currencies: Array<string | null>;
+  has_data: boolean;
+}): PeriodKpis {
+  const currencies = new Set(
+    summary.currencies.map((value) => (value && /^[A-Z]{3}$/.test(value) ? value : null)),
+  );
+  const mixedCurrencies = currencies.size > 1 || currencies.has(null);
+  const spend = mixedCurrencies || !summary.has_data ? null : summary.spend;
+  return {
+    spend,
+    leads: summary.leads,
+    clicks: summary.clicks,
+    impressions: summary.impressions,
+    activeCampaigns: summary.active_campaigns,
+    cpl: ratio(spend, summary.leads),
+    ctr: ratio(summary.clicks, summary.impressions, 100),
+    cpc: ratio(spend, summary.clicks),
+    cpm: ratio(spend, summary.impressions, 1000),
+    reach: null,
+    frequency: null,
+    currency: !mixedCurrencies ? ([...currencies][0] ?? "BRL") : null,
+    mixedCurrencies,
+    hasData: summary.has_data,
+  };
 }
-
-export type TrendPoint = { date: string; label: string; spend: number; leads: number; cpl: number; ctr: number };
-
-export function dailyTrend(campaigns: MarketingCampaign[], comp: Competence): TrendPoint[] {
-  const range = competenceRange(comp);
-  const map = new Map<string, { spend: number; leads: number; clicks: number; impressions: number }>();
+export function delta(curr: number | null, prev: number | null): number | null {
+  return curr === null || prev === null || prev === 0
+    ? null
+    : Math.round(((curr - prev) / prev) * 1000) / 10;
+}
+export type TrendPoint = {
+  date: string;
+  label: string;
+  spend: number | null;
+  leads: number;
+  cpl: number | null;
+  ctr: number | null;
+  clicks: number;
+};
+export function dailyTrend(
+  campaigns: MarketingCampaign[],
+  comp: Competence,
+  range = competenceRange(comp),
+): TrendPoint[] {
+  const currencies = new Set(campaigns.map((c) => c.currency ?? (c.platform ? null : "BRL")));
+  const financial =
+    currencies.size <= 1 &&
+    !currencies.has(null) &&
+    campaigns.every((c) => c.financialVisible !== false);
+  const map = new Map<
+    string,
+    { spend: number; leads: number; clicks: number; impressions: number }
+  >();
   for (const c of campaigns)
     for (const d of c.dailyMetrics) {
       if (d.date < range.since || d.date > range.until) continue;
@@ -112,7 +202,7 @@ export function dailyTrend(campaigns: MarketingCampaign[], comp: Competence): Tr
       a.spend += d.spend ?? 0;
       a.leads += d.leads;
       a.clicks += d.clicks;
-      a.impressions += d.impressions ?? d.views ?? 0;
+      a.impressions += d.impressions ?? 0;
       map.set(d.date, a);
     }
   return [...map.entries()]
@@ -120,32 +210,61 @@ export function dailyTrend(campaigns: MarketingCampaign[], comp: Competence): Tr
     .map(([date, a]) => ({
       date,
       label: `${date.slice(8, 10)}/${date.slice(5, 7)}`,
-      spend: r2(a.spend),
+      spend: financial ? round(a.spend) : null,
       leads: a.leads,
-      cpl: a.leads > 0 ? r2(a.spend / a.leads) : 0,
-      ctr: a.impressions > 0 ? r2((a.clicks / a.impressions) * 100) : 0,
+      clicks: a.clicks,
+      cpl: ratio(financial ? a.spend : null, a.leads),
+      ctr: ratio(a.clicks, a.impressions, 100),
     }));
 }
-
-export type Insight = { tone: "success" | "warning" | "danger" | "neutral"; text: string };
-
-const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
+export type Insight = {
+  tone: "success" | "warning" | "danger" | "neutral";
+  text: string;
+  financial?: boolean;
+};
 export function buildInsights(curr: CampaignPeriodStats[], prev: CampaignPeriodStats[]): Insight[] {
   const out: Insight[] = [];
-  const withLeads = curr.filter((s) => s.leads > 0 && s.spend > 0).sort((a, b) => a.cpl - b.cpl);
-  if (withLeads[0]) out.push({ tone: "success", text: `Melhor CPL: ${withLeads[0].campaign.name} (${money(withLeads[0].cpl)}).` });
-  const noLeads = curr.filter((s) => s.spend >= 50 && s.leads === 0).sort((a, b) => b.spend - a.spend);
-  if (noLeads[0]) out.push({ tone: "danger", text: `${noLeads[0].campaign.name} gastou ${money(noLeads[0].spend)} sem leads.` });
-  const saturated = curr.filter((s) => s.frequency > 3).sort((a, b) => b.frequency - a.frequency);
-  if (saturated[0])
-    out.push({ tone: "warning", text: `Frequência ${saturated[0].frequency.toFixed(1)} em ${saturated[0].campaign.name}: público saturando.` });
-  const drops = curr
-    .map((s) => ({ s, p: prev.find((x) => x.campaign.id === s.campaign.id) }))
-    .filter(({ s, p }) => p && p.ctr > 0 && s.impressions > 0 && s.ctr < p.ctr * 0.8)
-    .sort((a, b) => a.s.ctr / a.p!.ctr - b.s.ctr / b.p!.ctr);
-  if (drops[0])
-    out.push({ tone: "warning", text: `CTR de ${drops[0].s.campaign.name} caiu de ${drops[0].p!.ctr.toFixed(2)}% para ${drops[0].s.ctr.toFixed(2)}%.` });
-  if (!out.length && curr.some((s) => s.spend > 0)) out.push({ tone: "neutral", text: "Sem alertas nesta competência." });
-  return out.slice(0, 4);
+  const money = (s: CampaignPeriodStats, amount: number) =>
+    amount.toLocaleString("pt-BR", { style: "currency", currency: s.currency ?? "BRL" });
+  const withLeads = curr
+    .filter((s) => s.leads > 0 && s.cpl !== null && (s.spend ?? 0) > 0)
+    .sort((a, b) => a.cpl! - b.cpl!);
+  if (withLeads[0]) {
+    const s = withLeads[0];
+    out.push({
+      tone: "neutral",
+      financial: true,
+      text: `${s.campaign.name}: ${s.leads} leads reportados, CPL ${money(s, s.cpl!)} no período selecionado.`,
+    });
+  }
+  const noLeads = curr.find((s) => (s.spend ?? 0) > 0 && s.leads === 0);
+  if (noLeads)
+    out.push({
+      tone: "warning",
+      financial: true,
+      text: `${noLeads.campaign.name}: investimento de ${money(noLeads, noLeads.spend!)} e nenhum lead reportado no período.`,
+    });
+  const drop = curr
+    .map((s) => ({ s, p: prev.find((p) => p.campaign.id === s.campaign.id) }))
+    .find(
+      ({ s, p }) =>
+        p?.ctr != null &&
+        s.ctr != null &&
+        s.impressions >= 100 &&
+        p.impressions >= 100 &&
+        s.ctr < p.ctr,
+    );
+  if (drop)
+    out.push({
+      tone: "neutral",
+      text: `${drop.s.campaign.name}: CTR ${drop.s.ctr!.toFixed(2)}% em ${drop.s.impressions.toLocaleString("pt-BR")} impressões; período anterior equivalente: ${drop.p!.ctr!.toFixed(2)}%.`,
+    });
+  if (!out.length)
+    out.push({
+      tone: "neutral",
+      text: curr.some((s) => s.impressions > 0)
+        ? "Acompanhe os resultados no período selecionado. Leads reportados e submissões recebidas têm contagens independentes."
+        : "Sem métricas persistidas neste período. Uma campanha cadastrada pode ainda aguardar a primeira sincronização.",
+    });
+  return out.slice(0, 3);
 }

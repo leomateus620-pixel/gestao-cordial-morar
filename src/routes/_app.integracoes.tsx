@@ -10,6 +10,7 @@ import { useApp, useFiltered } from "@/store/app-store";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
+import { MetaAdsCard } from "@/components/integracoes/MetaAdsCard";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
 import { IncompleteRegistrationsCard } from "@/components/integracoes/IncompleteRegistrationsCard";
@@ -22,9 +23,15 @@ export const Route = createFileRoute("/_app/integracoes")({
   head: () => ({
     meta: [
       { title: "Integrações — Gestão Cordial" },
-      { name: "description", content: "Conectores, sincronizações e serviços fiscais do Gestão Cordial." },
+      {
+        name: "description",
+        content: "Conectores, sincronizações e serviços fiscais do Gestão Cordial.",
+      },
       { property: "og:title", content: "Integrações — Gestão Cordial" },
-      { property: "og:description", content: "Conectores, sincronizações e serviços fiscais do Gestão Cordial." },
+      {
+        property: "og:description",
+        content: "Conectores, sincronizações e serviços fiscais do Gestão Cordial.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -40,7 +47,6 @@ function GuardedPage() {
   );
 }
 
-
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todas");
   const isAdmin = isAdminUser(useSession());
@@ -55,6 +61,8 @@ function Page() {
 
   return (
     <>
+      <MetaAdsCard enabled={isAdmin} />
+
       <ProvidersHealthCard enabled={isAdmin} />
 
       <NfseStatusCard enabled={isAdmin} />
@@ -68,8 +76,6 @@ function Page() {
       <ProviderOpsPanel enabled={isAdmin} />
 
       <section className="mb-5 grid grid-cols-3 gap-3">
-
-
         <KpiCard
           label="Conectadas"
           value={conectadas.toString()}

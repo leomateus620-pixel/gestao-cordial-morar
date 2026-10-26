@@ -8,7 +8,9 @@ export type AdErrorCode =
   | "campaign_not_found"
   | "rate_limited"
   | "invalid_link"
-  | "provider_error";
+  | "provider_error"
+  | "partial_data"
+  | "conflict";
 
 export class AdProviderError extends Error {
   constructor(
@@ -34,6 +36,9 @@ export type DailyInsight = {
   leads: number;
   cpl: number;
   frequency: number;
+  actions?: Array<{ action_type: string; value: string }>;
+  leadActionType?: string;
+  landingPageViews?: number;
 };
 
 export type ExternalCampaign = {
@@ -41,6 +46,7 @@ export type ExternalCampaign = {
   name: string;
   status: "Ativa" | "Pausada" | "Encerrada" | "Planejada";
   objective?: string;
+  accountId?: string;
   startDate?: string;
   endDate?: string;
 };
@@ -55,7 +61,11 @@ export type ParsedCampaignLink = {
 export interface AdProvider {
   platform: AdPlatform;
   parseLink?: (url: string) => ParsedCampaignLink;
-  getCampaign(accountId: string | undefined, campaignId: string, token: string): Promise<ExternalCampaign>;
+  getCampaign(
+    accountId: string | undefined,
+    campaignId: string,
+    token: string,
+  ): Promise<ExternalCampaign>;
   getInsights(
     accountId: string | undefined,
     campaignId: string,
@@ -73,9 +83,13 @@ export const AD_ERROR_MESSAGES: Record<AdErrorCode, string> = {
   rate_limited: "Limite de consultas atingido. Tente em alguns minutos.",
   invalid_link: "Link não reconhecido.",
   provider_error: "A plataforma não respondeu como esperado.",
+  partial_data: "Dados parciais. A sincronização precisa ser retomada.",
+  conflict: "Dados manuais ou vínculos em conflito. Reconcilie antes de sincronizar.",
 };
 
-export function finalizeInsight(d: Omit<DailyInsight, "ctr" | "cpc" | "cpm" | "cpl"> & Partial<DailyInsight>): DailyInsight {
+export function finalizeInsight(
+  d: Omit<DailyInsight, "ctr" | "cpc" | "cpm" | "cpl"> & Partial<DailyInsight>,
+): DailyInsight {
   const r2 = (v: number) => Math.round(v * 100) / 100;
   return {
     ...d,

@@ -176,15 +176,7 @@ export function normalizeMarketingCampaign(
   const accesses = cleanNumber(raw.accesses ?? raw.acessos);
   const views = cleanNumber(raw.views ?? raw.visualizacoes);
   const dailyMetrics =
-    raw.dailyMetrics?.length && isValidDailyMetrics(raw.dailyMetrics)
-      ? raw.dailyMetrics
-      : buildFallbackDailyMetrics({
-          endDate,
-          leads,
-          clicks: clicks || leads * 18,
-          accesses: accesses || Math.round((clicks || leads * 18) * 0.64),
-          views: views || Math.max(clicks * 10, leads * 140),
-        });
+    raw.dailyMetrics?.length && isValidDailyMetrics(raw.dailyMetrics) ? raw.dailyMetrics : [];
   const totalLeads = sumDaily(dailyMetrics, "leads");
   const totalClicks = sumDaily(dailyMetrics, "clicks");
   const totalAccesses = sumDaily(dailyMetrics, "accesses");
@@ -192,14 +184,7 @@ export function normalizeMarketingCampaign(
   const locationBreakdown =
     raw.locationBreakdown?.length && isValidLocations(raw.locationBreakdown)
       ? raw.locationBreakdown
-      : [
-          {
-            location: raw.bestLocation ?? raw.melhorRegiao ?? "Centro",
-            impressions: cleanNumber(raw.impressions ?? raw.impressoes) || totalViews,
-            clicks: totalClicks,
-            leads: totalLeads,
-          },
-        ];
+      : [];
   const impressions =
     cleanNumber(raw.impressions ?? raw.impressoes) ||
     locationBreakdown.reduce((total, item) => total + item.impressions, 0);
@@ -210,6 +195,7 @@ export function normalizeMarketingCampaign(
     "Não informado";
 
   return {
+    ...campaign,
     id: String(raw.id ?? `campanha-${index + 1}`),
     name,
     channel,
@@ -217,19 +203,21 @@ export function normalizeMarketingCampaign(
     status,
     startDate,
     endDate,
-    investment,
+    investment: raw.financialVisible === false || raw.investment === null ? null : investment,
     leads: totalLeads,
     clicks: totalClicks,
     accesses: totalAccesses,
     views: totalViews,
     impressions,
     conversionRate: totalAccesses > 0 ? roundMetric((totalLeads / totalAccesses) * 100) : 0,
-    costPerLead: totalLeads > 0 ? roundMetric(investment / totalLeads) : 0,
+    costPerLead:
+      raw.financialVisible === false || raw.investment === null || totalLeads === 0
+        ? null
+        : roundMetric(investment / totalLeads),
     bestLocation,
     responsiblePerson: raw.responsiblePerson ?? raw.responsavel ?? "Equipe comercial",
     notes: raw.notes ?? raw.observacoes ?? "Sem observações registradas.",
-    diagnosis:
-      raw.diagnosis ?? getAutomaticDiagnosis(status, totalLeads, totalAccesses, investment),
+    diagnosis: raw.diagnosis ?? "Aguardando métricas para análise.",
     expectedLeads: cleanOptionalNumber(raw.expectedLeads),
     referenceUrl: raw.referenceUrl,
     dailyMetrics,
@@ -247,7 +235,7 @@ export function buildMarketingSummary(campaigns: MarketingCampaign[]): Marketing
   const accesses = sum(campaigns, "accesses");
   const views = sum(campaigns, "views");
   const investmentWithLeads = campaigns.reduce(
-    (total, campaign) => total + (campaign.leads > 0 ? campaign.investment : 0),
+    (total, campaign) => total + (campaign.leads > 0 ? (campaign.investment ?? 0) : 0),
     0,
   );
   const channels = buildChannelDistributionData(campaigns);
@@ -318,7 +306,7 @@ export function buildCampaignPerformanceData(
       clicks: campaign.clicks,
       views: campaign.views,
       conversionRate: campaign.conversionRate,
-      costPerLead: campaign.costPerLead,
+      costPerLead: campaign.costPerLead ?? 0,
     }));
 }
 
@@ -344,7 +332,7 @@ export function buildChannelDistributionData(
     current.clicks += campaign.clicks;
     current.accesses += campaign.accesses;
     current.views += campaign.views;
-    current.investment += campaign.investment;
+    current.investment += campaign.investment ?? 0;
     grouped.set(channel, current);
   });
 
@@ -538,7 +526,11 @@ export function formatMarketingDateRange(startDate: string, endDate: string) {
 export function getCampaignStrength(campaign: MarketingCampaign) {
   if (campaign.status === "Planejada") return "Aguardando início";
   if (campaign.status === "Com baixo desempenho") return "Requer atenção";
-  if (campaign.costPerLead > 0 && campaign.costPerLead <= 45 && campaign.conversionRate >= 7) {
+  if (
+    (campaign.costPerLead ?? 0) > 0 &&
+    (campaign.costPerLead ?? 0) <= 45 &&
+    campaign.conversionRate >= 7
+  ) {
     return "Resultado forte";
   }
   if (campaign.conversionRate >= 8) return "Boa conversão";
@@ -580,71 +572,10 @@ function normalizeStatus(value?: string): MarketingCampaignStatus {
   return "Ativa";
 }
 
-function getAutomaticDiagnosis(
-  status: MarketingCampaignStatus,
-  leads: number,
-  accesses: number,
-  investment: number,
-) {
-  if (status === "Planejada") return "Campanha planejada; aguarda início da veiculação.";
-  if (leads === 0 && investment > 0) return "Investimento registrado sem leads gerados.";
-  if (accesses > 0 && leads / accesses < 0.04) return "Alta visualização com baixa conversão.";
-  if (leads > 0 && investment / leads <= 45) return "Boa geração de leads com CPL saudável.";
-  return "Desempenho consistente para acompanhamento.";
-}
-
 function compareCampaignPerformance(first: MarketingCampaign, second: MarketingCampaign) {
-  const firstScore = first.leads * 3 + first.conversionRate * 8 - first.costPerLead / 10;
-  const secondScore = second.leads * 3 + second.conversionRate * 8 - second.costPerLead / 10;
+  const firstScore = first.leads * 3 + first.conversionRate * 8 - (first.costPerLead ?? 0) / 10;
+  const secondScore = second.leads * 3 + second.conversionRate * 8 - (second.costPerLead ?? 0) / 10;
   return secondScore - firstScore;
-}
-
-function buildFallbackDailyMetrics({
-  endDate,
-  leads,
-  clicks,
-  accesses,
-  views,
-}: {
-  endDate: string;
-  leads: number;
-  clicks: number;
-  accesses: number;
-  views: number;
-}): MarketingDailyMetric[] {
-  const weights = [0.11, 0.14, 0.12, 0.17, 0.13, 0.18, 0.15];
-  const dates = buildSevenDayWindow(endDate);
-  const leadValues = splitByWeights(leads, weights);
-  const clickValues = splitByWeights(clicks, weights);
-  const accessValues = splitByWeights(accesses, weights);
-  const viewValues = splitByWeights(views, weights);
-
-  return dates.map((date, index) => ({
-    date,
-    leads: leadValues[index] ?? 0,
-    clicks: clickValues[index] ?? 0,
-    accesses: accessValues[index] ?? 0,
-    views: viewValues[index] ?? 0,
-  }));
-}
-
-function buildSevenDayWindow(endDate: string) {
-  const end = parseDate(endDate) ?? parseDate(fallbackEndDate) ?? new Date(2026, 5, 30);
-  return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(end, index - 6)));
-}
-
-function splitByWeights(total: number, weights: number[]) {
-  const values = weights.map((weight) => Math.floor(total * weight));
-  let remainder = total - values.reduce((sumValue, value) => sumValue + value, 0);
-  let index = values.length - 1;
-
-  while (remainder > 0) {
-    values[index] += 1;
-    remainder -= 1;
-    index = index === 0 ? values.length - 1 : index - 1;
-  }
-
-  return values;
 }
 
 function isValidDailyMetrics(metrics: MarketingDailyMetric[]) {
@@ -705,16 +636,4 @@ function shortDateLabel(value: string) {
 function parseDate(value: string) {
   const date = new Date(`${value}T00:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function addDays(date: Date, days: number) {
-  const copy = new Date(date);
-  copy.setDate(copy.getDate() + days);
-  return copy;
-}
-
-function toDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate(),
-  ).padStart(2, "0")}`;
 }
