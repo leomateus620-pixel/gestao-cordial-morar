@@ -96,7 +96,7 @@ Resultados finais de testes, modelo de dados e evidências de UI são registrado
 | Callback validado | Sim | GET interno 200 com challenge exato; POST sem/ com assinatura errada 403 |
 | Aplicativo assinado | Sim, objeto Page, campo leadgen, callback acima | `/{app}/subscriptions` (Meta verificou o callback ao salvar) |
 | Página inscrita | Sim, leadgen | `/{page}/subscribed_apps` (não havia assinaturas anteriores) |
-| Worker | Ver validacao.md | Rota aceita a credencial interna do cofre (`internal_worker_headers()`) |
+| Worker ativo | Sim, cron `meta-ads-leadgen` a cada minuto | Chamada pelo cofre devolveu 200; sem credencial 401 |
 | Teste oficial | Pendente | Precisa ser disparado na Lead Ads Testing Tool |
 
 Mapeamento de formulário (finalidade e tipo de imóvel) é obrigatório para virar atendimento; sem ele o lead fica em "revisão" na caixa de leads, sem duplicar.
