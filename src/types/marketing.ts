@@ -59,10 +59,11 @@ export type MarketingDailyMetric = {
   cpm?: number;
   ctr?: number;
   conversions?: number;
+  landingPageViews?: number;
 };
 
 export type MarketingPlatform = "meta" | "google";
-export type MarketingSyncStatus = "manual" | "synced" | "error";
+export type MarketingSyncStatus = "manual" | "queued" | "syncing" | "synced" | "partial" | "error";
 
 export type MarketingLocationBreakdown = {
   location: string;
@@ -79,14 +80,14 @@ export type MarketingCampaign = {
   status: MarketingCampaignStatus;
   startDate: string;
   endDate: string;
-  investment: number;
+  investment: number | null;
   leads: number;
   clicks: number;
   accesses: number;
   views: number;
   impressions: number;
   conversionRate: number;
-  costPerLead: number;
+  costPerLead: number | null;
   bestLocation: string;
   responsiblePerson: string;
   notes: string;
@@ -105,6 +106,16 @@ export type MarketingCampaign = {
   lastSyncedAt?: string | null;
   syncStatus?: MarketingSyncStatus;
   syncError?: string | null;
+  connectionId?: string | null;
+  currency?: string | null;
+  accountTimezone?: string | null;
+  financialVisible?: boolean;
+  periodAggregate?: {
+    since: string;
+    until: string;
+    reach: number | null;
+    frequency: number | null;
+  } | null;
 };
 
 export type MarketingCampaignInput = Omit<

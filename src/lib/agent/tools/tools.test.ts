@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { agentTools, executeAgentTool, getAllowedTools } from "./index.ts";
 import { loadAgentContext, type AgentContext } from "../security.ts";
-import { safePublicCover } from "./common.ts";
+import { safePublicCover, saoPauloDay } from "./common.ts";
 import { scoreProperty } from "./match-client-properties.ts";
 const ids = {
   admin: "00000000-0000-4000-8000-000000000001",
@@ -268,7 +268,47 @@ function context(role: string, agency = "cordial", db = fixture): AgentContext &
     roles: [role],
     agencies: [agency],
     log,
-    supabase: { from: (table: string) => new Query(table, db, log) } as any,
+    supabase: {
+      from: (table: string) => new Query(table, db, log),
+      rpc: async (
+        name: string,
+        input: {
+          p_imobiliaria?: string | null;
+          p_since: string;
+          p_until: string;
+          p_owned_only?: boolean;
+        },
+      ) => {
+        assert.equal(name, "marketing_campaigns_safe");
+        log.push(`rpc:${name}:owned:${input.p_owned_only}:agency:${input.p_imobiliaria ?? "all"}`);
+        const campaigns = (db.marketing_campaigns ?? []).filter(
+          (c) =>
+            (role === "admin" || c.imobiliaria === agency) &&
+            (!input.p_imobiliaria || c.imobiliaria === input.p_imobiliaria) &&
+            (!input.p_owned_only || c.user_id === userId),
+        );
+        const items = campaigns.map((c) => ({
+          ...c,
+          investimento: role === "admin" ? (c.investimento ?? 0) : null,
+          daily_metrics: (db.marketing_daily_metrics ?? [])
+            .filter(
+              (m) =>
+                m.campaign_id === c.id &&
+                m.data >= input.p_since &&
+                m.data <= input.p_until &&
+                (!input.p_owned_only || m.user_id === userId),
+            )
+            .map((m) => {
+              const { investimento, spend, cpc, cpm, ...safe } = m;
+              return { ...safe, ...(role === "admin" ? { investimento, spend, cpc, cpm } : {}) };
+            }),
+        }));
+        return {
+          data: { items, total: items.length, financial_visible: role === "admin" },
+          error: null,
+        };
+      },
+    } as any,
   };
 }
 const operational = [
@@ -378,6 +418,76 @@ test("secretary never receives monetary aggregates or queries their columns", as
         !s.includes("investimento"),
     ),
   );
+});
+test("marketing Bot narrows RPC to owned campaigns and owned metrics in server-loaded agencies", async () => {
+  const db = {
+    ...fixture,
+    marketing_campaigns: [
+      {
+        id: ids.secretaria,
+        user_id: ids.secretaria,
+        imobiliaria: "cordial",
+        nome: "Própria",
+        platform: "meta",
+      },
+      { id: ids.other, user_id: ids.other, imobiliaria: "cordial", nome: "Outro proprietário" },
+      { id: ids.morar, user_id: ids.secretaria, imobiliaria: "morar", nome: "Outra marca" },
+    ],
+    marketing_daily_metrics: [
+      {
+        campaign_id: ids.secretaria,
+        user_id: ids.secretaria,
+        data: saoPauloDay(),
+        leads: 2,
+        impressions: 10,
+      },
+      {
+        campaign_id: ids.secretaria,
+        user_id: ids.other,
+        data: saoPauloDay(),
+        leads: 999,
+        impressions: 999,
+      },
+      {
+        campaign_id: ids.other,
+        user_id: ids.other,
+        data: saoPauloDay(),
+        leads: 888,
+        impressions: 888,
+      },
+    ],
+  };
+  const secretary = context("secretaria", "cordial", db);
+  const output = await executeAgentTool("marketing_performance", {}, secretary);
+  const campaigns = output.structuredContent.campanhas as Row[];
+  assert.equal(campaigns.length, 1);
+  assert.equal(campaigns[0].id, ids.secretaria);
+  assert.equal(campaigns[0].mesAtual.leads, 2);
+  assert.deepEqual(secretary.log, ["rpc:marketing_campaigns_safe:owned:true:agency:cordial"]);
+  const admin = context("admin", "cordial", db);
+  await executeAgentTool("marketing_performance", {}, admin);
+  assert.deepEqual(admin.log, ["rpc:marketing_campaigns_safe:owned:false:agency:all"]);
+});
+test("marketing Bot fails closed without agency scope or with a foreign agency argument", async () => {
+  const secretary = context("secretaria");
+  secretary.agencies = [];
+  await assert.rejects(() => executeAgentTool("marketing_performance", {}, secretary), /permissão/);
+  assert.equal(secretary.log.length, 0);
+  const cordial = context("secretaria");
+  await assert.rejects(
+    () => executeAgentTool("marketing_performance", { imobiliaria: "morar" }, cordial),
+    /permissão/,
+  );
+  assert.equal(cordial.log.length, 0);
+});
+test("marketing Bot uses one explicit call for each allowed agency", async () => {
+  const secretary = context("secretaria");
+  secretary.agencies = ["cordial", "morar"];
+  await executeAgentTool("marketing_performance", {}, secretary);
+  assert.deepEqual(secretary.log.sort(), [
+    "rpc:marketing_campaigns_safe:owned:true:agency:cordial",
+    "rpc:marketing_campaigns_safe:owned:true:agency:morar",
+  ]);
 });
 test("financeiro uses frontend priority and cannot inherit secretary module access", async () => {
   const ctx = context("financeiro");

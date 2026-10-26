@@ -29,7 +29,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { axisTick, chartSuccess, chartSystem, gridStroke } from "@/lib/chart-palette";
-import { brl } from "@/lib/format";
+import { campaignStats, type DateRange } from "@/services/marketing-insights";
 import type { MarketingCampaign, MarketingDailyMetric } from "@/types/marketing";
 import {
   formatMarketingDateRange,
@@ -41,18 +41,29 @@ type CampaignDetailsDrawerProps = {
   campaign: MarketingCampaign | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRestoreFocus?: () => void;
   canViewFinancialInsights?: boolean;
+  metricsRange?: DateRange;
 };
 
 export function CampaignDetailsDrawer({
   campaign,
   open,
   onOpenChange,
+  onRestoreFocus,
   canViewFinancialInsights = true,
+  metricsRange,
 }: CampaignDetailsDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
+        closeLabel="Fechar"
+        onCloseAutoFocus={(event) => {
+          if (onRestoreFocus) {
+            event.preventDefault();
+            onRestoreFocus();
+          }
+        }}
         side="right"
         className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[46rem]"
       >
@@ -60,6 +71,7 @@ export function CampaignDetailsDrawer({
           <CampaignDetailsContent
             campaign={campaign}
             canViewFinancialInsights={canViewFinancialInsights}
+            metricsRange={metricsRange}
           />
         )}
       </SheetContent>
@@ -70,11 +82,38 @@ export function CampaignDetailsDrawer({
 function CampaignDetailsContent({
   campaign,
   canViewFinancialInsights,
+  metricsRange,
 }: {
   campaign: MarketingCampaign;
   canViewFinancialInsights: boolean;
+  metricsRange?: DateRange;
 }) {
-  const cpl = campaign.costPerLead > 0 ? brl(campaign.costPerLead) : "Sem leads";
+  const stat = metricsRange
+    ? campaignStats(campaign, metricsRange.since.slice(0, 7), metricsRange)
+    : null;
+  if (stat)
+    campaign = {
+      ...campaign,
+      investment: stat.spend,
+      costPerLead: stat.cpl,
+      leads: stat.leads,
+      clicks: stat.clicks,
+      impressions: stat.impressions,
+      dailyMetrics: campaign.dailyMetrics.filter(
+        (d) => d.date >= metricsRange!.since && d.date <= metricsRange!.until,
+      ),
+    };
+  const money = (value: number) =>
+    value.toLocaleString("pt-BR", { style: "currency", currency: campaign.currency ?? "BRL" });
+  const cpl = campaign.costPerLead !== null ? money(campaign.costPerLead) : "Indisponível";
+  const pageViews = campaign.dailyMetrics.some((d) => d.landingPageViews !== undefined)
+    ? campaign.dailyMetrics.reduce((sum, d) => sum + (d.landingPageViews ?? 0), 0)
+    : null;
+  const denominator = campaign.platform ? pageViews : campaign.accesses || null;
+  const conversion =
+    denominator && denominator > 0
+      ? formatMarketingPercent((campaign.leads / denominator) * 100)
+      : "Indisponível";
 
   return (
     <div className="min-h-full p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
@@ -93,6 +132,13 @@ function CampaignDetailsContent({
         </SheetDescription>
       </SheetHeader>
 
+      {metricsRange && (
+        <p className="mt-4 text-xs text-foreground/65">
+          Métricas de {metricsRange.since} a {metricsRange.until} ·{" "}
+          {campaign.currency ?? "Moeda não informada"} ·{" "}
+          {campaign.accountTimezone ?? "Fuso da conta não informado"}
+        </p>
+      )}
       <section className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <DetailMetric
           icon={TrendingUp}
@@ -100,7 +146,11 @@ function CampaignDetailsContent({
           value={formatMarketingNumber(campaign.leads)}
         />
         {canViewFinancialInsights && (
-          <DetailMetric icon={Wallet} label="Investimento" value={brl(campaign.investment)} />
+          <DetailMetric
+            icon={Wallet}
+            label="Investimento"
+            value={campaign.investment === null ? "Indisponível" : money(campaign.investment)}
+          />
         )}
         <DetailMetric
           icon={MousePointerClick}
@@ -109,23 +159,22 @@ function CampaignDetailsContent({
         />
         <DetailMetric
           icon={BarChart3}
-          label="Acessos"
-          value={formatMarketingNumber(campaign.accesses)}
+          label="Visualizações da página de destino"
+          value={pageViews === null ? "Indisponível" : formatMarketingNumber(pageViews)}
         />
         <DetailMetric
           icon={Eye}
-          label="Visualizações"
-          value={formatMarketingNumber(campaign.views)}
+          label="Impressões"
+          value={formatMarketingNumber(campaign.impressions)}
         />
         <DetailMetric
           icon={Target}
-          label="Conversão"
-          value={formatMarketingPercent(campaign.conversionRate)}
+          label={campaign.platform ? "Leads / visualizações destino" : "Leads / acessos"}
+          value={conversion}
         />
         {canViewFinancialInsights && <DetailMetric icon={Wallet} label="CPL" value={cpl} />}
         <DetailMetric icon={MapPin} label="Melhor região" value={campaign.bestLocation} />
       </section>
-
 
       <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
@@ -135,6 +184,24 @@ function CampaignDetailsContent({
           </div>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <InfoBlock
+            icon={CalendarDays}
+            label="Última sincronização"
+            value={
+              campaign.lastSyncedAt
+                ? new Date(campaign.lastSyncedAt).toLocaleString("pt-BR")
+                : "Ainda não sincronizada"
+            }
+          />
+          <InfoBlock
+            icon={Target}
+            label="Conta / campanha externa"
+            value={
+              campaign.externalAccountId
+                ? `${campaign.externalAccountId} / ${campaign.externalCampaignId || "—"}`
+                : "Cadastro manual"
+            }
+          />
           <InfoBlock icon={UserRound} label="Responsável" value={campaign.responsiblePerson} />
           <InfoBlock
             icon={CalendarDays}
@@ -171,7 +238,7 @@ function CampaignDetailsContent({
       <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
         <h3 className="text-base font-black text-foreground">Performance ao longo do tempo</h3>
         <p className="mt-1 text-xs leading-relaxed text-foreground/52">
-          Leads e acessos por dia de campanha.
+          Leads reportados por dia no recorte consultado.
         </p>
         <div className="mt-4 h-56 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -213,8 +280,8 @@ function CampaignDetailsContent({
               />
               <Area
                 type="monotone"
-                dataKey="accesses"
-                name="Acessos"
+                dataKey="landingPageViews"
+                name="Visualizações da página de destino"
                 stroke={chartSystem}
                 strokeWidth={1.8}
                 fill="transparent"
@@ -225,41 +292,46 @@ function CampaignDetailsContent({
         </div>
       </section>
 
-      <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
-        <h3 className="text-base font-black text-foreground">Entrega por localização</h3>
-        <div className="mt-3 space-y-2">
-          {campaign.locationBreakdown.map((item) => {
-            const max = Math.max(
-              ...campaign.locationBreakdown.map((location) => location.impressions),
-              1,
-            );
-            const width = Math.max(4, (item.impressions / max) * 100);
+      {campaign.locationBreakdown.length > 0 && (
+        <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
+          <h3 className="text-base font-black text-foreground">Entrega por localização</h3>
+          <div className="mt-3 space-y-2">
+            {campaign.locationBreakdown.map((item) => {
+              const max = Math.max(
+                ...campaign.locationBreakdown.map((location) => location.impressions),
+                1,
+              );
+              const width = Math.max(4, (item.impressions / max) * 100);
 
-            return (
-              <div key={item.location} className="rounded-2xl bg-white/58 p-3 ring-1 ring-white/62">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-foreground">{item.location}</p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-foreground/50">
-                      {formatMarketingNumber(item.clicks)} cliques ·{" "}
-                      {formatMarketingNumber(item.leads)} leads
-                    </p>
+              return (
+                <div
+                  key={item.location}
+                  className="rounded-2xl bg-white/58 p-3 ring-1 ring-white/62"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-foreground">{item.location}</p>
+                      <p className="mt-0.5 text-[11px] font-semibold text-foreground/50">
+                        {formatMarketingNumber(item.clicks)} cliques ·{" "}
+                        {formatMarketingNumber(item.leads)} leads
+                      </p>
+                    </div>
+                    <span className="font-mono text-sm font-black text-primary">
+                      {formatMarketingNumber(item.impressions)}
+                    </span>
                   </div>
-                  <span className="font-mono text-sm font-black text-primary">
-                    {formatMarketingNumber(item.impressions)}
-                  </span>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/65">
+                    <span
+                      className="block h-full rounded-full bg-primary"
+                      style={{ width: `${width}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/65">
-                  <span
-                    className="block h-full rounded-full bg-primary"
-                    style={{ width: `${width}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -319,9 +391,16 @@ function DetailsTooltip({
     <div className="rounded-2xl border border-white/70 bg-white/96 p-3 text-xs shadow-[0_20px_50px_-20px_rgba(23,27,33,0.32)] backdrop-blur-xl">
       <p className="mb-2 text-sm font-black text-foreground">{shortDateLabel(item.date)}</p>
       <TooltipLine label="Leads" value={formatMarketingNumber(item.leads)} />
-      <TooltipLine label="Acessos" value={formatMarketingNumber(item.accesses)} />
+      {item.landingPageViews !== undefined && (
+        <TooltipLine
+          label="Visualizações da página de destino"
+          value={formatMarketingNumber(item.landingPageViews)}
+        />
+      )}
       <TooltipLine label="Cliques" value={formatMarketingNumber(item.clicks)} />
-      <TooltipLine label="Visualizações" value={formatMarketingNumber(item.views)} />
+      {item.impressions !== undefined && (
+        <TooltipLine label="Impressões" value={formatMarketingNumber(item.impressions)} />
+      )}
     </div>
   );
 }

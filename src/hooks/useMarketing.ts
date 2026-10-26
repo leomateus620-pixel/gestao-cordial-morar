@@ -1,37 +1,48 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   createCampaign as createFn,
   deleteCampaign as deleteFn,
-  listCampaigns,
+  listCampaignPage,
   updateCampaign as updateFn,
   upsertDailyMetric as upsertFn,
   type CampaignInput,
   type DailyMetricInput,
+  type MarketingQuery,
 } from "@/lib/marketing/marketing.functions";
-import type { MarketingCampaign } from "@/types/marketing";
+import { useSession } from "@/lib/auth-mock";
+import { useApp } from "@/store/app-store";
 
-const KEY = ["marketing", "campaigns"] as const;
-
-export function useMarketing() {
+export function useMarketing(filters: MarketingQuery = {}) {
   const qc = useQueryClient();
-  const list = useServerFn(listCampaigns);
-  const create = useServerFn(createFn);
-  const update = useServerFn(updateFn);
-  const remove = useServerFn(deleteFn);
-  const upsertDaily = useServerFn(upsertFn);
-
-  const query = useQuery<MarketingCampaign[]>({
-    queryKey: KEY,
-    queryFn: () => list(),
+  const session = useSession();
+  const agency = useApp((s) => s.agency);
+  const list = useServerFn(listCampaignPage),
+    create = useServerFn(createFn),
+    update = useServerFn(updateFn),
+    remove = useServerFn(deleteFn),
+    upsertDaily = useServerFn(upsertFn);
+  useEffect(
+    () => () => {
+      if (session?.id)
+        qc.removeQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "marketing" && query.queryKey.includes(session.id),
+        });
+    },
+    [qc, session?.id, session?.perfil],
+  );
+  const scope = { ...filters, imobiliaria: agency === "todas" ? null : agency };
+  const query = useQuery({
+    queryKey: ["marketing", "campaigns", session?.id, session?.perfil, scope],
+    queryFn: () => list({ data: scope }),
+    enabled: Boolean(session),
     staleTime: 30_000,
   });
-
   const invalidate = useCallback(() => {
-    qc.invalidateQueries({ queryKey: KEY });
+    void qc.invalidateQueries({ queryKey: ["marketing", "campaigns"] });
   }, [qc]);
-
   const createMutation = useMutation({
     mutationFn: (input: CampaignInput) => create({ data: input }),
     onSuccess: invalidate,
@@ -48,9 +59,11 @@ export function useMarketing() {
     mutationFn: (input: DailyMetricInput) => upsertDaily({ data: input }),
     onSuccess: invalidate,
   });
-
   return {
-    campaigns: query.data ?? [],
+    summary: query.data?.summary,
+    campaigns: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    financialVisible: query.data?.financialVisible ?? false,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

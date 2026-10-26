@@ -17,7 +17,9 @@
     "test:nfse": "tsx --test src/lib/nfse/*.test.ts src/lib/nfse/ipm/*.test.ts src/lib/rentals/payment-reference.test.ts src/components/alugueis/rental-nfse-view.test.ts src/components/alugueis/RentalNfseHistoryState.test.tsx src/components/integracoes/nfse-profile-form.test.ts tests/nfse/integrity.test.ts",
     "test:assistant": "tsx --test src/lib/agent/*.test.ts src/lib/agent/tools/*.test.ts src/lib/mcp/*.test.ts src/components/assistant/*.test.tsx tests/assistant/*.test.ts",
     "test:vistoria": "tsx --test src/lib/vistoria/*.test.ts tests/vistoria/integrity.test.ts",
-    "preview:vistoria": "vite --config tests/vistoria/vite.config.ts"
+    "preview:vistoria": "vite --config tests/vistoria/vite.config.ts",
+    "test:marketing": "vitest run --config vitest.marketing.config.ts && tsx --test tests/ads/*.test.ts",
+    "preview:marketing": "vite --config tests/marketing/vite.config.ts"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.4.0",

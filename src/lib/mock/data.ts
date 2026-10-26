@@ -38,9 +38,20 @@ export type OrigemLead =
   | "Porta fria";
 
 export type DocumentoStatus =
-  "Pendente" | "Recebido" | "Em análise" | "Aprovado" | "Reprovado" | "Vencido";
+  | "Pendente"
+  | "Recebido"
+  | "Em análise"
+  | "Aprovado"
+  | "Reprovado"
+  | "Vencido";
 export type ImovelTipo =
-  "Apartamento" | "Casa" | "Cobertura" | "Loft" | "Terreno" | "Sala comercial" | "Sítio";
+  | "Apartamento"
+  | "Casa"
+  | "Cobertura"
+  | "Loft"
+  | "Terreno"
+  | "Sala comercial"
+  | "Sítio";
 export type ImovelFinalidade = "Venda" | "Aluguel" | "Ambos";
 export type ImovelStatus =
   | "Captação"
@@ -391,7 +402,7 @@ function buildMarketingCampaign(input: MarketingCampaignSeedInput): MarketingCam
     views,
     impressions,
     bestLocation,
-    costPerLead: leads > 0 ? roundMarketingMetric(input.investment / leads) : 0,
+    costPerLead: leads > 0 ? roundMarketingMetric((input.investment ?? 0) / leads) : 0,
     conversionRate: accesses > 0 ? roundMarketingMetric((leads / accesses) * 100) : 0,
   };
 }
@@ -928,7 +939,11 @@ export type Venda = {
   contractFileName?: string;
   supportingDocumentFileName?: string;
   documentStatus?:
-    "contrato_anexado" | "contrato_pendente" | "aguardando_assinatura" | "em_analise" | "cancelado";
+    | "contrato_anexado"
+    | "contrato_pendente"
+    | "aguardando_assinatura"
+    | "em_analise"
+    | "cancelado";
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -1141,7 +1156,6 @@ export const projecoesFinanceirasSeed: ProjecaoFinanceira[] = [
     imobiliaria: "morar",
   },
 ];
-
 
 export const dashboardEvolucaoMensal = [
   { mes: "Jan", cordial: 42, morar: 28, total: 70 },

@@ -18,6 +18,8 @@ jobs:
         run: bun run typecheck
       - name: Testes
         run: bun run test
+      - name: Meta Ads e Lead Ads
+        run: bun run test:marketing
       - name: Site público e política PostgreSQL
         run: bun run test:site
       - name: Build

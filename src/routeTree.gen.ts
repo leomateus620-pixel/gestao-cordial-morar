@@ -88,12 +88,14 @@ import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imov
 import { Route as ApiPublicAdsOauthCallbackRouteImport } from './routes/api/public/ads-oauth.callback'
 import { Route as ApiPublicAssistantOauthCallbackRouteImport } from './routes/api/public/assistant-oauth.callback'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
+import { Route as ApiPublicHooksAdsSyncRouteImport } from './routes/api/public/hooks/ads-sync'
 import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
 import { Route as ApiPublicHooksAssistantBriefingWorkerRouteImport } from './routes/api/public/hooks/assistant-briefing-worker'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
+import { Route as ApiPublicHooksMetaLeadsRouteImport } from './routes/api/public/hooks/meta-leads'
 import { Route as ApiPublicHooksNfsePdfRetryRouteImport } from './routes/api/public/hooks/nfse-pdf-retry'
 import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
 import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
@@ -105,6 +107,7 @@ import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/a
 import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
 import { Route as ApiPublicHooksSiteMediaWorkerRouteImport } from './routes/api/public/hooks/site-media-worker'
+import { Route as ApiPublicMetaLeadgenRouteImport } from './routes/api/public/meta/leadgen'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -512,6 +515,11 @@ const ApiPublicGoogleCalendarCallbackRoute =
     path: '/api/public/google-calendar/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAdsSyncRoute = ApiPublicHooksAdsSyncRouteImport.update({
+  id: '/api/public/hooks/ads-sync',
+  path: '/api/public/hooks/ads-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksAgendaPhotoDigestRoute =
   ApiPublicHooksAgendaPhotoDigestRouteImport.update({
     id: '/api/public/hooks/agenda-photo-digest',
@@ -548,6 +556,11 @@ const ApiPublicHooksGoogleCalendarSyncRoute =
     path: '/api/public/hooks/google-calendar-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMetaLeadsRoute = ApiPublicHooksMetaLeadsRouteImport.update({
+  id: '/api/public/hooks/meta-leads',
+  path: '/api/public/hooks/meta-leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksNfsePdfRetryRoute =
   ApiPublicHooksNfsePdfRetryRouteImport.update({
     id: '/api/public/hooks/nfse-pdf-retry',
@@ -614,6 +627,11 @@ const ApiPublicHooksSiteMediaWorkerRoute =
     path: '/api/public/hooks/site-media-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMetaLeadgenRoute = ApiPublicMetaLeadgenRouteImport.update({
+  id: '/api/public/meta/leadgen',
+  path: '/api/public/meta/leadgen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -710,12 +728,14 @@ export interface FileRoutesByFullPath {
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/ads-sync': typeof ApiPublicHooksAdsSyncRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/meta-leads': typeof ApiPublicHooksMetaLeadsRoute
   '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -727,6 +747,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
+  '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -806,12 +827,14 @@ export interface FileRoutesByTo {
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/ads-sync': typeof ApiPublicHooksAdsSyncRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/meta-leads': typeof ApiPublicHooksMetaLeadsRoute
   '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -823,6 +846,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
+  '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -908,12 +932,14 @@ export interface FileRoutesById {
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
+  '/api/public/hooks/ads-sync': typeof ApiPublicHooksAdsSyncRoute
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
+  '/api/public/hooks/meta-leads': typeof ApiPublicHooksMetaLeadsRoute
   '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -925,6 +951,7 @@ export interface FileRoutesById {
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
+  '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
@@ -1010,12 +1037,14 @@ export interface FileRouteTypes {
     | '/api/public/ads-oauth/callback'
     | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/ads-sync'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/assistant-briefing-worker'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/meta-leads'
     | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -1027,6 +1056,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
+    | '/api/public/meta/leadgen'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -1106,12 +1136,14 @@ export interface FileRouteTypes {
     | '/api/public/ads-oauth/callback'
     | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/ads-sync'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/assistant-briefing-worker'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/meta-leads'
     | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -1123,6 +1155,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
+    | '/api/public/meta/leadgen'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -1207,12 +1240,14 @@ export interface FileRouteTypes {
     | '/api/public/ads-oauth/callback'
     | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
+    | '/api/public/hooks/ads-sync'
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/assistant-briefing-worker'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
+    | '/api/public/hooks/meta-leads'
     | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -1224,6 +1259,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/push-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
+    | '/api/public/meta/leadgen'
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
@@ -1250,12 +1286,14 @@ export interface RootRouteChildren {
   ApiPublicAdsOauthCallbackRoute: typeof ApiPublicAdsOauthCallbackRoute
   ApiPublicAssistantOauthCallbackRoute: typeof ApiPublicAssistantOauthCallbackRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
+  ApiPublicHooksAdsSyncRoute: typeof ApiPublicHooksAdsSyncRoute
   ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksAssistantBriefingWorkerRoute: typeof ApiPublicHooksAssistantBriefingWorkerRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGalleryAlignRoute: typeof ApiPublicHooksGalleryAlignRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
+  ApiPublicHooksMetaLeadsRoute: typeof ApiPublicHooksMetaLeadsRoute
   ApiPublicHooksNfsePdfRetryRoute: typeof ApiPublicHooksNfsePdfRetryRoute
   ApiPublicHooksPropertyDriveWorkerRoute: typeof ApiPublicHooksPropertyDriveWorkerRoute
   ApiPublicHooksPropertyImageRetryRoute: typeof ApiPublicHooksPropertyImageRetryRoute
@@ -1267,6 +1305,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPushWorkerRoute: typeof ApiPublicHooksPushWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
   ApiPublicHooksSiteMediaWorkerRoute: typeof ApiPublicHooksSiteMediaWorkerRoute
+  ApiPublicMetaLeadgenRoute: typeof ApiPublicMetaLeadgenRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
@@ -1827,6 +1866,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicGoogleCalendarCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ads-sync': {
+      id: '/api/public/hooks/ads-sync'
+      path: '/api/public/hooks/ads-sync'
+      fullPath: '/api/public/hooks/ads-sync'
+      preLoaderRoute: typeof ApiPublicHooksAdsSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/agenda-photo-digest': {
       id: '/api/public/hooks/agenda-photo-digest'
       path: '/api/public/hooks/agenda-photo-digest'
@@ -1867,6 +1913,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/google-calendar-sync'
       fullPath: '/api/public/hooks/google-calendar-sync'
       preLoaderRoute: typeof ApiPublicHooksGoogleCalendarSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/meta-leads': {
+      id: '/api/public/hooks/meta-leads'
+      path: '/api/public/hooks/meta-leads'
+      fullPath: '/api/public/hooks/meta-leads'
+      preLoaderRoute: typeof ApiPublicHooksMetaLeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/nfse-pdf-retry': {
@@ -1944,6 +1997,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/site-media-worker'
       fullPath: '/api/public/hooks/site-media-worker'
       preLoaderRoute: typeof ApiPublicHooksSiteMediaWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/meta/leadgen': {
+      id: '/api/public/meta/leadgen'
+      path: '/api/public/meta/leadgen'
+      fullPath: '/api/public/meta/leadgen'
+      preLoaderRoute: typeof ApiPublicMetaLeadgenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
@@ -2167,6 +2227,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAdsOauthCallbackRoute: ApiPublicAdsOauthCallbackRoute,
   ApiPublicAssistantOauthCallbackRoute: ApiPublicAssistantOauthCallbackRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,
+  ApiPublicHooksAdsSyncRoute: ApiPublicHooksAdsSyncRoute,
   ApiPublicHooksAgendaPhotoDigestRoute: ApiPublicHooksAgendaPhotoDigestRoute,
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
   ApiPublicHooksAssistantBriefingWorkerRoute:
@@ -2175,6 +2236,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksFinanceiroSheetsSyncRoute,
   ApiPublicHooksGalleryAlignRoute: ApiPublicHooksGalleryAlignRoute,
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
+  ApiPublicHooksMetaLeadsRoute: ApiPublicHooksMetaLeadsRoute,
   ApiPublicHooksNfsePdfRetryRoute: ApiPublicHooksNfsePdfRetryRoute,
   ApiPublicHooksPropertyDriveWorkerRoute:
     ApiPublicHooksPropertyDriveWorkerRoute,
@@ -2192,6 +2254,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,
   ApiPublicHooksSiteMediaWorkerRoute: ApiPublicHooksSiteMediaWorkerRoute,
+  ApiPublicMetaLeadgenRoute: ApiPublicMetaLeadgenRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,

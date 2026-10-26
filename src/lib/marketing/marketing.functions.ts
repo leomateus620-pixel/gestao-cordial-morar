@@ -1,63 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type {
   MarketingAgencyId,
   MarketingCampaign,
   MarketingCampaignStatus,
   MarketingChannel,
-  MarketingDailyMetric,
   MarketingObjective,
 } from "@/types/marketing";
 
-type CampaignRow = {
-  id: string;
-  user_id: string;
-  imobiliaria: string;
-  nome: string;
-  canal: string;
-  objetivo: string;
-  status: string;
-  data_inicio: string;
-  data_fim: string;
-  investimento: number | string;
-  responsavel: string | null;
-  observacoes: string | null;
-  diagnostico: string | null;
-  referencia_url: string | null;
-  leads_esperados: number | null;
-  created_at: string;
-  updated_at: string;
-  platform?: string | null;
-  external_campaign_id?: string | null;
-  external_account_id?: string | null;
-  source_url?: string | null;
-  last_synced_at?: string | null;
-  sync_status?: string | null;
-  sync_error?: string | null;
-};
-
-type DailyRow = {
-  id: string;
-  campaign_id: string;
-  user_id: string;
-  data: string;
-  leads: number;
-  clicks: number;
-  accesses: number;
-  views: number;
-  investimento: number | string;
-  impressions?: number | string | null;
-  reach?: number | string | null;
-  frequency?: number | string | null;
-  spend?: number | string | null;
-  cpc?: number | string | null;
-  cpm?: number | string | null;
-  ctr?: number | string | null;
-  conversions?: number | string | null;
-};
-
-const optNum = (v: number | string | null | undefined) =>
-  v === null || v === undefined ? undefined : Number(v) || 0;
+import { marketingCampaignDto, type CampaignRow } from "./marketing.dto";
 
 export type CampaignInput = {
   imobiliaria: MarketingAgencyId;
@@ -74,7 +28,6 @@ export type CampaignInput = {
   referenciaUrl?: string | null;
   leadsEsperados?: number | null;
 };
-
 export type DailyMetricInput = {
   campaignId: string;
   data: string;
@@ -84,12 +37,166 @@ export type DailyMetricInput = {
   views?: number;
   investimento?: number;
 };
-
-function orNull(v?: string | null) {
-  return v !== undefined && v !== null && String(v).trim() ? String(v).trim() : null;
+export type MarketingQuery = {
+  imobiliaria?: MarketingAgencyId | null;
+  since?: string;
+  until?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  platform?: "meta" | "google" | "manual" | null;
+  status?: string | null;
+  campaignId?: string;
+  accountId?: string | null;
+  currentSince?: string;
+  previousUntil?: string;
+};
+export type MarketingPeriodSummary = {
+  spend: number | null;
+  leads: number;
+  clicks: number;
+  impressions: number;
+  active_campaigns: number;
+  currencies: Array<string | null>;
+  has_data: boolean;
+};
+export type CampaignPage = {
+  summary?: { current: MarketingPeriodSummary; previous: MarketingPeriodSummary };
+  items: MarketingCampaign[];
+  total: number;
+  financialVisible: boolean;
+  page: number;
+  pageSize: number;
+};
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const querySchema = z
+  .object({
+    imobiliaria: z.enum(["cordial", "morar"]).nullish(),
+    since: date.optional(),
+    until: date.optional(),
+    page: z.number().int().min(1).max(10000).default(1),
+    pageSize: z.number().int().min(1).max(100).default(25),
+    search: z.string().max(100).optional(),
+    platform: z.enum(["meta", "google", "manual"]).nullish(),
+    status: z.string().max(40).nullish(),
+    campaignId: z.string().uuid().optional(),
+    accountId: z
+      .string()
+      .regex(/^(act_)?[0-9]{1,80}$/)
+      .nullish(),
+    currentSince: date.optional(),
+    previousUntil: date.optional(),
+  })
+  .strict();
+const inputSchema = z
+  .object({
+    imobiliaria: z.enum(["cordial", "morar"]),
+    nome: z.string().trim().min(1).max(200),
+    canal: z.enum([
+      "Instagram",
+      "Facebook",
+      "Google",
+      "WhatsApp",
+      "E-mail",
+      "Portal imobiliário",
+      "Open house",
+      "Externa",
+    ]),
+    objetivo: z.enum([
+      "Leads qualificados",
+      "Visitas",
+      "Captação",
+      "Venda",
+      "Locação",
+      "Relacionamento",
+      "Reconhecimento",
+    ]),
+    status: z.enum([
+      "Ativa",
+      "Planejada",
+      "Pausada",
+      "Encerrada",
+      "Em análise",
+      "Com baixo desempenho",
+    ]),
+    dataInicio: date,
+    dataFim: date,
+    investimento: z.number().finite().min(0).max(1e12),
+    responsavel: z.string().max(200).nullish(),
+    observacoes: z.string().max(5000).nullish(),
+    diagnostico: z.string().max(2000).nullish(),
+    referenciaUrl: z.string().max(2000).nullish(),
+    leadsEsperados: z.number().int().min(0).max(100000000).nullish(),
+  })
+  .strict()
+  .refine((d) => d.dataFim >= d.dataInicio, "O fim do período deve ser posterior ao início.");
+type Ctx = { supabase: SupabaseClient<Database>; userId: string };
+async function marketingAccess(ctx: Ctx) {
+  const { data, error } = await ctx.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", ctx.userId);
+  if (error) throw new Error("Não foi possível validar o acesso ao marketing.");
+  const roles = new Set((data ?? []).map((r: { role: string }) => r.role));
+  if (!roles.has("admin") && (roles.has("financeiro") || !roles.has("secretaria")))
+    throw new Error("Acesso ao marketing não permitido.");
+  return { isAdmin: roles.has("admin"), financialVisible: roles.has("admin") };
+}
+async function agencyAccess(ctx: Ctx, agency: string) {
+  const { data, error } = await ctx.supabase.rpc("marketing_can_operate", { p_agency: agency });
+  if (error || data !== true) throw new Error("Sem permissão para operar esta imobiliária.");
 }
 
-function inputToPayload(input: CampaignInput) {
+async function readPage(ctx: Ctx, raw: MarketingQuery = {}): Promise<CampaignPage> {
+  await marketingAccess(ctx);
+  const q = querySchema.parse(raw);
+  const { data, error } = await ctx.supabase.rpc("marketing_campaigns_safe", {
+    p_imobiliaria: q.imobiliaria ?? undefined,
+    p_since: q.since ?? undefined,
+    p_until: q.until ?? undefined,
+    p_page: q.page,
+    p_page_size: q.pageSize,
+    p_search: q.search || undefined,
+    p_platform: q.platform ?? undefined,
+    p_status: q.status ?? undefined,
+    p_campaign_id: q.campaignId ?? undefined,
+    p_account_id: q.accountId?.replace(/^act_/, "") ?? undefined,
+    p_current_since: q.currentSince ?? undefined,
+    p_previous_until: q.previousUntil ?? undefined,
+  });
+  if (error)
+    throw new Error(
+      "Não foi possível carregar as campanhas. Verifique a aplicação da migração de marketing.",
+    );
+  const result = data as unknown as {
+    items: CampaignRow[];
+    total: number;
+    financial_visible: boolean;
+    summary?: CampaignPage["summary"];
+  };
+  return {
+    summary: result?.summary,
+    items: (result?.items ?? []).map((r) =>
+      marketingCampaignDto(r, result.financial_visible === true),
+    ),
+    total: Number(result?.total ?? 0),
+    financialVisible: result?.financial_visible === true,
+    page: q.page,
+    pageSize: q.pageSize,
+  };
+}
+export const listCampaignPage = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: MarketingQuery) => querySchema.parse(d))
+  .handler(({ data, context }) => readPage(context, data));
+/** Compatibility contract for existing consumers. Bounded and sanitized by the same RPC. */
+export const listCampaigns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    async ({ context }): Promise<MarketingCampaign[]> =>
+      (await readPage(context, { pageSize: 100 })).items,
+  );
+function payload(input: CampaignInput, financial: boolean) {
   return {
     imobiliaria: input.imobiliaria,
     nome: input.nome.trim(),
@@ -98,183 +205,107 @@ function inputToPayload(input: CampaignInput) {
     status: input.status,
     data_inicio: input.dataInicio,
     data_fim: input.dataFim,
-    investimento: Number(input.investimento) || 0,
-    responsavel: orNull(input.responsavel ?? null),
-    observacoes: orNull(input.observacoes ?? null),
-    diagnostico: orNull(input.diagnostico ?? null),
-    referencia_url: orNull(input.referenciaUrl ?? null),
-    leads_esperados:
-      input.leadsEsperados === undefined || input.leadsEsperados === null
-        ? null
-        : Number(input.leadsEsperados),
+    ...(financial ? { investimento: input.investimento } : {}),
+    responsavel: input.responsavel?.trim() || null,
+    observacoes: input.observacoes?.trim() || null,
+    ...(financial ? { diagnostico: input.diagnostico?.trim() || null } : {}),
+    referencia_url: input.referenciaUrl?.trim() || null,
+    leads_esperados: input.leadsEsperados ?? null,
   };
 }
-
-function toDaily(row: DailyRow): MarketingDailyMetric {
-  return {
-    date: row.data,
-    leads: row.leads ?? 0,
-    clicks: row.clicks ?? 0,
-    accesses: row.accesses ?? 0,
-    views: row.views ?? 0,
-    impressions: optNum(row.impressions),
-    reach: optNum(row.reach),
-    frequency: optNum(row.frequency),
-    spend: optNum(row.spend) ?? (Number(row.investimento) || undefined),
-    cpc: optNum(row.cpc),
-    cpm: optNum(row.cpm),
-    ctr: optNum(row.ctr),
-    conversions: optNum(row.conversions),
-  };
+async function mutableCampaign(ctx: Ctx, id: string) {
+  const access = await marketingAccess(ctx);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const admin = supabaseAdmin;
+  const { data: row, error } = await admin
+    .from("marketing_campaigns")
+    .select("id,user_id,platform,imobiliaria")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !row || (!access.isAdmin && row.user_id !== ctx.userId))
+    throw new Error("Campanha não encontrada ou sem permissão para alterar.");
+  await agencyAccess(ctx, row.imobiliaria);
+  return { admin, row, ...access };
 }
-
-function round2(v: number) {
-  return Math.round(v * 100) / 100;
-}
-
-function buildCampaign(row: CampaignRow, daily: DailyRow[]): MarketingCampaign {
-  const dailyMetrics = daily
-    .map(toDaily)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const leads = dailyMetrics.reduce((s, d) => s + d.leads, 0);
-  const clicks = dailyMetrics.reduce((s, d) => s + d.clicks, 0);
-  const accesses = dailyMetrics.reduce((s, d) => s + d.accesses, 0);
-  const views = dailyMetrics.reduce((s, d) => s + d.views, 0);
-  const investimento = Number(row.investimento) || 0;
-  return {
-    id: row.id,
-    name: row.nome,
-    channel: row.canal as MarketingChannel,
-    objective: row.objetivo as MarketingObjective,
-    status: row.status as MarketingCampaignStatus,
-    startDate: row.data_inicio,
-    endDate: row.data_fim,
-    investment: investimento,
-    leads,
-    clicks,
-    accesses,
-    views,
-    impressions: dailyMetrics.reduce((s, d) => s + (d.impressions ?? 0), 0),
-    conversionRate: accesses > 0 ? round2((leads / accesses) * 100) : 0,
-    costPerLead: leads > 0 ? round2(investimento / leads) : 0,
-    bestLocation: "—",
-    responsiblePerson: row.responsavel ?? "",
-    notes: row.observacoes ?? "",
-    diagnosis: row.diagnostico ?? "",
-    expectedLeads: row.leads_esperados ?? undefined,
-    referenceUrl: row.referencia_url ?? undefined,
-    dailyMetrics,
-    locationBreakdown: [],
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    imobiliaria: row.imobiliaria as MarketingAgencyId,
-    platform: (row.platform as MarketingCampaign["platform"]) ?? null,
-    externalCampaignId: row.external_campaign_id ?? null,
-    externalAccountId: row.external_account_id ?? null,
-    sourceUrl: row.source_url ?? null,
-    lastSyncedAt: row.last_synced_at ?? null,
-    syncStatus: (row.sync_status as MarketingCampaign["syncStatus"]) ?? "manual",
-    syncError: row.sync_error ?? null,
-  };
-}
-
-export const listCampaigns = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<MarketingCampaign[]> => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    let campaignsQuery = context.supabase
-      .from("marketing_campaigns")
-      .select("*")
-      .order("data_inicio", { ascending: false });
-    if (!isAdmin) {
-      campaignsQuery = campaignsQuery.eq("user_id", context.userId);
-    }
-    const { data: campaigns, error } = await campaignsQuery;
-    if (error) throw new Error(error.message);
-    const rows = (campaigns ?? []) as unknown as CampaignRow[];
-    if (rows.length === 0) return [];
-    const ids = rows.map((r) => r.id);
-    const { data: daily, error: dErr } = await context.supabase
-      .from("marketing_daily_metrics")
-      .select("*")
-      .in("campaign_id", ids);
-    if (dErr) throw new Error(dErr.message);
-    const dailyRows = (daily ?? []) as unknown as DailyRow[];
-    const byCampaign = new Map<string, DailyRow[]>();
-    for (const d of dailyRows) {
-      const arr = byCampaign.get(d.campaign_id) ?? [];
-      arr.push(d);
-      byCampaign.set(d.campaign_id, arr);
-    }
-    return rows.map((r) => buildCampaign(r, byCampaign.get(r.id) ?? []));
-  });
-
 export const createCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: CampaignInput) => data)
+  .inputValidator((d: CampaignInput) => inputSchema.parse(d))
   .handler(async ({ data, context }): Promise<MarketingCampaign> => {
-    const { data: row, error } = await context.supabase
+    const access = await marketingAccess(context);
+    await agencyAccess(context, data.imobiliaria);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
       .from("marketing_campaigns")
-      .insert({ ...inputToPayload(data), user_id: context.userId })
-      .select("*")
+      .insert({ ...payload(data, access.financialVisible), user_id: context.userId })
+      .select("id")
       .single();
-    if (error) throw new Error(error.message);
-    return buildCampaign(row as unknown as CampaignRow, []);
+    if (error) throw new Error("Não foi possível cadastrar a campanha.");
+    const result = (await readPage(context, { campaignId: row.id })).items[0];
+    if (!result) throw new Error("Campanha salva; atualize a lista para consultá-la.");
+    return result;
   });
-
 export const updateCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string; input: CampaignInput }) => data)
+  .inputValidator((d: { id: string; input: CampaignInput }) =>
+    z.object({ id: z.string().uuid(), input: inputSchema }).parse(d),
+  )
   .handler(async ({ data, context }): Promise<MarketingCampaign> => {
-    const { data: row, error } = await context.supabase
+    const { admin, row, financialVisible } = await mutableCampaign(context, data.id);
+    await agencyAccess(context, data.input.imobiliaria);
+    if (row.platform)
+      throw new Error(
+        "Campanhas sincronizadas são atualizadas pela integração. Preserve suas métricas de origem.",
+      );
+    const { error } = await admin
       .from("marketing_campaigns")
-      .update(inputToPayload(data.input))
-      .eq("id", data.id)
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-    const { data: daily } = await context.supabase
-      .from("marketing_daily_metrics")
-      .select("*")
-      .eq("campaign_id", data.id);
-    return buildCampaign(
-      row as unknown as CampaignRow,
-      (daily ?? []) as unknown as DailyRow[],
-    );
+      .update(payload(data.input, financialVisible))
+      .eq("id", row.id)
+      .is("platform", null);
+    if (error) throw new Error("Não foi possível atualizar a campanha.");
+    return (await readPage(context, { campaignId: row.id })).items[0];
   });
-
 export const deleteCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { id: string }) => data)
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
-    const { error } = await context.supabase
-      .from("marketing_campaigns")
-      .delete()
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    const { admin, row } = await mutableCampaign(context, data.id);
+    const { error } = await admin.from("marketing_campaigns").delete().eq("id", row.id);
+    if (error) throw new Error("Não foi possível excluir a campanha.");
     return { ok: true };
   });
-
 export const upsertDailyMetric = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: DailyMetricInput) => data)
+  .inputValidator((d: DailyMetricInput) =>
+    z
+      .object({
+        campaignId: z.string().uuid(),
+        data: date,
+        leads: z.number().int().min(0).optional(),
+        clicks: z.number().int().min(0).optional(),
+        accesses: z.number().int().min(0).optional(),
+        views: z.number().int().min(0).optional(),
+        investimento: z.number().finite().min(0).optional(),
+      })
+      .strict()
+      .parse(d),
+  )
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
-    const payload = {
-      campaign_id: data.campaignId,
-      user_id: context.userId,
-      data: data.data,
-      leads: data.leads ?? 0,
-      clicks: data.clicks ?? 0,
-      accesses: data.accesses ?? 0,
-      views: data.views ?? 0,
-      investimento: data.investimento ?? 0,
-    };
-    const { error } = await context.supabase
-      .from("marketing_daily_metrics")
-      .upsert(payload, { onConflict: "campaign_id,data" });
-    if (error) throw new Error(error.message);
+    const { admin, row, financialVisible } = await mutableCampaign(context, data.campaignId);
+    if (row.platform)
+      throw new Error("Métricas sincronizadas não podem ser sobrescritas manualmente.");
+    const { error } = await admin.from("marketing_daily_metrics").upsert(
+      {
+        campaign_id: row.id,
+        user_id: context.userId,
+        data: data.data,
+        leads: data.leads ?? 0,
+        clicks: data.clicks ?? 0,
+        accesses: data.accesses ?? 0,
+        views: data.views ?? 0,
+        ...(financialVisible ? { investimento: data.investimento ?? 0 } : {}),
+      },
+      { onConflict: "campaign_id,data" },
+    );
+    if (error) throw new Error("Não foi possível salvar as métricas manuais.");
     return { ok: true };
   });
