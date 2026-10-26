@@ -23,7 +23,7 @@ function DeletionPage() {
     <LegalPage title="Exclusão de dados">
       <p>
         Se você enviou seus dados à Cordial ou à Morar, por exemplo por um formulário de anúncio no
-        Facebook ou Instagram, pode pedir que sejam apagados do Gestão Cordial.
+        Facebook ou Instagram, pode pedir que sejam apagados do Gestão Cordial, sistema mantido pela Cordial Imoveis LTDA (CNPJ 42.767.687/0001-35).
       </p>
 
       <h2>Como pedir</h2>
