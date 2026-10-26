@@ -11370,6 +11370,7 @@ export type Database = {
         Returns: Json
       }
       meta_ads_sync_dispatch: { Args: never; Returns: number }
+      meta_ads_worker_active: { Args: never; Returns: boolean }
       meta_ads_worker_dispatch: { Args: never; Returns: number }
       meta_lead_assign: {
         Args: { p_actor_id: string; p_broker_id: string; p_id: string }
