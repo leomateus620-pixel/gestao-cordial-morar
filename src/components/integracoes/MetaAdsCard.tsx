@@ -28,6 +28,7 @@ import {
   listMetaLeadFormMappings,
 } from "@/lib/ads/leads.functions";
 import { useAds } from "@/hooks/useAds";
+import { MetaWebhookStatusPanel } from "./MetaWebhookStatusPanel";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import type { MarketingAgencyId } from "@/types/marketing";
@@ -155,6 +156,7 @@ function MetaAdsAdmin() {
         editor Lovable do Gestão Cordial. Este painel recebe apenas IDs públicos e nomes de
         referências; nunca recebe nem mostra credenciais.
       </p>
+      <MetaWebhookStatusPanel />
       <div className="mt-5 space-y-4">
         {(["cordial", "morar"] as const).map((brand) => {
           const rows = meta.filter((c) => c.imobiliaria === brand);
