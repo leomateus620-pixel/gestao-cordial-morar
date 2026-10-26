@@ -91,3 +91,10 @@ Em todos esses recortes, largura do documento igual à largura da viewport, sem 
 A URL prevista é `https://cordialgestao.com/api/public/meta/leadgen`; **não há callback novo comprovadamente ativo**. O conector informou que o deploy suportado reúne frontend e rotas de servidor, portanto não foi publicado apenas para expor o webhook. Como 0039 revoga acessos usados pelo runtime antigo, schema e handlers novos precisam de implantação coordenada. Não aplicar a migração isoladamente na versão antiga.
 
 O único canal seguro para fornecer as credenciais pendentes é o [editor do projeto → Project Settings → Secrets](https://lovable.dev/projects/feb646c9-c19a-4360-8cc9-bec5237532ea). Depois será necessário implantar a versão aprovada, aplicar/verificar o journal, diagnosticar os ativos, ativar workers, confirmar as duas assinaturas Meta e executar o teste oficial. A integração não foi declarada ativa nem pronta para produção.
+
+## Validação real em 26/10/2026
+
+- Testes automáticos `tests/ads/meta-leadgen.test.ts` (assinatura inválida, adulteração, persistência antes do 200, falha de banco → 503, deduplicação/retry): 6/6. Workers: 30 testes no total.
+- Produção: challenge correto 200 exato; token errado 403; POST sem assinatura e com assinatura inválida 403; worker sem credencial 401.
+- Evento repetido: a fila tem unicidade aplicativo/Página/leadgen (`ON CONFLICT DO NOTHING`), então reenvio da Meta não cria segundo atendimento nem notificação.
+- Teste oficial Lead Ads → CRM: **não concluído** até a submissão pela ferramenta oficial.

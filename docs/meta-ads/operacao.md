@@ -83,3 +83,20 @@ As páginas principais de developers.facebook.com retornaram 429/indisponibilida
 - [Assinaturas de aplicativos da Página](https://developers.facebook.com/docs/graph-api/reference/page/subscribed_apps/)
 
 Resultados finais de testes, modelo de dados e evidências de UI são registrados em `validacao.md` nesta pasta.
+
+## Estado real em 26/10/2026 (ativação)
+
+| Item | Estado | Evidência |
+| --- | --- | --- |
+| Código implantado | Publicado em cordialgestao.com | Rota GET devolve o challenge exato (200) e token errado 403 |
+| Migração 0039 aplicada | Sim, via Drizzle (0040 verifica; 0041 adiciona leitura do estado do cron) | Tabelas `meta_lead_*` com RLS, 9 RPCs `meta_lead_*` só service_role |
+| Secrets | As 7 chaves Meta e WORKER_HOOK_SECRET presentes | Só presença conferida; valores não lidos |
+| Token | Usuário do sistema, sem expiração, do app 2739298586487785 | Escopos incluem leads_retrieval, pages_manage_metadata, pages_manage_ads, ads_read |
+| Conexão Cordial | Cadastrada (app, Página Cordial Imóveis, act_1010379113136989) | Linha em ad_platform_connections, só nomes de referências |
+| Callback validado | Sim | GET interno 200 com challenge exato; POST sem/ com assinatura errada 403 |
+| Aplicativo assinado | Sim, objeto Page, campo leadgen, callback acima | `/{app}/subscriptions` (Meta verificou o callback ao salvar) |
+| Página inscrita | Sim, leadgen | `/{page}/subscribed_apps` (não havia assinaturas anteriores) |
+| Worker | Ver validacao.md | Rota aceita a credencial interna do cofre (`internal_worker_headers()`) |
+| Teste oficial | Pendente | Precisa ser disparado na Lead Ads Testing Tool |
+
+Mapeamento de formulário (finalidade e tipo de imóvel) é obrigatório para virar atendimento; sem ele o lead fica em "revisão" na caixa de leads, sem duplicar.
