@@ -103,7 +103,7 @@
       {
         "name": "marketing_performance",
         "title": "Desempenho de marketing",
-        "description": "Resultados das campanhas permitidas. Investimento e CPL somente para o administrador.",
+        "description": "Resultados persistidos das campanhas permitidas. Investimento e CPL somente para o administrador.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
