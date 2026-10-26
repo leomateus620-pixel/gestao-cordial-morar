@@ -1,0 +1,5650 @@
+{
+  "started_at": "2026-10-26T17:21:28.834298+00:00",
+  "deadline": 1793036118.8343093,
+  "baseline": {
+    "get": 364,
+    "success": 364,
+    "errors": 0,
+    "marketing": 354,
+    "other_reads": 10
+  },
+  "records": [
+    {
+      "started_at": "2026-10-26T17:21:28.834760+00:00",
+      "finished_at": "2026-10-26T17:21:29.269473+00:00",
+      "path": "/act_1010379113136989/campaigns",
+      "params": {
+        "fields": "id",
+        "limit": "100"
+      },
+      "family": "campaign_discovery",
+      "http_status": 200,
+      "success": true,
+      "row_count": 57,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_management",
+              "call_count": 0,
+              "total_cputime": 0,
+              "total_time": 0,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:21:29.270383+00:00",
+      "finished_at": "2026-10-26T17:21:29.510129+00:00",
+      "path": "/act_1010379113136989",
+      "params": {
+        "fields": "timezone_name"
+      },
+      "family": "account_reporting_timezone",
+      "http_status": 200,
+      "success": true,
+      "row_count": null,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_management",
+              "call_count": 0,
+              "total_cputime": 0,
+              "total_time": 0,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:21:52.523439+00:00",
+      "finished_at": "2026-10-26T17:21:53.138693+00:00",
+      "path": "/120252039314910234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:21:56.140292+00:00",
+      "finished_at": "2026-10-26T17:21:56.605333+00:00",
+      "path": "/120251989467600234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 2,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:21:59.607426+00:00",
+      "finished_at": "2026-10-26T17:22:00.108307+00:00",
+      "path": "/120251822415000234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:03.110282+00:00",
+      "finished_at": "2026-10-26T17:22:03.520076+00:00",
+      "path": "/120251245810590234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:06.522665+00:00",
+      "finished_at": "2026-10-26T17:22:07.144852+00:00",
+      "path": "/120216499809190234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:10.147028+00:00",
+      "finished_at": "2026-10-26T17:22:10.745397+00:00",
+      "path": "/120213630787090234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:13.747381+00:00",
+      "finished_at": "2026-10-26T17:22:14.463680+00:00",
+      "path": "/120213628405590234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:17.465601+00:00",
+      "finished_at": "2026-10-26T17:22:17.980662+00:00",
+      "path": "/120213627876400234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:20.982649+00:00",
+      "finished_at": "2026-10-26T17:22:21.634728+00:00",
+      "path": "/120213114406080234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:24.636596+00:00",
+      "finished_at": "2026-10-26T17:22:24.988071+00:00",
+      "path": "/120212094904440234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:27.990361+00:00",
+      "finished_at": "2026-10-26T17:22:28.488279+00:00",
+      "path": "/120211941448760234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:31.490243+00:00",
+      "finished_at": "2026-10-26T17:22:32.006681+00:00",
+      "path": "/120211658142610234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:35.008611+00:00",
+      "finished_at": "2026-10-26T17:22:35.729337+00:00",
+      "path": "/120211115328890234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 1,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:38.731323+00:00",
+      "finished_at": "2026-10-26T17:22:39.217337+00:00",
+      "path": "/120210935221060234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:42.219775+00:00",
+      "finished_at": "2026-10-26T17:22:42.712822+00:00",
+      "path": "/120210872966740234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:45.714745+00:00",
+      "finished_at": "2026-10-26T17:22:46.164563+00:00",
+      "path": "/120210868109770234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:49.167679+00:00",
+      "finished_at": "2026-10-26T17:22:49.578829+00:00",
+      "path": "/120210432195600234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:52.581197+00:00",
+      "finished_at": "2026-10-26T17:22:53.113452+00:00",
+      "path": "/120210160968080234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:56.119782+00:00",
+      "finished_at": "2026-10-26T17:22:56.638808+00:00",
+      "path": "/120209664708550234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:22:59.641587+00:00",
+      "finished_at": "2026-10-26T17:23:00.176890+00:00",
+      "path": "/120209462818760234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:03.179708+00:00",
+      "finished_at": "2026-10-26T17:23:03.537132+00:00",
+      "path": "/120208825205230234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:06.539838+00:00",
+      "finished_at": "2026-10-26T17:23:06.993162+00:00",
+      "path": "/120208824990100234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:09.995752+00:00",
+      "finished_at": "2026-10-26T17:23:10.503565+00:00",
+      "path": "/120207863838050234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:13.506005+00:00",
+      "finished_at": "2026-10-26T17:23:13.956483+00:00",
+      "path": "/120207263465290234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:16.959920+00:00",
+      "finished_at": "2026-10-26T17:23:17.416539+00:00",
+      "path": "/120206811309340234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:20.419817+00:00",
+      "finished_at": "2026-10-26T17:23:21.037493+00:00",
+      "path": "/120206801770340234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:24.040093+00:00",
+      "finished_at": "2026-10-26T17:23:24.626432+00:00",
+      "path": "/120206482725840234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 2,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:27.629773+00:00",
+      "finished_at": "2026-10-26T17:23:28.158850+00:00",
+      "path": "/120205816675910234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:31.163614+00:00",
+      "finished_at": "2026-10-26T17:23:31.708463+00:00",
+      "path": "/120205116501610234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:34.711385+00:00",
+      "finished_at": "2026-10-26T17:23:35.267132+00:00",
+      "path": "/120204649407330234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:38.272748+00:00",
+      "finished_at": "2026-10-26T17:23:38.699919+00:00",
+      "path": "/120204649342490234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:41.703281+00:00",
+      "finished_at": "2026-10-26T17:23:42.237047+00:00",
+      "path": "/120203365483040234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:45.239610+00:00",
+      "finished_at": "2026-10-26T17:23:45.684519+00:00",
+      "path": "/120203363743120234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:48.687334+00:00",
+      "finished_at": "2026-10-26T17:23:49.195782+00:00",
+      "path": "/120203275548620234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:52.199771+00:00",
+      "finished_at": "2026-10-26T17:23:52.967002+00:00",
+      "path": "/120201248495170234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:55.969676+00:00",
+      "finished_at": "2026-10-26T17:23:56.465379+00:00",
+      "path": "/120201244648060234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:23:59.468925+00:00",
+      "finished_at": "2026-10-26T17:23:59.925093+00:00",
+      "path": "/23859070854350233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:02.928132+00:00",
+      "finished_at": "2026-10-26T17:24:03.407775+00:00",
+      "path": "/23859070640030233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:06.411393+00:00",
+      "finished_at": "2026-10-26T17:24:06.979915+00:00",
+      "path": "/23858968468940233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:09.985174+00:00",
+      "finished_at": "2026-10-26T17:24:10.450455+00:00",
+      "path": "/23857844758710233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:13.454141+00:00",
+      "finished_at": "2026-10-26T17:24:13.957992+00:00",
+      "path": "/23857695015300233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:16.961811+00:00",
+      "finished_at": "2026-10-26T17:24:17.365525+00:00",
+      "path": "/23857588760020233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 3,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:20.368186+00:00",
+      "finished_at": "2026-10-26T17:24:20.878160+00:00",
+      "path": "/23857503354270233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:23.881569+00:00",
+      "finished_at": "2026-10-26T17:24:24.545984+00:00",
+      "path": "/23851994331530233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:27.549517+00:00",
+      "finished_at": "2026-10-26T17:24:27.947626+00:00",
+      "path": "/23851946452320233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 1,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:30.950970+00:00",
+      "finished_at": "2026-10-26T17:24:31.509284+00:00",
+      "path": "/23851622118120233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:34.511825+00:00",
+      "finished_at": "2026-10-26T17:24:35.060532+00:00",
+      "path": "/23851432197380233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:38.063359+00:00",
+      "finished_at": "2026-10-26T17:24:38.575584+00:00",
+      "path": "/23851432161770233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:41.578256+00:00",
+      "finished_at": "2026-10-26T17:24:42.111152+00:00",
+      "path": "/23851087980540233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:45.114880+00:00",
+      "finished_at": "2026-10-26T17:24:45.726631+00:00",
+      "path": "/23851059897510233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:48.729472+00:00",
+      "finished_at": "2026-10-26T17:24:49.318150+00:00",
+      "path": "/23850925957080233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:52.320767+00:00",
+      "finished_at": "2026-10-26T17:24:52.821380+00:00",
+      "path": "/23850848954280233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:55.824215+00:00",
+      "finished_at": "2026-10-26T17:24:56.349598+00:00",
+      "path": "/23850390998160233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:24:59.354022+00:00",
+      "finished_at": "2026-10-26T17:24:59.922450+00:00",
+      "path": "/23849894932480233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:02.926321+00:00",
+      "finished_at": "2026-10-26T17:25:03.524618+00:00",
+      "path": "/23849729288460233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 4,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:06.527743+00:00",
+      "finished_at": "2026-10-26T17:25:07.120038+00:00",
+      "path": "/23849632025570233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 5,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:10.123626+00:00",
+      "finished_at": "2026-10-26T17:25:10.681600+00:00",
+      "path": "/23849631912480233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "publisher_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_publisher_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 5,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:13.684475+00:00",
+      "finished_at": "2026-10-26T17:25:17.176895+00:00",
+      "path": "/120252039314910234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 5,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:20.179815+00:00",
+      "finished_at": "2026-10-26T17:25:20.874478+00:00",
+      "path": "/120251989467600234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 3,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 5,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:23.877445+00:00",
+      "finished_at": "2026-10-26T17:25:24.497307+00:00",
+      "path": "/120251822415000234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:27.500352+00:00",
+      "finished_at": "2026-10-26T17:25:28.119753+00:00",
+      "path": "/120251245810590234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:31.122926+00:00",
+      "finished_at": "2026-10-26T17:25:31.552837+00:00",
+      "path": "/120216499809190234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:34.556748+00:00",
+      "finished_at": "2026-10-26T17:25:34.990229+00:00",
+      "path": "/120213630787090234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:37.993116+00:00",
+      "finished_at": "2026-10-26T17:25:38.498256+00:00",
+      "path": "/120213628405590234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:41.501461+00:00",
+      "finished_at": "2026-10-26T17:25:42.144469+00:00",
+      "path": "/120213627876400234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:45.148368+00:00",
+      "finished_at": "2026-10-26T17:25:45.599635+00:00",
+      "path": "/120213114406080234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:48.602781+00:00",
+      "finished_at": "2026-10-26T17:25:49.018816+00:00",
+      "path": "/120212094904440234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:52.022550+00:00",
+      "finished_at": "2026-10-26T17:25:52.496681+00:00",
+      "path": "/120211941448760234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:55.500742+00:00",
+      "finished_at": "2026-10-26T17:25:55.998858+00:00",
+      "path": "/120211658142610234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:25:59.002376+00:00",
+      "finished_at": "2026-10-26T17:25:59.599877+00:00",
+      "path": "/120211115328890234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:02.603116+00:00",
+      "finished_at": "2026-10-26T17:26:03.155583+00:00",
+      "path": "/120210935221060234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:06.158863+00:00",
+      "finished_at": "2026-10-26T17:26:06.756010+00:00",
+      "path": "/120210872966740234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 6,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:09.759408+00:00",
+      "finished_at": "2026-10-26T17:26:10.164236+00:00",
+      "path": "/120210868109770234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:13.168198+00:00",
+      "finished_at": "2026-10-26T17:26:13.694224+00:00",
+      "path": "/120210432195600234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:16.698109+00:00",
+      "finished_at": "2026-10-26T17:26:17.120458+00:00",
+      "path": "/120210160968080234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:20.125242+00:00",
+      "finished_at": "2026-10-26T17:26:20.733707+00:00",
+      "path": "/120209664708550234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:23.737249+00:00",
+      "finished_at": "2026-10-26T17:26:24.200331+00:00",
+      "path": "/120209462818760234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:27.205351+00:00",
+      "finished_at": "2026-10-26T17:26:27.647469+00:00",
+      "path": "/120208825205230234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:30.651500+00:00",
+      "finished_at": "2026-10-26T17:26:31.169990+00:00",
+      "path": "/120208824990100234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:34.174092+00:00",
+      "finished_at": "2026-10-26T17:26:34.618888+00:00",
+      "path": "/120207863838050234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:37.623292+00:00",
+      "finished_at": "2026-10-26T17:26:38.028041+00:00",
+      "path": "/120207263465290234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:41.032451+00:00",
+      "finished_at": "2026-10-26T17:26:41.497628+00:00",
+      "path": "/120206811309340234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:44.502682+00:00",
+      "finished_at": "2026-10-26T17:26:45.045295+00:00",
+      "path": "/120206801770340234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:48.049064+00:00",
+      "finished_at": "2026-10-26T17:26:48.555762+00:00",
+      "path": "/120206482725840234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:51.559387+00:00",
+      "finished_at": "2026-10-26T17:26:52.147046+00:00",
+      "path": "/120205816675910234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 7,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:55.151504+00:00",
+      "finished_at": "2026-10-26T17:26:55.662002+00:00",
+      "path": "/120205116501610234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:26:58.666744+00:00",
+      "finished_at": "2026-10-26T17:26:59.205322+00:00",
+      "path": "/120204649407330234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:02.210322+00:00",
+      "finished_at": "2026-10-26T17:27:02.789484+00:00",
+      "path": "/120204649342490234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:05.793050+00:00",
+      "finished_at": "2026-10-26T17:27:06.333136+00:00",
+      "path": "/120203365483040234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:09.336769+00:00",
+      "finished_at": "2026-10-26T17:27:09.839675+00:00",
+      "path": "/120203363743120234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:12.843350+00:00",
+      "finished_at": "2026-10-26T17:27:13.232725+00:00",
+      "path": "/120203275548620234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 2,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:16.236987+00:00",
+      "finished_at": "2026-10-26T17:27:16.699570+00:00",
+      "path": "/120201248495170234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:19.703434+00:00",
+      "finished_at": "2026-10-26T17:27:20.299857+00:00",
+      "path": "/120201244648060234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:23.303720+00:00",
+      "finished_at": "2026-10-26T17:27:23.784841+00:00",
+      "path": "/23859070854350233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:26.789271+00:00",
+      "finished_at": "2026-10-26T17:27:27.281114+00:00",
+      "path": "/23859070640030233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:30.284864+00:00",
+      "finished_at": "2026-10-26T17:27:30.760779+00:00",
+      "path": "/23858968468940233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:33.765109+00:00",
+      "finished_at": "2026-10-26T17:27:34.366138+00:00",
+      "path": "/23857844758710233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 8,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:37.370527+00:00",
+      "finished_at": "2026-10-26T17:27:37.946405+00:00",
+      "path": "/23857695015300233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:40.950859+00:00",
+      "finished_at": "2026-10-26T17:27:41.386436+00:00",
+      "path": "/23857588760020233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:44.390475+00:00",
+      "finished_at": "2026-10-26T17:27:44.732845+00:00",
+      "path": "/23857503354270233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:47.738390+00:00",
+      "finished_at": "2026-10-26T17:27:48.308813+00:00",
+      "path": "/23851994331530233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:51.312787+00:00",
+      "finished_at": "2026-10-26T17:27:51.654200+00:00",
+      "path": "/23851946452320233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:54.658230+00:00",
+      "finished_at": "2026-10-26T17:27:55.050918+00:00",
+      "path": "/23851622118120233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:27:58.056668+00:00",
+      "finished_at": "2026-10-26T17:27:58.491843+00:00",
+      "path": "/23851432197380233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:01.496073+00:00",
+      "finished_at": "2026-10-26T17:28:02.044540+00:00",
+      "path": "/23851432161770233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:05.048697+00:00",
+      "finished_at": "2026-10-26T17:28:05.809305+00:00",
+      "path": "/23851087980540233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:08.815002+00:00",
+      "finished_at": "2026-10-26T17:28:09.207517+00:00",
+      "path": "/23851059897510233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:12.211589+00:00",
+      "finished_at": "2026-10-26T17:28:12.649619+00:00",
+      "path": "/23850925957080233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:15.653688+00:00",
+      "finished_at": "2026-10-26T17:28:16.112492+00:00",
+      "path": "/23850848954280233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:19.118589+00:00",
+      "finished_at": "2026-10-26T17:28:19.586299+00:00",
+      "path": "/23850390998160233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:22.590417+00:00",
+      "finished_at": "2026-10-26T17:28:23.140712+00:00",
+      "path": "/23849894932480233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:26.146511+00:00",
+      "finished_at": "2026-10-26T17:28:26.566289+00:00",
+      "path": "/23849729288460233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:29.570997+00:00",
+      "finished_at": "2026-10-26T17:28:30.064886+00:00",
+      "path": "/23849632025570233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 9,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:33.071105+00:00",
+      "finished_at": "2026-10-26T17:28:33.445215+00:00",
+      "path": "/23849631912480233/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "impression_device",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_impression_device",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:36.449342+00:00",
+      "finished_at": "2026-10-26T17:28:36.910435+00:00",
+      "path": "/120252039314910234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:39.914768+00:00",
+      "finished_at": "2026-10-26T17:28:40.534197+00:00",
+      "path": "/120251989467600234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 1,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:43.541037+00:00",
+      "finished_at": "2026-10-26T17:28:44.068229+00:00",
+      "path": "/120251822415000234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:47.073080+00:00",
+      "finished_at": "2026-10-26T17:28:47.911888+00:00",
+      "path": "/120251245810590234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:50.916547+00:00",
+      "finished_at": "2026-10-26T17:28:51.283435+00:00",
+      "path": "/120216499809190234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:54.289488+00:00",
+      "finished_at": "2026-10-26T17:28:55.731613+00:00",
+      "path": "/120213630787090234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:28:58.738057+00:00",
+      "finished_at": "2026-10-26T17:28:59.140630+00:00",
+      "path": "/120213628405590234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:02.145491+00:00",
+      "finished_at": "2026-10-26T17:29:02.685000+00:00",
+      "path": "/120213627876400234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:05.689452+00:00",
+      "finished_at": "2026-10-26T17:29:06.215160+00:00",
+      "path": "/120213114406080234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 10,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:09.219603+00:00",
+      "finished_at": "2026-10-26T17:29:09.655358+00:00",
+      "path": "/120212094904440234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:12.661030+00:00",
+      "finished_at": "2026-10-26T17:29:13.042442+00:00",
+      "path": "/120211941448760234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:16.046904+00:00",
+      "finished_at": "2026-10-26T17:29:16.502323+00:00",
+      "path": "/120211658142610234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:19.506858+00:00",
+      "finished_at": "2026-10-26T17:29:20.041378+00:00",
+      "path": "/120211115328890234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:23.047797+00:00",
+      "finished_at": "2026-10-26T17:29:23.556426+00:00",
+      "path": "/120210935221060234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:26.561367+00:00",
+      "finished_at": "2026-10-26T17:29:26.923743+00:00",
+      "path": "/120210872966740234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:29.928842+00:00",
+      "finished_at": "2026-10-26T17:29:30.490719+00:00",
+      "path": "/120210868109770234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:33.496279+00:00",
+      "finished_at": "2026-10-26T17:29:34.029011+00:00",
+      "path": "/120210432195600234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:37.034259+00:00",
+      "finished_at": "2026-10-26T17:29:37.592555+00:00",
+      "path": "/120210160968080234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:40.598842+00:00",
+      "finished_at": "2026-10-26T17:29:41.122304+00:00",
+      "path": "/120209664708550234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:44.128253+00:00",
+      "finished_at": "2026-10-26T17:29:44.623174+00:00",
+      "path": "/120209462818760234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:47.628596+00:00",
+      "finished_at": "2026-10-26T17:29:48.010059+00:00",
+      "path": "/120208825205230234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:51.016072+00:00",
+      "finished_at": "2026-10-26T17:29:51.466858+00:00",
+      "path": "/120208824990100234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:54.473588+00:00",
+      "finished_at": "2026-10-26T17:29:55.021310+00:00",
+      "path": "/120207863838050234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:29:58.026496+00:00",
+      "finished_at": "2026-10-26T17:29:58.616180+00:00",
+      "path": "/120207263465290234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 11,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:01.621428+00:00",
+      "finished_at": "2026-10-26T17:30:02.081413+00:00",
+      "path": "/120206811309340234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 3,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:05.087412+00:00",
+      "finished_at": "2026-10-26T17:30:05.507819+00:00",
+      "path": "/120206801770340234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 4,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:08.514469+00:00",
+      "finished_at": "2026-10-26T17:30:09.028388+00:00",
+      "path": "/120206482725840234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 4,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:12.033817+00:00",
+      "finished_at": "2026-10-26T17:30:12.591034+00:00",
+      "path": "/120205816675910234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 4,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:15.596455+00:00",
+      "finished_at": "2026-10-26T17:30:16.026583+00:00",
+      "path": "/120205116501610234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 4,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:19.034179+00:00",
+      "finished_at": "2026-10-26T17:30:19.751828+00:00",
+      "path": "/120204649407330234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 4,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:30:22.759066+00:00",
+      "finished_at": "2026-10-26T17:30:23.257359+00:00",
+      "path": "/120204649342490234/insights",
+      "params": {
+        "fields": "campaign_id,impressions,clicks,spend",
+        "time_range": "{\"since\": \"2026-09-28\", \"until\": \"2026-10-25\"}",
+        "breakdowns": "device_platform",
+        "level": "campaign",
+        "limit": "100",
+        "use_unified_attribution_setting": "true"
+      },
+      "family": "campaign_device_platform",
+      "http_status": 200,
+      "success": true,
+      "row_count": 0,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_insights",
+              "call_count": 1,
+              "total_cputime": 4,
+              "total_time": 12,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    }
+  ],
+  "campaigns": [
+    "120252039314910234",
+    "120251989467600234",
+    "120251822415000234",
+    "120251245810590234",
+    "120216499809190234",
+    "120213630787090234",
+    "120213628405590234",
+    "120213627876400234",
+    "120213114406080234",
+    "120212094904440234",
+    "120211941448760234",
+    "120211658142610234",
+    "120211115328890234",
+    "120210935221060234",
+    "120210872966740234",
+    "120210868109770234",
+    "120210432195600234",
+    "120210160968080234",
+    "120209664708550234",
+    "120209462818760234",
+    "120208825205230234",
+    "120208824990100234",
+    "120207863838050234",
+    "120207263465290234",
+    "120206811309340234",
+    "120206801770340234",
+    "120206482725840234",
+    "120205816675910234",
+    "120205116501610234",
+    "120204649407330234",
+    "120204649342490234",
+    "120203365483040234",
+    "120203363743120234",
+    "120203275548620234",
+    "120201248495170234",
+    "120201244648060234",
+    "23859070854350233",
+    "23859070640030233",
+    "23858968468940233",
+    "23857844758710233",
+    "23857695015300233",
+    "23857588760020233",
+    "23857503354270233",
+    "23851994331530233",
+    "23851946452320233",
+    "23851622118120233",
+    "23851432197380233",
+    "23851432161770233",
+    "23851087980540233",
+    "23851059897510233",
+    "23850925957080233",
+    "23850848954280233",
+    "23850390998160233",
+    "23849894932480233",
+    "23849729288460233",
+    "23849632025570233",
+    "23849631912480233"
+  ],
+  "pending": [
+    {
+      "campaign": "120203365483040234",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "120203363743120234",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "120203275548620234",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "120201248495170234",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "120201244648060234",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23859070854350233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23859070640030233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23858968468940233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23857844758710233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23857695015300233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23857588760020233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23857503354270233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851994331530233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851946452320233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851622118120233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851432197380233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851432161770233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851087980540233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23851059897510233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23850925957080233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23850848954280233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23850390998160233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23849894932480233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23849729288460233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23849632025570233",
+      "breakdown": "device_platform"
+    },
+    {
+      "campaign": "23849631912480233",
+      "breakdown": "device_platform"
+    }
+  ],
+  "stop_reason": "target reached",
+  "automatic_execution": false,
+  "sources": [
+    "https://developers.facebook.com/docs/marketing-api/insights/breakdowns/",
+    "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adsinsights.py"
+  ],
+  "totals": {
+    "get": 511,
+    "success": 511,
+    "errors": 0,
+    "marketing": 501,
+    "other_reads": 10
+  },
+  "timezone": "America/Sao_Paulo",
+  "range": {
+    "since": "2026-09-28",
+    "until": "2026-10-25"
+  },
+  "ended_at": "2026-10-26T17:30:23.257359+00:00",
+  "unique_requests_verified": 147,
+  "family_counts": {
+    "campaign_discovery": 1,
+    "account_reporting_timezone": 1,
+    "campaign_publisher_platform": 57,
+    "campaign_impression_device": 57,
+    "campaign_device_platform": 31
+  },
+  "official_verification": {
+    "source": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights/breakdowns",
+    "verified_before_campaign_calls": true,
+    "breakdowns_requested_separately": [
+      "publisher_platform",
+      "impression_device",
+      "device_platform"
+    ],
+    "metrics": [
+      "impressions",
+      "clicks",
+      "spend"
+    ],
+    "notice": "impression_device synchronous empty responses can reflect unavailable breakdown for some accounts effective 2026-08-06; not proof of zero delivery"
+  }
+}
