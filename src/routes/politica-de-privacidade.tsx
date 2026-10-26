@@ -30,7 +30,9 @@ function PrivacyPage() {
 
       <h2>Responsável e contato</h2>
       <p>
-        O sistema é operado pela Cordial Imóveis e pela Morar Imóveis. Para qualquer assunto sobre
+        A responsável pelo tratamento dos dados é a Cordial Imoveis LTDA (nome fantasia Cordial
+        Imoveis), CNPJ 42.767.687/0001-35. O sistema também é usado pela imobiliária Morar. Para
+        qualquer assunto sobre
         privacidade, escreva para <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>.
       </p>
 
@@ -73,8 +75,9 @@ function PrivacyPage() {
 
       <h2>Armazenamento e guarda</h2>
       <p>
-        Os dados ficam no banco de dados do sistema, com acesso protegido por login. Eles são
-        mantidos enquanto forem necessários para o atendimento ou até que você peça a exclusão.
+        Os dados ficam no banco de dados do sistema, com acesso protegido por login. Não há prazo
+        fixo de exclusão automática; os dados são mantidos até que você peça a exclusão ou deixem
+        de ser necessários ao atendimento.
       </p>
 
       <h2>Seus direitos</h2>
