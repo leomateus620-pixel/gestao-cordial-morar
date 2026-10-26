@@ -281,6 +281,13 @@
       "when": 1793000000000,
       "tag": "0039_meta_ads_leadgen",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793026725345,
+      "tag": "0040_meta_ads_leadgen_verify",
+      "breakpoints": true
     }
   ]
 }

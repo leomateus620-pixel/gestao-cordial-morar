@@ -73,15 +73,53 @@ export type Database = {
           },
         ]
       }
+      ad_oauth_states: {
+        Row: {
+          expires_at: string
+          imobiliaria: string | null
+          nonce_hash: string
+          platform: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          imobiliaria?: string | null
+          nonce_hash: string
+          platform: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          imobiliaria?: string | null
+          nonce_hash?: string
+          platform?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ad_platform_connections: {
         Row: {
           access_token: string | null
           account_label: string | null
+          app_id: string | null
+          app_secret_ref: string | null
+          capabilities: Json
           created_at: string
+          credential_mode: string
+          credential_ref: string | null
+          encrypted_access_token: string | null
+          encrypted_refresh_token: string | null
           expires_at: string | null
+          external_account_id: string | null
           id: string
           imobiliaria: string | null
+          last_diagnosed_at: string | null
           last_error: string | null
+          page_credential_ref: string | null
+          page_id: string | null
           platform: string
           refresh_token: string | null
           scopes: string | null
@@ -92,11 +130,22 @@ export type Database = {
         Insert: {
           access_token?: string | null
           account_label?: string | null
+          app_id?: string | null
+          app_secret_ref?: string | null
+          capabilities?: Json
           created_at?: string
+          credential_mode?: string
+          credential_ref?: string | null
+          encrypted_access_token?: string | null
+          encrypted_refresh_token?: string | null
           expires_at?: string | null
+          external_account_id?: string | null
           id?: string
           imobiliaria?: string | null
+          last_diagnosed_at?: string | null
           last_error?: string | null
+          page_credential_ref?: string | null
+          page_id?: string | null
           platform: string
           refresh_token?: string | null
           scopes?: string | null
@@ -107,11 +156,22 @@ export type Database = {
         Update: {
           access_token?: string | null
           account_label?: string | null
+          app_id?: string | null
+          app_secret_ref?: string | null
+          capabilities?: Json
           created_at?: string
+          credential_mode?: string
+          credential_ref?: string | null
+          encrypted_access_token?: string | null
+          encrypted_refresh_token?: string | null
           expires_at?: string | null
+          external_account_id?: string | null
           id?: string
           imobiliaria?: string | null
+          last_diagnosed_at?: string | null
           last_error?: string | null
+          page_credential_ref?: string | null
+          page_id?: string | null
           platform?: string
           refresh_token?: string | null
           scopes?: string | null
@@ -123,36 +183,71 @@ export type Database = {
       }
       ad_sync_jobs: {
         Row: {
+          ad_account_id: string | null
+          attempts: number
           campaign_id: string
+          checkpoint: Json | null
           error: string | null
           finished_at: string | null
           id: string
+          lease_until: string | null
+          next_attempt_at: string
           range_end: string | null
           range_start: string | null
+          requested_by: string | null
           started_at: string
           status: string
+          worker_id: string | null
         }
         Insert: {
+          ad_account_id?: string | null
+          attempts?: number
           campaign_id: string
+          checkpoint?: Json | null
           error?: string | null
           finished_at?: string | null
           id?: string
+          lease_until?: string | null
+          next_attempt_at?: string
           range_end?: string | null
           range_start?: string | null
+          requested_by?: string | null
           started_at?: string
           status?: string
+          worker_id?: string | null
         }
         Update: {
+          ad_account_id?: string | null
+          attempts?: number
           campaign_id?: string
+          checkpoint?: Json | null
           error?: string | null
           finished_at?: string | null
           id?: string
+          lease_until?: string | null
+          next_attempt_at?: string
           range_end?: string | null
           range_start?: string | null
+          requested_by?: string | null
           started_at?: string
           status?: string
+          worker_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ad_sync_jobs_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_sync_jobs_campaign_account_fkey"
+            columns: ["campaign_id", "ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id", "ad_account_id"]
+          },
           {
             foreignKeyName: "ad_sync_jobs_campaign_id_fkey"
             columns: ["campaign_id"]
@@ -3930,7 +4025,9 @@ export type Database = {
       }
       marketing_campaigns: {
         Row: {
+          ad_account_id: string | null
           canal: string
+          connection_id: string | null
           created_at: string
           data_fim: string
           data_inicio: string
@@ -3945,6 +4042,7 @@ export type Database = {
           nome: string
           objetivo: string
           observacoes: string | null
+          period_insights: Json | null
           platform: string | null
           referencia_url: string | null
           responsavel: string | null
@@ -3956,7 +4054,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ad_account_id?: string | null
           canal: string
+          connection_id?: string | null
           created_at?: string
           data_fim: string
           data_inicio: string
@@ -3971,6 +4071,7 @@ export type Database = {
           nome: string
           objetivo: string
           observacoes?: string | null
+          period_insights?: Json | null
           platform?: string | null
           referencia_url?: string | null
           responsavel?: string | null
@@ -3982,7 +4083,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ad_account_id?: string | null
           canal?: string
+          connection_id?: string | null
           created_at?: string
           data_fim?: string
           data_inicio?: string
@@ -3997,6 +4100,7 @@ export type Database = {
           nome?: string
           objetivo?: string
           observacoes?: string | null
+          period_insights?: Json | null
           platform?: string | null
           referencia_url?: string | null
           responsavel?: string | null
@@ -4007,7 +4111,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "marketing_campaigns_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_campaigns_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_daily_metrics: {
         Row: {
@@ -4024,7 +4143,11 @@ export type Database = {
           id: string
           impressions: number | null
           investimento: number
+          landing_page_views: number | null
+          lead_action_type: string | null
           leads: number
+          metric_source: string
+          provider_actions: Json | null
           reach: number | null
           spend: number | null
           updated_at: string
@@ -4045,7 +4168,11 @@ export type Database = {
           id?: string
           impressions?: number | null
           investimento?: number
+          landing_page_views?: number | null
+          lead_action_type?: string | null
           leads?: number
+          metric_source?: string
+          provider_actions?: Json | null
           reach?: number | null
           spend?: number | null
           updated_at?: string
@@ -4066,7 +4193,11 @@ export type Database = {
           id?: string
           impressions?: number | null
           investimento?: number
+          landing_page_views?: number | null
+          lead_action_type?: string | null
           leads?: number
+          metric_source?: string
+          provider_actions?: Json | null
           reach?: number | null
           spend?: number | null
           updated_at?: string
@@ -4079,6 +4210,253 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_lead_form_mappings: {
+        Row: {
+          app_id: string
+          broker_id: string | null
+          connection_id: string
+          created_by: string
+          enabled: boolean
+          field_mapping: Json
+          finalidade: string | null
+          form_id: string
+          id: string
+          imobiliaria: string
+          page_id: string
+          property_id: string | null
+          tipo_imovel: string | null
+          updated_at: string
+        }
+        Insert: {
+          app_id: string
+          broker_id?: string | null
+          connection_id: string
+          created_by: string
+          enabled?: boolean
+          field_mapping?: Json
+          finalidade?: string | null
+          form_id: string
+          id?: string
+          imobiliaria: string
+          page_id: string
+          property_id?: string | null
+          tipo_imovel?: string | null
+          updated_at?: string
+        }
+        Update: {
+          app_id?: string
+          broker_id?: string | null
+          connection_id?: string
+          created_by?: string
+          enabled?: boolean
+          field_mapping?: Json
+          finalidade?: string | null
+          form_id?: string
+          id?: string
+          imobiliaria?: string
+          page_id?: string
+          property_id?: string | null
+          tipo_imovel?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_form_mappings_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_admin_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_form_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_lead_submissions: {
+        Row: {
+          ad_id: string | null
+          adset_id: string | null
+          app_id: string
+          attempts: number
+          attendance_id: string | null
+          broker_id: string | null
+          campaign_id: string | null
+          client_id: string | null
+          completed_at: string | null
+          connection_id: string | null
+          email: string | null
+          external_campaign_id: string | null
+          field_data: Json | null
+          form_id: string | null
+          full_name: string | null
+          id: string
+          imobiliaria: string | null
+          last_error: string | null
+          leadgen_id: string
+          lease_until: string | null
+          meta_created_at: string | null
+          next_attempt_at: string
+          page_id: string
+          phone: string | null
+          privacy_deleted_at: string | null
+          received_at: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+        }
+        Insert: {
+          ad_id?: string | null
+          adset_id?: string | null
+          app_id: string
+          attempts?: number
+          attendance_id?: string | null
+          broker_id?: string | null
+          campaign_id?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          connection_id?: string | null
+          email?: string | null
+          external_campaign_id?: string | null
+          field_data?: Json | null
+          form_id?: string | null
+          full_name?: string | null
+          id?: string
+          imobiliaria?: string | null
+          last_error?: string | null
+          leadgen_id: string
+          lease_until?: string | null
+          meta_created_at?: string | null
+          next_attempt_at?: string
+          page_id: string
+          phone?: string | null
+          privacy_deleted_at?: string | null
+          received_at?: string
+          status: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Update: {
+          ad_id?: string | null
+          adset_id?: string | null
+          app_id?: string
+          attempts?: number
+          attendance_id?: string | null
+          broker_id?: string | null
+          campaign_id?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          connection_id?: string | null
+          email?: string | null
+          external_campaign_id?: string | null
+          field_data?: Json | null
+          form_id?: string | null
+          full_name?: string | null
+          id?: string
+          imobiliaria?: string | null
+          last_error?: string | null
+          leadgen_id?: string
+          lease_until?: string | null
+          meta_created_at?: string | null
+          next_attempt_at?: string
+          page_id?: string
+          phone?: string | null
+          privacy_deleted_at?: string | null
+          received_at?: string
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_submissions_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_submissions_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_submissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_submissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_submissions_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
             referencedColumns: ["id"]
           },
         ]
@@ -10276,16 +10654,80 @@ export type Database = {
         Args: never
         Returns: {
           account_label: string
+          app_id: string
+          capabilities: Json
+          credential_mode: string
           expires_at: string
+          external_account_id: string
           id: string
           imobiliaria: string
+          last_diagnosed_at: string
           last_error: string
+          page_id: string
           platform: string
           scopes: string
           status: string
           updated_at: string
           user_id: string
         }[]
+      }
+      ad_oauth_consume: {
+        Args: { p_nonce_hash: string; p_user_id: string }
+        Returns: boolean
+      }
+      ad_sync_claim: {
+        Args: { p_limit?: number; p_worker_id: string }
+        Returns: {
+          ad_account_id: string | null
+          attempts: number
+          campaign_id: string
+          checkpoint: Json | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          lease_until: string | null
+          next_attempt_at: string
+          range_end: string | null
+          range_start: string | null
+          requested_by: string | null
+          started_at: string
+          status: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ad_sync_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      ad_sync_commit: {
+        Args: {
+          p_campaign: Json
+          p_job_id: string
+          p_metrics: Json
+          p_worker_id: string
+        }
+        Returns: undefined
+      }
+      ad_sync_enqueue: {
+        Args: {
+          p_campaign_id: string
+          p_range_end: string
+          p_range_start: string
+          p_requested_by: string
+        }
+        Returns: string
+      }
+      ad_sync_fail: {
+        Args: {
+          p_error: string
+          p_job_id: string
+          p_next_attempt_at: string
+          p_status: string
+          p_worker_id: string
+        }
+        Returns: undefined
       }
       agenciamento_bonus_notify: {
         Args: {
@@ -10898,6 +11340,95 @@ export type Database = {
         Returns: Json
       }
       mark_notification_read: { Args: { _id: string }; Returns: Json }
+      marketing_campaigns_safe: {
+        Args: {
+          p_account_id?: string
+          p_campaign_id?: string
+          p_current_since?: string
+          p_imobiliaria?: string
+          p_owned_only?: boolean
+          p_page?: number
+          p_page_size?: number
+          p_platform?: string
+          p_previous_until?: string
+          p_search?: string
+          p_since?: string
+          p_status?: string
+          p_until?: string
+        }
+        Returns: Json
+      }
+      marketing_can_operate: { Args: { p_agency: string }; Returns: boolean }
+      marketing_summary_for_period: {
+        Args: {
+          p_financial: boolean
+          p_ids: string[]
+          p_owned_only?: boolean
+          p_since: string
+          p_until: string
+        }
+        Returns: Json
+      }
+      meta_ads_sync_dispatch: { Args: never; Returns: number }
+      meta_ads_worker_dispatch: { Args: never; Returns: number }
+      meta_lead_assign: {
+        Args: { p_actor_id: string; p_broker_id: string; p_id: string }
+        Returns: undefined
+      }
+      meta_lead_claim: {
+        Args: { p_limit?: number; p_worker_id: string }
+        Returns: {
+          ad_id: string | null
+          adset_id: string | null
+          app_id: string
+          attempts: number
+          attendance_id: string | null
+          broker_id: string | null
+          campaign_id: string | null
+          client_id: string | null
+          completed_at: string | null
+          connection_id: string | null
+          email: string | null
+          external_campaign_id: string | null
+          field_data: Json | null
+          form_id: string | null
+          full_name: string | null
+          id: string
+          imobiliaria: string | null
+          last_error: string | null
+          leadgen_id: string
+          lease_until: string | null
+          meta_created_at: string | null
+          next_attempt_at: string
+          page_id: string
+          phone: string | null
+          privacy_deleted_at: string | null
+          received_at: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_lead_submissions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      meta_lead_complete: {
+        Args: { p_fields: Json; p_id: string; p_worker_id: string }
+        Returns: string
+      }
+      meta_lead_ingest: {
+        Args: { p_app_id: string; p_events: Json }
+        Returns: number
+      }
+      meta_lead_resolve: {
+        Args: { p_actor_id: string; p_attendance_id: string; p_id: string }
+        Returns: undefined
+      }
+      meta_lead_retry: { Args: { p_id: string }; Returns: undefined }
+      meta_phone_identity: { Args: { p_phone: string }; Returns: string }
       morar_site_admin_public_list: {
         Args: never
         Returns: {
