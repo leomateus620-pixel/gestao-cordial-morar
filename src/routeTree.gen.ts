@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as ExclusaoDeDadosRouteImport } from './routes/exclusao-de-dados'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SiteRouteImport } from './routes/site'
 import { Route as SiteMorarRouteImport } from './routes/site-morar'
@@ -116,6 +118,11 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExclusaoDeDadosRoute = ExclusaoDeDadosRouteImport.update({
+  id: '/exclusao-de-dados',
+  path: '/exclusao-de-dados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -124,6 +131,11 @@ const LoginRoute = LoginRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
+  id: '/politica-de-privacidade',
+  path: '/politica-de-privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -653,8 +665,10 @@ const LovableEmailTransactionalSendRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRouteWithChildren
   '/site-morar': typeof SiteMorarRouteWithChildren
@@ -755,8 +769,10 @@ export interface FileRoutesByFullPath {
   '/imoveis/$imovelId/': typeof AppImoveisImovelIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -856,8 +872,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/exclusao-de-dados': typeof ExclusaoDeDadosRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRouteWithChildren
   '/site-morar': typeof SiteMorarRouteWithChildren
@@ -962,8 +980,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/exclusao-de-dados'
     | '/login'
     | '/mcp'
+    | '/politica-de-privacidade'
     | '/reset-password'
     | '/site'
     | '/site-morar'
@@ -1064,8 +1084,10 @@ export interface FileRouteTypes {
     | '/imoveis/$imovelId/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/exclusao-de-dados'
     | '/login'
     | '/mcp'
+    | '/politica-de-privacidade'
     | '/reset-password'
     | '/unsubscribe'
     | '/.well-known/oauth-protected-resource'
@@ -1164,8 +1186,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/exclusao-de-dados'
     | '/login'
     | '/mcp'
+    | '/politica-de-privacidade'
     | '/reset-password'
     | '/site'
     | '/site-morar'
@@ -1269,8 +1293,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  ExclusaoDeDadosRoute: typeof ExclusaoDeDadosRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SiteRoute: typeof SiteRouteWithChildren
   SiteMorarRoute: typeof SiteMorarRouteWithChildren
@@ -1320,6 +1346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exclusao-de-dados': {
+      id: '/exclusao-de-dados'
+      path: '/exclusao-de-dados'
+      fullPath: '/exclusao-de-dados'
+      preLoaderRoute: typeof ExclusaoDeDadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -1332,6 +1365,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica-de-privacidade': {
+      id: '/politica-de-privacidade'
+      path: '/politica-de-privacidade'
+      fullPath: '/politica-de-privacidade'
+      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -2209,8 +2249,10 @@ const SiteMorarRouteWithChildren = SiteMorarRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  ExclusaoDeDadosRoute: ExclusaoDeDadosRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SiteRoute: SiteRouteWithChildren,
   SiteMorarRoute: SiteMorarRouteWithChildren,
