@@ -1,0 +1,153 @@
+{
+  "started_at": "2026-10-26T17:21:28.834298+00:00",
+  "deadline": 1793036118.8343093,
+  "baseline": {
+    "get": 364,
+    "success": 364,
+    "errors": 0,
+    "marketing": 354,
+    "other_reads": 10
+  },
+  "records": [
+    {
+      "started_at": "2026-10-26T17:21:28.834760+00:00",
+      "finished_at": "2026-10-26T17:21:29.269473+00:00",
+      "path": "/act_1010379113136989/campaigns",
+      "params": {
+        "fields": "id",
+        "limit": "100"
+      },
+      "family": "campaign_discovery",
+      "http_status": 200,
+      "success": true,
+      "row_count": 57,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_management",
+              "call_count": 0,
+              "total_cputime": 0,
+              "total_time": 0,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    },
+    {
+      "started_at": "2026-10-26T17:21:29.270383+00:00",
+      "finished_at": "2026-10-26T17:21:29.510129+00:00",
+      "path": "/act_1010379113136989",
+      "params": {
+        "fields": "timezone_name"
+      },
+      "family": "account_reporting_timezone",
+      "http_status": 200,
+      "success": true,
+      "row_count": null,
+      "has_next": false,
+      "error_code": null,
+      "error_subcode": null,
+      "headers": {
+        "X-App-Usage": null,
+        "X-Ad-Account-Usage": null,
+        "X-Business-Use-Case-Usage": {
+          "1010379113136989": [
+            {
+              "type": "ads_management",
+              "call_count": 0,
+              "total_cputime": 0,
+              "total_time": 0,
+              "estimated_time_to_regain_access": 0,
+              "ads_api_access_tier": "development_access"
+            }
+          ]
+        },
+        "Retry-After": null
+      }
+    }
+  ],
+  "campaigns": [
+    "120252039314910234",
+    "120251989467600234",
+    "120251822415000234",
+    "120251245810590234",
+    "120216499809190234",
+    "120213630787090234",
+    "120213628405590234",
+    "120213627876400234",
+    "120213114406080234",
+    "120212094904440234",
+    "120211941448760234",
+    "120211658142610234",
+    "120211115328890234",
+    "120210935221060234",
+    "120210872966740234",
+    "120210868109770234",
+    "120210432195600234",
+    "120210160968080234",
+    "120209664708550234",
+    "120209462818760234",
+    "120208825205230234",
+    "120208824990100234",
+    "120207863838050234",
+    "120207263465290234",
+    "120206811309340234",
+    "120206801770340234",
+    "120206482725840234",
+    "120205816675910234",
+    "120205116501610234",
+    "120204649407330234",
+    "120204649342490234",
+    "120203365483040234",
+    "120203363743120234",
+    "120203275548620234",
+    "120201248495170234",
+    "120201244648060234",
+    "23859070854350233",
+    "23859070640030233",
+    "23858968468940233",
+    "23857844758710233",
+    "23857695015300233",
+    "23857588760020233",
+    "23857503354270233",
+    "23851994331530233",
+    "23851946452320233",
+    "23851622118120233",
+    "23851432197380233",
+    "23851432161770233",
+    "23851087980540233",
+    "23851059897510233",
+    "23850925957080233",
+    "23850848954280233",
+    "23850390998160233",
+    "23849894932480233",
+    "23849729288460233",
+    "23849632025570233",
+    "23849631912480233"
+  ],
+  "pending": [],
+  "stop_reason": "awaiting official breakdown verification",
+  "automatic_execution": false,
+  "sources": [],
+  "totals": {
+    "get": 366,
+    "success": 366,
+    "errors": 0,
+    "marketing": 356,
+    "other_reads": 10
+  },
+  "timezone": "America/Sao_Paulo",
+  "range": {
+    "since": "2026-09-28",
+    "until": "2026-10-25"
+  }
+}
