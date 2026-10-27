@@ -84,7 +84,8 @@ function PrivacyPage() {
       <p>
         Você pode pedir para saber quais dados temos sobre você, corrigi-los ou excluí-los, pelo
         e-mail <a href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>. Veja como pedir a
-        exclusão em <Link to="/exclusao-de-dados">Exclusão de dados</Link>.
+        exclusão em <Link to="/exclusao-de-dados">Exclusão de dados</Link>. Veja também os{" "}
+        <Link to="/termos-de-servico">Termos de Serviço</Link>.
       </p>
 
       <h2>Alterações</h2>
