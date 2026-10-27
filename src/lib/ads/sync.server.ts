@@ -32,10 +32,10 @@ export function recentAccountRange(timezone: string, now = new Date()) {
 async function enqueueRecentRevision(db: SupabaseClient) {
   const { data: due, error } = await db
     .from("marketing_campaigns")
-    .select("id,user_id,data_inicio,data_fim,ad_accounts!inner(timezone)")
+    .select("id,user_id,status,last_synced_at,data_inicio,data_fim,ad_accounts!inner(timezone)")
     .in("platform", ["meta", "google"])
     .eq("sync_status", "synced")
-    .lte("last_synced_at", new Date(Date.now() - 6 * 3600000).toISOString())
+    .lte("last_synced_at", new Date(Date.now() - ACTIVE_REFRESH_MS).toISOString())
     // No account calendar is later than UTC+14; final eligibility uses its own timezone below.
     .lte("data_inicio", new Date(Date.now() + 14 * 3600000).toISOString().slice(0, 10))
     .gte("data_fim", new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10))
@@ -43,6 +43,7 @@ async function enqueueRecentRevision(db: SupabaseClient) {
     .limit(100);
   if (error) throw new Error("Falha ao consultar revisão incremental.");
   for (const c of due ?? []) {
+    if (!isRefreshDue(c)) continue;
     const account = Array.isArray(c.ad_accounts) ? c.ad_accounts[0] : c.ad_accounts;
     let range: { since: string; until: string };
     try {
@@ -73,8 +74,49 @@ async function enqueueRecentRevision(db: SupabaseClient) {
   }
   return false;
 }
-/** Claims and completes ONE durable job per call; a cron can run bounded concurrent calls. */
+/** Active campaigns refresh every cycle (~10 min); paused/ended ones every 6 h. */
+export const ACTIVE_REFRESH_MS = 9 * 60000;
+export const IDLE_REFRESH_MS = 6 * 3600000;
+export function isRefreshDue(
+  c: { status: string | null; last_synced_at: string | null },
+  now = Date.now(),
+) {
+  if (!c.last_synced_at) return true;
+  const age = now - Date.parse(c.last_synced_at);
+  return age >= (c.status === "Ativa" ? ACTIVE_REFRESH_MS : IDLE_REFRESH_MS);
+}
+/**
+ * Days already stored with spend/impressions that the provider no longer returns.
+ * A non-empty result blocks the commit (which would delete those days): the job is retried
+ * and, if it persists, marked `partial` keeping the stored numbers.
+ */
+export function missingStoredDays(
+  stored: { data: string; spend: number | null; impressions: number | null }[],
+  returnedDates: string[],
+) {
+  const back = new Set(returnedDates);
+  return stored
+    .filter((d) => (Number(d.spend) > 0 || Number(d.impressions) > 0) && !back.has(d.data))
+    .map((d) => d.data);
+}
+const WORKER_MAX_JOBS = 8;
+const WORKER_BUDGET_MS = 90000;
+/** Runs up to 8 durable jobs per call, one lease at a time, within a 90 s budget. */
 export async function runAdsSyncWorker() {
+  const started = Date.now();
+  const total = { claimed: 0, done: 0, failed: 0, queued: 0 };
+  for (let i = 0; i < WORKER_MAX_JOBS && Date.now() - started < WORKER_BUDGET_MS; i++) {
+    const r = await runOneAdsSync();
+    if (!r.claimed) break;
+    total.claimed += r.claimed;
+    total.done += r.done;
+    total.failed += r.failed;
+    total.queued += r.queued;
+  }
+  return total;
+}
+/** Claims and completes ONE durable job. */
+async function runOneAdsSync() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = supabaseAdmin as unknown as SupabaseClient;
   const workerId = randomUUID();
@@ -132,6 +174,16 @@ export async function runAdsSyncWorker() {
               frequency: null,
               scope: "campaign",
             };
+      const { data: stored, error: storedError } = await db
+        .from("marketing_daily_metrics")
+        .select("data,spend,impressions")
+        .eq("campaign_id", c.id)
+        .eq("metric_source", "synced")
+        .gte("data", range.since)
+        .lte("data", range.until);
+      if (storedError) throw new AdProviderError("provider_error", "Falha ao ler métricas salvas.");
+      if (missingStoredDays(stored ?? [], insights.map((d) => d.date)).length)
+        throw new AdProviderError("partial_data", "Resposta incompleta da plataforma.");
       const account = Array.isArray(c.ad_accounts) ? c.ad_accounts[0] : c.ad_accounts;
       const { error: commitError } = await db.rpc("ad_sync_commit", {
         p_job_id: job.id,
