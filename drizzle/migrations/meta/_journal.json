@@ -302,6 +302,13 @@
       "when": 1793122386557,
       "tag": "0042_meta_reviewer_role",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793124136228,
+      "tag": "0043_meta_ads_sync_every_10_min",
+      "breakpoints": true
     }
   ]
 }
