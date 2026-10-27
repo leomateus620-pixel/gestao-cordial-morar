@@ -124,7 +124,7 @@ test("removes only the Clientes navigation reference and preserves role authoriz
     false,
   );
 
-  for (const profile of Object.keys(roleDefinitions) as UserProfile[]) {
+  for (const profile of (Object.keys(roleDefinitions) as UserProfile[]).filter((p) => p !== "meta_reviewer")) {
     assert.equal(roleDefinitions[profile].modules.includes("clientes"), true, profile);
   }
 });
@@ -135,4 +135,12 @@ test("matches active routes without allowing sibling-prefix collisions", () => {
   assert.equal(isModuleItemActive("/agenda/fotos", { to: "/agenda/fotos" }), true);
   assert.equal(isModuleItemActive("/alugueis/abc", { to: "/alugueis" }), true);
   assert.equal(isModuleItemActive("/imoveis-destaque", { to: "/imoveis" }), false);
+});
+
+test("Meta review account only sees Marketing and Meta Ads integration", () => {
+  const paths = sidebarPaths("meta_reviewer");
+  assert.ok(paths.includes("/marketing"));
+  for (const blocked of ["/", "/imoveis", "/atendimentos", "/vendas", "/alugueis", "/agenda"]) {
+    assert.ok(!paths.includes(blocked), blocked);
+  }
 });

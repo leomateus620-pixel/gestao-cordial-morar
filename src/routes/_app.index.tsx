@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import {
   Area,
   AreaChart,
@@ -70,7 +70,7 @@ import {
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({ meta: [{ title: "Dashboard — Gestão Cordial" }] }),
-  component: Dashboard,
+  component: DashboardGate,
 });
 
 const contextColors: Record<string, string> = {
@@ -85,6 +85,12 @@ const contextColors: Record<string, string> = {
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Componente principal                                                        */
 /* ─────────────────────────────────────────────────────────────────────────── */
+
+function DashboardGate() {
+  const session = useSession();
+  if (session?.perfil === "meta_reviewer") return <Navigate to="/marketing" search={{} as never} replace />;
+  return <Dashboard />;
+}
 
 function Dashboard() {
   const [open, setOpen] = useState(false);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canArchiveProperty, canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
+import { canAccessModule, canArchiveProperty, canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
 
 const admin = { id: "u-admin", perfil: "admin_owner" as const, modules: [] };
 const corretor = { id: "u-corretor", perfil: "corretor" as const, modules: [] };
@@ -37,4 +37,12 @@ test("arquivar imóvel: admin, secretaria e corretor; financeiro e sem sessão n
   assert.equal(canArchiveProperty(corretor), true);
   assert.equal(canArchiveProperty({ perfil: "financeiro_admin" as const, modules: [] }), false);
   assert.equal(canArchiveProperty(null), false);
+});
+
+test("meta_reviewer can open marketing and integracoes only", () => {
+  const s = { perfil: "meta_reviewer" as const, modules: [] };
+  assert.equal(canAccessModule(s, "marketing"), true);
+  assert.equal(canAccessModule(s, "integracoes"), true);
+  for (const m of ["imoveis", "clientes", "atendimentos", "financeiro", "configuracoes", "dashboard"] as const)
+    assert.equal(canAccessModule(s, m), false, m);
 });

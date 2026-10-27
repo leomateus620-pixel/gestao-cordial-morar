@@ -1,4 +1,9 @@
-export type UserProfile = "admin_owner" | "secretaria" | "corretor" | "financeiro_admin";
+export type UserProfile =
+  | "admin_owner"
+  | "secretaria"
+  | "corretor"
+  | "financeiro_admin"
+  | "meta_reviewer";
 
 export type AppModule =
   | "dashboard"
@@ -182,6 +187,13 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
     ],
   },
 
+  meta_reviewer: {
+    profile: "meta_reviewer",
+    label: "Avaliação Meta",
+    description: "Conta externa de avaliação: somente Marketing e o painel Meta Ads.",
+    modules: ["marketing", "integracoes"],
+    permissions: ["marketing:read", "marketing:write", "integracoes:read"],
+  },
   financeiro_admin: {
     profile: "financeiro_admin",
     label: "Financeiro/Administrativo",

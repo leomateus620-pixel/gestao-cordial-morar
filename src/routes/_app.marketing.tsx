@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   MarketingDashboard,
@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_app/marketing")({
 function Page() {
   return (
     <RequireModuleAccess module="marketing">
+      <MetaReviewerShortcut />
       <MarketingPageInner />
     </RequireModuleAccess>
   );
@@ -70,5 +71,25 @@ function MarketingPageInner() {
       isError={isError}
       canViewFinancialInsights={canSeeFinancialInsights(session) && financialVisible}
     />
+  );
+}
+
+/** Extra shortcut for the Meta review account, which has no Configurações menu. */
+function MetaReviewerShortcut() {
+  const session = useSession();
+  if (session?.perfil !== "meta_reviewer") return null;
+  return (
+    <div className="premium-card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+      <p className="text-sm text-foreground/70">
+        Conta de avaliação Meta: campanhas e resultados abaixo. O status da conexão e dos leads está
+        em Integrações.
+      </p>
+      <Link
+        to="/integracoes"
+        className="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+      >
+        Abrir Meta Ads em Integrações
+      </Link>
+    </div>
   );
 }
