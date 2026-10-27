@@ -38,3 +38,11 @@ test("arquivar imóvel: admin, secretaria e corretor; financeiro e sem sessão n
   assert.equal(canArchiveProperty({ perfil: "financeiro_admin" as const, modules: [] }), false);
   assert.equal(canArchiveProperty(null), false);
 });
+
+test("meta_reviewer can open marketing and integracoes only", () => {
+  const s = { perfil: "meta_reviewer" as const, modules: [] };
+  assert.equal(canAccessModule(s, "marketing"), true);
+  assert.equal(canAccessModule(s, "integracoes"), true);
+  for (const m of ["imoveis", "clientes", "atendimentos", "financeiro", "configuracoes", "dashboard"] as const)
+    assert.equal(canAccessModule(s, m), false, m);
+});

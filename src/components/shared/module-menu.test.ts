@@ -136,3 +136,11 @@ test("matches active routes without allowing sibling-prefix collisions", () => {
   assert.equal(isModuleItemActive("/alugueis/abc", { to: "/alugueis" }), true);
   assert.equal(isModuleItemActive("/imoveis-destaque", { to: "/imoveis" }), false);
 });
+
+test("Meta review account only sees Marketing and Meta Ads integration", () => {
+  const paths = sidebarPaths("meta_reviewer");
+  assert.ok(paths.includes("/marketing"));
+  for (const blocked of ["/", "/imoveis", "/atendimentos", "/vendas", "/alugueis", "/agenda"]) {
+    assert.ok(!paths.includes(blocked), blocked);
+  }
+});
