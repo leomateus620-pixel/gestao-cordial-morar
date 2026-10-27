@@ -11273,6 +11273,7 @@ export type Database = {
         Args: { _token: string }
         Returns: boolean
       }
+      is_meta_reviewer: { Args: never; Returns: boolean }
       list_assignable_brokers: {
         Args: { _agency?: string }
         Returns: {
@@ -12292,7 +12293,12 @@ export type Database = {
         | "captacao"
         | "interno"
         | "outro"
-      app_role: "admin" | "secretaria" | "corretor" | "financeiro"
+      app_role:
+        | "admin"
+        | "secretaria"
+        | "corretor"
+        | "financeiro"
+        | "meta_reviewer"
       attendance_assignment_status:
         | "pending_open"
         | "opened"
@@ -12517,7 +12523,13 @@ export const Constants = {
         "interno",
         "outro",
       ],
-      app_role: ["admin", "secretaria", "corretor", "financeiro"],
+      app_role: [
+        "admin",
+        "secretaria",
+        "corretor",
+        "financeiro",
+        "meta_reviewer",
+      ],
       attendance_assignment_status: [
         "pending_open",
         "opened",
