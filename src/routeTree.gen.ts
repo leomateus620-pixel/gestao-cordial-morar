@@ -17,6 +17,7 @@ import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SiteRouteImport } from './routes/site'
 import { Route as SiteMorarRouteImport } from './routes/site-morar'
+import { Route as TermosDeServicoRouteImport } from './routes/termos-de-servico'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
@@ -151,6 +152,11 @@ const SiteRoute = SiteRouteImport.update({
 const SiteMorarRoute = SiteMorarRouteImport.update({
   id: '/site-morar',
   path: '/site-morar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosDeServicoRoute = TermosDeServicoRouteImport.update({
+  id: '/termos-de-servico',
+  path: '/termos-de-servico',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -672,6 +678,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRouteWithChildren
   '/site-morar': typeof SiteMorarRouteWithChildren
+  '/termos-de-servico': typeof TermosDeServicoRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
@@ -774,6 +781,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos-de-servico': typeof TermosDeServicoRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenciamentos': typeof AppAgenciamentosRoute
@@ -879,6 +887,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/site': typeof SiteRouteWithChildren
   '/site-morar': typeof SiteMorarRouteWithChildren
+  '/termos-de-servico': typeof TermosDeServicoRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/agenciamentos': typeof AppAgenciamentosRoute
@@ -987,6 +996,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/site'
     | '/site-morar'
+    | '/termos-de-servico'
     | '/unsubscribe'
     | '/.well-known/oauth-protected-resource'
     | '/agenciamentos'
@@ -1089,6 +1099,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/politica-de-privacidade'
     | '/reset-password'
+    | '/termos-de-servico'
     | '/unsubscribe'
     | '/.well-known/oauth-protected-resource'
     | '/agenciamentos'
@@ -1193,6 +1204,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/site'
     | '/site-morar'
+    | '/termos-de-servico'
     | '/unsubscribe'
     | '/.well-known/oauth-protected-resource'
     | '/_app/agenciamentos'
@@ -1300,6 +1312,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SiteRoute: typeof SiteRouteWithChildren
   SiteMorarRoute: typeof SiteMorarRouteWithChildren
+  TermosDeServicoRoute: typeof TermosDeServicoRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AvaliarTokenRoute: typeof AvaliarTokenRoute
@@ -1393,6 +1406,13 @@ declare module '@tanstack/react-router' {
       path: '/site-morar'
       fullPath: '/site-morar'
       preLoaderRoute: typeof SiteMorarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos-de-servico': {
+      id: '/termos-de-servico'
+      path: '/termos-de-servico'
+      fullPath: '/termos-de-servico'
+      preLoaderRoute: typeof TermosDeServicoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unsubscribe': {
@@ -2256,6 +2276,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SiteRoute: SiteRouteWithChildren,
   SiteMorarRoute: SiteMorarRouteWithChildren,
+  TermosDeServicoRoute: TermosDeServicoRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
