@@ -41,18 +41,17 @@ export const Route = createFileRoute("/_app/integracoes")({
 });
 
 function GuardedPage() {
+  const session = useSession();
   return (
     <RequireModuleAccess module="integracoes">
-      <Page />
+      {session?.perfil === "meta_reviewer" ? <MetaReviewerIntegrations /> : <Page />}
     </RequireModuleAccess>
   );
 }
 
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todas");
-  const session = useSession();
-  const isAdmin = isAdminUser(session);
-  if (session?.perfil === "meta_reviewer") return <MetaReviewerIntegrations />;
+  const isAdmin = isAdminUser(useSession());
   const integracoes = useFiltered(useApp((s) => s.integracoes));
   const list = integracoes.filter((i) => filter === "Todas" || i.status === filter);
   const conectadas = integracoes.filter((i) => i.status === "Conectada").length;
