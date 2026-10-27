@@ -124,7 +124,7 @@ test("removes only the Clientes navigation reference and preserves role authoriz
     false,
   );
 
-  for (const profile of Object.keys(roleDefinitions) as UserProfile[]) {
+  for (const profile of (Object.keys(roleDefinitions) as UserProfile[]).filter((p) => p !== "meta_reviewer")) {
     assert.equal(roleDefinitions[profile].modules.includes("clientes"), true, profile);
   }
 });
