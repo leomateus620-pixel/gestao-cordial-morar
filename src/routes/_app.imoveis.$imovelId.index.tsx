@@ -461,7 +461,24 @@ function DetalhePage() {
           <InternalField label="Proprietário" value={imovel.proprietarioNome} />
           <InternalField label="Telefone do proprietário" value={imovel.proprietarioTelefone} />
           <InternalField label="E-mail do proprietário" value={imovel.proprietarioEmail} />
-          <InternalField label="Quem agenciou" value={imovel.corretorNome} />
+          {imovel.corretorNome ? (
+            <InternalField label="Quem agenciou" value={imovel.corretorNome} />
+          ) : (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Quem agenciou</p>
+              <p className="mt-0.5 text-sm text-amber-900">
+                A preencher ·{" "}
+                <Link
+                  to="/imoveis/$imovelId/editar"
+                  params={{ imovelId }}
+                  hash="campo-corretor"
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Escolher corretor
+                </Link>
+              </p>
+            </div>
+          )}
           <InternalField label="Origem da captação" value={imovel.origemCaptacao} />
           <InternalField label="Carteira de origem" value={imovel.carteira === "cordial" ? "Cordial" : "Morar"} />
           <InternalField label="Exclusividade" value={boolLabel(imovel.exclusividade)} />
