@@ -746,6 +746,7 @@ export function PropertyForm({
               </Field>
               <Field label="Quem agenciou" hint="Uso interno: nao e publicado nos sites.">
                 <select
+                  id="campo-corretor"
                   value={values.corretorId ?? ""}
                   onChange={(e) => {
                     const id = e.target.value || null;
@@ -755,7 +756,7 @@ export function PropertyForm({
                   }}
                   className={inputCls}
                 >
-                  <option value="">Nao informado</option>
+                  <option value="">A preencher (definir depois)</option>
                   {corretores.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nome}
