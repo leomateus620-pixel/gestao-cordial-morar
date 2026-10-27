@@ -302,6 +302,34 @@
       "when": 1793122386557,
       "tag": "0042_meta_reviewer_role",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793124136228,
+      "tag": "0043_meta_ads_sync_every_10_min",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793124711737,
+      "tag": "0044_meta_ads_sync_schedule_ensure",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793125292581,
+      "tag": "0045_meta_ads_sync_dispatch_stable_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793125848502,
+      "tag": "0046_meta_ads_sync_dispatch_worker_token",
+      "breakpoints": true
     }
   ]
 }

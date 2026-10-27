@@ -64,13 +64,17 @@ export async function metaGraph<T>(
   try {
     response = await fetch(url, {
       ...init,
-      redirect: "error",
+      // workerd rejects redirect:"error"; "manual" + the 3xx check below keeps redirects refused.
+      redirect: "manual",
       headers: { ...init.headers, Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(15_000),
     });
-  } catch {
+  } catch (e) {
+    console.error("[meta-graph] fetch failed", e instanceof Error ? e.name : "unknown");
     throw new AdProviderError("provider_error", "A Meta não respondeu no prazo.");
   }
+  if (response.status >= 300 && response.status < 400)
+    throw new AdProviderError("provider_error", AD_ERROR_MESSAGES.provider_error);
   const body = (await response.json().catch(() => null)) as
     | ({ error?: { code?: number } } & T)
     | null;
