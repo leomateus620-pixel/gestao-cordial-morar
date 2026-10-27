@@ -49,7 +49,8 @@ function DeletionPage() {
 
       <p>
         Mais detalhes sobre o tratamento dos dados estão na{" "}
-        <Link to="/politica-de-privacidade">Política de Privacidade</Link>.
+        <Link to="/politica-de-privacidade">Política de Privacidade</Link>. Veja também os{" "}
+        <Link to="/termos-de-servico">Termos de Serviço</Link>.
       </p>
     </LegalPage>
   );
