@@ -226,6 +226,11 @@ async function runOneAdsSync() {
       result.done++;
     } catch (e) {
       const code = e instanceof AdProviderError ? e.code : "provider_error";
+      console.error("[ads-sync] job failed", {
+        job: job.id,
+        code,
+        message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+      });
       const retry = syncRetry(Number(job.attempts), code);
       const now = new Date();
       // The fence prevents an interrupted worker from changing the state of its successor.
