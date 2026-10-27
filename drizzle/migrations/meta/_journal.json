@@ -316,6 +316,13 @@
       "when": 1793124711737,
       "tag": "0044_meta_ads_sync_schedule_ensure",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793125292581,
+      "tag": "0045_meta_ads_sync_dispatch_stable_url",
+      "breakpoints": true
     }
   ]
 }
