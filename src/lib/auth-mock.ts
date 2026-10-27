@@ -37,7 +37,14 @@ type ProfileRow = {
 };
 
 function pickHighestRole(roles: UserProfile[]): UserProfile {
-  const order: UserProfile[] = ["admin_owner", "financeiro_admin", "secretaria", "corretor"];
+  // meta_reviewer first: an external review account must never inherit a staff profile.
+  const order: UserProfile[] = [
+    "meta_reviewer",
+    "admin_owner",
+    "financeiro_admin",
+    "secretaria",
+    "corretor",
+  ];
   for (const r of order) if (roles.includes(r)) return r;
   return "corretor";
 }
@@ -51,6 +58,8 @@ function mapDbRole(role: string): UserProfile {
       return "financeiro_admin";
     case "secretaria":
       return "secretaria";
+    case "meta_reviewer":
+      return "meta_reviewer";
     case "corretor":
     default:
       return "corretor";

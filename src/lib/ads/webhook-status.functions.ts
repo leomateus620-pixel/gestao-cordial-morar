@@ -40,10 +40,8 @@ async function graph(path: string, token: string, version: string, fields?: stri
 export const getMetaWebhookStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<MetaWebhookStatus> => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
+    const { isAdsAdminOrReviewer } = await import("./authorization.server");
+    const isAdmin = await isAdsAdminOrReviewer(context);
     if (!isAdmin) throw new Error("Somente o administrador pode ver esta integração.");
     const env = process.env;
     const missing = REQUIRED.filter((k) => !env[k]);

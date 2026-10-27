@@ -97,12 +97,8 @@ export const listAdConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdConnectionPublic[]> => {
     await requireMarketingAccess(context);
-    const { data: admin, error: roleError } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (roleError) throw new Error("Não foi possível validar o acesso às conexões.");
-    if (admin !== true) return [];
+    const { isAdsAdminOrReviewer } = await import("./authorization.server");
+    if (!(await isAdsAdminOrReviewer(context))) return [];
 
     const { adsConfig } = await import("./oauth.server");
     const { data, error } = await context.supabase.rpc("ad_connections_public");

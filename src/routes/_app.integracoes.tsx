@@ -11,6 +11,7 @@ import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { ProvidersHealthCard } from "@/components/imoveis/ProvidersHealthCard";
 import { MetaAdsCard } from "@/components/integracoes/MetaAdsCard";
+import { MetaWebhookStatusPanel } from "@/components/integracoes/MetaWebhookStatusPanel";
 import { NfseStatusCard } from "@/components/integracoes/NfseStatusCard";
 import { HotspotCleanupCard } from "@/components/integracoes/HotspotCleanupCard";
 import { IncompleteRegistrationsCard } from "@/components/integracoes/IncompleteRegistrationsCard";
@@ -49,7 +50,9 @@ function GuardedPage() {
 
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todas");
-  const isAdmin = isAdminUser(useSession());
+  const session = useSession();
+  const isAdmin = isAdminUser(session);
+  if (session?.perfil === "meta_reviewer") return <MetaReviewerIntegrations />;
   const integracoes = useFiltered(useApp((s) => s.integracoes));
   const list = integracoes.filter((i) => filter === "Todas" || i.status === filter);
   const conectadas = integracoes.filter((i) => i.status === "Conectada").length;
@@ -140,5 +143,19 @@ function Page() {
         </div>
       </section>
     </>
+  );
+}
+
+/** Read-only Meta Ads view for the external review account. */
+function MetaReviewerIntegrations() {
+  return (
+    <section className="premium-card mb-5 p-5">
+      <h2 className="text-lg font-bold tracking-tight">Meta Ads</h2>
+      <p className="mt-1 mb-4 text-sm text-foreground/60">
+        Status da conexão com a Meta e do recebimento de leads dos formulários de anúncio.
+        Campanhas e resultados ficam no menu Marketing.
+      </p>
+      <MetaWebhookStatusPanel />
+    </section>
   );
 }

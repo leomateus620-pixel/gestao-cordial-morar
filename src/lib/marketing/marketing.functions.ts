@@ -138,7 +138,11 @@ async function marketingAccess(ctx: Ctx) {
     .eq("user_id", ctx.userId);
   if (error) throw new Error("Não foi possível validar o acesso ao marketing.");
   const roles = new Set((data ?? []).map((r: { role: string }) => r.role));
-  if (!roles.has("admin") && (roles.has("financeiro") || !roles.has("secretaria")))
+  if (
+    !roles.has("admin") &&
+    !roles.has("meta_reviewer") &&
+    (roles.has("financeiro") || !roles.has("secretaria"))
+  )
     throw new Error("Acesso ao marketing não permitido.");
   return { isAdmin: roles.has("admin"), financialVisible: roles.has("admin") };
 }
