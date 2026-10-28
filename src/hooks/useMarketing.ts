@@ -13,8 +13,10 @@ import {
 } from "@/lib/marketing/marketing.functions";
 import { useSession } from "@/lib/auth-mock";
 import { useApp } from "@/store/app-store";
+import { readAllCampaigns } from "@/lib/marketing/read-all-campaigns";
 
-export function useMarketing(filters: MarketingQuery = {}) {
+export function useMarketing(filters: MarketingQuery = {}, options: { allPages?: boolean } = {}) {
+  const allPages = options.allPages === true;
   const qc = useQueryClient();
   const session = useSession();
   const agency = useApp((s) => s.agency);
@@ -42,14 +44,18 @@ export function useMarketing(filters: MarketingQuery = {}) {
       "imobiliaria" in filters ? filters.imobiliaria : agency === "todas" ? null : agency,
   };
   const query = useQuery({
-    queryKey: ["marketing", "campaigns", session?.id, session?.perfil, scope],
-    queryFn: () => list({ data: scope }),
+    queryKey: ["marketing", "campaigns", session?.id, session?.perfil, scope, allPages],
+    queryFn: () => allPages
+      ? readAllCampaigns((data) => list({ data }), scope)
+      : list({ data: scope }),
     enabled: Boolean(session),
     staleTime: 30_000,
     placeholderData: (previous, previousQuery) => {
+      if (allPages) return undefined;
       const oldKey = previousQuery?.queryKey;
       const oldScope = oldKey?.[4] as MarketingQuery | undefined;
-      return oldKey?.[2] === session?.id &&
+      return oldKey?.[5] === allPages &&
+        oldKey?.[2] === session?.id &&
         oldKey?.[3] === session?.perfil &&
         oldScope?.imobiliaria === scope.imobiliaria &&
         oldScope?.accountId === scope.accountId

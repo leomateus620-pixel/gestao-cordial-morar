@@ -13,7 +13,14 @@ import { useApp, useFiltered } from "@/store/app-store";
 import type { ReportsAreaId, ReportsSourceState } from "@/types/reports";
 
 export const Route = createFileRoute("/_app/relatorios")({
-  head: () => ({ meta: [{ title: "Relatórios | Gestão Cordial" }] }),
+  head: () => ({ meta: [
+    { title: "Relatórios | Gestão Cordial" },
+    { name: "description", content: "Relatórios de resultados e indicadores do Gestão Cordial." },
+    { property: "og:title", content: "Relatórios | Gestão Cordial" },
+    { property: "og:description", content: "Relatórios de resultados e indicadores do Gestão Cordial." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: GuardedPage,
 });
 
@@ -36,7 +43,7 @@ function Page() {
   const rentals = useRentals();
   const sales = useSales();
   const financeiro = useFinanceiro();
-  const marketing = useMarketing();
+  const marketing = useMarketing({}, { allPages: true });
 
   const lancamentos = financeiro.lancamentos;
   const campaigns = marketing.campaigns;
