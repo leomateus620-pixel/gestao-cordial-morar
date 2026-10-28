@@ -8,6 +8,8 @@ function fixture(total: number) {
     id: `campaign-${i}`, imobiliaria: "cordial", nome: `Campaign ${i}`,
     canal: "Facebook", objetivo: "Leads qualificados", status: "Ativa",
     data_inicio: "2026-10-01", data_fim: "2026-10-31", investimento: 10,
+    user_id: "owner", responsavel: null, observacoes: null, diagnostico: null,
+    referencia_url: null, leads_esperados: null, created_at: "", updated_at: "",
     daily_metrics: [{ data: "2026-10-01", leads: 2, clicks: 3, investimento: 10 }],
   }, true));
   const calls: MarketingQuery[] = [];
