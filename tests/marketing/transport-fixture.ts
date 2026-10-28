@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Isolated UI transport fixtures accept server-function envelopes. */
 import type { MarketingCampaign } from "../../src/types/marketing";
-const secretariat = () => new URLSearchParams(location.search).get("role") === "secretaria";
+const secretariat = () =>
+  ["secretaria", "bianca", "meta_reviewer"].includes(
+    new URLSearchParams(location.search).get("role") ?? "",
+  );
 export const fixtureCampaigns: MarketingCampaign[] = [
   "Captação de imóveis · Cordial",
   "Apartamentos no centro · Morar",
@@ -202,6 +205,7 @@ export async function diagnoseMetaConnection() {
 const fixtureLeads = [
   {
     id: "40000000-0000-4000-8000-000000000001",
+    is_synthetic: true,
     status: "unassigned",
     imobiliaria: "cordial",
     full_name: "Contato de demonstração",
@@ -217,6 +221,7 @@ const fixtureLeads = [
   },
   {
     id: "40000000-0000-4000-8000-000000000002",
+    is_synthetic: true,
     status: "review",
     imobiliaria: "morar",
     full_name: null,
@@ -279,9 +284,194 @@ export async function listImoveis() {
 export async function listMetaLeadForms() {
   return [{ id: "50001", name: "Formulário sintético", status: "ACTIVE" }];
 }
-export async function getMetaLeadDetail() {
+export async function getMetaLeadDetail({ data }: any) {
+  const row = fixtureLeads.find((lead) => lead.id === data.id);
   return {
+    ...row,
+    is_synthetic: true,
+    meta_created_at: "2026-10-26T11:29:00Z",
+    completed_at: row?.status === "imported" ? "2026-10-26T11:32:00Z" : null,
+    history: [
+      {
+        id: "synthetic-event-1",
+        status: row?.status,
+        previous_status: "queued",
+        occurred_at: row?.received_at,
+      },
+    ],
     field_data: [{ name: "interest", values: ["Resposta sintética preservada"] }],
     leadgen_id: "80001",
   };
+}
+
+// These handlers exist only in the isolated, visibly labelled synthetic harness.
+const draftFixtures: any[] = [];
+export async function listMetaAdDrafts({ data }: any = {}) {
+  return draftFixtures.filter(
+    (draft) => !data?.imobiliaria || draft.imobiliaria === data.imobiliaria,
+  );
+}
+export async function saveMetaAdDraft({ data }: any) {
+  const old = draftFixtures.find((draft) => draft.id === data.id);
+  const saved = {
+    ...old,
+    ...data,
+    id: old?.id ?? crypto.randomUUID(),
+    connection_id: data.connectionId,
+    account_id: "123456789",
+    page_id: "987654321",
+    revision: (old?.revision ?? 0) + 1,
+    status: "rascunho",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    payload: { ...data.payload, pageId: "987654321" },
+  };
+  if (old) draftFixtures.splice(draftFixtures.indexOf(old), 1, saved);
+  else draftFixtures.push(saved);
+  return saved;
+}
+export async function getMetaAdDraft({ data }: any) {
+  return { ...draftFixtures.find((draft) => draft.id === data.id), commands: [], hierarchy: [] };
+}
+export async function submitMetaAdDraft() {
+  throw new Error("Prévia sintética: nenhum comando real autorizado.");
+}
+export async function reconcileMetaAdCommand() {
+  return { ok: true };
+}
+export async function refreshMetaAdDraft() {
+  return { ok: true };
+}
+export async function changeMetaAdDelivery() {
+  throw new Error("Prévia sintética sem entrega real.");
+}
+export async function changeMetaAdBudget() {
+  throw new Error("Prévia sintética sem orçamento real.");
+}
+export async function uploadMetaAdImage() {
+  throw new Error("Prévia sintética sem upload externo.");
+}
+export async function listMetaAdCreationAssets() {
+  return {
+    accountId: "123456789",
+    accountName: "Conta sintética Cordial",
+    currency: "BRL",
+    timezone: "America/Sao_Paulo",
+    page: { id: "987654321", name: "Página sintética Cordial" },
+    images: [{ hash: "syntheticimage001", name: "Imagem de teste identificada", url: "" }],
+    forms: [{ id: "50001", name: "Formulário sintético" }],
+    writing: { state: "unverified", checkedAt: null, evidence: "Nenhuma escrita real executada" },
+  };
+}
+export async function previewMarketingReport({ data }: any) {
+  return {
+    version: 1,
+    scope: data,
+    capturedAt: new Date().toISOString(),
+    financialVisible: !secretariat(),
+    total: 2,
+    rows: [],
+    kpis: { hasData: true, leads: 36 },
+    funnel: { submissions: 2, attendances: 1, linkedSubmissions: 1 },
+    coverage: { data: 2, empty: 0, pending: 0, partial: 0, error: 0 },
+    timezones: ["America/Sao_Paulo"],
+  };
+}
+const reportFixtures: any[] = [];
+export async function generateMarketingReport({ data }: any) {
+  const report = {
+    id: crypto.randomUUID(),
+    kind: data.type,
+    status:
+      new URLSearchParams(location.search).get("reportState") === "queued" ? "queued" : "ready",
+    scope: data,
+    created_at: new Date().toISOString(),
+  };
+  reportFixtures.unshift(report);
+  return { id: report.id, status: report.status };
+}
+export async function listMarketingReports() {
+  return reportFixtures;
+}
+export async function downloadMarketingReport() {
+  throw new Error("Prévia sintética sem arquivo privado real.");
+}
+export async function getMetaLeadHealth() {
+  return {
+    mappedForms: 1,
+    submissions: 2,
+    lastEvent: "2026-10-28T13:00:00Z",
+    queued: 0,
+    needsReview: 1,
+    lastAttendance: "2026-10-28T13:01:00Z",
+    endToEnd: "unverified",
+    recoveryWindow: "Dados sintéticos; nenhuma prova externa.",
+  };
+}
+export async function recoverMetaFormLeads() {
+  return { id: crypto.randomUUID(), status: "queued", processed: 0, hasMore: true };
+}
+export const META_LEADGEN_CALLBACK = "https://cordialgestao.com/api/public/meta/leadgen";
+export async function getMetaWebhookStatus() {
+  return {
+    callbackUrl: META_LEADGEN_CALLBACK,
+    backend: { ready: false, missing: [] },
+    verification: null,
+    appSubscribed: null,
+    pageSubscribed: null,
+    workerActive: null,
+    lastProcessedAt: null,
+    recoverableFailures: 0,
+    queued: 0,
+    checkedAt: new Date().toISOString(),
+  };
+}
+export async function listMetaLeadRecoveries() {
+  return [];
+}
+export async function listMetaEntityInsights() {
+  return {
+    job: null,
+    snapshotJobId: null,
+    snapshotAt: null,
+    apiVersion: "v26.0",
+    attributionRequested: null,
+    rows: [],
+    total: 0,
+    financialVisible: !secretariat(),
+    currency: "BRL",
+    timezone: "America/Sao_Paulo",
+  };
+}
+export async function enqueueMetaEntityInsights() {
+  return { id: crypto.randomUUID() };
+}
+export async function cancelMetaEntityInsights() {
+  return { ok: true, externalReportDeleted: false };
+}
+export async function resumeMetaAdCommand() {
+  throw new Error("Prévia sintética sem retomada externa.");
+}
+export async function generateMetaEntityReport() {
+  return { id: crypto.randomUUID(), status: "ready" };
+}
+
+export async function getMarketingActionPermissions() {
+  const role = new URLSearchParams(location.search).get("role");
+  const operations = [
+    "create_draft",
+    "read_ad_budget",
+    "send_paused",
+    "change_budget",
+    "set_delivery",
+  ];
+  const admin = !["secretaria", "bianca", "meta_reviewer"].includes(role ?? "");
+  const permissions = Object.fromEntries([
+    ["read_metrics", true],
+    ["manage_connection", admin],
+    ["manage_manual", role !== "meta_reviewer"],
+    ["financial_report", admin],
+    ...operations.map((action) => [action, admin || role === "bianca"]),
+  ]);
+  return { cordial: { ...permissions }, morar: { ...permissions } };
 }

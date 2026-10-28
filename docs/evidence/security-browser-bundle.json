@@ -1,0 +1,80 @@
+{
+  "checked_at_utc": "2026-10-28T05:54:21.531103+00:00",
+  "directory": ".output/public",
+  "javascript_files": 301,
+  "latest_bundle_modified_utc": "2026-10-28T05:46:58.465612+00:00",
+  "findings": {
+    "meta_access_token_shape": 0,
+    "supabase_secret_key": 0,
+    "private_key_material": 0,
+    "graph_endpoint": 0,
+    "app_secret_proof": 0,
+    "server_credential_resolver": 0,
+    "service_role_jwt": 0
+  },
+  "status": "pass",
+  "scope": "Static patterns in generated browser JavaScript; no runtime traffic, source maps, server artifacts or secret-store values inspected.",
+  "reviewed_identifier_references": {
+    "count": 2,
+    "identifier": "META_APP_SECRET",
+    "source": "src/components/integracoes/MetaAdsCard.tsx:86,294",
+    "classification": "Admin UI defaults for a secret reference name, not a credential value."
+  },
+  "raw_meta_token_pattern_candidates": 9,
+  "reviewed_false_positives": [
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 69224,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Helvetica-Bold"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 69630,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Helvetica-Bold"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 83413,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Helvetica-BoldOblique"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 106783,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Helvetica-Oblique"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 110510,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Helvetica"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 113333,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Helvetica"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 129078,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Times-Bold"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 139992,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Times-BoldItalic"
+    },
+    {
+      "asset": "PDFButton-DbO7odzm.js",
+      "offset": 157200,
+      "classification": "compressed standard-font metadata, decoded and inspected",
+      "font": "Times-Italic"
+    }
+  ]
+}
