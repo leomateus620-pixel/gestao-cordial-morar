@@ -9,7 +9,8 @@ function context(roles: string[], agencies = ["cordial"]) {
         data:
           name === "has_role"
             ? roles.includes(args._role)
-            : name === "marketing_can_operate" && agencies.includes(args.p_agency),
+            : name === "marketing_can_act" &&
+              (roles.includes("admin") || agencies.includes(args.p_agency)),
         error: null,
       }),
     } as unknown as SupabaseClient,
@@ -47,13 +48,15 @@ describe("Effective marketing roles", () => {
   it("uses the authenticated agency RPC and refuses partial role lookup failures", async () => {
     const rpc = vi.fn(async (name: string, args: { _role?: string; p_agency?: string }) => {
       if (name === "has_role") return { data: args._role === "secretaria", error: null };
-      if (name === "marketing_can_operate")
-        return { data: args.p_agency === "cordial", error: null };
+      if (name === "marketing_can_act") return { data: args.p_agency === "cordial", error: null };
       return { data: null, error: { code: "42501" } };
     });
     const ctx = { userId: "actor", supabase: { rpc } as unknown as SupabaseClient };
     await expect(requireMarketingAccess(ctx, "cordial")).resolves.toBeUndefined();
-    expect(rpc).toHaveBeenCalledWith("marketing_can_operate", { p_agency: "cordial" });
+    expect(rpc).toHaveBeenCalledWith("marketing_can_act", {
+      p_action: "read_metrics",
+      p_agency: "cordial",
+    });
     expect(rpc.mock.calls.some(([name]) => name === "has_notification_agency_access")).toBe(false);
     rpc.mockImplementation(async (name: string, args: { _role?: string; p_agency?: string }) => {
       if (name === "has_role" && args._role === "financeiro")

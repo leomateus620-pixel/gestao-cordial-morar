@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -13,9 +13,10 @@ import {
 } from "@/lib/ads/ads.functions";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
+import { useMarketingActions } from "@/hooks/useMarketingActions";
 import { useApp } from "@/store/app-store";
 import { parseCampaignLink } from "@/lib/ads/link-parser";
-import type { AdPlatform } from "@/lib/ads/types";
+import type { AdPlatform, AdOAuthPurpose } from "@/lib/ads/types";
 
 type ImportInput = {
   connectionId?: string;
@@ -24,10 +25,13 @@ type ImportInput = {
   imobiliaria: "cordial" | "morar";
   range: { since: string; until: string };
 };
-export function useAds(campaignIds: string[] = []) {
+export function useAds(campaignIds: string[] = [], contextAgency?: "cordial" | "morar" | "todas") {
   const qc = useQueryClient(),
     session = useSession(),
-    agency = useApp((s) => s.agency);
+    globalAgency = useApp((s) => s.agency);
+  const agency = contextAgency ?? globalAgency;
+  const actions = useMarketingActions();
+  const canReadConnections = isAdminUser(session) || actions.can("read_ad_budget", agency);
   const list = useServerFn(listAdConnections),
     doImport = useServerFn(importCampaignFromLink),
     doSync = useServerFn(syncCampaign),
@@ -35,21 +39,24 @@ export function useAds(campaignIds: string[] = []) {
   const discover = useServerFn(listMetaCampaigns),
     importDiscovered = useServerFn(importDiscoveredMetaCampaign),
     getJobs = useServerFn(listAdSyncJobs);
-  useEffect(
-    () => () => {
-      if (session?.id)
-        qc.removeQueries({
-          predicate: (query) =>
-            query.queryKey[0] === "marketing" && query.queryKey.includes(session.id),
-        });
-    },
-    [qc, session?.id, session?.perfil],
-  );
+  const sessionId = session?.id,
+    sessionProfile = session?.perfil;
+  const previousIdentity = useRef<{ id: string; profile: string } | null>(null);
+  useEffect(() => {
+    const previous = previousIdentity.current;
+    if (previous && (previous.id !== sessionId || previous.profile !== sessionProfile))
+      qc.removeQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "marketing" && query.queryKey.includes(previous.id),
+      });
+    previousIdentity.current =
+      sessionId && sessionProfile ? { id: sessionId, profile: sessionProfile } : null;
+  }, [qc, sessionId, sessionProfile]);
   const key = ["marketing", "ad-connections", session?.id, session?.perfil, agency];
   const connections = useQuery<AdConnectionPublic[]>({
     queryKey: key,
     queryFn: () => list(),
-    enabled: isAdminUser(session),
+    enabled: canReadConnections,
     staleTime: 60_000,
   });
   const jobs = useQuery({
@@ -86,13 +93,17 @@ export function useAds(campaignIds: string[] = []) {
     }) => importDiscovered({ data: v }),
     onSuccess: refresh,
   });
-  async function connect(platform: AdPlatform, imobiliaria?: "cordial" | "morar" | null) {
-    const r = await doStart({ data: { platform, imobiliaria } });
+  async function connect(
+    platform: AdPlatform,
+    imobiliaria?: "cordial" | "morar" | null,
+    purpose: AdOAuthPurpose = "read",
+  ) {
+    const r = await doStart({ data: { platform, imobiliaria, purpose } });
     if (r.ok) window.location.href = r.url;
     return r;
   }
   return {
-    connections: (connections.data ?? []).filter(
+    connections: (canReadConnections ? (connections.data ?? []) : []).filter(
       (c) => !c.imobiliaria || agency === "todas" || c.imobiliaria === agency,
     ),
     connectionsLoading: connections.isLoading,

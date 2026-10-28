@@ -92,6 +92,10 @@ export function campaignStats(
     c.periodAggregate?.since === range.since && c.periodAggregate.until === range.until
       ? c.periodAggregate
       : null;
+  // An old successful sync for another period is not evidence of zero delivery here.
+  const confirmedEmpty = aggregate?.has_data === false && !aggregate.reach;
+  if (c.platform && days.length === 0)
+    spend = confirmedEmpty && c.financialVisible !== false ? 0 : null;
   // Reach is non-additive: daily reach is never a substitute for a period aggregate.
   const reach = aggregate?.reach ?? null;
   return {
@@ -104,7 +108,7 @@ export function campaignStats(
     cpl: ratio(spend, leads),
     ctr: ratio(clicks, impressions, 100),
     frequency: aggregate?.frequency ?? ratio(impressions, reach ?? 0),
-    hasData: days.length > 0 || spend !== null,
+    hasData: days.length > 0 || confirmedEmpty || (!c.platform && spend !== null),
     currency: c.currency ?? (c.platform ? null : "BRL"),
   };
 }

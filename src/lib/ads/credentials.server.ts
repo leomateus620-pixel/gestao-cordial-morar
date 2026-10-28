@@ -139,6 +139,7 @@ export function assertConnectionContext(
   if (
     (expected.platform && connection.platform !== expected.platform) ||
     (expected.imobiliaria && connection.imobiliaria !== expected.imobiliaria) ||
+    (expected.accountId && connection.platform === "meta" && !connection.external_account_id) ||
     (expected.accountId &&
       connection.external_account_id &&
       normalizeAccountId(expected.accountId) !== normalizeAccountId(connection.external_account_id))

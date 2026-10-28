@@ -57,6 +57,8 @@ export function leadRetryPolicy(code: string, attempts: number, random = Math.ra
       "no_permission",
       "campaign_not_found",
       "invalid_fields",
+      "invalid_parameter",
+      "conflict",
     ].includes(code) || attempts >= 8;
   return {
     terminal,

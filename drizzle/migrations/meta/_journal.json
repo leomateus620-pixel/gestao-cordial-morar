@@ -330,6 +330,76 @@
       "when": 1793125848502,
       "tag": "0046_meta_ads_sync_dispatch_worker_token",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793160000000,
+      "tag": "0047_meta_action_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793160000001,
+      "tag": "0048_meta_ad_commands",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793160000002,
+      "tag": "0049_marketing_private_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793160000003,
+      "tag": "0050_meta_lead_recovery_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793160000004,
+      "tag": "0051_meta_metric_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793160000005,
+      "tag": "0052_meta_entity_insights",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793160000006,
+      "tag": "0053_meta_lead_synthetic_isolation",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793160000007,
+      "tag": "0054_meta_scoped_management_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793160000008,
+      "tag": "0055_meta_reviewer_rpc_boundary",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793160000009,
+      "tag": "0056_marketing_report_jobs",
+      "breakpoints": true
     }
   ]
 }

@@ -86,7 +86,7 @@ export function MarketingCampaignImport({ ads, agency, range, canConfigure }: Pr
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <select
               aria-label="Conexão e conta de anúncios"
-              className="h-11 min-w-0 flex-1 rounded-2xl border bg-background px-3 text-sm"
+              className="h-11 min-w-0 flex-1 rounded-2xl border border-foreground/55 bg-background px-3 text-sm"
               value={connectionId}
               onChange={(e) => {
                 setConnectionId(e.target.value);
@@ -124,7 +124,7 @@ export function MarketingCampaignImport({ ads, agency, range, canConfigure }: Pr
                   <div key={c.id} className="flex items-center gap-3 p-3">
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-sm font-semibold">{c.name}</p>
-                      <p className="mt-1 text-xs text-foreground/60">
+                      <p className="mt-1 text-xs text-foreground/65">
                         {c.status} · ID {c.id}
                       </p>
                     </div>
@@ -166,9 +166,9 @@ export function MarketingCampaignImport({ ads, agency, range, canConfigure }: Pr
             }}
           >
             <label className="flex min-w-0 flex-1 items-center gap-2">
-              <Link2 className="size-4 shrink-0 text-foreground/55" />
+              <Link2 className="size-4 shrink-0 text-foreground/65" />
               <Input
-                className="h-11 rounded-2xl"
+                className="h-11 rounded-2xl border-foreground/55 placeholder:text-foreground/65"
                 aria-label="Link da campanha para importação alternativa"
                 placeholder="Ou cole o link da campanha"
                 value={url}

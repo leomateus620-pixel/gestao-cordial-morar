@@ -61,6 +61,8 @@ type GraphLead = {
   field_data?: unknown;
 };
 export async function runMetaLeadWorker(limit = 5) {
+  const { runMetaLeadRecoveryWorker } = await import("./lead-recovery.server");
+  const recovery = await runMetaLeadRecoveryWorker(db);
   const workerId = randomUUID();
   const { data, error } = await db.rpc("meta_lead_claim", {
     p_worker_id: workerId,
@@ -82,19 +84,12 @@ export async function runMetaLeadWorker(limit = 5) {
       )
         throw new AdProviderError("no_permission", "lead_mismatch");
       const formId = lead.form_id ?? row.form_id;
-      const { data: mapping, error: mappingError } = await db
-        .from("meta_lead_form_mappings")
-        .select("field_mapping")
-        .eq("connection_id", row.connection_id)
-        .eq("page_id", row.page_id)
-        .eq("form_id", formId ?? "")
-        .eq("enabled", true)
-        .maybeSingle();
-      if (mappingError) throw new Error("mapping_unavailable");
-      const fields = mapMetaLeadFields(
-        lead.field_data ?? [],
-        (mapping?.field_mapping ?? {}) as MetaFieldMapping,
+      const { data: mapping, error: mappingError } = await db.rpc(
+        "meta_lead_mapping_for_submission",
+        { p_id: row.id, p_worker_id: workerId, p_form_id: formId ?? "" },
       );
+      if (mappingError) throw new Error("mapping_unavailable");
+      const fields = mapMetaLeadFields(lead.field_data ?? [], (mapping ?? {}) as MetaFieldMapping);
       const { error: metadataError } = await db
         .from("meta_lead_submissions")
         .update({
@@ -102,6 +97,9 @@ export async function runMetaLeadWorker(limit = 5) {
           ad_id: lead.ad_id ?? row.ad_id,
           adset_id: lead.adset_id ?? row.adset_id,
           external_campaign_id: lead.campaign_id ?? row.external_campaign_id,
+          ...(lead.created_time && Number.isFinite(Date.parse(lead.created_time))
+            ? { meta_created_at: new Date(lead.created_time).toISOString() }
+            : {}),
         })
         .eq("id", row.id)
         .eq("worker_id", workerId)
@@ -143,5 +141,5 @@ export async function runMetaLeadWorker(limit = 5) {
         (results[retry.terminal ? "failed" : "retry"] ?? 0) + 1;
     }
   }
-  return { processed: (data ?? []).length, results };
+  return { processed: (data ?? []).length, results, recovery };
 }

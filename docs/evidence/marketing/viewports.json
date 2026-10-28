@@ -1,0 +1,35 @@
+{
+  "source": "Local rendered UI, synthetic fixtures; not production",
+  "viewports": [
+    {
+      "name": "overview-360",
+      "width": 360,
+      "contentWidth": 360,
+      "height": 2161
+    },
+    {
+      "name": "overview-390",
+      "width": 390,
+      "contentWidth": 390,
+      "height": 2114
+    },
+    {
+      "name": "overview-768",
+      "width": 768,
+      "contentWidth": 768,
+      "height": 1833
+    },
+    {
+      "name": "overview-1280",
+      "width": 1280,
+      "contentWidth": 1280,
+      "height": 1394
+    },
+    {
+      "name": "overview-1440",
+      "width": 1440,
+      "contentWidth": 1440,
+      "height": 1394
+    }
+  ]
+}

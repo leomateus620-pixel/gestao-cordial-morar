@@ -34,6 +34,7 @@ vi.mock("@/integrations/supabase/client.server", () => ({
     },
   },
 }));
+import { resetMetaGraphTransportState } from "../../src/lib/ads/meta.graph.server";
 import { diagnoseConnection } from "../../src/lib/ads/diagnostics.server";
 import { resolveConnectionCredential } from "../../src/lib/ads/credentials.server";
 function provider(
@@ -84,6 +85,7 @@ beforeEach(() => {
   vi.stubEnv("META_APP_SECRET", "test-secret");
 });
 afterEach(() => {
+  resetMetaGraphTransportState();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });

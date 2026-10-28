@@ -3,13 +3,29 @@ import process from "node:process";
 import { AdProviderError, type AdErrorCode } from "./types";
 import type { AdCapabilities } from "./ads.functions";
 import { resolveConnectionCredential, resolvePageCredential } from "./credentials.server";
-import { externalId, metaGraph } from "./meta.graph.server";
+import { externalId, metaGraph, metaGraphVersion } from "./meta.graph.server";
+import { emptyMetaCapabilities, observedMetaCapability } from "./capabilities";
 import { getMetaAccount } from "./providers/meta.server";
 
 export async function diagnoseConnection(connectionId: string): Promise<AdCapabilities> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = supabaseAdmin as unknown as SupabaseClient;
+  // Reopening diagnostics does not repeat provider probes within a minute.
+  const { data: cached } = await db
+    .from("ad_platform_connections")
+    .select("capabilities,last_diagnosed_at")
+    .eq("id", connectionId)
+    .maybeSingle();
+  if (
+    cached?.capabilities?.matrix &&
+    cached.capabilities.token_valid === true &&
+    cached.last_diagnosed_at &&
+    Date.now() - Date.parse(cached.last_diagnosed_at) < 60_000
+  )
+    return cached.capabilities as AdCapabilities;
   const caps: AdCapabilities = {
+    api_version: metaGraphVersion(),
+    matrix: emptyMetaCapabilities(),
     credential_present: false,
     token_valid: null,
     ads_readable: null,
@@ -173,6 +189,51 @@ export async function diagnoseConnection(connectionId: string): Promise<AdCapabi
       });
     }
   });
+  caps.matrix!.token_valid = observedMetaCapability(
+    caps.token_valid,
+    caps.checked_at,
+    "token_debug",
+  );
+  for (const [name, scope] of [
+    ["ads_read_scope", "ads_read"],
+    ["ads_management_scope", "ads_management"],
+  ] as const)
+    caps.matrix![name] = observedMetaCapability(
+      caps.token_valid === true ? caps.scopes.includes(scope) : null,
+      caps.checked_at,
+      "token_debug",
+    );
+  caps.matrix!.account_read = observedMetaCapability(
+    caps.ads_readable,
+    caps.checked_at,
+    "graph_read",
+  );
+  caps.matrix!.page_read = observedMetaCapability(
+    caps.page_readable,
+    caps.checked_at,
+    "graph_read",
+  );
+  caps.matrix!.lead_retrieval = observedMetaCapability(
+    caps.leads_readable,
+    caps.checked_at,
+    "graph_read",
+  );
+  const { data: received, error: receivedError } = await db
+    .from("meta_lead_submissions")
+    .select("id")
+    .eq("connection_id", connectionId)
+    .not("completed_at", "is", null)
+    .limit(1)
+    .maybeSingle();
+  // No submission is absence of evidence, not proof that lead capture is broken.
+  if (!receivedError && received)
+    caps.matrix!.lead_received = observedMetaCapability(
+      true,
+      caps.checked_at,
+      "persisted_submission",
+    );
+  // Publication, advanced access, asset assignment and write validation remain
+  // unverified until evidence for that exact capability has been recorded.
   const status =
     caps.token_valid === false
       ? "expired"

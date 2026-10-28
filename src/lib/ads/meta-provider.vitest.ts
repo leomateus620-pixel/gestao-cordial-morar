@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { metaGraph, metaPages, safeNextUrl } from "./meta.graph.server";
+import {
+  metaGraph,
+  metaPages,
+  safeNextUrl,
+  resetMetaGraphTransportState,
+} from "./meta.graph.server";
 import { metaProvider, selectLeadAction } from "./providers/meta.server";
 import { AdProviderError } from "./types";
 const page = (data: unknown[], next?: string) =>
   new Response(JSON.stringify({ data, paging: next ? { next } : undefined }), { status: 200 });
 afterEach(() => {
+  resetMetaGraphTransportState();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
@@ -19,36 +25,38 @@ describe("Meta transport", () => {
         page(
           [{ id: String(n) }],
           n < 13
-            ? `https://graph.facebook.com/v26.0/test?after=${n}&access_token=provider-secret`
+            ? `https://graph.facebook.com/v26.0/me/adaccounts?after=${n}&access_token=provider-secret`
             : undefined,
         ),
       );
     });
     vi.stubGlobal("fetch", fetcher);
-    expect(await metaPages("/test", "server-token")).toHaveLength(13);
+    expect(await metaPages("/me/adaccounts", "server-token")).toHaveLength(13);
   });
   it("fails instead of returning a successful partial series", async () => {
     vi.stubGlobal(
       "fetch",
       vi
         .fn()
-        .mockResolvedValueOnce(page([{ id: "1" }], "https://graph.facebook.com/v26.0/test?after=1"))
+        .mockResolvedValueOnce(
+          page([{ id: "1" }], "https://graph.facebook.com/v26.0/me/adaccounts?after=1"),
+        )
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ error: { code: 4, message: "TOKEN=private" } }), {
             status: 429,
           }),
         ),
     );
-    await expect(metaPages("/test", "server-token")).rejects.toMatchObject({
+    await expect(metaPages("/me/adaccounts", "server-token")).rejects.toMatchObject({
       code: "rate_limited",
     });
   });
   it.each([
-    "http://graph.facebook.com/v26.0/test",
-    "https://evil.example/v26.0/test",
-    "https://graph.facebook.com.evil.example/v26.0/test",
-    "https://user:secret@graph.facebook.com/v26.0/test",
-    "https://graph.facebook.com/v21.0/test",
+    "http://graph.facebook.com/v26.0/me/adaccounts",
+    "https://evil.example/v26.0/me/adaccounts",
+    "https://graph.facebook.com.evil.example/v26.0/me/adaccounts",
+    "https://user:secret@graph.facebook.com/v26.0/me/adaccounts",
+    "https://graph.facebook.com/v21.0/me/adaccounts",
   ])("rejects untrusted cursor %s", (url) => {
     expect(() => safeNextUrl(url)).toThrow(AdProviderError);
   });
@@ -95,10 +103,12 @@ describe("Meta transport", () => {
       vi
         .fn()
         .mockImplementation(() =>
-          Promise.resolve(page([], "https://graph.facebook.com/v26.0/test?after=1")),
+          Promise.resolve(page([], "https://graph.facebook.com/v26.0/me/adaccounts?after=1")),
         ),
     );
-    await expect(metaPages("/test", "secret")).rejects.toMatchObject({ code: "partial_data" });
+    await expect(metaPages("/me/adaccounts", "secret")).rejects.toMatchObject({
+      code: "partial_data",
+    });
   });
 });
 describe("Lead reporting taxonomy", () => {
@@ -121,5 +131,58 @@ describe("Lead reporting taxonomy", () => {
     expect(
       selectLeadAction([{ action_type: "offsite_conversion.fb_pixel_lead", value: "8" }]),
     ).toEqual({ leads: 8, type: "offsite_conversion.fb_pixel_lead" });
+  });
+});
+
+describe("Meta metric evidence is never fabricated", () => {
+  const campaign = () =>
+    new Response(JSON.stringify({ id: "100", account_id: "200", name: "Synthetic" }));
+  const range = { since: "2026-10-01", until: "2026-10-02" };
+  it("rejects missing required spend instead of confirming zero", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(campaign())
+        .mockResolvedValueOnce(
+          page([{ date_start: "2026-10-01", impressions: "12", clicks: "3" }]),
+        ),
+    );
+    await expect(metaProvider.getInsights("200", "100", range, "synthetic")).rejects.toMatchObject({
+      code: "partial_data",
+    });
+  });
+  it("keeps suppressed optional reach/frequency unavailable while preserving explicit zeros", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(campaign())
+        .mockResolvedValueOnce(
+          page([{ date_start: "2026-10-01", impressions: "0", clicks: "0", spend: "0" }]),
+        ),
+    );
+    const rows = await metaProvider.getInsights("200", "100", range, "synthetic");
+    expect(rows[0]).toMatchObject({
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      reach: null,
+      frequency: null,
+    });
+    expect(rows[0].landingPageViews).toBeUndefined();
+  });
+  it("rejects duplicate daily rows before the destructive batch commit", async () => {
+    const row = { date_start: "2026-10-01", impressions: "10", clicks: "2", spend: "3" };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(campaign())
+        .mockResolvedValueOnce(page([row, row])),
+    );
+    await expect(metaProvider.getInsights("200", "100", range, "synthetic")).rejects.toMatchObject({
+      code: "partial_data",
+    });
   });
 });

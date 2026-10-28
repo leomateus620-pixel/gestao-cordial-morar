@@ -25,6 +25,7 @@ export type MarketingCampaignStatus =
   | "Pausada"
   | "Encerrada"
   | "Em análise"
+  | "Não identificado"
   | "Com baixo desempenho";
 
 export type MarketingStatusFilter =
@@ -115,6 +116,7 @@ export type MarketingCampaign = {
     until: string;
     reach: number | null;
     frequency: number | null;
+    has_data?: boolean;
   } | null;
 };
 

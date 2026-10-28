@@ -1,0 +1,112 @@
+{
+  "project_id": "feb646c9-c19a-4360-8cc9-bec5237532ea",
+  "date": "2026-10-28",
+  "mechanism": "Lovable query_database; exact Drizzle journal SQL and SHA256; per-entry transaction with prior journal count/hash guard and rollback rehearsal",
+  "baseline_count": 47,
+  "final_count": 57,
+  "migrations": [
+    {
+      "tag": "0047_meta_action_authorization",
+      "hash": "7cf54e9533e7f1268a75efa7feee0beaeb4f23b00382a1534a6cb10399d2c1fb",
+      "created_at": 1793160000000,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0048_meta_ad_commands",
+      "hash": "bd950d34676760bdef34742933d32aad4dcb7dfa3d4c1dfabf496e7381bd4989",
+      "created_at": 1793160000001,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0049_marketing_private_reports",
+      "hash": "ca770344dd7c8d98ca5e20e20a20afca0d924c6b4bcba5cd40263dc28f23ce0d",
+      "created_at": 1793160000002,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0050_meta_lead_recovery_history",
+      "hash": "539351816671e74a3f6467333855da7f5e55e524ac272d6879aedf0747e5ec04",
+      "created_at": 1793160000003,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0051_meta_metric_reconciliation",
+      "hash": "85b09bc89e92a07e00b01566259e705c3ec13087f7c138cf20371444d6de8b2e",
+      "created_at": 1793160000004,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0052_meta_entity_insights",
+      "hash": "df510808abf3aa1eda4e972dd88076263c31a8cf01706d65159476ee763e5a61",
+      "created_at": 1793160000005,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0053_meta_lead_synthetic_isolation",
+      "hash": "897fe52a4cb7d04a1affce1289556f19ae5b6551c42b47acee5579dc0988d26c",
+      "created_at": 1793160000006,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0054_meta_scoped_management_grants",
+      "hash": "66c1bd78b13d6df280082d13e2fefaffd513e5a72582207a6aed23a996ada37b",
+      "created_at": 1793160000007,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0055_meta_reviewer_rpc_boundary",
+      "hash": "532efb594a28aa0723e529f8a2f5c2d8f510644690943e25785bc145822d25a0",
+      "created_at": 1793160000008,
+      "verified_in_database": true
+    },
+    {
+      "tag": "0056_marketing_report_jobs",
+      "hash": "715b3c041029188ba31dee90305699328c4c0a66dee9f3b491037c1b4cf4fd6c",
+      "created_at": 1793160000009,
+      "verified_in_database": true
+    }
+  ],
+  "private_reports_bucket": true,
+  "bianca_authenticated_permissions": {
+    "cordial": {
+      "change_budget": true,
+      "create_draft": true,
+      "financial_report": false,
+      "generate_report": true,
+      "manage_connection": false,
+      "manage_leads": true,
+      "manage_manual": true,
+      "read_ad_budget": true,
+      "read_lead_contacts": true,
+      "read_metrics": true,
+      "send_paused": true,
+      "set_delivery": true
+    },
+    "morar": {
+      "change_budget": true,
+      "create_draft": true,
+      "financial_report": false,
+      "generate_report": true,
+      "manage_connection": false,
+      "manage_leads": true,
+      "manage_manual": true,
+      "read_ad_budget": true,
+      "read_lead_contacts": true,
+      "read_metrics": true,
+      "send_paused": true,
+      "set_delivery": true
+    }
+  },
+  "reviewer_authenticated_checks": {
+    "aggregate_read_allowed": false,
+    "financial_visible": false,
+    "private_rpc_denial_verified": true,
+    "scope_note": "Existing reviewer has no user_agencies records. Real Cordial aggregates remain inaccessible; no agency membership was added."
+  },
+  "frontend_deployed": false,
+  "notes": [
+    "0055 failed its first real PostgreSQL rollback rehearsal because of a duplicated PL/pgSQL terminator; corrected before application and retested.",
+    "No pre-existing migration was rewritten; 0047–0056 exact hashes verified.",
+    "No ad activation or budget change executed."
+  ]
+}

@@ -10,11 +10,19 @@ import {
   AdProviderError,
   type AdErrorCode,
   type AdPlatform,
+  type AdOAuthPurpose,
   type ParsedCampaignLink,
 } from "./types";
-import { requireAdsAdmin, requireMarketingAccess, type AdsContext } from "./authorization.server";
+import {
+  requireAdsAdmin,
+  requireMarketingAccess,
+  requireMarketingAction,
+  type AdsContext,
+} from "./authorization.server";
 
 export type AdCapabilities = {
+  matrix?: import("./capabilities").MetaCapabilityMatrix;
+  api_version?: string;
   credential_present: boolean;
   token_valid: boolean | null;
   ads_readable: boolean | null;
@@ -67,7 +75,7 @@ async function connectionForScope(
   imobiliaria: string,
   connectionId?: string,
 ) {
-  await requireMarketingAccess(ctx, imobiliaria);
+  await requireMarketingAction(ctx, "manage_manual", imobiliaria);
   const db = await dbAdmin();
   let query = db
     .from("ad_platform_connections")
@@ -98,7 +106,13 @@ export const listAdConnections = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<AdConnectionPublic[]> => {
     await requireMarketingAccess(context);
     const { isAdsAdminOrReviewer } = await import("./authorization.server");
-    if (!(await isAdsAdminOrReviewer(context))) return [];
+    if (!(await isAdsAdminOrReviewer(context))) {
+      try {
+        await requireMarketingAction(context, "read_ad_budget");
+      } catch {
+        return [];
+      }
+    }
 
     const { adsConfig } = await import("./oauth.server");
     const { data, error } = await context.supabase.rpc("ad_connections_public");
@@ -146,13 +160,15 @@ export const listAdConnections = createServerFn({ method: "GET" })
   });
 export const startAdOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { platform: AdPlatform; imobiliaria?: string | null }) =>
-    z
-      .object({
-        platform: z.enum(["meta", "google"]),
-        imobiliaria: z.enum(["cordial", "morar"]).nullish(),
-      })
-      .parse(d),
+  .inputValidator(
+    (d: { platform: AdPlatform; imobiliaria?: string | null; purpose?: AdOAuthPurpose }) =>
+      z
+        .object({
+          platform: z.enum(["meta", "google"]),
+          imobiliaria: z.enum(["cordial", "morar"]).nullish(),
+          purpose: z.enum(["read", "manage", "leads"]).default("read"),
+        })
+        .parse(d),
   )
   .handler(
     async ({
@@ -168,6 +184,24 @@ export const startAdOAuth = createServerFn({ method: "POST" })
         encryptCredential("configuration-probe");
         if (!adsConfig(data.platform))
           throw new AdProviderError("not_configured", "Configuração pendente.");
+        if (data.platform === "meta") {
+          const { data: system, error: lookupError } = await (await dbAdmin())
+            .from("ad_platform_connections")
+            .select("id")
+            .eq("platform", "meta")
+            .eq("imobiliaria", data.imobiliaria)
+            .eq("credential_mode", "system_user")
+            .limit(1);
+          if (lookupError) throw new Error("Não foi possível conferir a conexão.");
+          if (system?.length)
+            return {
+              ok: false,
+              code: "conflict",
+              message:
+                "Esta imobiliária usa uma credencial de usuário do sistema. Ajuste suas permissões na Meta e execute o diagnóstico da conexão.",
+            };
+        } else if (data.purpose !== "read")
+          throw new AdProviderError("invalid_parameter", "Finalidade de autorização inválida.");
         const origin = new URL(getRequest().url).origin;
         const nonce = randomBytes(32).toString("hex");
         const { error } = await (await dbAdmin()).from("ad_oauth_states").insert({
@@ -184,6 +218,7 @@ export const startAdOAuth = createServerFn({ method: "POST" })
           i: data.imobiliaria,
           t: Date.now(),
           n: nonce,
+          s: data.purpose,
         });
         setCookie("ads_oauth_nonce", nonce, {
           path: "/api/public/ads-oauth/callback",
@@ -194,7 +229,12 @@ export const startAdOAuth = createServerFn({ method: "POST" })
         });
         return {
           ok: true,
-          url: authorizeUrl(data.platform, `${origin}/api/public/ads-oauth/callback`, state),
+          url: authorizeUrl(
+            data.platform,
+            `${origin}/api/public/ads-oauth/callback`,
+            state,
+            data.purpose,
+          ),
         };
       } catch (e) {
         return fail(e);
@@ -317,7 +357,7 @@ export const listMetaCampaigns = createServerFn({ method: "POST" })
     z.object({ connectionId: z.uuid(), accountId: z.string().regex(/^(act_)?\d{1,80}$/) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await requireMarketingAccess(context);
+    await requireMarketingAction(context, "manage_manual");
     const { resolveConnectionCredential } = await import("./credentials.server");
     const { discoverMetaCampaigns, getMetaAccount } = await import("./providers/meta.server");
     const { token, connection } = await resolveConnectionCredential(data.connectionId, {
@@ -497,7 +537,7 @@ export const syncCampaign = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<AdActionResult> => {
     try {
-      await requireMarketingAccess(context);
+      await requireMarketingAction(context, "manage_manual");
       const { data: c, error } = await (await dbAdmin())
         .from("marketing_campaigns")
         .select(
