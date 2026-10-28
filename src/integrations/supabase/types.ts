@@ -12058,7 +12058,7 @@ export type Database = {
       mark_notification_read: { Args: { _id: string }; Returns: Json }
       marketing_action_permissions: { Args: never; Returns: Json }
       marketing_actor_can_act: {
-        Args: { p_action: string; p_actor: string; p_agency?: string | null }
+        Args: { p_action: string; p_actor: string; p_agency?: string }
         Returns: boolean
       }
       marketing_campaigns_safe: {
@@ -12080,7 +12080,7 @@ export type Database = {
         Returns: Json
       }
       marketing_can_act: {
-        Args: { p_action: string; p_agency?: string | null }
+        Args: { p_action: string; p_agency?: string }
         Returns: boolean
       }
       marketing_can_operate: { Args: { p_agency: string }; Returns: boolean }
