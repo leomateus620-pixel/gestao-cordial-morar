@@ -22,7 +22,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
+import { attendanceListQueryKey } from "@/hooks/useAttendances";
 import { listAttendances } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import { chartCordial, chartMorar, chartSystem, gridStroke } from "@/lib/chart-palette";
@@ -114,7 +114,7 @@ export function AttendanceEvolutionCard({ className }: { className?: string }) {
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const attendancesQuery = useQuery({
-    queryKey: ATTENDANCES_QUERY_KEY,
+    queryKey: attendanceListQueryKey(session?.id),
     queryFn: () => listAttendances(),
     enabled: Boolean(session),
     staleTime: 15_000,

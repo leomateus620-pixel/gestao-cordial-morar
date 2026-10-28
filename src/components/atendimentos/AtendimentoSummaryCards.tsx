@@ -1,15 +1,21 @@
-import { AlertCircle, BadgeDollarSign, Home, PauseCircle, ShoppingBag, TrendingUp } from "lucide-react";
+import {
+  AlertCircle,
+  BadgeDollarSign,
+  Check,
+  Home,
+  Maximize2,
+  ShoppingBag,
+  TrendingUp,
+} from "lucide-react";
 import { pipelineStageUi } from "@/components/atendimentos/pipeline-ui";
 import { formatCompactCurrency } from "@/services/atendimentos";
 import {
-  FUNNEL_PIPELINE_STAGES,
-  WAITING_PIPELINE_STAGE,
   pipelineStageLabel,
   type AtendimentoStatus,
   type PipelineStage,
 } from "@/types/atendimento";
+import { WORKSPACE_PIPELINE_STAGES } from "@/lib/atendimentos/stage-workspace";
 import { cn } from "@/lib/utils";
-
 
 type AtendimentoStats = {
   status: Partial<Record<AtendimentoStatus, number>>;
@@ -25,11 +31,15 @@ export function AtendimentoSummaryCards({
   stats,
   selectedStage,
   onStageChange,
+  onExpandStage,
+  showInsights = true,
   canViewFinancialInsights = true,
 }: {
   stats: AtendimentoStats;
   selectedStage: PipelineStage;
   onStageChange: (stage: PipelineStage) => void;
+  onExpandStage: (stage: PipelineStage) => void;
+  showInsights?: boolean;
   canViewFinancialInsights?: boolean;
 }) {
   const insights = [
@@ -70,112 +80,100 @@ export function AtendimentoSummaryCards({
           </p>
         </div>
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:grid lg:grid-cols-7 lg:px-0">
-          {FUNNEL_PIPELINE_STAGES.map((stage) => {
+          {WORKSPACE_PIPELINE_STAGES.map((stage) => {
             const ui = pipelineStageUi[stage];
             const active = selectedStage === stage;
-            const lost = stage === "perdido";
+            const count = stats.pipeline[stage] ?? 0;
+            const label = pipelineStageLabel(stage);
+            const quantityLabel = `${count} atendimento${count === 1 ? "" : "s"}`;
             return (
-              <button
+              <div
                 key={stage}
-                type="button"
-                onClick={() => onStageChange(stage)}
                 className={cn(
-                  "min-w-40 shrink-0 rounded-2xl border bg-white/78 px-3.5 py-3 text-left shadow-[0_10px_26px_-24px_rgba(31,41,55,0.9)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_15px_28px_-22px_rgba(31,41,55,0.7)] lg:min-w-0",
-                  lost
-                    ? active
-                      ? "border-rose-700 bg-rose-600 text-white shadow-sm"
-                      : "border-rose-600/45 bg-rose-50 text-rose-800"
-                    : active
-                      ? cn(ui.badge, "shadow-sm")
-                      : "border-stone-900/10 text-stone-700",
+                  "flex min-w-40 shrink-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm lg:min-w-0",
+                  active ? cn(ui.accent, "ring-1 ring-inset ring-current/10") : "border-border",
                 )}
-                aria-pressed={active}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] opacity-60">
-                    {stage === "perdido" ? "Perdidos" : `Etapa ${ui.order}`}
+                <button
+                  type="button"
+                  onClick={() => onStageChange(stage)}
+                  className={cn(
+                    "flex flex-1 flex-col items-start px-3 pt-3 pb-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
+                    active && "bg-muted/50",
+                  )}
+                  aria-pressed={active}
+                  aria-label={`Selecionar ${label}, ${quantityLabel}`}
+                >
+                  <span className="flex w-full items-start gap-1.5 text-xs font-semibold leading-4 text-foreground">
+                    <span
+                      className={cn("mt-1 size-2 shrink-0 rounded-full", ui.dot)}
+                      aria-hidden="true"
+                    />
+                    <span className="min-h-8 flex-1 break-words">{label}</span>
+                    {active && (
+                      <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                    )}
                   </span>
-                  <span className="font-mono text-xl font-extrabold">
-                    {stats.pipeline[stage] ?? 0}
+                  <span className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+                    {count}
                   </span>
-                </div>
-                <p className="mt-1 truncate text-[11px] font-extrabold">
-                  {pipelineStageLabel(stage)}
-                </p>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onExpandStage(stage)}
+                  aria-label={`Expandir ${label}, ${quantityLabel}`}
+                  className="flex min-h-10 items-center gap-1.5 px-3 pb-2 text-left text-xs font-semibold text-primary transition-colors hover:bg-primary/5 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
+                >
+                  <Maximize2 className="size-3.5 shrink-0" aria-hidden="true" />
+                  Expandir etapa
+                </button>
+              </div>
             );
           })}
-
-          {(() => {
-            const active = selectedStage === WAITING_PIPELINE_STAGE;
-            return (
-              <button
-                type="button"
-                onClick={() => onStageChange(WAITING_PIPELINE_STAGE)}
-                className={cn(
-                  "min-w-40 shrink-0 rounded-2xl border px-3.5 py-3 text-left shadow-[0_10px_26px_-24px_rgba(31,41,55,0.9)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_15px_28px_-22px_rgba(31,41,55,0.7)] lg:min-w-0",
-                  active
-                    ? "border-amber-600 bg-amber-500 text-amber-950 shadow-sm"
-                    : "border-amber-600/40 bg-amber-50 text-amber-900",
-                )}
-                aria-pressed={active}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-[0.15em] opacity-70">
-                    <PauseCircle className="size-3" />
-                    Em espera
-                  </span>
-                  <span className="font-mono text-xl font-extrabold">
-                    {stats.pipeline[WAITING_PIPELINE_STAGE] ?? 0}
-                  </span>
-                </div>
-                <p className="mt-1 truncate text-[11px] font-extrabold">Fila de espera</p>
-              </button>
-            );
-          })()}
         </div>
       </div>
 
-
-      <div
-        className={cn(
-          "no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:px-0",
-          insights.length >= 5 ? "sm:grid-cols-5" : "sm:grid-cols-4",
-        )}
-      >
-        {insights.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.label}
-              className={cn(
-                "min-w-32 shrink-0 rounded-2xl border bg-white/58 px-3 py-2.5 sm:min-w-0",
-                item.danger ? "border-rose-700/18 bg-rose-50/65" : "border-stone-900/8",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[8px] font-extrabold uppercase tracking-[0.11em] text-stone-500">
-                  {item.label}
-                </span>
-                <Icon
-                  className={cn(
-                    "size-3.5 shrink-0",
-                    item.danger ? "text-rose-700" : "text-amber-700/70",
-                  )}
-                />
-              </div>
-              <p
+      {showInsights && (
+        <div
+          className={cn(
+            "no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:px-0",
+            insights.length >= 5 ? "sm:grid-cols-5" : "sm:grid-cols-4",
+          )}
+        >
+          {insights.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
                 className={cn(
-                  "mt-1 truncate font-mono text-sm font-extrabold sm:text-base",
-                  item.danger ? "text-rose-900" : "text-stone-900",
+                  "min-w-32 shrink-0 rounded-2xl border bg-white/58 px-3 py-2.5 sm:min-w-0",
+                  item.danger ? "border-rose-700/18 bg-rose-50/65" : "border-stone-900/8",
                 )}
               >
-                {item.value}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[8px] font-extrabold uppercase tracking-[0.11em] text-stone-500">
+                    {item.label}
+                  </span>
+                  <Icon
+                    className={cn(
+                      "size-3.5 shrink-0",
+                      item.danger ? "text-rose-700" : "text-amber-700/70",
+                    )}
+                  />
+                </div>
+                <p
+                  className={cn(
+                    "mt-1 truncate font-mono text-sm font-extrabold sm:text-base",
+                    item.danger ? "text-rose-900" : "text-stone-900",
+                  )}
+                >
+                  {item.value}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

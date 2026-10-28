@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/lib/auth-mock";
+import { canAccessModule } from "@/lib/access-control";
 import {
   createAttendance,
   deleteAttendance,
@@ -20,6 +21,19 @@ import {
   isAtendimentoOverdue,
 } from "@/services/atendimentos";
 import { matchesTrack, type CommercialTrack } from "@/lib/atendimentos/track";
+import {
+  ATTENDANCES_QUERY_KEY,
+  attendanceListQueryKey,
+  attendanceBrokersQueryKey,
+  attendanceHistoryQueryKey,
+  rollbackAttendanceTransition,
+} from "@/lib/atendimentos/query-cache";
+export {
+  ATTENDANCES_QUERY_KEY,
+  ATTENDANCE_BROKERS_QUERY_KEY,
+  attendanceListQueryKey,
+  attendanceHistoryQueryKey,
+} from "@/lib/atendimentos/query-cache";
 import {
   ACTIVE_PIPELINE_STAGES,
   type Atendimento,
@@ -67,11 +81,6 @@ export const defaultAtendimentoFilters: AtendimentoFilters = {
   periodo: "todos",
 };
 
-export const ATTENDANCES_QUERY_KEY = ["attendances"] as const;
-export const ATTENDANCE_BROKERS_QUERY_KEY = ["attendance-brokers"] as const;
-export const attendanceHistoryQueryKey = (id: string | null | undefined) =>
-  ["attendance-history", id] as const;
-
 export function useAttendances(
   query: string,
   filters: AtendimentoFilters,
@@ -85,11 +94,12 @@ export function useAttendances(
   const corretores = useApp((state) => state.corretores);
   const qc = useQueryClient();
   const stageTransitionsInFlight = useRef(new Set<string>());
+  const queryKey = attendanceListQueryKey(user?.id);
 
   const attendancesQuery = useQuery({
-    queryKey: ATTENDANCES_QUERY_KEY,
+    queryKey,
     queryFn: () => listAttendances(),
-    enabled: Boolean(user),
+    enabled: canAccessModule(user, "atendimentos"),
     staleTime: 15_000,
   });
 
@@ -117,8 +127,9 @@ export function useAttendances(
       id: string;
       patch: Parameters<typeof updateAttendance>[0]["data"]["patch"];
     }) => updateAttendance({ data: { id: vars.id, patch: vars.patch } }),
-    onSuccess: (updated) => {
-      qc.setQueryData<Atendimento[]>(ATTENDANCES_QUERY_KEY, (current) =>
+    onMutate: () => ({ queryKey }),
+    onSuccess: (updated, _vars, context) => {
+      qc.setQueryData<Atendimento[]>(context.queryKey, (current) =>
         current?.map((item) => (item.id === updated.id ? updated : item)),
       );
       qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(updated.id) });
@@ -126,9 +137,9 @@ export function useAttendances(
     },
   });
   const brokersQuery = useQuery({
-    queryKey: ATTENDANCE_BROKERS_QUERY_KEY,
+    queryKey: attendanceBrokersQueryKey(user?.id),
     queryFn: () => listAttendanceBrokers(),
-    enabled: Boolean(user),
+    enabled: canAccessModule(user, "atendimentos"),
     staleTime: 60_000,
   });
 
@@ -136,9 +147,9 @@ export function useAttendances(
     mutationFn: (vars: { id: string; to: PipelineStage }) =>
       transitionAttendanceStage({ data: vars }),
     onMutate: async ({ id, to }) => {
-      await qc.cancelQueries({ queryKey: ATTENDANCES_QUERY_KEY });
-      const previous = qc.getQueryData<Atendimento[]>(ATTENDANCES_QUERY_KEY);
-      qc.setQueryData<Atendimento[]>(ATTENDANCES_QUERY_KEY, (current) =>
+      await qc.cancelQueries({ queryKey, exact: true });
+      const previous = qc.getQueryData<Atendimento[]>(queryKey)?.find((item) => item.id === id);
+      qc.setQueryData<Atendimento[]>(queryKey, (current) =>
         current?.map((item) =>
           item.id === id
             ? {
@@ -149,10 +160,14 @@ export function useAttendances(
             : item,
         ),
       );
-      return { previous };
+      return { previous, queryKey };
     },
     onError: (_error, _vars, context) => {
-      if (context?.previous) qc.setQueryData(ATTENDANCES_QUERY_KEY, context.previous);
+      if (context?.previous) {
+        qc.setQueryData<Atendimento[]>(context.queryKey, (current) =>
+          rollbackAttendanceTransition(current, context.previous),
+        );
+      }
     },
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(vars.id) });
@@ -238,6 +253,7 @@ export function useAttendances(
     filteredAtendimentos,
     stats,
     isLoading: attendancesQuery.isLoading,
+    isFetching: attendancesQuery.isFetching,
     /** True somente após uma carga concluída com sucesso (evita falso "não encontrado"). */
     isReady: attendancesQuery.isSuccess,
     dataUpdatedAt: attendancesQuery.dataUpdatedAt,

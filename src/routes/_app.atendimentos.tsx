@@ -9,6 +9,17 @@ import {
 } from "@/components/atendimentos/AtendimentoHistoryPrintReport";
 import { toast } from "sonner";
 import { AtendimentoCard } from "@/components/atendimentos/AtendimentoCard";
+import { AtendimentoStageExpandedView } from "@/components/atendimentos/AtendimentoStageExpandedView";
+import type { AtendimentoCardDensity } from "@/components/atendimentos/AtendimentoCompactCard";
+import {
+  groupAttendancesByStage,
+  isWorkspacePipelineStage,
+} from "@/lib/atendimentos/stage-workspace";
+import {
+  attendanceWorkspaceView,
+  expandAttendanceStage,
+  parseAttendanceWorkspace,
+} from "@/lib/atendimentos/workspace-navigation";
 import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
 import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
 import { PipelineTrackSelector } from "@/components/atendimentos/PipelineTrackSelector";
@@ -34,6 +45,7 @@ import { sendFirstAttendanceEmail } from "@/lib/attendances/email.functions";
 import { addAttendanceNote, getAttendanceById } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import {
+  canAccessModule,
   canDeleteAttendance,
   canManageAttendanceAssignments,
   canSelfAssignAttendance,
@@ -71,8 +83,12 @@ export const Route = createFileRoute("/_app/atendimentos")({
       periodo?: unknown;
       imobiliaria?: unknown;
       status?: unknown;
+      modo?: unknown;
+      etapa?: unknown;
+      origem?: unknown;
     } & SearchSchemaInput,
   ) => ({
+    ...parseAttendanceWorkspace(search),
     id: typeof search.id === "string" ? search.id : undefined,
     clienteId: typeof search.clienteId === "string" ? search.clienteId : undefined,
     track: parseTrackParam(search.track),
@@ -98,23 +114,21 @@ function Page() {
     periodo,
     imobiliaria,
     status,
+    modo,
+    etapa,
+    origem,
   } = Route.useSearch();
+  const workspace = attendanceWorkspaceView({ modo, etapa, origem });
+  const view = workspace.kind === "lista" ? "list" : "kanban";
   const navigate = Route.useNavigate();
   const setTrack = (nextTrack: CommercialTrack) => {
     if (nextTrack === track) return;
     navigate({
       to: ".",
-      search: {
-        track: nextTrack,
-        id: highlightId,
-        clienteId: clienteIdFilter,
-        corretorId,
-        periodo,
-        imobiliaria,
-        status,
-      },
+      search: (prev) => ({ ...prev, track: nextTrack, id: undefined }),
+      resetScroll: false,
     });
-    setSelectedStage("primeiro_contato");
+    if (!etapa) setFallbackStage("primeiro_contato");
   };
   const [open, setOpen] = useState(false);
   const isAdmin = isAdminUser(session);
@@ -133,13 +147,79 @@ function Page() {
     periodo: periodo ?? "todos",
     status: status ?? "todos",
   }));
-  const [view, setView] = useState<"kanban" | "list">("kanban");
-  const [selectedStage, setSelectedStage] = useState<PipelineStage>("primeiro_contato");
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [fallbackStage, setFallbackStage] = useState<PipelineStage>("primeiro_contato");
+  const selectedStage = etapa ?? fallbackStage;
+  const detailId = highlightId ?? null;
+  const detailOrigin = useRef<string | null>(null);
+  const detailWasOpen = useRef(false);
+  const scrollPositions = useRef(new Map<string, number>());
+  const overviewStage = useRef<PipelineStage | undefined>(undefined);
+  const scrollScope = useRef("");
+  const [density, setDensity] = useState<AtendimentoCardDensity>("compacta");
+  useEffect(() => {
+    try {
+      const value = window.localStorage.getItem(`atendimentos:density:${session?.id}`);
+      setDensity(value === "confortavel" ? "confortavel" : "compacta");
+    } catch {
+      /* Preference is optional. */
+    }
+  }, [session?.id]);
+  function changeDensity(next: AtendimentoCardDensity) {
+    setDensity(next);
+    if (!session?.id) return;
+    try {
+      window.localStorage.setItem(`atendimentos:density:${session.id}`, next);
+    } catch {
+      /* Optional. */
+    }
+  }
+  function setDetailId(id: string | null) {
+    if (id) detailOrigin.current = id;
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, id: id ?? undefined }),
+      replace: !id,
+      resetScroll: false,
+    });
+  }
+  function setSelectedStage(stage: PipelineStage) {
+    if (!isWorkspacePipelineStage(stage)) return;
+    void navigate({
+      to: ".",
+      search: (prev) => ({
+        ...prev,
+        etapa: stage,
+        modo: prev.modo === "etapa" ? "etapa" : "funil",
+      }),
+      resetScroll: false,
+    });
+  }
+  function setView(next: "kanban" | "list") {
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, modo: next === "list" ? "lista" : "funil" }),
+      resetScroll: false,
+    });
+  }
+  function expandStage(stage: PipelineStage) {
+    if (!isWorkspacePipelineStage(stage)) return;
+    if (workspace.kind !== "etapa") overviewStage.current = selectedStage;
+    void navigate({
+      to: ".",
+      search: (prev) => expandAttendanceStage(prev, stage),
+      resetScroll: false,
+    });
+  }
   const [editId, setEditId] = useState<string | null>(null);
   /** Atendimento carregado sob demanda quando o link aponta para fora da lista. */
-  const [deepLinkAtendimento, setDeepLinkAtendimento] = useState<Atendimento | null>(null);
+  const [deepLinkRecord, setDeepLinkAtendimento] = useState<
+    (Atendimento & { scopeUserId?: string }) | null
+  >(null);
+  const deepLinkAtendimento = deepLinkRecord?.scopeUserId === session?.id ? deepLinkRecord : null;
   const unavailableDeepLink = useRef<string | null>(null);
+  useEffect(() => {
+    unavailableDeepLink.current = null;
+  }, [session?.id]);
   const qc = useQueryClient();
   const setAgency = useApp((s) => s.setAgency);
   const {
@@ -152,6 +232,7 @@ function Page() {
     brokers,
     stats,
     isLoading,
+    isFetching,
     isReady,
     isError,
     error,
@@ -172,12 +253,62 @@ function Page() {
       status: status ?? "todos",
     }));
   }, [corretorId, periodo, status]);
-  const filteredAtendimentos = useMemo(() => {
-    if (!clienteIdFilter) return baseFilteredAtendimentos;
-    return baseFilteredAtendimentos.filter(
-      (a) => a.clienteId === clienteIdFilter || a.clienteConvertidoId === clienteIdFilter,
-    );
-  }, [baseFilteredAtendimentos, clienteIdFilter]);
+  const grouped = useMemo(
+    () => groupAttendancesByStage(baseFilteredAtendimentos, clienteIdFilter),
+    [baseFilteredAtendimentos, clienteIdFilter],
+  );
+  const filteredAtendimentos = grouped.base;
+  const stageStats = useMemo(
+    () => ({ ...stats, pipeline: grouped.counts }),
+    [stats, grouped.counts],
+  );
+  const scrollKey = JSON.stringify([
+    session?.id,
+    track,
+    agency,
+    clienteIdFilter,
+    workspace.kind,
+    workspace.kind === "etapa" ? selectedStage : null,
+  ]);
+  useEffect(() => {
+    const remember = () => {
+      scrollPositions.current.set(scrollScope.current, window.scrollY);
+      if (scrollPositions.current.size > 24)
+        scrollPositions.current.delete(scrollPositions.current.keys().next().value!);
+    };
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, []);
+  useEffect(() => {
+    if (isLoading) return;
+    scrollScope.current = scrollKey;
+    const frame = window.requestAnimationFrame(() => {
+      const heading =
+        workspace.kind === "etapa" ? document.getElementById("atendimento-stage-title") : null;
+      const saved = scrollPositions.current.get(scrollKey);
+      if (heading) heading.focus({ preventScroll: true });
+      window.scrollTo({
+        top: saved ?? (heading ? heading.getBoundingClientRect().top + window.scrollY - 112 : 0),
+        behavior: "instant",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollKey, isLoading, workspace.kind]);
+  useEffect(() => {
+    // Covers browser Back as well as the close button; a moved card falls back to the heading.
+    if (detailWasOpen.current && !detailId && !editId) {
+      const frame = window.requestAnimationFrame(() => restoreDetailFocus());
+      detailWasOpen.current = false;
+      return () => window.cancelAnimationFrame(frame);
+    }
+    detailWasOpen.current = Boolean(detailId);
+  }, [detailId, editId]);
+  function restoreDetailFocus() {
+    const element = detailOrigin.current
+      ? document.getElementById(`atendimento-open-${detailOrigin.current}`)
+      : null;
+    (element ?? document.getElementById("atendimento-stage-title"))?.focus({ preventScroll: true });
+  }
   const detailAtendimento = useMemo(
     () =>
       atendimentos.find((a) => a.id === detailId) ??
@@ -208,7 +339,7 @@ function Page() {
         try {
           const result = await getAttendanceById({ data: { id: highlightId } });
           if (result.status === "ok") {
-            setDeepLinkAtendimento(result.atendimento);
+            setDeepLinkAtendimento({ ...result.atendimento, scopeUserId: session?.id });
             return;
           }
           if (result.status === "forbidden") {
@@ -224,32 +355,27 @@ function Page() {
     }
     unavailableDeepLink.current = null;
     const targetTrack = finalidadeToTrack(target.finalidade);
-    if (targetTrack !== "ambos" && targetTrack !== track) {
+    if (!etapa && targetTrack !== "ambos" && targetTrack !== track) {
       navigate({
         to: ".",
-        search: {
-          track: targetTrack,
-          id: highlightId,
-          clienteId: clienteIdFilter,
-          corretorId,
-          periodo,
-          imobiliaria,
-          status,
-        },
+        search: (prev) => ({ ...prev, track: targetTrack }),
+        resetScroll: false,
         replace: true,
       });
     }
-    setSelectedStage(target.pipelineStage);
-    setDetailId(target.id);
+    if (!etapa) setFallbackStage(target.pipelineStage);
   }, [
     atendimentos,
     clienteIdFilter,
     corretorId,
     deepLinkAtendimento,
+    session?.id,
     highlightId,
+    etapa,
     imobiliaria,
     isError,
     isLoading,
+    isFetching,
     isReady,
     navigate,
     periodo,
@@ -485,7 +611,6 @@ function Page() {
     }
   }
 
-
   async function registerProposal(atendimento: Atendimento) {
     try {
       await updateAtendimento({
@@ -518,57 +643,80 @@ function Page() {
   }
 
   const hasAtendimentos = atendimentos.length > 0;
+  if (session && !canAccessModule(session, "atendimentos")) {
+    return (
+      <EmptyState
+        title="Acesso a Atendimentos indisponível"
+        description="Seu perfil não tem acesso a este módulo."
+        icon={<Inbox className="size-5" />}
+      />
+    );
+  }
   const activeFilteredCount = filteredAtendimentos.filter((atendimento) =>
     ACTIVE_PIPELINE_STAGES.includes(atendimento.pipelineStage),
   ).length;
 
   return (
     <div className="space-y-4">
-      <section className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#174d61_0%,#1e647d_48%,#28333b_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(23,27,33,0.55)] sm:p-6">
-        <span className="absolute -right-10 -top-16 size-44 rounded-full bg-cyan-200/10 blur-3xl" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
-              <Inbox className="size-6 text-orange-300" />
+      {workspace.kind !== "etapa" ? (
+        <section className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#174d61_0%,#1e647d_48%,#28333b_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(23,27,33,0.55)] sm:p-6">
+          <span className="absolute -right-10 -top-16 size-44 rounded-full bg-cyan-200/10 blur-3xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
+                <Inbox className="size-6 text-orange-300" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
+                  Central de entrada comercial
+                </p>
+                <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">
+                  Atendimentos
+                </h1>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-white/64">
+                  Do primeiro contato ao encaminhamento, com dados prontos para revelar o nicho real
+                  da imobiliária.
+                </p>
+                <p className="mt-2 hidden items-center gap-1.5 text-[10px] font-semibold text-white/55 md:flex">
+                  <Workflow className="size-3 text-orange-300" />
+                  Pré-atendimento · Corretor · Conversão
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
-                Central de entrada comercial
-              </p>
-              <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">
-                Atendimentos
-              </h1>
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-white/64">
-                Do primeiro contato ao encaminhamento, com dados prontos para revelar o nicho real
-                da imobiliária.
-              </p>
-              <p className="mt-2 hidden items-center gap-1.5 text-[10px] font-semibold text-white/55 md:flex">
-                <Workflow className="size-3 text-orange-300" />
-                Pré-atendimento · Corretor · Conversão
-              </p>
-            </div>
-          </div>
 
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="group relative inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-400 px-4 py-3 text-sm font-semibold text-stone-900 shadow-[0_10px_30px_-12px_rgba(251,146,60,0.65)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 hover:shadow-[0_18px_40px_-12px_rgba(251,146,60,0.7)] active:scale-[0.98] sm:w-auto"
+            >
+              <Plus className="size-4 transition-transform group-hover:rotate-90" />
+              Novo atendimento
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(true)}
+                className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/15 sm:w-auto"
+              >
+                <FileDown className="size-4" />
+                Histórico em PDF
+              </button>
+            )}
+          </div>
+        </section>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-lg font-semibold tracking-tight">Atendimentos</h1>
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="group relative inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-400 px-4 py-3 text-sm font-semibold text-stone-900 shadow-[0_10px_30px_-12px_rgba(251,146,60,0.65)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 hover:shadow-[0_18px_40px_-12px_rgba(251,146,60,0.7)] active:scale-[0.98] sm:w-auto"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <Plus className="size-4 transition-transform group-hover:rotate-90" />
+            <Plus className="size-4" />
             Novo atendimento
           </button>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/15 sm:w-auto"
-            >
-              <FileDown className="size-4" />
-              Histórico em PDF
-            </button>
-          )}
         </div>
-      </section>
+      )}
 
       {isAdmin && (
         <AtendimentoHistoryReportDialog
@@ -590,7 +738,19 @@ function Page() {
         query={query}
         onQueryChange={setQuery}
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={(next) => {
+          setFilters(next);
+          void navigate({
+            to: ".",
+            search: (prev) => ({
+              ...prev,
+              corretorId: next.corretor === "todos" ? undefined : next.corretor,
+              periodo: next.periodo === "todos" ? undefined : next.periodo,
+              status: next.status === "todos" ? undefined : next.status,
+            }),
+            resetScroll: false,
+          });
+        }}
         brokerOptions={brokers}
       />
 
@@ -607,7 +767,8 @@ function Page() {
             className="font-semibold text-primary underline"
             onClick={() => {
               setAgency("todas");
-              if (imobiliaria) navigate({ to: ".", search: (prev) => ({ ...prev, imobiliaria: undefined }) });
+              if (imobiliaria)
+                navigate({ to: ".", search: (prev) => ({ ...prev, imobiliaria: undefined }) });
             }}
           >
             Mostrar todas
@@ -638,14 +799,20 @@ function Page() {
                         corretorId: undefined,
                         periodo: undefined,
                         status: undefined,
+                        id: a.id,
+                        etapa: undefined,
                         track: t === "ambos" ? prev.track : t,
                       }),
                     });
-                    setDetailId(a.id);
+                    detailOrigin.current = a.id;
                   }}
                 >
                   {a.clienteNome} · {a.finalidade === "aluguel" ? "Aluguéis" : "Vendas"} ·{" "}
-                  {a.imobiliaria === "morar" ? "Morar" : a.imobiliaria === "cordial" ? "Cordial" : "Ambas"}
+                  {a.imobiliaria === "morar"
+                    ? "Morar"
+                    : a.imobiliaria === "cordial"
+                      ? "Cordial"
+                      : "Ambas"}
                 </button>
               </li>
             ))}
@@ -654,159 +821,185 @@ function Page() {
       )}
 
       <AtendimentoSummaryCards
-        stats={stats}
+        stats={stageStats}
         selectedStage={selectedStage}
-        onStageChange={(stage) => {
-          setSelectedStage(stage);
-          setView("kanban");
-        }}
+        onStageChange={setSelectedStage}
+        onExpandStage={expandStage}
+        showInsights={workspace.kind !== "etapa"}
         canViewFinancialInsights={canViewFinancialInsights}
       />
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight">CRM comercial</h2>
-            <p className="text-[11px] text-foreground/50">
-              {activeFilteredCount} ativo{activeFilteredCount === 1 ? "" : "s"}
-              {filteredAtendimentos.length !== activeFilteredCount
-                ? ` · ${filteredAtendimentos.length} no recorte atual`
-                : " no recorte atual"}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setView("kanban")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-                view === "kanban"
-                  ? "bg-teal-700 text-white shadow"
-                  : "text-teal-800 hover:bg-teal-700/8",
-              )}
-            >
-              <LayoutGrid className="size-3" /> Funil
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-                view === "list"
-                  ? "bg-teal-700 text-white shadow"
-                  : "text-teal-800 hover:bg-teal-700/8",
-              )}
-            >
-              <List className="size-3" /> Lista
-            </button>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <EmptyState
-            title="Carregando atendimentos..."
-            description="Buscando registros na nuvem."
-            icon={<Inbox className="size-5" />}
-          />
-        ) : isError ? (
-          <EmptyState
-            title="Não foi possível carregar os atendimentos."
-            description={error?.message ?? "Verifique sua conexão e tente novamente."}
-            icon={<Inbox className="size-5" />}
-            action={
+      {workspace.kind === "etapa" ? (
+        <AtendimentoStageExpandedView
+          key={`${workspace.stage}:${track}:${agency}`}
+          stage={workspace.stage}
+          atendimentos={grouped.byStage[workspace.stage]}
+          context={`${trackLabel(track)} · ${agency === "todas" ? "Todas as imobiliárias" : agency === "cordial" ? "Cordial" : "Morar"}${clienteIdFilter ? " · Recorte por cliente" : ""} · Filtros globais aplicados`}
+          onBack={() =>
+            void navigate({
+              to: ".",
+              search: (prev) => ({
+                ...prev,
+                modo: workspace.returnTo,
+                etapa: isWorkspacePipelineStage(overviewStage.current)
+                  ? overviewStage.current
+                  : prev.etapa,
+              }),
+              resetScroll: false,
+            })
+          }
+          backLabel={workspace.returnTo === "lista" ? "Voltar à lista" : "Voltar ao funil"}
+          onOpen={(a) => setDetailId(a.id)}
+          onStageChange={handleStageChange}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          isError={isError}
+          onRetry={() => void refetch()}
+          globalEmptyState={
+            !hasAtendimentos
+              ? "crm-empty"
+              : !filteredAtendimentos.length
+                ? "filtered-empty"
+                : undefined
+          }
+          density={density}
+          onDensityChange={changeDensity}
+        />
+      ) : (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <div>
+              <h2 className="text-sm font-semibold tracking-tight">CRM comercial</h2>
+              <p className="text-[11px] text-foreground/50">
+                {activeFilteredCount} ativo{activeFilteredCount === 1 ? "" : "s"}
+                {filteredAtendimentos.length !== activeFilteredCount
+                  ? ` · ${filteredAtendimentos.length} no recorte atual`
+                  : " no recorte atual"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-sm">
               <button
                 type="button"
-                onClick={() => void refetch()}
-                className="rounded-xl bg-teal-800 px-4 py-2.5 text-xs font-bold text-white"
+                onClick={() => setView("kanban")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                  view === "kanban"
+                    ? "bg-teal-700 text-white shadow"
+                    : "text-teal-800 hover:bg-teal-700/8",
+                )}
               >
-                Tentar novamente
+                <LayoutGrid className="size-3" /> Funil
               </button>
-            }
-          />
-        ) : filteredAtendimentos.length > 0 ? (
-          view === "kanban" ? (
-            <AtendimentoKanban
-              atendimentos={filteredAtendimentos}
-              selectedStage={selectedStage}
-              onSelectedStageChange={setSelectedStage}
-              highlightId={highlightId}
-              onOpenDetail={(a) => setDetailId(a.id)}
-              onStageChange={handleStageChange}
-              onAction={handleAction}
-              brokerOptions={brokers}
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                  view === "list"
+                    ? "bg-teal-700 text-white shadow"
+                    : "text-teal-800 hover:bg-teal-700/8",
+                )}
+              >
+                <List className="size-3" /> Lista
+              </button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <EmptyState
+              title="Carregando atendimentos..."
+              description="Buscando registros na nuvem."
+              icon={<Inbox className="size-5" />}
+            />
+          ) : isError && !filteredAtendimentos.length ? (
+            <EmptyState
+              title="Não foi possível carregar os atendimentos."
+              description={error?.message ?? "Verifique sua conexão e tente novamente."}
+              icon={<Inbox className="size-5" />}
+              action={
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="rounded-xl bg-teal-800 px-4 py-2.5 text-xs font-bold text-white"
+                >
+                  Tentar novamente
+                </button>
+              }
+            />
+          ) : filteredAtendimentos.length > 0 ? (
+            view === "kanban" ? (
+              <AtendimentoKanban
+                atendimentos={filteredAtendimentos}
+                selectedStage={selectedStage}
+                onSelectedStageChange={setSelectedStage}
+                highlightId={highlightId}
+                onOpenDetail={(a) => setDetailId(a.id)}
+                onStageChange={handleStageChange}
+                onAction={handleAction}
+                brokerOptions={brokers}
+              />
+            ) : (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {filteredAtendimentos.map((atendimento) => (
+                  <div
+                    key={atendimento.id}
+                    className={
+                      highlightId === atendimento.id
+                        ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
+                        : undefined
+                    }
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("button,select,textarea,input,a"))
+                        return;
+                      setDetailId(atendimento.id);
+                    }}
+                  >
+                    <AtendimentoCard
+                      atendimento={atendimento}
+                      onOpen={(item) => setDetailId(item.id)}
+                      onStageChange={handleStageChange}
+                      onAction={handleAction}
+                      brokerOptions={brokers}
+                    />
+                  </div>
+                ))}
+              </div>
+            )
+          ) : hasAtendimentos ? (
+            <EmptyState
+              title="Nenhum atendimento encontrado com os filtros atuais."
+              description="Ajuste a busca ou os filtros para ver outros registros."
+              icon={<Inbox className="size-5" />}
             />
           ) : (
-            <div className="grid gap-3 xl:grid-cols-2">
-              {filteredAtendimentos.map((atendimento) => (
-                <div
-                  key={atendimento.id}
-                  className={
-                    highlightId === atendimento.id
-                      ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
-                      : undefined
-                  }
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("button,select,textarea,input,a")) return;
-                    setDetailId(atendimento.id);
-                  }}
+            <EmptyState
+              title="Nenhum atendimento cadastrado ainda."
+              description="Clique em Novo atendimento para registrar o primeiro contato comercial."
+              icon={<Inbox className="size-5" />}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-700/25 transition hover:bg-teal-800 active:scale-[0.98]"
                 >
-                  <AtendimentoCard
-                    atendimento={atendimento}
-                    onOpen={(item) => setDetailId(item.id)}
-                    onStageChange={handleStageChange}
-                    onAction={handleAction}
-                    brokerOptions={brokers}
-                  />
-                </div>
-              ))}
-            </div>
-          )
-        ) : hasAtendimentos ? (
-          <EmptyState
-            title="Nenhum atendimento encontrado com os filtros atuais."
-            description="Ajuste a busca ou os filtros para ver outros registros."
-            icon={<Inbox className="size-5" />}
-          />
-        ) : (
-          <EmptyState
-            title="Nenhum atendimento cadastrado ainda."
-            description="Clique em Novo atendimento para registrar o primeiro contato comercial."
-            icon={<Inbox className="size-5" />}
-            action={
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-700/25 transition hover:bg-teal-800 active:scale-[0.98]"
-              >
-                <Plus className="size-3.5" />
-                Novo atendimento
-              </button>
-            }
-          />
-        )}
-      </section>
+                  <Plus className="size-3.5" />
+                  Novo atendimento
+                </button>
+              }
+            />
+          )}
+        </section>
+      )}
 
       <AtendimentoDetailDrawer
         atendimento={detailAtendimento}
         open={detailId !== null}
         onOpenChange={(o) => {
-          if (!o) {
-            setDetailId(null);
-            if (highlightId) {
-              navigate({
-                to: ".",
-                search: {
-                  track,
-                  clienteId: clienteIdFilter,
-                  corretorId,
-                  periodo,
-                  imobiliaria,
-                  status,
-                },
-                replace: true,
-              });
-            }
-          }
+          if (!o) setDetailId(null);
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreDetailFocus();
         }}
         onStageChange={handleStageChange}
         onAction={handleAction}
@@ -848,7 +1041,6 @@ function Page() {
           canDelete={canDeleteAttendance(session, editAtendimento)}
           onDelete={deleteEditedAtendimento}
         />
-
       ) : null}
     </div>
   );
@@ -858,6 +1050,8 @@ const BROKER_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const operationalPeriods = new Set<AtendimentoPeriodFilter>([
   "mes",
+  "hoje",
+  "sete_dias",
   "ultimos_30",
   "trimestre",
   "ano",

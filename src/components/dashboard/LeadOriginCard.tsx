@@ -18,7 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
+import { attendanceListQueryKey } from "@/hooks/useAttendances";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "@/lib/auth-mock";
 import { listAttendances } from "@/lib/attendances/attendances.functions";
@@ -101,7 +101,7 @@ export function LeadOriginCard({ className }: { className?: string }) {
   const [focused, setFocused] = useState<OriginKey | null>(null);
 
   const query = useQuery({
-    queryKey: ATTENDANCES_QUERY_KEY,
+    queryKey: attendanceListQueryKey(session?.id),
     queryFn: () => listAttendances(),
     enabled: Boolean(session),
     staleTime: 15_000,

@@ -23,7 +23,12 @@ import {
   statusToPipelineStage,
 } from "@/types/atendimento";
 import { mapCanonicalPropertyFields } from "@/lib/attendances/attendance-field-mapping";
-import { openOwnedMatch, rankMatches, type ContactMatch } from "@/lib/attendances/duplicate-detection";
+import {
+  openOwnedMatch,
+  rankMatches,
+  type ContactMatch,
+} from "@/lib/attendances/duplicate-detection";
+import { readAllAttendancePages } from "@/lib/attendances/read-all-pages";
 
 type DbRow = {
   id: string;
@@ -349,24 +354,28 @@ export const getAttendanceById = createServerFn({ method: "GET" })
     if (!asUuid(input?.id)) throw new Error("Identificador de atendimento inválido.");
     return { id: input.id };
   })
-  .handler(async ({ data, context }): Promise<
-    { status: "ok"; atendimento: Atendimento } | { status: "not_found" } | { status: "forbidden" }
-  > => {
-    const { data: row, error } = await context.supabase
-      .from("attendances")
-      .select(ATTENDANCE_SAFE_COLUMNS)
-      .eq("id", data.id)
-      .maybeSingle();
-    if (error) {
-      if (error.code === "42501" || error.message.toLowerCase().includes("row-level security")) {
-        return { status: "forbidden" };
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<
+      { status: "ok"; atendimento: Atendimento } | { status: "not_found" } | { status: "forbidden" }
+    > => {
+      const { data: row, error } = await context.supabase
+        .from("attendances")
+        .select(ATTENDANCE_SAFE_COLUMNS)
+        .eq("id", data.id)
+        .maybeSingle();
+      if (error) {
+        if (error.code === "42501" || error.message.toLowerCase().includes("row-level security")) {
+          return { status: "forbidden" };
+        }
+        throw new Error(error.message);
       }
-      throw new Error(error.message);
-    }
-    if (!row) return { status: "not_found" };
-    return { status: "ok", atendimento: rowToAtendimento(row as unknown as DbRow) };
-  });
-
+      if (!row) return { status: "not_found" };
+      return { status: "ok", atendimento: rowToAtendimento(row as unknown as DbRow) };
+    },
+  );
 
 export const listAttendances = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -375,44 +384,54 @@ export const listAttendances = createServerFn({ method: "GET" })
       context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
       context.supabase.rpc("has_role", { _user_id: context.userId, _role: "secretaria" }),
     ]);
-    let query = context.supabase
-      .from("attendances")
-      .select(ATTENDANCE_SAFE_COLUMNS)
-      .order("created_at", { ascending: false });
-    if (!isAdmin && !isSecretaria) {
-      query = query.or(`created_by.eq.${context.userId},corretor_id.eq.${context.userId}`);
-    }
-
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    const rows = (data ?? []) as unknown as DbRow[];
+    const rows = await readAllAttendancePages<DbRow>(async (from, to) => {
+      let query = context.supabase
+        .from("attendances")
+        .select(ATTENDANCE_SAFE_COLUMNS, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
+      if (!isAdmin && !isSecretaria) {
+        query = query.or(`created_by.eq.${context.userId},corretor_id.eq.${context.userId}`);
+      }
+      const page = await query.range(from, to);
+      return { ...page, data: page.data as unknown as DbRow[] | null };
+    });
     if (rows.length === 0) return [];
 
-    const { data: historyRows, error: historyError } = await context.supabase
-      .from("attendance_history")
-      .select("attendance_id, actor_id, actor_name, previous_value, new_value, source, created_at")
-      .in(
-        "attendance_id",
-        rows.map((row) => row.id),
-      )
-      .eq("event_type", "stage_change")
-      .order("created_at", { ascending: false })
-      .limit(Math.min(Math.max(rows.length * 12, 100), 1000));
-    if (historyError) throw new Error(historyError.message);
-
-    const transitions = latestStageTransitions((historyRows ?? []) as unknown as StageHistoryRow[]);
-
-    const { data: lastRows, error: lastError } = await context.supabase
-      .from("attendance_history")
-      .select("attendance_id, event_type, description, actor_name, created_at")
-      .in(
-        "attendance_id",
-        rows.map((row) => row.id),
-      )
-      .order("created_at", { ascending: false })
-      .limit(Math.min(Math.max(rows.length * 8, 100), 1500));
-    if (lastError) throw new Error(lastError.message);
-    const lastActions = latestActions((lastRows ?? []) as unknown as LastActionRow[]);
+    // Bounded presentation summaries, never the complete individual history.
+    // Batch IDs to keep IN URLs small even after loading more than one API page.
+    const transitions = new Map<string, AtendimentoStageTransition>();
+    const lastActions = new Map<string, AtendimentoUltimaAcao>();
+    for (let offset = 0; offset < rows.length; offset += 100) {
+      const ids = rows.slice(offset, offset + 100).map((row) => row.id);
+      const [historyPage, lastPage] = await Promise.all([
+        context.supabase
+          .from("attendance_history")
+          .select(
+            "attendance_id, actor_id, actor_name, previous_value, new_value, source, created_at",
+          )
+          .in("attendance_id", ids)
+          .eq("event_type", "stage_change")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(Math.min(Math.max(ids.length * 12, 100), 1000)),
+        context.supabase
+          .from("attendance_history")
+          .select("attendance_id, event_type, description, actor_name, created_at")
+          .in("attendance_id", ids)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(Math.min(Math.max(ids.length * 8, 100), 1500)),
+      ]);
+      if (historyPage.error) throw new Error(historyPage.error.message);
+      if (lastPage.error) throw new Error(lastPage.error.message);
+      for (const [id, transition] of latestStageTransitions(
+        (historyPage.data ?? []) as unknown as StageHistoryRow[],
+      ))
+        transitions.set(id, transition);
+      for (const [id, action] of latestActions((lastPage.data ?? []) as unknown as LastActionRow[]))
+        lastActions.set(id, action);
+    }
 
     return rows.map((row) =>
       rowToAtendimento(row, transitions.get(row.id), lastActions.get(row.id)),
@@ -461,7 +480,10 @@ export const createAttendance = createServerFn({ method: "POST" })
     ]);
     if (!isAdmin.data && !isSecretaria.data) {
       const owned = openOwnedMatch(
-        await lookupContactMatches(context.supabase as never, { phone: data.telefone, email: data.email }),
+        await lookupContactMatches(context.supabase as never, {
+          phone: data.telefone,
+          email: data.email,
+        }),
       );
       if (owned && owned.corretorId !== context.userId) {
         throw new Error(
@@ -582,8 +604,6 @@ export const updateAttendance = createServerFn({ method: "POST" })
       return rowToAtendimento(unchanged as unknown as DbRow);
     }
 
-
-
     let { data: updated, error } = await context.supabase
 
       .from("attendances")
@@ -692,29 +712,16 @@ export const listAttendanceHistory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { attendanceId: string }) => d)
   .handler(async ({ data, context }): Promise<AttendanceHistoryEvent[]> => {
-    const { data: rows, error } = await (
-      context.supabase as never as {
-        from: (t: string) => {
-          select: (s: string) => {
-            eq: (
-              c: string,
-              v: string,
-            ) => {
-              order: (
-                c: string,
-                o: { ascending: boolean },
-              ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
-            };
-          };
-        };
-      }
-    )
-      .from("attendance_history")
-      .select("*")
-      .eq("attendance_id", data.attendanceId)
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((rows ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    const rows = await readAllAttendancePages((from, to) =>
+      context.supabase
+        .from("attendance_history")
+        .select("*", { count: "exact" })
+        .eq("attendance_id", data.attendanceId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    );
+    return rows.map((r) => ({
       id: r.id as string,
       attendanceId: r.attendance_id as string,
       clientId: (r.client_id as string | null) ?? null,
@@ -775,7 +782,12 @@ type MatchRpcRow = {
 };
 
 async function lookupContactMatches(
-  supabase: { rpc: (fn: never, args: never) => PromiseLike<{ data: unknown; error: { message: string } | null }> },
+  supabase: {
+    rpc: (
+      fn: never,
+      args: never,
+    ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  },
   input: { phone?: string; email?: string; document?: string },
 ): Promise<ContactMatch[]> {
   const phone = input.phone ? digits(input.phone) : "";
