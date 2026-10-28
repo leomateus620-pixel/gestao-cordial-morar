@@ -73,6 +73,56 @@ export type Database = {
           },
         ]
       }
+      ad_metric_reconciliations: {
+        Row: {
+          applied_at: string | null
+          campaign_id: string
+          first_seen_at: string
+          id: string
+          missing_dates: Json
+          prior_metrics: Json
+          range_end: string
+          range_start: string
+          response_hash: string
+          state: string
+          verified_at: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          campaign_id: string
+          first_seen_at?: string
+          id?: string
+          missing_dates: Json
+          prior_metrics: Json
+          range_end: string
+          range_start: string
+          response_hash: string
+          state?: string
+          verified_at?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          campaign_id?: string
+          first_seen_at?: string
+          id?: string
+          missing_dates?: Json
+          prior_metrics?: Json
+          range_end?: string
+          range_start?: string
+          response_hash?: string
+          state?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_metric_reconciliations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_oauth_states: {
         Row: {
           expires_at: string
@@ -4023,6 +4073,30 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_action_grants: {
+        Row: {
+          action: string
+          granted_at: string
+          imobiliaria: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          granted_at?: string
+          imobiliaria: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          granted_at?: string
+          imobiliaria?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       marketing_campaigns: {
         Row: {
           ad_account_id: string | null
@@ -4214,6 +4288,482 @@ export type Database = {
           },
         ]
       }
+      marketing_reports: {
+        Row: {
+          author_id: string
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          financial: boolean
+          id: string
+          imobiliaria: string
+          kind: string
+          row_count: number
+          scope: Json
+          snapshot: Json
+          snapshot_hash: string
+          status: string
+          storage_path: string | null
+          version: number
+        }
+        Insert: {
+          author_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          financial: boolean
+          id?: string
+          imobiliaria: string
+          kind: string
+          row_count: number
+          scope: Json
+          snapshot: Json
+          snapshot_hash: string
+          status?: string
+          storage_path?: string | null
+          version?: number
+        }
+        Update: {
+          author_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          financial?: boolean
+          id?: string
+          imobiliaria?: string
+          kind?: string
+          row_count?: number
+          scope?: Json
+          snapshot?: Json
+          snapshot_hash?: string
+          status?: string
+          storage_path?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      meta_ad_command_events: {
+        Row: {
+          actor_id: string
+          command_id: string
+          created_at: string
+          detail: Json
+          id: number
+          stage: string
+        }
+        Insert: {
+          actor_id: string
+          command_id: string
+          created_at?: string
+          detail?: Json
+          id?: never
+          stage: string
+        }
+        Update: {
+          actor_id?: string
+          command_id?: string
+          created_at?: string
+          detail?: Json
+          id?: never
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ad_command_events_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "meta_ad_commands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_ad_commands: {
+        Row: {
+          actor_id: string
+          connection_id: string
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          fence: number
+          id: string
+          imobiliaria: string
+          intent_key: string
+          kind: string
+          last_error: string | null
+          lease_until: string | null
+          payload: Json
+          state: string
+          steps: Json
+          updated_at: string
+          worker_id: string | null
+        }
+        Insert: {
+          actor_id: string
+          connection_id: string
+          created_at?: string
+          draft_id: string
+          draft_revision: number
+          fence?: number
+          id?: string
+          imobiliaria: string
+          intent_key: string
+          kind: string
+          last_error?: string | null
+          lease_until?: string | null
+          payload?: Json
+          state?: string
+          steps?: Json
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Update: {
+          actor_id?: string
+          connection_id?: string
+          created_at?: string
+          draft_id?: string
+          draft_revision?: number
+          fence?: number
+          id?: string
+          imobiliaria?: string
+          intent_key?: string
+          kind?: string
+          last_error?: string | null
+          lease_until?: string | null
+          payload?: Json
+          state?: string
+          steps?: Json
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ad_commands_draft_id_connection_id_imobiliaria_fkey"
+            columns: ["draft_id", "connection_id", "imobiliaria"]
+            isOneToOne: false
+            referencedRelation: "meta_ad_drafts"
+            referencedColumns: ["id", "connection_id", "imobiliaria"]
+          },
+        ]
+      }
+      meta_ad_drafts: {
+        Row: {
+          account_id: string
+          connection_id: string
+          created_at: string
+          created_by: string
+          id: string
+          imobiliaria: string
+          page_id: string
+          payload: Json
+          revision: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          connection_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          imobiliaria: string
+          page_id: string
+          payload: Json
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          connection_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          imobiliaria?: string
+          page_id?: string
+          payload?: Json
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ad_drafts_connection_id_imobiliaria_fkey"
+            columns: ["connection_id", "imobiliaria"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id", "imobiliaria"]
+          },
+        ]
+      }
+      meta_ad_hierarchy: {
+        Row: {
+          account_id: string
+          configured_status: string | null
+          connection_id: string
+          effective_status: string | null
+          external_id: string
+          imobiliaria: string
+          level: string
+          name: string
+          parent_external_id: string | null
+          read_at: string
+          revision_hash: string
+          snapshot: Json
+        }
+        Insert: {
+          account_id: string
+          configured_status?: string | null
+          connection_id: string
+          effective_status?: string | null
+          external_id: string
+          imobiliaria: string
+          level: string
+          name: string
+          parent_external_id?: string | null
+          read_at?: string
+          revision_hash: string
+          snapshot?: Json
+        }
+        Update: {
+          account_id?: string
+          configured_status?: string | null
+          connection_id?: string
+          effective_status?: string | null
+          external_id?: string
+          imobiliaria?: string
+          level?: string
+          name?: string
+          parent_external_id?: string | null
+          read_at?: string
+          revision_hash?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ad_hierarchy_connection_id_imobiliaria_fkey"
+            columns: ["connection_id", "imobiliaria"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id", "imobiliaria"]
+          },
+        ]
+      }
+      meta_entity_insights: {
+        Row: {
+          breakdown: Json
+          date_start: string
+          date_stop: string
+          entity_id: string
+          job_id: string
+          metrics: Json
+        }
+        Insert: {
+          breakdown?: Json
+          date_start: string
+          date_stop: string
+          entity_id: string
+          job_id: string
+          metrics: Json
+        }
+        Update: {
+          breakdown?: Json
+          date_start?: string
+          date_stop?: string
+          entity_id?: string
+          job_id?: string
+          metrics?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_entity_insights_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "meta_insight_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_insight_jobs: {
+        Row: {
+          account_id: string
+          after_cursor: string | null
+          api_version: string
+          attempts: number
+          attribution_requested: Json
+          breakdown: string
+          campaign_id: string
+          completed_at: string | null
+          connection_id: string
+          coverage: string
+          created_at: string
+          currency: string | null
+          cursors: string[]
+          diagnostics: Json | null
+          error_code: string | null
+          external_campaign_id: string
+          grain: string
+          id: string
+          imobiliaria: string
+          lease_until: string | null
+          level: string
+          next_attempt_at: string
+          pages: number
+          progress: number
+          report_run_id: string | null
+          requested_by: string
+          since: string
+          status: string
+          timezone: string | null
+          until: string
+          updated_at: string
+          worker_id: string | null
+        }
+        Insert: {
+          account_id: string
+          after_cursor?: string | null
+          api_version: string
+          attempts?: number
+          attribution_requested?: Json
+          breakdown?: string
+          campaign_id: string
+          completed_at?: string | null
+          connection_id: string
+          coverage?: string
+          created_at?: string
+          currency?: string | null
+          cursors?: string[]
+          diagnostics?: Json | null
+          error_code?: string | null
+          external_campaign_id: string
+          grain: string
+          id?: string
+          imobiliaria: string
+          lease_until?: string | null
+          level: string
+          next_attempt_at?: string
+          pages?: number
+          progress?: number
+          report_run_id?: string | null
+          requested_by: string
+          since: string
+          status?: string
+          timezone?: string | null
+          until: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          after_cursor?: string | null
+          api_version?: string
+          attempts?: number
+          attribution_requested?: Json
+          breakdown?: string
+          campaign_id?: string
+          completed_at?: string | null
+          connection_id?: string
+          coverage?: string
+          created_at?: string
+          currency?: string | null
+          cursors?: string[]
+          diagnostics?: Json | null
+          error_code?: string | null
+          external_campaign_id?: string
+          grain?: string
+          id?: string
+          imobiliaria?: string
+          lease_until?: string | null
+          level?: string
+          next_attempt_at?: string
+          pages?: number
+          progress?: number
+          report_run_id?: string | null
+          requested_by?: string
+          since?: string
+          status?: string
+          timezone?: string | null
+          until?: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_insight_jobs_campaign_id_connection_id_account_id_imo_fkey"
+            columns: [
+              "campaign_id",
+              "connection_id",
+              "account_id",
+              "imobiliaria",
+              "external_campaign_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: [
+              "id",
+              "connection_id",
+              "external_account_id",
+              "imobiliaria",
+              "external_campaign_id",
+            ]
+          },
+          {
+            foreignKeyName: "meta_insight_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_insight_jobs_connection_id_account_id_fkey"
+            columns: ["connection_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["connection_id", "external_account_id"]
+          },
+          {
+            foreignKeyName: "meta_insight_jobs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_lead_events: {
+        Row: {
+          id: string
+          imobiliaria: string | null
+          occurred_at: string
+          previous_status: string | null
+          status: string
+          submission_id: string
+        }
+        Insert: {
+          id?: string
+          imobiliaria?: string | null
+          occurred_at?: string
+          previous_status?: string | null
+          status: string
+          submission_id: string
+        }
+        Update: {
+          id?: string
+          imobiliaria?: string | null
+          occurred_at?: string
+          previous_status?: string | null
+          status?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_events_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "meta_lead_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_lead_form_mappings: {
         Row: {
           app_id: string
@@ -4329,6 +4879,74 @@ export type Database = {
           },
         ]
       }
+      meta_lead_recovery_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          cursor_after: string | null
+          cursor_history: string[]
+          error_code: string | null
+          id: string
+          lease_until: string | null
+          mapping_id: string
+          next_attempt_at: string
+          pages: number
+          processed: number
+          range_end: string
+          range_start: string
+          requested_by: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          cursor_after?: string | null
+          cursor_history?: string[]
+          error_code?: string | null
+          id?: string
+          lease_until?: string | null
+          mapping_id: string
+          next_attempt_at?: string
+          pages?: number
+          processed?: number
+          range_end: string
+          range_start: string
+          requested_by: string
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          cursor_after?: string | null
+          cursor_history?: string[]
+          error_code?: string | null
+          id?: string
+          lease_until?: string | null
+          mapping_id?: string
+          next_attempt_at?: string
+          pages?: number
+          processed?: number
+          range_end?: string
+          range_start?: string
+          requested_by?: string
+          status?: string
+          updated_at?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_recovery_jobs_mapping_id_fkey"
+            columns: ["mapping_id"]
+            isOneToOne: false
+            referencedRelation: "meta_lead_form_mappings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_lead_submissions: {
         Row: {
           ad_id: string | null
@@ -4348,6 +4966,7 @@ export type Database = {
           full_name: string | null
           id: string
           imobiliaria: string | null
+          is_synthetic: boolean
           last_error: string | null
           leadgen_id: string
           lease_until: string | null
@@ -4379,6 +4998,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           imobiliaria?: string | null
+          is_synthetic?: boolean
           last_error?: string | null
           leadgen_id: string
           lease_until?: string | null
@@ -4410,6 +5030,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           imobiliaria?: string | null
+          is_synthetic?: boolean
           last_error?: string | null
           leadgen_id?: string
           lease_until?: string | null
@@ -4458,6 +5079,85 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ad_platform_connections"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_lead_test_authorizations: {
+        Row: {
+          app_id: string
+          authorized_by: string
+          broker_id: string
+          connection_id: string
+          created_at: string
+          enabled: boolean
+          expires_at: string
+          field_mapping: Json
+          finalidade: string
+          form_id: string
+          id: string
+          imobiliaria: string
+          leadgen_id: string
+          page_id: string
+          tipo_imovel: string
+          verified_at: string
+        }
+        Insert: {
+          app_id: string
+          authorized_by: string
+          broker_id: string
+          connection_id: string
+          created_at?: string
+          enabled?: boolean
+          expires_at: string
+          field_mapping?: Json
+          finalidade: string
+          form_id: string
+          id?: string
+          imobiliaria: string
+          leadgen_id: string
+          page_id: string
+          tipo_imovel: string
+          verified_at: string
+        }
+        Update: {
+          app_id?: string
+          authorized_by?: string
+          broker_id?: string
+          connection_id?: string
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string
+          field_mapping?: Json
+          finalidade?: string
+          form_id?: string
+          id?: string
+          imobiliaria?: string
+          leadgen_id?: string
+          page_id?: string
+          tipo_imovel?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_lead_test_authorizations_authorized_by_fkey"
+            columns: ["authorized_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_test_authorizations_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meta_lead_test_authorizations_connection_id_imobiliaria_fkey"
+            columns: ["connection_id", "imobiliaria"]
+            isOneToOne: false
+            referencedRelation: "ad_platform_connections"
+            referencedColumns: ["id", "imobiliaria"]
           },
         ]
       }
@@ -11341,6 +12041,11 @@ export type Database = {
         Returns: Json
       }
       mark_notification_read: { Args: { _id: string }; Returns: Json }
+      marketing_action_permissions: { Args: never; Returns: Json }
+      marketing_actor_can_act: {
+        Args: { p_action: string; p_actor: string; p_agency?: string }
+        Returns: boolean
+      }
       marketing_campaigns_safe: {
         Args: {
           p_account_id?: string
@@ -11359,7 +12064,24 @@ export type Database = {
         }
         Returns: Json
       }
+      marketing_can_act: {
+        Args: { p_action: string; p_agency?: string }
+        Returns: boolean
+      }
       marketing_can_operate: { Args: { p_agency: string }; Returns: boolean }
+      marketing_can_read: { Args: { p_agency: string }; Returns: boolean }
+      marketing_report_snapshot: {
+        Args: {
+          p_account?: string
+          p_agency: string
+          p_platform?: string
+          p_search?: string
+          p_since: string
+          p_status?: string
+          p_until: string
+        }
+        Returns: Json
+      }
       marketing_summary_for_period: {
         Args: {
           p_financial: boolean
@@ -11370,9 +12092,291 @@ export type Database = {
         }
         Returns: Json
       }
+      meta_ad_command_begin: {
+        Args: {
+          p_actor: string
+          p_draft: string
+          p_intent: string
+          p_kind: string
+          p_payload: Json
+          p_revision: number
+        }
+        Returns: {
+          actor_id: string
+          connection_id: string
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          fence: number
+          id: string
+          imobiliaria: string
+          intent_key: string
+          kind: string
+          last_error: string | null
+          lease_until: string | null
+          payload: Json
+          state: string
+          steps: Json
+          updated_at: string
+          worker_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meta_ad_commands"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meta_ad_command_claim: {
+        Args: { p_actor: string; p_id: string; p_worker: string }
+        Returns: {
+          actor_id: string
+          connection_id: string
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          fence: number
+          id: string
+          imobiliaria: string
+          intent_key: string
+          kind: string
+          last_error: string | null
+          lease_until: string | null
+          payload: Json
+          state: string
+          steps: Json
+          updated_at: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_ad_commands"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      meta_ad_command_finish: {
+        Args: {
+          p_actor: string
+          p_error: string
+          p_fence: number
+          p_id: string
+          p_state: string
+          p_worker: string
+        }
+        Returns: {
+          actor_id: string
+          connection_id: string
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          fence: number
+          id: string
+          imobiliaria: string
+          intent_key: string
+          kind: string
+          last_error: string | null
+          lease_until: string | null
+          payload: Json
+          state: string
+          steps: Json
+          updated_at: string
+          worker_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meta_ad_commands"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meta_ad_command_reconcile: {
+        Args: { p_actor: string; p_id: string; p_result: Json; p_step: string }
+        Returns: undefined
+      }
+      meta_ad_command_step: {
+        Args: {
+          p_actor: string
+          p_fence: number
+          p_id: string
+          p_result: Json
+          p_step: string
+          p_worker: string
+        }
+        Returns: {
+          actor_id: string
+          connection_id: string
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          fence: number
+          id: string
+          imobiliaria: string
+          intent_key: string
+          kind: string
+          last_error: string | null
+          lease_until: string | null
+          payload: Json
+          state: string
+          steps: Json
+          updated_at: string
+          worker_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meta_ad_commands"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meta_ad_draft_save: {
+        Args: {
+          p_actor: string
+          p_agency: string
+          p_connection: string
+          p_id: string
+          p_payload: Json
+          p_revision: number
+        }
+        Returns: {
+          account_id: string
+          connection_id: string
+          created_at: string
+          created_by: string
+          id: string
+          imobiliaria: string
+          page_id: string
+          payload: Json
+          revision: number
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meta_ad_drafts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      meta_ads_assert_action: {
+        Args: { p_action: string; p_actor: string; p_agency: string }
+        Returns: undefined
+      }
+      meta_ads_assert_actor: {
+        Args: { p_actor: string; p_agency: string }
+        Returns: undefined
+      }
       meta_ads_sync_dispatch: { Args: never; Returns: number }
       meta_ads_worker_active: { Args: never; Returns: boolean }
       meta_ads_worker_dispatch: { Args: never; Returns: number }
+      meta_insight_append: {
+        Args: {
+          p_expected_after: string
+          p_id: string
+          p_next_after: string
+          p_rows: Json
+          p_worker: string
+        }
+        Returns: undefined
+      }
+      meta_insight_cancel: {
+        Args: { p_actor: string; p_id: string }
+        Returns: undefined
+      }
+      meta_insight_checkpoint: {
+        Args: {
+          p_currency?: string
+          p_diagnostics?: Json
+          p_error?: string
+          p_id: string
+          p_progress?: number
+          p_report_id?: string
+          p_status: string
+          p_timezone?: string
+          p_worker: string
+        }
+        Returns: undefined
+      }
+      meta_insight_claim: {
+        Args: { p_worker: string }
+        Returns: {
+          account_id: string
+          after_cursor: string | null
+          api_version: string
+          attempts: number
+          attribution_requested: Json
+          breakdown: string
+          campaign_id: string
+          completed_at: string | null
+          connection_id: string
+          coverage: string
+          created_at: string
+          currency: string | null
+          cursors: string[]
+          diagnostics: Json | null
+          error_code: string | null
+          external_campaign_id: string
+          grain: string
+          id: string
+          imobiliaria: string
+          lease_until: string | null
+          level: string
+          next_attempt_at: string
+          pages: number
+          progress: number
+          report_run_id: string | null
+          requested_by: string
+          since: string
+          status: string
+          timezone: string | null
+          until: string
+          updated_at: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_insight_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      meta_insight_enqueue: {
+        Args: {
+          p_actor: string
+          p_api_version: string
+          p_breakdown: string
+          p_campaign: string
+          p_grain: string
+          p_level: string
+          p_since: string
+          p_until: string
+        }
+        Returns: string
+      }
+      meta_insight_export_snapshot: { Args: { p_job: string }; Returns: Json }
+      meta_insight_reconcile: {
+        Args: {
+          p_actor: string
+          p_currency: string
+          p_id: string
+          p_report_id: string
+          p_timezone: string
+        }
+        Returns: undefined
+      }
+      meta_insight_snapshot: {
+        Args: {
+          p_breakdown: string
+          p_campaign: string
+          p_grain: string
+          p_level: string
+          p_page?: number
+          p_page_size?: number
+          p_since: string
+          p_until: string
+        }
+        Returns: Json
+      }
       meta_lead_assign: {
         Args: { p_actor_id: string; p_broker_id: string; p_id: string }
         Returns: undefined
@@ -11397,6 +12401,7 @@ export type Database = {
           full_name: string | null
           id: string
           imobiliaria: string | null
+          is_synthetic: boolean
           last_error: string | null
           leadgen_id: string
           lease_until: string | null
@@ -11421,15 +12426,119 @@ export type Database = {
         Args: { p_fields: Json; p_id: string; p_worker_id: string }
         Returns: string
       }
+      meta_lead_connection_for_event: {
+        Args: {
+          p_app_id: string
+          p_form_id: string
+          p_leadgen_id: string
+          p_page_id: string
+        }
+        Returns: string
+      }
+      meta_lead_effective_mapping: {
+        Args: {
+          p_app_id: string
+          p_connection_id: string
+          p_form_id: string
+          p_leadgen_id: string
+          p_page_id: string
+        }
+        Returns: {
+          app_id: string
+          broker_id: string | null
+          connection_id: string
+          created_by: string
+          enabled: boolean
+          field_mapping: Json
+          finalidade: string | null
+          form_id: string
+          id: string
+          imobiliaria: string
+          page_id: string
+          property_id: string | null
+          tipo_imovel: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_lead_form_mappings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       meta_lead_ingest: {
         Args: { p_app_id: string; p_events: Json }
         Returns: number
+      }
+      meta_lead_mapping_for_submission: {
+        Args: { p_form_id: string; p_id: string; p_worker_id: string }
+        Returns: Json
+      }
+      meta_lead_recovery_claim: {
+        Args: { p_worker: string }
+        Returns: {
+          attempts: number
+          created_at: string
+          cursor_after: string | null
+          cursor_history: string[]
+          error_code: string | null
+          id: string
+          lease_until: string | null
+          mapping_id: string
+          next_attempt_at: string
+          pages: number
+          processed: number
+          range_end: string
+          range_start: string
+          requested_by: string
+          status: string
+          updated_at: string
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_lead_recovery_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      meta_lead_recovery_commit: {
+        Args: {
+          p_after: string
+          p_events: Json
+          p_job: string
+          p_worker: string
+        }
+        Returns: undefined
+      }
+      meta_lead_recovery_request: {
+        Args: { p_mapping_id: string; p_since: string; p_until: string }
+        Returns: string
       }
       meta_lead_resolve: {
         Args: { p_actor_id: string; p_attendance_id: string; p_id: string }
         Returns: undefined
       }
       meta_lead_retry: { Args: { p_id: string }; Returns: undefined }
+      meta_lead_test_authorize: {
+        Args: {
+          p_actor: string
+          p_broker_id: string
+          p_connection_id: string
+          p_expires_at: string
+          p_field_mapping: Json
+          p_finalidade: string
+          p_form_id: string
+          p_leadgen_id: string
+          p_tipo_imovel: string
+          p_verified_at: string
+        }
+        Returns: string
+      }
+      meta_lead_test_broker_allowed: {
+        Args: { p_actor: string; p_agency: string; p_broker: string }
+        Returns: boolean
+      }
       meta_phone_identity: { Args: { p_phone: string }; Returns: string }
       morar_site_admin_public_list: {
         Args: never
