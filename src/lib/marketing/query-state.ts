@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { comparisonRanges, currentCompetence } from "@/services/marketing-insights";
 
-export const marketingSearchSchema = z.object({
+const marketingSearchObject = z.object({
   area: z.enum(["overview", "campaigns", "leads", "reports"]).catch("overview"),
   agency: z.enum(["todas", "cordial", "morar"]).optional(),
   competence: z
@@ -30,6 +30,19 @@ export const marketingSearchSchema = z.object({
   leadBrokerId: z.union([z.string().uuid(), z.literal("")]).catch(""),
   leadPage: z.coerce.number().int().min(1).max(10000).catch(1),
   sort: z.enum(["leads", "name", "updated"]).catch("leads"),
+});
+/** A restored Leads URL must apply the same Meta scope as entering through the tab. */
+export const marketingSearchSchema = marketingSearchObject.transform((query) => {
+  if (query.area !== "leads") return query;
+  const incompatible =
+    query.platform === "google" ||
+    query.platform === "manual" ||
+    (query.platform !== "meta" && Boolean(query.accountId));
+  return {
+    ...query,
+    platform: "meta" as const,
+    ...(incompatible ? { accountId: "", page: 1, leadPage: 1 } : {}),
+  };
 });
 export type MarketingDashboardQuery = z.infer<typeof marketingSearchSchema>;
 export function changeMarketingQuery(
@@ -64,12 +77,12 @@ export function changeMarketingQuery(
     (key) =>
       key in patch && patch[key as keyof typeof patch] !== current[key as keyof typeof current],
   );
-  return {
+  return marketingSearchSchema.parse({
     ...current,
     ...(resetCampaignPage ? { page: 1 } : {}),
     ...(resetLeadPage ? { leadPage: 1 } : {}),
     ...patch,
-  };
+  });
 }
 
 export function marketingQueryRanges(

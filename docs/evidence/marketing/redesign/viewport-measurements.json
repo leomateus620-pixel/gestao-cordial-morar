@@ -1,0 +1,146 @@
+{
+  "baseline": [
+    {
+      "version": "before",
+      "controlRegion": 393.7736701965332,
+      "headerTop": 133.42803955078125,
+      "height": 1000,
+      "kpiTop": 583.196044921875,
+      "overflow": false,
+      "width": 1440
+    },
+    {
+      "version": "before",
+      "controlRegion": 533.7452735900879,
+      "headerTop": 173.4232940673828,
+      "height": 844,
+      "kpiTop": 771.1553344726562,
+      "overflow": false,
+      "width": 390
+    }
+  ],
+  "after": [
+    {
+      "version": "after",
+      "sidebar": "open",
+      "headerHeight": 185.7907257080078,
+      "headerTop": 231.23106384277344,
+      "height": 844,
+      "kpiTop": 433.0208435058594,
+      "localAgencySelectors": 0,
+      "scrollWidth": 390,
+      "searchInputs": 1,
+      "width": 390
+    },
+    {
+      "version": "after",
+      "sidebar": "closed",
+      "headerHeight": 185.7907257080078,
+      "headerTop": 231.23106384277344,
+      "height": 844,
+      "kpiTop": 433.0208435058594,
+      "localAgencySelectors": 0,
+      "scrollWidth": 390,
+      "searchInputs": 1,
+      "width": 390
+    },
+    {
+      "version": "after",
+      "sidebar": "open",
+      "headerHeight": 189.8011474609375,
+      "headerTop": 211.23580932617188,
+      "height": 1024,
+      "kpiTop": 421.0369567871094,
+      "localAgencySelectors": 0,
+      "scrollWidth": 768,
+      "searchInputs": 1,
+      "width": 768
+    },
+    {
+      "version": "after",
+      "sidebar": "closed",
+      "headerHeight": 189.8011474609375,
+      "headerTop": 211.23580932617188,
+      "height": 1024,
+      "kpiTop": 421.0369567871094,
+      "localAgencySelectors": 0,
+      "scrollWidth": 768,
+      "searchInputs": 1,
+      "width": 768
+    },
+    {
+      "version": "after",
+      "sidebar": "open",
+      "headerHeight": 181.80398559570312,
+      "headerTop": 133.42803955078125,
+      "height": 900,
+      "kpiTop": 335.2320251464844,
+      "localAgencySelectors": 0,
+      "scrollWidth": 1280,
+      "searchInputs": 1,
+      "width": 1280
+    },
+    {
+      "version": "after",
+      "sidebar": "closed",
+      "headerHeight": 133.80682373046875,
+      "headerTop": 133.42803955078125,
+      "height": 900,
+      "kpiTop": 287.23486328125,
+      "localAgencySelectors": 0,
+      "scrollWidth": 1280,
+      "searchInputs": 1,
+      "width": 1280
+    },
+    {
+      "version": "after",
+      "sidebar": "open",
+      "headerHeight": 181.80398559570312,
+      "headerTop": 133.42803955078125,
+      "height": 1000,
+      "kpiTop": 335.2320251464844,
+      "localAgencySelectors": 0,
+      "scrollWidth": 1440,
+      "searchInputs": 1,
+      "width": 1440
+    },
+    {
+      "version": "after",
+      "sidebar": "closed",
+      "headerHeight": 133.80682373046875,
+      "headerTop": 133.42803955078125,
+      "height": 1000,
+      "kpiTop": 287.23486328125,
+      "localAgencySelectors": 0,
+      "scrollWidth": 1440,
+      "searchInputs": 1,
+      "width": 1440
+    },
+    {
+      "version": "after",
+      "sidebar": "open",
+      "headerHeight": 133.80682373046875,
+      "headerTop": 133.42803955078125,
+      "height": 1080,
+      "kpiTop": 287.23486328125,
+      "localAgencySelectors": 0,
+      "scrollWidth": 1920,
+      "searchInputs": 1,
+      "width": 1920
+    },
+    {
+      "version": "after",
+      "sidebar": "closed",
+      "headerHeight": 133.80682373046875,
+      "headerTop": 133.42803955078125,
+      "height": 1080,
+      "kpiTop": 287.23486328125,
+      "localAgencySelectors": 0,
+      "scrollWidth": 1920,
+      "searchInputs": 1,
+      "width": 1920
+    }
+  ],
+  "browserZoom": 1.65,
+  "captureNormalization": "Viewport compensated by1.65 and verified via innerWidth; screenshot clip normalized by1/1.65. Shell synthetic; product components real."
+}

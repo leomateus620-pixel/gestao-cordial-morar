@@ -1,3 +1,60 @@
+# QA de design — Marketing
+
+Data: 28/10/2026.
+
+Source visual truth: `/Users/leonardo/Downloads/Painel de marketing com campanhas e leads.png` (1552 × 1013 pixels).
+
+Implementation screenshot: `docs/evidence/marketing/redesign/reference-match-1552.jpg` (1552 × 1013 pixels; viewport CSS confirmado de 1552 × 1013). Comparação principal com sidebar recolhida, Cordial/Meta, visão geral de outubro/2026. O conteúdo numérico é sintético identificado; não reproduz os números ilustrativos da referência. A imagem e a captura foram abertas juntas na revisão final.
+
+A escala nativa do Browser interno era 1,65; viewport físico compensado e screenshot normalizado para 1 pixel por CSS px. Capturas adicionais em 390, 768, 1280, 1440 e 1920 px com sidebar aberta/recolhida estão em `docs/evidence/marketing/redesign`. O shell sintético conserva a geometria do produto; não é uma prova da aplicação autenticada de produção.
+
+## Resultado da comparação
+
+Nenhum P0/P1/P2 visual pendente nas superfícies inspecionadas. A composição segue o alvo com quatro KPIs, gráfico principal amplo, insight em faixa e resultados compactos. As alterações posteriores do usuário são intencionais: busca e Cordial/Morar só nos slots superiores existentes; status/filtros acima das abas; gráfico com maior presença visual e fundo próprio.
+
+| Superfície obrigatória   | Verificação e decisão                                                                                                                                                                                                                                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fontes e tipografia      | Reutilizados Manrope/Sora e pesos do produto. Título local 24–28 px; gráfico com título display e valor selecionado em 28–30 px; metadados menores com hierarquia clara. Valores tabulares e nomes completos nas fichas/menus. Rótulos deixaram de colapsar em botões sem texto no celular.                                            |
+| Espaçamento e composição | Região local 181,8 px a 1440 com sidebar aberta, contra 393,8 px antes. Controles quebram por conteúdo; nenhum painel alto acompanha artificialmente o gráfico. Tabela tem recipiente próprio e números à direita; nenhuma página excedeu a largura CSS da matriz.                                                                     |
+| Cores e tokens           | Identidade azul-petróleo/cobre mantida. Gráfico em superfície clara sólida com plotagem mais clara, grade sutil, série atual azul e anterior cobre tracejado. Amostra de contraste da linha azul/plot ~4,45:1 e cobre/plot ~3,11:1; texto principal do gráfico ~6,54:1. Isto é cálculo de cores-fonte, sem afirmar auditoria completa. |
+| Imagens, assets e ícones | O conteúdo redesenhado não exige fotos/ilustrações. Recharts produz a visualização dos dados; ícones Lucide e primitives existentes são reais. Nenhuma imagem gerada, logo inventado ou arte que substitua assets do produto. Elementos globais do shell são identificados como contexto sintético.                                    |
+| Texto e conteúdo         | Removidas faixas permanentes com webhook/callback/fuso técnico. “Nesta página” e cobertura dos dias identificam o gráfico. Zero, ausência, parcialidade e fila permanecem distintos; tooltip mostra datas reais. Erro e tarefas pendentes seguem visíveis.                                                                             |
+
+A comparação de regiões foi feita sobre cabeçalho/filtros, legendas/destaque do gráfico, rótulos em mobile e tabela/ficha usando as capturas da matriz e o DOM observado. Esses elementos estavam legíveis nas imagens de 1x; não foi necessário criar recortes raster adicionais. Não se avaliou fidelidade de números ilustrativos nem se redesenhou a navegação global.
+
+## Histórico de correções
+
+1. P2: cabeçalho desktop inicialmente excedia a meta e ações formavam linha isolada. Ações foram realocadas; versões finais em `after-shell-1440-open.jpg` e `viewport-measurements.json`.
+2. P2: busca e seletores de Leads encolhiam demais em 390 px. Busca foi integrada ao slot superior conforme o usuário; filtros receberam grid de duas colunas e responsável adicional. Evidências: `leads-390.jpg` e `filters-390.jpg`.
+3. P2: URL direta de Leads podia manter plataforma/conta incompatível. Schema e transições normalizam Meta, limpando contas não comprovadas. Evidência: `leads-deep-link-1440.jpg`, testes de estado e leitura no navegador.
+4. P2: intervalo inválido restaurado pela URL usava mês silenciosamente. Aviso junto ao período e edição dos valores originais foram acrescentados; `invalid-period-1440.jpg`.
+5. P2: foco ao fechar filtros precisava de acionador explícito. Ref e restauração foram conferidas; operações/ficha também foram fechadas e verificadas depois da animação.
+6. P2: destaque financeiro podia ignorar campanha sem observação diária. Cobertura agora exige todas as campanhas daquele dia; investimento/CPL indisponíveis com lacuna. Três testes novos cobrem campanha ausente, dia ausente e zero observado.
+7. Ajustes finais de direção: controles contextuais foram colocados acima das abas, busca/agência não se repetem e o gráfico ganhou superfície, pontos, tipografia e tooltip mais ricos. Capturas finais substituíram as intermediárias.
+
+## Interações e limites
+
+Exercitados busca única, troca de imobiliária, status por teclado e remoção de chip, calendário com validação/aplicação conjunta, painel móvel, operações lazy, ficha e seleção de nível, métrica/tooltip por teclado, geração sintética em fila com download desabilitado, perfis sem finanças, nomes longos, paginação, vazio, erro e sincronização pendente. Console da aba limpa conferido sem erros finais.
+
+Reflow equivalente a 200% foi exercitado com 720 CSS px exportados em 1440 px sem overflow; o zoom nativo de 200% não foi comprovado. Auditoria completa de acessibilidade, navegador autenticado de produção, chamadas Meta e downloads privados reais ficam fora desta evidência. Essa limitação está explícita no README e não impede a avaliação visual local.
+
+## Checklist de implementação
+
+- [x] Componentes ativos e estados reais reutilizados.
+- [x] Busca/agência únicas no topo; status/filtros acima da navegação local.
+- [x] Gráfico com comparação verdadeira, lacunas e escopo explícito.
+- [x] Leads, relatórios e operações preservados com acesso e lazy loading.
+- [x] Capturas antes/depois, matriz e medições salvas.
+- [x] Typecheck, testes pertinentes, lint alvo e build executados.
+
+P3: validar em uma sessão real autorizada as variações de volume, moedas e latência que fixtures não representam. Não há alegação de ganho de desempenho/produtividade.
+
+final result: passed
+
+---
+
+# Histórico de revisões anteriores
+
 # Sidebar — organização da locação · 20/10/2026
 
 final result: passed

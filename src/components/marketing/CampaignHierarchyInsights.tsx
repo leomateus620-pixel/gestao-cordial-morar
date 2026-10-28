@@ -2,8 +2,31 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Info,
+  MoreHorizontal,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSession } from "@/lib/auth-mock";
 import {
   listMetaEntityInsights,
@@ -106,90 +129,170 @@ export function CampaignHierarchyInsights({
   const active =
     query.data?.job &&
     ["queued", "submitting", "polling", "collecting"].includes(query.data.job.status);
+  function changeLevel(next: EntityInsightScope["level"]) {
+    setLevel(next);
+    setPage(1);
+  }
+  const rangeLabel = (date: string) =>
+    new Date(`${date}T12:00:00Z`).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      timeZone: "UTC",
+    });
   return (
-    <section className="mt-5 space-y-4 border-t py-4" aria-label="Resultados por nível da campanha">
+    <section
+      className="mt-5 min-w-0 space-y-3 rounded-xl border bg-card p-4"
+      aria-label="Resultados por nível da campanha"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-display text-lg font-semibold">Campanha, conjuntos e anúncios</h3>
+        <h3 className="text-base font-semibold">Resultados por nível</h3>
         {allowed && (
-          <Button
-            variant="outline"
-            className="min-h-11"
-            disabled={!validRange || collect.isPending || Boolean(active)}
-            onClick={() => collect.mutate()}
-          >
-            <RefreshCw className="size-4" />
-            Coletar este recorte
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-10 sm:size-9"
+                aria-label="Ações do nível selecionado"
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 max-w-[calc(100vw-24px)] rounded-xl">
+              <p className="mb-2 text-xs font-semibold text-foreground/70">
+                {levels[level]} · {rangeLabel(range.since)}–{rangeLabel(range.until)}
+              </p>
+              <Button
+                variant="ghost"
+                className="h-11 w-full justify-start sm:h-9"
+                disabled={!validRange || collect.isPending || Boolean(active)}
+                onClick={() => collect.mutate()}
+              >
+                <RefreshCw className="size-4" />
+                {collect.isPending ? "Solicitando coleta…" : "Solicitar coleta externa"}
+              </Button>
+              {query.data?.snapshotJobId && (
+                <Button
+                  variant="ghost"
+                  className="h-11 w-full justify-start sm:h-9"
+                  disabled={
+                    pdf.isPending ||
+                    (report?.jobId === query.data.snapshotJobId && report.status === "queued")
+                  }
+                  onClick={() => pdf.mutate(query.data!.snapshotJobId!)}
+                >
+                  <FileText className="size-4" />
+                  {pdf.isPending ? "Solicitando PDF…" : "Gerar PDF deste nível"}
+                </Button>
+              )}
+              {report?.jobId === query.data?.snapshotJobId && report?.status === "ready" && (
+                <Button
+                  variant="ghost"
+                  className="h-11 w-full justify-start sm:h-9"
+                  disabled={download.isPending}
+                  onClick={() => download.mutate(report.id)}
+                >
+                  <Download className="size-4" />
+                  Baixar PDF
+                </Button>
+              )}
+              {query.data?.snapshotJobId && (
+                <p className="mt-2 text-xs leading-relaxed text-foreground/65">
+                  O PDF inclui todos os {query.data.total} registros do retrato completo.
+                </p>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
       </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Nível dos resultados">
-        {Object.entries(levels).map(([key, label]) => (
-          <Button
-            key={key}
-            variant={level === key ? "default" : "outline"}
-            className="min-h-11"
-            aria-pressed={level === key}
-            onClick={() => {
-              setLevel(key as typeof level);
-              setPage(1);
-            }}
+      <Breadcrumb aria-label="Hierarquia da campanha">
+        <BreadcrumbList className="gap-1 text-xs sm:gap-1.5">
+          <BreadcrumbItem>
+            {level === "campaign" ? (
+              <BreadcrumbPage>Campanha</BreadcrumbPage>
+            ) : (
+              <button
+                type="button"
+                className="min-h-9 rounded px-1 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                onClick={() => changeLevel("campaign")}
+              >
+                Campanha
+              </button>
+            )}
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            {level === "adset" ? (
+              <BreadcrumbPage>Conjuntos</BreadcrumbPage>
+            ) : level === "ad" ? (
+              <button
+                type="button"
+                className="min-h-9 rounded px-1 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                onClick={() => changeLevel("adset")}
+              >
+                Conjuntos
+              </button>
+            ) : (
+              <span>Conjuntos</span>
+            )}
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            {level === "ad" ? <BreadcrumbPage>Anúncios</BreadcrumbPage> : <span>Anúncios</span>}
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="Nível e detalhamento dos resultados"
+      >
+        <Select value={level} onValueChange={(value) => changeLevel(value as typeof level)}>
+          <SelectTrigger
+            className="h-11 w-auto min-w-36 rounded-lg bg-background sm:h-9"
+            aria-label="Nível dos resultados"
           >
-            {label}
-          </Button>
-        ))}
-        <select
-          aria-label="Detalhamento por plataforma"
-          className="h-11 rounded-xl border border-foreground/55 bg-card px-3 text-sm"
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(levels).map(([key, label]) => (
+              <SelectItem key={key} value={key}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={breakdown}
-          onChange={(event) => {
-            setBreakdown(event.target.value as typeof breakdown);
+          onValueChange={(value) => {
+            setBreakdown(value as typeof breakdown);
             setPage(1);
           }}
         >
-          <option value="none">Sem detalhamento</option>
-          <option value="publisher_platform">Por plataforma de entrega</option>
-        </select>
-      </div>
-      {allowed && query.data?.snapshotJobId && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            className="min-h-11"
-            disabled={
-              pdf.isPending ||
-              (report?.jobId === query.data.snapshotJobId && report.status === "queued")
-            }
-            onClick={() => pdf.mutate(query.data!.snapshotJobId!)}
+          <SelectTrigger
+            className="h-11 w-auto min-w-44 rounded-lg bg-background sm:h-9"
+            aria-label="Detalhamento por plataforma"
           >
-            {pdf.isPending ? "Gerando PDF…" : "Gerar PDF deste nível"}
-          </Button>
-          {report?.jobId === query.data.snapshotJobId && report.status === "ready" && (
-            <Button
-              variant="outline"
-              className="min-h-11"
-              disabled={download.isPending}
-              onClick={() => download.mutate(report.id)}
-            >
-              Baixar PDF
-            </Button>
-          )}
-          {report?.jobId === query.data.snapshotJobId && report.status === "queued" && (
-            <p role="status" className="text-xs text-foreground/70">
-              Solicitado. Acompanhe o histórico privado em Relatórios.
-            </p>
-          )}
-          <span className="text-xs text-foreground/70">
-            Exporta todos os {query.data.total} registros do retrato completo.
-          </span>
-        </div>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem detalhamento</SelectItem>
+            <SelectItem value="publisher_platform">Por plataforma de entrega</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {report?.jobId === query.data?.snapshotJobId && report?.status === "queued" && (
+        <p role="status" className="text-xs text-foreground/70">
+          PDF solicitado. Acompanhe a geração em Relatórios.
+        </p>
       )}
       {!validRange ? (
         <p className="text-sm text-foreground/70">
-          Selecione até 94 dias para coletar e consultar o detalhamento por conjunto e anúncio.
+          Selecione até 94 dias para consultar conjuntos e anúncios.
         </p>
       ) : query.isLoading ? (
         <p role="status" className="text-sm">
-          Consultando resultados armazenados…
+          Consultando resultados…
         </p>
       ) : query.isError ? (
         <p role="alert" className="text-sm text-red-800">
@@ -201,18 +304,15 @@ export function CampaignHierarchyInsights({
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/70">
-            <p>
+            <p role={active ? "status" : undefined}>
               {query.data?.job
-                ? `${coverageLabels[query.data.job.coverage] ?? "Coleta em andamento"} · ${query.data.job.progress}%`
-                : "Este nível ainda não foi coletado neste período."}
-              {query.data?.snapshotAt
-                ? ` · Dados de ${new Date(query.data.snapshotAt).toLocaleString("pt-BR")}`
-                : ""}
+                ? `${coverageLabels[query.data.job.coverage] ?? "Coleta em andamento"}${active ? ` · ${query.data.job.progress}%` : ""}`
+                : "Este nível ainda não foi coletado no período."}
             </p>
             {allowed && active && (
               <Button
                 variant="ghost"
-                className="min-h-11"
+                className="h-11 px-2 text-xs sm:h-9"
                 disabled={stop.isPending}
                 onClick={() => stop.mutate(query.data!.job!.id)}
               >
@@ -223,41 +323,46 @@ export function CampaignHierarchyInsights({
           {query.data?.job &&
             ["partial", "error"].includes(query.data.job.coverage) &&
             query.data.snapshotJobId && (
-              <p className="text-xs text-amber-900">
-                A coleta recente não foi concluída. O último retrato completo continua disponível
-                abaixo.
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                A coleta recente não foi concluída. Exibindo o último retrato completo.
               </p>
             )}
           {query.data?.rows.length ? (
             <>
               <div
-                className="overflow-x-auto rounded-xl border"
+                className="overflow-x-auto rounded-lg border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 tabIndex={0}
+                role="region"
                 aria-label="Tabela de resultados por nível"
               >
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b text-left text-foreground/70">
-                      <th className="p-3">{levels[level]}</th>
-                      <th className="p-3 text-right">Impressões</th>
-                      <th className="p-3 text-right">Todos os cliques</th>
-                      <th className="p-3 text-right">Cliques no link</th>
-                      <th className="p-3 text-right">Leads</th>
+                    <tr className="border-b bg-muted/30 text-left text-foreground/70">
+                      <th className="px-3 py-2.5">{levels[level]}</th>
+                      <th className="px-3 py-2.5 text-right">Impressões</th>
+                      <th className="px-3 py-2.5 text-right">Cliques</th>
+                      <th className="px-3 py-2.5 text-right">Cliques no link</th>
+                      <th className="px-3 py-2.5 text-right">Leads</th>
                       {query.data.financialVisible && (
-                        <th className="p-3 text-right">
+                        <th className="whitespace-nowrap px-3 py-2.5 text-right">
                           Investimento ({query.data.currency || "—"})
                         </th>
                       )}
-                      <th className="p-3 text-right">Alcance</th>
+                      <th className="px-3 py-2.5 text-right">Alcance</th>
                     </tr>
                   </thead>
                   <tbody>
                     {query.data.rows.map((row, index) => (
-                      <tr className="border-b last:border-0" key={`${row.entityId}:${index}`}>
-                        <td className="p-3">
-                          <span className="font-semibold">ID {row.entityId}</span>
+                      <tr
+                        className="border-b last:border-0 hover:bg-muted/20"
+                        key={`${row.entityId}:${index}`}
+                      >
+                        <td className="max-w-48 px-3 py-2.5">
+                          <span className="break-words font-medium">ID {row.entityId}</span>
                           {row.breakdown.publisher_platform && (
-                            <span className="mt-1 block">{row.breakdown.publisher_platform}</span>
+                            <span className="mt-1 block text-foreground/70">
+                              {row.breakdown.publisher_platform}
+                            </span>
                           )}
                           {row.adsetId && level === "ad" && (
                             <span className="mt-1 block text-foreground/65">
@@ -265,66 +370,119 @@ export function CampaignHierarchyInsights({
                             </span>
                           )}
                         </td>
-                        <td className="p-3 text-right tabular-nums">{number(row.impressions)}</td>
-                        <td className="p-3 text-right tabular-nums">{number(row.clicks)}</td>
-                        <td className="p-3 text-right tabular-nums">
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {number(row.impressions)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
+                          {number(row.clicks)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">
                           {number(row.inlineLinkClicks)}
                         </td>
-                        <td className="p-3 text-right tabular-nums">{number(row.leads)}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{number(row.leads)}</td>
                         {query.data!.financialVisible && (
-                          <td className="p-3 text-right tabular-nums">{number(row.spend)}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums">
+                            {number(row.spend)}
+                          </td>
                         )}
-                        <td className="p-3 text-right tabular-nums">{number(row.reach)}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{number(row.reach)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-foreground/70">
-                {query.data.total} registros · página {page} · CTR ponderado desta página:{" "}
-                {totals?.ctr === null ? "—" : `${number(totals?.ctr)}%`}. Alcance não somado.
-                Família de leads: {totals?.leadActionType || "não comparável entre linhas"}.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  aria-label="Página anterior de resultados"
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  aria-label="Próxima página de resultados"
-                  disabled={page * 25 >= query.data.total}
-                  onClick={() => setPage(page + 1)}
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1 text-xs text-foreground/70">
+                  <span>
+                    {query.data.total} registros · página {page}
+                  </span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-9"
+                        aria-label="Indicadores e escopo desta página"
+                      >
+                        <Info className="size-3.5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="max-w-[calc(100vw-24px)] rounded-xl text-xs leading-relaxed">
+                      <p>
+                        CTR ponderado desta página:{" "}
+                        {totals?.ctr == null ? "—" : `${number(totals.ctr)}%`}. Alcance não é
+                        somado.
+                      </p>
+                      <p className="mt-2">
+                        Família de leads: {totals?.leadActionType || "não comparável entre linhas"}.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-11 sm:size-9"
+                    aria-label="Página anterior de resultados"
+                    disabled={page <= 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-11 sm:size-9"
+                    aria-label="Próxima página de resultados"
+                    disabled={page * 25 >= query.data.total}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
               </div>
             </>
           ) : (
-            <p className="rounded-xl border border-dashed p-4 text-sm text-foreground/70">
+            <p className="rounded-lg border border-dashed p-4 text-sm text-foreground/70">
               {query.data?.job?.coverage === "collected_empty"
-                ? "Consulta completa sem resultados no recorte. Isso não indica uma campanha defeituosa."
-                : "Sem resultados completos para exibir. Ausência de coleta não representa zero."}
+                ? "Nenhum resultado neste período."
+                : "Ainda sem resultados completos para este nível."}
             </p>
           )}
-          <p className="text-xs text-foreground/70">
-            {range.since} a {range.until} · {query.data?.timezone || "Fuso da conta não informado"}{" "}
-            · {query.data?.apiVersion || "Versão não informada"}. Atribuição:{" "}
-            {query.data?.rows.some((row) => row.attribution)
-              ? [...new Set(query.data.rows.map((row) => row.attribution).filter(Boolean))].join(
-                  " · ",
-                )
-              : "janela efetiva não verificada"}
-            .
-          </p>
+          <details className="text-xs text-foreground/70">
+            <summary className="inline-flex min-h-9 cursor-pointer items-center rounded font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              Detalhes do recorte
+            </summary>
+            <dl className="mt-2 space-y-2">
+              <div>
+                <dt className="font-semibold">Período</dt>
+                <dd>
+                  {range.since} a {range.until} ·{" "}
+                  {query.data?.timezone || "Fuso da conta não informado"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Último retrato completo</dt>
+                <dd>
+                  {query.data?.snapshotAt
+                    ? new Date(query.data.snapshotAt).toLocaleString("pt-BR")
+                    : "Indisponível. Ausência de coleta não representa zero."}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold">API e atribuição</dt>
+                <dd>
+                  {query.data?.apiVersion || "Versão não informada"} ·{" "}
+                  {query.data?.rows.some((row) => row.attribution)
+                    ? [
+                        ...new Set(query.data.rows.map((row) => row.attribution).filter(Boolean)),
+                      ].join(" · ")
+                    : "Janela efetiva não verificada"}
+                </dd>
+              </div>
+            </dl>
+          </details>
         </>
       )}
     </section>

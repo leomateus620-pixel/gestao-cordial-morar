@@ -4,6 +4,8 @@ import { normalizeMarketingCampaign } from "./marketing";
 import {
   buildInsights,
   campaignStats,
+  compareDailyTrends,
+  dailyTrend,
   comparisonRanges,
   competenceRange,
   delta,
@@ -185,5 +187,97 @@ describe("marketing period metrics", () => {
     const insights = buildInsights([stat], []);
     expect(insights.some((i) => i.financial && i.text.includes("nenhum lead"))).toBe(true);
     expect(insights.some((i) => i.text.includes("satur"))).toBe(false);
+  });
+});
+
+describe("daily comparison chart", () => {
+  const point = (date: string, leads: number) => ({
+    date,
+    label: date.slice(5),
+    leads,
+    clicks: leads * 2,
+    spend: null,
+    cpl: null,
+    ctr: null,
+  });
+  it("aligns by calendar position with real dates and preserves missing days", () => {
+    const aligned = compareDailyTrends(
+      [point("2026-10-10", 0), point("2026-10-12", 3)],
+      [point("2026-10-03", 5), point("2026-10-04", 0)],
+      {
+        current: { since: "2026-10-10", until: "2026-10-12" },
+        previous: { since: "2026-10-03", until: "2026-10-05" },
+      },
+    );
+    expect(aligned.map((row) => row.current?.leads ?? null)).toEqual([0, null, 3]);
+    expect(aligned.map((row) => row.previous?.leads ?? null)).toEqual([5, 0, null]);
+    expect(aligned[1]).toMatchObject({
+      currentDate: "2026-10-11",
+      previousDate: "2026-10-04",
+      position: 2,
+    });
+  });
+  it("never extends a shorter comparison month with fictitious points", () => {
+    const aligned = compareDailyTrends([], [], {
+      current: { since: "2026-03-01", until: "2026-03-31" },
+      previous: { since: "2026-02-01", until: "2026-02-28" },
+    });
+    expect(aligned).toHaveLength(31);
+    expect(aligned[30]).toMatchObject({
+      currentDate: "2026-03-31",
+      previousDate: null,
+      current: null,
+      previous: null,
+    });
+  });
+  it("does not turn an unavailable daily cost into zero", () => {
+    const trend = dailyTrend([base({ dailyMetrics: [day({ spend: undefined })] })], "2026-10");
+    expect(trend[0].spend).toBeNull();
+    expect(trend[0].cpl).toBeNull();
+    expect(trend[0].leads).toBe(2);
+    expect(dailyTrend([base({ dailyMetrics: [day({ spend: 0 })] })], "2026-10")[0].spend).toBe(0);
+  });
+  it("keeps a partially missing monetary total unavailable", () => {
+    const trend = dailyTrend(
+      [
+        base({ dailyMetrics: [day()] }),
+        base({ id: "2", dailyMetrics: [day({ spend: undefined })] }),
+      ],
+      "2026-10",
+    );
+    expect(trend[0].spend).toBeNull();
+    expect(trend[0].cpl).toBeNull();
+    expect(trend[0].leads).toBe(4);
+  });
+  it("does not claim complete daily cost when a campaign has no observations in the range", () => {
+    const trend = dailyTrend(
+      [base({ dailyMetrics: [day()] }), base({ id: "2", dailyMetrics: [] })],
+      "2026-10",
+    );
+    expect(trend[0].spend).toBeNull();
+    expect(trend[0].cpl).toBeNull();
+    expect(trend[0].leads).toBe(2);
+    expect(trend[0].clicks).toBe(10);
+  });
+  it("keeps cost unavailable only on days with a missing campaign observation", () => {
+    const trend = dailyTrend(
+      [
+        base({ dailyMetrics: [day(), day({ date: "2026-10-02" })] }),
+        base({ id: "2", dailyMetrics: [day({ spend: 20 })] }),
+      ],
+      "2026-10",
+    );
+    expect(trend[0]).toMatchObject({ date: "2026-10-01", spend: 70, cpl: 17.5, leads: 4 });
+    expect(trend[1]).toMatchObject({ date: "2026-10-02", spend: null, cpl: null, leads: 2 });
+  });
+  it("preserves observed zeroes for all campaigns without inventing a zero-base CPL", () => {
+    const trend = dailyTrend(
+      [
+        base({ dailyMetrics: [day({ spend: 0, leads: 0, clicks: 0 })] }),
+        base({ id: "2", dailyMetrics: [day({ spend: 0, leads: 0, clicks: 0 })] }),
+      ],
+      "2026-10",
+    );
+    expect(trend[0]).toMatchObject({ spend: 0, leads: 0, clicks: 0, cpl: null });
   });
 });

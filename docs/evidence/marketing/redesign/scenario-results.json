@@ -1,0 +1,110 @@
+[
+  {
+    "scenario": "campaigns-long",
+    "headerHeight": 181.80398559570312,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": true,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": false,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "comparison",
+    "headerHeight": 181.80398559570312,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": true,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": false,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": true
+  },
+  {
+    "scenario": "pending",
+    "headerHeight": 209.79640197753903,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": true,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": true,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "empty",
+    "headerHeight": 225.8002014160156,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": false,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": true,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "error",
+    "headerHeight": 181.80398559570312,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": false,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": false,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "no-financial",
+    "headerHeight": 181.80398559570312,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": false,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": true,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "reviewer",
+    "headerHeight": 181.80398559570312,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": false,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": true,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "invalid-period",
+    "headerHeight": 205.7954559326172,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": true,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": true,
+    "invalidPeriodVisible": true,
+    "hasPreviousLegend": false
+  },
+  {
+    "scenario": "leads-deep-link",
+    "headerHeight": 185.804931640625,
+    "scrollWidth": 1440,
+    "visibleInputs": 1,
+    "width": 1440,
+    "hasCurrency": false,
+    "hasTechnicalDefault": false,
+    "comparisonUnavailable": false,
+    "invalidPeriodVisible": false,
+    "hasPreviousLegend": false
+  }
+]

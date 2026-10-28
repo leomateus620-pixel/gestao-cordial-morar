@@ -29,7 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { axisTick, chartSuccess, chartSystem, gridStroke } from "@/lib/chart-palette";
+import { axisTick, chartSystem, gridStroke } from "@/lib/chart-palette";
 import { campaignStats, type DateRange } from "@/services/marketing-insights";
 import type { MarketingCampaign, MarketingDailyMetric } from "@/types/marketing";
 import {
@@ -46,7 +46,6 @@ type CampaignDetailsDrawerProps = {
   canViewFinancialInsights?: boolean;
   metricsRange?: DateRange;
 };
-
 export function CampaignDetailsDrawer({
   campaign,
   open,
@@ -66,7 +65,7 @@ export function CampaignDetailsDrawer({
           }
         }}
         side="right"
-        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-background p-0  sm:max-w-[46rem]"
+        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-border bg-background p-0 sm:max-w-[46rem]"
       >
         {campaign && (
           <CampaignDetailsContent
@@ -79,7 +78,24 @@ export function CampaignDetailsDrawer({
     </Sheet>
   );
 }
-
+type DetailChartPoint = Omit<Partial<MarketingDailyMetric>, "leads" | "clicks"> & {
+  date: string;
+  leads: number | null;
+  clicks: number | null;
+};
+function campaignChartRows(metrics: MarketingDailyMetric[], range?: DateRange): DetailChartPoint[] {
+  const ordered = [...metrics].sort((a, b) => a.date.localeCompare(b.date));
+  if (!ordered.length) return [];
+  const since = range?.since ?? ordered[0].date,
+    until = range?.until ?? ordered.at(-1)!.date;
+  const start = Date.parse(`${since}T12:00:00Z`),
+    days = Math.round((Date.parse(`${until}T12:00:00Z`) - start) / 86400000) + 1;
+  const byDate = new Map(ordered.map((metric) => [metric.date, metric]));
+  return Array.from({ length: Math.min(367, Math.max(0, days)) }, (_, index) => {
+    const date = new Date(start + index * 86400000).toISOString().slice(0, 10);
+    return byDate.get(date) ?? { date, leads: null, clicks: null };
+  });
+}
 function CampaignDetailsContent({
   campaign,
   canViewFinancialInsights,
@@ -101,92 +117,196 @@ function CampaignDetailsContent({
       clicks: stat.clicks,
       impressions: stat.impressions,
       dailyMetrics: campaign.dailyMetrics.filter(
-        (d) => d.date >= metricsRange!.since && d.date <= metricsRange!.until,
+        (day) => day.date >= metricsRange!.since && day.date <= metricsRange!.until,
       ),
     };
-  const money = (value: number) =>
-    value.toLocaleString("pt-BR", { style: "currency", currency: campaign.currency ?? "BRL" });
-  const cpl = campaign.costPerLead !== null ? money(campaign.costPerLead) : "Indisponível";
-  const pageViews = campaign.dailyMetrics.some((d) => d.landingPageViews !== undefined)
-    ? campaign.dailyMetrics.reduce((sum, d) => sum + (d.landingPageViews ?? 0), 0)
-    : null;
+  const hasData = stat?.hasData !== false;
+  const currency = campaign.currency ?? (campaign.platform ? null : "BRL");
+  const money = (value: number | null) =>
+    value === null || currency === null
+      ? "—"
+      : value.toLocaleString("pt-BR", { style: "currency", currency });
+  const pageViews =
+    campaign.dailyMetrics.length > 0 &&
+    campaign.dailyMetrics.every((day) => day.landingPageViews !== undefined)
+      ? campaign.dailyMetrics.reduce((sum, day) => sum + day.landingPageViews!, 0)
+      : null;
   const denominator = campaign.platform ? pageViews : campaign.accesses || null;
   const conversion =
-    denominator && denominator > 0
+    hasData && denominator && denominator > 0
       ? formatMarketingPercent((campaign.leads / denominator) * 100)
-      : "Indisponível";
-
+      : "—";
+  const trend = campaignChartRows(campaign.dailyMetrics, metricsRange);
   return (
-    <div className="min-h-full p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
-      <SheetHeader className="text-left">
+    <div className="min-h-full min-w-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
+      <SheetHeader className="pr-8 text-left">
         <div className="flex flex-wrap items-center gap-2">
           <CampaignStatusBadge status={campaign.status} />
-          <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold text-foreground/70 ring-1 ring-white/70">
-            {campaign.channel}
+          <span className="text-xs font-medium text-foreground/70">
+            {campaign.channel} · <span className="capitalize">{campaign.imobiliaria}</span>
           </span>
         </div>
-        <SheetTitle className="text-2xl font-black tracking-tight text-foreground">
+        <SheetTitle className="break-words text-xl font-semibold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere] sm:text-2xl">
           {campaign.name}
         </SheetTitle>
-        <SheetDescription className="max-w-2xl text-sm leading-relaxed text-foreground/70">
-          {campaign.objective} · {formatMarketingDateRange(campaign.startDate, campaign.endDate)}
+        <SheetDescription className="text-sm text-foreground/70">
+          {campaign.objective}
+          {metricsRange
+            ? ` · ${formatMarketingDateRange(metricsRange.since, metricsRange.until)}`
+            : ""}
         </SheetDescription>
       </SheetHeader>
-
-      {metricsRange && (
-        <p className="mt-4 text-xs text-foreground/65">
-          Métricas de {metricsRange.since} a {metricsRange.until} ·{" "}
-          {campaign.currency ?? "Moeda não informada"} ·{" "}
-          {campaign.accountTimezone ?? "Fuso da conta não informado"}
+      {campaign.syncStatus === "error" && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+        >
+          Falha na última sincronização. Consulte os detalhes da campanha.
         </p>
       )}
-      {campaign.platform === "meta" && metricsRange && (
-        <CampaignHierarchyInsights campaignId={campaign.id} range={metricsRange} />
+      {campaign.syncStatus === "partial" && (
+        <p
+          role="status"
+          className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          Dados parciais na última sincronização.
+        </p>
       )}
-      <section className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {["queued", "syncing"].includes(campaign.syncStatus ?? "") && (
+        <p role="status" className="mt-4 text-xs text-primary">
+          {campaign.syncStatus === "queued"
+            ? "Sincronização na fila."
+            : "Sincronização em andamento."}
+        </p>
+      )}
+      <section
+        aria-label="Resultados da campanha no período"
+        className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4"
+      >
         <DetailMetric
           icon={TrendingUp}
-          label="Leads"
-          value={formatMarketingNumber(campaign.leads)}
+          label="Leads reportados"
+          value={hasData ? formatMarketingNumber(campaign.leads) : "—"}
         />
-        {canViewFinancialInsights && (
-          <DetailMetric
-            icon={Wallet}
-            label="Investimento"
-            value={campaign.investment === null ? "Indisponível" : money(campaign.investment)}
-          />
+        {canViewFinancialInsights ? (
+          <>
+            <DetailMetric icon={Wallet} label="Investimento" value={money(campaign.investment)} />
+            <DetailMetric icon={Target} label="CPL" value={money(campaign.costPerLead)} />
+          </>
+        ) : (
+          <>
+            <DetailMetric
+              icon={Eye}
+              label="Impressões"
+              value={hasData ? formatMarketingNumber(campaign.impressions) : "—"}
+            />
+            <DetailMetric
+              icon={BarChart3}
+              label="Visualizações de destino"
+              value={pageViews === null ? "—" : formatMarketingNumber(pageViews)}
+            />
+          </>
         )}
         <DetailMetric
           icon={MousePointerClick}
           label="Cliques"
-          value={formatMarketingNumber(campaign.clicks)}
+          value={hasData ? formatMarketingNumber(campaign.clicks) : "—"}
         />
-        <DetailMetric
-          icon={BarChart3}
-          label="Visualizações da página de destino"
-          value={pageViews === null ? "Indisponível" : formatMarketingNumber(pageViews)}
-        />
-        <DetailMetric
-          icon={Eye}
-          label="Impressões"
-          value={formatMarketingNumber(campaign.impressions)}
-        />
-        <DetailMetric
-          icon={Target}
-          label={campaign.platform ? "Leads / visualizações destino" : "Leads / acessos"}
-          value={conversion}
-        />
-        {canViewFinancialInsights && <DetailMetric icon={Wallet} label="CPL" value={cpl} />}
-        <DetailMetric icon={MapPin} label="Melhor região" value={campaign.bestLocation} />
       </section>
-
-      <section className="mt-5 border-t border-border py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-black text-foreground">Análise da campanha</h3>
-            <p className="mt-1 text-sm leading-relaxed text-foreground/70">{campaign.diagnosis}</p>
-          </div>
+      <section
+        className="mt-4 min-w-0 rounded-xl border bg-card p-4"
+        aria-label="Evolução dos leads da campanha"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Evolução dos leads reportados</h3>
+          <span className="text-xs text-foreground/65">Contagem diária</span>
         </div>
+        {trend.length ? (
+          <div className="mt-4 h-52 min-w-0 sm:h-56">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              initialDimension={{ width: 300, height: 208 }}
+            >
+              <AreaChart
+                accessibilityLayer
+                data={trend}
+                margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+              >
+                <CartesianGrid stroke={gridStroke} vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ ...axisTick, fontSize: 12, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(value) => shortDateLabel(String(value))}
+                  minTickGap={28}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ ...axisTick, fontSize: 12, fill: "var(--muted-foreground)" }}
+                  width={34}
+                  allowDecimals={false}
+                />
+                <Tooltip content={<DetailsTooltip />} />
+                <Area
+                  isAnimationActive={false}
+                  type="linear"
+                  dataKey="leads"
+                  name="Leads reportados"
+                  stroke={chartSystem}
+                  strokeWidth={2}
+                  fill={chartSystem}
+                  fillOpacity={0.09}
+                  connectNulls={false}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-foreground/65">
+            Sem métricas diárias neste período.
+          </p>
+        )}
+      </section>
+      {campaign.platform === "meta" && metricsRange && (
+        <CampaignHierarchyInsights campaignId={campaign.id} range={metricsRange} />
+      )}
+      <details className="mt-4 rounded-xl border bg-card p-4">
+        <summary className="inline-flex min-h-9 cursor-pointer items-center rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          Mais indicadores e detalhes da campanha
+        </summary>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {canViewFinancialInsights && (
+            <>
+              <DetailMetric
+                icon={Eye}
+                label="Impressões"
+                value={hasData ? formatMarketingNumber(campaign.impressions) : "—"}
+              />
+              <DetailMetric
+                icon={BarChart3}
+                label="Visualizações de destino"
+                value={pageViews === null ? "—" : formatMarketingNumber(pageViews)}
+              />
+            </>
+          )}
+          <DetailMetric
+            icon={Target}
+            label={campaign.platform ? "Leads / visualizações destino" : "Leads / acessos"}
+            value={conversion}
+          />
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-foreground/70">
+          Leads reportados, submissões recebidas e atendimentos únicos são contagens diferentes. Um
+          traço indica dado ou base de cálculo indisponível.
+        </p>
+        {campaign.diagnosis && (
+          <p className="mt-4 text-sm leading-relaxed text-foreground/80">{campaign.diagnosis}</p>
+        )}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <InfoBlock
             icon={CalendarDays}
@@ -197,6 +317,9 @@ function CampaignDetailsContent({
                 : "Ainda não sincronizada"
             }
           />
+          {campaign.syncError && (
+            <InfoBlock icon={CalendarDays} label="Detalhe da falha" value={campaign.syncError} />
+          )}
           <InfoBlock
             icon={Target}
             label="Conta / campanha externa"
@@ -206,13 +329,21 @@ function CampaignDetailsContent({
                 : "Cadastro manual"
             }
           />
-          <InfoBlock icon={UserRound} label="Responsável" value={campaign.responsiblePerson} />
+          <InfoBlock
+            icon={UserRound}
+            label="Responsável"
+            value={campaign.responsiblePerson || "Não informado"}
+          />
           <InfoBlock
             icon={CalendarDays}
-            label="Período"
+            label="Período cadastrado"
             value={formatMarketingDateRange(campaign.startDate, campaign.endDate)}
           />
-          <InfoBlock icon={MapPin} label="Entrega principal" value={campaign.bestLocation} />
+          <InfoBlock
+            icon={MapPin}
+            label="Localização cadastrada"
+            value={campaign.bestLocation || "Não informada"}
+          />
           <InfoBlock
             icon={Target}
             label="Meta prevista"
@@ -222,128 +353,57 @@ function CampaignDetailsContent({
                 : "Meta não informada"
             }
           />
+          <InfoBlock
+            icon={Wallet}
+            label="Moeda / fuso da conta"
+            value={`${currency ?? "Moeda não informada"} · ${campaign.accountTimezone ?? "Fuso não informado"}`}
+          />
         </div>
-        <p className="mt-4 rounded-2xl bg-white/62 px-3 py-2 text-sm leading-relaxed text-foreground/65">
-          {campaign.notes}
-        </p>
+        {campaign.notes && (
+          <p className="mt-4 rounded-lg bg-muted/30 px-3 py-2 text-sm leading-relaxed text-foreground/75">
+            {campaign.notes}
+          </p>
+        )}
         {campaign.referenceUrl && (
           <a
             href={campaign.referenceUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Link className="size-3.5" />
             Abrir referência
           </a>
         )}
-      </section>
-
-      <section className="mt-5 border-t border-border py-4">
-        <h3 className="text-base font-black text-foreground">Performance ao longo do tempo</h3>
-        <p className="mt-1 text-xs leading-relaxed text-foreground/70">
-          Leads reportados por dia no recorte consultado.
-        </p>
-        <div className="mt-4 h-56 sm:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={campaign.dailyMetrics}
-              margin={{ top: 12, right: 8, left: -12, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id={`campaign-${campaign.id}-leads`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chartSuccess} stopOpacity={0.32} />
-                  <stop offset="100%" stopColor={chartSuccess} stopOpacity={0.04} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={gridStroke} strokeDasharray="3 8" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tick={{
-                  ...axisTick,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  fill: "var(--muted-foreground)",
-                }}
-                tickFormatter={(value) => shortDateLabel(String(value))}
-                minTickGap={14}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tick={{ ...axisTick, fontSize: 12, fill: "var(--muted-foreground)" }}
-                width={34}
-                allowDecimals={false}
-              />
-              <Tooltip content={<DetailsTooltip />} />
-              <Area
-                isAnimationActive={false}
-                type="monotone"
-                dataKey="leads"
-                name="Leads"
-                stroke={chartSuccess}
-                strokeWidth={2.4}
-                fill={`url(#campaign-${campaign.id}-leads)`}
-                activeDot={{ r: 5, strokeWidth: 2.5, stroke: "rgba(255,255,255,0.95)" }}
-              />
-              <Area
-                isAnimationActive={false}
-                type="monotone"
-                dataKey="landingPageViews"
-                name="Visualizações da página de destino"
-                stroke={chartSystem}
-                strokeWidth={1.8}
-                fill="transparent"
-                activeDot={{ r: 5 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {campaign.locationBreakdown.length > 0 && (
-        <section className="mt-5 border-t border-border py-4">
-          <h3 className="text-base font-black text-foreground">Entrega por localização</h3>
-          <div className="mt-3 space-y-2">
-            {campaign.locationBreakdown.map((item) => {
-              const max = Math.max(
-                ...campaign.locationBreakdown.map((location) => location.impressions),
-                1,
-              );
-              const width = Math.max(4, (item.impressions / max) * 100);
-
-              return (
-                <div key={item.location} className="rounded-2xl bg-card p-3 ring-1 ring-white/62">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-foreground">{item.location}</p>
-                      <p className="mt-0.5 text-xs font-semibold text-foreground/70">
-                        {formatMarketingNumber(item.clicks)} cliques ·{" "}
-                        {formatMarketingNumber(item.leads)} leads
-                      </p>
-                    </div>
-                    <span className="font-mono text-sm font-black text-primary">
-                      {formatMarketingNumber(item.impressions)}
-                    </span>
+        {campaign.locationBreakdown.length > 0 && (
+          <section className="mt-4 border-t pt-4">
+            <h3 className="text-sm font-semibold">Localizações da campanha</h3>
+            <div className="mt-3 space-y-2">
+              {campaign.locationBreakdown.map((item) => (
+                <div
+                  key={item.location}
+                  className="flex items-start justify-between gap-3 rounded-lg bg-muted/20 p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-medium">{item.location}</p>
+                    <p className="mt-1 text-xs text-foreground/70">
+                      {formatMarketingNumber(item.clicks)} cliques ·{" "}
+                      {formatMarketingNumber(item.leads)} leads
+                    </p>
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/65">
-                    <span
-                      className="block h-full rounded-full bg-primary"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
+                  <span className="shrink-0 text-right text-xs tabular-nums">
+                    {formatMarketingNumber(item.impressions)}
+                    <span className="mt-1 block text-foreground/65">impressões</span>
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+              ))}
+            </div>
+          </section>
+        )}
+      </details>
     </div>
   );
 }
-
 function DetailMetric({
   icon: Icon,
   label,
@@ -354,16 +414,15 @@ function DetailMetric({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/65 bg-card p-3">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-foreground/70">
-        <Icon className="size-3.5" />
+    <div className="min-w-0 rounded-lg border border-border/70 bg-card p-3">
+      <p className="flex items-start gap-1.5 text-xs text-foreground/70">
+        <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
         {label}
       </p>
-      <p className="mt-1 truncate font-mono text-sm font-black text-foreground">{value}</p>
+      <p className="mt-2 break-words text-sm font-semibold tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
-
 function InfoBlock({
   icon: Icon,
   label,
@@ -374,56 +433,56 @@ function InfoBlock({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-card px-3 py-2 ring-1 ring-white/62">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-foreground/70">
-        <Icon className="size-3.5" />
+    <div className="min-w-0 rounded-lg bg-muted/20 px-3 py-2">
+      <p className="flex items-center gap-1.5 text-xs text-foreground/70">
+        <Icon className="size-3.5" aria-hidden="true" />
         {label}
       </p>
-      <p className="mt-1 truncate text-sm font-bold text-foreground">{value}</p>
+      <p className="mt-1 break-words text-sm text-foreground [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }
-
 function DetailsTooltip({
   active,
   payload,
 }: {
   active?: boolean;
-  payload?: Array<{ payload?: MarketingDailyMetric }>;
+  payload?: Array<{ payload?: DetailChartPoint }>;
 }) {
-  if (!active || !payload?.length) return null;
-  const item = payload[0]?.payload;
-  if (!item) return null;
-
+  const item = payload?.[0]?.payload;
+  if (!active || !item) return null;
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/96 p-3 text-xs shadow-[0_20px_50px_-20px_rgba(23,27,33,0.32)] backdrop-blur-xl">
-      <p className="mb-2 text-sm font-black text-foreground">{shortDateLabel(item.date)}</p>
-      <TooltipLine label="Leads" value={formatMarketingNumber(item.leads)} />
-      {item.landingPageViews !== undefined && (
-        <TooltipLine
-          label="Visualizações da página de destino"
-          value={formatMarketingNumber(item.landingPageViews)}
-        />
-      )}
-      <TooltipLine label="Cliques" value={formatMarketingNumber(item.clicks)} />
-      {item.impressions !== undefined && (
-        <TooltipLine label="Impressões" value={formatMarketingNumber(item.impressions)} />
-      )}
+    <div className="rounded-xl border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+      <p className="mb-2 font-semibold">
+        {new Date(`${item.date}T12:00:00Z`).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          timeZone: "UTC",
+        })}
+      </p>
+      <TooltipLine
+        label="Leads reportados"
+        value={item.leads === null ? "Sem dado" : formatMarketingNumber(item.leads)}
+      />
+      <TooltipLine
+        label="Cliques"
+        value={item.clicks === null ? "Sem dado" : formatMarketingNumber(item.clicks)}
+      />
     </div>
   );
 }
-
 function TooltipLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-44 items-center justify-between gap-4">
       <span className="text-foreground/70">{label}</span>
-      <span className="font-mono font-black text-foreground">{value}</span>
+      <span className="font-semibold tabular-nums">{value}</span>
     </div>
   );
 }
-
 function shortDateLabel(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "Sem data";
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  const date = new Date(`${value}T12:00:00Z`);
+  return Number.isNaN(date.getTime())
+    ? "Sem data"
+    : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
 }
