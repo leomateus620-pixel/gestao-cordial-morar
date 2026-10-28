@@ -2,10 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireMarketingAction, type MarketingAction } from "./authorization.server";
 
 type LeadContext = { supabase: SupabaseClient; userId: string };
 export type MetaLeadInboxItem = {
   id: string;
+  is_synthetic: boolean;
   status: "queued" | "processing" | "unassigned" | "imported" | "review" | "failed" | "quarantined";
   imobiliaria: string | null;
   full_name: string | null;
@@ -19,19 +21,19 @@ export type MetaLeadInboxItem = {
   attendance_id: string | null;
   last_error: string | null;
 };
-async function leadAccess(ctx: LeadContext, agency?: string | null, adminOnly = false) {
-  const { data: admin, error } = await ctx.supabase.rpc("has_role", {
-    _user_id: ctx.userId,
-    _role: "admin",
-  });
-  if (error) throw new Error("Não foi possível validar o acesso.");
-  if (admin) return { admin: true };
-  if (adminOnly || !agency) throw new Error("Somente o administrador pode executar esta ação.");
-  const { data: permitted, error: scopeError } = await ctx.supabase.rpc("marketing_can_operate", {
-    p_agency: agency,
-  });
-  if (scopeError || !permitted) throw new Error("Sem permissão nesta imobiliária.");
-  return { admin: false };
+async function leadAccess(
+  ctx: LeadContext,
+  agency?: string | null,
+  adminOnly = false,
+  action: MarketingAction = "manage_leads",
+) {
+  const access = await requireMarketingAction(
+    ctx,
+    adminOnly ? "manage_connection" : action,
+    agency,
+  );
+  if (!access.isAdmin && !agency) throw new Error("Selecione a imobiliária autorizada.");
+  return { admin: access.isAdmin };
 }
 async function adminDb() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -42,6 +44,19 @@ const inboxSchema = z.object({
   status: z
     .enum(["queued", "processing", "unassigned", "imported", "review", "failed", "quarantined"])
     .optional(),
+  formId: z
+    .string()
+    .regex(/^\d{1,80}$/)
+    .optional(),
+  accountId: z
+    .string()
+    .regex(/^\d{1,80}$/)
+    .optional(),
+  campaignId: z.string().uuid().optional(),
+  brokerId: z.string().uuid().optional(),
+  since: z.iso.date().optional(),
+  until: z.iso.date().optional(),
+  search: z.string().trim().max(100).optional(),
   page: z.number().int().min(1).max(10000).default(1),
   pageSize: z.number().int().min(1).max(100).default(25),
 });
@@ -51,45 +66,89 @@ export const listMetaLeads = createServerFn({ method: "GET" })
     (value: {
       imobiliaria?: "cordial" | "morar";
       status?: MetaLeadInboxItem["status"];
+      formId?: string;
+      accountId?: string;
+      campaignId?: string;
+      brokerId?: string;
+      since?: string;
+      until?: string;
+      search?: string;
       page?: number;
       pageSize?: number;
     }) => inboxSchema.parse(value ?? {}),
   )
   .handler(async ({ context, data }): Promise<{ items: MetaLeadInboxItem[]; total: number }> => {
-    const db = await adminDb();
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
+    const access = await requireMarketingAction(context, "read_lead_contacts", data.imobiliaria);
+    const isAdmin = access.isAdmin;
     const agencies: string[] = [];
     if (!isAdmin) {
       for (const agency of ["cordial", "morar"]) {
-        const { data: allowed, error } = await context.supabase.rpc("marketing_can_operate", {
+        const { data: allowed, error } = await context.supabase.rpc("marketing_can_act", {
+          p_action: "read_lead_contacts",
           p_agency: agency,
         });
         if (error) throw new Error("Não foi possível validar o acesso.");
-        if (allowed) agencies.push(agency);
+        if (allowed === true) agencies.push(agency);
       }
       if (!agencies.length) throw new Error("Sem permissão para os leads Meta.");
+    }
+    const db = await adminDb();
+    let connectionIds: string[] | null = null;
+    if (data.accountId) {
+      let connections = db
+        .from("ad_platform_connections")
+        .select("id")
+        .eq("platform", "meta")
+        .eq("external_account_id", data.accountId);
+      if (data.imobiliaria) connections = connections.eq("imobiliaria", data.imobiliaria);
+      if (!isAdmin) connections = connections.in("imobiliaria", agencies);
+      const { data: scoped, error: scopeError } = await connections;
+      if (scopeError) throw new Error("Não foi possível validar a conta selecionada.");
+      connectionIds = (scoped ?? []).map((connection) => connection.id);
+      if (!connectionIds.length) return { items: [], total: 0 };
     }
     let query = db
       .from("meta_lead_submissions")
       .select(
-        "id,status,imobiliaria,full_name,phone,email,campaign_id,external_campaign_id,form_id,received_at,broker_id,attendance_id,last_error",
+        "id,is_synthetic,status,imobiliaria,full_name,phone,email,campaign_id,external_campaign_id,form_id,received_at,broker_id,attendance_id,last_error",
         { count: "exact" },
       )
       .is("privacy_deleted_at", null)
       .order("received_at", { ascending: false });
     if (!isAdmin) query = query.in("imobiliaria", agencies);
     if (data.imobiliaria) query = query.eq("imobiliaria", data.imobiliaria);
+    if (connectionIds) query = query.in("connection_id", connectionIds);
     if (data.status) query = query.eq("status", data.status);
+    if (data.formId) query = query.eq("form_id", data.formId);
+    if (data.campaignId) query = query.eq("campaign_id", data.campaignId);
+    if (data.brokerId) query = query.eq("broker_id", data.brokerId);
+    // Explicit instants; these filters are received-at days in São Paulo, not browser timezone.
+    if (data.since) query = query.gte("received_at", `${data.since}T00:00:00-03:00`);
+    if (data.until)
+      query = query.lt(
+        "received_at",
+        new Date(Date.parse(`${data.until}T00:00:00-03:00`) + 86400000).toISOString(),
+      );
+    if (data.search) {
+      // PostgREST OR syntax is not a parameterized expression. Restrict structural
+      // metacharacters and escape SQL wildcards before constructing its literals.
+      const term = data.search.replace(/[\\%_*(),."']/g, " ").trim();
+      if (term)
+        query = query.or(`full_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`);
+    }
     const {
       data: rows,
       count,
       error,
     } = await query.range((data.page - 1) * data.pageSize, data.page * data.pageSize - 1);
     if (error) throw new Error("Não foi possível carregar os leads.");
-    return { items: (rows ?? []) as MetaLeadInboxItem[], total: count ?? 0 };
+    return {
+      items: (rows ?? []).map((row) => ({
+        ...row,
+        last_error: row.last_error ? "Processamento pendente. Consulte o diagnóstico." : null,
+      })) as MetaLeadInboxItem[],
+      total: count ?? 0,
+    };
   });
 export const retryMetaLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -108,6 +167,7 @@ export const assignMetaLead = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), brokerId: z.string().uuid() }).parse(value),
   )
   .handler(async ({ context, data }) => {
+    await requireMarketingAction(context, "manage_leads");
     const db = await adminDb();
     const { data: lead, error: readError } = await db
       .from("meta_lead_submissions")
@@ -130,6 +190,7 @@ export const resolveMetaLead = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), attendanceId: z.string().uuid() }).parse(value),
   )
   .handler(async ({ context, data }) => {
+    await requireMarketingAction(context, "manage_leads");
     const db = await adminDb();
     const { data: lead } = await db
       .from("meta_lead_submissions")
@@ -250,26 +311,59 @@ export const listMetaLeadForms = createServerFn({ method: "GET" })
     const { metaPages, externalId } = await import("./meta.graph.server");
     const { token, connection } = await resolvePageCredential(data.connectionId);
     if (!connection.page_id) throw new Error("Página não configurada nesta conexão.");
-    return metaPages<{ id: string; name?: string; status?: string }>(
-      `/${externalId(connection.page_id)}/leadgen_forms`,
-      token,
-      { fields: "id,name,status" },
-    );
+    const forms = await metaPages<{
+      id: string;
+      name?: string;
+      status?: string;
+      questions?: Array<{ key?: string; label?: string; type?: string }>;
+    }>(`/${externalId(connection.page_id)}/leadgen_forms`, token, {
+      fields: "id,name,status,questions",
+    });
+    return forms.map((form) => ({
+      id: form.id,
+      name: form.name?.slice(0, 200),
+      status: form.status,
+      questions: (form.questions ?? []).slice(0, 100).map((question) => ({
+        key: question.key?.slice(0, 200),
+        label: question.label?.slice(0, 500),
+        type: question.type?.slice(0, 100),
+      })),
+    }));
   });
 export const getMetaLeadDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((value: { id: string }) => z.object({ id: z.string().uuid() }).parse(value))
   .handler(async ({ context, data }) => {
+    await requireMarketingAction(context, "read_lead_contacts");
     const db = await adminDb();
+    const { data: scope, error: scopeError } = await db
+      .from("meta_lead_submissions")
+      .select("imobiliaria")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (scopeError || !scope) throw new Error("Lead indisponível.");
+    await leadAccess(context as LeadContext, scope.imobiliaria, false, "read_lead_contacts");
     const { data: row, error } = await db
       .from("meta_lead_submissions")
       .select(
-        "id,imobiliaria,status,full_name,phone,email,form_id,ad_id,adset_id,external_campaign_id,campaign_id,field_data,received_at,meta_created_at,broker_id,client_id,attendance_id,last_error",
+        "id,is_synthetic,imobiliaria,status,full_name,phone,email,form_id,ad_id,adset_id,external_campaign_id,campaign_id,field_data,received_at,meta_created_at,completed_at,broker_id,client_id,attendance_id,last_error",
       )
       .eq("id", data.id)
+      .eq("imobiliaria", scope.imobiliaria)
       .is("privacy_deleted_at", null)
       .maybeSingle();
     if (error || !row) throw new Error("Lead indisponível.");
-    await leadAccess(context as LeadContext, row.imobiliaria);
-    return row;
+    await leadAccess(context as LeadContext, row.imobiliaria, false, "read_lead_contacts");
+    const { data: history, error: historyError } = await db
+      .from("meta_lead_events")
+      .select("id,status,previous_status,occurred_at")
+      .eq("submission_id", data.id)
+      .order("occurred_at", { ascending: false })
+      .limit(100);
+    if (historyError) throw new Error("Não foi possível carregar o histórico do lead.");
+    return {
+      ...row,
+      history: history ?? [],
+      last_error: row.last_error ? "Processamento pendente. Consulte o diagnóstico." : null,
+    };
   });

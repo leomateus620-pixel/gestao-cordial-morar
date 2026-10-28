@@ -5,7 +5,7 @@ import {
   decryptCredential,
   encryptCredential,
 } from "./credentials.server";
-import { signState, verifyState } from "./oauth.server";
+import { signState, verifyState, authorizeUrl, metaOAuthScopes } from "./oauth.server";
 import { recentAccountRange, syncRetry } from "./sync.server";
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -38,6 +38,9 @@ describe("Server credential references and encryption", () => {
       external_account_id: "12345678901234567890",
     };
     expect(() => assertConnectionContext(connection, { imobiliaria: "morar" })).toThrow();
+    expect(() =>
+      assertConnectionContext({ ...connection, external_account_id: null }, { accountId: "123" }),
+    ).toThrow();
     expect(() =>
       assertConnectionContext(connection, { accountId: "12345678901234567891" }),
     ).toThrow();
@@ -90,5 +93,36 @@ describe("Account calendar", () => {
       since: "2026-09-29",
       until: "2026-10-26",
     });
+  });
+});
+
+describe("Explicit personal OAuth purpose", () => {
+  it("keeps default read minimal and requests management only deliberately", () => {
+    vi.stubEnv("META_APP_ID", "123");
+    vi.stubEnv("META_APP_SECRET", "test-secret");
+    const read = new URL(authorizeUrl("meta", "https://app.example/callback", "signed"));
+    expect(read.searchParams.get("scope")).toBe("ads_read");
+    expect(read.searchParams.has("auth_type")).toBe(false);
+    const manage = new URL(
+      authorizeUrl("meta", "https://app.example/callback", "signed", "manage"),
+    );
+    expect(manage.searchParams.get("scope")?.split(",")).toContain("ads_management");
+    expect(manage.searchParams.get("auth_type")).toBe("rerequest");
+    expect(metaOAuthScopes("leads")).toContain("leads_retrieval");
+    expect(metaOAuthScopes("leads")).not.toContain("ads_management");
+  });
+  it("binds the requested purpose into the signed nonce state", async () => {
+    vi.stubEnv("META_APP_ID", "123");
+    vi.stubEnv("META_APP_SECRET", "test-secret");
+    const state = {
+      u: "actor",
+      p: "meta" as const,
+      i: "cordial",
+      t: Date.now(),
+      n: "a".repeat(64),
+      s: "manage" as const,
+    };
+    expect(await verifyState(await signState(state))).toEqual(state);
+    expect(await verifyState(await signState({ ...state, s: "unsupported" as never }))).toBeNull();
   });
 });

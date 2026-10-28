@@ -27,8 +27,12 @@ export const Route = createFileRoute("/api/public/ads-oauth/callback")({
             p_user_id: state.u,
           });
           if (nonceError || consumed !== true) return back("invalido");
-          const { data: admin } = await db.rpc("has_role", { _user_id: state.u, _role: "admin" });
-          if (!admin) return back("invalido");
+          const { data: admin, error: accessError } = await db.rpc("marketing_actor_can_act", {
+            p_actor: state.u,
+            p_action: "manage_connection",
+            p_agency: state.i,
+          });
+          if (accessError || admin !== true) return back("invalido");
           const tokens = await exchangeCode(
             state.p,
             code,

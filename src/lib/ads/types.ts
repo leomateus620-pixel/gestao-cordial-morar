@@ -1,4 +1,5 @@
 export type AdPlatform = "meta" | "google";
+export type AdOAuthPurpose = "read" | "manage" | "leads";
 
 export type AdErrorCode =
   | "not_configured"
@@ -10,12 +11,25 @@ export type AdErrorCode =
   | "invalid_link"
   | "provider_error"
   | "partial_data"
-  | "conflict";
+  | "conflict"
+  | "invalid_parameter"
+  | "outcome_uncertain";
 
+export type AdRequestDiagnostics = {
+  operation: "read" | "report" | "command";
+  httpStatus?: number;
+  providerCode?: number;
+  providerSubcode?: number;
+  requestId?: string;
+  transient?: boolean;
+  retryAfterSeconds?: number;
+  usage?: { callCount?: number; cpuTime?: number; totalTime?: number; regainSeconds?: number };
+};
 export class AdProviderError extends Error {
   constructor(
     public code: AdErrorCode,
     message: string,
+    public diagnostics?: AdRequestDiagnostics,
   ) {
     super(message);
     this.name = "AdProviderError";
@@ -27,7 +41,7 @@ export type DateRange = { since: string; until: string };
 export type DailyInsight = {
   date: string;
   impressions: number;
-  reach: number;
+  reach: number | null;
   clicks: number;
   ctr: number;
   cpc: number;
@@ -35,7 +49,7 @@ export type DailyInsight = {
   spend: number;
   leads: number;
   cpl: number;
-  frequency: number;
+  frequency: number | null;
   actions?: Array<{ action_type: string; value: string }>;
   leadActionType?: string;
   landingPageViews?: number;
@@ -44,7 +58,7 @@ export type DailyInsight = {
 export type ExternalCampaign = {
   id: string;
   name: string;
-  status: "Ativa" | "Pausada" | "Encerrada" | "Planejada";
+  status: "Ativa" | "Pausada" | "Encerrada" | "Planejada" | "Não identificado";
   objective?: string;
   accountId?: string;
   startDate?: string;
@@ -84,6 +98,8 @@ export const AD_ERROR_MESSAGES: Record<AdErrorCode, string> = {
   invalid_link: "Link não reconhecido.",
   provider_error: "A plataforma não respondeu como esperado.",
   partial_data: "Dados parciais. A sincronização precisa ser retomada.",
+  invalid_parameter: "A plataforma recusou um parâmetro. Revise a configuração da operação.",
+  outcome_uncertain: "Resultado não confirmado. Reconcilie na Meta antes de reenviar.",
   conflict: "Dados manuais ou vínculos em conflito. Reconcilie antes de sincronizar.",
 };
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { revisionEvidenceEnough, missingDayEvidenceIdentity } from "./metric-reconciliation";
 import { AdProviderError, AD_ERROR_MESSAGES } from "./types";
 import { resolveConnectionCredential } from "./credentials.server";
 
@@ -182,8 +183,76 @@ async function runOneAdsSync() {
         .gte("data", range.since)
         .lte("data", range.until);
       if (storedError) throw new AdProviderError("provider_error", "Falha ao ler métricas salvas.");
-      if (missingStoredDays(stored ?? [], insights.map((d) => d.date)).length)
-        throw new AdProviderError("partial_data", "Resposta incompleta da plataforma.");
+      const missing = missingStoredDays(
+        stored ?? [],
+        insights.map((d) => d.date),
+      );
+      let reconciliationId: string | null = null;
+      if (missing.length) {
+        if (c.platform !== "meta" || missing.length > 5)
+          throw new AdProviderError("partial_data", "Revisão exige análise do período.");
+        const hash = createHash("sha256")
+          .update(missingDayEvidenceIdentity(stored ?? [], missing))
+          .digest("hex");
+        const { error: evidenceWrite } = await db.from("ad_metric_reconciliations").upsert(
+          {
+            campaign_id: c.id,
+            range_start: range.since,
+            range_end: range.until,
+            response_hash: hash,
+            missing_dates: missing,
+            prior_metrics: stored,
+          },
+          { onConflict: "campaign_id,range_start,range_end,response_hash", ignoreDuplicates: true },
+        );
+        if (evidenceWrite)
+          throw new AdProviderError("partial_data", "Evidência de revisão indisponível.");
+        const { data: evidence } = await db
+          .from("ad_metric_reconciliations")
+          .select("id,first_seen_at")
+          .eq("campaign_id", c.id)
+          .eq("range_start", range.since)
+          .eq("range_end", range.until)
+          .eq("response_hash", hash)
+          .single();
+        if (!evidence || Date.now() - Date.parse(evidence.first_seen_at) < 10 * 60000)
+          throw new AdProviderError(
+            "partial_data",
+            "Aguardando confirmação independente da revisão.",
+          );
+        const empty: string[] = [];
+        for (const date of missing) {
+          const check = await p.getInsights(
+            c.external_account_id,
+            c.external_campaign_id,
+            { since: date, until: date },
+            token,
+          );
+          if (check.length === 0) empty.push(date);
+        }
+        if (
+          !revisionEvidenceEnough({
+            firstSeen: evidence.first_seen_at,
+            now: Date.now(),
+            missingDays: missing,
+            verifiedEmptyDays: empty,
+            dailySpend: insights.reduce((s, d) => s + d.spend, 0),
+            dailyImpressions: insights.reduce((s, d) => s + d.impressions, 0),
+            periodSpend: "spend" in period ? (period.spend as number) : null,
+            periodImpressions: "impressions" in period ? (period.impressions as number) : null,
+          })
+        )
+          throw new AdProviderError(
+            "partial_data",
+            "Agregado e dias divergem; valores anteriores preservados.",
+          );
+        const { error: verifyError } = await db
+          .from("ad_metric_reconciliations")
+          .update({ state: "verified", verified_at: new Date().toISOString() })
+          .eq("id", evidence.id);
+        if (verifyError) throw new AdProviderError("partial_data", "Verificação não persistida.");
+        reconciliationId = evidence.id;
+      }
       const account = Array.isArray(c.ad_accounts) ? c.ad_accounts[0] : c.ad_accounts;
       const { error: commitError } = await db.rpc("ad_sync_commit", {
         p_job_id: job.id,
@@ -224,12 +293,16 @@ async function runOneAdsSync() {
         );
       }
       result.done++;
+      if (reconciliationId)
+        await db
+          .from("ad_metric_reconciliations")
+          .update({ state: "applied", applied_at: new Date().toISOString() })
+          .eq("id", reconciliationId);
     } catch (e) {
       const code = e instanceof AdProviderError ? e.code : "provider_error";
       console.error("[ads-sync] job failed", {
         job: job.id,
         code,
-        message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
       });
       const retry = syncRetry(Number(job.attempts), code);
       const now = new Date();

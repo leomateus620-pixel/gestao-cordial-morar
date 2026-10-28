@@ -7,7 +7,20 @@ import {
 } from "../types";
 import { externalId, metaGraph, metaPages, normalizeAccountId } from "../meta.graph.server";
 
-const num = (v: unknown) => Number(v ?? 0) || 0;
+function metric(v: unknown, required = true): number | null {
+  const parsed =
+    typeof v === "number" || (typeof v === "string" && v.trim() !== "") ? Number(v) : NaN;
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > Number.MAX_SAFE_INTEGER) {
+    if (required)
+      throw new AdProviderError(
+        "partial_data",
+        "Métrica obrigatória ausente ou inválida; dados anteriores preservados.",
+      );
+    return null;
+  }
+  return parsed;
+}
+const num = (v: unknown) => metric(v)!;
 type Action = { action_type: string; value: string };
 // One documented reporting family, never add overlapping aliases or take their maximum.
 // Prefer the explicit instant-form family; the generic `lead` is only a fallback.
@@ -26,7 +39,7 @@ function mapStatus(s?: string): ExternalCampaign["status"] {
   if (s === "ACTIVE") return "Ativa";
   if (s === "PAUSED") return "Pausada";
   if (s === "ARCHIVED" || s === "DELETED") return "Encerrada";
-  return "Planejada";
+  return "Não identificado";
 }
 type Campaign = {
   id: string;
@@ -82,18 +95,22 @@ export async function getMetaPeriodInsight(
     token,
     {
       time_range: JSON.stringify(range),
-      fields: "reach,frequency,impressions",
+      fields: "reach,frequency,impressions,spend",
       time_increment: "all_days",
       use_unified_attribution_setting: "true",
     },
   );
+  if (rows.length > 1)
+    throw new AdProviderError("partial_data", "Agregado de período retornou grão inesperado.");
   return {
     since: range.since,
     until: range.until,
     accountId: normalizeAccountId(accountId),
     campaignId,
-    reach: rows[0] ? num(rows[0].reach) : null,
-    frequency: rows[0] ? num(rows[0].frequency) : null,
+    reach: rows[0] ? metric(rows[0].reach, false) : null,
+    frequency: rows[0] ? metric(rows[0].frequency, false) : null,
+    impressions: rows[0] ? num(rows[0].impressions) : 0,
+    spend: rows[0] ? num(rows[0].spend) : 0,
     scope: "campaign" as const,
   };
 }
@@ -115,20 +132,32 @@ export const metaProvider: AdProvider = {
       fields: "impressions,reach,clicks,spend,frequency,actions",
       use_unified_attribution_setting: "true",
     });
+    const seen = new Set<string>();
     return rows.map((r) => {
+      const date = String(r.date_start ?? "");
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        date < range.since ||
+        date > range.until ||
+        seen.has(date)
+      )
+        throw new AdProviderError("partial_data", "Série diária incompleta ou duplicada.");
+      seen.add(date);
       const actions = r.actions ?? [];
       const lead = selectLeadAction(actions);
       return finalizeInsight({
         date: String(r.date_start),
         impressions: num(r.impressions),
-        reach: num(r.reach),
+        reach: metric(r.reach, false),
         clicks: num(r.clicks),
         spend: num(r.spend),
-        frequency: num(r.frequency),
+        frequency: metric(r.frequency, false),
         leads: lead.leads,
         leadActionType: lead.type,
         actions,
-        landingPageViews: num(actions.find((a) => a.action_type === "landing_page_view")?.value),
+        landingPageViews:
+          metric(actions.find((a) => a.action_type === "landing_page_view")?.value, false) ??
+          undefined,
       });
     });
   },

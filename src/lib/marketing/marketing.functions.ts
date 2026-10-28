@@ -12,6 +12,7 @@ import type {
 } from "@/types/marketing";
 
 import { marketingCampaignDto, type CampaignRow } from "./marketing.dto";
+import { marketingAccess, requireMarketingAction } from "@/lib/ads/authorization.server";
 
 export type CampaignInput = {
   imobiliaria: MarketingAgencyId;
@@ -131,28 +132,13 @@ const inputSchema = z
   .strict()
   .refine((d) => d.dataFim >= d.dataInicio, "O fim do período deve ser posterior ao início.");
 type Ctx = { supabase: SupabaseClient<Database>; userId: string };
-async function marketingAccess(ctx: Ctx) {
-  const { data, error } = await ctx.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", ctx.userId);
-  if (error) throw new Error("Não foi possível validar o acesso ao marketing.");
-  const roles = new Set((data ?? []).map((r: { role: string }) => r.role));
-  if (
-    !roles.has("admin") &&
-    !roles.has("meta_reviewer") &&
-    (roles.has("financeiro") || !roles.has("secretaria"))
-  )
-    throw new Error("Acesso ao marketing não permitido.");
-  return { isAdmin: roles.has("admin"), financialVisible: roles.has("admin") };
-}
 async function agencyAccess(ctx: Ctx, agency: string) {
   const { data, error } = await ctx.supabase.rpc("marketing_can_operate", { p_agency: agency });
   if (error || data !== true) throw new Error("Sem permissão para operar esta imobiliária.");
 }
 
 async function readPage(ctx: Ctx, raw: MarketingQuery = {}): Promise<CampaignPage> {
-  await marketingAccess(ctx);
+  const access = await marketingAccess(ctx);
   const q = querySchema.parse(raw);
   const { data, error } = await ctx.supabase.rpc("marketing_campaigns_safe", {
     p_imobiliaria: q.imobiliaria ?? undefined,
@@ -178,13 +164,25 @@ async function readPage(ctx: Ctx, raw: MarketingQuery = {}): Promise<CampaignPag
     financial_visible: boolean;
     summary?: CampaignPage["summary"];
   };
+  const financial = access.financialVisible && result.financial_visible === true;
   return {
-    summary: result?.summary,
-    items: (result?.items ?? []).map((r) =>
-      marketingCampaignDto(r, result.financial_visible === true),
-    ),
+    summary: result?.summary
+      ? {
+          current: {
+            ...result.summary.current,
+            spend: financial ? result.summary.current.spend : null,
+          },
+          previous: result.summary.previous
+            ? {
+                ...result.summary.previous,
+                spend: financial ? result.summary.previous.spend : null,
+              }
+            : result.summary.previous,
+        }
+      : undefined,
+    items: (result?.items ?? []).map((r) => marketingCampaignDto(r, financial)),
     total: Number(result?.total ?? 0),
-    financialVisible: result?.financial_visible === true,
+    financialVisible: financial,
     page: q.page,
     pageSize: q.pageSize,
   };
@@ -218,7 +216,7 @@ function payload(input: CampaignInput, financial: boolean) {
   };
 }
 async function mutableCampaign(ctx: Ctx, id: string) {
-  const access = await marketingAccess(ctx);
+  const access = await requireMarketingAction(ctx, "manage_manual");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const admin = supabaseAdmin;
   const { data: row, error } = await admin
@@ -235,7 +233,7 @@ export const createCampaign = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: CampaignInput) => inputSchema.parse(d))
   .handler(async ({ data, context }): Promise<MarketingCampaign> => {
-    const access = await marketingAccess(context);
+    const access = await requireMarketingAction(context, "manage_manual", data.imobiliaria);
     await agencyAccess(context, data.imobiliaria);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin

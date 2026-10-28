@@ -1,10 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+/** Reviewer denial wins over combined roles, before OAuth, provider or admin access. */
+async function assertCalendarMutationAllowed(context: { supabase: SupabaseClient<Database> }) {
+  const { data, error } = await context.supabase.rpc("is_meta_reviewer");
+  if (error || data !== false)
+    throw new Error("O perfil de avaliação não pode alterar a integração de agenda.");
+}
 
 export const startGoogleOAuth = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertCalendarMutationAllowed(context);
     const { signState, buildAuthUrl } = await import("./google.server");
     const req = getRequest();
     const origin = new URL(req.url).origin;
@@ -40,6 +50,7 @@ export const getMyGoogleConnection = createServerFn({ method: "GET" })
 export const disconnectGoogleCalendar = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertCalendarMutationAllowed(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { revokeToken } = await import("./google.server");
     const { data: conn } = await supabaseAdmin
@@ -73,6 +84,7 @@ export const resyncAgendaEvent = createServerFn({ method: "POST" })
 export const backfillMyGoogleAgenda = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertCalendarMutationAllowed(context);
     const { backfillGoogleSyncForUser } = await import("./google.server");
     return backfillGoogleSyncForUser(context.userId);
   });

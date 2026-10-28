@@ -1,7 +1,7 @@
 import process from "node:process";
 import { timingSafeEqual } from "node:crypto";
-import { metaGraphVersion } from "./meta.graph.server";
-import { AdProviderError, type AdPlatform } from "./types";
+import { metaGraphVersion, metaGraphCommand } from "./meta.graph.server";
+import { AdProviderError, type AdPlatform, type AdOAuthPurpose } from "./types";
 
 export function adsConfig(platform: AdPlatform) {
   if (platform === "meta") {
@@ -36,7 +36,14 @@ async function hmac(secret: string, data: string) {
   return b64(String.fromCharCode(...new Uint8Array(sig)));
 }
 
-export type OAuthState = { u: string; p: AdPlatform; i: string; t: number; n: string };
+export type OAuthState = {
+  u: string;
+  p: AdPlatform;
+  i: string;
+  t: number;
+  n: string;
+  s?: AdOAuthPurpose;
+};
 
 export async function signState(state: OAuthState) {
   const { clientSecret } = requireConfig(state.p);
@@ -57,6 +64,7 @@ export async function verifyState(raw: string): Promise<OAuthState | null> {
   }
   if (state.p !== "meta" && state.p !== "google") return null;
   if (
+    (state.s !== undefined && !["read", "manage", "leads"].includes(state.s)) ||
     typeof state.u !== "string" ||
     !["cordial", "morar"].includes(state.i) ||
     typeof state.n !== "string" ||
@@ -73,14 +81,35 @@ export async function verifyState(raw: string): Promise<OAuthState | null> {
   return expected.length === supplied.length && timingSafeEqual(expected, supplied) ? state : null;
 }
 
-export function authorizeUrl(platform: AdPlatform, redirectUri: string, state: string) {
+// Requested permissions are not proof of granted scopes, asset assignment or
+// Advanced Access. diagnoseConnection verifies the returned credential afterward.
+export function metaOAuthScopes(purpose: AdOAuthPurpose = "read"): string[] {
+  if (purpose === "manage")
+    return ["ads_read", "ads_management", "pages_show_list", "pages_read_engagement"];
+  if (purpose === "leads")
+    return [
+      "ads_read",
+      "leads_retrieval",
+      "pages_show_list",
+      "pages_read_engagement",
+      "pages_manage_metadata",
+    ];
+  return ["ads_read"];
+}
+export function authorizeUrl(
+  platform: AdPlatform,
+  redirectUri: string,
+  state: string,
+  purpose: AdOAuthPurpose = "read",
+) {
   const { clientId } = requireConfig(platform);
   if (platform === "meta") {
     const q = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       state,
-      scope: "ads_read",
+      scope: metaOAuthScopes(purpose).join(","),
+      ...(purpose === "read" ? {} : { auth_type: "rerequest" }),
       response_type: "code",
     });
     return `https://www.facebook.com/${metaGraphVersion()}/dialog/oauth?${q}`;
@@ -111,40 +140,37 @@ export async function exchangeCode(
 ): Promise<TokenSet> {
   const { clientId, clientSecret } = requireConfig(platform);
   if (platform === "meta") {
-    const q = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri,
-      code,
-    });
-    const res = await fetch(`https://graph.facebook.com/${metaGraphVersion()}/oauth/access_token`, {
-      method: "POST",
-      body: q,
-      signal: AbortSignal.timeout(15_000),
-    });
-    const body = (await res.json()) as { access_token?: string; expires_in?: number };
-    if (!res.ok || !body.access_token)
-      throw new AdProviderError("provider_error", "Falha ao trocar código Meta");
-    // Upgrade to a long-lived token (~60 days) when possible.
-    const q2 = new URLSearchParams({
-      grant_type: "fb_exchange_token",
-      client_id: clientId,
-      client_secret: clientSecret,
-      fb_exchange_token: body.access_token,
-    });
-    const res2 = await fetch(
-      `https://graph.facebook.com/${metaGraphVersion()}/oauth/access_token`,
-      { method: "POST", body: q2, signal: AbortSignal.timeout(15_000) },
+    const body = await metaGraphCommand<{ access_token?: string; expires_in?: number }>(
+      "/oauth/access_token",
+      `${clientId}|${clientSecret}`,
+      {
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        code,
+      },
     );
-    const long = res2.ok
-      ? ((await res2.json()) as { access_token?: string; expires_in?: number })
-      : {};
+    if (!body.access_token)
+      throw new AdProviderError("provider_error", "Falha ao trocar código Meta.");
+    // Only this personal OAuth code exchange upgrades a user token. System-user
+    // credentials never enter this function; they remain secret references.
+    const long = await metaGraphCommand<{ access_token?: string; expires_in?: number }>(
+      "/oauth/access_token",
+      `${clientId}|${clientSecret}`,
+      {
+        grant_type: "fb_exchange_token",
+        client_id: clientId,
+        client_secret: clientSecret,
+        fb_exchange_token: body.access_token,
+      },
+    ).catch(() => ({}) as { access_token?: string; expires_in?: number });
     const token = long.access_token ?? body.access_token;
     const exp = long.expires_in ?? body.expires_in;
     return {
       accessToken: token,
       expiresAt: exp ? new Date(Date.now() + exp * 1000).toISOString() : null,
-      scopes: "ads_read",
+      // Only debug_token reports scopes actually granted.
+      scopes: undefined,
     };
   }
   const res = await fetch("https://oauth2.googleapis.com/token", {
