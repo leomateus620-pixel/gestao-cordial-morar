@@ -27,6 +27,7 @@ import {
   listMetaLeadForms,
   listMetaLeadFormMappings,
 } from "@/lib/ads/leads.functions";
+import type { AdOAuthPurpose } from "@/lib/ads/types";
 import { useAds } from "@/hooks/useAds";
 import { MetaWebhookStatusPanel } from "./MetaWebhookStatusPanel";
 import { useSession } from "@/lib/auth-mock";
@@ -68,11 +69,14 @@ export function MetaAdsCard({ enabled = true }: { enabled?: boolean }) {
   return <MetaAdsAdmin />;
 }
 function MetaAdsAdmin() {
-  const ads = useAds(),
+  const ads = useAds([], "todas"),
     qc = useQueryClient();
   const configure = useServerFn(configureMetaSystemConnection),
     diagnose = useServerFn(diagnoseMetaConnection),
     accounts = useServerFn(listMetaAccounts);
+  const [oauthAgency, setOauthAgency] = useState<MarketingAgencyId>("cordial"),
+    [oauthPurpose, setOauthPurpose] = useState<AdOAuthPurpose>("read"),
+    [oauthPending, setOauthPending] = useState(false);
   const [agency, setAgency] = useState<MarketingAgencyId>("cordial"),
     [appId, setAppId] = useState(""),
     [pageId, setPageId] = useState(""),
@@ -365,6 +369,66 @@ function MetaAdsAdmin() {
           Selecione a marca antes de autorizar uma conexão de usuário. Os ativos de outra marca não
           são reutilizados.
         </p>
+        <div className="my-4 grid gap-3 sm:grid-cols-2">
+          <Field label="Imobiliária da autorização Meta">
+            <select
+              className="h-11 rounded-xl border bg-card px-3 text-sm"
+              value={oauthAgency}
+              onChange={(event) => setOauthAgency(event.target.value as MarketingAgencyId)}
+            >
+              <option value="cordial">Cordial</option>
+              <option value="morar">Morar</option>
+            </select>
+          </Field>
+          <Field label="Permissões necessárias para">
+            <select
+              className="h-11 rounded-xl border bg-card px-3 text-sm"
+              value={oauthPurpose}
+              onChange={(event) => setOauthPurpose(event.target.value as AdOAuthPurpose)}
+            >
+              <option value="read">Ler resultados de anúncios</option>
+              <option value="manage">Criar e gerenciar anúncios</option>
+              <option value="leads">Recuperar leads e conferir inscrições</option>
+            </select>
+          </Field>
+        </div>
+        {ads.connections.some(
+          (connection) =>
+            connection.platform === "meta" &&
+            connection.imobiliaria === oauthAgency &&
+            connection.credentialMode === "system_user",
+        ) ? (
+          <p className="text-xs text-foreground/70">
+            Esta imobiliária usa token de usuário do sistema. Ajuste os ativos/permissões no
+            Business Manager e a referência segura da credencial acima; não há renovação OAuth
+            pessoal para este vínculo.
+          </p>
+        ) : (
+          <Button
+            variant="outline"
+            className="min-h-11"
+            disabled={oauthPending || ads.connectionsLoading}
+            onClick={async () => {
+              setOauthPending(true);
+              try {
+                const result = await ads.connect("meta", oauthAgency, oauthPurpose);
+                if (!result.ok) toast.error(result.message);
+              } catch {
+                toast.error(
+                  "Não foi possível iniciar a autorização. Confira a configuração do aplicativo.",
+                );
+              } finally {
+                setOauthPending(false);
+              }
+            }}
+          >
+            {oauthPending ? "Abrindo autorização…" : "Autorizar permissões Meta selecionadas"}
+          </Button>
+        )}
+        <p className="mt-2 text-xs text-foreground/70">
+          A autorização solicita somente os escopos da finalidade escolhida. A concessão efetiva e
+          os ativos atribuídos ainda precisam ser conferidos no diagnóstico.
+        </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(["cordial", "morar"] as const).map((brand) => (
             <Button
@@ -392,7 +456,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     </label>
   );
 }
-function MetaFormMapping({ connection }: { connection: AdConnectionPublic }) {
+export function MetaFormMapping({ connection }: { connection: AdConnectionPublic }) {
   const loadedMapping = useRef<string | null>(null);
   const qc = useQueryClient();
   const save = useServerFn(saveMetaLeadFormMapping),
@@ -405,36 +469,66 @@ function MetaFormMapping({ connection }: { connection: AdConnectionPublic }) {
     [propertySearch, setPropertySearch] = useState(""),
     [propertyId, setPropertyId] = useState(""),
     [brokerId, setBrokerId] = useState("");
+  const [debouncedPropertySearch, setDebouncedPropertySearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedPropertySearch(propertySearch), 350);
+    return () => window.clearTimeout(timer);
+  }, [propertySearch]);
   const properties = useQuery({
-    queryKey: ["marketing", "mapping-properties", session?.id, connection.id, propertySearch],
+    queryKey: [
+      "marketing",
+      "mapping-properties",
+      session?.id,
+      session?.perfil,
+      connection.imobiliaria,
+      connection.id,
+      debouncedPropertySearch,
+    ],
     queryFn: () =>
       getProperties({
         data: {
           carteira: connection.imobiliaria as MarketingAgencyId,
-          search: propertySearch,
+          search: debouncedPropertySearch,
           page: 0,
           pageSize: 15,
         },
       }),
-    enabled: mappingOpen && propertySearch.trim().length >= 2,
+    enabled:
+      mappingOpen &&
+      session?.perfil === "admin_owner" &&
+      debouncedPropertySearch.trim().length >= 2,
   });
   const forms = useQuery({
-    queryKey: ["marketing", "mapping-forms", session?.id, connection.id],
+    queryKey: [
+      "marketing",
+      "mapping-forms",
+      session?.id,
+      session?.perfil,
+      connection.imobiliaria,
+      connection.id,
+    ],
     queryFn: () => getForms({ data: { connectionId: connection.id! } }),
-    enabled: mappingOpen,
+    enabled: mappingOpen && session?.perfil === "admin_owner",
     retry: false,
     staleTime: 60_000,
   });
   const mappings = useQuery({
-    queryKey: ["marketing", "lead-form-mappings", session?.id],
+    queryKey: ["marketing", "lead-form-mappings", session?.id, session?.perfil],
     queryFn: () => getMappings(),
-    enabled: mappingOpen,
+    enabled: mappingOpen && session?.perfil === "admin_owner",
     staleTime: 60_000,
   });
   const brokers = useQuery({
-    queryKey: ["marketing", "mapping-brokers", session?.id, connection.id],
+    queryKey: [
+      "marketing",
+      "mapping-brokers",
+      session?.id,
+      session?.perfil,
+      connection.imobiliaria,
+      connection.id,
+    ],
     queryFn: () => getBrokers(),
-    enabled: mappingOpen,
+    enabled: mappingOpen && session?.perfil === "admin_owner",
     staleTime: 60_000,
   });
   const [formId, setFormId] = useState(""),
@@ -553,6 +647,21 @@ function MetaFormMapping({ connection }: { connection: AdConnectionPublic }) {
             ))}
           </select>
         </Field>
+        {Boolean(forms.data?.find((form) => form.id === formId)?.questions?.length) && (
+          <div className="sm:col-span-2">
+            <p className="text-xs font-semibold">Perguntas disponíveis no formulário</p>
+            <ul className="mt-2 space-y-1 text-xs text-foreground/70">
+              {forms.data
+                ?.find((form) => form.id === formId)
+                ?.questions?.map((question, index) => (
+                  <li key={question.key ?? index}>
+                    {question.label || question.type || "Pergunta"} · campo{" "}
+                    <code>{question.key || "não informado"}</code>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
         <Field label="ID do formulário">
           <Input
             className="h-11 rounded-xl"

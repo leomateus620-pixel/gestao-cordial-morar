@@ -20,6 +20,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import { CampaignHierarchyInsights } from "@/components/marketing/CampaignHierarchyInsights";
 import { CampaignStatusBadge } from "@/components/marketing/CampaignStatusBadge";
 import {
   Sheet,
@@ -65,7 +66,7 @@ export function CampaignDetailsDrawer({
           }
         }}
         side="right"
-        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[46rem]"
+        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-background p-0  sm:max-w-[46rem]"
       >
         {campaign && (
           <CampaignDetailsContent
@@ -120,14 +121,14 @@ function CampaignDetailsContent({
       <SheetHeader className="text-left">
         <div className="flex flex-wrap items-center gap-2">
           <CampaignStatusBadge status={campaign.status} />
-          <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-bold text-foreground/55 ring-1 ring-white/70">
+          <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold text-foreground/70 ring-1 ring-white/70">
             {campaign.channel}
           </span>
         </div>
         <SheetTitle className="text-2xl font-black tracking-tight text-foreground">
           {campaign.name}
         </SheetTitle>
-        <SheetDescription className="max-w-2xl text-sm leading-relaxed text-foreground/58">
+        <SheetDescription className="max-w-2xl text-sm leading-relaxed text-foreground/70">
           {campaign.objective} · {formatMarketingDateRange(campaign.startDate, campaign.endDate)}
         </SheetDescription>
       </SheetHeader>
@@ -138,6 +139,9 @@ function CampaignDetailsContent({
           {campaign.currency ?? "Moeda não informada"} ·{" "}
           {campaign.accountTimezone ?? "Fuso da conta não informado"}
         </p>
+      )}
+      {campaign.platform === "meta" && metricsRange && (
+        <CampaignHierarchyInsights campaignId={campaign.id} range={metricsRange} />
       )}
       <section className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <DetailMetric
@@ -176,11 +180,11 @@ function CampaignDetailsContent({
         <DetailMetric icon={MapPin} label="Melhor região" value={campaign.bestLocation} />
       </section>
 
-      <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
+      <section className="mt-5 border-t border-border py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-black text-foreground">Análise da campanha</h3>
-            <p className="mt-1 text-sm leading-relaxed text-foreground/58">{campaign.diagnosis}</p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/70">{campaign.diagnosis}</p>
           </div>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -219,7 +223,7 @@ function CampaignDetailsContent({
             }
           />
         </div>
-        <p className="mt-4 rounded-2xl bg-white/62 px-3 py-2 text-sm leading-relaxed text-foreground/60">
+        <p className="mt-4 rounded-2xl bg-white/62 px-3 py-2 text-sm leading-relaxed text-foreground/65">
           {campaign.notes}
         </p>
         {campaign.referenceUrl && (
@@ -235,9 +239,9 @@ function CampaignDetailsContent({
         )}
       </section>
 
-      <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
+      <section className="mt-5 border-t border-border py-4">
         <h3 className="text-base font-black text-foreground">Performance ao longo do tempo</h3>
-        <p className="mt-1 text-xs leading-relaxed text-foreground/52">
+        <p className="mt-1 text-xs leading-relaxed text-foreground/70">
           Leads reportados por dia no recorte consultado.
         </p>
         <div className="mt-4 h-56 sm:h-64">
@@ -257,19 +261,25 @@ function CampaignDetailsContent({
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tick={{ ...axisTick, fontWeight: 700 }}
+                tick={{
+                  ...axisTick,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fill: "var(--muted-foreground)",
+                }}
                 tickFormatter={(value) => shortDateLabel(String(value))}
                 minTickGap={14}
               />
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tick={axisTick}
+                tick={{ ...axisTick, fontSize: 12, fill: "var(--muted-foreground)" }}
                 width={34}
                 allowDecimals={false}
               />
               <Tooltip content={<DetailsTooltip />} />
               <Area
+                isAnimationActive={false}
                 type="monotone"
                 dataKey="leads"
                 name="Leads"
@@ -279,6 +289,7 @@ function CampaignDetailsContent({
                 activeDot={{ r: 5, strokeWidth: 2.5, stroke: "rgba(255,255,255,0.95)" }}
               />
               <Area
+                isAnimationActive={false}
                 type="monotone"
                 dataKey="landingPageViews"
                 name="Visualizações da página de destino"
@@ -293,7 +304,7 @@ function CampaignDetailsContent({
       </section>
 
       {campaign.locationBreakdown.length > 0 && (
-        <section className="mt-5 rounded-3xl border border-white/65 bg-white/55 p-4 shadow-sm">
+        <section className="mt-5 border-t border-border py-4">
           <h3 className="text-base font-black text-foreground">Entrega por localização</h3>
           <div className="mt-3 space-y-2">
             {campaign.locationBreakdown.map((item) => {
@@ -304,14 +315,11 @@ function CampaignDetailsContent({
               const width = Math.max(4, (item.impressions / max) * 100);
 
               return (
-                <div
-                  key={item.location}
-                  className="rounded-2xl bg-white/58 p-3 ring-1 ring-white/62"
-                >
+                <div key={item.location} className="rounded-2xl bg-card p-3 ring-1 ring-white/62">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-foreground">{item.location}</p>
-                      <p className="mt-0.5 text-[11px] font-semibold text-foreground/50">
+                      <p className="mt-0.5 text-xs font-semibold text-foreground/70">
                         {formatMarketingNumber(item.clicks)} cliques ·{" "}
                         {formatMarketingNumber(item.leads)} leads
                       </p>
@@ -346,8 +354,8 @@ function DetailMetric({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/65 bg-white/58 p-3">
-      <p className="flex items-center gap-1.5 text-[10px] font-bold text-foreground/45">
+    <div className="min-w-0 rounded-2xl border border-white/65 bg-card p-3">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-foreground/70">
         <Icon className="size-3.5" />
         {label}
       </p>
@@ -366,8 +374,8 @@ function InfoBlock({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl bg-white/58 px-3 py-2 ring-1 ring-white/62">
-      <p className="flex items-center gap-1.5 text-[10px] font-bold text-foreground/45">
+    <div className="min-w-0 rounded-2xl bg-card px-3 py-2 ring-1 ring-white/62">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-foreground/70">
         <Icon className="size-3.5" />
         {label}
       </p>
@@ -408,7 +416,7 @@ function DetailsTooltip({
 function TooltipLine({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-44 items-center justify-between gap-4">
-      <span className="text-foreground/58">{label}</span>
+      <span className="text-foreground/70">{label}</span>
       <span className="font-mono font-black text-foreground">{value}</span>
     </div>
   );

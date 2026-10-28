@@ -8,14 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampaignStatusBadge } from "@/components/marketing/CampaignStatusBadge";
 import type { AdConnectionPublic } from "@/lib/ads/ads.functions";
@@ -75,7 +68,7 @@ export function ConnectionsStrip({
               {PLATFORM_LABEL[c.platform]}
               {c.imobiliaria ? ` · ${c.imobiliaria}` : ""}
               <span
-                className={c.status === "connected" ? "text-emerald-800" : "text-foreground/55"}
+                className={c.status === "connected" ? "text-emerald-800" : "text-foreground/65"}
               >
                 {c.status === "connected" ? (
                   <>
@@ -228,11 +221,14 @@ export function KpiGrid({
     <section aria-label="Resultados do período" className="space-y-3">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {primary.map((def) => {
-          const d = def.key === "activeCampaigns" ? null : delta(curr[def.key], prev[def.key]);
+          const d =
+            def.key === "activeCampaigns" || curr.hasData === false || prev.hasData === false
+              ? null
+              : delta(curr[def.key], prev[def.key]);
           return (
             <article
               key={def.key}
-              className="min-w-0 rounded-3xl bg-card p-4 ring-1 ring-border/60 sm:p-5"
+              className="min-w-0 rounded-xl bg-card p-4 ring-1 ring-border/60 sm:p-5"
             >
               <p className="text-xs font-semibold text-foreground/65" title={def.help}>
                 {def.label}
@@ -249,7 +245,7 @@ export function KpiGrid({
                 <span className="sm:hidden">{mobileValue(def)}</span>
                 <span className="hidden sm:inline">{value(def)}</span>
               </p>
-              <p className="mt-2 flex min-h-4 items-center gap-1 text-[11px] text-foreground/60">
+              <p className="mt-2 flex min-h-4 items-center gap-1 text-xs text-foreground/65">
                 {d === null ? (
                   def.key === "activeCampaigns" ? (
                     "Status atual das campanhas"
@@ -272,14 +268,27 @@ export function KpiGrid({
           );
         })}
       </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-3xl bg-card p-4 ring-1 ring-border/60 sm:grid-cols-4 xl:grid-cols-7">
-        {secondary.map((def) => (
-          <div key={def.key} className="min-w-0" title={def.help}>
-            <p className="text-[11px] text-foreground/65">{def.label}</p>
-            <p className="mt-1 font-mono text-sm font-semibold tabular-nums">{value(def)}</p>
-          </div>
-        ))}
-      </div>
+      <details className="border-b pb-2">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-primary">
+          Mais indicadores e definições
+        </summary>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 py-3 sm:grid-cols-4 xl:grid-cols-7">
+          {secondary.map((def) => (
+            <div key={def.key} className="min-w-0" title={def.help}>
+              <p className="text-xs text-foreground/65">{def.label}</p>
+              <p className="mt-1 font-mono text-sm font-semibold tabular-nums">{value(def)}</p>
+            </div>
+          ))}
+        </div>
+        <dl className="grid gap-3 pb-3 sm:grid-cols-2">
+          {[...primary, ...secondary].map((def) => (
+            <div key={def.key}>
+              <dt className="text-xs font-semibold">{def.label}</dt>
+              <dd className="mt-1 text-xs text-foreground/70">{def.help}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
       {curr.mixedCurrencies && (
         <p className="flex items-center gap-2 text-xs text-amber-800">
           <AlertTriangle className="size-4 shrink-0" />
@@ -292,16 +301,13 @@ export function KpiGrid({
 }
 export function InsightsBlock({ insights }: { insights: Insight[] }) {
   return (
-    <section className="rounded-3xl bg-card p-4 ring-1 ring-border/60 sm:p-5">
-      <h2 className="flex items-center gap-2 text-sm font-semibold">
-        <Sparkles className="size-4 text-primary" />
-        Leitura do período
-      </h2>
+    <section className="rounded-xl bg-card p-4 ring-1 ring-border/60 sm:p-5">
+      <h2 className="flex items-center gap-2 text-sm font-semibold">Leitura do período</h2>
       <ul className="mt-3 space-y-3">
         {insights.map((i) => (
           <li
             key={i.text}
-            className="rounded-2xl bg-muted/50 p-3 text-sm leading-relaxed text-foreground/75"
+            className="border-b pb-3 text-sm leading-relaxed text-foreground/75 last:border-0 last:pb-0"
           >
             {i.text}
           </li>
@@ -312,14 +318,14 @@ export function InsightsBlock({ insights }: { insights: Insight[] }) {
 }
 export function TrendChart({ data }: { data: TrendPoint[] }) {
   return (
-    <section className="min-w-0 rounded-3xl bg-card p-4 ring-1 ring-border/60 sm:p-5">
+    <section className="min-w-0 rounded-xl bg-card p-4 ring-1 ring-border/60 sm:p-5">
       <h2 className="text-sm font-semibold">Leads e cliques ao longo do período</h2>
-      <p className="mt-1 text-xs text-foreground/60">
+      <p className="mt-1 text-xs text-foreground/65">
         Contagens diárias reportadas pelas plataformas.
       </p>
       <div className="mt-4 h-60 min-w-0">
         {data.length === 0 ? (
-          <div className="grid h-full place-items-center rounded-2xl border border-dashed px-4 text-center text-sm text-foreground/60">
+          <div className="grid h-full place-items-center rounded-2xl border border-dashed px-4 text-center text-sm text-foreground/65">
             Sem métricas diárias persistidas neste período.
           </div>
         ) : (
@@ -328,13 +334,20 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
               <CartesianGrid stroke={gridStroke} vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={axisTick}
+                tick={{ ...axisTick, fontSize: 12, fill: "var(--muted-foreground)" }}
                 tickLine={false}
                 axisLine={false}
                 minTickGap={25}
               />
-              <YAxis tick={axisTick} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={tooltipStyle} />
+              <YAxis
+                tick={{ ...axisTick, fontSize: 12, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{ ...tooltipStyle, fontSize: 12, color: "var(--foreground)" }}
+              />
               <Legend />
               <Area
                 dataKey="leads"
@@ -401,10 +414,10 @@ export function CampaignTable({
   showFinancial: boolean;
   syncingId: string | null;
   onOpen: (id: string, trigger?: HTMLElement) => void;
-  onSync: (id: string) => void;
+  onSync?: (id: string) => void;
 }) {
   const syncButton = (s: CampaignPeriodStats) =>
-    s.campaign.externalCampaignId ? (
+    s.campaign.externalCampaignId && onSync ? (
       <Button
         size="icon"
         variant="ghost"
@@ -418,12 +431,17 @@ export function CampaignTable({
           onSync(s.campaign.id);
         }}
       >
-        <RefreshCw className={cn("size-4", syncingId === s.campaign.id && "animate-spin")} />
+        <RefreshCw
+          className={cn(
+            "size-4",
+            syncingId === s.campaign.id && "animate-spin motion-reduce:animate-none",
+          )}
+        />
       </Button>
     ) : null;
   return (
     <section
-      className="overflow-hidden rounded-3xl bg-card ring-1 ring-border/60"
+      className="overflow-hidden rounded-xl bg-card ring-1 ring-border/60"
       aria-label="Campanhas"
     >
       <div className="divide-y md:hidden">
@@ -437,7 +455,7 @@ export function CampaignTable({
                 className="min-h-11 min-w-0 flex-1 text-left font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span className="block break-words">{s.campaign.name}</span>
-                <span className="mt-1 block text-xs font-normal capitalize text-foreground/60">
+                <span className="mt-1 block text-xs font-normal capitalize text-foreground/65">
                   {s.campaign.imobiliaria} ·{" "}
                   {s.campaign.platform ? PLATFORM_LABEL[s.campaign.platform] : s.campaign.channel}
                 </span>
@@ -452,19 +470,19 @@ export function CampaignTable({
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
               <span>
-                <span className="block text-foreground/60">Leads</span>
-                <strong className="mt-1 block font-mono">{s.leads}</strong>
+                <span className="block text-foreground/65">Leads</span>
+                <strong className="mt-1 block font-mono">{s.hasData ? s.leads : "—"}</strong>
               </span>
               {showFinancial && (
                 <>
                   <span>
-                    <span className="block text-foreground/60">Investimento</span>
+                    <span className="block text-foreground/65">Investimento</span>
                     <strong className="mt-1 block font-mono">
                       {amount(s.spend, s.currency ?? "BRL")}
                     </strong>
                   </span>
                   <span>
-                    <span className="block text-foreground/60">CPL</span>
+                    <span className="block text-foreground/65">CPL</span>
                     <strong className="mt-1 block font-mono">
                       {amount(s.cpl, s.currency ?? "BRL")}
                     </strong>
@@ -478,7 +496,7 @@ export function CampaignTable({
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-xs font-semibold text-foreground/60">
+            <tr className="border-b text-left text-xs font-semibold text-foreground/65">
               <th className="px-4 py-4">Campanha / marca</th>
               <th className="px-3 py-4">Status</th>
               <th className="px-3 py-4 text-right">Leads</th>
@@ -506,7 +524,7 @@ export function CampaignTable({
                     <PlatformMark platform={s.campaign.platform} />
                     <span className="min-w-0">
                       <span className="block break-words font-semibold">{s.campaign.name}</span>
-                      <span className="text-xs capitalize text-foreground/60">
+                      <span className="text-xs capitalize text-foreground/65">
                         {s.campaign.imobiliaria} · {s.campaign.startDate} a {s.campaign.endDate}
                       </span>
                     </span>
@@ -515,7 +533,7 @@ export function CampaignTable({
                 <td className="px-3 py-3">
                   <CampaignStatusBadge status={s.campaign.status} />
                 </td>
-                <td className="px-3 py-3 text-right font-mono">{s.leads}</td>
+                <td className="px-3 py-3 text-right font-mono">{s.hasData ? s.leads : "—"}</td>
                 {showFinancial && (
                   <>
                     <td className="whitespace-nowrap px-3 py-3 text-right font-mono">

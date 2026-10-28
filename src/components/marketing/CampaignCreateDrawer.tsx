@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { createCampaign } from "@/lib/marketing/marketing.functions";
+import { useMarketingActions } from "@/hooks/useMarketingActions";
 import {
   Sheet,
   SheetContent,
@@ -22,7 +23,7 @@ import type {
 
 type CampaignCreateDrawerProps = {
   open: boolean;
-  agency: MarketingAgencyId;
+  agency: MarketingAgencyId | "todas";
   onOpenChange: (open: boolean) => void;
   onCreate: (campaign: MarketingCampaign) => void;
   onRestoreFocus?: () => void;
@@ -53,18 +54,23 @@ export function CampaignCreateDrawer({
   canViewFinancialInsights = true,
 }: CampaignCreateDrawerProps) {
   const save = useServerFn(createCampaign);
+  const actions = useMarketingActions();
+  const [manualAgency, setManualAgency] = useState<MarketingAgencyId | "">(
+    agency === "todas" ? "" : agency,
+  );
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<CampaignFormState>(() => createInitialForm());
 
   useEffect(() => {
     if (!open) return;
+    setManualAgency(agency === "todas" ? "" : agency);
     const today = todayInput();
     setForm((current) => ({
       ...current,
       startDate: current.startDate || today,
       endDate: current.endDate || today,
     }));
-  }, [open]);
+  }, [open, agency]);
 
   function update<K extends keyof CampaignFormState>(key: K, value: CampaignFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -72,11 +78,15 @@ export function CampaignCreateDrawer({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!manualAgency || !actions.can("manage_manual", manualAgency)) {
+      toast.error("Selecione uma imobiliária autorizada para registrar a campanha.");
+      return;
+    }
     setSaving(true);
     try {
       const campaign = await save({
         data: {
-          imobiliaria: agency,
+          imobiliaria: manualAgency,
           nome: form.name,
           canal: form.channel,
           objetivo: form.objective,
@@ -93,7 +103,7 @@ export function CampaignCreateDrawer({
         },
       });
       onCreate(campaign);
-      toast.success("Campanha cadastrada.");
+      toast.success("Campanha manual registrada. Nenhum anúncio foi enviado à Meta.");
       setForm(createInitialForm());
       onOpenChange(false);
     } catch {
@@ -114,7 +124,7 @@ export function CampaignCreateDrawer({
           }
         }}
         side="right"
-        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-[rgba(251,248,244,0.96)] p-0 backdrop-blur-2xl sm:max-w-[42rem]"
+        className="flex h-full w-full max-w-full flex-col overflow-y-auto overscroll-contain border-white/60 bg-background p-0  sm:max-w-[42rem]"
       >
         <form
           onSubmit={handleSubmit}
@@ -122,16 +132,34 @@ export function CampaignCreateDrawer({
         >
           <SheetHeader className="text-left">
             <SheetTitle className="text-2xl font-black tracking-tight">
-              Cadastrar campanha
+              Registrar campanha manual
             </SheetTitle>
-            <SheetDescription className="text-sm leading-relaxed text-foreground/58">
+            <SheetDescription className="text-sm leading-relaxed text-foreground/65">
               {canViewFinancialInsights
-                ? "Registre a origem, objetivo, período e investimento da campanha imobiliária."
-                : "Registre a origem, objetivo, período e responsável pela campanha imobiliária."}
+                ? "Registro interno de origem, período e investimento. Esta ação não cria anúncios na Meta."
+                : "Registro interno de origem, período e responsável. Esta ação não cria anúncios na Meta."}
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <Field label="Imobiliária" className="sm:col-span-2">
+              <select
+                required
+                value={manualAgency}
+                onChange={(event) => setManualAgency(event.target.value as MarketingAgencyId | "")}
+                disabled={agency !== "todas" || saving}
+                className={inputClassName}
+              >
+                <option value="">Selecionar imobiliária</option>
+                {(["cordial", "morar"] as const)
+                  .filter((brand) => actions.can("manage_manual", brand))
+                  .map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand === "cordial" ? "Cordial" : "Morar"}
+                    </option>
+                  ))}
+              </select>
+            </Field>
             <Field label="Nome da campanha" className="sm:col-span-2">
               <input
                 value={form.name}
@@ -283,7 +311,7 @@ export function CampaignCreateDrawer({
               className="min-h-11 rounded-2xl bg-primary text-white"
             >
               <Plus className="size-4" />
-              {saving ? "Salvando…" : "Cadastrar campanha"}
+              {saving ? "Salvando…" : "Registrar campanha manual"}
             </Button>
           </div>
         </form>
@@ -303,7 +331,7 @@ function Field({
 }) {
   return (
     <label className={className}>
-      <span className="mb-1.5 block text-[11px] font-bold text-foreground/52">{label}</span>
+      <span className="mb-1.5 block text-xs font-bold text-foreground/65">{label}</span>
       {children}
     </label>
   );
@@ -331,4 +359,4 @@ function todayInput() {
 }
 
 const inputClassName =
-  "min-h-11 w-full min-w-0 rounded-2xl border border-white/70 bg-white/62 px-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-foreground/34 focus:border-primary/35 focus:ring-2 focus:ring-primary/15";
+  "min-h-11 w-full min-w-0 rounded-2xl border border-foreground/55 bg-white/62 px-3 text-sm font-semibold text-foreground outline-none transition placeholder:text-foreground/65 focus:border-primary focus:ring-2 focus:ring-primary";

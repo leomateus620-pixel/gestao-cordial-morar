@@ -17,7 +17,7 @@ export function MarketingEmptyState({
           <Megaphone className="size-6" />
         </div>
         <h2 className="mt-4 text-lg font-black tracking-tight text-foreground">{title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-foreground/58">{description}</p>
+        <p className="mt-2 text-sm leading-relaxed text-foreground/65">{description}</p>
         {action && <div className="mt-5">{action}</div>}
       </div>
     </section>
