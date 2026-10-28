@@ -10,6 +10,10 @@ import {
   Megaphone,
   LayoutDashboard,
   Users,
+  MoreHorizontal,
+  X,
+  Upload,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CampaignCreateDrawer } from "@/components/marketing/CampaignCreateDrawer";
@@ -18,12 +22,36 @@ import { MarketingEmptyState } from "@/components/marketing/MarketingEmptyState"
 import { MarketingSkeleton } from "@/components/marketing/MarketingSkeleton";
 import {
   CampaignTable,
-  ConnectionsStrip,
   InsightsBlock,
   KpiGrid,
   TrendChart,
 } from "@/components/marketing/MarketingAdsPanels";
-import { MarketingCampaignImport } from "@/components/marketing/MarketingCampaignImport";
+import { MarketingPeriodControl } from "./MarketingPeriodControl";
+import { MarketingSearchSelect } from "./MarketingSearchSelect";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   changeMarketingQuery,
   marketingSearchSchema,
@@ -31,7 +59,6 @@ import {
 } from "@/lib/marketing/query-state";
 export type { MarketingDashboardQuery } from "@/lib/marketing/query-state";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAds } from "@/hooks/useAds";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
@@ -41,13 +68,11 @@ import { normalizeMarketingCampaigns } from "@/services/marketing";
 import {
   buildInsights,
   campaignStats,
-  currentCompetence,
   dailyTrend,
   periodKpis,
   shiftCompetence,
   summaryKpis,
 } from "@/services/marketing-insights";
-import { useApp } from "@/store/app-store";
 import type { CampaignPage } from "@/lib/marketing/marketing.functions";
 import type { MarketingAgencyId, MarketingCampaign } from "@/types/marketing";
 const MetaLeadsInbox = lazy(() =>
@@ -76,7 +101,11 @@ type Props = {
   summary?: CampaignPage["summary"];
   ranges: { current: { since: string; until: string }; previous: { since: string; until: string } };
 };
-const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MarketingCampaignImport = lazy(() =>
+  import("./MarketingCampaignImport").then((module) => ({
+    default: module.MarketingCampaignImport,
+  })),
+);
 export function MarketingDashboard({
   campaigns,
   agency,
@@ -92,8 +121,7 @@ export function MarketingDashboard({
   summary,
   ranges,
 }: Props) {
-  const setAgency = useApp((s) => s.setAgency),
-    session = useSession(),
+  const session = useSession(),
     admin = isAdminUser(session);
   const [localQuery, setLocalQuery] = useState<MarketingDashboardQuery>(() =>
     marketingSearchSchema.parse({}),
@@ -109,6 +137,10 @@ export function MarketingDashboard({
       actions.can("read_ad_budget", brand),
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [contextToolbarTarget, setContextToolbarTarget] = useState<HTMLDivElement | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const scopeButtonRef = useRef<HTMLButtonElement>(null);
+  const qc = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const wizardButtonRef = useRef<HTMLButtonElement>(null);
   const [newDraftKey, setNewDraftKey] = useState(0);
@@ -152,14 +184,17 @@ export function MarketingDashboard({
       );
   }
   for (const campaign of all) {
-    if (campaign.externalAccountId && !accountOptions.has(campaign.externalAccountId))
+    if (
+      campaign.externalAccountId &&
+      !accountOptions.has(campaign.externalAccountId) &&
+      (!filters.platform || campaign.platform === filters.platform)
+    )
       accountOptions.set(
         campaign.externalAccountId,
         `${campaign.imobiliaria} · Conta ${campaign.externalAccountId}`,
       );
   }
-  const timezones = [...new Set(all.map((c) => c.accountTimezone).filter(Boolean))];
-  const timeZone = timezones.length === 1 ? timezones[0]! : "America/Sao_Paulo";
+  const timeZone = "America/Sao_Paulo";
   const previousComp = shiftCompetence(filters.competence, -1);
   const stats = all
     .map((c) => campaignStats(c, filters.competence, ranges.current))
@@ -184,7 +219,7 @@ export function MarketingDashboard({
     setCreatedCampaign(null);
     detailsOpenRef.current = false;
     setSelectedId(null);
-  }, [agency, session?.id, session?.perfil]);
+  }, [agency, filters.accountId, filters.platform, session?.id, session?.perfil]);
   const activeJobs = ads.jobs.filter((j: { status: string }) =>
     ["queued", "running"].includes(j.status),
   );
@@ -229,258 +264,383 @@ export function MarketingDashboard({
         : `${success}/${ids.length} agendadas. Revise as conexões com falha.`,
     );
   }
-  const [year, month] = filters.competence.split("-").map(Number);
+  const campaignArea = tab === "overview" || tab === "campaigns";
+  const clearCampaignFilters = () => change({ search: "", status: "" });
+  const scopeControls = (
+    <>
+      <MarketingSearchSelect
+        label="Conta de anúncios"
+        value={filters.accountId}
+        placeholder="Todas as contas"
+        options={[
+          { value: "", label: "Todas as contas" },
+          ...[...accountOptions].map(([value, label]) => ({ value, label })),
+        ]}
+        onValueChange={(accountId) => change({ accountId })}
+        className="w-full sm:w-48"
+      />
+      <Select
+        value={tab === "leads" ? "meta" : filters.platform || "all"}
+        onValueChange={(value) =>
+          change({
+            platform: (value === "all" ? "" : value) as MarketingDashboardQuery["platform"],
+            accountId: "",
+          })
+        }
+        disabled={tab === "leads"}
+      >
+        <SelectTrigger
+          aria-label="Plataforma"
+          className="h-11 w-full min-w-0 rounded-xl bg-card sm:h-10 sm:w-44"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Plataformas: todas</SelectItem>
+          <SelectItem value="meta">Meta Ads</SelectItem>
+          <SelectItem value="google">Google Ads</SelectItem>
+          <SelectItem value="manual">Manuais</SelectItem>
+        </SelectContent>
+      </Select>
+    </>
+  );
+  const campaignToolbar = (inPanel = false) => (
+    <div
+      className={cn("min-w-0 flex-wrap items-center gap-2", inPanel ? "flex" : "hidden sm:flex")}
+      aria-label="Filtros de campanhas"
+    >
+      <Select
+        value={filters.status || "all"}
+        onValueChange={(status) => change({ status: status === "all" ? "" : status })}
+      >
+        <SelectTrigger
+          aria-label="Status da campanha"
+          className="h-11 w-auto min-w-36 gap-2 rounded-xl bg-card text-sm sm:h-10"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Status: todos</SelectItem>
+          {["Ativa", "Planejada", "Pausada", "Encerrada", "Em análise", "Com baixo desempenho"].map(
+            (value) => (
+              <SelectItem key={value} value={value}>
+                {value}
+              </SelectItem>
+            ),
+          )}
+        </SelectContent>
+      </Select>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-11 rounded-xl bg-card sm:h-10">
+            <SlidersHorizontal className="size-4" />
+            Opções
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72 rounded-xl space-y-3">
+          <p className="text-sm font-semibold">Ordenar a página atual</p>
+          <Select
+            value={filters.sort}
+            onValueChange={(sort) => change({ sort: sort as MarketingDashboardQuery["sort"] })}
+          >
+            <SelectTrigger aria-label="Ordenação das campanhas" className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="leads">Mais leads nesta página</SelectItem>
+              <SelectItem value="name">Nome nesta página</SelectItem>
+              <SelectItem value="updated">Atualização nesta página</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-foreground/70">
+            A ordenação abrange até {pageSize} campanhas carregadas. Os indicadores usam o filtro
+            completo quando disponível.
+          </p>
+        </PopoverContent>
+      </Popover>
+      {(filters.search || filters.status) && (
+        <Button
+          variant="ghost"
+          className="h-11 px-2 text-xs sm:h-10"
+          onClick={clearCampaignFilters}
+        >
+          Limpar filtros
+        </Button>
+      )}
+    </div>
+  );
   return (
     <>
       <div className="mx-auto w-full max-w-[88rem] space-y-4 pb-5 sm:space-y-5">
-        <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+        <header
+          data-marketing-header
+          className="relative space-y-3 rounded-2xl border border-border/70 bg-card/95 p-3 sm:p-4"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="mr-1 shrink-0 font-display text-2xl font-semibold tracking-tight sm:text-[28px]">
               Marketing
             </h1>
-            <p className="mt-1 text-xs text-foreground/65">
-              {lastSynced
-                ? `Última atualização: ${new Date(lastSynced).toLocaleString("pt-BR")}`
-                : "Ainda sem sincronização concluída"}
-            </p>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <MarketingPeriodControl
+                query={filters}
+                ranges={ranges}
+                onChange={change}
+                timeZone={timeZone}
+              />
+            </div>
+            <div className="hidden min-w-0 flex-wrap items-center gap-2 md:flex">
+              {scopeControls}
+            </div>
+            {campaignArea && campaignToolbar()}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {tab === "campaigns" && canCreateMeta && (
-              <Button
-                ref={wizardButtonRef}
-                className="min-h-11"
-                onClick={() => {
-                  setNewDraftKey((key) => key + 1);
-                  setWizardOpen(true);
-                }}
-              >
-                <Plus className="size-4" />
-                Criar anúncio na Meta
-              </Button>
-            )}
-            {tab === "campaigns" && canOperate && (
-              <Button
-                ref={manualButtonRef}
-                variant="outline"
-                className="min-h-11"
-                onClick={(event) => {
-                  createReturnFocus.current = event.currentTarget;
-                  setCreateOpen(true);
-                }}
-              >
-                Registrar campanha manual
-              </Button>
-            )}
-            {canOperate && (tab === "overview" || tab === "campaigns") && (
-              <Button
-                variant="ghost"
-                className="min-h-11"
-                onClick={() => void syncAll()}
-                disabled={syncingAll || activeJobs.length > 0 || !ids.length}
-              >
-                <RefreshCw
+          <div
+            ref={setContextToolbarTarget}
+            className="empty:hidden"
+            data-marketing-context-toolbar
+          />
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <nav
+              aria-label="Áreas do marketing"
+              className="grid w-full min-w-0 grid-cols-4 gap-1 rounded-xl bg-muted/60 p-1 lg:w-auto"
+            >
+              {(
+                [
+                  ["overview", "Visão geral", LayoutDashboard],
+                  ["campaigns", "Campanhas", Megaphone],
+                  ["leads", "Leads", Users],
+                  ["reports", "Relatórios", FileText],
+                ] as const
+              ).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-current={tab === value ? "page" : undefined}
+                  onClick={() => {
+                    if (value === "leads") {
+                      const next = changeMarketingQuery(filters, { area: value });
+                      if (
+                        next.accountId !== filters.accountId ||
+                        ["google", "manual"].includes(filters.platform)
+                      )
+                        toast("Leads usa a Meta. Plataforma e conta foram ajustadas.");
+                    }
+                    change({ area: value });
+                  }}
                   className={cn(
-                    "size-4",
-                    (syncingAll || activeJobs.length > 0) &&
-                      "animate-spin motion-reduce:animate-none",
+                    "flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm motion-reduce:transition-none",
+                    tab === value ? "bg-card text-primary shadow-sm" : "text-foreground/70",
                   )}
-                />
-                {activeJobs.length ? `${activeJobs.length} na fila` : "Atualizar dados"}
-              </Button>
-            )}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {tab === "campaigns" && canCreateMeta && (
+                <Button
+                  ref={wizardButtonRef}
+                  className="h-11 rounded-xl sm:h-10"
+                  onClick={() => {
+                    setNewDraftKey((key) => key + 1);
+                    setWizardOpen(true);
+                  }}
+                >
+                  <Plus className="size-4" />
+                  Criar anúncio na Meta
+                </Button>
+              )}{" "}
+              <div className="absolute right-3 top-3 ml-auto flex shrink-0 items-center gap-1 sm:static">
+                <Button
+                  variant="outline"
+                  ref={scopeButtonRef}
+                  aria-label="Escopo de Marketing"
+                  className="h-11 rounded-xl md:hidden"
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span className="hidden min-[400px]:inline">Escopo</span>
+                </Button>
+                {campaignArea && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-11 rounded-xl sm:size-10"
+                    aria-label="Reconsultar campanhas salvas"
+                    title={
+                      lastSynced
+                        ? `Reconsultar dados salvos. Última sincronização: ${new Date(lastSynced).toLocaleString("pt-BR")}`
+                        : "Reconsultar dados salvos. Sem sincronização concluída."
+                    }
+                    disabled={isRefreshing}
+                    onClick={() =>
+                      void qc.invalidateQueries({ queryKey: ["marketing", "campaigns"] })
+                    }
+                  >
+                    <RefreshCw
+                      className={cn(
+                        "size-4",
+                        isRefreshing && "animate-spin motion-reduce:animate-none",
+                      )}
+                    />
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      ref={manualButtonRef}
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 rounded-xl sm:size-10"
+                      aria-label="Mais ações de Marketing"
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-w-[calc(100vw-2rem)]">
+                    <DropdownMenuLabel>Ações de Marketing</DropdownMenuLabel>
+                    {campaignArea && canOperate && (
+                      <DropdownMenuItem
+                        disabled={syncingAll || activeJobs.length > 0 || !ids.length}
+                        onSelect={() => void syncAll()}
+                      >
+                        <RefreshCw className="size-4" />
+                        {activeJobs.length
+                          ? `${activeJobs.length} sincronizações na fila`
+                          : `Sincronizar ${ids.length} campanhas desta página`}
+                      </DropdownMenuItem>
+                    )}
+                    {campaignArea && canOperate && (
+                      <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                        <Upload className="size-4" />
+                        Importar campanhas existentes
+                      </DropdownMenuItem>
+                    )}
+                    {tab === "campaigns" && canOperate && (
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          createReturnFocus.current = manualButtonRef.current;
+                          setCreateOpen(true);
+                        }}
+                      >
+                        <Plus className="size-4" />
+                        Registrar campanha manual
+                      </DropdownMenuItem>
+                    )}
+                    {admin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <a href="/integracoes">
+                            <Settings2 className="size-4" />
+                            Configurações · Integrações
+                          </a>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="max-w-72 whitespace-normal text-xs font-normal text-foreground/70">
+                      {lastSynced
+                        ? `Última sincronização: ${new Date(lastSynced).toLocaleString("pt-BR")}`
+                        : "Ainda sem sincronização concluída"}
+                    </DropdownMenuLabel>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           </div>
+          {campaignArea && (filters.search || filters.status) && (
+            <div className="flex flex-wrap gap-2" aria-label="Filtros de campanhas ativos">
+              {(
+                [
+                  ["search", filters.search],
+                  ["status", filters.status],
+                ] as const
+              )
+                .filter(([, value]) => value)
+                .map(([key, value]) => (
+                  <Button
+                    key={key}
+                    variant="secondary"
+                    size="sm"
+                    className="h-auto min-h-8 max-w-full gap-2 rounded-lg py-1 text-xs"
+                    onClick={() => change({ [key]: "" })}
+                    aria-label={`Remover filtro ${key === "search" ? "busca" : "status"}: ${value}`}
+                  >
+                    <span className="min-w-0 truncate">
+                      {key === "search" ? `Busca: ${value}` : value}
+                    </span>
+                    <X className="size-3 shrink-0" />
+                  </Button>
+                ))}
+            </div>
+          )}
+          {activeJobs.length > 0 && campaignArea && (
+            <p role="status" className="text-xs text-primary">
+              {activeJobs.length} sincronização(ões) na fila. Os dados serão atualizados ao
+              concluir.
+            </p>
+          )}
         </header>
-        <section className="grid grid-cols-1 gap-3 border-y border-border py-3 sm:grid-cols-2 xl:grid-cols-[auto_auto_minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="flex items-center justify-between rounded-2xl bg-muted/60">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-11 rounded-xl"
-              aria-label="Mês anterior"
-              onClick={() =>
-                change({
-                  competence: shiftCompetence(filters.competence, -1),
-                  since: undefined,
-                  until: undefined,
-                })
-              }
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="px-2 font-mono text-sm font-semibold tabular-nums">
-              {filters.since && filters.until ? "Personalizado" : `${MONTHS[month - 1]}/${year}`}
-            </span>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-11 rounded-xl"
-              aria-label="Próximo mês"
-              disabled={filters.competence >= currentCompetence()}
-              onClick={() =>
-                change({
-                  competence: shiftCompetence(filters.competence, 1),
-                  since: undefined,
-                  until: undefined,
-                })
-              }
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-          <select
-            aria-label="Imobiliária"
-            className={cn(
-              "h-11 min-w-0 rounded-xl border border-foreground/55 bg-background px-3 text-sm sm:block",
-              !filtersOpen && "hidden",
-            )}
-            value={agency}
-            onChange={(e) => {
-              setAgency(e.target.value as typeof agency);
-              change({ agency: e.target.value as typeof agency, page: 1, accountId: "" });
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetContent
+            className="w-full max-w-sm overflow-y-auto bg-card"
+            closeLabel="Fechar filtros"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              scopeButtonRef.current?.focus({ preventScroll: true });
             }}
           >
-            <option value="todas">Todas as imobiliárias</option>
-            <option value="cordial">Cordial</option>
-            <option value="morar">Morar</option>
-          </select>
-          <select
-            aria-label="Conta de anúncios"
-            className="h-11 min-w-0 rounded-2xl border border-foreground/55 bg-background px-3 text-sm"
-            value={filters.accountId}
-            onChange={(e) => change({ accountId: e.target.value })}
+            <SheetHeader>
+              <SheetTitle>Escopo de Marketing</SheetTitle>
+              <SheetDescription>
+                Conta e plataforma para a área selecionada. A imobiliária é definida no topo do
+                sistema.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-5 flex flex-col gap-3">{scopeControls}</div>
+            {campaignArea && <div className="mt-5 sm:hidden">{campaignToolbar(true)}</div>}
+            <Button className="mt-5 w-full" onClick={() => setFiltersOpen(false)}>
+              Concluir
+            </Button>
+          </SheetContent>
+        </Sheet>
+        <Sheet open={importOpen && canOperate} onOpenChange={setImportOpen}>
+          <SheetContent
+            className="w-full max-w-full overflow-y-auto bg-card sm:max-w-xl"
+            closeLabel="Fechar importação"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              restoreFocus(manualButtonRef.current);
+            }}
           >
-            <option value="">Todas as contas</option>
-            {[...accountOptions].map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <div className={cn("min-w-0 gap-2 sm:flex", filtersOpen ? "flex" : "hidden")}>
-            <select
-              aria-label="Plataforma"
-              className="h-11 min-w-0 flex-1 rounded-2xl border border-foreground/55 bg-background px-3 text-sm"
-              value={filters.platform}
-              onChange={(e) =>
-                change({ platform: e.target.value as MarketingDashboardQuery["platform"] })
-              }
-            >
-              <option value="">Todas as plataformas</option>
-              <option value="meta">Meta Ads</option>
-              <option value="google">Google Ads</option>
-              <option value="manual">Manuais</option>
-            </select>
-          </div>
-          <Button
-            variant="ghost"
-            className="min-h-11 sm:hidden"
-            aria-expanded={filtersOpen}
-            onClick={() => setFiltersOpen((open) => !open)}
-          >
-            <SlidersHorizontal className="size-4" />
-            Filtros
-            {[
-              filters.platform,
-              filters.status,
-              filters.search,
-              agency !== "todas" ? agency : "",
-            ].filter(Boolean).length
-              ? ` (${[filters.platform, filters.status, filters.search, agency !== "todas" ? agency : ""].filter(Boolean).length})`
-              : ""}
-          </Button>
-          <details className="sm:col-span-2 xl:col-span-4">
-            <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs font-semibold text-primary">
-              Escolher intervalo de datas
-            </summary>
-            <div className="grid gap-3 py-2 sm:grid-cols-3">
-              <label className="text-xs font-semibold">
-                Desde
-                <input
-                  type="date"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm"
-                  value={filters.since ?? ""}
-                  max={filters.until}
-                  onChange={(event) => change({ since: event.target.value || undefined })}
-                />
-              </label>
-              <label className="text-xs font-semibold">
-                Até
-                <input
-                  type="date"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm"
-                  value={filters.until ?? ""}
-                  min={filters.since}
-                  onChange={(event) => change({ until: event.target.value || undefined })}
-                />
-              </label>
-              <Button
-                variant="ghost"
-                className="min-h-11 self-end"
-                onClick={() => change({ since: undefined, until: undefined })}
+            <SheetHeader>
+              <SheetTitle>Importar campanhas existentes</SheetTitle>
+              <SheetDescription>
+                Escolha campanhas da conta vinculada para acompanhar no Gestão.
+              </SheetDescription>
+            </SheetHeader>
+            {importOpen && canOperate && (
+              <Suspense
+                fallback={
+                  <p className="mt-4 text-sm" role="status">
+                    Carregando importação…
+                  </p>
+                }
               >
-                Usar mês selecionado
-              </Button>
-            </div>
-            {filters.since &&
-              filters.until &&
-              (filters.until < filters.since ||
-                Date.parse(filters.until) - Date.parse(filters.since) > 366 * 86400000) && (
-                <p role="alert" className="pb-2 text-xs text-red-800">
-                  Selecione um intervalo válido de até 367 dias. Enquanto isso, os resultados usam o
-                  mês selecionado.
-                </p>
-              )}
-          </details>
-        </section>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-foreground/65">
-            {ranges.current.since} a {ranges.current.until} · comparação com {ranges.previous.since}{" "}
-            a {ranges.previous.until}
-            {timezones.length === 1 ? ` · ${timeZone}` : " · calendários de cada conta"}
-          </p>
-          {admin && (
-            <a
-              href="/integracoes"
-              className="inline-flex min-h-11 items-center text-xs font-semibold text-primary underline underline-offset-4"
-            >
-              Diagnóstico da integração
-            </a>
-          )}
-        </div>
-        <nav aria-label="Áreas do marketing" className="flex gap-1 rounded-2xl bg-muted/60 p-1">
-          {(
-            [
-              ["overview", "Visão geral", LayoutDashboard],
-              ["campaigns", "Campanhas", Megaphone],
-              ["leads", "Leads", Users],
-              ["reports", "Relatórios", FileText],
-            ] as const
-          ).map(([value, label, Icon]) => (
-            <button
-              key={value}
-              type="button"
-              aria-current={tab === value ? "page" : undefined}
-              onClick={() => {
-                if (value === "leads" && ["google", "manual"].includes(filters.platform)) {
-                  toast(
-                    "Leads usa a Meta. O filtro de plataforma e a conta anterior foram ajustados.",
-                  );
-                  change({ area: value, platform: "meta", accountId: "" });
-                } else change({ area: value });
-              }}
-              className={cn(
-                "min-h-11 min-w-0 flex-1 rounded-lg px-1 text-xs font-semibold transition sm:px-2 sm:text-sm motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                tab === value ? "bg-card text-primary shadow-sm" : "text-foreground/65",
-              )}
-            >
-              <Icon className="mx-auto mb-1 size-4 sm:mb-0 sm:mr-2 sm:inline" aria-hidden="true" />
-              {label}
-            </button>
-          ))}
-        </nav>
+                <MarketingCampaignImport
+                  ads={ads}
+                  agency={agency}
+                  range={ranges.current}
+                  canConfigure={admin}
+                />
+              </Suspense>
+            )}
+          </SheetContent>
+        </Sheet>
         {isRefreshing && (
           <p role="status" className="text-xs text-primary">
-            Atualizando o recorte. Os resultados anteriores permanecem visíveis até a conclusão.
+            Consultando o recorte selecionado…
           </p>
         )}
         <Suspense fallback={<MarketingSkeleton />}>
@@ -488,6 +648,7 @@ export function MarketingDashboard({
             <MetaLeadsInbox
               key={`${session?.id}:${session?.perfil}:${agency}`}
               agency={agency}
+              toolbarTarget={contextToolbarTarget}
               accountId={filters.accountId}
               period={ranges.current}
               campaigns={all}
@@ -505,6 +666,15 @@ export function MarketingDashboard({
                   ...(patch.brokerId !== undefined ? { leadBrokerId: patch.brokerId } : {}),
                 })
               }
+              onClearFilters={() =>
+                change({
+                  leadStatus: "",
+                  leadSearch: "",
+                  leadFormId: "",
+                  leadCampaignId: "",
+                  leadBrokerId: "",
+                })
+              }
               status={filters.leadStatus}
               page={filters.leadPage}
               onFiltersChange={(patch) =>
@@ -516,6 +686,7 @@ export function MarketingDashboard({
             />
           ) : tab === "reports" ? (
             <MarketingReportsSection
+              toolbarTarget={contextToolbarTarget}
               imobiliaria={agency}
               filters={{
                 since: ranges.current.since,
@@ -550,102 +721,55 @@ export function MarketingDashboard({
               {isLoading ? (
                 <MarketingSkeleton />
               ) : isError ? (
-                <div className="rounded-3xl border border-red-200 bg-card p-5">
+                <div role="alert" className="rounded-xl border border-red-200 bg-card p-4">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-red-800">
                     <AlertTriangle className="size-4" />
                     Não foi possível carregar as campanhas
                   </h2>
                   <p className="mt-2 text-sm text-foreground/65">
-                    {errorMessage ||
-                      "Tente atualizar a página. Se persistir, peça ao administrador para verificar as migrações e a integração."}
+                    {errorMessage || "Tente consultar o período novamente."}
                   </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() =>
+                      void qc.invalidateQueries({ queryKey: ["marketing", "campaigns"] })
+                    }
+                  >
+                    Tentar novamente
+                  </Button>
                 </div>
               ) : (
                 <>
                   {tab === "overview" && (
                     <>
-                      <p className="text-xs text-foreground/65">
-                        {summary
-                          ? `Resultados de todas as ${total ?? 0} campanhas no filtro aplicado.`
-                          : `Resultados das ${all.length} campanhas desta página${total !== undefined ? `, de ${total} encontradas` : ""}.`}{" "}
-                        Alcance entre campanhas não é somado.
-                      </p>
                       <KpiGrid
                         curr={kpis}
                         prev={previousKpis}
                         showFinancial={canViewFinancialInsights}
+                        showScopeLabel={Boolean(total && total > all.length)}
+                        scopeLabel={
+                          summary
+                            ? `Filtro completo · ${total ?? all.length} campanhas`
+                            : `Página atual · ${all.length} campanhas`
+                        }
                       />
-                      <div className="grid min-w-0 gap-4 xl:grid-cols-[1.6fr_1fr]">
-                        <div>
-                          <TrendChart data={dailyTrend(all, filters.competence, ranges.current)} />
-                          {Boolean(total && total > all.length) && (
-                            <p className="mt-2 text-xs text-foreground/70">
-                              Tendência das {all.length} campanhas nesta página. Os KPIs acima
-                              cobrem o filtro completo.
-                            </p>
-                          )}
-                        </div>
-                        <InsightsBlock
-                          insights={buildInsights(stats, previousStats).filter(
-                            (i) => canViewFinancialInsights || !i.financial,
-                          )}
-                        />
-                      </div>
+                      <TrendChart
+                        data={dailyTrend(all, filters.competence, ranges.current)}
+                        previousData={dailyTrend(all, previousComp, ranges.previous)}
+                        ranges={ranges}
+                        showFinancial={canViewFinancialInsights}
+                        currency={kpis.currency}
+                        campaignCount={all.length}
+                      />
+                      <InsightsBlock
+                        insights={buildInsights(stats, previousStats).filter(
+                          (i) => canViewFinancialInsights || !i.financial,
+                        )}
+                      />
                     </>
                   )}
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <DebouncedCampaignSearch
-                      aria-label="Buscar campanha"
-                      className="h-11 min-w-0 rounded-2xl"
-                      placeholder="Buscar campanha"
-                      value={filters.search}
-                      onCommit={(search) => change({ search })}
-                    />
-                    <select
-                      aria-label="Ordenação das campanhas"
-                      value={filters.sort}
-                      onChange={(event) =>
-                        change({ sort: event.target.value as MarketingDashboardQuery["sort"] })
-                      }
-                      className="h-11 rounded-xl border border-foreground/55 bg-card px-3 text-sm"
-                    >
-                      <option value="leads">Mais leads nesta página</option>
-                      <option value="name">Nome nesta página</option>
-                      <option value="updated">Atualização nesta página</option>
-                    </select>
-                    <select
-                      aria-label="Status da campanha"
-                      className="h-11 rounded-2xl border border-foreground/55 bg-card px-3 text-sm sm:max-w-52"
-                      value={filters.status}
-                      onChange={(e) => change({ status: e.target.value })}
-                    >
-                      <option value="">Todos os status</option>
-                      {[
-                        "Ativa",
-                        "Planejada",
-                        "Pausada",
-                        "Encerrada",
-                        "Em análise",
-                        "Com baixo desempenho",
-                      ].map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                    {(filters.search ||
-                      filters.platform ||
-                      filters.status ||
-                      filters.accountId) && (
-                      <Button
-                        variant="ghost"
-                        className="min-h-11 shrink-0 rounded-2xl"
-                        onClick={() =>
-                          change({ search: "", platform: "", status: "", accountId: "" })
-                        }
-                      >
-                        Limpar filtros
-                      </Button>
-                    )}
-                  </div>
                   {all.length ? (
                     <CampaignTable
                       stats={stats}
@@ -661,7 +785,7 @@ export function MarketingDashboard({
                   ) : (
                     <MarketingEmptyState
                       title="Nenhuma campanha neste filtro"
-                      description="Importe campanhas da conta vinculada ou registre uma campanha manual para começar o acompanhamento."
+                      description="Ajuste a busca ou os filtros para encontrar campanhas."
                     />
                   )}
                   {Boolean(total && total > pageSize) && (
@@ -694,22 +818,6 @@ export function MarketingDashboard({
                     </div>
                   )}
                 </>
-              )}
-              {tab === "campaigns" && canOperate && (
-                <details className="border-t pt-3">
-                  <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-primary">
-                    Importar campanhas existentes
-                  </summary>
-                  <MarketingCampaignImport
-                    ads={ads}
-                    agency={agency}
-                    range={ranges.current}
-                    canConfigure={admin}
-                  />
-                </details>
-              )}
-              {admin && (
-                <ConnectionsStrip connections={ads.connections} loading={ads.connectionsLoading} />
               )}
             </>
           )}
@@ -744,36 +852,5 @@ export function MarketingDashboard({
         }}
       />
     </>
-  );
-}
-
-function DebouncedCampaignSearch({
-  value,
-  onCommit,
-  ...props
-}: {
-  value: string;
-  onCommit: (value: string) => void;
-  className?: string;
-  placeholder?: string;
-  "aria-label": string;
-}) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  useEffect(() => {
-    if (draft === value) return;
-    const timer = window.setTimeout(() => onCommit(draft), 350);
-    return () => window.clearTimeout(timer);
-  }, [draft, value, onCommit]);
-  return (
-    <Input
-      {...props}
-      className={cn(props.className, "border-foreground/55 placeholder:text-foreground/65")}
-      value={draft}
-      onChange={(event) => setDraft(event.target.value)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") onCommit(draft);
-      }}
-    />
   );
 }

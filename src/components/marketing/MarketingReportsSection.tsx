@@ -1,9 +1,17 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, FileText, LoaderCircle } from "lucide-react";
+import { Download, FileText, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSession } from "@/lib/auth-mock";
 import {
   previewMarketingReport,
@@ -21,9 +29,11 @@ const labels = {
 export function MarketingReportsSection({
   imobiliaria,
   filters,
+  toolbarTarget,
 }: {
   imobiliaria: "cordial" | "morar" | "todas";
   filters: MarketingReportScope["filters"];
+  toolbarTarget?: HTMLElement | null;
 }) {
   const session = useSession();
   const allowed = session?.perfil === "admin_owner" || session?.perfil === "secretaria";
@@ -98,58 +108,58 @@ export function MarketingReportsSection({
         </p>
       </section>
     );
-  return (
-    <section className="space-y-5" aria-label="Relatórios privados de Marketing">
-      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <label className="flex flex-col gap-2 text-sm font-semibold">
-          Relatório
-          <select
-            className="h-11 rounded-xl border border-foreground/55 bg-card px-3 font-normal"
-            value={type}
-            onChange={(event) => {
-              setType(event.target.value as typeof type);
-              setPreviewOpen(false);
-            }}
-          >
-            {Object.entries(labels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            className="min-h-11"
-            onClick={() => setPreviewOpen((open) => !open)}
-          >
-            {previewOpen ? "Fechar prévia" : "Revisar escopo"}
-          </Button>
-          <Button
-            className="min-h-11"
-            disabled={generation.isPending}
-            onClick={() => generation.mutate()}
-          >
-            {generation.isPending ? (
-              <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
-            ) : (
-              <FileText className="size-4" />
-            )}
-            Gerar PDF
-          </Button>
-        </div>
+  const toolbar = (
+    <div className="flex flex-wrap items-center gap-2" aria-label="Controles do relatório">
+      <Select
+        value={type}
+        onValueChange={(next) => {
+          setType(next as typeof type);
+          setPreviewOpen(false);
+        }}
+      >
+        <SelectTrigger
+          aria-label="Tipo de relatório"
+          className="h-11 w-full rounded-xl bg-card sm:h-10 sm:w-60"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(labels).map(([value, label]) => (
+            <SelectItem key={value} value={value}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          className="h-11 rounded-xl sm:h-10"
+          onClick={() => setPreviewOpen((open) => !open)}
+        >
+          {previewOpen ? "Fechar prévia" : "Revisar escopo"}
+        </Button>
+        <Button
+          className="h-11 rounded-xl sm:h-10"
+          disabled={generation.isPending}
+          onClick={() => generation.mutate()}
+        >
+          {generation.isPending ? (
+            <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
+          ) : (
+            <FileText className="size-4" />
+          )}
+          Gerar PDF
+        </Button>
       </div>
-      <p className="text-sm text-foreground/75">
-        <strong className="capitalize">{imobiliaria}</strong> ·{" "}
-        {filters.accountId ? `Conta ${filters.accountId}` : "Todas as contas autorizadas"} ·{" "}
-        {filters.since} a {filters.until}
-        {filters.platform ? ` · ${filters.platform}` : ""}
-      </p>
+    </div>
+  );
+  return (
+    <section className="space-y-4" aria-label="Relatórios privados de Marketing">
+      {toolbarTarget ? createPortal(toolbar, toolbarTarget, "marketing-reports-toolbar") : toolbar}
       {generation.isPending && (
         <p role="status" className="text-sm text-primary">
-          Gerando o documento a partir de um retrato completo do filtro. Você pode continuar
-          navegando.
+          Solicitando geração do PDF…
         </p>
       )}
       {previewOpen && (
@@ -203,8 +213,26 @@ export function MarketingReportsSection({
           )}
         </section>
       )}
-      <div>
-        <h3 className="font-display text-lg font-semibold">Histórico privado</h3>
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <ShieldCheck className="size-4 text-primary" />
+            Histórico privado
+          </h3>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 rounded-xl sm:size-10"
+            aria-label="Reconsultar histórico de relatórios"
+            title="Reconsultar histórico salvo"
+            disabled={history.isFetching}
+            onClick={() => void history.refetch()}
+          >
+            <RefreshCw
+              className={`size-4 ${history.isFetching ? "animate-spin motion-reduce:animate-none" : ""}`}
+            />
+          </Button>
+        </div>
         {history.isLoading ? (
           <p className="py-5 text-sm" role="status">
             Carregando relatórios…
@@ -221,18 +249,26 @@ export function MarketingReportsSection({
             Nenhum relatório gerado para esta imobiliária.
           </p>
         ) : (
-          <ul className="mt-3 divide-y">
+          <ul className="mt-2 divide-y">
             {history.data.map((report) => (
               <li
                 key={report.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-4"
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
               >
                 <div>
                   <p className="text-sm font-semibold">
                     {labels[report.kind as keyof typeof labels] ?? "Relatório de Marketing"}
                   </p>
                   <p className="mt-1 text-xs text-foreground/70">
-                    {new Date(report.created_at).toLocaleString("pt-BR")} ·{" "}
+                    {new Date(report.created_at).toLocaleString("pt-BR", {
+                      timeZone: "America/Sao_Paulo",
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    ·{" "}
                     {report.status === "ready"
                       ? "Disponível"
                       : report.status === "failed"
@@ -244,7 +280,7 @@ export function MarketingReportsSection({
                 </div>
                 <Button
                   variant="outline"
-                  className="min-h-11"
+                  className="h-11 rounded-xl sm:h-10"
                   disabled={report.status !== "ready" || downloading.isPending}
                   onClick={() => downloading.mutate(report.id)}
                 >

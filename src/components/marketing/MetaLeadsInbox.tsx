@@ -1,9 +1,35 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Inbox, RefreshCw } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Info,
+  RefreshCw,
+  Settings2,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
-import { MetaLeadOperations } from "@/components/marketing/MetaLeadOperations";
+import { MarketingSearchSelect } from "@/components/marketing/MarketingSearchSelect";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+const MetaLeadOperations = lazy(() =>
+  import("@/components/marketing/MetaLeadOperations").then((module) => ({
+    default: module.MetaLeadOperations,
+  })),
+);
 import { Button } from "@/components/ui/button";
 import {
   listMetaLeads,
@@ -37,6 +63,8 @@ export function MetaLeadsInbox({
   campaigns = [],
   extraFilters = { search: "", formId: "", campaignId: "", brokerId: "" },
   onExtraFiltersChange,
+  onClearFilters,
+  toolbarTarget,
 }: {
   agency: MarketingAgencyId | "todas";
   period?: { since: string; until: string };
@@ -46,6 +74,8 @@ export function MetaLeadsInbox({
   onExtraFiltersChange?: (
     patch: Partial<{ search: string; formId: string; campaignId: string; brokerId: string }>,
   ) => void;
+  onClearFilters?: () => void;
+  toolbarTarget?: HTMLElement | null;
   status?: MetaLeadInboxItem["status"] | "";
   page?: number;
   onFiltersChange?: (patch: { status?: MetaLeadInboxItem["status"] | ""; page?: number }) => void;
@@ -54,12 +84,15 @@ export function MetaLeadsInbox({
     admin = isAdminUser(session),
     qc = useQueryClient();
   const canReadContacts = admin || session?.perfil === "secretaria";
-  const [secondaryFiltersOpen, setSecondaryFiltersOpen] = useState(false);
-  const secondaryFilterCount = [
-    extraFilters.formId,
-    extraFilters.campaignId,
-    extraFilters.brokerId,
-  ].filter(Boolean).length;
+  const [operationsOpen, setOperationsOpen] = useState(false);
+  const hasFilters = Boolean(status || Object.values(extraFilters).some(Boolean));
+  const clearFilters = () => {
+    if (onClearFilters) onClearFilters();
+    else {
+      onFiltersChange?.({ status: "", page: 1 });
+      onExtraFiltersChange?.({ search: "", formId: "", campaignId: "", brokerId: "" });
+    }
+  };
   const [brokerByLead, setBrokerByLead] = useState<Record<string, string>>({}),
     [attendanceLinks, setAttendanceLinks] = useState<Record<string, string>>({});
   const list = useServerFn(listMetaLeads),
@@ -157,105 +190,220 @@ export function MetaLeadsInbox({
         </p>
       </section>
     );
+  const toolbar = (
+    <>
+      <div
+        className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center"
+        aria-label="Filtros dos contatos"
+      >
+        <MarketingSearchSelect
+          label="Situação"
+          value={status}
+          onValueChange={(next) => onFiltersChange?.({ status: next as typeof status, page: 1 })}
+          options={[
+            { value: "", label: "Todas as situações" },
+            ...Object.entries(LABEL)
+              .filter(([key]) => admin || key !== "quarantined")
+              .map(([value, label]) => ({ value, label })),
+          ]}
+          className="w-full sm:w-44 sm:flex-none"
+        />
+        <MarketingSearchSelect
+          label="Campanha"
+          value={extraFilters.campaignId}
+          onValueChange={(campaignId) => onExtraFiltersChange?.({ campaignId })}
+          options={[
+            { value: "", label: "Todas as campanhas" },
+            ...campaigns.map((campaign) => ({ value: campaign.id, label: campaign.name })),
+          ]}
+          className="w-full sm:w-52 sm:flex-none"
+        />
+        <MarketingSearchSelect
+          label="Responsável"
+          value={extraFilters.brokerId}
+          onValueChange={(brokerId) => onExtraFiltersChange?.({ brokerId })}
+          options={[
+            { value: "", label: "Todos os responsáveis" },
+            ...(brokers.data?.map((broker) => ({ value: broker.id, label: broker.nome })) ?? []),
+          ]}
+          className="hidden sm:inline-flex sm:w-48 sm:flex-none"
+        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className="h-11 w-full rounded-xl bg-card px-3 sm:h-10 sm:w-auto"
+            >
+              <SlidersHorizontal className="size-4" />
+              Mais filtros
+              <span className="sm:hidden">
+                {[extraFilters.formId, extraFilters.brokerId].filter(Boolean).length
+                  ? ` (${[extraFilters.formId, extraFilters.brokerId].filter(Boolean).length})`
+                  : ""}
+              </span>
+              <span className="hidden sm:inline">{extraFilters.formId ? " (1)" : ""}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-[min(22rem,calc(100vw-2rem))] space-y-3 rounded-xl"
+          >
+            <div className="space-y-3 sm:hidden">
+              <p className="text-sm font-semibold">Responsável</p>
+              <MarketingSearchSelect
+                label="Responsável"
+                value={extraFilters.brokerId}
+                onValueChange={(brokerId) => onExtraFiltersChange?.({ brokerId })}
+                options={[
+                  { value: "", label: "Todos os responsáveis" },
+                  ...(brokers.data?.map((broker) => ({ value: broker.id, label: broker.nome })) ??
+                    []),
+                ]}
+                className="w-full"
+              />
+            </div>
+            <p className="text-sm font-semibold">Formulário</p>
+            <MarketingSearchSelect
+              label="Formulário"
+              value={extraFilters.formId}
+              onValueChange={(formId) => onExtraFiltersChange?.({ formId })}
+              options={[
+                { value: "", label: "Todos os formulários" },
+                ...[
+                  ...new Set(
+                    query.data?.items
+                      .map((lead) => lead.form_id)
+                      .filter((id): id is string => Boolean(id)) ?? [],
+                  ),
+                ].map((id) => ({ value: id, label: `Formulário ${id}` })),
+              ]}
+              allowNumericValue
+              className="w-full"
+            />
+            <p className="text-xs leading-relaxed text-foreground/65">
+              Pesquise entre os formulários recebidos nesta página ou informe o ID de outro
+              formulário.
+            </p>
+          </PopoverContent>
+        </Popover>
+        <div className="flex items-center justify-self-end gap-1 sm:ml-auto">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 rounded-xl sm:size-10"
+            aria-label="Reconsultar contatos"
+            title="Reconsultar contatos salvos"
+            disabled={query.isFetching}
+            onClick={refresh}
+          >
+            <RefreshCw
+              className={`size-4 ${query.isFetching ? "animate-spin motion-reduce:animate-none" : ""}`}
+            />
+          </Button>
+          <Sheet open={operationsOpen} onOpenChange={setOperationsOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-xl sm:size-10"
+                aria-label="Abrir formulários e recuperação"
+                title="Formulários e recuperação"
+              >
+                <Settings2 className="size-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              closeLabel="Fechar operações de leads"
+              className="w-full overflow-y-auto sm:max-w-2xl"
+            >
+              <SheetHeader className="pr-8 text-left">
+                <SheetTitle>Formulários e recuperação</SheetTitle>
+                <SheetDescription>
+                  Recebimento e operações autorizadas para a imobiliária selecionada.
+                </SheetDescription>
+              </SheetHeader>
+              {operationsOpen && (
+                <Suspense
+                  fallback={
+                    <p role="status" className="py-6 text-sm">
+                      Carregando operações…
+                    </p>
+                  }
+                >
+                  <MetaLeadOperations key={agency} agency={agency} />
+                </Suspense>
+              )}
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Filtros de leads ativos">
+          {[
+            ["search", extraFilters.search, `Contato: ${extraFilters.search}`],
+            [
+              "campaignId",
+              extraFilters.campaignId,
+              `Campanha: ${campaigns.find((campaign) => campaign.id === extraFilters.campaignId)?.name ?? extraFilters.campaignId}`,
+            ],
+            [
+              "brokerId",
+              extraFilters.brokerId,
+              `Responsável: ${brokers.data?.find((broker) => broker.id === extraFilters.brokerId)?.nome ?? extraFilters.brokerId}`,
+            ],
+            ["formId", extraFilters.formId, `Formulário: ${extraFilters.formId}`],
+            ["status", status, `Situação: ${status ? LABEL[status] : ""}`],
+          ]
+            .filter(([, value]) => Boolean(value))
+            .map(([key, , label]) => (
+              <Button
+                key={key}
+                size="sm"
+                variant="secondary"
+                title={label}
+                aria-label={`Remover filtro ${label}`}
+                className="h-auto min-h-9 max-w-full gap-2 rounded-lg py-1.5 text-xs"
+                onClick={() =>
+                  key === "status"
+                    ? onFiltersChange?.({ status: "", page: 1 })
+                    : onExtraFiltersChange?.({ [key]: "" })
+                }
+              >
+                <span className="max-w-64 truncate">{label}</span>
+                <X className="size-3" />
+              </Button>
+            ))}
+          <Button variant="ghost" size="sm" className="min-h-9 text-xs" onClick={clearFilters}>
+            Limpar filtros de leads
+          </Button>
+        </div>
+      )}
+    </>
+  );
   return (
     <section className="space-y-4" aria-label="Caixa de entrada de leads Meta">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="font-display text-lg font-semibold">Caixa de entrada</h2>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-foreground/65">
-            Submissões recebidas do webhook. Leads reportados pela Meta, submissões e atendimentos
-            únicos podem ter contagens diferentes.
-          </p>
-        </div>
-        <Button variant="outline" className="min-h-11 shrink-0 rounded-xl" onClick={refresh}>
-          <RefreshCw className="size-4" />
-          Atualizar
-        </Button>
+      {toolbarTarget ? createPortal(toolbar, toolbarTarget, "marketing-leads-toolbar") : toolbar}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">
+          Contatos recebidos{query.data ? ` · ${query.data.total}` : ""}
+        </h2>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label="Sobre as contagens de leads"
+            >
+              <Info className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="text-xs leading-relaxed">
+            Leads reportados pela plataforma, submissões recebidas e atendimentos únicos têm
+            contagens próprias. Esta caixa mostra os contatos recebidos no período selecionado.
+          </PopoverContent>
+        </Popover>
       </div>
-      <MetaLeadOperations agency={agency} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <LeadSearch
-          value={extraFilters.search}
-          onCommit={(search) => onExtraFiltersChange?.({ search })}
-        />
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground/70">
-          Situação
-          <select
-            className="h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm sm:max-w-xs"
-            value={status}
-            onChange={(e) => {
-              onFiltersChange?.({ status: e.target.value as typeof status, page: 1 });
-            }}
-          >
-            <option value="">Todas as situações</option>
-            {Object.entries(LABEL)
-              .filter(([key]) => admin || key !== "quarantined")
-              .map(([key, value]) => (
-                <option key={key} value={key}>
-                  {value}
-                </option>
-              ))}
-          </select>
-        </label>
-      </div>
-      <Button
-        variant="outline"
-        className="min-h-11 w-full justify-between sm:hidden"
-        aria-expanded={secondaryFiltersOpen}
-        aria-controls="meta-lead-secondary-filters"
-        onClick={() => setSecondaryFiltersOpen((open) => !open)}
-      >
-        Filtros adicionais
-        <span className="text-xs">
-          {secondaryFilterCount ? `${secondaryFilterCount} ativos` : "3 opções"}
-        </span>
-      </Button>
-      <div
-        id="meta-lead-secondary-filters"
-        className={`${secondaryFiltersOpen ? "grid" : "hidden"} gap-3 sm:grid sm:grid-cols-3`}
-      >
-        <LeadSearch
-          label="Formulário"
-          numeric
-          value={extraFilters.formId}
-          onCommit={(formId) => onExtraFiltersChange?.({ formId })}
-        />
-        <label className="text-xs font-semibold">
-          Campanha
-          <select
-            className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm font-normal"
-            value={extraFilters.campaignId}
-            onChange={(event) => onExtraFiltersChange?.({ campaignId: event.target.value })}
-          >
-            <option value="">Todas as campanhas</option>
-            {campaigns.map((campaign) => (
-              <option key={campaign.id} value={campaign.id}>
-                {campaign.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold">
-          Responsável
-          <select
-            className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm font-normal"
-            value={extraFilters.brokerId}
-            onChange={(event) => onExtraFiltersChange?.({ brokerId: event.target.value })}
-          >
-            <option value="">Todos os responsáveis</option>
-            {brokers.data?.map((broker) => (
-              <option key={broker.id} value={broker.id}>
-                {broker.nome}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {period && (
-        <p className="text-xs text-foreground/70">
-          Recebimento: {period.since} a {period.until} · America/Sao_Paulo
-        </p>
-      )}
       {query.isLoading ? (
         <p className="rounded-xl bg-card p-6 text-sm text-foreground/65" role="status">
           Carregando submissões…
@@ -270,21 +418,17 @@ export function MetaLeadsInbox({
       ) : !query.data?.items.length ? (
         <div className="rounded-xl border border-dashed bg-card p-8 text-center">
           <Inbox className="mx-auto size-6 text-primary" />
-          <h3 className="mt-3 text-sm font-semibold">
-            {status || Object.values(extraFilters).some(Boolean)
-              ? "Nenhum resultado neste filtro"
-              : "Nenhum lead recebido"}
-          </h3>
-          <p className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-foreground/65">
-            {status
-              ? "Altere a situação para consultar outras submissões."
-              : "As submissões aparecerão após o recebimento e processamento do formulário conectado."}
-          </p>
+          <h3 className="mt-3 text-sm font-semibold">Nenhum lead neste período</h3>
+          {hasFilters && (
+            <Button variant="ghost" className="mt-2" onClick={clearFilters}>
+              Limpar filtros de leads
+            </Button>
+          )}
         </div>
       ) : (
         <div className="divide-y overflow-hidden rounded-xl bg-card ring-1 ring-border/60">
           {query.data.items.map((lead) => (
-            <article key={lead.id} className="p-4 sm:p-5">
+            <article key={lead.id} className="p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
                 <div className="min-w-0">
                   {lead.is_synthetic && <SyntheticLeadBadge />}
@@ -295,10 +439,13 @@ export function MetaLeadsInbox({
                     {lead.phone || lead.email || "Contato a identificar"}
                   </p>
                   <p className="mt-2 break-words text-xs text-foreground/65">
-                    {lead.imobiliaria || "Marca a revisar"} · Formulário{" "}
-                    {lead.form_id || "não informado"} ·{" "}
+                    {agency === "todas" && `${lead.imobiliaria || "Marca a revisar"} · `}
                     {new Date(lead.received_at).toLocaleString("pt-BR", {
                       timeZone: "America/Sao_Paulo",
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </p>
                 </div>
@@ -336,25 +483,22 @@ export function MetaLeadsInbox({
                 )}
                 {lead.status === "unassigned" && (
                   <>
-                    <select
-                      aria-label={`Corretor para ${lead.full_name || "lead sem nome"}`}
+                    <MarketingSearchSelect
+                      label={`Corretor para ${lead.full_name || "lead sem nome"}`}
                       value={brokerByLead[lead.id] ?? ""}
-                      onChange={(e) =>
-                        setBrokerByLead((v) => ({ ...v, [lead.id]: e.target.value }))
+                      onValueChange={(brokerId) =>
+                        setBrokerByLead((old) => ({ ...old, [lead.id]: brokerId }))
                       }
-                      className="h-11 min-w-0 rounded-xl border border-foreground/55 bg-background px-3 text-sm sm:max-w-xs"
-                    >
-                      <option value="">Selecionar corretor da marca</option>
-                      {brokers.data
-                        ?.filter((b) => brokerCanServeAgency(b, lead.imobiliaria))
-                        .map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.nome}
-                          </option>
-                        ))}
-                    </select>
+                      options={[
+                        { value: "", label: "Selecionar corretor da marca" },
+                        ...(brokers.data
+                          ?.filter((broker) => brokerCanServeAgency(broker, lead.imobiliaria))
+                          .map((broker) => ({ value: broker.id, label: broker.nome })) ?? []),
+                      ]}
+                      className="w-full sm:max-w-xs"
+                    />
                     <Button
-                      className="min-h-11 rounded-xl"
+                      className="h-11 rounded-xl sm:h-10"
                       disabled={!brokerByLead[lead.id] || assignMutation.isPending}
                       onClick={() =>
                         assignMutation.mutate({ id: lead.id, brokerId: brokerByLead[lead.id] })
@@ -367,7 +511,7 @@ export function MetaLeadsInbox({
                 {admin && ["failed", "review", "quarantined"].includes(lead.status) && (
                   <Button
                     variant="outline"
-                    className="min-h-11 rounded-xl"
+                    className="h-11 rounded-xl sm:h-10"
                     disabled={retryMutation.isPending}
                     onClick={() => retryMutation.mutate(lead.id)}
                   >
@@ -407,10 +551,10 @@ export function MetaLeadsInbox({
                   >
                     <label className="min-w-0 flex-1 text-xs font-semibold">
                       Link do atendimento revisado
-                      <input
+                      <Input
                         type="url"
                         required
-                        className="mt-1 h-11 w-full rounded-xl border border-foreground/55 bg-background px-3 text-sm font-normal"
+                        className="mt-1 h-11 w-full rounded-xl bg-background px-3 text-sm font-normal sm:h-10"
                         value={attendanceLinks[lead.id] || ""}
                         onChange={(event) =>
                           setAttendanceLinks((old) => ({ ...old, [lead.id]: event.target.value }))
@@ -421,7 +565,7 @@ export function MetaLeadsInbox({
                     <Button
                       type="submit"
                       variant="outline"
-                      className="min-h-11 self-end rounded-xl"
+                      className="h-11 self-end rounded-xl sm:h-10"
                       disabled={resolveMutation.isPending}
                     >
                       Confirmar vínculo
@@ -490,12 +634,9 @@ function LeadOriginalFields({ id }: { id: string }) {
       )
     : [];
   return (
-    <details
-      className="mt-3 rounded-xl bg-muted/40 p-3"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className="min-h-11 cursor-pointer text-xs font-semibold">
-        Ver detalhes e histórico
+    <details className="mt-2" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="inline-flex min-h-9 cursor-pointer items-center text-xs font-medium text-primary">
+        Detalhes e histórico
       </summary>
       {query.isLoading ? (
         <p className="mt-2 text-xs text-foreground/65">Carregando submissão…</p>
@@ -505,7 +646,8 @@ function LeadOriginalFields({ id }: { id: string }) {
         <>
           {query.data?.is_synthetic && <SyntheticLeadBadge />}
           <p className="mt-2 break-words text-xs text-foreground/65">
-            Campanha Meta: {query.data?.external_campaign_id || "não informada"} · Anúncio:{" "}
+            Formulário: {query.data?.form_id || "não informado"} · Campanha Meta:{" "}
+            {query.data?.external_campaign_id || "não informada"} · Anúncio:{" "}
             {query.data?.ad_id || "não informado"}
           </p>
           <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
@@ -558,44 +700,6 @@ function LeadOriginalFields({ id }: { id: string }) {
         </>
       )}
     </details>
-  );
-}
-
-function LeadSearch({
-  value,
-  onCommit,
-  label = "Buscar contato",
-  numeric = false,
-}: {
-  value: string;
-  onCommit: (value: string) => void;
-  label?: string;
-  numeric?: boolean;
-}) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  useEffect(() => {
-    if (draft === value) return;
-    const timer = window.setTimeout(() => onCommit(draft), 350);
-    return () => window.clearTimeout(timer);
-  }, [draft, value, onCommit]);
-  return (
-    <label className="text-xs font-semibold">
-      {label}
-      <input
-        className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm font-normal"
-        value={draft}
-        placeholder={numeric ? "ID do formulário" : "Nome, telefone ou e-mail"}
-        inputMode={numeric ? "numeric" : "text"}
-        maxLength={numeric ? 80 : 100}
-        onChange={(event) => {
-          if (!numeric || /^\d*$/.test(event.target.value)) setDraft(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") onCommit(draft);
-        }}
-      />
-    </label>
   );
 }
 

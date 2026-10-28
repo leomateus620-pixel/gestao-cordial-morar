@@ -195,15 +195,32 @@ export function dailyTrend(
     currencies.size <= 1 &&
     !currencies.has(null) &&
     campaigns.every((c) => c.financialVisible !== false);
+  const campaignIds = new Set(campaigns.map((campaign) => campaign.id));
   const map = new Map<
     string,
-    { spend: number; leads: number; clicks: number; impressions: number }
+    {
+      spend: number;
+      spendComplete: boolean;
+      observedCampaigns: Set<string>;
+      leads: number;
+      clicks: number;
+      impressions: number;
+    }
   >();
   for (const c of campaigns)
     for (const d of c.dailyMetrics) {
       if (d.date < range.since || d.date > range.until) continue;
-      const a = map.get(d.date) ?? { spend: 0, leads: 0, clicks: 0, impressions: 0 };
+      const a = map.get(d.date) ?? {
+        spend: 0,
+        spendComplete: true,
+        observedCampaigns: new Set<string>(),
+        leads: 0,
+        clicks: 0,
+        impressions: 0,
+      };
       a.spend += d.spend ?? 0;
+      a.spendComplete &&= d.spend !== undefined;
+      a.observedCampaigns.add(c.id);
       a.leads += d.leads;
       a.clicks += d.clicks;
       a.impressions += d.impressions ?? 0;
@@ -211,15 +228,67 @@ export function dailyTrend(
     }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, a]) => ({
-      date,
-      label: `${date.slice(8, 10)}/${date.slice(5, 7)}`,
-      spend: financial ? round(a.spend) : null,
-      leads: a.leads,
-      clicks: a.clicks,
-      cpl: ratio(financial ? a.spend : null, a.leads),
-      ctr: ratio(a.clicks, a.impressions, 100),
-    }));
+    .map(([date, a]) => {
+      // Missing campaign rows are unknown delivery, not evidence of zero daily cost.
+      const complete = a.spendComplete && a.observedCampaigns.size === campaignIds.size;
+      const spend = financial && complete ? round(a.spend) : null;
+      return {
+        date,
+        label: `${date.slice(8, 10)}/${date.slice(5, 7)}`,
+        spend,
+        leads: a.leads,
+        clicks: a.clicks,
+        cpl: ratio(spend, a.leads),
+        ctr: ratio(a.clicks, a.impressions, 100),
+      };
+    });
+}
+/** Align equal calendar positions while preserving gaps and the actual date of each period. */
+export type ComparedTrendPoint = {
+  position: number;
+  label: string;
+  currentDate: string | null;
+  previousDate: string | null;
+  current: TrendPoint | null;
+  previous: TrendPoint | null;
+};
+export function compareDailyTrends(
+  current: TrendPoint[],
+  previous: TrendPoint[],
+  ranges: { current: DateRange; previous: DateRange },
+): ComparedTrendPoint[] {
+  const day = 86400000;
+  const start = (range: DateRange) => Date.parse(`${range.since}T12:00:00Z`);
+  const length = (range: DateRange) =>
+    Math.max(0, Math.round((Date.parse(`${range.until}T12:00:00Z`) - start(range)) / day) + 1);
+  const currentMap = new Map(current.map((point) => [point.date, point]));
+  const previousMap = new Map(previous.map((point) => [point.date, point]));
+  const currentLength = length(ranges.current),
+    previousLength = length(ranges.previous);
+  // Product ranges are limited to 367 days; keep malformed callers bounded too.
+  return Array.from(
+    { length: Math.min(367, Math.max(currentLength, previousLength)) },
+    (_, index) => {
+      const currentDate =
+        index < currentLength
+          ? new Date(start(ranges.current) + index * day).toISOString().slice(0, 10)
+          : null;
+      const previousDate =
+        index < previousLength
+          ? new Date(start(ranges.previous) + index * day).toISOString().slice(0, 10)
+          : null;
+      return {
+        position: index + 1,
+        label: currentDate
+          ? `${currentDate.slice(8, 10)}/${currentDate.slice(5, 7)}`
+          : `${index + 1}º dia`,
+        currentDate,
+        previousDate,
+        current: currentDate ? (currentMap.get(currentDate) ?? null) : null,
+        previous: previousDate ? (previousMap.get(previousDate) ?? null) : null,
+      };
+    },
+  );
 }
 export type Insight = {
   tone: "success" | "warning" | "danger" | "neutral";
@@ -266,9 +335,9 @@ export function buildInsights(curr: CampaignPeriodStats[], prev: CampaignPeriodS
   if (!out.length)
     out.push({
       tone: "neutral",
-      text: curr.some((s) => s.impressions > 0)
-        ? "Acompanhe os resultados no período selecionado. Leads reportados e submissões recebidas têm contagens independentes."
-        : "Sem métricas persistidas neste período. Uma campanha cadastrada pode ainda aguardar a primeira sincronização.",
+      text: curr.some((s) => s.hasData)
+        ? `Nesta página: ${curr.reduce((sum, stat) => sum + stat.leads, 0).toLocaleString("pt-BR")} leads reportados e ${curr.reduce((sum, stat) => sum + stat.clicks, 0).toLocaleString("pt-BR")} cliques no período.`
+        : "Ainda não há métricas para analisar neste período.",
     });
   return out.slice(0, 3);
 }

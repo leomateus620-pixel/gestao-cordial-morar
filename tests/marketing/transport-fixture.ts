@@ -4,56 +4,78 @@ const secretariat = () =>
   ["secretaria", "bianca", "meta_reviewer"].includes(
     new URLSearchParams(location.search).get("role") ?? "",
   );
-export const fixtureCampaigns: MarketingCampaign[] = [
+const previewParams = new URLSearchParams(location.search);
+const baseCampaignNames = [
   "Captação de imóveis · Cordial",
   "Apartamentos no centro · Morar",
   "Pesquisa Google · Cordial",
-].map((name, index) => ({
-  id: `10000000-0000-4000-8000-00000000000${index + 1}`,
-  name,
-  channel: index === 2 ? "Google" : "Facebook",
-  objective: "Leads qualificados",
-  status: index === 1 ? "Pausada" : "Ativa",
-  startDate: "2026-10-01",
-  endDate: "2026-10-31",
-  investment: secretariat() ? null : 600 + index * 200,
-  leads: 12 + index * 3,
-  clicks: 180,
-  accesses: 65,
-  views: 12000,
-  impressions: 12000,
-  conversionRate: 18,
-  costPerLead: secretariat() ? null : 50,
-  bestLocation: "—",
-  responsiblePerson: "",
-  notes: "Dados sintéticos para validar o layout.",
-  diagnosis: "",
-  dailyMetrics: Array.from({ length: 26 }, (_, d) => ({
-    date: `2026-10-${String(d + 1).padStart(2, "0")}`,
-    leads: d % 3 === 0 ? 2 : 0,
-    clicks: 6 + (d % 4),
-    accesses: 2,
-    views: 450,
-    impressions: 450,
-    reach: 300,
-    frequency: 1.5,
-    ...(secretariat() ? {} : { spend: 20 + d }),
-  })),
-  locationBreakdown: [],
-  createdAt: "2026-10-01T12:00:00Z",
-  updatedAt: "2026-10-26T11:00:00Z",
-  imobiliaria: index === 1 ? "morar" : "cordial",
-  platform: index === 2 ? "google" : "meta",
-  externalCampaignId: String(90001 + index),
-  externalAccountId: "123456789",
-  connectionId: "30000000-0000-4000-8000-000000000001",
-  currency: "BRL",
-  accountTimezone: "America/Sao_Paulo",
-  financialVisible: !secretariat(),
-  lastSyncedAt: "2026-10-26T11:00:00Z",
-  syncStatus: index === 1 ? "error" : "synced",
-  syncError: index === 1 ? "Permissão de leitura pendente." : null,
-}));
+];
+const requestedCampaignCount = Number(previewParams.get("campaignCount"));
+const campaignCount =
+  Number.isInteger(requestedCampaignCount) && requestedCampaignCount > 0
+    ? Math.min(requestedCampaignCount, 150)
+    : baseCampaignNames.length;
+export const fixtureCampaigns: MarketingCampaign[] = Array.from(
+  { length: campaignCount },
+  (_, index) => ({
+    id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    name: `${baseCampaignNames[index % 3]}${index >= 3 ? ` · Teste ${index + 1}` : ""}${previewParams.get("longNames") === "1" ? " · [TESTE SINTÉTICO] Campanha de imóveis residenciais com nome completo preservado para testar leitura e navegação em dispositivos menores" : ""}`,
+    channel: index % 3 === 2 ? "Google" : "Facebook",
+    objective: "Leads qualificados",
+    status: index % 3 === 1 ? "Pausada" : "Ativa",
+    startDate: "2026-10-01",
+    endDate: "2026-10-31",
+    investment: secretariat() ? null : 600 + index * 200,
+    leads: 12 + index * 3,
+    clicks: 180,
+    accesses: 65,
+    views: 12000,
+    impressions: 12000,
+    conversionRate: 18,
+    costPerLead: secretariat() ? null : 50,
+    bestLocation: "—",
+    responsiblePerson: "",
+    notes: "Dados sintéticos para validar o layout.",
+    diagnosis: "",
+    dailyMetrics: [...(previewParams.get("comparison") === "1" ? ["2026-09"] : []), "2026-10"]
+      .flatMap((month) =>
+        Array.from({ length: 26 }, (_, d) => ({
+          date: `${month}-${String(d + 1).padStart(2, "0")}`,
+          leads: d % 3 === 0 ? (month === "2026-09" ? 1 : 2) : 0,
+          clicks: 6 + (d % 4),
+          accesses: 2,
+          views: 450,
+          impressions: 450,
+          reach: 300,
+          frequency: 1.5,
+          ...(secretariat() ? {} : { spend: (month === "2026-09" ? 16 : 20) + d }),
+        })),
+      )
+      .filter(
+        (metric) =>
+          previewParams.get("state") !== "incomplete" ||
+          !["2026-10-10", "2026-10-11", "2026-10-12"].includes(metric.date),
+      ),
+    locationBreakdown: [],
+    createdAt: "2026-10-01T12:00:00Z",
+    updatedAt: "2026-10-26T11:00:00Z",
+    imobiliaria: index % 3 === 1 ? "morar" : "cordial",
+    platform: index % 3 === 2 ? "google" : "meta",
+    externalCampaignId: String(90001 + index),
+    externalAccountId: "123456789",
+    connectionId: "30000000-0000-4000-8000-000000000001",
+    currency: "BRL",
+    accountTimezone: "America/Sao_Paulo",
+    financialVisible: !secretariat(),
+    lastSyncedAt: "2026-10-26T11:00:00Z",
+    syncStatus:
+      previewParams.get("state") === "pending" ? "queued" : index % 3 === 1 ? "error" : "synced",
+    syncError:
+      index % 3 === 1 && previewParams.get("state") !== "pending"
+        ? "Permissão de leitura pendente."
+        : null,
+  }),
+);
 export async function listCampaigns({ data }: any = {}) {
   const rows = fixtureCampaigns.filter(
     (c) => !data?.imobiliaria || data.imobiliaria === "todas" || c.imobiliaria === data.imobiliaria,
@@ -162,11 +184,14 @@ export async function listCampaignPage({ data }: any = {}) {
     };
   };
   return {
-    items: selected,
+    items: selected.slice(
+      ((data?.page ?? 1) - 1) * (data?.pageSize ?? 25),
+      (data?.page ?? 1) * (data?.pageSize ?? 25),
+    ),
     total: selected.length,
     financialVisible: !secretariat(),
-    page: 1,
-    pageSize: 25,
+    page: data?.page ?? 1,
+    pageSize: data?.pageSize ?? 25,
     summary: {
       current: total(data?.currentSince ?? "2026-10-01", data?.until ?? "2026-10-26"),
       previous: total(data?.since ?? "2026-09-01", data?.previousUntil ?? "2026-09-26"),
@@ -174,7 +199,16 @@ export async function listCampaignPage({ data }: any = {}) {
   };
 }
 export async function listAdSyncJobs() {
-  return [];
+  return previewParams.get("state") === "pending"
+    ? [
+        {
+          id: "synthetic-sync-job",
+          campaign_id: fixtureCampaigns[0]?.id,
+          status: "queued",
+          created_at: "2026-10-28T14:00:00Z",
+        },
+      ]
+    : [];
 }
 export async function listMetaAccounts() {
   return [];
@@ -237,12 +271,30 @@ const fixtureLeads = [
   },
 ];
 export async function listMetaLeads({ data }: any = {}) {
-  const items = fixtureLeads.filter(
-    (c) =>
-      (!data?.status || c.status === data.status) &&
-      (!data?.imobiliaria || c.imobiliaria === data.imobiliaria),
-  );
-  return { items, total: items.length };
+  const params = new URLSearchParams(location.search);
+  if (params.get("leadState") === "error") throw new Error("Falha sintética ao carregar contatos.");
+  const selected =
+    params.get("leadState") === "empty"
+      ? []
+      : fixtureLeads.filter(
+          (c) =>
+            (!data?.status || c.status === data.status) &&
+            (!data?.imobiliaria || c.imobiliaria === data.imobiliaria) &&
+            (!data?.campaignId || c.campaign_id === data.campaignId) &&
+            (!data?.formId || c.form_id === data.formId) &&
+            (!data?.brokerId || c.broker_id === data.brokerId) &&
+            (!data?.search ||
+              [c.full_name, c.phone, c.email]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase()
+                .includes(data.search.toLowerCase())) &&
+            (!data?.since || c.received_at.slice(0, 10) >= data.since) &&
+            (!data?.until || c.received_at.slice(0, 10) <= data.until),
+        );
+  const size = data?.pageSize ?? 20;
+  const offset = ((data?.page ?? 1) - 1) * size;
+  return { items: selected.slice(offset, offset + size), total: selected.length };
 }
 export async function retryMetaLead() {
   return { ok: true };

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MarketingSearchSelect } from "@/components/marketing/MarketingSearchSelect";
 import { useSession } from "@/lib/auth-mock";
 import { useAds } from "@/hooks/useAds";
 import { MetaFormMapping } from "@/components/integracoes/MetaAdsCard";
@@ -17,8 +19,7 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
   const session = useSession(),
     qc = useQueryClient();
   const admin = session?.perfil === "admin_owner";
-  const [open, setOpen] = useState(false),
-    [mappingId, setMappingId] = useState(""),
+  const [mappingId, setMappingId] = useState(""),
     [since, setSince] = useState(""),
     [until, setUntil] = useState("");
   const getHealth = useServerFn(getMetaLeadHealth),
@@ -29,19 +30,19 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
   const health = useQuery({
     queryKey: ["marketing", "lead-health", session?.id, session?.perfil, agency],
     queryFn: () => getHealth({ data: { imobiliaria: agency as "cordial" | "morar" } }),
-    enabled: open && agency !== "todas" && (admin || session?.perfil === "secretaria"),
+    enabled: agency !== "todas" && (admin || session?.perfil === "secretaria"),
     staleTime: 30_000,
   });
   const mappings = useQuery({
     queryKey: ["marketing", "lead-form-mappings", session?.id, session?.perfil],
     queryFn: () => mappingsFn(),
-    enabled: open && admin,
+    enabled: admin,
     staleTime: 30_000,
   });
   const recoveries = useQuery({
     queryKey: ["marketing", "lead-recoveries", session?.id, session?.perfil, agency],
     queryFn: () => listRecoveries({ data: { imobiliaria: agency as "cordial" | "morar" } }),
-    enabled: open && admin && agency !== "todas",
+    enabled: admin && agency !== "todas",
     staleTime: 15_000,
     refetchInterval: (query) =>
       query.state.data?.some((job) => ["queued", "processing"].includes(job.status)) ? 5000 : false,
@@ -52,7 +53,7 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
         data: { mappingId, since: `${since}T00:00:00-03:00`, until: `${until}T23:59:59-03:00` },
       }),
     onSuccess: () => {
-      toast.success("Recuperação agendada. A fila preserva o checkpoint e a deduplicação.");
+      toast.success("Recuperação agendada. Acompanhe o andamento neste painel.");
       void qc.invalidateQueries({ queryKey: ["marketing", "lead-health"] });
       void qc.invalidateQueries({ queryKey: ["marketing", "lead-recoveries"] });
     },
@@ -62,10 +63,7 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
       ),
   });
   return (
-    <details className="border-y py-2" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-primary">
-        Recebimento, formulários e recuperação
-      </summary>
+    <div className="mt-5 space-y-4">
       {agency === "todas" ? (
         <p className="py-3 text-sm text-foreground/70">
           Selecione uma imobiliária no filtro para consultar a saúde e os formulários
@@ -84,7 +82,7 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
         </p>
       ) : (
         health.data && (
-          <div className="grid gap-4 py-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 rounded-xl border bg-card p-4 sm:grid-cols-3">
             <Health label="Formulários mapeados" value={String(health.data.mappedForms)} />
             <Health label="Na fila" value={String(health.data.queued)} />
             <Health label="A revisar / falhas" value={String(health.data.needsReview)} />
@@ -113,7 +111,7 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
             href="/integracoes"
             className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline"
           >
-            Conferir callback, permissões e inscrições em Integrações
+            Abrir diagnóstico em Configurações / Integrações
           </a>
           {ads.connections
             .filter(
@@ -132,10 +130,10 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
               </div>
             ))}
           <form
-            className="my-4 space-y-3 border-t pt-4"
+            className="space-y-3 rounded-xl border bg-card p-4"
             onSubmit={(event) => {
               event.preventDefault();
-              recovery.mutate();
+              if (mappingId && since && until) recovery.mutate();
             }}
           >
             <h3 className="text-sm font-semibold">Recuperar submissões não recebidas</h3>
@@ -144,40 +142,41 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
               America/Sao_Paulo. Entradas já excluídas permanecem excluídas.
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="text-xs font-semibold">
-                Formulário mapeado
-                <select
-                  required
-                  className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm"
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs font-semibold">Formulário mapeado</p>
+                <MarketingSearchSelect
+                  label="Formulário mapeado"
                   value={mappingId}
-                  onChange={(event) => setMappingId(event.target.value)}
-                >
-                  <option value="">Selecionar formulário</option>
-                  {mappings.data
-                    ?.filter((mapping) => mapping.imobiliaria === agency && mapping.enabled)
-                    .map((mapping) => (
-                      <option key={mapping.id} value={mapping.id}>
-                        Formulário {mapping.form_id}
-                      </option>
-                    ))}
-                </select>
-              </label>
+                  onValueChange={setMappingId}
+                  options={[
+                    { value: "", label: "Selecionar formulário" },
+                    ...(mappings.data
+                      ?.filter((mapping) => mapping.imobiliaria === agency && mapping.enabled)
+                      .map((mapping) => ({
+                        value: mapping.id,
+                        label: `Formulário ${mapping.form_id}`,
+                      })) ?? []),
+                  ]}
+                  className="w-full"
+                  disabled={mappings.isLoading || mappings.isError}
+                />
+              </div>
               <label className="text-xs font-semibold">
                 Desde
-                <input
+                <Input
                   required
                   type="date"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm"
+                  className="mt-1.5 h-11 w-full rounded-xl bg-card px-3 text-sm sm:h-10"
                   value={since}
                   onChange={(event) => setSince(event.target.value)}
                 />
               </label>
               <label className="text-xs font-semibold">
                 Até
-                <input
+                <Input
                   required
                   type="date"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-foreground/55 bg-card px-3 text-sm"
+                  className="mt-1.5 h-11 w-full rounded-xl bg-card px-3 text-sm sm:h-10"
                   value={until}
                   onChange={(event) => setUntil(event.target.value)}
                 />
@@ -186,12 +185,28 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
             <Button
               type="submit"
               variant="outline"
-              className="min-h-11"
-              disabled={recovery.isPending || !mappingId}
+              className="h-11 rounded-xl sm:h-10"
+              disabled={recovery.isPending || !mappingId || !since || !until}
             >
               Agendar recuperação
             </Button>
           </form>{" "}
+          {mappings.isError && (
+            <p role="alert" className="text-sm text-red-800">
+              Não foi possível carregar os formulários.{" "}
+              <button className="min-h-10 underline" onClick={() => void mappings.refetch()}>
+                Tentar novamente
+              </button>
+            </p>
+          )}
+          {recoveries.isError && (
+            <p role="alert" className="text-sm text-red-800">
+              Não foi possível carregar as recuperações.{" "}
+              <button className="min-h-10 underline" onClick={() => void recoveries.refetch()}>
+                Tentar novamente
+              </button>
+            </p>
+          )}
           {Boolean(recoveries.data?.length) && (
             <section className="mb-4 border-t pt-4">
               <h3 className="text-sm font-semibold">Recuperações recentes</h3>
@@ -225,7 +240,7 @@ export function MetaLeadOperations({ agency }: { agency: "cordial" | "morar" | "
           )}
         </>
       )}
-    </details>
+    </div>
   );
 }
 function Health({ label, value }: { label: string; value: string }) {

@@ -25,6 +25,7 @@ import { SystemUnavailable } from "./shared/SystemUnavailable";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearchBar } from "./busca/GlobalSearchBar";
+import { MarketingHeaderSearchInput, MarketingHeaderAgencyControl } from "./marketing/MarketingHeaderControls";
 import { CatalogCarteiraPills, CatalogSearchInput } from "./imoveis/CatalogHeaderControls";
 import { SiteSyncPanel } from "./imoveis/SiteSyncPanel";
 import { isAdminUser } from "@/lib/access-control";
@@ -73,6 +74,7 @@ export function AppShell() {
   const mainRef = useRef<HTMLDivElement>(null);
   const canSearch = Boolean(session?.modules?.includes("busca"));
   const isCatalogRoute = pathname === "/imoveis";
+  const isMarketingRoute = pathname === "/marketing";
   const isAssistantWorkspace = /^\/assistente\/(?!equipe(?:\/|$))[^/]+\/?$/.test(pathname);
   // A execução da vistoria tem barra de ações própria no rodapé do celular.
   const vistoriaLayout = inspectionLayout(pathname);
@@ -291,8 +293,8 @@ export function AppShell() {
               </Link>
             </div>
           </div>
-          {isCatalogRoute ? <CatalogSearchInput /> : canSearch ? <GlobalSearchBar /> : null}
-          {isCatalogRoute ? <CatalogCarteiraPills className="sm:max-w-none" /> : <AgencySwitcher />}
+          {isCatalogRoute ? <CatalogSearchInput /> : isMarketingRoute ? <MarketingHeaderSearchInput /> : canSearch ? <GlobalSearchBar /> : null}
+          {isCatalogRoute ? <CatalogCarteiraPills className="sm:max-w-none" /> : isMarketingRoute ? <MarketingHeaderAgencyControl /> : <AgencySwitcher />}
 
         </header>
 
@@ -317,6 +319,8 @@ export function AppShell() {
 
             {isCatalogRoute ? (
               <CatalogSearchInput className="w-full max-w-[22rem]" />
+            ) : isMarketingRoute ? (
+              <MarketingHeaderSearchInput className="w-full max-w-[22rem]" />
             ) : canSearch ? (
               <GlobalSearchBar className="w-full max-w-[22rem]" />
             ) : null}
@@ -324,6 +328,8 @@ export function AppShell() {
             <div className="ml-auto flex min-w-0 items-center gap-2">
               {isCatalogRoute ? (
                 <CatalogCarteiraPills className="w-auto sm:max-w-none" />
+              ) : isMarketingRoute ? (
+                <MarketingHeaderAgencyControl className="w-auto" />
               ) : (
                 <div className="w-full max-w-[15rem]">
                   <AgencySwitcher />

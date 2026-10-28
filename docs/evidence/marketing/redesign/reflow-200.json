@@ -1,0 +1,7 @@
+{
+  "method": "Reflow equivalent: 1440px at200% represented by720 CSS px, exported at2x. Native IAB zoom stays1.65; actual browser zoom200% not exercised.",
+  "height": 500,
+  "overflow": false,
+  "scrollWidth": 720,
+  "width": 720
+}
