@@ -4290,14 +4290,18 @@ export type Database = {
       }
       marketing_reports: {
         Row: {
+          attempts: number
           author_id: string
           completed_at: string | null
           created_at: string
           error_code: string | null
+          fence: number
           financial: boolean
           id: string
           imobiliaria: string
           kind: string
+          lease_until: string | null
+          next_attempt_at: string
           row_count: number
           scope: Json
           snapshot: Json
@@ -4305,16 +4309,21 @@ export type Database = {
           status: string
           storage_path: string | null
           version: number
+          worker_id: string | null
         }
         Insert: {
+          attempts?: number
           author_id: string
           completed_at?: string | null
           created_at?: string
           error_code?: string | null
+          fence?: number
           financial: boolean
           id?: string
           imobiliaria: string
           kind: string
+          lease_until?: string | null
+          next_attempt_at?: string
           row_count: number
           scope: Json
           snapshot: Json
@@ -4322,16 +4331,21 @@ export type Database = {
           status?: string
           storage_path?: string | null
           version?: number
+          worker_id?: string | null
         }
         Update: {
+          attempts?: number
           author_id?: string
           completed_at?: string | null
           created_at?: string
           error_code?: string | null
+          fence?: number
           financial?: boolean
           id?: string
           imobiliaria?: string
           kind?: string
+          lease_until?: string | null
+          next_attempt_at?: string
           row_count?: number
           scope?: Json
           snapshot?: Json
@@ -4339,6 +4353,7 @@ export type Database = {
           status?: string
           storage_path?: string | null
           version?: number
+          worker_id?: string | null
         }
         Relationships: []
       }
@@ -12070,6 +12085,73 @@ export type Database = {
       }
       marketing_can_operate: { Args: { p_agency: string }; Returns: boolean }
       marketing_can_read: { Args: { p_agency: string }; Returns: boolean }
+      marketing_report_check_lease: {
+        Args: { p_fence: number; p_id: string; p_worker: string }
+        Returns: boolean
+      }
+      marketing_report_claim: {
+        Args: { p_id?: string; p_worker: string }
+        Returns: {
+          attempts: number
+          author_id: string
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          fence: number
+          financial: boolean
+          id: string
+          imobiliaria: string
+          kind: string
+          lease_until: string | null
+          next_attempt_at: string
+          row_count: number
+          scope: Json
+          snapshot: Json
+          snapshot_hash: string
+          status: string
+          storage_path: string | null
+          version: number
+          worker_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "marketing_reports"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      marketing_report_commit: {
+        Args: {
+          p_fence: number
+          p_id: string
+          p_path: string
+          p_worker: string
+        }
+        Returns: boolean
+      }
+      marketing_report_enqueue: {
+        Args: {
+          p_actor: string
+          p_hash: string
+          p_id: string
+          p_snapshot: Json
+        }
+        Returns: string
+      }
+      marketing_report_fail: {
+        Args: {
+          p_error: string
+          p_fence: number
+          p_id: string
+          p_retryable?: boolean
+          p_worker: string
+        }
+        Returns: boolean
+      }
+      marketing_report_job_allowed: {
+        Args: { p_actor: string; p_agency: string; p_financial: boolean }
+        Returns: boolean
+      }
       marketing_report_snapshot: {
         Args: {
           p_account?: string
