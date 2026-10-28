@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-mock";
 import {
   listBrokerAttendanceHistoryReport,
   listAttendanceReportContacts,
@@ -55,6 +56,7 @@ export function AtendimentoHistoryReportDialog({
   atendimentos: Atendimento[];
   onPrint: (payload: HistoryPrintPayload) => void;
 }) {
+  const session = useSession();
   const [mode, setMode] = useState<"corretor" | "cliente">("corretor");
   const [brokerId, setBrokerId] = useState("");
   const [search, setSearch] = useState("");
@@ -64,8 +66,8 @@ export function AtendimentoHistoryReportDialog({
 
   const contactsFn = useServerFn(listAttendanceReportContacts);
   const contactRows = useQuery({
-    queryKey: ["attendance-history-report-contacts"],
-    enabled: open && mode === "cliente",
+    queryKey: ["attendance-history-report-contacts", session?.id],
+    enabled: Boolean(session?.id && open && mode === "cliente"),
     retry: false,
     queryFn: () => contactsFn(),
   });
@@ -133,8 +135,8 @@ export function AtendimentoHistoryReportDialog({
   const brokerFn = useServerFn(listBrokerAttendanceHistoryReport);
   const clientFn = useServerFn(listClientAttendanceHistoryReport);
   const report = useQuery({
-    queryKey: ["attendance-history-report", mode, brokerId, contactKey, contact?.ids.length, period, from, to],
-    enabled: open && targetReady && periodReady,
+    queryKey: ["attendance-history-report", session?.id, mode, brokerId, contactKey, contact?.ids.length, period, from, to],
+    enabled: Boolean(session?.id && open && targetReady && periodReady),
     retry: false,
     queryFn: () =>
       mode === "corretor"

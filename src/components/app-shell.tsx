@@ -63,6 +63,9 @@ export function AppShell() {
   const profileLoadFailed = useProfileLoadFailed();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAttendanceWorkspace = useRouterState({
+    select: (s) => s.location.pathname === "/atendimentos" && s.location.search.modo === "etapa",
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
@@ -343,7 +346,7 @@ export function AppShell() {
 
         </>}
 
-        <main data-inspection-layout={vistoriaLayout ?? undefined} className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:max-w-screen-2xl lg:px-8 lg:pt-2 lg:pb-10 xl:px-10",hideBottomNav?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
+        <main data-inspection-layout={vistoriaLayout ?? undefined} className={cn("mx-auto w-full max-w-full min-w-0 flex-1 overflow-x-hidden px-4 lg:px-8 lg:pt-2 lg:pb-10 xl:px-10", !isAttendanceWorkspace && "lg:max-w-screen-2xl",hideBottomNav?"pb-[calc(1rem+env(safe-area-inset-bottom))]":"pb-[calc(7rem+env(safe-area-inset-bottom))]")}>
           <NotificationTransientRegion />
           <div key={pathname} className="app-page-enter">
             <Outlet />

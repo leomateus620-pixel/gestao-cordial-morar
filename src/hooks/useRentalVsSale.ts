@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ATTENDANCES_QUERY_KEY } from "@/hooks/useAttendances";
+import { attendanceListQueryKey } from "@/hooks/useAttendances";
 import { listAttendances } from "@/lib/attendances/attendances.functions";
 import { useSession } from "@/lib/auth-mock";
 import { matchesTrack } from "@/lib/atendimentos/track";
@@ -54,7 +54,7 @@ export function useRentalVsSale(options: {
 }): RentalVsSaleResult {
   const session = useSession();
   const query = useQuery({
-    queryKey: ATTENDANCES_QUERY_KEY,
+    queryKey: attendanceListQueryKey(session?.id),
     queryFn: () => listAttendances(),
     enabled: Boolean(session),
     staleTime: 15_000,

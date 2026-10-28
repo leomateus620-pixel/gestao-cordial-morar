@@ -61,7 +61,6 @@ import { markAttendanceFirstOpened } from "@/lib/attendances/assignments.functio
 import {
   ACTIVE_PIPELINE_STAGES,
   WAITING_PIPELINE_STAGE,
-
   atendimentoDormitoriosLabel,
   atendimentoFinalidadeLabel,
   atendimentoImobiliariaLabel,
@@ -87,12 +86,14 @@ import {
   whatsappHref,
 } from "@/services/atendimentos";
 import { ATTENDANCES_QUERY_KEY, attendanceHistoryQueryKey } from "@/hooks/useAttendances";
+import { useSession } from "@/lib/auth-mock";
 import { cn } from "@/lib/utils";
 
 type Props = {
   atendimento: Atendimento | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
   onStageChange: (id: string, stage: PipelineStage) => Promise<void> | void;
   onAction: (payload: AtendimentoActionPayload, atendimento: Atendimento) => Promise<void> | void;
   onEdit: (atendimento: Atendimento) => void;
@@ -108,6 +109,7 @@ export function AtendimentoDetailDrawer({
   atendimento,
   open,
   onOpenChange,
+  onCloseAutoFocus,
   onStageChange,
   onAction,
   onEdit,
@@ -123,11 +125,12 @@ export function AtendimentoDetailDrawer({
   const [confirmAction, setConfirmAction] = useState<"close" | null>(null);
   const [stagePending, setStagePending] = useState(false);
   const qc = useQueryClient();
+  const session = useSession();
 
   const historyQuery = useQuery({
-    queryKey: attendanceHistoryQueryKey(atendimento?.id),
+    queryKey: [...attendanceHistoryQueryKey(atendimento?.id), session?.id],
     queryFn: () => listAttendanceHistory({ data: { attendanceId: atendimento!.id } }),
-    enabled: Boolean(atendimento?.id && open),
+    enabled: Boolean(session?.id && atendimento?.id && open),
     staleTime: 10_000,
   });
 
@@ -158,10 +161,12 @@ export function AtendimentoDetailDrawer({
   // secretaries, and non-assigned users are safely no-ops.
   const firstOpenSentRef = useRef<string | null>(null);
   const attendanceIdForOpen = atendimento?.id ?? null;
+  const userIdForOpen = session?.id;
   useEffect(() => {
-    if (!open || !attendanceIdForOpen) return;
-    if (firstOpenSentRef.current === attendanceIdForOpen) return;
-    firstOpenSentRef.current = attendanceIdForOpen;
+    if (!open || !attendanceIdForOpen || !userIdForOpen) return;
+    const firstOpenKey = `${userIdForOpen}:${attendanceIdForOpen}`;
+    if (firstOpenSentRef.current === firstOpenKey) return;
+    firstOpenSentRef.current = firstOpenKey;
     markAttendanceFirstOpened({ data: { attendanceId: attendanceIdForOpen } })
       .then(() => {
         qc.invalidateQueries({ queryKey: attendanceHistoryQueryKey(attendanceIdForOpen) });
@@ -172,9 +177,9 @@ export function AtendimentoDetailDrawer({
       })
       .catch(() => {
         // Keep the timer active if the mutation fails
-        firstOpenSentRef.current = null;
+        if (firstOpenSentRef.current === firstOpenKey) firstOpenSentRef.current = null;
       });
-  }, [open, attendanceIdForOpen, qc]);
+  }, [open, attendanceIdForOpen, userIdForOpen, qc]);
 
   if (!atendimento) return null;
   const pipeline = getPipelineContext(atendimento);
@@ -199,6 +204,7 @@ export function AtendimentoDetailDrawer({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
+          onCloseAutoFocus={onCloseAutoFocus}
           side="right"
           closeLabel="Fechar"
           className="h-[100dvh] w-screen max-w-none overflow-hidden border-l border-stone-900/12 bg-[#f7f2ea] p-0 shadow-2xl data-[state=closed]:duration-200 data-[state=open]:duration-200 sm:w-[min(94vw,920px)] sm:max-w-[920px] [&>button]:hidden"
@@ -269,7 +275,6 @@ export function AtendimentoDetailDrawer({
                     void changeStage(stage);
                   }}
                 />
-
 
                 <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
                   <div className="space-y-4">
@@ -548,7 +553,6 @@ export function AtendimentoDetailDrawer({
                           </p>
                         </div>
                       ) : null}
-
                     </SectionCard>
 
                     <SectionCard eyebrow="Registro" title="Nova nota" icon={MessageSquare}>

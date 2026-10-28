@@ -52,9 +52,10 @@ export function AtendimentoFilters({
   return (
     <section className="space-y-3">
       <div className="flex gap-2">
-        <label className="glass-panel flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5">
+        <label className="glass-panel flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-ring">
           <Search className="size-4 shrink-0 text-teal-700/65" />
           <input
+            aria-label="Buscar em todos os atendimentos"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="Buscar nome, telefone, bairro, origem, corretor..."
