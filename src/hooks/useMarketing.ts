@@ -16,7 +16,10 @@ import { useApp } from "@/store/app-store";
 import { readAllCampaigns } from "@/lib/marketing/read-all-campaigns";
 import { sameMarketingPlaceholderScope } from "@/lib/marketing/query-cache-scope";
 
-export function useMarketing(filters: MarketingQuery = {}, options: { allPages?: boolean } = {}) {
+export function useMarketing(
+  filters: MarketingQuery = {},
+  options: { allPages?: boolean; enabled?: boolean } = {},
+) {
   const allPages = options.allPages === true;
   const qc = useQueryClient();
   const session = useSession();
@@ -48,7 +51,7 @@ export function useMarketing(filters: MarketingQuery = {}, options: { allPages?:
     queryKey: ["marketing", "campaigns", session?.id, session?.perfil, scope, allPages],
     queryFn: () =>
       allPages ? readAllCampaigns((data) => list({ data }), scope) : list({ data: scope }),
-    enabled: Boolean(session),
+    enabled: Boolean(session) && options.enabled !== false,
     staleTime: 30_000,
     placeholderData: (previous, previousQuery) => {
       if (allPages) return undefined;

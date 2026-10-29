@@ -14,6 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 import {
   MarketingHeaderAgencyControl,
   MarketingHeaderSearchInput,
+  MarketingPlatformSwitcher,
 } from "../../src/components/marketing/MarketingHeaderControls";
 
 afterEach(() => {
@@ -22,6 +23,25 @@ afterEach(() => {
 });
 
 describe("Marketing uses the existing shell control slots", () => {
+  it("identifies the selected platform without relying only on color", () => {
+    const query = marketingSearchSchema.parse({ platform: "google" });
+    const $ = load(
+      renderToStaticMarkup(
+        createElement(MarketingPlatformSwitcher, { query, onQueryChange: vi.fn() }),
+      ),
+    );
+    expect($("[role=group]").attr("aria-label")).toBe("Plataforma de anúncios");
+    expect($("button[aria-pressed=true]").text()).toContain("Google Ads");
+    expect($("button[aria-pressed=false]").text()).toContain("Meta Ads");
+    expect(
+      $("img")
+        .map((_i, image) => $(image).attr("src"))
+        .get(),
+    ).toEqual(["/brand/meta.svg", "/brand/google-ads.svg"]);
+    expect(
+      renderToStaticMarkup(createElement(MarketingPlatformSwitcher, { query, showGoogle: false })),
+    ).toBe("");
+  });
   it.each(["overview", "campaigns", "reports"])(
     "shows the campaign query and clear action in the superior search for %s",
     (area) => {

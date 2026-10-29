@@ -23,6 +23,7 @@ export default defineConfig({
       { find: /^(.*\/)?reports\.functions$/, replacement: fixture },
       { find: /^(.*\/)?leads-admin\.functions$/, replacement: fixture },
       { find: /^(.*\/)?marketing\.functions$/, replacement: fixture },
+      { find: /^(.*\/)?google-overview\.functions$/, replacement: fixture },
       { find: /^(.*\/)?leadgen\.functions$/, replacement: fixture },
       { find: /^(.*\/)?leads\.functions$/, replacement: fixture },
       { find: /^(.*\/)?attendances\.functions$/, replacement: fixture },

@@ -33,6 +33,7 @@ import { MarketingDashboard } from "../../src/components/marketing/MarketingDash
 import {
   MarketingHeaderSearchInput,
   MarketingHeaderAgencyControl,
+  MarketingPlatformSwitcher,
 } from "../../src/components/marketing/MarketingHeaderControls";
 import "../../src/styles.css";
 const params = new URLSearchParams(location.search);
@@ -52,18 +53,21 @@ function Preview() {
     }
     window.history.replaceState({}, "", url);
   }
-  const data = useMarketing({
-    since: ranges.previous.since,
-    until: ranges.current.until,
-    currentSince: ranges.current.since,
-    previousUntil: ranges.previous.until,
-    imobiliaria: agency !== "todas" ? agency : null,
-    page: filters.page,
-    search: filters.search,
-    platform: filters.platform || null,
-    status: filters.status || null,
-    accountId: filters.accountId || null,
-  });
+  const data = useMarketing(
+    {
+      since: ranges.previous.since,
+      until: ranges.current.until,
+      currentSince: ranges.current.since,
+      previousUntil: ranges.previous.until,
+      imobiliaria: agency !== "todas" ? agency : null,
+      page: filters.page,
+      search: filters.search,
+      platform: filters.platform || null,
+      status: filters.status || null,
+      accountId: filters.accountId || null,
+    },
+    { enabled: filters.platform !== "google" },
+  );
   return (
     <PreviewFrame query={filters} onQueryChange={updateFilters}>
       <aside
@@ -119,6 +123,11 @@ function PreviewFrame({
               query={query}
               onQueryChange={onQueryChange}
               className="w-full sm:max-w-[22rem]"
+            />
+            <MarketingPlatformSwitcher
+              query={query}
+              onQueryChange={onQueryChange}
+              showGoogle={params.get("role") !== "meta_reviewer"}
             />
             <MarketingHeaderAgencyControl
               query={query}
@@ -189,6 +198,11 @@ function PreviewFrame({
               query={query}
               onQueryChange={onQueryChange}
               className="order-last w-full min-w-0 lg:order-none lg:max-w-[22rem] lg:flex-1"
+            />
+            <MarketingPlatformSwitcher
+              query={query}
+              onQueryChange={onQueryChange}
+              showGoogle={params.get("role") !== "meta_reviewer"}
             />
             <div className="ml-auto flex min-w-0 items-center gap-2">
               <MarketingHeaderAgencyControl query={query} onQueryChange={onQueryChange} />

@@ -25,7 +25,11 @@ import { SystemUnavailable } from "./shared/SystemUnavailable";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearchBar } from "./busca/GlobalSearchBar";
-import { MarketingHeaderSearchInput, MarketingHeaderAgencyControl } from "./marketing/MarketingHeaderControls";
+import {
+  MarketingHeaderSearchInput,
+  MarketingHeaderAgencyControl,
+  MarketingPlatformSwitcher,
+} from "./marketing/MarketingHeaderControls";
 import { CatalogCarteiraPills, CatalogSearchInput } from "./imoveis/CatalogHeaderControls";
 import { SiteSyncPanel } from "./imoveis/SiteSyncPanel";
 import { isAdminUser } from "@/lib/access-control";
@@ -294,6 +298,9 @@ export function AppShell() {
             </div>
           </div>
           {isCatalogRoute ? <CatalogSearchInput /> : isMarketingRoute ? <MarketingHeaderSearchInput /> : canSearch ? <GlobalSearchBar /> : null}
+          {isMarketingRoute ? (
+            <MarketingPlatformSwitcher showGoogle={session.perfil !== "meta_reviewer"} />
+          ) : null}
           {isCatalogRoute ? <CatalogCarteiraPills className="sm:max-w-none" /> : isMarketingRoute ? <MarketingHeaderAgencyControl /> : <AgencySwitcher />}
 
         </header>
@@ -323,6 +330,13 @@ export function AppShell() {
               <MarketingHeaderSearchInput className="w-full max-w-[22rem]" />
             ) : canSearch ? (
               <GlobalSearchBar className="w-full max-w-[22rem]" />
+            ) : null}
+
+            {isMarketingRoute ? (
+              <MarketingPlatformSwitcher
+                className="shrink-0"
+                showGoogle={session.perfil !== "meta_reviewer"}
+              />
             ) : null}
 
             <div className="ml-auto flex min-w-0 items-center gap-2">

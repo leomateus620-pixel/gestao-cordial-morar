@@ -29,19 +29,22 @@ function MarketingPageInner() {
   const agency = query.agency ?? globalAgency;
   const range = marketingQueryRanges(query);
   const { campaigns, total, summary, financialVisible, isLoading, isRefreshing, isError } =
-    useMarketing({
-      imobiliaria: agency === "todas" ? null : agency,
-      since: range.previous.since,
-      until: range.current.until,
-      currentSince: range.current.since,
-      previousUntil: range.previous.until,
-      accountId: query.accountId || null,
-      page: query.page,
-      pageSize: 25,
-      search: query.search,
-      platform: query.platform || null,
-      status: query.status || null,
-    });
+    useMarketing(
+      {
+        imobiliaria: agency === "todas" ? null : agency,
+        since: range.previous.since,
+        until: range.current.until,
+        currentSince: range.current.since,
+        previousUntil: range.previous.until,
+        accountId: query.accountId || null,
+        page: query.page,
+        pageSize: 25,
+        search: query.search,
+        platform: query.platform || null,
+        status: query.status || null,
+      },
+      { enabled: query.platform !== "google" },
+    );
   function updateQuery(next: MarketingDashboardQuery) {
     void navigate({ search: next, replace: true });
   }
@@ -58,7 +61,9 @@ function MarketingPageInner() {
       isLoading={isLoading}
       isRefreshing={isRefreshing}
       isError={isError}
-      canViewFinancialInsights={canSeeFinancialInsights(session) && financialVisible}
+      canViewFinancialInsights={
+        canSeeFinancialInsights(session) && (query.platform === "google" || financialVisible)
+      }
     />
   );
 }

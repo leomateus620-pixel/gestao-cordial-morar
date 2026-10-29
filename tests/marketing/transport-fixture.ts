@@ -62,7 +62,7 @@ export const fixtureCampaigns: MarketingCampaign[] = Array.from(
     imobiliaria: index % 3 === 1 ? "morar" : "cordial",
     platform: index % 3 === 2 ? "google" : "meta",
     externalCampaignId: String(90001 + index),
-    externalAccountId: "123456789",
+    externalAccountId: index % 3 === 2 ? "1234567890" : "123456789",
     connectionId: "30000000-0000-4000-8000-000000000001",
     currency: "BRL",
     accountTimezone: "America/Sao_Paulo",
@@ -76,6 +76,80 @@ export const fixtureCampaigns: MarketingCampaign[] = Array.from(
         : null,
   }),
 );
+/** Synthetic-only data for the isolated Google UI preview. */
+export async function getGoogleMarketingOverview({ data }: any) {
+  const show =
+    (!data.agency || data.agency === "cordial") &&
+    (!data.accountId || data.accountId === "1234567890") &&
+    (!data.search || "pesquisa google".includes(String(data.search).toLowerCase())) &&
+    (!data.status || data.status === "Ativa");
+  const financial = !secretariat();
+  const metric = {
+    cost: financial ? "120.456789" : null,
+    clicks: "32",
+    impressions: "800",
+    conversions: "2.75",
+    ctr: "4",
+    cpc: financial ? "3.76427465625" : null,
+    costPerConversion: financial ? "43.802468" : null,
+  };
+  const none = {
+    cost: null,
+    clicks: null,
+    impressions: null,
+    conversions: null,
+    ctr: null,
+    cpc: null,
+    costPerConversion: null,
+  };
+  const observed = show && data.since <= "2026-10-15" && data.until >= "2026-10-15";
+  return {
+    scope: {
+      agency: data.agency ?? null,
+      accountId: data.accountId ?? null,
+      since: data.since,
+      until: data.until,
+    },
+    coverage: observed ? "partial" : "unavailable",
+    accounts:
+      data.agency === "morar"
+        ? []
+        : [{ id: "1234567890", name: "Conta sintética", agency: "cordial" }],
+    accountName: data.accountId && show ? "Conta sintética" : null,
+    currency: show ? "BRL" : null,
+    timezone: show ? "America/Sao_Paulo" : null,
+    lastCollectedAt: observed ? "2026-10-26T12:00:00Z" : null,
+    summary: observed ? metric : none,
+    series: observed ? [{ date: "2026-10-15", metrics: metric }] : null,
+    total: show ? 1 : 0,
+    page: data.page,
+    pageSize: data.pageSize,
+    sort: data.sort,
+    items: show
+      ? [
+          {
+            id: "10000000-0000-4000-8000-000000000003",
+            name: "Pesquisa Google · EXEMPLO SINTÉTICO",
+            status: "Ativa",
+            nativeStatus: null,
+            channelType: null,
+            channelSubtype: null,
+            accountId: "1234567890",
+            accountName: "Conta sintética",
+            dataInicio: "2026-10-01",
+            dataFim: "2037-12-30",
+            agency: "cordial",
+            currency: "BRL",
+            timezone: "America/Sao_Paulo",
+            lastCollectedAt: observed ? "2026-10-26T12:00:00Z" : null,
+            coverage: observed ? "partial" : "unavailable",
+            metrics: observed ? metric : none,
+            dailySeries: observed ? [{ date: "2026-10-15", metrics: metric }] : null,
+          },
+        ]
+      : [],
+  };
+}
 export async function listCampaigns({ data }: any = {}) {
   const rows = fixtureCampaigns.filter(
     (c) => !data?.imobiliaria || data.imobiliaria === "todas" || c.imobiliaria === data.imobiliaria,
