@@ -1,145 +1,76 @@
-# QA de design — Marketing
+# Google Ads — revisão de design
 
-Data: 28/10/2026.
+**final result: passed**
 
-Source visual truth: `/Users/leonardo/Downloads/Painel de marketing com campanhas e leads.png` (1552 × 1013 pixels).
+A implementação foi comparada visualmente com a referência fornecida, com a versão anterior dos componentes e com a Meta. Não restam achados P0, P1 ou P2. Product Design orientou a composição e a revisão; a implementação foi feita no repositório existente.
 
-Implementation screenshot: `docs/evidence/marketing/redesign/reference-match-1552.jpg` (1552 × 1013 pixels; viewport CSS confirmado de 1552 × 1013). Comparação principal com sidebar recolhida, Cordial/Meta, visão geral de outubro/2026. O conteúdo numérico é sintético identificado; não reproduz os números ilustrativos da referência. A imagem e a captura foram abertas juntas na revisão final.
+## Fontes e evidências
 
-A escala nativa do Browser interno era 1,65; viewport físico compensado e screenshot normalizado para 1 pixel por CSS px. Capturas adicionais em 390, 768, 1280, 1440 e 1920 px com sidebar aberta/recolhida estão em `docs/evidence/marketing/redesign`. O shell sintético conserva a geometria do produto; não é uma prova da aplicação autenticada de produção.
+- Fonte visual: `/Users/leonardo/Downloads/Redesign premium do painel Google Ads.png` (1558 × 1010 px). Inspiração de composição; números e curvas não foram usados como dados.
+- Estado anterior fornecido: as duas capturas de 29/10/2026, às 01:20:54 e 01:22:01.
+- Antes executável: `GoogleMarketingView.tsx` do HEAD original, servido temporariamente com o mesmo transporte de testes da versão nova.
+- Implementação: `tests/marketing/preview.html`, com os componentes reais e transporte isolado explicitamente identificado como sintético. Não houve acesso ou alteração no banco.
+- Comparação conjunta da referência e implementação: [comparison-reference.jpg](docs/evidence/google-ads-refinement/comparison-reference.jpg).
+- Comparação conjunta antes/depois: [comparison-before-after.jpg](docs/evidence/google-ads-refinement/comparison-before-after.jpg).
+- Capturas completas: [1440](docs/evidence/google-ads-refinement/after-1440.jpg), [1280](docs/evidence/google-ads-refinement/after-1280.jpg), [768](docs/evidence/google-ads-refinement/after-768.jpg), [360](docs/evidence/google-ads-refinement/after-360.jpg).
+- Foco/tooltip com duas métricas: [desktop](docs/evidence/google-ads-refinement/two-metrics-interaction-1440.jpg) e [toque em 360](docs/evidence/google-ads-refinement/touch-360.jpg).
+- Menus: [seletor aberto](docs/evidence/google-ads-refinement/select-open-1440.jpg), [informações em 360](docs/evidence/google-ads-refinement/data-info-360.jpg), [colunas em 360](docs/evidence/google-ads-refinement/columns-open-360.jpg).
+- Estados: [sem coleta](docs/evidence/google-ads-refinement/empty-360.jpg), [lacunas internas](docs/evidence/google-ads-refinement/gaps-1440.jpg), [mês incompleto](docs/evidence/google-ads-refinement/month-with-gaps-1440.jpg), [carregamento](docs/evidence/google-ads-refinement/loading-1440.jpg).
 
-## Resultado da comparação
+## Dimensões e estado comparados
 
-Nenhum P0/P1/P2 visual pendente nas superfícies inspecionadas. A composição segue o alvo com quatro KPIs, gráfico principal amplo, insight em faixa e resultados compactos. As alterações posteriores do usuário são intencionais: busca e Cordial/Morar só nos slots superiores existentes; status/filtros acima das abas; gráfico com maior presença visual e fundo próprio.
+Antes/depois usam viewport de **1440 × 1080 CSS px**, densidade 1, mesmo período (01–28 out. 2026), conta, três campanhas e dados sintéticos. As capturas completas têm alturas diferentes, pois a tabela foi compactada. O recorte de conteúdo começa em x=24/y=340, com largura de 1392 px. Os painéis comparativos normalizam ambos para 760 px por coluna sem alterar conteúdo.
 
-| Superfície obrigatória   | Verificação e decisão                                                                                                                                                                                                                                                                                                                  |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fontes e tipografia      | Reutilizados Manrope/Sora e pesos do produto. Título local 24–28 px; gráfico com título display e valor selecionado em 28–30 px; metadados menores com hierarquia clara. Valores tabulares e nomes completos nas fichas/menus. Rótulos deixaram de colapsar em botões sem texto no celular.                                            |
-| Espaçamento e composição | Região local 181,8 px a 1440 com sidebar aberta, contra 393,8 px antes. Controles quebram por conteúdo; nenhum painel alto acompanha artificialmente o gráfico. Tabela tem recipiente próprio e números à direita; nenhuma página excedeu a largura CSS da matriz.                                                                     |
-| Cores e tokens           | Identidade azul-petróleo/cobre mantida. Gráfico em superfície clara sólida com plotagem mais clara, grade sutil, série atual azul e anterior cobre tracejado. Amostra de contraste da linha azul/plot ~4,45:1 e cobre/plot ~3,11:1; texto principal do gráfico ~6,54:1. Isto é cálculo de cores-fonte, sem afirmar auditoria completa. |
-| Imagens, assets e ícones | O conteúdo redesenhado não exige fotos/ilustrações. Recharts produz a visualização dos dados; ícones Lucide e primitives existentes são reais. Nenhuma imagem gerada, logo inventado ou arte que substitua assets do produto. Elementos globais do shell são identificados como contexto sintético.                                    |
-| Texto e conteúdo         | Removidas faixas permanentes com webhook/callback/fuso técnico. “Nesta página” e cobertura dos dias identificam o gráfico. Zero, ausência, parcialidade e fila permanecem distintos; tooltip mostra datas reais. Erro e tarefas pendentes seguem visíveis.                                                                             |
+A referência não tem shell e contém uma linha de campanha, outros valores e outro período. Foi redimensionada proporcionalmente à mesma largura do recorte, sem tratar essas diferenças de conteúdo como defeitos. A referência é inspiração, não contrato de reprodução literal.
 
-A comparação de regiões foi feita sobre cabeçalho/filtros, legendas/destaque do gráfico, rótulos em mobile e tabela/ficha usando as capturas da matriz e o DOM observado. Esses elementos estavam legíveis nas imagens de 1x; não foi necessário criar recortes raster adicionais. Não se avaliou fidelidade de números ilustrativos nem se redesenhou a navegação global.
+As quatro larguras também foram medidas no navegador: `scrollWidth === innerWidth` em 360, 768, 1280 e 1440. Os quatro indicadores têm 116 px de altura. Os controles de evolução têm 36 px no desktop e 44 px no celular. A plotagem tem 290/260 px. As medições estão em [browser-measurements.json](docs/evidence/google-ads-refinement/browser-measurements.json).
 
-## Histórico de correções
-
-1. P2: cabeçalho desktop inicialmente excedia a meta e ações formavam linha isolada. Ações foram realocadas; versões finais em `after-shell-1440-open.jpg` e `viewport-measurements.json`.
-2. P2: busca e seletores de Leads encolhiam demais em 390 px. Busca foi integrada ao slot superior conforme o usuário; filtros receberam grid de duas colunas e responsável adicional. Evidências: `leads-390.jpg` e `filters-390.jpg`.
-3. P2: URL direta de Leads podia manter plataforma/conta incompatível. Schema e transições normalizam Meta, limpando contas não comprovadas. Evidência: `leads-deep-link-1440.jpg`, testes de estado e leitura no navegador.
-4. P2: intervalo inválido restaurado pela URL usava mês silenciosamente. Aviso junto ao período e edição dos valores originais foram acrescentados; `invalid-period-1440.jpg`.
-5. P2: foco ao fechar filtros precisava de acionador explícito. Ref e restauração foram conferidas; operações/ficha também foram fechadas e verificadas depois da animação.
-6. P2: destaque financeiro podia ignorar campanha sem observação diária. Cobertura agora exige todas as campanhas daquele dia; investimento/CPL indisponíveis com lacuna. Três testes novos cobrem campanha ausente, dia ausente e zero observado.
-7. Ajustes finais de direção: controles contextuais foram colocados acima das abas, busca/agência não se repetem e o gráfico ganhou superfície, pontos, tipografia e tooltip mais ricos. Capturas finais substituíram as intermediárias.
-
-## Interações e limites
-
-Exercitados busca única, troca de imobiliária, status por teclado e remoção de chip, calendário com validação/aplicação conjunta, painel móvel, operações lazy, ficha e seleção de nível, métrica/tooltip por teclado, geração sintética em fila com download desabilitado, perfis sem finanças, nomes longos, paginação, vazio, erro e sincronização pendente. Console da aba limpa conferido sem erros finais.
-
-Reflow equivalente a 200% foi exercitado com 720 CSS px exportados em 1440 px sem overflow; o zoom nativo de 200% não foi comprovado. Auditoria completa de acessibilidade, navegador autenticado de produção, chamadas Meta e downloads privados reais ficam fora desta evidência. Essa limitação está explícita no README e não impede a avaliação visual local.
-
-## Checklist de implementação
-
-- [x] Componentes ativos e estados reais reutilizados.
-- [x] Busca/agência únicas no topo; status/filtros acima da navegação local.
-- [x] Gráfico com comparação verdadeira, lacunas e escopo explícito.
-- [x] Leads, relatórios e operações preservados com acesso e lazy loading.
-- [x] Capturas antes/depois, matriz e medições salvas.
-- [x] Typecheck, testes pertinentes, lint alvo e build executados.
-
-P3: validar em uma sessão real autorizada as variações de volume, moedas e latência que fixtures não representam. Não há alegação de ganho de desempenho/produtividade.
-
-final result: passed
-
----
-
-# Histórico de revisões anteriores
-
-# Sidebar — organização da locação · 20/10/2026
-
-final result: passed
-
-## Referência, estado e evidências
-
-Fonte: `docs/sidebar/referencia-sidebar.jpeg`, cópia da imagem enviada pelo usuário. Implementação: `tests/sidebar/preview.html`, navegador in-app, componentes reais `SidebarMenu`, `BrandMark`, `Sheet` e `RentalFormModal`, transporte isolado sem dados reais.
-
-Comparação principal: referência original de 186×848 px e `docs/sidebar/screenshots/desktop-secretaria.png` de 1280×848 px; mesmo perfil Secretária, item Vistoria inteligente ativo e tema claro. A barra foi recortada em `sidebar-secretaria.png` (272×824 px) para comparação de toda a navegação, além do detalhe `locacao-detalhe.png` (250×180 px). Fonte, barra final, detalhe e mobile foram abertos juntos na mesma entrada de comparação.
-
-A referência é a interface anterior a ser melhorada. O aumento de largura, o bloco Locação, os títulos curtos, a legibilidade e o novo atalho são mudanças intencionais do pedido, não desvios de fidelidade. A imagem original é um recorte sem escala CSS conhecida; não foi esticada para simular igualdade de densidade. Capturas da implementação usam densidade 1. Desktop CSS 1280×848, mobile CSS 390×844 e 320×740; capturas nos mesmos tamanhos em pixels após estabilizar as animações.
-
-## Achados e histórico de correções
-
-1. **P2 — densidade da primeira versão escondia Marketing em 848 px.** A navegação da Secretária tinha conteúdo de 763 px para uma janela interna de 713 px. Reduzidos espaços entre linhas e cards e altura dos cabeçalhos, preservando itens de 44 px. Revalidação: conteúdo e janela interna de 721 px, todos os quatro grupos visíveis, sem corte. Evidência: `desktop-secretaria.png`.
-2. **P2 — marca mobile perdia as cores.** Os SVGs desktop/mobile compartilhavam IDs de gradientes; o SVG oculto interferia no drawer. IDs agora são próprios de cada instância, sem mudar os traços/cores da marca. Revalidação visual: `mobile-390.png` e `mobile-320.png`, símbolo completo nas duas larguras.
-3. **P2 — espaço herdado entre filhos do drawer cortava o último bloco.** Removido o gap genérico do Sheet apenas na navegação. Em 390×844 a área útil passou de 701 para 733 px e todos os grupos da Secretária ficam visíveis. Em 320×740 a lista rola internamente, com cabeçalho, botão de fechar e rodapé preservados. Evidência: capturas mobile finais.
-
-Não há P0/P1/P2 aberto após a comparação final. Estados animando não foram usados como evidência final.
+O navegador interno foi usado na revisão inicial. Como não oferece despacho de toque, o Chrome disponível foi usado para a validação de toque emulado, capturas finais e comparação normalizada com densidade 1. Não foi usado Playwright CLI. Nenhum teste foi realizado em aparelho físico.
 
 ## Superfícies verificadas
 
-- **Fontes/tipografia:** Manrope carregada, itens 14 px/20 px, peso 600/700; títulos 10 px com hierarquia discreta. Sora da marca preservada; Cordial Bot herda a cor clara do menu. Nomes completos sem reticências; quebra de linha disponível em telas estreitas.
-- **Espaçamento/layout:** sidebar 272 px, rail 68 px; cards, alinhamentos, ícones e rodapé consistentes. Sem overflow horizontal em 1280, 390 ou 320 px. Itens de 44 px também em 320 px. Rolagem administrativa mantém Configurações acessível sem rolar o documento (`admin-rolagem.png`).
-- **Cores/tokens:** azul-petróleo original e acentos por grupo; Locação com acento areia. Testes de contraste de texto principal/secundário passam em repouso, hover e ativo. Seleção tem fundo, borda e indicador, além da cor.
-- **Assets:** marca e ícones existentes preservados, sem imagens substitutas. Corrigida apenas a unicidade dos identificadores da marca. Símbolo do assistente continua sendo o asset existente.
-- **Conteúdo:** Operação, Comercial, Locação, Gestão e Sistema. Locação reúne Aluguéis, Vistoria inteligente e Novo contrato; este último abre o cadastro atual, conforme confirmado pelo usuário. Nada anuncia geração de documento ou operação fiscal nova.
+| Superfície | Resultado |
+| --- | --- |
+| Tipografia | Manrope existente, carregada na prévia pelo arquivo local já disponível. Rótulos dos indicadores 13 px, valores 28 px no desktop, semibold e tabulares; títulos locais da mesma família. Nenhuma fonte global alterada. |
+| Ritmo e composição | Indicadores alinhados; raio de 12 px, espaçamento em 4/8 px e elevação suave. Controles próximos ao título e agrupados à esquerda. A tabela elimina as repetições de conta/cobertura por linha. |
+| Cores e tokens | Superfícies neutras opacas, bordas leves, azul da série e cobre da comparação. Tokens `gads-*` locais também acompanham portais. Foco visível e legível; nenhuma alteração em CSS da Meta. |
+| Ativos e ícones | Ícones Lucide existentes, 17 px em fundos de 30 px. Custo/conversão usa símbolo monetário. Nenhuma ilustração, imagem decorativa, biblioteca ou fonte nova. O gráfico continua em Recharts. |
+| Conteúdo | Textos técnicos saíram da apresentação permanente e estão no popover. “Dados parciais”, “Sem dados no período”, “Sem coleta” e “Hoje em andamento” permanecem contextuais. Null continua traço e zero real continua zero. |
 
-## Interações, verificações e limites
+## Interações e integridade
 
-No navegador: navegação entre módulos; expansão/recolhimento; foco visível por Tab e tooltip do rail; Novo contrato por clique e Enter no modo recolhido; abertura do formulário real a partir de Vistoria e da própria tela Aluguéis; fechar e abrir novamente; menu mobile fecha ao abrir contrato; quatro perfis e ausência do atalho para corretor/financeiro. Cabeçalhos de grupos e gradientes sem IDs duplicados com desktop e drawer montados juntos. Console sem erros ou avisos nas interações finais.
+- Seletores Radix abrem com o mesmo acabamento, permitem navegação por teclado e fecham com Escape. Foco retorna ao controle.
+- Quatro indicadores continuam personalizáveis sem duplicar métricas selecionadas.
+- Primeira/segunda métrica, opção Nenhuma e Dia/Semana/Mês funcionam. Selecionar na primeira uma métrica já usada na segunda limpa a comparação.
+- Duas séries usam eixos independentes, moeda/percentual nos ticks e legenda com lado da escala. Conversões fracionárias não são arredondadas para ticks inteiros repetidos.
+- Linhas lineares, sem animação de curva ou conexão de nulls. Grade apenas horizontal. Tooltip com data, nome, valor exato formatado e linha-guia; consulta por setas, ponteiro e toque emulado. Tooltip móvel medido dentro da tela.
+- “Ver tabela” apresenta todos os dias, incluindo os traços das lacunas. Não é preciso depender do gráfico para consultar valores.
+- Lacunas iniciais e internas continuam vazias. Semana/mês incompletos não viram totais inventados. Dia atual é reconhecido pelo fuso da conta e continua parcial; valor zero observado não é removido.
+- Nomes extensos usam duas linhas e nome completo no detalhamento/title. Status pequenos informam a origem Gestão. Personalização de colunas, restauração e rolagem por teclado funcionam; o restante da página não transborda.
+- Contador e resumo usam `data.total`/`data.summary`. Ordenação e paginação continuam na RPC autorizada, antes de LIMIT/OFFSET. Não houve soma ou ordenação local apenas da página.
+- Seletor duplicado de plataforma removido do card Marketing, inclusive do painel móvel, conforme complemento do pedido. O switch superior permanece. URLs legadas `manual`/todas e registro manual no menu continuam válidos; não foi criado um terceiro switch.
+- Atualização em segundo plano usa espaço reservado para indicador discreto. Skeleton Google corresponde à estrutura de quatro KPIs, gráfico e tabela. Estados de erro continuam contextualizados, incluindo data de coleta e tentativa novamente.
+- Movimento reduzido respeitado; curvas não animam. `initialDimension` evita a dimensão inicial negativa do gráfico Google antes da medição.
 
-Tipos, build e lint dos arquivos de produção alterados passaram. O lint da página de Aluguéis foi executado com a regra de formatação desligada para não reformatar o arquivo legado inteiro. Os 12 testes focados de menu, contraste e preferências passaram. O build mantém avisos preexistentes de depreciação do TanStack e tamanho de chunks.
+## Histórico de correções visuais
 
-- [x] Comparação principal e detalhe do bloco Locação abertos com a referência.
-- [x] Desktop, rail, drawer e perfis conferidos no navegador.
-- [x] Atalho exercitado com o formulário real, sem envio de dados.
-- [x] Definições/URLs de produção, permissões, serviços e banco preservados.
-- [ ] Conferir a tela autenticada completa em homologação: a prévia isola a navegação e o formulário, sem backend real.
+1. **P2 — risco de layout deslocado no carregamento.** O skeleton genérico antigo tinha outra quantidade de indicadores, e o texto de atualização entrava/saía da página. Corrigido com skeleton Google e indicador de atualização em espaço reservado. Evidência: `loading-1440.jpg` e alturas medidas iguais nos KPIs/plotagem.
+2. **P2 — popover móvel com topo cortado ao abrir após rolar o gráfico.** Ajustado com margem de colisão, altura disponível e rolagem interna. Na nova medição em 360 × 900, o painel ocupa x=12…348 e y=480…888. Evidência: `data-info-360.jpg`.
+3. **P2 — foco automático do SVG por toque gerava contorno laranja em uma camada interna.** Removido apenas para camadas programáticas de tabindex=-1; o ponto de entrada por teclado mantém contorno visível. Evidência revisada: `touch-360.jpg` e `two-metrics-interaction-1440.jpg`.
+4. **P2 — ticks de conversões poderiam ter rótulos inteiros repetidos.** Formatter aceita até duas casas para conversões. Precisão e razões continuam calculadas pelos helpers exatos.
+5. **P2 — prévia usava fallback de fonte.** A prévia passou a carregar a Manrope local existente. Capturas finais e comparação foram refeitas com a fonte carregada.
+6. Revisão independente final dos painéis conjuntos, captura móvel, desktop em interação e toque: sem P0/P1/P2 acionável.
 
-Não houve publicação, migração ou emissão financeira/fiscal. A revisão anterior do Cordial Bot é preservada abaixo como histórico.
+## Meta e verificações técnicas
 
----
+A área analítica da Meta não foi editada. As capturas [antes](docs/evidence/google-ads-refinement/meta-before-1440.jpg) e [depois](docs/evidence/google-ads-refinement/meta-after-1440.jpg), na mesma fixture/período, são **idênticas pixel a pixel**. Esse comparativo já usa a remoção intencional do seletor duplicado no cabeçalho compartilhado em ambos os lados. A troca do gráfico de Leads para Cliques e o switch Meta/Google foram exercitados, preservando o período.
 
-# Cordial Bot — revisão visual da fase 4 (histórico)
+346 testes aprovados (275 Vitest + 71 Ads/SQL), typecheck e build aprovados; ESLint sem erros, com o aviso preexistente de export de `collectionTimestamp`. Foram repetidos 22 testes dos componentes Google depois dos últimos ajustes. Console verificado: sem erros da aplicação; avisos antigos de medição de montagem do Recharts apareceram na versão anterior/Meta e o gráfico Google recebeu dimensão inicial válida. Resumo em [checks.txt](docs/evidence/google-ads-refinement/checks.txt).
 
-final result: passed
+## Limites e próximo passo
 
-## Referência e comparação
+As evidências exercitam componentes reais com dados sintéticos isolados e identificados. Produção continua consumindo exclusivamente a RPC real existente; nenhuma fixture foi conectada ao app publicado. A validação não incluiu login na produção, alteração no banco ou aparelho físico. A publicação desta entrega é uma PR; não houve merge ou deploy por esta tarefa.
 
-Base aprovada: `docs/assistente/screenshots/fases-2-3/acao-pendente-desktop.jpg` (1280×720) e `acao-pendente-mobile.jpg` (390×844). As referências e as capturas finais foram abertas juntas na mesma entrada de comparação. Esta é uma evolução da interface existente, com a marca e os ajustes solicitados; não uma cópia de outra plataforma.
+P3 opcional: uma pista visual de rolagem horizontal pode melhorar a descoberta das demais métricas no celular. A rolagem interna e a personalização já funcionam e cumprem o escopo.
 
-Implementação: `tests/assistant/preview.html`, navegador in-app, dados sintéticos. Evidências em `docs/assistente/screenshots/fase-4/`. Desktop CSS1280×720, captura completa1280×728: os oito pixels adicionais são o padding do documento do harness; a comparação considera a área da aplicação. Mobile CSS390×844/captura390×844, densidade1. Também verificados320×740,430×844,768×844,1024×844 e390×500.
-
-Comparação principal: `action-pending-desktop.jpg` e `acao-mobile.jpg`; foco ampliado na assinatura da marca, cabeçalho, diff e botões. A altura maior da aplicação mobile é intencional: usa o espaço disponível, sem o vazio inferior da referência. O símbolo/mascotes são os mesmos assets/componentes; não foram redesenhados.
-
-## Achados e iterações
-
-1. **P2 — nome truncado no cabeçalho móvel.** A primeira inspeção390px cortava “Agenda” pela soma dos controles. Preferências/Sobre foram reunidos em “Mais opções”; a pílula abre a equipe. Revalidação320/390: nome inteiro, cabeçalho sem overflow e controles44px. Evidência final: `acao-320.jpg` e `acao-mobile.jpg`.
-2. **P2 — estado vazio rolava ao fim.** O auto-scroll inicial escondia parte dos mascotes e do cumprimento. Agora só acompanha mensagens; limpar a conversa volta ao topo. O hero é compacto quando há briefing, preservando “Seu dia” visível no desktop. Evidência após correção: `empty-desktop.jpg`, scrollTop0 e nenhum overflow horizontal.
-3. **P2 — inconsistência dos dados de revisão.** A fixture repetia a pergunta antes do cartão e não permitia remover o contexto fixo. A fixture agora acompanha o contrato real: pergunta aparece uma vez, contexto pode ser retirado e uma escolha inclui sua pergunta na resposta. Evidências: `choices-mobile.jpg` e `mencao-contexto-mobile.jpg`.
-
-Nenhum P0/P1/P2 aberto após as correções.
-
-## Superfícies verificadas
-
-- **Tipografia:** Sora600 carregada na marca, capitalização “Cordial Bot”, espaçamento−0.025em; Manrope na interface. Mensagens14px/21px, composer mobile16px. Nome e botões não comprimidos em320px.
-- **Espaçamento/layout:** três colunas no desktop, duas no tablet e uma no celular. Contexto/pendências em drawers. Botões44px, formulário com rolagem natural, carrosséis internos sem overflow do documento. Composer fica dentro do viewport reduzido: bottom475px em altura500px.
-- **Cores/tokens:** mantidos os tokens do Gestão e as duas cores no símbolo. Light/dark verificados; estados de falha, pendência e sucesso distinguíveis. Captura `tema-escuro-mobile.jpg` inclui a barra exclusiva do harness.
-- **Assets:** símbolo1024 original reutilizado sem distorção; mascotes e animações mantidos. Motion é desativado apenas por `capture=1` no harness para evidência determinística.
-- **Conteúdo:** removidas repetições; orientações administrativas e progresso concluído ficam expansíveis. Revisões mostram efeitos da desativação/revogação sem prometer revogar as oito consultas legadas. Aprovação do app e consentimento pessoal são apresentados separadamente.
-
-## Interações e console
-
-Verificados no navegador: confirmar proposta e contador1→0; abrir Mais opções; “Outro…” foca o composer sem enviar; opção envia pergunta+resposta; busca@ com setas/Enter; remover contexto preservando rascunho; revisão de aprovação MCP; conflito CAS e recarregar configuração. Os cliques usam o transporte sintético do harness, não clientes reais.
-
-O console mantém registros de invalid-hook-call durante HMR/otimização de dependências às10:21UTC. Após recarregar, não reapareceram nas navegações finais; componentes e menus foram exercitados novamente. Typecheck/build e testes de componentes passaram.
-
-## Limites e checklist
-
-- [x] Referências e implementação abertas e comparadas.
-- [x] Capturas dos estados principais desktop/mobile e ajustes revalidados.
-- [x] Layout320–1280px, formulário, foco e interação por teclado.
-- [x] Sem erro reproduzível nas navegações finais.
-- [ ] Teclado físico em iOS/Android: validar em homologação; o teste local usa viewport de altura reduzida, não simula um aparelho real.
-- [ ] OAuth/gateway/push reais e latência: dependem de configuração/publicação; não são comprovados pela prévia.
-
-Sem publicação ou deploy nesta revisão.
+**final result: passed**

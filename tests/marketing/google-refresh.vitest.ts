@@ -20,7 +20,6 @@ vi.mock("@/lib/auth-mock", () => ({ useSession: () => ({ id: "synthetic" }) }));
 vi.mock("@/lib/access-control", () => ({ isAdminUser: () => true }));
 vi.mock("../../src/components/marketing/GoogleMarketingView", () => ({
   GoogleMarketingView: () => createElement("div", {}, "Conteúdo anterior"),
-  googleColumnPreferenceKey: () => "test",
 }));
 import {
   GoogleMarketingSection,
