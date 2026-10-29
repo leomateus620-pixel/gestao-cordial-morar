@@ -299,28 +299,6 @@ export function MarketingDashboard({
         onValueChange={(accountId) => change({ accountId })}
         className="w-full sm:w-48"
       />
-      <Select
-        value={filters.platform || "all"}
-        onValueChange={(value) =>
-          change({
-            platform: (value === "all" ? "" : value) as MarketingDashboardQuery["platform"],
-            accountId: "",
-          })
-        }
-      >
-        <SelectTrigger
-          aria-label="Plataforma"
-          className="h-11 w-full min-w-0 rounded-xl bg-card sm:h-10 sm:w-44"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Plataformas: todas</SelectItem>
-          <SelectItem value="meta">Meta Ads</SelectItem>
-          <SelectItem value="google">Google Ads</SelectItem>
-          <SelectItem value="manual">Manuais</SelectItem>
-        </SelectContent>
-      </Select>
     </>
   );
   const campaignToolbar = (inPanel = false) => (
@@ -624,8 +602,8 @@ export function MarketingDashboard({
             <SheetHeader>
               <SheetTitle>Escopo de Marketing</SheetTitle>
               <SheetDescription>
-                Conta e plataforma para a área selecionada. A imobiliária é definida no topo do
-                sistema.
+                Conta de anúncios para a área selecionada. Plataforma e imobiliária são definidas no
+                topo do sistema.
               </SheetDescription>
             </SheetHeader>
             <div className="mt-5 flex flex-col gap-3">{scopeControls}</div>

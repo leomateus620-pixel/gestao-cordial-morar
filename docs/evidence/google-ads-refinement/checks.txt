@@ -1,0 +1,29 @@
+Google Ads refinement — final verification
+Date: 2026-10-29 (America/Sao_Paulo)
+Runtime: bundled Node.js, added to PATH for child processes.
+
+PASS — Vitest Marketing: 42 files, 275 tests, 0 failed, 0 skipped.
+Command: node node_modules/vitest/vitest.mjs run --config vitest.marketing.config.ts
+
+PASS — Ads/SQL regression tests: 71 tests, 0 failed, 0 skipped.
+Command: node node_modules/tsx/dist/cli.mjs --test tests/ads/*.test.ts
+
+TOTAL: 346 passing tests.
+A first concurrent run timed out while initializing PGlite (10-second beforeAll hook).
+The complete Vitest suite passed when repeated after the build finished; no code change was needed.
+
+PASS — ESLint for all 13 changed TS/TSX files: 0 errors.
+One existing react-refresh/only-export-components warning remains for collectionTimestamp
+in GoogleMarketingSection.tsx. Temporary before-preview files were excluded.
+
+PASS — Production build: exit 0; client, SSR and Nitro outputs generated.
+Command: node node_modules/vite/bin/vite.js build
+No additional environment variables or secrets were required or changed.
+Nonblocking build warnings: dependency use-client directives, chunk sizes,
+and the existing image pipeline's photon WASM parse warning (Unexpected instruction: 0xfc00).
+
+No deployment was executed by these checks. Typecheck is reported separately.
+
+PASS — TypeScript: node node_modules/typescript/bin/tsc --noEmit.
+PASS — Final Google component rerun after presentation fixes: 3 files, 22 tests.
+PASS — Browser: 360/768/1280/1440 CSS px, no page overflow; keyboard, pointer and Chrome emulated touch; Meta baseline pixel-identical.

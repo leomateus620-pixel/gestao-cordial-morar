@@ -78,6 +78,179 @@ export const fixtureCampaigns: MarketingCampaign[] = Array.from(
 );
 /** Synthetic-only data for the isolated Google UI preview. */
 export async function getGoogleMarketingOverview({ data }: any) {
+  const scenario = new URLSearchParams(location.search).get("googleScenario");
+  if (["trend", "empty", "loading", "complete", "gaps"].includes(scenario ?? "")) {
+    // These optional scenarios are isolated preview evidence, never provider observations.
+    if (scenario === "loading") return new Promise<never>(() => {});
+    const financial = !secretariat();
+    const none = {
+      cost: null,
+      clicks: null,
+      impressions: null,
+      conversions: null,
+      ctr: null,
+      cpc: null,
+      costPerConversion: null,
+    };
+    const decimal = (amount: bigint, digits: number) => {
+      const base = 10n ** BigInt(digits);
+      return `${amount / base}.${String(amount % base).padStart(digits, "0")}`;
+    };
+    const ratio = (numerator: bigint, denominator: bigint, scale = 1n) =>
+      denominator === 0n
+        ? null
+        : decimal((numerator * scale * 1_000_000n + denominator / 2n) / denominator, 6);
+    const totals = (
+      rows: Array<{ micros: bigint; clicks: bigint; impressions: bigint; quarters: bigint }>,
+    ) => {
+      if (!rows.length) return { ...none };
+      const sum = rows.reduce(
+        (value, row) => ({
+          micros: value.micros + row.micros,
+          clicks: value.clicks + row.clicks,
+          impressions: value.impressions + row.impressions,
+          quarters: value.quarters + row.quarters,
+        }),
+        { micros: 0n, clicks: 0n, impressions: 0n, quarters: 0n },
+      );
+      return {
+        cost: financial ? decimal(sum.micros, 6) : null,
+        clicks: String(sum.clicks),
+        impressions: String(sum.impressions),
+        conversions: decimal(sum.quarters * 25n, 2),
+        ctr: ratio(sum.clicks, sum.impressions, 100n),
+        cpc: financial ? ratio(sum.micros, sum.clicks * 1_000_000n) : null,
+        costPerConversion: financial ? ratio(sum.micros * 4n, sum.quarters * 1_000_000n) : null,
+      };
+    };
+    const clickValues = [32, 41, 48, 49, 91, 70, 101, 66, 83, 56, 30, 52, 61, 57, 0];
+    const campaignRows = [
+      { name: "Pesquisa · Imóveis em Santa Rosa", status: "Ativa", channel: "Pesquisa" },
+      { name: "Performance Max · Novos imóveis", status: "Ativa", channel: "Performance Max" },
+      { name: "Remarketing · Apartamentos", status: "Pausada", channel: null },
+    ].map((campaign, index) => {
+      const observations = Array.from({ length: 31 }, (_, day) => {
+        const date = `2026-10-${String(day + 1).padStart(2, "0")}`;
+        const clicks =
+          BigInt(day >= 14 ? clickValues[(day - 14) % clickValues.length] : 24 + ((day * 7) % 43)) *
+          BigInt(index === 1 ? 2 : 1);
+        return {
+          date,
+          micros: clicks * BigInt(index === 1 ? 176_431 : 263_157) + 123_456n,
+          clicks,
+          impressions: clicks * BigInt(13 + index * 2) + 117n,
+          quarters: BigInt((day + index) % 5 === 0 ? 5 + index : 0),
+        };
+      }).filter(
+        (row, day) =>
+          scenario !== "empty" &&
+          (scenario === "complete" || (index !== 2 && day >= 14 && day <= 28)) &&
+          (scenario !== "gaps" || ![18, 19, 24].includes(day)) &&
+          row.date >= data.since &&
+          row.date <= data.until,
+      );
+      return {
+        ...campaign,
+        id: `10000000-0000-4000-8000-${String(index + 3).padStart(12, "0")}`,
+        name: `${campaign.name} · EXEMPLO SINTÉTICO${previewParams.get("longNames") === "1" ? " · Campanha residencial com nome completo preservado para testar leitura, detalhamento e navegação em dispositivos menores" : ""}`,
+        nativeStatus: null,
+        channelType: campaign.channel,
+        channelSubtype: null,
+        accountId: "1234567890",
+        accountName: "Conta sintética",
+        dataInicio: "2026-10-01",
+        dataFim: "2037-12-30",
+        agency: "cordial",
+        currency: "BRL",
+        timezone: "America/Sao_Paulo",
+        lastCollectedAt: observations.length ? "2026-10-29T03:17:49Z" : null,
+        coverage: observations.length
+          ? scenario === "complete"
+            ? "complete"
+            : "partial"
+          : "unavailable",
+        metrics: totals(observations),
+        dailySeries: observations.length
+          ? observations.map((row) => ({ date: row.date, metrics: totals([row]) }))
+          : null,
+        observations,
+      };
+    });
+    const selected = campaignRows.filter(
+      (campaign) =>
+        (!data.agency || data.agency === campaign.agency) &&
+        (!data.accountId || data.accountId === campaign.accountId) &&
+        (!data.search || campaign.name.toLowerCase().includes(String(data.search).toLowerCase())) &&
+        (!data.status || data.status === campaign.status),
+    );
+    const observations = selected.flatMap((campaign) => campaign.observations);
+    const dates = [...new Set(observations.map((row) => row.date))].sort();
+    const sortMetric: Record<string, keyof typeof none> = {
+      cost_desc: "cost",
+      impressions_desc: "impressions",
+      clicks_desc: "clicks",
+      conversions_desc: "conversions",
+      ctr_desc: "ctr",
+      cpc_desc: "cpc",
+      cost_per_conversion_desc: "costPerConversion",
+    };
+    const compareMetric = (left: string | null, right: string | null) => {
+      if (left === null) return right === null ? 0 : 1;
+      if (right === null) return -1;
+      const parts = [left, right].map((value) => {
+        const [whole, fraction = ""] = value.split(".");
+        return BigInt(whole + fraction.padEnd(6, "0"));
+      });
+      return parts[0] > parts[1] ? -1 : parts[0] < parts[1] ? 1 : 0;
+    };
+    const sorted = [...selected].sort((left, right) => {
+      const metric = sortMetric[data.sort];
+      const order = metric
+        ? compareMetric(left.metrics[metric], right.metrics[metric])
+        : data.sort === "name_desc"
+          ? right.name.localeCompare(left.name, "pt-BR")
+          : data.sort === "status_asc"
+            ? left.status.localeCompare(right.status, "pt-BR")
+            : data.sort === "updated_desc"
+              ? 0
+              : left.name.localeCompare(right.name, "pt-BR");
+      return order || left.id.localeCompare(right.id);
+    });
+    const page = data.page ?? 1;
+    const pageSize = data.pageSize ?? 25;
+    const observed = observations.length > 0;
+    return {
+      scope: {
+        agency: data.agency ?? null,
+        accountId: data.accountId ?? null,
+        since: data.since,
+        until: data.until,
+      },
+      coverage: observed ? (scenario === "complete" ? "complete" : "partial") : "unavailable",
+      accounts:
+        data.agency === "morar"
+          ? []
+          : [{ id: "1234567890", name: "Conta sintética", agency: "cordial" }],
+      accountName: selected.length ? "Conta sintética" : null,
+      currency: selected.length ? "BRL" : null,
+      timezone: selected.length ? "America/Sao_Paulo" : null,
+      lastCollectedAt: observed ? "2026-10-29T03:17:49Z" : null,
+      summary: totals(observations),
+      series: observed
+        ? dates.map((date) => ({
+            date,
+            metrics: totals(observations.filter((row) => row.date === date)),
+          }))
+        : null,
+      total: selected.length,
+      page,
+      pageSize,
+      sort: data.sort ?? "name_asc",
+      items: sorted
+        .slice((page - 1) * pageSize, page * pageSize)
+        .map(({ observations: _rows, channel: _channel, ...campaign }) => campaign),
+    };
+  }
   const show =
     (!data.agency || data.agency === "cordial") &&
     (!data.accountId || data.accountId === "1234567890") &&
