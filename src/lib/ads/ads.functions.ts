@@ -431,11 +431,6 @@ async function importCampaign(
     range: { since: string; until: string };
   },
 ): Promise<AdActionResult> {
-  if (data.platform === "google")
-    throw new AdProviderError(
-      "not_configured",
-      "Importação Google indisponível até concluir cobertura e reconciliação.",
-    );
   const conn = await connectionForScope(ctx, data.platform, data.imobiliaria, data.connectionId);
   const accountId = data.accountId ?? conn.external_account_id;
   if (!accountId) throw new AdProviderError("invalid_link", "Selecione uma conta de anúncios.");
@@ -559,11 +554,6 @@ export const syncCampaign = createServerFn({ method: "POST" })
         throw new AdProviderError("invalid_link", "Campanha manual.");
       if (!c.connection_id || !c.external_account_id)
         throw new AdProviderError("not_connected", "Vincule a campanha a uma conexão e conta.");
-      if (c.platform === "google")
-        throw new AdProviderError(
-          "not_configured",
-          "Sincronização Google indisponível até concluir cobertura e reconciliação.",
-        );
       await connectionForScope(context, c.platform, c.imobiliaria, c.connection_id);
       return enqueueCampaign(context, c.id, c.nome, data.range);
     } catch (e) {
