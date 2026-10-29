@@ -39,6 +39,20 @@ export type ReportSource = {
 };
 /** Pure, shared dashboard/PDF math. No contacts, notes, owners or raw Graph responses. */
 export function buildMarketingReport(scope: MarketingReportScope, source: ReportSource) {
+  // The current report schema labels attributed Meta leads as leads and cannot
+  // represent Google conversions. Refuse the entire scope, including a Google
+  // campaign appearing after the first page, rather than emit misleading totals.
+  if (source.items.length !== source.total) {
+    throw new Error("O relatório está incompleto. Reduza o escopo e tente novamente.");
+  }
+  if (
+    scope.filters.platform === "google" ||
+    source.items.some((item) => item.platform === "google")
+  ) {
+    throw new Error(
+      "Relatórios com Google Ads ainda não estão disponíveis. Selecione Meta Ads ou Manual.",
+    );
+  }
   const campaigns = source.items.map((c) => marketingCampaignDto(c, source.financial_visible));
   const range = { since: scope.filters.since, until: scope.filters.until };
   const stats = campaigns.map((c) => campaignStats(c, range.since.slice(0, 7), range));

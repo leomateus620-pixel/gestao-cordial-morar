@@ -72,6 +72,11 @@ export async function marketingAccess(
   };
 }
 
+/** External Meta reviewers must not discover Google connection placeholders either. */
+export function visibleAdPlatforms(isReviewer: boolean): ("meta" | "google")[] {
+  return isReviewer ? ["meta"] : ["meta", "google"];
+}
+
 /** Authenticate the action before resolving any privileged data; scope again after reading its ID. */
 export async function requireMarketingAction(
   ctx: AdsContext,

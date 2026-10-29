@@ -75,6 +75,32 @@ describe("Marketing navigation context", () => {
       }),
     ).toMatchObject({ area: "overview", accountId: "", page: 1, leadPage: 1 });
   });
+  it("preserves Google scope on entering and restoring Leads without querying Meta by coercion", () => {
+    const google = marketingSearchSchema.parse({
+      area: "campaigns",
+      platform: "google",
+      accountId: "123",
+      agency: "morar",
+    });
+    const leads = changeMarketingQuery(google, { area: "leads" });
+    expect(leads).toMatchObject({ platform: "google", accountId: "123", agency: "morar" });
+    expect(marketingSearchSchema.parse(leads)).toEqual(leads);
+    expect(changeMarketingQuery(leads, { area: "campaigns" })).toEqual(google);
+  });
+  it("clears an account and resets both pages when the platform changes", () => {
+    const meta = marketingSearchSchema.parse({
+      platform: "meta",
+      accountId: "123",
+      page: 4,
+      leadPage: 3,
+    });
+    expect(changeMarketingQuery(meta, { platform: "google" })).toMatchObject({
+      platform: "google",
+      accountId: "",
+      page: 1,
+      leadPage: 1,
+    });
+  });
 });
 describe("Custom calendar ranges", () => {
   it("keeps the selected calendar cut explicit around account midnight", () => {

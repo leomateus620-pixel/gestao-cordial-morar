@@ -10,13 +10,15 @@ export const Route = createFileRoute("/api/public/ads-oauth/callback")({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
+        let backPath = "/configuracoes";
         const back = (status: string) =>
-          Response.redirect(`${url.origin}/configuracoes?ads=${status}`, 302);
+          Response.redirect(`${url.origin}${backPath}?ads=${status}`, 302);
         const code = url.searchParams.get("code");
         const rawState = url.searchParams.get("state");
         if (!code || !rawState) return back("cancelado");
         const state = await verifyState(rawState);
         if (!state || getCookie("ads_oauth_nonce") !== state.n) return back("invalido");
+        if (state.p === "google") backPath = "/integracoes";
         deleteCookie("ads_oauth_nonce", { path: "/api/public/ads-oauth/callback" });
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -40,7 +42,7 @@ export const Route = createFileRoute("/api/public/ads-oauth/callback")({
           );
           const { data: existing, error: lookupError } = await db
             .from("ad_platform_connections")
-            .select("id, credential_mode, encrypted_refresh_token, refresh_token")
+            .select("id, credential_mode, encrypted_refresh_token, refresh_token, account_label")
             .eq("user_id", state.u)
             .eq("platform", state.p)
             .eq("imobiliaria", state.i)
@@ -52,7 +54,8 @@ export const Route = createFileRoute("/api/public/ads-oauth/callback")({
             imobiliaria: state.i,
             credential_mode: "oauth",
             credential_ref: null,
-            account_label: state.p === "meta" ? "Meta Ads" : "Google Ads",
+            account_label:
+              state.p === "meta" ? "Meta Ads" : (existing?.account_label ?? "Google Ads"),
             encrypted_access_token: encryptCredential(tokens.accessToken),
             encrypted_refresh_token: tokens.refreshToken
               ? encryptCredential(tokens.refreshToken)
@@ -64,15 +67,15 @@ export const Route = createFileRoute("/api/public/ads-oauth/callback")({
             scopes: tokens.scopes ?? null,
             capabilities: {},
             last_diagnosed_at: null,
-            status: "connected",
-            last_error: null,
+            status: state.p === "meta" ? "connected" : "error",
+            last_error: state.p === "google" ? "Selecione e valide uma conta Google Ads." : null,
             updated_at: new Date().toISOString(),
           };
           const { error } = existing
             ? await db.from("ad_platform_connections").update(row).eq("id", existing.id)
             : await db.from("ad_platform_connections").insert(row);
           if (error) return back("erro");
-          return back("conectado");
+          return back(state.p === "google" ? "autorizado" : "conectado");
         } catch {
           // Never log OAuth bodies, tokens or provider messages.
           return back("erro");

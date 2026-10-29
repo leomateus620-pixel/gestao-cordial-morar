@@ -107,6 +107,8 @@ export function useAds(campaignIds: string[] = [], contextAgency?: "cordial" | "
       (c) => !c.imobiliaria || agency === "todas" || c.imobiliaria === agency,
     ),
     connectionsLoading: connections.isLoading,
+    connectionsError: connections.isError,
+    refetchConnections: connections.refetch,
     importCampaign: async (input: ImportInput) => {
       const parsed = parseCampaignLink(input.url);
       if (!parsed.platform || !parsed.campaignId) throw new Error("Link de campanha inválido.");

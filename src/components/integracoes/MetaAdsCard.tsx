@@ -363,7 +363,7 @@ function MetaAdsAdmin() {
       </details>
       <details className="mt-3 rounded-2xl border p-4">
         <summary className="min-h-11 cursor-pointer text-sm font-semibold">
-          OAuth existente e Google Ads
+          OAuth Meta existente
         </summary>
         <p className="mt-2 text-xs text-foreground/65">
           Selecione a marca antes de autorizar uma conexão de usuário. Os ativos de outra marca não
@@ -429,21 +429,6 @@ function MetaAdsAdmin() {
           A autorização solicita somente os escopos da finalidade escolhida. A concessão efetiva e
           os ativos atribuídos ainda precisam ser conferidos no diagnóstico.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(["cordial", "morar"] as const).map((brand) => (
-            <Button
-              key={brand}
-              variant="outline"
-              className="min-h-11 rounded-xl"
-              onClick={async () => {
-                const r = await ads.connect("google", brand);
-                if (!r.ok) toast.error(r.message);
-              }}
-            >
-              Conectar Google · {brand}
-            </Button>
-          ))}
-        </div>
       </details>
     </section>
   );

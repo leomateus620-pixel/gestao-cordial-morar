@@ -280,14 +280,13 @@ export function MarketingDashboard({
         className="w-full sm:w-48"
       />
       <Select
-        value={tab === "leads" ? "meta" : filters.platform || "all"}
+        value={filters.platform || "all"}
         onValueChange={(value) =>
           change({
             platform: (value === "all" ? "" : value) as MarketingDashboardQuery["platform"],
             accountId: "",
           })
         }
-        disabled={tab === "leads"}
       >
         <SelectTrigger
           aria-label="Plataforma"
@@ -415,17 +414,7 @@ export function MarketingDashboard({
                   key={value}
                   type="button"
                   aria-current={tab === value ? "page" : undefined}
-                  onClick={() => {
-                    if (value === "leads") {
-                      const next = changeMarketingQuery(filters, { area: value });
-                      if (
-                        next.accountId !== filters.accountId ||
-                        ["google", "manual"].includes(filters.platform)
-                      )
-                        toast("Leads usa a Meta. Plataforma e conta foram ajustadas.");
-                    }
-                    change({ area: value });
-                  }}
+                  onClick={() => change({ area: value })}
                   className={cn(
                     "flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm motion-reduce:transition-none",
                     tab === value ? "bg-card text-primary shadow-sm" : "text-foreground/70",
@@ -437,19 +426,21 @@ export function MarketingDashboard({
               ))}
             </nav>
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              {tab === "campaigns" && canCreateMeta && (
-                <Button
-                  ref={wizardButtonRef}
-                  className="h-11 rounded-xl sm:h-10"
-                  onClick={() => {
-                    setNewDraftKey((key) => key + 1);
-                    setWizardOpen(true);
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Criar anúncio na Meta
-                </Button>
-              )}{" "}
+              {tab === "campaigns" &&
+                canCreateMeta &&
+                (!filters.platform || filters.platform === "meta") && (
+                  <Button
+                    ref={wizardButtonRef}
+                    className="h-11 rounded-xl sm:h-10"
+                    onClick={() => {
+                      setNewDraftKey((key) => key + 1);
+                      setWizardOpen(true);
+                    }}
+                  >
+                    <Plus className="size-4" />
+                    Criar anúncio na Meta
+                  </Button>
+                )}{" "}
               <div className="absolute right-3 top-3 ml-auto flex shrink-0 items-center gap-1 sm:static">
                 <Button
                   variant="outline"
@@ -644,46 +635,93 @@ export function MarketingDashboard({
           </p>
         )}
         <Suspense fallback={<MarketingSkeleton />}>
-          {tab === "leads" ? (
-            <MetaLeadsInbox
-              key={`${session?.id}:${session?.perfil}:${agency}`}
-              agency={agency}
-              toolbarTarget={contextToolbarTarget}
-              accountId={filters.accountId}
-              period={ranges.current}
-              campaigns={all}
-              extraFilters={{
-                search: filters.leadSearch,
-                formId: filters.leadFormId,
-                campaignId: filters.leadCampaignId,
-                brokerId: filters.leadBrokerId,
-              }}
-              onExtraFiltersChange={(patch) =>
-                change({
-                  ...(patch.search !== undefined ? { leadSearch: patch.search } : {}),
-                  ...(patch.formId !== undefined ? { leadFormId: patch.formId } : {}),
-                  ...(patch.campaignId !== undefined ? { leadCampaignId: patch.campaignId } : {}),
-                  ...(patch.brokerId !== undefined ? { leadBrokerId: patch.brokerId } : {}),
-                })
-              }
-              onClearFilters={() =>
-                change({
-                  leadStatus: "",
-                  leadSearch: "",
-                  leadFormId: "",
-                  leadCampaignId: "",
-                  leadBrokerId: "",
-                })
-              }
-              status={filters.leadStatus}
-              page={filters.leadPage}
-              onFiltersChange={(patch) =>
-                change({
-                  ...(patch.status !== undefined ? { leadStatus: patch.status } : {}),
-                  ...(patch.page !== undefined ? { leadPage: patch.page } : {}),
-                })
-              }
-            />
+          {tab === "leads" && (filters.platform === "google" || filters.platform === "manual") ? (
+            <section className="rounded-xl border bg-card p-6" aria-labelledby="lead-origin-title">
+              <h2 id="lead-origin-title" className="text-lg font-semibold">
+                {filters.platform === "google"
+                  ? "Leads do Google Ads"
+                  : "Leads de campanhas manuais"}
+              </h2>
+              <p className="mt-2 text-sm text-foreground/70">
+                {filters.platform === "google"
+                  ? "A importação de formulários Google para o CRM ainda não está disponível."
+                  : "Esta origem ainda não possui uma caixa de submissões neste painel."}
+              </p>
+            </section>
+          ) : tab === "leads" && !filters.platform && filters.accountId ? (
+            <section className="rounded-xl border bg-card p-6" aria-labelledby="lead-scope-title">
+              <h2 id="lead-scope-title" className="text-lg font-semibold">
+                Selecione a plataforma
+              </h2>
+              <p className="mt-2 text-sm text-foreground/70">
+                Escolha Meta Ads ou Google Ads para identificar a origem da conta antes de consultar
+                leads.
+              </p>
+            </section>
+          ) : tab === "leads" ? (
+            <>
+              {!filters.platform && (
+                <p className="mb-3 text-sm text-foreground/70">
+                  Exibindo submissões da Meta. A importação de formulários Google ainda não está
+                  disponível.
+                </p>
+              )}
+              <MetaLeadsInbox
+                key={`${session?.id}:${session?.perfil}:${agency}`}
+                agency={agency}
+                toolbarTarget={contextToolbarTarget}
+                accountId={filters.accountId}
+                period={ranges.current}
+                campaigns={all}
+                extraFilters={{
+                  search: filters.leadSearch,
+                  formId: filters.leadFormId,
+                  campaignId: filters.leadCampaignId,
+                  brokerId: filters.leadBrokerId,
+                }}
+                onExtraFiltersChange={(patch) =>
+                  change({
+                    ...(patch.search !== undefined ? { leadSearch: patch.search } : {}),
+                    ...(patch.formId !== undefined ? { leadFormId: patch.formId } : {}),
+                    ...(patch.campaignId !== undefined ? { leadCampaignId: patch.campaignId } : {}),
+                    ...(patch.brokerId !== undefined ? { leadBrokerId: patch.brokerId } : {}),
+                  })
+                }
+                onClearFilters={() =>
+                  change({
+                    leadStatus: "",
+                    leadSearch: "",
+                    leadFormId: "",
+                    leadCampaignId: "",
+                    leadBrokerId: "",
+                  })
+                }
+                status={filters.leadStatus}
+                page={filters.leadPage}
+                onFiltersChange={(patch) =>
+                  change({
+                    ...(patch.status !== undefined ? { leadStatus: patch.status } : {}),
+                    ...(patch.page !== undefined ? { leadPage: patch.page } : {}),
+                  })
+                }
+              />
+            </>
+          ) : filters.platform === "google" ? (
+            <section className="rounded-xl border bg-card p-6" aria-labelledby="google-data-title">
+              <h2 id="google-data-title" className="text-lg font-semibold">
+                Google Ads
+              </h2>
+              <p className="mt-2 text-sm text-foreground/70">
+                {tab === "reports"
+                  ? "Os relatórios Google ainda não estão disponíveis."
+                  : "A visualização de métricas Google ainda não está disponível."}
+              </p>
+              {admin && (
+                <Button asChild variant="outline" className="mt-4 min-h-11">
+                  <a href="/integracoes">Configurar Google Ads</a>
+                </Button>
+              )}
+            </section>
           ) : tab === "reports" ? (
             <MarketingReportsSection
               toolbarTarget={contextToolbarTarget}
