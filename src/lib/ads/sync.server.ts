@@ -92,12 +92,24 @@ export function isRefreshDue(
  * and, if it persists, marked `partial` keeping the stored numbers.
  */
 export function missingStoredDays(
-  stored: { data: string; spend: number | null; impressions: number | null }[],
+  stored: {
+    data: string;
+    spend: number | null;
+    impressions: number | null;
+    conversions?: number | null;
+  }[],
   returnedDates: string[],
+  includeConversions = false,
 ) {
   const back = new Set(returnedDates);
   return stored
-    .filter((d) => (Number(d.spend) > 0 || Number(d.impressions) > 0) && !back.has(d.data))
+    .filter(
+      (d) =>
+        (Number(d.spend) > 0 ||
+          Number(d.impressions) > 0 ||
+          (includeConversions && Number(d.conversions) !== 0)) &&
+        !back.has(d.data),
+    )
     .map((d) => d.data);
 }
 const WORKER_MAX_JOBS = 8;
@@ -144,6 +156,13 @@ async function runOneAdsSync() {
         !["meta", "google"].includes(c.platform)
       )
         throw new AdProviderError("not_connected", "Campanha sem vínculo empresarial.");
+      // Google coverage and downward revisions are not yet auditable. Do not
+      // commit or delete any Google series until those guarantees exist.
+      if (c.platform === "google")
+        throw new AdProviderError(
+          "not_configured",
+          "Sincronização Google indisponível até concluir cobertura e reconciliação.",
+        );
       const { token } = await resolveConnectionCredential(c.connection_id, {
         platform: c.platform,
         imobiliaria: c.imobiliaria,
@@ -177,7 +196,7 @@ async function runOneAdsSync() {
             };
       const { data: stored, error: storedError } = await db
         .from("marketing_daily_metrics")
-        .select("data,spend,impressions")
+        .select("data,spend,impressions,conversions")
         .eq("campaign_id", c.id)
         .eq("metric_source", "synced")
         .gte("data", range.since)
@@ -186,6 +205,7 @@ async function runOneAdsSync() {
       const missing = missingStoredDays(
         stored ?? [],
         insights.map((d) => d.date),
+        c.platform === "google",
       );
       let reconciliationId: string | null = null;
       if (missing.length) {
@@ -262,8 +282,9 @@ async function runOneAdsSync() {
           impressions: d.impressions,
           reach: c.platform === "meta" ? d.reach : null,
           clicks: d.clicks,
-          spend: d.spend,
+          spend: d.spendExact ?? d.spend,
           leads: d.leads,
+          conversions: d.conversions ?? null,
           frequency: c.platform === "meta" ? d.frequency : null,
           ctr: d.impressions ? d.ctr : null,
           cpc: d.clicks ? d.cpc : null,

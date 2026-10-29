@@ -21,16 +21,13 @@ const context = {
 
 describe("Marketing restored Leads scope", () => {
   it.each(["google", "manual", ""])(
-    "normalizes a direct %s URL before queries use it",
+    "preserves a direct %s URL without substituting another platform",
     (platform) => {
       const restored = marketingSearchSchema.parse({ ...context, area: "leads", platform });
       expect(restored).toEqual({
         ...context,
         area: "leads",
-        platform: "meta",
-        accountId: "",
-        page: 1,
-        leadPage: 1,
+        platform,
       });
     },
   );
@@ -42,28 +39,24 @@ describe("Marketing restored Leads scope", () => {
     expect(marketingSearchSchema.parse(restored)).toEqual(restored);
   });
 
-  it("always sets Meta for Leads even when no platform was supplied", () => {
+  it("preserves an unspecified platform and account for an explicit scope choice", () => {
     const restored = marketingSearchSchema.parse({ ...context, area: "leads", platform: "" });
-    expect(restored.platform).toBe("meta");
-    expect(restored.accountId).toBe("");
-    expect(restored.page).toBe(1);
-    expect(restored.leadPage).toBe(1);
+    expect(restored.platform).toBe("");
+    expect(restored.accountId).toBe(context.accountId);
+    expect(restored.page).toBe(4);
+    expect(restored.leadPage).toBe(3);
     expect(restored.agency).toBe("morar");
     expect(restored.leadFormId).toBe("987654321");
   });
 
   it.each(["google", "manual", ""])(
-    "applies the same normalization when entering from %s through query state",
+    "keeps the %s scope when entering Leads through query state",
     (platform) => {
       const before = marketingSearchSchema.parse({ ...context, area: "campaigns", platform });
       const after = changeMarketingQuery(before, { area: "leads" });
       expect(after).toEqual({
         ...before,
         area: "leads",
-        platform: "meta",
-        accountId: "",
-        page: 1,
-        leadPage: 1,
       });
       expect(changeMarketingQuery(after, { area: "reports" })).toEqual({
         ...after,
@@ -77,13 +70,13 @@ describe("Marketing restored Leads scope", () => {
     expect(changeMarketingQuery(before, { area: "leads" })).toEqual({ ...before, area: "leads" });
   });
 
-  it("keeps incompatible patches from reintroducing a misleading Leads scope", () => {
+  it("allows an explicitly scoped platform and account while resetting pagination", () => {
     const before = marketingSearchSchema.parse({ ...context, area: "leads", platform: "meta" });
     const after = changeMarketingQuery(before, { platform: "google", accountId: "222222222" });
     expect(after).toMatchObject({
       area: "leads",
-      platform: "meta",
-      accountId: "",
+      platform: "google",
+      accountId: "222222222",
       page: 1,
       leadPage: 1,
     });

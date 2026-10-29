@@ -74,6 +74,7 @@ export async function resolveConnectionCredential(
     accountId?: string;
     allowExpired?: boolean;
   } = {},
+  refreshRetries = 0,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = supabaseAdmin as unknown as SupabaseClient;
@@ -109,24 +110,50 @@ export async function resolveConnectionCredential(
       const { refreshGoogle } = await import("./oauth.server");
       const fresh = await refreshGoogle(refresh);
       const encrypted = encryptCredential(fresh.accessToken);
-      const { error: saveError } = await db
+      const encryptedRefresh = encryptCredential(fresh.refreshToken ?? refresh);
+      let update = db
         .from("ad_platform_connections")
         .update({
           encrypted_access_token: encrypted,
-          encrypted_refresh_token: encryptCredential(refresh),
+          encrypted_refresh_token: encryptedRefresh,
           credential_mode: "oauth",
           access_token: null,
           refresh_token: null,
           expires_at: fresh.expiresAt,
-          status: "connected",
-          last_error: null,
         })
         .eq("id", connectionId);
+      update = connection.encrypted_access_token
+        ? update.eq("encrypted_access_token", connection.encrypted_access_token)
+        : update.is("encrypted_access_token", null);
+      update = connection.access_token
+        ? update.eq("access_token", connection.access_token)
+        : update.is("access_token", null);
+      update = connection.encrypted_refresh_token
+        ? update.eq("encrypted_refresh_token", connection.encrypted_refresh_token)
+        : update.is("encrypted_refresh_token", null);
+      update = connection.refresh_token
+        ? update.eq("refresh_token", connection.refresh_token)
+        : update.is("refresh_token", null);
+      const { data: updated, error: saveError } = await update.select("id").maybeSingle();
       if (saveError)
         throw new AdProviderError(
           "provider_error",
           "Não foi possível preservar a renovação da conexão.",
         );
+      if (!updated) {
+        // Another request renewed or replaced this connection. Never use the
+        // stale result; re-resolve its current authorized credential.
+        if (refreshRetries >= 2)
+          throw new AdProviderError(
+            "provider_error",
+            "Conexão alterada durante a renovação. Tente novamente.",
+          );
+        return resolveConnectionCredential(connectionId, expected, refreshRetries + 1);
+      }
+      connection.encrypted_access_token = encrypted;
+      connection.encrypted_refresh_token = encryptedRefresh;
+      connection.access_token = null;
+      connection.refresh_token = null;
       token = fresh.accessToken;
     } else throw new AdProviderError("token_expired", "Conexão expirada.");
   } else if (expired) throw new AdProviderError("token_expired", "Conexão expirada.");
@@ -139,10 +166,13 @@ export function assertConnectionContext(
   if (
     (expected.platform && connection.platform !== expected.platform) ||
     (expected.imobiliaria && connection.imobiliaria !== expected.imobiliaria) ||
-    (expected.accountId && connection.platform === "meta" && !connection.external_account_id) ||
+    (expected.accountId && !connection.external_account_id) ||
     (expected.accountId &&
       connection.external_account_id &&
-      normalizeAccountId(expected.accountId) !== normalizeAccountId(connection.external_account_id))
+      (connection.platform === "google"
+        ? expected.accountId.replace(/-/g, "") !== connection.external_account_id.replace(/-/g, "")
+        : normalizeAccountId(expected.accountId) !==
+          normalizeAccountId(connection.external_account_id)))
   )
     throw new AdProviderError("no_permission", "Conexão não pertence ao contexto selecionado.");
 }

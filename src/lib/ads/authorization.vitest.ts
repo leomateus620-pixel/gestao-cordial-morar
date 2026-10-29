@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   marketingRoleAllows,
+  marketingAccess,
+  visibleAdPlatforms,
   requireAdsAdmin,
   requireMarketingAction,
   type MarketingAction,
@@ -53,6 +55,10 @@ describe("explicit marketing authorization", () => {
       "set_delivery",
     ] as const)
       expect(marketingRoleAllows(new Set(["secretaria"]), action)).toBe(false);
+  });
+  it("does not expose a Google connection placeholder to a mixed reviewer", async () => {
+    const access = await marketingAccess(context(["admin", "meta_reviewer"]));
+    expect(visibleAdPlatforms(access.isReviewer)).toEqual(["meta"]);
   });
   it("admin helper rejects mixed reviewer before checking privileged objects", async () => {
     await expect(requireAdsAdmin(context(["admin", "meta_reviewer"]))).rejects.toMatchObject({

@@ -14,6 +14,7 @@ import {
 import { useSession } from "@/lib/auth-mock";
 import { useApp } from "@/store/app-store";
 import { readAllCampaigns } from "@/lib/marketing/read-all-campaigns";
+import { sameMarketingPlaceholderScope } from "@/lib/marketing/query-cache-scope";
 
 export function useMarketing(filters: MarketingQuery = {}, options: { allPages?: boolean } = {}) {
   const allPages = options.allPages === true;
@@ -45,9 +46,8 @@ export function useMarketing(filters: MarketingQuery = {}, options: { allPages?:
   };
   const query = useQuery({
     queryKey: ["marketing", "campaigns", session?.id, session?.perfil, scope, allPages],
-    queryFn: () => allPages
-      ? readAllCampaigns((data) => list({ data }), scope)
-      : list({ data: scope }),
+    queryFn: () =>
+      allPages ? readAllCampaigns((data) => list({ data }), scope) : list({ data: scope }),
     enabled: Boolean(session),
     staleTime: 30_000,
     placeholderData: (previous, previousQuery) => {
@@ -57,8 +57,7 @@ export function useMarketing(filters: MarketingQuery = {}, options: { allPages?:
       return oldKey?.[5] === allPages &&
         oldKey?.[2] === session?.id &&
         oldKey?.[3] === session?.perfil &&
-        oldScope?.imobiliaria === scope.imobiliaria &&
-        oldScope?.accountId === scope.accountId
+        sameMarketingPlaceholderScope(oldScope, scope)
         ? previous
         : undefined;
     },

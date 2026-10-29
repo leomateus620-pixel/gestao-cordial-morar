@@ -31,6 +31,26 @@ describe("Server credential references and encryption", () => {
     expect(decryptCredential(encrypted)).toBe("private-token");
     expect(() => decryptCredential(encrypted.slice(0, -5) + "AAAAA")).toThrow();
   });
+  it("rejects Google accounts until a connection has an explicit account binding", () => {
+    const connection = {
+      platform: "google" as const,
+      imobiliaria: "cordial",
+      external_account_id: null,
+    };
+    expect(() => assertConnectionContext(connection, { accountId: "1234567890" })).toThrow();
+    expect(() =>
+      assertConnectionContext(
+        { ...connection, external_account_id: "1234567890" },
+        { accountId: "123-456-7890" },
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertConnectionContext(
+        { ...connection, external_account_id: "1234567890" },
+        { accountId: "1111111111" },
+      ),
+    ).toThrow();
+  });
   it("never selects a connection from another brand or account", () => {
     const connection = {
       platform: "meta" as const,

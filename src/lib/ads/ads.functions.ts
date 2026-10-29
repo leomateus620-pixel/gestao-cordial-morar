@@ -105,8 +105,9 @@ export const listAdConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdConnectionPublic[]> => {
     await requireMarketingAccess(context);
-    const { isAdsAdminOrReviewer } = await import("./authorization.server");
-    if (!(await isAdsAdminOrReviewer(context))) {
+    const { marketingAccess, visibleAdPlatforms } = await import("./authorization.server");
+    const access = await marketingAccess(context);
+    if (!access.isAdmin && !access.isReviewer) {
       try {
         await requireMarketingAction(context, "read_ad_budget");
       } catch {
@@ -131,22 +132,25 @@ export const listAdConnections = createServerFn({ method: "GET" })
       expires_at: string | null;
       last_error: string | null;
     }>;
-    const result: AdConnectionPublic[] = rows.map((r) => ({
-      id: r.id,
-      imobiliaria: r.imobiliaria,
-      platform: r.platform,
-      configured: r.credential_mode === "system_user" ? true : !!adsConfig(r.platform),
-      status: r.status,
-      accountLabel: r.account_label,
-      accountId: r.external_account_id,
-      pageId: r.page_id,
-      appId: r.app_id,
-      credentialMode: r.credential_mode,
-      capabilities: r.capabilities ?? null,
-      expiresAt: r.expires_at,
-      lastError: r.last_error ? "Revise o diagnóstico da conexão." : null,
-    }));
-    for (const platform of ["meta", "google"] as const)
+    const allowedPlatforms = visibleAdPlatforms(access.isReviewer);
+    const result: AdConnectionPublic[] = rows
+      .filter((r) => allowedPlatforms.includes(r.platform))
+      .map((r) => ({
+        id: r.id,
+        imobiliaria: r.imobiliaria,
+        platform: r.platform,
+        configured: r.credential_mode === "system_user" ? true : !!adsConfig(r.platform),
+        status: r.status,
+        accountLabel: r.account_label,
+        accountId: r.external_account_id,
+        pageId: r.page_id,
+        appId: r.app_id,
+        credentialMode: r.credential_mode,
+        capabilities: r.capabilities ?? null,
+        expiresAt: r.expires_at,
+        lastError: r.last_error ? "Revise o diagnóstico da conexão." : null,
+      }));
+    for (const platform of allowedPlatforms)
       if (!rows.some((r) => r.platform === platform))
         result.push({
           platform,
@@ -427,6 +431,11 @@ async function importCampaign(
     range: { since: string; until: string };
   },
 ): Promise<AdActionResult> {
+  if (data.platform === "google")
+    throw new AdProviderError(
+      "not_configured",
+      "Importação Google indisponível até concluir cobertura e reconciliação.",
+    );
   const conn = await connectionForScope(ctx, data.platform, data.imobiliaria, data.connectionId);
   const accountId = data.accountId ?? conn.external_account_id;
   if (!accountId) throw new AdProviderError("invalid_link", "Selecione uma conta de anúncios.");
@@ -550,6 +559,11 @@ export const syncCampaign = createServerFn({ method: "POST" })
         throw new AdProviderError("invalid_link", "Campanha manual.");
       if (!c.connection_id || !c.external_account_id)
         throw new AdProviderError("not_connected", "Vincule a campanha a uma conexão e conta.");
+      if (c.platform === "google")
+        throw new AdProviderError(
+          "not_configured",
+          "Sincronização Google indisponível até concluir cobertura e reconciliação.",
+        );
       await connectionForScope(context, c.platform, c.imobiliaria, c.connection_id);
       return enqueueCampaign(context, c.id, c.nome, data.range);
     } catch (e) {
@@ -597,4 +611,85 @@ export const listAdSyncJobs = createServerFn({ method: "POST" })
         ? "A sincronização precisa de atenção. Revise a conexão ou tente novamente."
         : null,
     }));
+  });
+
+/** Direct Google account discovery. A manager route is not inferred or selected here. */
+export const listGoogleAccounts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { connectionId: string }) => z.object({ connectionId: z.uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await requireAdsAdmin(context);
+    const { resolveConnectionCredential } = await import("./credentials.server");
+    const { discoverGoogleAccounts } = await import("./providers/google.server");
+    const { token, connection } = await resolveConnectionCredential(data.connectionId, {
+      platform: "google",
+    });
+    if (!connection.imobiliaria || !["cordial", "morar"].includes(connection.imobiliaria))
+      throw new AdProviderError("no_permission", "Vincule a imobiliária primeiro.");
+    const accounts = await discoverGoogleAccounts(token);
+    return accounts.map((account) => ({
+      id: account.account_id,
+      name: account.name,
+      currency: account.currency,
+      timezone: account.timezone,
+      manager: account.manager,
+      testAccount: account.testAccount,
+    }));
+  });
+
+export const selectGoogleAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { connectionId: string; accountId: string }) =>
+    z
+      .object({
+        connectionId: z.uuid(),
+        accountId: z.string().regex(/^(?:\d{10}|\d{3}-\d{3}-\d{4})$/),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdsAdmin(context);
+    const { resolveConnectionCredential } = await import("./credentials.server");
+    const { discoverGoogleAccounts, googleCustomerId } = await import("./providers/google.server");
+    const { token, connection } = await resolveConnectionCredential(data.connectionId, {
+      platform: "google",
+    });
+    if (!connection.imobiliaria || !["cordial", "morar"].includes(connection.imobiliaria))
+      throw new AdProviderError("no_permission", "Vincule a imobiliária primeiro.");
+    const accountId = googleCustomerId(data.accountId);
+    if (
+      connection.external_account_id &&
+      googleCustomerId(connection.external_account_id) !== accountId
+    )
+      throw new AdProviderError("conflict", "Esta conexão já está vinculada a outra conta.");
+    const account = (await discoverGoogleAccounts(token)).find(
+      (candidate) => candidate.account_id === accountId,
+    );
+    if (!account || account.manager)
+      throw new AdProviderError(
+        "no_permission",
+        "Selecione uma conta anunciante diretamente acessível.",
+      );
+    // Hash the exact stored credential used for the Google proof. The service-only
+    // database function verifies it and writes the account and binding atomically.
+    const hash = (value: string | null | undefined) =>
+      value ? createHash("sha256").update(value).digest("hex") : null;
+    const { error } = await (
+      await dbAdmin()
+    ).rpc("ad_google_bind_account", {
+      p_connection_id: data.connectionId,
+      p_imobiliaria: connection.imobiliaria,
+      p_external_account_id: account.account_id,
+      p_name: account.name,
+      p_currency: account.currency,
+      p_timezone: account.timezone,
+      p_encrypted_access_hash: hash(connection.encrypted_access_token),
+      p_plain_access_hash: hash(connection.access_token),
+    });
+    if (error)
+      throw new AdProviderError(
+        "conflict",
+        "Não foi possível vincular a conta; atualize e tente novamente.",
+      );
+    return { accountId };
   });

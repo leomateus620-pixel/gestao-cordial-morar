@@ -43,6 +43,26 @@ const source = (items: CampaignRow[], financial = true) => ({
   funnel: { submissions: 0, attendances: 0, linkedSubmissions: 0 },
 });
 describe("report scope and shared analytics", () => {
+  it("rejects Google anywhere in the complete scope and refuses incomplete snapshots", () => {
+    const many = Array.from({ length: 101 }, (_, i) => sampleCampaign(String(i)));
+    many[100] = { ...many[100], platform: "google" };
+    expect(() => buildMarketingReport(scope, source(many))).toThrow(/Google Ads/);
+    expect(() =>
+      buildMarketingReport(
+        { ...scope, filters: { ...scope.filters, platform: "google" } },
+        source([]),
+      ),
+    ).toThrow(/Google Ads/);
+    expect(() =>
+      buildMarketingReport(scope, { ...source(many.slice(0, 100)), total: 101 }),
+    ).toThrow(/incompleto/);
+    expect(() =>
+      buildMarketingReport(
+        scope,
+        source([sampleCampaign(), { ...sampleCampaign("manual"), platform: "manual" }]),
+      ),
+    ).not.toThrow();
+  });
   it("uses weighted ratios, never sums reach and strips contacts/notes", () => {
     const model = buildMarketingReport(scope, source([sampleCampaign()]));
     expect(model.kpis.ctr).toBe(10);

@@ -47,6 +47,9 @@ export type DailyInsight = {
   cpc: number;
   cpm: number;
   spend: number;
+  /** Exact decimal for persistence when the provider supplies integer micros. */
+  spendExact?: string;
+  conversions?: number | null;
   leads: number;
   cpl: number;
   frequency: number | null;

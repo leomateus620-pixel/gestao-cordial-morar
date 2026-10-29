@@ -22,3 +22,9 @@ describe("atualização automática de campanhas", () => {
     expect(missingStoredDays(stored, ["2026-10-20"])).toEqual([]);
   });
 });
+
+it("preserves Google days containing only fractional conversions", () => {
+  const stored = [{ data: "2026-10-20", spend: 0, impressions: 0, conversions: 2.75 }];
+  expect(missingStoredDays(stored, [], true)).toEqual(["2026-10-20"]);
+  expect(missingStoredDays(stored, ["2026-10-20"], true)).toEqual([]);
+});

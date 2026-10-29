@@ -11,8 +11,7 @@ export function adsConfig(platform: AdPlatform) {
   }
   const id = process.env["GOOGLE_ADS_CLIENT_ID"];
   const secret = process.env["GOOGLE_ADS_CLIENT_SECRET"];
-  const dev = process.env["GOOGLE_ADS_DEVELOPER_TOKEN"];
-  return id && secret && dev ? { clientId: id, clientSecret: secret } : null;
+  return id && secret ? { clientId: id, clientSecret: secret } : null;
 }
 
 export function requireConfig(platform: AdPlatform) {
@@ -214,12 +213,16 @@ export async function refreshGoogle(refreshToken: string): Promise<TokenSet> {
       grant_type: "refresh_token",
     }),
   });
-  const body = (await res.json()) as { access_token?: string; expires_in?: number };
+  const body = (await res.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
   if (!res.ok || !body.access_token)
     throw new AdProviderError("token_expired", "Refresh Google falhou");
   return {
     accessToken: body.access_token,
-    refreshToken,
+    refreshToken: body.refresh_token ?? refreshToken,
     expiresAt: body.expires_in ? new Date(Date.now() + body.expires_in * 1000).toISOString() : null,
   };
 }
