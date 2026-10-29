@@ -11386,6 +11386,20 @@ export type Database = {
           user_id: string
         }[]
       }
+      ad_google_bind_account: {
+        Args: {
+          p_connection_id: string
+          p_currency: string
+          p_encrypted_access_hash: string
+          p_external_account_id: string
+          p_imobiliaria: string
+          p_name: string
+          p_plain_access_hash: string
+          p_timezone: string
+        }
+        Returns: string
+      }
+      ad_google_metrics_contract_version: { Args: never; Returns: number }
       ad_oauth_consume: {
         Args: { p_nonce_hash: string; p_user_id: string }
         Returns: boolean
