@@ -156,13 +156,8 @@ async function runOneAdsSync() {
         !["meta", "google"].includes(c.platform)
       )
         throw new AdProviderError("not_connected", "Campanha sem vínculo empresarial.");
-      // Google coverage and downward revisions are not yet auditable. Do not
-      // commit or delete any Google series until those guarantees exist.
-      if (c.platform === "google")
-        throw new AdProviderError(
-          "not_configured",
-          "Sincronização Google indisponível até concluir cobertura e reconciliação.",
-        );
+      // Google omits zero days; a stored day with spend/impressions/conversions that
+      // disappears blocks the commit below (partial_data), so stored series are never erased.
       const { token } = await resolveConnectionCredential(c.connection_id, {
         platform: c.platform,
         imobiliaria: c.imobiliaria,

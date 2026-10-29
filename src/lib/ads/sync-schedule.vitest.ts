@@ -28,3 +28,14 @@ it("preserves Google days containing only fractional conversions", () => {
   expect(missingStoredDays(stored, [], true)).toEqual(["2026-10-20"]);
   expect(missingStoredDays(stored, ["2026-10-20"], true)).toEqual([]);
 });
+
+describe("Google: dias omitidos", () => {
+  it("dia salvo só com conversões e ausente na resposta bloqueia a gravação", () => {
+    const stored = [{ data: "2026-10-20", spend: 0, impressions: 0, conversions: 2 }];
+    expect(missingStoredDays(stored, [], true)).toEqual(["2026-10-20"]);
+  });
+  it("dia salvo zerado pode faltar na resposta do Google", () => {
+    const stored = [{ data: "2026-10-21", spend: 0, impressions: 0, conversions: 0 }];
+    expect(missingStoredDays(stored, [], true)).toEqual([]);
+  });
+});
