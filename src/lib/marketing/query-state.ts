@@ -30,6 +30,26 @@ const marketingSearchObject = z.object({
   leadBrokerId: z.union([z.string().uuid(), z.literal("")]).catch(""),
   leadPage: z.coerce.number().int().min(1).max(10000).catch(1),
   sort: z.enum(["leads", "name", "updated"]).catch("leads"),
+  googleSort: z
+    .enum([
+      "name_asc",
+      "name_desc",
+      "status_asc",
+      "updated_desc",
+      "cost_desc",
+      "impressions_desc",
+      "clicks_desc",
+      "conversions_desc",
+      "ctr_desc",
+      "cpc_desc",
+      "cost_per_conversion_desc",
+    ])
+    .optional()
+    .catch(undefined),
+  googleCampaignId: z
+    .union([z.string().uuid(), z.literal("")])
+    .optional()
+    .catch(undefined),
 });
 export const marketingSearchSchema = marketingSearchObject;
 export type MarketingDashboardQuery = z.infer<typeof marketingSearchSchema>;
@@ -46,6 +66,7 @@ export function changeMarketingQuery(
     "platform",
     "status",
     "accountId",
+    "googleSort",
   ].some(
     (key) =>
       key in patch && patch[key as keyof typeof patch] !== current[key as keyof typeof current],
@@ -75,7 +96,16 @@ export function changeMarketingQuery(
     patch.accountId === undefined
       ? { accountId: "" }
       : {}),
+    ...(patch.platform === "google" && current.platform !== "google" && patch.status === undefined
+      ? { status: "" }
+      : {}),
+    ...((patch.accountId !== undefined && patch.accountId !== current.accountId) ||
+    (patch.agency !== undefined && patch.agency !== current.agency) ||
+    (patch.platform !== undefined && patch.platform !== current.platform)
+      ? { googleSort: undefined }
+      : {}),
     ...(resetCampaignPage ? { page: 1 } : {}),
+    ...(resetCampaignPage && current.googleCampaignId ? { googleCampaignId: "" } : {}),
     ...(resetLeadPage ? { leadPage: 1 } : {}),
     ...patch,
   });

@@ -20,6 +20,7 @@ import { CampaignCreateDrawer } from "@/components/marketing/CampaignCreateDrawe
 import { CampaignDetailsDrawer } from "@/components/marketing/CampaignDetailsDrawer";
 import { MarketingEmptyState } from "@/components/marketing/MarketingEmptyState";
 import { MarketingSkeleton } from "@/components/marketing/MarketingSkeleton";
+import { GoogleMarketingSection } from "@/components/marketing/GoogleMarketingSection";
 import {
   CampaignTable,
   InsightsBlock,
@@ -60,6 +61,7 @@ import {
 export type { MarketingDashboardQuery } from "@/lib/marketing/query-state";
 import { Button } from "@/components/ui/button";
 import { useAds } from "@/hooks/useAds";
+import { useGoogleMarketing } from "@/hooks/useGoogleMarketing";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { useMarketingActions } from "@/hooks/useMarketingActions";
@@ -128,6 +130,13 @@ export function MarketingDashboard({
   );
   const filters = query ?? localQuery;
   const tab = filters.area;
+  const googleData = useGoogleMarketing(
+    agency,
+    filters,
+    ranges.current,
+    canViewFinancialInsights,
+    filters.platform === "google",
+  );
   const canOperate = admin || session?.perfil === "secretaria";
   const actions = useMarketingActions();
   const canCreateMeta = (["cordial", "morar"] as const).some(
@@ -176,8 +185,19 @@ export function MarketingDashboard({
   );
   const ads = useAds(ids, agency);
   const accountOptions = new Map<string, string>();
+  for (const account of googleData.query.data?.accounts ?? []) {
+    const label = `${account.name || account.id} · ${account.agency}`;
+    accountOptions.set(
+      account.id,
+      accountOptions.has(account.id) ? `${accountOptions.get(account.id)} / ${label}` : label,
+    );
+  }
   for (const connection of ads.connections) {
-    if (connection.accountId && (!filters.platform || connection.platform === filters.platform))
+    if (
+      connection.accountId &&
+      !accountOptions.has(connection.accountId) &&
+      (!filters.platform || connection.platform === filters.platform)
+    )
       accountOptions.set(
         connection.accountId,
         `${connection.accountLabel || connection.accountId} · ${connection.imobiliaria || "Conta vinculada"}`,
@@ -313,50 +333,62 @@ export function MarketingDashboard({
         onValueChange={(status) => change({ status: status === "all" ? "" : status })}
       >
         <SelectTrigger
-          aria-label="Status da campanha"
+          aria-label={
+            filters.platform === "google" ? "Status registrado da campanha" : "Status da campanha"
+          }
           className="h-11 w-auto min-w-36 gap-2 rounded-xl bg-card text-sm sm:h-10"
         >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Status: todos</SelectItem>
-          {["Ativa", "Planejada", "Pausada", "Encerrada", "Em análise", "Com baixo desempenho"].map(
-            (value) => (
-              <SelectItem key={value} value={value}>
-                {value}
-              </SelectItem>
-            ),
-          )}
+          <SelectItem value="all">
+            {filters.platform === "google" ? "Status registrado: todos" : "Status: todos"}
+          </SelectItem>
+          {[
+            "Ativa",
+            "Planejada",
+            "Pausada",
+            "Encerrada",
+            "Em análise",
+            "Com baixo desempenho",
+            ...(filters.platform === "google" ? ["Não identificado"] : []),
+          ].map((value) => (
+            <SelectItem key={value} value={value}>
+              {value}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="h-11 rounded-xl bg-card sm:h-10">
-            <SlidersHorizontal className="size-4" />
-            Opções
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 rounded-xl space-y-3">
-          <p className="text-sm font-semibold">Ordenar a página atual</p>
-          <Select
-            value={filters.sort}
-            onValueChange={(sort) => change({ sort: sort as MarketingDashboardQuery["sort"] })}
-          >
-            <SelectTrigger aria-label="Ordenação das campanhas" className="h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="leads">Mais leads nesta página</SelectItem>
-              <SelectItem value="name">Nome nesta página</SelectItem>
-              <SelectItem value="updated">Atualização nesta página</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-foreground/70">
-            A ordenação abrange até {pageSize} campanhas carregadas. Os indicadores usam o filtro
-            completo quando disponível.
-          </p>
-        </PopoverContent>
-      </Popover>
+      {filters.platform !== "google" && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-11 rounded-xl bg-card sm:h-10">
+              <SlidersHorizontal className="size-4" />
+              Opções
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 rounded-xl space-y-3">
+            <p className="text-sm font-semibold">Ordenar a página atual</p>
+            <Select
+              value={filters.sort}
+              onValueChange={(sort) => change({ sort: sort as MarketingDashboardQuery["sort"] })}
+            >
+              <SelectTrigger aria-label="Ordenação das campanhas" className="h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="leads">Mais leads nesta página</SelectItem>
+                <SelectItem value="name">Nome nesta página</SelectItem>
+                <SelectItem value="updated">Atualização nesta página</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-foreground/70">
+              A ordenação abrange até {pageSize} campanhas carregadas. Os indicadores usam o filtro
+              completo quando disponível.
+            </p>
+          </PopoverContent>
+        </Popover>
+      )}
       {(filters.search || filters.status) && (
         <Button
           variant="ghost"
@@ -459,13 +491,20 @@ export function MarketingDashboard({
                     className="size-11 rounded-xl sm:size-10"
                     aria-label="Reconsultar campanhas salvas"
                     title={
-                      lastSynced
-                        ? `Reconsultar dados salvos. Última sincronização: ${new Date(lastSynced).toLocaleString("pt-BR")}`
-                        : "Reconsultar dados salvos. Sem sincronização concluída."
+                      filters.platform === "google"
+                        ? "Reconsultar dados Google"
+                        : lastSynced
+                          ? `Reconsultar dados salvos. Última sincronização: ${new Date(lastSynced).toLocaleString("pt-BR")}`
+                          : "Reconsultar dados salvos. Sem sincronização concluída."
                     }
-                    disabled={isRefreshing}
+                    disabled={filters.platform !== "google" && isRefreshing}
                     onClick={() =>
-                      void qc.invalidateQueries({ queryKey: ["marketing", "campaigns"] })
+                      void qc.invalidateQueries({
+                        queryKey: [
+                          "marketing",
+                          filters.platform === "google" ? "google-overview" : "campaigns",
+                        ],
+                      })
                     }
                   >
                     <RefreshCw
@@ -490,7 +529,7 @@ export function MarketingDashboard({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="max-w-[calc(100vw-2rem)]">
                     <DropdownMenuLabel>Ações de Marketing</DropdownMenuLabel>
-                    {campaignArea && canOperate && (
+                    {campaignArea && canOperate && filters.platform !== "google" && (
                       <DropdownMenuItem
                         disabled={syncingAll || activeJobs.length > 0 || !ids.length}
                         onSelect={() => void syncAll()}
@@ -501,7 +540,7 @@ export function MarketingDashboard({
                           : `Sincronizar ${ids.length} campanhas desta página`}
                       </DropdownMenuItem>
                     )}
-                    {campaignArea && canOperate && (
+                    {campaignArea && canOperate && filters.platform !== "google" && (
                       <DropdownMenuItem onSelect={() => setImportOpen(true)}>
                         <Upload className="size-4" />
                         Importar campanhas existentes
@@ -566,7 +605,7 @@ export function MarketingDashboard({
                 ))}
             </div>
           )}
-          {activeJobs.length > 0 && campaignArea && (
+          {activeJobs.length > 0 && campaignArea && filters.platform !== "google" && (
             <p role="status" className="text-xs text-primary">
               {activeJobs.length} sincronização(ões) na fila. Os dados serão atualizados ao
               concluir.
@@ -629,7 +668,7 @@ export function MarketingDashboard({
             )}
           </SheetContent>
         </Sheet>
-        {isRefreshing && (
+        {isRefreshing && filters.platform !== "google" && (
           <p role="status" className="text-xs text-primary">
             Consultando o recorte selecionado…
           </p>
@@ -706,6 +745,14 @@ export function MarketingDashboard({
                 }
               />
             </>
+          ) : filters.platform === "google" && tab !== "reports" ? (
+            <GoogleMarketingSection
+              agency={agency}
+              filters={filters}
+              range={ranges.current}
+              onChange={change}
+              canViewFinancialInsights={canViewFinancialInsights}
+            />
           ) : filters.platform === "google" ? (
             <section className="rounded-xl border bg-card p-6" aria-labelledby="google-data-title">
               <h2 id="google-data-title" className="text-lg font-semibold">
