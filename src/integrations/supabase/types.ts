@@ -11928,6 +11928,20 @@ export type Database = {
           survey_id: string
         }[]
       }
+      google_marketing_overview: {
+        Args: {
+          p_account_id: string
+          p_agency: string
+          p_page: number
+          p_page_size: number
+          p_search: string
+          p_since: string
+          p_sort: string
+          p_status: string
+          p_until: string
+        }
+        Returns: Json
+      }
       has_notification_agency_access: {
         Args: { _agency: string; _user_id: string }
         Returns: boolean
