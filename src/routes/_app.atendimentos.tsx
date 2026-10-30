@@ -1,7 +1,8 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileDown, Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
+import { FileDown, Inbox, LayoutGrid, List, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { useRegisterPageSearch } from "@/lib/page-search";
 import { AtendimentoHistoryReportDialog } from "@/components/atendimentos/AtendimentoHistoryReportDialog";
 import {
   AtendimentoHistoryPrintReport,
@@ -25,7 +26,10 @@ import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDe
 import { PipelineTrackSelector } from "@/components/atendimentos/PipelineTrackSelector";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { buildLocalIso } from "@/components/atendimentos/atendimento-action-utils";
-import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
+import {
+  AtendimentoFilters,
+  countActiveAtendimentoFilters,
+} from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
 import { AtendimentoHandoffDialog } from "@/components/atendimentos/AtendimentoHandoffDialog";
@@ -141,12 +145,32 @@ function Page() {
   }, [printPayload]);
   const [handoffAtendimento, setHandoffAtendimento] = useState<Atendimento | null>(null);
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  useRegisterPageSearch({
+    placeholder: "Buscar atendimentos: nome, telefone, bairro, origem, corretor…",
+    value: query,
+    onChange: setQuery,
+  });
   const [filters, setFilters] = useState<AtendimentoFiltersState>(() => ({
     ...defaultAtendimentoFilters,
     corretor: corretorId ?? "todos",
     periodo: periodo ?? "todos",
     status: status ?? "todos",
   }));
+  const activeFilterCount = countActiveAtendimentoFilters(filters);
+  const applyFilters = (next: AtendimentoFiltersState) => {
+    setFilters(next);
+    void navigate({
+      to: ".",
+      search: (prev) => ({
+        ...prev,
+        corretorId: next.corretor === "todos" ? undefined : next.corretor,
+        periodo: next.periodo === "todos" ? undefined : next.periodo,
+        status: next.status === "todos" ? undefined : next.status,
+      }),
+      resetScroll: false,
+    });
+  };
   const [fallbackStage, setFallbackStage] = useState<PipelineStage>("primeiro_contato");
   const selectedStage = etapa ?? fallbackStage;
   const detailId = highlightId ?? null;
@@ -656,52 +680,84 @@ function Page() {
     ACTIVE_PIPELINE_STAGES.includes(atendimento.pipelineStage),
   ).length;
 
-  return (
-    <div className="space-y-4">
-      {workspace.kind !== "etapa" ? (
-        <section className="relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#174d61_0%,#1e647d_48%,#28333b_100%)] p-5 text-white shadow-[0_24px_60px_-24px_rgba(23,27,33,0.55)] sm:p-6">
-          <span className="absolute -right-10 -top-16 size-44 rounded-full bg-cyan-200/10 blur-3xl" />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cyan-200/13 ring-1 ring-white/10">
-                <Inbox className="size-6 text-orange-300" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300">
-                  Central de entrada comercial
-                </p>
-                <h1 className="mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl">
-                  Atendimentos
-                </h1>
-                <p className="mt-1 max-w-2xl text-xs leading-5 text-white/64">
-                  Do primeiro contato ao encaminhamento, com dados prontos para revelar o nicho real
-                  da imobiliária.
-                </p>
-                <p className="mt-2 hidden items-center gap-1.5 text-[10px] font-semibold text-white/55 md:flex">
-                  <Workflow className="size-3 text-orange-300" />
-                  Pré-atendimento · Corretor · Conversão
-                </p>
-              </div>
-            </div>
+  const headerActions = (
+    <>
+      <button
+        type="button"
+        onClick={() => setFiltersOpen((v) => !v)}
+        aria-expanded={filtersOpen}
+        aria-label="Filtros"
+        title="Filtros"
+        className={cn(
+          "relative grid size-10 place-items-center rounded-full ring-1 transition",
+          filtersOpen || activeFilterCount > 0
+            ? "bg-white text-stone-900 ring-white"
+            : "bg-white/10 text-white ring-white/20 hover:bg-white/15",
+        )}
+      >
+        <SlidersHorizontal className="size-4" />
+        {activeFilterCount > 0 && (
+          <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-orange-400 text-[10px] font-bold text-stone-900">
+            {activeFilterCount}
+          </span>
+        )}
+      </button>
+      {activeFilterCount > 0 && (
+        <button
+          type="button"
+          onClick={() => applyFilters(defaultAtendimentoFilters)}
+          aria-label="Limpar filtros"
+          title="Limpar filtros"
+          className="grid size-10 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition hover:bg-white/15"
+        >
+          <RotateCcw className="size-4" />
+        </button>
+      )}
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(true)}
+          aria-label="Histórico em PDF"
+          title="Histórico em PDF"
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-white/10 px-3 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/15"
+        >
+          <FileDown className="size-4" />
+          <span className="hidden xl:inline">Histórico em PDF</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-orange-400 px-4 text-sm font-semibold text-stone-900 shadow-[0_10px_24px_-12px_rgba(251,146,60,0.75)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 active:scale-[0.98]"
+      >
+        <Plus className="size-4 transition-transform group-hover:rotate-90" />
+        <span className="hidden sm:inline">Novo atendimento</span>
+        <span className="sm:hidden">Novo</span>
+      </button>
+    </>
+  );
 
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="group relative inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-orange-400 px-4 py-3 text-sm font-semibold text-stone-900 shadow-[0_10px_30px_-12px_rgba(251,146,60,0.65)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 hover:shadow-[0_18px_40px_-12px_rgba(251,146,60,0.7)] active:scale-[0.98] sm:w-auto"
-            >
-              <Plus className="size-4 transition-transform group-hover:rotate-90" />
-              Novo atendimento
-            </button>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setHistoryOpen(true)}
-                className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/15 sm:w-auto"
-              >
-                <FileDown className="size-4" />
-                Histórico em PDF
-              </button>
-            )}
+  return (
+    <div className="space-y-3">
+      {workspace.kind !== "etapa" ? (
+        <section className="relative overflow-hidden rounded-[1.4rem] bg-[linear-gradient(120deg,#174d61_0%,#1e647d_60%,#244a52_100%)] px-4 py-3 text-white shadow-[0_18px_40px_-26px_rgba(23,27,33,0.55)] ring-1 ring-white/12 md:px-5">
+          <span className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-cyan-200/10 blur-3xl" />
+          <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/12 ring-1 ring-white/18">
+                <Inbox className="size-[18px] text-orange-200" />
+              </span>
+              <h1 className="truncate font-display text-lg font-semibold tracking-tight sm:text-xl">
+                Atendimentos
+              </h1>
+              <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">{headerActions}</div>
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="min-w-0 flex-1 lg:flex-none">
+                <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} compact />
+              </div>
+              <div className="hidden items-center gap-2 lg:flex">{headerActions}</div>
+            </div>
           </div>
         </section>
       ) : (
@@ -732,25 +788,11 @@ function Page() {
       )}
       {isAdmin && printPayload && <AtendimentoHistoryPrintReport payload={printPayload} />}
 
-      <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} />
-
       <AtendimentoFilters
-        query={query}
-        onQueryChange={setQuery}
+        toolbar={false}
+        open={filtersOpen}
         filters={filters}
-        onFiltersChange={(next) => {
-          setFilters(next);
-          void navigate({
-            to: ".",
-            search: (prev) => ({
-              ...prev,
-              corretorId: next.corretor === "todos" ? undefined : next.corretor,
-              periodo: next.periodo === "todos" ? undefined : next.periodo,
-              status: next.status === "todos" ? undefined : next.status,
-            }),
-            resetScroll: false,
-          });
-        }}
+        onFiltersChange={applyFilters}
         brokerOptions={brokers}
       />
 

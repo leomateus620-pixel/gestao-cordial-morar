@@ -5,6 +5,7 @@ import { AssistantMark } from "@/components/brand/AssistantMark";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import type { BuscaResultado } from "@/types/busca";
 import { cn } from "@/lib/utils";
+import { usePageSearch } from "@/lib/page-search";
 import { SearchResultCard } from "./SearchResultCard";
 import { RecordTimelineDrawer } from "./RecordTimelineDrawer";
 
@@ -22,7 +23,8 @@ export function GlobalSearchBar({ className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { results, isLoading, hasQuery } = useGlobalSearch(query, "todos", open);
+  const pageSearch = usePageSearch();
+  const { results, isLoading, hasQuery } = useGlobalSearch(query, "todos", open && !pageSearch);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -45,6 +47,33 @@ export function GlobalSearchBar({ className }: Props) {
   }, []);
 
   const visible = results.slice(0, 8);
+
+  if (pageSearch) {
+    return (
+      <div className={cn("relative", className)}>
+        <div className="glass-panel flex items-center gap-2 rounded-full border border-primary/25 px-3.5 py-2 shadow-sm transition focus-within:border-primary/40 focus-within:shadow-md focus-within:shadow-primary/10">
+          <Search className="size-4 shrink-0 text-primary/70" />
+          <input
+            value={pageSearch.value}
+            onChange={(event) => pageSearch.onChange(event.target.value)}
+            placeholder={pageSearch.placeholder}
+            aria-label={pageSearch.placeholder}
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-foreground/40 focus:outline-none"
+          />
+          {pageSearch.value ? (
+            <button
+              type="button"
+              onClick={() => pageSearch.onChange("")}
+              aria-label="Limpar busca"
+              className="grid size-6 shrink-0 place-items-center rounded-full text-foreground/40 transition hover:bg-foreground/5 hover:text-foreground/70"
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
