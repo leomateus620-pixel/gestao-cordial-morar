@@ -39,7 +39,62 @@ const OPTIONS: Array<{
   },
 ];
 
-export function PipelineTrackSelector({ value, onChange, counts }: Props) {
+export function PipelineTrackSelector({
+  value,
+  onChange,
+  counts,
+  compact = false,
+}: Props & { compact?: boolean }) {
+  if (compact) {
+    return (
+      <div
+        role="tablist"
+        aria-label="Trilha comercial"
+        className="grid grid-cols-2 gap-1 rounded-full bg-white/10 p-1 ring-1 ring-white/12"
+      >
+        {OPTIONS.map((opt) => {
+          const active = value === opt.id;
+          const stats = counts[opt.id];
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(opt.id)}
+              aria-label={`${opt.label}: ${stats.total} ativos${stats.overdue ? `, ${stats.overdue} em atraso` : ""}`}
+              className={cn(
+                "inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
+                active
+                  ? "bg-white text-stone-900 shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)]"
+                  : "text-white/75 hover:bg-white/10 hover:text-white",
+              )}
+            >
+              <opt.Icon className="size-3.5 shrink-0" />
+              {opt.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 font-mono text-[10px] font-semibold",
+                  active ? "bg-stone-900/8 text-stone-700" : "bg-white/12 text-white/80",
+                )}
+              >
+                {stats.total}
+              </span>
+              {stats.overdue > 0 && (
+                <span
+                  className="rounded-full bg-orange-400 px-1.5 font-mono text-[10px] font-bold text-stone-900"
+                  title={`${stats.overdue} em atraso`}
+                >
+                  {stats.overdue}!
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <section
       className="rounded-3xl border border-white/60 bg-white/70 p-2 shadow-sm backdrop-blur-sm"
