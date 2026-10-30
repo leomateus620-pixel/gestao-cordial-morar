@@ -21,20 +21,38 @@ const periodOptions = [
   { value: "mes", label: "Este mês" },
 ] as const;
 
+export function countActiveAtendimentoFilters(filters: AtendimentoFiltersState) {
+  return [
+    filters.status,
+    filters.finalidade,
+    filters.tipoImovel,
+    filters.origem,
+    filters.corretor,
+    filters.prioridade,
+    filters.periodo,
+  ].filter((value) => value !== "todos").length;
+}
+
 export function AtendimentoFilters({
   query,
   onQueryChange,
   filters,
   onFiltersChange,
   brokerOptions = [],
+  toolbar = true,
+  open,
 }: {
-  query: string;
-  onQueryChange: (value: string) => void;
+  query?: string;
+  onQueryChange?: (value: string) => void;
+  /** When false the search/toggle row is hidden and `open` controls the panel. */
+  toolbar?: boolean;
+  open?: boolean;
   filters: AtendimentoFiltersState;
   onFiltersChange: (filters: AtendimentoFiltersState) => void;
   brokerOptions?: Array<{ id: string; nome: string }>;
 }) {
-  const [showFilters, setShowFilters] = useState(false);
+  const [localShow, setShowFilters] = useState(false);
+  const showFilters = toolbar ? localShow : Boolean(open);
   const sortedBrokerOptions = [...brokerOptions]
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
     .map((c) => ({ id: c.id, label: c.nome }));
@@ -50,7 +68,8 @@ export function AtendimentoFilters({
   ].filter((value) => value !== "todos").length;
 
   return (
-    <section className="space-y-3">
+    <section className={cn(toolbar ? "space-y-3" : !showFilters && "hidden")}>
+      {toolbar && query !== undefined && onQueryChange && (
       <div className="flex gap-2">
         <label className="glass-panel flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-ring">
           <Search className="size-4 shrink-0 text-teal-700/65" />
@@ -99,6 +118,7 @@ export function AtendimentoFilters({
           </button>
         )}
       </div>
+      )}
 
       <div
         className={cn(
