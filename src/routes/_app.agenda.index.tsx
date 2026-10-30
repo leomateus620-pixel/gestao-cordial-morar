@@ -179,7 +179,7 @@ function AgendaPage() {
   const hasActiveFilters = hasActiveAgendaFilters(filters);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <AgendaHero
         variant="geral"
         activeCount={isReady ? filteredEvents.length : undefined}

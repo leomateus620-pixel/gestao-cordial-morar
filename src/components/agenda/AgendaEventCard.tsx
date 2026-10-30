@@ -88,8 +88,8 @@ export function AgendaEventCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "agenda-event-card glass-panel group relative w-full overflow-hidden rounded-[1.35rem] p-3.5 pl-4 text-left",
-        "transition duration-200 hover:-translate-y-0.5 hover:bg-white/72 hover:shadow-lg hover:shadow-teal-950/8 active:scale-[0.995]",
+        "agenda-event-card group relative w-full overflow-hidden rounded-[1.25rem] border border-white/80 bg-white/80 p-4 pl-5 text-left shadow-[0_10px_28px_-18px_rgba(23,27,33,0.45)] backdrop-blur-sm",
+        "transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_36px_-20px_rgba(15,80,90,0.5)] active:scale-[0.995]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50",
         (past || cancelled) && "opacity-80 hover:opacity-100",
       )}
@@ -98,17 +98,17 @@ export function AgendaEventCard({
       <span
         aria-hidden="true"
         className={cn(
-          "absolute inset-y-3.5 left-0 w-[3px] rounded-r-full transition-all duration-200 group-hover:inset-y-2.5",
+          "absolute inset-y-3 left-0 w-1 rounded-r-full transition-all duration-200 group-hover:inset-y-2",
           typeAccent[event.tipo],
           (cancelled || done) && "opacity-50",
         )}
       />
 
       <div className="flex gap-3.5">
-        <div className="flex w-12 shrink-0 flex-col pt-0.5 text-left sm:w-14">
+        <div className="flex w-14 shrink-0 flex-col pt-0.5 text-left sm:w-16">
           <span
             className={cn(
-              "font-mono text-[15px] font-semibold leading-none tabular-nums tracking-tight sm:text-base",
+              "font-display text-lg font-semibold leading-none tabular-nums tracking-tight sm:text-xl",
               cancelled ? "text-foreground/45 line-through" : "text-teal-950",
             )}
           >
@@ -132,7 +132,7 @@ export function AgendaEventCard({
             <div className="min-w-0 flex-1">
               <h3
                 className={cn(
-                  "line-clamp-2 text-[13.5px] font-semibold leading-snug tracking-tight sm:text-sm",
+                  "line-clamp-2 font-display text-[15px] font-semibold leading-snug tracking-tight sm:text-base",
                   cancelled && "text-foreground/55 line-through",
                 )}
               >

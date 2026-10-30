@@ -161,7 +161,7 @@ function AgendaFotosPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <AgendaHero
         variant="fotos"
         activeCount={isReady ? filteredEvents.length : undefined}
