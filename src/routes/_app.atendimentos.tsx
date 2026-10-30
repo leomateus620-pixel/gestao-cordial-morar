@@ -1,7 +1,8 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileDown, Inbox, LayoutGrid, List, Plus, Workflow } from "lucide-react";
+import { FileDown, Inbox, LayoutGrid, List, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { useRegisterPageSearch } from "@/lib/page-search";
 import { AtendimentoHistoryReportDialog } from "@/components/atendimentos/AtendimentoHistoryReportDialog";
 import {
   AtendimentoHistoryPrintReport,
@@ -25,7 +26,10 @@ import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDe
 import { PipelineTrackSelector } from "@/components/atendimentos/PipelineTrackSelector";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { buildLocalIso } from "@/components/atendimentos/atendimento-action-utils";
-import { AtendimentoFilters } from "@/components/atendimentos/AtendimentoFilters";
+import {
+  AtendimentoFilters,
+  countActiveAtendimentoFilters,
+} from "@/components/atendimentos/AtendimentoFilters";
 import { AtendimentoFormModal } from "@/components/atendimentos/AtendimentoFormModal";
 import { AtendimentoSummaryCards } from "@/components/atendimentos/AtendimentoSummaryCards";
 import { AtendimentoHandoffDialog } from "@/components/atendimentos/AtendimentoHandoffDialog";
@@ -153,6 +157,20 @@ function Page() {
     periodo: periodo ?? "todos",
     status: status ?? "todos",
   }));
+  const activeFilterCount = countActiveAtendimentoFilters(filters);
+  const applyFilters = (next: AtendimentoFiltersState) => {
+    setFilters(next);
+    void navigate({
+      to: ".",
+      search: (prev) => ({
+        ...prev,
+        corretorId: next.corretor === "todos" ? undefined : next.corretor,
+        periodo: next.periodo === "todos" ? undefined : next.periodo,
+        status: next.status === "todos" ? undefined : next.status,
+      }),
+      resetScroll: false,
+    });
+  };
   const [fallbackStage, setFallbackStage] = useState<PipelineStage>("primeiro_contato");
   const selectedStage = etapa ?? fallbackStage;
   const detailId = highlightId ?? null;
