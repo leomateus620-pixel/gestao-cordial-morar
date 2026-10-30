@@ -172,26 +172,26 @@ function DaySection({
       <header className="flex items-center gap-3 px-0.5">
         <span
           className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-xl text-center leading-none ring-1",
+            "grid size-12 shrink-0 place-items-center content-center rounded-2xl text-center leading-none ring-1",
             past
               ? "bg-white/45 text-foreground/55 ring-white/60"
               : relative === "Hoje"
                 ? "bg-teal-700 text-white ring-teal-700 shadow-[0_10px_20px_-12px_rgba(15,118,110,0.9)]"
-                : "bg-white/65 text-teal-900 ring-white/75",
+                : "bg-white/80 text-teal-900 ring-white/80 shadow-sm",
           )}
           aria-hidden="true"
         >
-          <span className="block font-mono text-sm font-semibold tabular-nums">
+          <span className="block font-display text-lg font-semibold tabular-nums">
             {String(date.getDate()).padStart(2, "0")}
           </span>
-          <span className="mt-0.5 block text-[8px] font-bold uppercase tracking-[0.12em] opacity-75">
+          <span className="mt-0.5 block text-[8.5px] font-bold uppercase tracking-[0.14em] opacity-75">
             {date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}
           </span>
         </span>
         <div className="min-w-0">
           <h3
             className={cn(
-              "text-[13px] font-semibold capitalize tracking-tight",
+              "font-display text-base font-semibold capitalize tracking-tight",
               past ? "text-foreground/60" : "text-foreground",
             )}
           >

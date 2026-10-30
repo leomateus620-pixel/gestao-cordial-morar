@@ -32,7 +32,7 @@ export function GoogleCalendarCard({
   variant = "card",
   tone = "light",
 }: {
-  variant?: "card" | "inline";
+  variant?: "card" | "inline" | "icon";
   /** `dark` adapts the inline pill to sit on dark/gradient surfaces (e.g. module heroes). */
   tone?: "light" | "dark";
 }) {
@@ -75,6 +75,60 @@ export function GoogleCalendarCard({
   });
 
   const conn = connection.data;
+
+  if (variant === "icon") {
+    const hasError = Boolean(conn?.last_error);
+    const dotClass = hasError ? "bg-rose-500" : conn ? "bg-emerald-500" : "bg-stone-400";
+    const label = connection.isLoading
+      ? "Google Agenda…"
+      : conn
+        ? `${conn.google_email} · ${hasError ? "erro" : "conectada"}`
+        : "Google Agenda não conectada";
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Google Agenda: ${label}`}
+            title={label}
+            className="relative grid size-10 shrink-0 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
+            <img src={googleCalendarLogo} alt="" className="size-5" />
+            <span
+              aria-hidden="true"
+              className={cn("absolute -right-0.5 -top-0.5 size-3 rounded-full ring-2 ring-white", dotClass)}
+            />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <div className="px-2 py-1.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Google Agenda</p>
+            <p className="truncate text-sm font-semibold">{conn?.google_email ?? "Não conectada"}</p>
+            {conn && (
+              <p className={cn("mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold", hasError ? "text-destructive" : "text-emerald-700")}>
+                {hasError ? <AlertTriangle className="size-3" /> : <CheckCircle2 className="size-3" />}
+                {hasError ? "Erro na sincronização" : "Conectada"}
+              </p>
+            )}
+          </div>
+          <DropdownMenuItem onSelect={() => connectMut.mutate()} disabled={connectMut.isPending}>
+            <RefreshCw className="size-3.5" />
+            {conn ? (hasError ? "Reconectar agora" : "Reconectar / trocar conta") : "Conectar Google Agenda"}
+          </DropdownMenuItem>
+          {conn && (
+            <DropdownMenuItem
+              onSelect={() => disconnectMut.mutate()}
+              disabled={disconnectMut.isPending}
+              className="text-destructive focus:text-destructive"
+            >
+              <Unlink2 className="size-3.5" />
+              Desconectar
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   if (variant === "inline") {
     const hasError = Boolean(conn?.last_error);
