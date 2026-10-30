@@ -101,6 +101,7 @@ export function AgendaHero({
                     role="tab"
                     aria-selected={active}
                     aria-current={active ? "page" : undefined}
+                    aria-label={view.label}
                     className={cn(
                       "inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors duration-200",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
@@ -110,9 +111,9 @@ export function AgendaHero({
                     )}
                   >
                     <TabIcon className="size-3.5" />
-                    {view.label}
+                    <span className="hidden min-[420px]:inline">{view.label}</span>
                     {active && typeof activeCount === "number" && (
-                      <span className="rounded-full bg-stone-900/8 px-1.5 font-mono text-[10px] font-semibold text-stone-700">
+                      <span className="hidden rounded-full min-[420px]:inline bg-stone-900/8 px-1.5 font-mono text-[10px] font-semibold text-stone-700">
                         {activeCount}
                       </span>
                     )}
