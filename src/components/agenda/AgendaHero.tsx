@@ -111,9 +111,9 @@ export function AgendaHero({
                     )}
                   >
                     <TabIcon className="size-3.5" />
-                    <span className="hidden min-[420px]:inline">{view.label}</span>
+                    <span className="hidden sm:inline">{view.label}</span>
                     {active && typeof activeCount === "number" && (
-                      <span className="hidden rounded-full min-[420px]:inline bg-stone-900/8 px-1.5 font-mono text-[10px] font-semibold text-stone-700">
+                      <span className="hidden rounded-full sm:inline bg-stone-900/8 px-1.5 font-mono text-[10px] font-semibold text-stone-700">
                         {activeCount}
                       </span>
                     )}
