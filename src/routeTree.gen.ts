@@ -108,6 +108,7 @@ import { Route as ApiPublicHooksPropertyMediaWorkerRouteImport } from './routes/
 import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
 import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
 import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
+import { Route as ApiPublicHooksRealceWorkerRouteImport } from './routes/api/public/hooks/realce-worker'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
 import { Route as ApiPublicHooksSiteMediaWorkerRouteImport } from './routes/api/public/hooks/site-media-worker'
 import { Route as ApiPublicMetaLeadgenRouteImport } from './routes/api/public/meta/leadgen'
@@ -633,6 +634,12 @@ const ApiPublicHooksPushWorkerRoute =
     path: '/api/public/hooks/push-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRealceWorkerRoute =
+  ApiPublicHooksRealceWorkerRouteImport.update({
+    id: '/api/public/hooks/realce-worker',
+    path: '/api/public/hooks/realce-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSalePaymentRemindersRoute =
   ApiPublicHooksSalePaymentRemindersRouteImport.update({
     id: '/api/public/hooks/sale-payment-reminders',
@@ -766,6 +773,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
+  '/api/public/hooks/realce-worker': typeof ApiPublicHooksRealceWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
@@ -868,6 +876,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
+  '/api/public/hooks/realce-worker': typeof ApiPublicHooksRealceWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
@@ -976,6 +985,7 @@ export interface FileRoutesById {
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
+  '/api/public/hooks/realce-worker': typeof ApiPublicHooksRealceWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
@@ -1084,6 +1094,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
+    | '/api/public/hooks/realce-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
     | '/api/public/meta/leadgen'
@@ -1186,6 +1197,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
+    | '/api/public/hooks/realce-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
     | '/api/public/meta/leadgen'
@@ -1293,6 +1305,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
+    | '/api/public/hooks/realce-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
     | '/api/public/meta/leadgen'
@@ -1342,6 +1355,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPropertySyncReconcileRoute: typeof ApiPublicHooksPropertySyncReconcileRoute
   ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
   ApiPublicHooksPushWorkerRoute: typeof ApiPublicHooksPushWorkerRoute
+  ApiPublicHooksRealceWorkerRoute: typeof ApiPublicHooksRealceWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
   ApiPublicHooksSiteMediaWorkerRoute: typeof ApiPublicHooksSiteMediaWorkerRoute
   ApiPublicMetaLeadgenRoute: typeof ApiPublicMetaLeadgenRoute
@@ -2045,6 +2059,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPushWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/realce-worker': {
+      id: '/api/public/hooks/realce-worker'
+      path: '/api/public/hooks/realce-worker'
+      fullPath: '/api/public/hooks/realce-worker'
+      preLoaderRoute: typeof ApiPublicHooksRealceWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sale-payment-reminders': {
       id: '/api/public/hooks/sale-payment-reminders'
       path: '/api/public/hooks/sale-payment-reminders'
@@ -2314,6 +2335,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksPropertySyncReconcileRoute,
   ApiPublicHooksPropertySyncWorkerRoute: ApiPublicHooksPropertySyncWorkerRoute,
   ApiPublicHooksPushWorkerRoute: ApiPublicHooksPushWorkerRoute,
+  ApiPublicHooksRealceWorkerRoute: ApiPublicHooksRealceWorkerRoute,
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,
   ApiPublicHooksSiteMediaWorkerRoute: ApiPublicHooksSiteMediaWorkerRoute,
