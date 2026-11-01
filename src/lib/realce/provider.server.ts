@@ -54,7 +54,7 @@ export const lovableGatewayProvider: ImageEditProvider = {
     form.set("quality", "high");
     form.set("output_format", "jpeg");
     form.set("stream", "true");
-    form.set("image", new File([bytes], "foto.jpg", { type: mime }));
+    form.set("image", new File([bytes as BlobPart], "foto.jpg", { type: mime }));
     let res: Response;
     try {
       res = await fetch(`${GATEWAY}/v1/images/edits`, {
