@@ -11,9 +11,10 @@ import { RecordTimelineDrawer } from "./RecordTimelineDrawer";
 
 type Props = {
   className?: string;
+  allowGlobalSearch: boolean;
 };
 
-export function GlobalSearchBar({ className }: Props) {
+export function GlobalSearchBar({ className, allowGlobalSearch }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<{
@@ -24,7 +25,7 @@ export function GlobalSearchBar({ className }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const pageSearch = usePageSearch();
-  const { results, isLoading, hasQuery } = useGlobalSearch(query, "todos", open && !pageSearch);
+  const { results, isLoading, hasQuery } = useGlobalSearch(query, "todos", allowGlobalSearch && open && !pageSearch);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -74,6 +75,8 @@ export function GlobalSearchBar({ className }: Props) {
       </div>
     );
   }
+
+  if (!allowGlobalSearch) return null;
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>

@@ -25,6 +25,7 @@ import { SystemUnavailable } from "./shared/SystemUnavailable";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./notification-bell";
 import { GlobalSearchBar } from "./busca/GlobalSearchBar";
+import { getHeaderSearchMode, usePageSearch } from "@/lib/page-search";
 import {
   MarketingHeaderSearchInput,
   MarketingHeaderAgencyControl,
@@ -77,6 +78,8 @@ export function AppShell() {
   const [scrolled, setScrolled] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const canSearch = Boolean(session?.modules?.includes("busca"));
+  const pageSearch = usePageSearch();
+  const headerSearchMode = getHeaderSearchMode(session?.modules ?? [], Boolean(pageSearch));
   const isCatalogRoute = pathname === "/imoveis";
   const isMarketingRoute = pathname === "/marketing";
   const isAssistantWorkspace = /^\/assistente\/(?!equipe(?:\/|$))[^/]+\/?$/.test(pathname);
@@ -297,7 +300,7 @@ export function AppShell() {
               </Link>
             </div>
           </div>
-          {isCatalogRoute ? <CatalogSearchInput /> : isMarketingRoute ? <MarketingHeaderSearchInput /> : canSearch ? <GlobalSearchBar /> : null}
+          {isCatalogRoute ? <CatalogSearchInput /> : isMarketingRoute ? <MarketingHeaderSearchInput /> : headerSearchMode ? <GlobalSearchBar allowGlobalSearch={canSearch} /> : null}
           {isMarketingRoute ? (
             <MarketingPlatformSwitcher showGoogle={session.perfil !== "meta_reviewer"} />
           ) : null}
@@ -328,8 +331,8 @@ export function AppShell() {
               <CatalogSearchInput className="w-full max-w-[22rem]" />
             ) : isMarketingRoute ? (
               <MarketingHeaderSearchInput className="w-full max-w-[22rem]" />
-            ) : canSearch ? (
-              <GlobalSearchBar className="w-full max-w-[22rem]" />
+            ) : headerSearchMode ? (
+              <GlobalSearchBar allowGlobalSearch={canSearch} className="w-full max-w-[22rem]" />
             ) : null}
 
             {isMarketingRoute ? (
