@@ -318,7 +318,7 @@ export function RealcePage({ testId }: { testId: string | null }) {
                     <Download className="h-4 w-4" />Baixar prontas (ZIP)
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className="text-destructive" onClick={deleteTest}><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">Excluir teste</span></Button>
+                <Button size="sm" variant="ghost" className="text-destructive" aria-label="Excluir teste" onClick={deleteTest}><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">Excluir teste</span></Button>
               </div>
             </div>
           )}
