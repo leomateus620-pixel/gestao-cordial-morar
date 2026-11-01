@@ -427,7 +427,6 @@ export function RealcePage({ testId }: { testId: string | null }) {
                   setViewer(null);
                 }}><Check className="h-4 w-4" />Manter original</Button>
                 <Button variant="ghost" onClick={async () => {
-                  // Novo resultado: volta ao rascunho via enqueue só após falha; aqui geramos nova versão explicitamente.
                   if (!confirm("Gerar uma nova versão desta foto? Com IA, isso é uma nova cobrança.")) return;
                   await supabase.from("realce_items").update({ decision: null }).eq("id", viewing.id);
                   const { error } = await supabase.rpc("realce_redo", { p_item: viewing.id });
