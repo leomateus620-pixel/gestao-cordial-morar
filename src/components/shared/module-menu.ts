@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   Megaphone,
   Search,
+  Sparkles,
   Settings,
   Star,
   UserCog,
@@ -138,6 +139,15 @@ export const moduleItems: ModuleItem[] = [
       order: 50,
       desc: "Carteira de imóveis",
     },
+  },
+  {
+    to: "/realce",
+    label: "Realce",
+    shortLabel: "Realce",
+    desc: "Aprimoramento de fotos",
+    icon: Sparkles,
+    module: "realce",
+    sidebar: { section: "operacao", order: 52, desc: "Fotos mais claras e fiéis" },
   },
   {
     to: "/selecoes",

@@ -68,6 +68,7 @@ import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
+import { Route as AppRealceIndexRouteImport } from './routes/_app.realce.index'
 import { Route as AppVistoriasIndexRouteImport } from './routes/_app.vistorias.index'
 import { Route as AppVistoriasVistoriaIdRouteImport } from './routes/_app.vistorias.$vistoriaId'
 import { Route as AppVistoriasNovaRouteImport } from './routes/_app.vistorias.nova'
@@ -108,6 +109,7 @@ import { Route as ApiPublicHooksPropertyMediaWorkerRouteImport } from './routes/
 import { Route as ApiPublicHooksPropertySyncReconcileRouteImport } from './routes/api/public/hooks/property-sync-reconcile'
 import { Route as ApiPublicHooksPropertySyncWorkerRouteImport } from './routes/api/public/hooks/property-sync-worker'
 import { Route as ApiPublicHooksPushWorkerRouteImport } from './routes/api/public/hooks/push-worker'
+import { Route as ApiPublicHooksRealceWorkerRouteImport } from './routes/api/public/hooks/realce-worker'
 import { Route as ApiPublicHooksSalePaymentRemindersRouteImport } from './routes/api/public/hooks/sale-payment-reminders'
 import { Route as ApiPublicHooksSiteMediaWorkerRouteImport } from './routes/api/public/hooks/site-media-worker'
 import { Route as ApiPublicMetaLeadgenRouteImport } from './routes/api/public/meta/leadgen'
@@ -411,6 +413,11 @@ const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => AppImoveisRoute,
 } as any)
+const AppRealceIndexRoute = AppRealceIndexRouteImport.update({
+  id: '/realce/',
+  path: '/realce/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVistoriasIndexRoute = AppVistoriasIndexRouteImport.update({
   id: '/vistorias/',
   path: '/vistorias/',
@@ -633,6 +640,12 @@ const ApiPublicHooksPushWorkerRoute =
     path: '/api/public/hooks/push-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRealceWorkerRoute =
+  ApiPublicHooksRealceWorkerRouteImport.update({
+    id: '/api/public/hooks/realce-worker',
+    path: '/api/public/hooks/realce-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSalePaymentRemindersRoute =
   ApiPublicHooksSalePaymentRemindersRouteImport.update({
     id: '/api/public/hooks/sale-payment-reminders',
@@ -740,6 +753,7 @@ export interface FileRoutesByFullPath {
   '/agenda/': typeof AppAgendaIndexRoute
   '/assistente/': typeof AppAssistenteIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
+  '/realce/': typeof AppRealceIndexRoute
   '/vistorias/': typeof AppVistoriasIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
@@ -766,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
+  '/api/public/hooks/realce-worker': typeof ApiPublicHooksRealceWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
@@ -842,6 +857,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AppAgendaIndexRoute
   '/assistente': typeof AppAssistenteIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
+  '/realce': typeof AppRealceIndexRoute
   '/vistorias': typeof AppVistoriasIndexRoute
   '/site-morar/noticias': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias': typeof SiteNoticiasIndexRoute
@@ -868,6 +884,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
+  '/api/public/hooks/realce-worker': typeof ApiPublicHooksRealceWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
@@ -950,6 +967,7 @@ export interface FileRoutesById {
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/assistente/': typeof AppAssistenteIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
+  '/_app/realce/': typeof AppRealceIndexRoute
   '/_app/vistorias/': typeof AppVistoriasIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
@@ -976,6 +994,7 @@ export interface FileRoutesById {
   '/api/public/hooks/property-sync-reconcile': typeof ApiPublicHooksPropertySyncReconcileRoute
   '/api/public/hooks/property-sync-worker': typeof ApiPublicHooksPropertySyncWorkerRoute
   '/api/public/hooks/push-worker': typeof ApiPublicHooksPushWorkerRoute
+  '/api/public/hooks/realce-worker': typeof ApiPublicHooksRealceWorkerRoute
   '/api/public/hooks/sale-payment-reminders': typeof ApiPublicHooksSalePaymentRemindersRoute
   '/api/public/hooks/site-media-worker': typeof ApiPublicHooksSiteMediaWorkerRoute
   '/api/public/meta/leadgen': typeof ApiPublicMetaLeadgenRoute
@@ -1058,6 +1077,7 @@ export interface FileRouteTypes {
     | '/agenda/'
     | '/assistente/'
     | '/imoveis/'
+    | '/realce/'
     | '/vistorias/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
@@ -1084,6 +1104,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
+    | '/api/public/hooks/realce-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
     | '/api/public/meta/leadgen'
@@ -1160,6 +1181,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/assistente'
     | '/imoveis'
+    | '/realce'
     | '/vistorias'
     | '/site-morar/noticias'
     | '/site/noticias'
@@ -1186,6 +1208,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
+    | '/api/public/hooks/realce-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
     | '/api/public/meta/leadgen'
@@ -1267,6 +1290,7 @@ export interface FileRouteTypes {
     | '/_app/agenda/'
     | '/_app/assistente/'
     | '/_app/imoveis/'
+    | '/_app/realce/'
     | '/_app/vistorias/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
@@ -1293,6 +1317,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/property-sync-reconcile'
     | '/api/public/hooks/property-sync-worker'
     | '/api/public/hooks/push-worker'
+    | '/api/public/hooks/realce-worker'
     | '/api/public/hooks/sale-payment-reminders'
     | '/api/public/hooks/site-media-worker'
     | '/api/public/meta/leadgen'
@@ -1342,6 +1367,7 @@ export interface RootRouteChildren {
   ApiPublicHooksPropertySyncReconcileRoute: typeof ApiPublicHooksPropertySyncReconcileRoute
   ApiPublicHooksPropertySyncWorkerRoute: typeof ApiPublicHooksPropertySyncWorkerRoute
   ApiPublicHooksPushWorkerRoute: typeof ApiPublicHooksPushWorkerRoute
+  ApiPublicHooksRealceWorkerRoute: typeof ApiPublicHooksRealceWorkerRoute
   ApiPublicHooksSalePaymentRemindersRoute: typeof ApiPublicHooksSalePaymentRemindersRoute
   ApiPublicHooksSiteMediaWorkerRoute: typeof ApiPublicHooksSiteMediaWorkerRoute
   ApiPublicMetaLeadgenRoute: typeof ApiPublicMetaLeadgenRoute
@@ -1765,6 +1791,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisNovoRouteImport
       parentRoute: typeof AppImoveisRoute
     }
+    '/_app/realce/': {
+      id: '/_app/realce/'
+      path: '/realce'
+      fullPath: '/realce/'
+      preLoaderRoute: typeof AppRealceIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/vistorias/': {
       id: '/_app/vistorias/'
       path: '/vistorias'
@@ -2045,6 +2078,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPushWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/realce-worker': {
+      id: '/api/public/hooks/realce-worker'
+      path: '/api/public/hooks/realce-worker'
+      fullPath: '/api/public/hooks/realce-worker'
+      preLoaderRoute: typeof ApiPublicHooksRealceWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sale-payment-reminders': {
       id: '/api/public/hooks/sale-payment-reminders'
       path: '/api/public/hooks/sale-payment-reminders'
@@ -2160,6 +2200,7 @@ interface AppRouteChildren {
   AppVistoriasNovaRoute: typeof AppVistoriasNovaRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppAssistenteIndexRoute: typeof AppAssistenteIndexRoute
+  AppRealceIndexRoute: typeof AppRealceIndexRoute
   AppVistoriasIndexRoute: typeof AppVistoriasIndexRoute
   AppAssistenteEquipeBotIdRoute: typeof AppAssistenteEquipeBotIdRoute
   AppAssistenteEquipeIndexRoute: typeof AppAssistenteEquipeIndexRoute
@@ -2194,6 +2235,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppVistoriasNovaRoute: AppVistoriasNovaRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppAssistenteIndexRoute: AppAssistenteIndexRoute,
+  AppRealceIndexRoute: AppRealceIndexRoute,
   AppVistoriasIndexRoute: AppVistoriasIndexRoute,
   AppAssistenteEquipeBotIdRoute: AppAssistenteEquipeBotIdRoute,
   AppAssistenteEquipeIndexRoute: AppAssistenteEquipeIndexRoute,
@@ -2314,6 +2356,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksPropertySyncReconcileRoute,
   ApiPublicHooksPropertySyncWorkerRoute: ApiPublicHooksPropertySyncWorkerRoute,
   ApiPublicHooksPushWorkerRoute: ApiPublicHooksPushWorkerRoute,
+  ApiPublicHooksRealceWorkerRoute: ApiPublicHooksRealceWorkerRoute,
   ApiPublicHooksSalePaymentRemindersRoute:
     ApiPublicHooksSalePaymentRemindersRoute,
   ApiPublicHooksSiteMediaWorkerRoute: ApiPublicHooksSiteMediaWorkerRoute,
