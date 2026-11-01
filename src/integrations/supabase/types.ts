@@ -9038,6 +9038,178 @@ export type Database = {
         }
         Relationships: []
       }
+      realce_item_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: number
+          item_id: string
+          status: string
+          test_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: never
+          item_id: string
+          status: string
+          test_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: never
+          item_id?: string
+          status?: string
+          test_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realce_item_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "realce_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realce_items: {
+        Row: {
+          attempts: number
+          created_at: string
+          decision: string | null
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          lease_until: string | null
+          model: string | null
+          next_attempt_at: string | null
+          original_bytes: number
+          original_mime: string
+          original_name: string
+          original_path: string
+          position: number
+          provider: string | null
+          queued_at: string | null
+          result_height: number | null
+          result_note: string | null
+          result_path: string | null
+          result_width: number | null
+          selected: boolean
+          started_at: string | null
+          status: string
+          technique: string | null
+          test_id: string
+          updated_at: string
+          user_id: string
+          work_height: number
+          work_path: string
+          work_width: number
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          decision?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          lease_until?: string | null
+          model?: string | null
+          next_attempt_at?: string | null
+          original_bytes?: number
+          original_mime: string
+          original_name: string
+          original_path: string
+          position?: number
+          provider?: string | null
+          queued_at?: string | null
+          result_height?: number | null
+          result_note?: string | null
+          result_path?: string | null
+          result_width?: number | null
+          selected?: boolean
+          started_at?: string | null
+          status?: string
+          technique?: string | null
+          test_id: string
+          updated_at?: string
+          user_id?: string
+          work_height: number
+          work_path: string
+          work_width: number
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          decision?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          lease_until?: string | null
+          model?: string | null
+          next_attempt_at?: string | null
+          original_bytes?: number
+          original_mime?: string
+          original_name?: string
+          original_path?: string
+          position?: number
+          provider?: string | null
+          queued_at?: string | null
+          result_height?: number | null
+          result_note?: string | null
+          result_path?: string | null
+          result_width?: number | null
+          selected?: boolean
+          started_at?: string | null
+          status?: string
+          technique?: string | null
+          test_id?: string
+          updated_at?: string
+          user_id?: string
+          work_height?: number
+          work_path?: string
+          work_width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realce_items_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "realce_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      realce_tests: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rental_contract_documents: {
         Row: {
           category: string
@@ -13380,6 +13552,72 @@ export type Database = {
           read_ct: number
         }[]
       }
+      realce_can_use: { Args: never; Returns: boolean }
+      realce_claim: {
+        Args: { p_item?: string; p_limit: number; p_user?: string }
+        Returns: {
+          attempts: number
+          created_at: string
+          decision: string | null
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          lease_until: string | null
+          model: string | null
+          next_attempt_at: string | null
+          original_bytes: number
+          original_mime: string
+          original_name: string
+          original_path: string
+          position: number
+          provider: string | null
+          queued_at: string | null
+          result_height: number | null
+          result_note: string | null
+          result_path: string | null
+          result_width: number | null
+          selected: boolean
+          started_at: string | null
+          status: string
+          technique: string | null
+          test_id: string
+          updated_at: string
+          user_id: string
+          work_height: number
+          work_path: string
+          work_width: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "realce_items"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      realce_enqueue: {
+        Args: { p_item_ids: string[]; p_technique: string }
+        Returns: {
+          id: string
+          status: string
+        }[]
+      }
+      realce_fail_preset: {
+        Args: { p_item: string; p_message: string }
+        Returns: undefined
+      }
+      realce_is_admin: { Args: never; Returns: boolean }
+      realce_save_preset: {
+        Args: {
+          p_duration_ms: number
+          p_height: number
+          p_item: string
+          p_path: string
+          p_width: number
+        }
+        Returns: undefined
+      }
+      realce_worker_dispatch: { Args: never; Returns: number }
       region_display_label: { Args: { _raw: string }; Returns: string }
       region_normalized_key: { Args: { _raw: string }; Returns: string }
       release_expired_provider_codes: { Args: never; Returns: number }
