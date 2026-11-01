@@ -279,7 +279,7 @@ export function RealcePage({ testId }: { testId: string | null }) {
             <span className={cn("h-1.5 w-1.5 rounded-full", aiReady ? "bg-emerald-300" : "bg-amber-300")} />
             {status.isLoading ? "Verificando IA…" : aiReady ? "IA ativa" : "IA não configurada"}
           </span>
-          <Button size="sm" variant="secondary" className="shrink-0" onClick={() => fileInput.current?.click()}>
+          <Button size="sm" variant="secondary" className="shrink-0" aria-label="Adicionar fotos" onClick={() => fileInput.current?.click()}>
             <Plus className="h-4 w-4" /><span className="hidden sm:inline">Adicionar fotos</span>
           </Button>
         </div>
