@@ -68,6 +68,7 @@ import { Route as AppClientesClienteIdRouteImport } from './routes/_app.clientes
 import { Route as AppImoveisIndexRouteImport } from './routes/_app.imoveis.index'
 import { Route as AppImoveisImovelIdRouteImport } from './routes/_app.imoveis.$imovelId'
 import { Route as AppImoveisNovoRouteImport } from './routes/_app.imoveis.novo'
+import { Route as AppRealceIndexRouteImport } from './routes/_app.realce.index'
 import { Route as AppVistoriasIndexRouteImport } from './routes/_app.vistorias.index'
 import { Route as AppVistoriasVistoriaIdRouteImport } from './routes/_app.vistorias.$vistoriaId'
 import { Route as AppVistoriasNovaRouteImport } from './routes/_app.vistorias.nova'
@@ -412,6 +413,11 @@ const AppImoveisNovoRoute = AppImoveisNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => AppImoveisRoute,
 } as any)
+const AppRealceIndexRoute = AppRealceIndexRouteImport.update({
+  id: '/realce/',
+  path: '/realce/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVistoriasIndexRoute = AppVistoriasIndexRouteImport.update({
   id: '/vistorias/',
   path: '/vistorias/',
@@ -747,6 +753,7 @@ export interface FileRoutesByFullPath {
   '/agenda/': typeof AppAgendaIndexRoute
   '/assistente/': typeof AppAssistenteIndexRoute
   '/imoveis/': typeof AppImoveisIndexRoute
+  '/realce/': typeof AppRealceIndexRoute
   '/vistorias/': typeof AppVistoriasIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
@@ -850,6 +857,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AppAgendaIndexRoute
   '/assistente': typeof AppAssistenteIndexRoute
   '/imoveis': typeof AppImoveisIndexRoute
+  '/realce': typeof AppRealceIndexRoute
   '/vistorias': typeof AppVistoriasIndexRoute
   '/site-morar/noticias': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias': typeof SiteNoticiasIndexRoute
@@ -959,6 +967,7 @@ export interface FileRoutesById {
   '/_app/agenda/': typeof AppAgendaIndexRoute
   '/_app/assistente/': typeof AppAssistenteIndexRoute
   '/_app/imoveis/': typeof AppImoveisIndexRoute
+  '/_app/realce/': typeof AppRealceIndexRoute
   '/_app/vistorias/': typeof AppVistoriasIndexRoute
   '/site-morar/noticias/': typeof SiteMorarNoticiasIndexRoute
   '/site/noticias/': typeof SiteNoticiasIndexRoute
@@ -1068,6 +1077,7 @@ export interface FileRouteTypes {
     | '/agenda/'
     | '/assistente/'
     | '/imoveis/'
+    | '/realce/'
     | '/vistorias/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
@@ -1171,6 +1181,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/assistente'
     | '/imoveis'
+    | '/realce'
     | '/vistorias'
     | '/site-morar/noticias'
     | '/site/noticias'
@@ -1279,6 +1290,7 @@ export interface FileRouteTypes {
     | '/_app/agenda/'
     | '/_app/assistente/'
     | '/_app/imoveis/'
+    | '/_app/realce/'
     | '/_app/vistorias/'
     | '/site-morar/noticias/'
     | '/site/noticias/'
@@ -1779,6 +1791,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisNovoRouteImport
       parentRoute: typeof AppImoveisRoute
     }
+    '/_app/realce/': {
+      id: '/_app/realce/'
+      path: '/realce'
+      fullPath: '/realce/'
+      preLoaderRoute: typeof AppRealceIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/vistorias/': {
       id: '/_app/vistorias/'
       path: '/vistorias'
@@ -2181,6 +2200,7 @@ interface AppRouteChildren {
   AppVistoriasNovaRoute: typeof AppVistoriasNovaRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppAssistenteIndexRoute: typeof AppAssistenteIndexRoute
+  AppRealceIndexRoute: typeof AppRealceIndexRoute
   AppVistoriasIndexRoute: typeof AppVistoriasIndexRoute
   AppAssistenteEquipeBotIdRoute: typeof AppAssistenteEquipeBotIdRoute
   AppAssistenteEquipeIndexRoute: typeof AppAssistenteEquipeIndexRoute
@@ -2215,6 +2235,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppVistoriasNovaRoute: AppVistoriasNovaRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppAssistenteIndexRoute: AppAssistenteIndexRoute,
+  AppRealceIndexRoute: AppRealceIndexRoute,
   AppVistoriasIndexRoute: AppVistoriasIndexRoute,
   AppAssistenteEquipeBotIdRoute: AppAssistenteEquipeBotIdRoute,
   AppAssistenteEquipeIndexRoute: AppAssistenteEquipeIndexRoute,
