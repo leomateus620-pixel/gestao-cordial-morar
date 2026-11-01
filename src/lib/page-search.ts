@@ -10,6 +10,15 @@ export type PageSearch = {
   onChange: (value: string) => void;
 };
 
+/** A mounted page search is independent of access to system-wide search. */
+export function getHeaderSearchMode(
+  modules: readonly string[],
+  hasPageSearch: boolean,
+): "page" | "global" | null {
+  if (hasPageSearch) return "page";
+  return modules.includes("busca") ? "global" : null;
+}
+
 let current: PageSearch | null = null;
 const listeners = new Set<() => void>();
 
