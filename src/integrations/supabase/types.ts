@@ -13607,6 +13607,7 @@ export type Database = {
         Returns: undefined
       }
       realce_is_admin: { Args: never; Returns: boolean }
+      realce_redo: { Args: { p_item: string }; Returns: undefined }
       realce_save_preset: {
         Args: {
           p_duration_ms: number
