@@ -11,6 +11,7 @@ const DOW = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sába
 const EST_COST = "≈ 0,8 crédito de IA por edição";
 const fmtWeek = (w: string) => new Date(`${w}T12:00:00Z`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
+type ActionInput = Record<string, unknown> & { action: string };
 type Snap = Awaited<ReturnType<typeof showcaseSnapshot>>;
 type Week = Snap["weeks"][number];
 
@@ -20,7 +21,7 @@ export function ShowcaseManager() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["cordial-showcase"], queryFn: () => load(), refetchInterval: (s) => (s.state.data?.weeks.some((w) => w.state === "gerando" || w.lease_until) ? 5000 : false) });
   const m = useMutation({
-    mutationFn: (data: Parameters<typeof act>[0]["data"]) => act({ data }),
+    mutationFn: (data: ActionInput) => act({ data: data as never }) as Promise<{ message: string }>,
     onSuccess: (r) => {
       toast.success(r.message);
       void qc.invalidateQueries({ queryKey: ["cordial-showcase"] });
@@ -99,7 +100,7 @@ function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange 
   live?: boolean;
   activeWeekId: string | null;
   busy: boolean;
-  act: (d: Parameters<ReturnType<typeof useServerFn<typeof showcaseAction>>>[0]["data"]) => void;
+  act: (d: ActionInput) => void;
   nextChange?: Date;
 }) {
   const [picking, setPicking] = useState(false);
