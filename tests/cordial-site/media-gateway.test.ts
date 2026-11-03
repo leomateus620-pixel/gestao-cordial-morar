@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mediaResponse, videoResponse } from "../../src/lib/cordial-site/http.server";
+import { clearMediaMemoryCache, mediaResponse, videoResponse } from "../../src/lib/cordial-site/http.server";
 import { checksum } from "../../src/lib/cordial-site/media-derivatives.server";
 test("warm persisted image is reauthorized before and after read; withdrawal releases no bytes", async () => {
   const originalFetch = globalThis.fetch;
