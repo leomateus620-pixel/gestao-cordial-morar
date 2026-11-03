@@ -1615,7 +1615,7 @@ body:has(.cordial-site) {
 }
 .cs-editorial-layout {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: 1fr;
   gap: 85px;
   align-items: start;
 }
@@ -4394,3 +4394,57 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cs-hx-hero-media .cs-hx-hero-layer img, .cs-hx-hero-light { animation: none !important; }
   .cs-hx-hero-layer { transform: none; }
 }
+
+/* ===== Liquid glass na abertura (busca + Imóvel da semana) ===== */
+.cs-hx-hero-media { background: linear-gradient(130deg, #0c2a33, #16424d); }
+.cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-search-form,
+.cs-hx-hero:not(.is-neutral) .cs-hx-hero-card {
+  background: linear-gradient(145deg, #ffffffc7, #ffffff9e);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid #ffffff99;
+  box-shadow: 0 24px 60px #06181f40, inset 0 1px 0 #ffffffcc;
+}
+.cs-hx-hero:not(.is-neutral) .cs-hx-search { box-shadow: none; }
+.cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-search-form { border-radius: 18px; }
+.cs-hx-hero:not(.is-neutral) .cs-hx-search :is(input, select),
+.cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-budget-trigger strong {
+  background: #ffffffd9;
+  border-color: #0c2a3329;
+  color: var(--cs-ink);
+}
+.cs-hx-hero:not(.is-neutral) .cs-hx-search :is(.cs-field > span, .cs-field > label, .cs-budget-trigger > span, .cs-region-combobox > label) {
+  color: var(--cs-ink);
+}
+.cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-purpose-tabs { border-color: #0c2a3326; }
+.cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-search-links :is(a, button) { color: var(--cs-ink); font-weight: 600; }
+@supports not (backdrop-filter: blur(1px)) {
+  .cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-search-form,
+  .cs-hx-hero:not(.is-neutral) .cs-hx-hero-card { background: #fffffff5; }
+}
+
+.cs-hx-hero-card { border-radius: 20px; padding: 22px 22px 20px; display: grid; gap: 6px; }
+.cs-hx-hero-card .cs-hx-kicker {
+  justify-self: start; margin: 0 0 4px; padding: 5px 10px; border-radius: 999px;
+  background: #0c2a3314; color: var(--cs-brand);
+}
+.cs-hx-hero-card h2 { font-size: 22px; color: var(--cs-ink); }
+.cs-hx-hero-card .cs-hx-place { margin: 0; color: #2f4a52; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.cs-hx-hero-card .cs-hx-price { font-size: 26px; letter-spacing: -0.02em; color: var(--cs-ink); margin-top: 4px; }
+.cs-hx-hero-card .cs-hx-attrs {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 10px 0 0;
+  border-top: 1px solid #0c2a331f; list-style: none;
+}
+.cs-hx-hero-card .cs-hx-attrs li {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+  background: #ffffffb3; border: 1px solid #0c2a331a; font-size: 13px; color: var(--cs-ink); font-weight: 600;
+}
+.cs-hx-hero-card .cs-hx-hero-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+.cs-hx-hero-card .cs-hx-hero-actions > * { min-height: 46px; border-radius: 12px; justify-content: center; font-size: 14px; }
+.cs-hx-hero-card .cs-hx-wa {
+  display: inline-flex; align-items: center; gap: 8px; width: auto; height: auto; padding: 0 12px;
+  background: #ffffffcc; color: #128c4a; border: 1.5px solid #25d366; font-weight: 700; text-decoration: none;
+}
+.cs-hx-hero-card .cs-hx-wa:hover { background: #25d3661f; }
+.cs-hx-hero-card .cs-hx-wa svg { width: 20px; height: 20px; }
+@media (max-width: 520px) { .cs-hx-hero-card .cs-hx-hero-actions { grid-template-columns: 1fr; } }
+.cs-hx-hero-card .cs-hx-hero-actions > * { white-space: nowrap; padding-inline: 12px; gap: 6px; }

@@ -185,8 +185,8 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
           Conhecer este imóvel <ArrowUpRight size={17} />
         </SiteLink>
         {whatsapp && (
-          <a className="cs-icon-button cs-hx-wa" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Conversar no WhatsApp sobre este imóvel">
-            <WhatsAppIcon />
+          <a className="cs-hx-wa" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Conversar no WhatsApp sobre este imóvel">
+            <WhatsAppIcon /> WhatsApp
           </a>
         )}
       </div>
