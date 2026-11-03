@@ -1,0 +1,1 @@
+ALTER TABLE public.cordial_site_showcase_weeks ADD COLUMN IF NOT EXISTS score numeric, ADD COLUMN IF NOT EXISTS score_reason text;

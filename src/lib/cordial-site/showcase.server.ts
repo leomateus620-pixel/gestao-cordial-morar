@@ -151,7 +151,7 @@ export async function scoreCandidates(db: Db, cands: Candidate[]): Promise<Score
   const urls = await Promise.all(
     list.map(async (c) => {
       const p = paths?.find((x) => x.id === c.mediaId && x.version === c.mediaVersion)?.storage_path;
-      return p ? (await db.storage.from("property-images").createSignedUrl(p, 600, { transform: { width: 640, quality: 70 } })).data?.signedUrl ?? null : null;
+      return p ? (await db.storage.from("property-images").createSignedUrl(p, 600)).data?.signedUrl ?? null : null;
     }),
   );
   const content: unknown[] = [{

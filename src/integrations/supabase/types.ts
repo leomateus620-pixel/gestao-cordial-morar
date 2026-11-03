@@ -3132,6 +3132,8 @@ export type Database = {
           prompt_version: string | null
           property_id: string
           public_id: string
+          score: number | null
+          score_reason: string | null
           source: string
           state: string
           storage_path: string | null
@@ -3162,6 +3164,8 @@ export type Database = {
           prompt_version?: string | null
           property_id: string
           public_id: string
+          score?: number | null
+          score_reason?: string | null
           source?: string
           state?: string
           storage_path?: string | null
@@ -3192,6 +3196,8 @@ export type Database = {
           prompt_version?: string | null
           property_id?: string
           public_id?: string
+          score?: number | null
+          score_reason?: string | null
           source?: string
           state?: string
           storage_path?: string | null

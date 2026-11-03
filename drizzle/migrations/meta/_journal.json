@@ -456,6 +456,13 @@
       "when": 1793729134629,
       "tag": "0064_cordial_site_showcase",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793730260179,
+      "tag": "0065_cordial_showcase_score",
+      "breakpoints": true
     }
   ]
 }
