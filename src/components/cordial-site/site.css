@@ -4175,6 +4175,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   font-size: 12px;
   color: var(--cs-ink);
 }
+.cs-hx-place svg { flex-shrink: 0; }
 .cs-hx-attrs li {
   display: inline-flex;
   align-items: center;
@@ -4328,7 +4329,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cs-hx-hero-copy h1 { color: var(--cs-ink); font-size: 32px; }
   .cs-hx-hero-copy h1 em { color: var(--cs-brand); display: inline; }
   .cs-hx-hero-copy > p { color: var(--cs-muted); }
-  .cs-hx-search { box-shadow: 0 6px 24px #0b232b14; border: 1px solid var(--cs-line); padding-inline: 12px; }
+  .cs-hx-search { box-shadow: none; }
   .cs-hx-hero-card { box-shadow: none; border: 1px solid var(--cs-line); }
   .cs-hx-mosaic { grid-template-columns: 1fr; }
   .cs-hx-mosaic > .cs-hx-card-lg { grid-column: auto; }
