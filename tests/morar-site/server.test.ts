@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleSiteRequest, mediaResponse } from "../../src/lib/cordial-site/http.server";
+import { clearMediaMemoryCache, handleSiteRequest, mediaResponse } from "../../src/lib/cordial-site/http.server";
 import { readSite, bootstrap } from "../../src/lib/cordial-site/service.server";
 import { siteChannel, siteDefaultSettings } from "../../src/lib/cordial-site/channel.server";
 import { encodeJpeg } from "../../src/lib/imoveis/watermark-purejs.server";
@@ -169,6 +169,7 @@ test("server boundaries use a closed brand and isolate public data, settings and
             "private, max-age=86400, immutable",
           );
           assert.equal(mediaChecks, 2);
+          clearMediaMemoryCache();
           mediaMode = "withdrawDuringDownload";
           mediaAuthorized = true;
           mediaChecks = 0;
