@@ -77,12 +77,14 @@ export function PropertyImage({
   priority = false,
   size = "card",
   className = "",
+  sizes: sizesOverride,
 }: {
   media: PublicMedia | null;
   alt: string;
   priority?: boolean;
   size?: "thumb" | "card" | "full";
   className?: string;
+  sizes?: string;
 }) {
   const brand = useSiteBrand();
   const [failed, setFailed] = useState(false);
@@ -108,6 +110,7 @@ export function PropertyImage({
           : `${mediaPath(media, "thumb", brand)} 480w, ${mediaPath(media, "card", brand)} 960w, ${mediaPath(media, "full", brand)} 1920w`
       }
       sizes={
+        sizesOverride ??
         size === "full"
           ? "(max-width: 768px) 100vw, 80vw"
           : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

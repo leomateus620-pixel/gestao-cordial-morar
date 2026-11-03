@@ -24,7 +24,7 @@ import { useSite } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyImage } from "./PropertyCard";
 import { SearchForm } from "./SearchForm";
 import { RecentProperties } from "./RecentProperties";
-import { propertyWhatsapp } from "@/lib/cordial-site/experience";
+import { propertyUrl, propertyWhatsapp } from "@/lib/cordial-site/experience";
 import { WhatsAppIcon } from "./SocialIcons";
 
 export type HomeData = {
@@ -121,8 +121,10 @@ function HeroImage({ hero }: { hero: PublicProperty }) {
 }
 
 function HeroCard({ hero }: { hero: PublicProperty }) {
-  const { settings } = useSite();
-  const whatsapp = propertyWhatsapp?.(hero, settings);
+  const site = useSite();
+  const [origin, setOrigin] = useState(site.canonicalOrigin ?? "");
+  useEffect(() => setOrigin(site.canonicalOrigin ?? location.origin), [site.canonicalOrigin]);
+  const whatsapp = propertyWhatsapp(hero, site.settings.whatsapp, propertyUrl(hero, origin));
   return (
     <aside className="cs-hx-hero-card" aria-label="Imóvel da semana">
       <p className="cs-hx-kicker">Imóvel da semana</p>
