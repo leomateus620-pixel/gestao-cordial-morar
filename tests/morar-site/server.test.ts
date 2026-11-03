@@ -166,7 +166,7 @@ test("server boundaries use a closed brand and isolate public data, settings and
           assert.equal(authorized.headers.get("content-type"), "image/jpeg");
           assert.equal(
             authorized.headers.get("cache-control"),
-            "private, max-age=30, must-revalidate",
+            "private, max-age=86400, immutable",
           );
           assert.equal(mediaChecks, 2);
           mediaMode = "withdrawDuringDownload";

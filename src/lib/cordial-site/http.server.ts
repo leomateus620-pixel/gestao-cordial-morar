@@ -96,8 +96,8 @@ export async function mediaResponse(
   // and the authorization lookup above turns the address into a 404.
   const cacheHeaders = {
     ...headers,
-    "Cache-Control": "public, max-age=604800, immutable",
-    "CDN-Cache-Control": "public, max-age=86400",
+    // Browser-only: no shared cache can keep serving a withdrawn version.
+    "Cache-Control": "private, max-age=86400, immutable",
     ETag: etag,
   };
   if (request?.headers.get("If-None-Match") === etag)
@@ -140,6 +140,15 @@ export async function mediaResponse(
     memoryCache.set(key, output);
     while (memoryCache.size > 60) memoryCache.delete(memoryCache.keys().next().value!);
   }
+  // A withdrawal or revision may happen while reading/encoding: recheck before releasing bytes.
+  const { data: stillAuthorized, error: authorizationError } = await db
+    .from(`${siteChannel(brand).namespace}_authorized_media`)
+    .select("id")
+    .eq("id", id)
+    .eq("version", version)
+    .maybeSingle();
+  if (authorizationError) throw new SiteUnavailable();
+  if (!stillAuthorized) return json({ error: "Imagem não disponível." }, 404);
   // Re-encoding strips EXIF/GPS. No new watermark is applied to an already approved image.
   return new Response(new Blob([new Uint8Array(output)], { type: "image/jpeg" }), {
     headers: { ...cacheHeaders, "Content-Type": "image/jpeg", "Content-Disposition": "inline" },
