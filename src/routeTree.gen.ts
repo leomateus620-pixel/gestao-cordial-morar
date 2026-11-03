@@ -96,6 +96,7 @@ import { Route as ApiPublicHooksAdsSyncRouteImport } from './routes/api/public/h
 import { Route as ApiPublicHooksAgendaPhotoDigestRouteImport } from './routes/api/public/hooks/agenda-photo-digest'
 import { Route as ApiPublicHooksAgendaRemindersRouteImport } from './routes/api/public/hooks/agenda-reminders'
 import { Route as ApiPublicHooksAssistantBriefingWorkerRouteImport } from './routes/api/public/hooks/assistant-briefing-worker'
+import { Route as ApiPublicHooksCordialShowcaseRouteImport } from './routes/api/public/hooks/cordial-showcase'
 import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes/api/public/hooks/financeiro-sheets-sync'
 import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
@@ -563,6 +564,12 @@ const ApiPublicHooksAssistantBriefingWorkerRoute =
     path: '/api/public/hooks/assistant-briefing-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCordialShowcaseRoute =
+  ApiPublicHooksCordialShowcaseRouteImport.update({
+    id: '/api/public/hooks/cordial-showcase',
+    path: '/api/public/hooks/cordial-showcase',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksFinanceiroSheetsSyncRoute =
   ApiPublicHooksFinanceiroSheetsSyncRouteImport.update({
     id: '/api/public/hooks/financeiro-sheets-sync',
@@ -767,6 +774,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
+  '/api/public/hooks/cordial-showcase': typeof ApiPublicHooksCordialShowcaseRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -871,6 +879,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
+  '/api/public/hooks/cordial-showcase': typeof ApiPublicHooksCordialShowcaseRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -981,6 +990,7 @@ export interface FileRoutesById {
   '/api/public/hooks/agenda-photo-digest': typeof ApiPublicHooksAgendaPhotoDigestRoute
   '/api/public/hooks/agenda-reminders': typeof ApiPublicHooksAgendaRemindersRoute
   '/api/public/hooks/assistant-briefing-worker': typeof ApiPublicHooksAssistantBriefingWorkerRoute
+  '/api/public/hooks/cordial-showcase': typeof ApiPublicHooksCordialShowcaseRoute
   '/api/public/hooks/financeiro-sheets-sync': typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -1091,6 +1101,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/assistant-briefing-worker'
+    | '/api/public/hooks/cordial-showcase'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
@@ -1195,6 +1206,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/assistant-briefing-worker'
+    | '/api/public/hooks/cordial-showcase'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
@@ -1304,6 +1316,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/agenda-photo-digest'
     | '/api/public/hooks/agenda-reminders'
     | '/api/public/hooks/assistant-briefing-worker'
+    | '/api/public/hooks/cordial-showcase'
     | '/api/public/hooks/financeiro-sheets-sync'
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
@@ -1354,6 +1367,7 @@ export interface RootRouteChildren {
   ApiPublicHooksAgendaPhotoDigestRoute: typeof ApiPublicHooksAgendaPhotoDigestRoute
   ApiPublicHooksAgendaRemindersRoute: typeof ApiPublicHooksAgendaRemindersRoute
   ApiPublicHooksAssistantBriefingWorkerRoute: typeof ApiPublicHooksAssistantBriefingWorkerRoute
+  ApiPublicHooksCordialShowcaseRoute: typeof ApiPublicHooksCordialShowcaseRoute
   ApiPublicHooksFinanceiroSheetsSyncRoute: typeof ApiPublicHooksFinanceiroSheetsSyncRoute
   ApiPublicHooksGalleryAlignRoute: typeof ApiPublicHooksGalleryAlignRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
@@ -1987,6 +2001,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAssistantBriefingWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/cordial-showcase': {
+      id: '/api/public/hooks/cordial-showcase'
+      path: '/api/public/hooks/cordial-showcase'
+      fullPath: '/api/public/hooks/cordial-showcase'
+      preLoaderRoute: typeof ApiPublicHooksCordialShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/financeiro-sheets-sync': {
       id: '/api/public/hooks/financeiro-sheets-sync'
       path: '/api/public/hooks/financeiro-sheets-sync'
@@ -2337,6 +2358,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksAgendaRemindersRoute: ApiPublicHooksAgendaRemindersRoute,
   ApiPublicHooksAssistantBriefingWorkerRoute:
     ApiPublicHooksAssistantBriefingWorkerRoute,
+  ApiPublicHooksCordialShowcaseRoute: ApiPublicHooksCordialShowcaseRoute,
   ApiPublicHooksFinanceiroSheetsSyncRoute:
     ApiPublicHooksFinanceiroSheetsSyncRoute,
   ApiPublicHooksGalleryAlignRoute: ApiPublicHooksGalleryAlignRoute,
