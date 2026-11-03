@@ -340,7 +340,23 @@ export async function readSite(
       return pages(typeof input === "string" ? input : undefined, brand, signal);
     case "page":
       return page(z.string().parse(input), brand, signal);
+    case "showcase": {
+      if (brand !== "cordial") return null;
+      const { activeShowcase } = await import("./showcase.server");
+      const r = await activeShowcase(siteDb(signal));
+      if (!r) return null;
+      return {
+        publicId: r.publicId,
+        imageUrl: r.edited ? `${channel_api(brand)}/showcase/${r.weekId}/${r.checksum}` : null,
+        focalX: r.focalX,
+        focalY: r.focalY,
+      };
+    }
     default:
       throw new Error("Unknown public resource");
   }
+}
+
+function channel_api(brand: SiteBrand) {
+  return siteChannel(brand).api;
 }
