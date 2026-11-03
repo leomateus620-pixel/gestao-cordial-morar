@@ -48,7 +48,7 @@ export function ShowcaseManager() {
           </p>
           {settings?.last_run_at && (
             <p className="text-xs text-muted-foreground">
-              Última execução: {new Date(settings.last_run_at).toLocaleString("pt-BR")} — {settings.last_run_summary}
+              Última execução: {new Date(settings.last_run_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} — {settings.last_run_summary}
             </p>
           )}
         </div>
@@ -85,7 +85,7 @@ export function ShowcaseManager() {
         </ul>
         {attempts.length > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Últimas edições: {attempts.slice(0, 5).map((a) => `${new Date(a.started_at).toLocaleString("pt-BR")} (${a.outcome ?? "em andamento"})`).join(" · ")}
+            Últimas edições: {attempts.slice(0, 5).map((a) => `${new Date(a.started_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (${a.outcome ?? "em andamento"})`).join(" · ")}
           </p>
         )}
       </section>
@@ -117,7 +117,7 @@ function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange 
               Ref. {row.property?.public_reference ?? "—"} · {row.property?.tipo ?? "Imóvel"} {row.property?.bairro ? `no ${row.property.bairro}` : ""} ·{" "}
               <strong>{generating ? "Gerando edição…" : STATE_LABEL[row.state as ShowcaseState]}</strong>
               {live && (activeWeekId === row.id ? (showingEdited ? " · no ar com a edição aprovada" : " · no ar com a foto original") : " · fora do ar")}
-              {nextChange && ` · próxima troca ${nextChange.toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`}
+              {nextChange && ` · próxima troca ${nextChange.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">{live ? "Nenhum imóvel no ar: a abertura usa o primeiro destaque." : "Ainda não preparada. A rotina escolhe no horário de preparo."}</p>
