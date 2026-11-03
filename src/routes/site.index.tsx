@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { loadCatalog, loadSummaries } from "@/lib/cordial-site/data";
+import { loadCatalog, loadShowcase, loadSummaries } from "@/lib/cordial-site/data";
 import type { PublicProperty, SiteBootstrap } from "@/lib/cordial-site/contract";
 import { HomePage, type HomeData } from "@/components/cordial-site/HomePage";
 import { HOME_FEATURED_LIMIT, HOME_MORE_LIMIT, selectFeatured, selectMore } from "@/lib/cordial-site/home-selection";
@@ -10,6 +10,8 @@ async function loadHome(settings: SiteBootstrap["settings"] | undefined, signal:
   const mode = settings?.featuredMode ?? "recentes";
   const editorialIds = mode === "editorial" ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT) : [];
   const extraIds = [...editorialIds];
+  const showcase = await loadShowcase(signal).catch(() => null);
+  if (showcase && !extraIds.includes(showcase.publicId)) extraIds.push(showcase.publicId);
   if (settings?.heroPropertyId && !extraIds.includes(settings.heroPropertyId)) extraIds.push(settings.heroPropertyId);
   const [summaries, ...firstPages] = await Promise.all([
     extraIds.length ? loadSummaries(extraIds, signal).catch(() => ({ items: [], missingIds: [] })) : { items: [] as PublicProperty[], missingIds: [] },
@@ -29,8 +31,11 @@ async function loadHome(settings: SiteBootstrap["settings"] | undefined, signal:
     featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent() });
     more = selectMore(pages, featured.map((p) => p.id));
   }
-  const heroChoice = summaries.items.find((p) => p.id === settings?.heroPropertyId && p.cover);
-  return { featured, more, hero: heroChoice ?? featured[0] ?? null, total };
+  // Vitrine semanal (validada no banco) tem prioridade; depois a escolha manual antiga; depois o 1º destaque.
+  const weekly = showcase ? summaries.items.find((p) => p.id === showcase.publicId && p.cover) : undefined;
+  const heroChoice = weekly ?? summaries.items.find((p) => p.id === settings?.heroPropertyId && p.cover);
+  const heroImage = weekly && showcase ? { url: showcase.imageUrl, focalX: showcase.focalX, focalY: showcase.focalY } : null;
+  return { featured, more, hero: heroChoice ?? featured[0] ?? null, total, heroImage };
 }
 
 export const Route = createFileRoute("/site/")({

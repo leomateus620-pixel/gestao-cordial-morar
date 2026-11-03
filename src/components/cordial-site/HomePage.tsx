@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -32,6 +33,8 @@ export type HomeData = {
   more: PublicProperty[];
   hero: PublicProperty | null;
   total: number;
+  /** Imagem da semana aprovada (edição por IA) e ponto de foco; null usa a foto original. */
+  heroImage?: { url: string | null; focalX: number; focalY: number } | null;
 };
 
 const opLabel = (p: PublicProperty) => (p.operation === "venda" ? "Venda" : "Aluguel");
@@ -96,7 +99,7 @@ function HomeCard({
   );
 }
 
-function HeroImage({ hero }: { hero: PublicProperty }) {
+function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["heroImage"] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -114,8 +117,17 @@ function HeroImage({ hero }: { hero: PublicProperty }) {
     };
   }, []);
   return (
-    <div className="cs-hx-hero-media" ref={ref} aria-hidden>
-      <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
+    <div
+      className="cs-hx-hero-media"
+      ref={ref}
+      aria-hidden
+      style={image ? ({ "--cs-hx-focal": `${Math.round(image.focalX * 100)}% ${Math.round(image.focalY * 100)}%` } as React.CSSProperties) : undefined}
+    >
+      {image?.url ? (
+        <img src={image.url} alt="" width={1536} height={1024} fetchPriority="high" decoding="async" className="cs-hx-showcase-img" />
+      ) : (
+        <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
+      )}
     </div>
   );
 }
@@ -208,7 +220,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
         {(data) => (
           <>
             <section className={`cs-hx-hero ${data?.hero ? "" : "is-neutral"}`}>
-              {data?.hero && <HeroImage hero={data.hero} />}
+              {data?.hero && <HeroImage hero={data.hero} image={data.heroImage} />}
               <div className="cs-container cs-hx-hero-grid">
                 <div className="cs-hx-hero-copy">
                   <h1>

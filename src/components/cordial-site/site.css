@@ -4351,3 +4351,6 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cs-hx-card,
   .cs-hx-card-media img { transition: none !important; transform: none !important; }
 }
+
+.cs-hx-hero-media img { object-position: var(--cs-hx-focal, 50% 50%); }
+.cs-hx-showcase-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
