@@ -19,6 +19,9 @@ const headers = {
 };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
 class PayloadTooLarge extends Error {}
+/** Per-instance bytes of versioned derivatives; authorization is still checked per request. */
+const memoryCache = new Map<string, Uint8Array>();
+export const clearMediaMemoryCache = () => memoryCache.clear();
 async function readBoundedBody(request: Request) {
   const reader = request.body?.getReader();
   if (!reader) return "";
@@ -89,17 +92,22 @@ export async function mediaResponse(
   if (error) throw new SiteUnavailable();
   if (!data) return json({ error: "Imagem não disponível." }, 404);
   const etag = `"${version}-${size}-purejs-v2"`;
-  // A conditional browser reuse still performs a fresh authorization; withdrawn
-  // versions never receive a 304. No storage read or transformation is needed.
+  // Versioned URL (id/version/size): bytes never change for the same address,
+  // so browsers and the CDN may keep them. Withdrawal removes the URL from pages
+  // and the authorization lookup above turns the address into a 404.
+  const cacheHeaders = {
+    ...headers,
+    // Browser-only: no shared cache can keep serving a withdrawn version.
+    "Cache-Control": "private, max-age=86400, immutable",
+    ETag: etag,
+  };
   if (request?.headers.get("If-None-Match") === etag)
-    return new Response(null, {
-      status: 304,
-      headers: { ...headers, "Cache-Control": "private, max-age=30, must-revalidate", ETag: etag },
-    });
-  const output = await resolveDerivative(
-    derivativeKey(brand, id, version, size as MediaSize),
-    derivativeStore(db),
-    async () => {
+    return new Response(null, { status: 304, headers: cacheHeaders });
+  const key = derivativeKey(brand, id, version, size as MediaSize);
+  const memo = memoryCache.get(key);
+  const output =
+    memo ??
+    (await resolveDerivative(key, derivativeStore(db), async () => {
       const { data: blob, error: storageError } = await db.storage
         .from("property-images")
         .download(data.storage_path);
@@ -128,10 +136,12 @@ export async function mediaResponse(
               Math.max(1, Math.round((photo.height * width) / photo.width)),
             );
       return new Uint8Array(encodeJpeg(resized, options.quality));
-    },
-  );
-  // A withdrawal or image revision may happen while downloading/encoding. Check
-  // the same channel object again before releasing any bytes to the visitor.
+    }));
+  if (!memo) {
+    memoryCache.set(key, output);
+    while (memoryCache.size > 60) memoryCache.delete(memoryCache.keys().next().value!);
+  }
+  // A withdrawal or revision may happen while reading/encoding: recheck before releasing bytes.
   const { data: stillAuthorized, error: authorizationError } = await db
     .from(`${siteChannel(brand).namespace}_authorized_media`)
     .select("id")
@@ -142,13 +152,7 @@ export async function mediaResponse(
   if (!stillAuthorized) return json({ error: "Imagem não disponível." }, 404);
   // Re-encoding strips EXIF/GPS. No new watermark is applied to an already approved image.
   return new Response(new Blob([new Uint8Array(output)], { type: "image/jpeg" }), {
-    headers: {
-      ...headers,
-      "Content-Type": "image/jpeg",
-      "Cache-Control": "private, max-age=30, must-revalidate",
-      "Content-Disposition": "inline",
-      ETag: etag,
-    },
+    headers: { ...cacheHeaders, "Content-Type": "image/jpeg", "Content-Disposition": "inline" },
   });
 }
 export async function videoResponse(

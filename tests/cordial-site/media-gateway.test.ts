@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mediaResponse, videoResponse } from "../../src/lib/cordial-site/http.server";
+import { clearMediaMemoryCache, mediaResponse, videoResponse } from "../../src/lib/cordial-site/http.server";
 import { checksum } from "../../src/lib/cordial-site/media-derivatives.server";
 test("warm persisted image is reauthorized before and after read; withdrawal releases no bytes", async () => {
   const originalFetch = globalThis.fetch;
@@ -40,7 +40,7 @@ test("warm persisted image is reauthorized before and after read; withdrawal rel
     assert.equal(warm.status, 200);
     assert.equal(authorizations, 2);
     assert.equal(storageReads, 1);
-    assert.equal(warm.headers.get("Cache-Control"), "private, max-age=30, must-revalidate");
+    assert.equal(warm.headers.get("Cache-Control"), "private, max-age=86400, immutable");
     assert.deepEqual(new Uint8Array(await warm.arrayBuffer()), bytes);
     const conditional = await mediaResponse(
       id,
@@ -54,6 +54,7 @@ test("warm persisted image is reauthorized before and after read; withdrawal rel
     assert.equal(conditional.status, 304);
     assert.equal(storageReads, 1);
     assert.equal(authorizations, 3);
+    clearMediaMemoryCache();
     withdrawWhileReading = true;
     const withdrawnDuring = await mediaResponse(id, version, "card");
     assert.equal(withdrawnDuring.status, 404);
