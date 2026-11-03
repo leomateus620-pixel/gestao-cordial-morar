@@ -135,6 +135,11 @@ body:has(.cordial-site) {
 .cs-brand img {
   width: 182px;
   height: auto;
+  display: block;
+}
+.cs-brand {
+  display: flex;
+  align-items: center;
 }
 .cs-desktop-nav {
   display: flex;
