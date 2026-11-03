@@ -133,8 +133,13 @@ body:has(.cordial-site) {
   padding-block: 8px;
 }
 .cs-brand img {
-  width: 182px;
+  width: 236px;
   height: auto;
+  display: block;
+}
+.cs-brand {
+  display: flex;
+  align-items: center;
 }
 .cs-desktop-nav {
   display: flex;
@@ -1819,8 +1824,8 @@ body:has(.cordial-site) {
   }
   .cs-brand,
   .cs-brand img {
-    width: 155px;
-    flex-basis: 155px;
+    width: 200px;
+    flex-basis: 200px;
   }
   .cs-hero-layout {
     gap: 40px;
@@ -1894,8 +1899,8 @@ body:has(.cordial-site) {
   }
   .cs-brand,
   .cs-brand img {
-    width: 162px;
-    flex-basis: 162px;
+    width: 200px;
+    flex-basis: 200px;
   }
   .cs-hero-layout {
     gap: 25px;
@@ -2015,8 +2020,8 @@ body:has(.cordial-site) {
   }
   .cs-brand,
   .cs-brand img {
-    width: 142px;
-    flex-basis: 142px;
+    width: 178px;
+    flex-basis: 178px;
   }
   .cs-eyebrow {
     font-size: 10px;
@@ -2699,9 +2704,9 @@ body:has(.cordial-site) {
   flex-basis: 160px;
 }
 .cordial-site:not(.morar-site) .cs-brand img {
-  width: 160px;
+  width: 230px;
   height: auto;
-  aspect-ratio: 691 / 231;
+  aspect-ratio: 936 / 160;
   object-fit: contain;
 }
 .cordial-site:not(.morar-site) .cs-desktop-nav {
@@ -3450,8 +3455,8 @@ body:has(.cordial-site) {
   }
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img {
-    width: 140px;
-    flex-basis: 140px;
+    width: 200px;
+    flex-basis: 200px;
   }
   .cordial-site:not(.morar-site) .cs-container {
     width: calc(100% - 36px);
@@ -3647,8 +3652,8 @@ body:has(.cordial-site) {
   }
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img {
-    width: 128px;
-    flex-basis: 128px;
+    width: 180px;
+    flex-basis: 180px;
   }
   .cs-search-essential :is(input, select),
   .cs-budget-trigger strong {
@@ -3868,10 +3873,10 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   gap: 28px;
 }
 .cordial-site:not(.morar-site) .cs-brand {
-  flex: 0 0 150px;
+  flex: 0 0 230px;
 }
 .cordial-site:not(.morar-site) .cs-brand img {
-  width: 150px;
+  width: 230px;
 }
 .cordial-site:not(.morar-site) .cs-desktop-nav {
   gap: 4px;
@@ -3924,8 +3929,8 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   }
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img {
-    flex-basis: 124px;
-    width: 124px;
+    flex-basis: 176px;
+    width: 176px;
   }
 }
 
