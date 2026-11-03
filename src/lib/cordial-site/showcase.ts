@@ -3,14 +3,13 @@
  * Horário de São Paulo é UTC-3 fixo (sem horário de verão desde 2019).
  */
 export const SP_OFFSET_HOURS = -3;
-export const SHOWCASE_PROMPT_VERSION = "vitrine-natural-v1";
+export const SHOWCASE_PROMPT_VERSION = "vitrine-imersiva-v2";
 export const SHOWCASE_MODEL = "openai/gpt-image-2.5-sunburst";
 export const SHOWCASE_SIZE = { width: 1536, height: 1024, size: "1536x1024" } as const;
 export const SHOWCASE_REPEAT_WEEKS = 4;
 export const SHOWCASE_PROMPT =
-  "Edição fotográfica imobiliária fiel. Melhore apenas luz, exposição, contraste, balanço de branco, nitidez e alinhamento de horizonte/verticais. " +
-  "Não adicione, remova, mova ou substitua nenhum objeto, móvel, planta, pessoa, céu, janela, parede, piso ou elemento arquitetônico. " +
-  "Não altere cores reais de materiais nem dimensões dos ambientes. Mantenha o enquadramento original. Resultado natural, sem aparência de render.";
+  "Edição fotográfica imobiliária cinematográfica e fiel. Crie uma atmosfera imersiva de fim de tarde: luz dourada suave, maior alcance dinâmico, sombras abertas, profundidade e volume, céu existente mais vivo (sem substituí-lo nem acrescentar nuvens irreais), cores ricas e naturais, nitidez de detalhes e verticais alinhadas. " +
+  "Proibido adicionar, remover, mover ou substituir qualquer construção, objeto, móvel, planta, pessoa, veículo, janela, porta, piso, muro, terreno ou elemento arquitetônico. Não altere cores reais de materiais, formas, dimensões nem o enquadramento. Mantenha marcas d'água existentes como estão. Resultado fotográfico realista, sem aparência de render.";
 
 export type ShowcaseState =
   | "agendado" | "gerando" | "aguardando_revisao" | "pronto" | "ativo"
@@ -84,6 +83,13 @@ export function chooseCandidate(cands: Candidate[], recentPropertyIds: string[])
   const ordered = cands.filter(isLandscape).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   const used = new Set(recentPropertyIds);
   return ordered.find((c) => !used.has(c.propertyId)) ?? ordered[0] ?? null;
+}
+
+/** Maior nota estética entre candidatos não usados recentemente; desempate pela data de publicação. */
+export function chooseBest<T extends Candidate & { score: number }>(scored: T[], recentPropertyIds: string[]): T | null {
+  const used = new Set(recentPropertyIds);
+  const ordered = scored.filter(isLandscape).sort((a, b) => b.score - a.score || b.publishedAt.localeCompare(a.publishedAt));
+  return ordered.find((c) => !used.has(c.propertyId)) ?? null;
 }
 
 export type WeekRow = { id: string; week_start: string; state: ShowcaseState; approved_at: string | null; use_original: boolean };

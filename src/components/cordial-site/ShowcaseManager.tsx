@@ -122,6 +122,7 @@ function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange 
           ) : (
             <p className="text-sm text-muted-foreground">{live ? "Nenhum imóvel no ar: a abertura usa o primeiro destaque." : "Ainda não preparada. A rotina escolhe no horário de preparo."}</p>
           )}
+          {row?.score != null && <p className="text-xs text-muted-foreground">Nota da foto: {Number(row.score).toFixed(1)}/10 — {row.score_reason}</p>}
           {row?.error && <p className="text-sm text-destructive">{row.error}</p>}
         </div>
         <button className={ghost} onClick={() => setPicking((v) => !v)}>Trocar imóvel/foto</button>

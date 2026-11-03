@@ -107,12 +107,43 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const save = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
     if (reduce || save) return;
-    const io = new IntersectionObserver(([e]) => el.classList.toggle("is-moving", e.isIntersecting && !document.hidden));
+    let visible = false;
+    let frame = 0;
+    let tx = 0, ty = 0, mx = 0, my = 0;
+    const apply = () => {
+      frame = 0;
+      const r = el.getBoundingClientRect();
+      const scrollShift = Math.max(-1, Math.min(1, -r.top / Math.max(1, r.height))) * 28;
+      tx += (mx * 14 - tx) * 0.12;
+      ty += (my * 10 + scrollShift - ty) * 0.12;
+      el.style.setProperty("--cs-hx-px", `${tx.toFixed(2)}px`);
+      el.style.setProperty("--cs-hx-py", `${ty.toFixed(2)}px`);
+      if (visible && (Math.abs(mx * 14 - tx) > 0.2 || Math.abs(my * 10 + scrollShift - ty) > 0.2)) frame = requestAnimationFrame(apply);
+    };
+    const kick = () => { if (visible && !frame) frame = requestAnimationFrame(apply); };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      mx = e.clientX / innerWidth - 0.5;
+      my = e.clientY / innerHeight - 0.5;
+      kick();
+    };
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting && !document.hidden;
+      el.classList.toggle("is-moving", visible);
+      kick();
+    });
     io.observe(el);
-    const vis = () => document.hidden && el.classList.remove("is-moving");
+    addEventListener("pointermove", onMove, { passive: true });
+    addEventListener("scroll", kick, { passive: true });
+    const vis = () => {
+      if (document.hidden) el.classList.remove("is-moving");
+    };
     document.addEventListener("visibilitychange", vis);
     return () => {
       io.disconnect();
+      cancelAnimationFrame(frame);
+      removeEventListener("pointermove", onMove);
+      removeEventListener("scroll", kick);
       document.removeEventListener("visibilitychange", vis);
     };
   }, []);
@@ -123,11 +154,14 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
       aria-hidden
       style={image ? ({ "--cs-hx-focal": `${Math.round(image.focalX * 100)}% ${Math.round(image.focalY * 100)}%` } as React.CSSProperties) : undefined}
     >
-      {image?.url ? (
-        <img src={image.url} alt="" width={1536} height={1024} fetchPriority="high" decoding="async" className="cs-hx-showcase-img" />
-      ) : (
-        <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
-      )}
+      <div className="cs-hx-hero-layer">
+        {image?.url ? (
+          <img src={image.url} alt="" width={1536} height={1024} fetchPriority="high" decoding="async" className="cs-hx-showcase-img" />
+        ) : (
+          <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
+        )}
+      </div>
+      <span className="cs-hx-hero-light" />
     </div>
   );
 }

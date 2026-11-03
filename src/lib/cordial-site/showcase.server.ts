@@ -12,7 +12,9 @@ import {
   SHOWCASE_SIZE,
   addWeeks,
   canRegenerate,
+  chooseBest,
   chooseCandidate,
+  isLandscape,
   planWorker,
   type Candidate,
   type ShowcaseSchedule,
@@ -138,6 +140,99 @@ export async function loadCandidates(db: Db): Promise<Candidate[]> {
   });
 }
 
+export type Scored = Candidate & { score: number; reason: string };
+
+/** Nota estética (0–10) das capas, por IA de visão, em uma única chamada. Falha → null (usa a regra por data). */
+export async function scoreCandidates(db: Db, cands: Candidate[]): Promise<Scored[] | null> {
+  const key = process.env["LOVABLE_API_KEY"];
+  if (!key || !cands.length) return null;
+  const list = cands.slice(0, 24);
+  const { data: paths } = await db.from("cordial_site_authorized_media").select("id,version,storage_path").in("id", list.map((c) => c.mediaId));
+  const urls = await Promise.all(
+    list.map(async (c) => {
+      const p = paths?.find((x) => x.id === c.mediaId && x.version === c.mediaVersion)?.storage_path;
+      return p ? (await db.storage.from("property-images").createSignedUrl(p, 600)).data?.signedUrl ?? null : null;
+    }),
+  );
+  const content: unknown[] = [{
+    type: "input_text",
+    text:
+      "Você escolhe a foto de abertura do site de uma imobiliária. Avalie cada foto numerada (0..n-1) de 0 a 10 considerando: visual moderno, acabamento e fachada bonitos; riqueza de detalhes e composição; luz e céu agradáveis. " +
+      "Penalize fortemente terreno de obra, terra exposta, entulho, muros de tijolo inacabados, ruas de chão, fotos escuras, tortas ou desfocadas. Marque reject=true quando houver problema grave para uma abertura premium. Responda em JSON com o motivo curto em português.",
+  }];
+  list.forEach((_, i) => {
+    if (urls[i]) content.push({ type: "input_text", text: `Foto ${i}:` }, { type: "input_image", image_url: urls[i], detail: "low" });
+  });
+  let res: Response;
+  try {
+    res = await fetch(`${GATEWAY}/v1/responses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Lovable-API-Key": key, Authorization: `Bearer ${key}`, "X-Lovable-AIG-SDK": "fetch" },
+      body: JSON.stringify({
+        model: "openai/gpt-6-astra",
+        stream: true,
+        store: false,
+        reasoning: { effort: "low" },
+        input: [{ role: "user", content }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "notas",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              required: ["items"],
+              properties: {
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["index", "score", "reject", "reason"],
+                    properties: { index: { type: "integer" }, score: { type: "number" }, reject: { type: "boolean" }, reason: { type: "string" } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+  } catch {
+    return null;
+  }
+  if (!res.ok || !res.body) return null;
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", text = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i: number;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        const data = frame.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("");
+        if (!data || data === "[DONE]") continue;
+        try {
+          const ev = JSON.parse(data);
+          if (ev.type === "response.output_text.delta" && typeof ev.delta === "string") text += ev.delta;
+        } catch { /* parcial */ }
+      }
+    }
+    const parsed = JSON.parse(text) as { items: Array<{ index: number; score: number; reject: boolean; reason: string }> };
+    return parsed.items.flatMap((it) => {
+      const c = list[it.index];
+      return c && !it.reject ? [{ ...c, score: Math.max(0, Math.min(10, it.score)), reason: it.reason.slice(0, 200) }] : [];
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function recentPropertyIds(db: Db, week: string) {
   const { data } = await db
     .from("cordial_site_showcase_weeks")
@@ -148,7 +243,13 @@ async function recentPropertyIds(db: Db, week: string) {
 }
 
 export async function createWeek(db: Db, week: string, opts: { activate?: boolean; pick?: Candidate; userId?: string } = {}) {
-  const pick = opts.pick ?? chooseCandidate(await loadCandidates(db), await recentPropertyIds(db, week));
+  let pick: (Candidate & { score?: number; reason?: string }) | null = opts.pick ?? null;
+  if (!pick) {
+    const recent = await recentPropertyIds(db, week);
+    const pool = (await loadCandidates(db)).filter(isLandscape).filter((c) => !recent.includes(c.propertyId)).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+    const scored = await scoreCandidates(db, pool);
+    pick = scored ? chooseBest(scored, recent) : chooseCandidate(pool, recent);
+  }
   if (!pick) return null;
   const { data, error } = await db
     .from("cordial_site_showcase_weeks")
@@ -162,6 +263,8 @@ export async function createWeek(db: Db, week: string, opts: { activate?: boolea
       state: "agendado",
       use_original: true,
       created_by: opts.userId ?? null,
+      score: pick.score ?? null,
+      score_reason: pick.reason ?? null,
     })
     .select("id")
     .single();
