@@ -133,7 +133,7 @@ body:has(.cordial-site) {
   padding-block: 8px;
 }
 .cs-brand img {
-  width: 182px;
+  width: 236px;
   height: auto;
   display: block;
 }
@@ -1824,8 +1824,8 @@ body:has(.cordial-site) {
   }
   .cs-brand,
   .cs-brand img {
-    width: 155px;
-    flex-basis: 155px;
+    width: 200px;
+    flex-basis: 200px;
   }
   .cs-hero-layout {
     gap: 40px;
@@ -1899,8 +1899,8 @@ body:has(.cordial-site) {
   }
   .cs-brand,
   .cs-brand img {
-    width: 162px;
-    flex-basis: 162px;
+    width: 200px;
+    flex-basis: 200px;
   }
   .cs-hero-layout {
     gap: 25px;
@@ -2020,8 +2020,8 @@ body:has(.cordial-site) {
   }
   .cs-brand,
   .cs-brand img {
-    width: 142px;
-    flex-basis: 142px;
+    width: 178px;
+    flex-basis: 178px;
   }
   .cs-eyebrow {
     font-size: 10px;
