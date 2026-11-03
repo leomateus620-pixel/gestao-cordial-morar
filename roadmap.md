@@ -50,5 +50,6 @@
 
 ## Home do site Cordial (plano 2026-11-03)
 - [x] Fase 1: cabeçalho claro, abertura imersiva, 5 destaques + bairros, 15 mais imóveis, modo de destaques no painel
-- [ ] Fase 2: imagem semanal editada por IA (registro, worker, agendamento) — aguarda conferência da Fase 1
-- [ ] Fase 3: área "Vitrine do site" no painel — depende da Fase 2
+- [x] Fase 2: imagem semanal editada por IA (registro, worker, agendamento)
+- [x] Fase 3: área "Vitrine do site" no painel
+- [ ] Comprovar a primeira troca automática real (domingo 18h / segunda 06h) — depende de publicar

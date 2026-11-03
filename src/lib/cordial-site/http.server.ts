@@ -298,6 +298,11 @@ export async function handleSiteRequest(
         if (rest.length) return json({ error: "Não encontrado." }, 404);
         return mediaResponse(id ?? "", version ?? "", size ?? "", brand, request);
       }
+      if (route.startsWith("showcase/")) {
+        const [, weekId, checksum, ...rest] = route.split("/");
+        if (rest.length || brand !== "cordial") return json({ error: "Não encontrado." }, 404);
+        return showcaseResponse(weekId ?? "", checksum ?? "");
+      }
       if (route.startsWith("video/")) {
         const [, id, version, ...rest] = route.split("/");
         if (rest.length) return json({ error: "Não encontrado." }, 404);
@@ -317,6 +322,7 @@ export async function handleSiteRequest(
           "gallery",
           "videos",
           "tours",
+          "showcase",
         ].includes(route)
       )
         return json({ error: "Não encontrado." }, 404);
@@ -366,4 +372,26 @@ export async function handleSiteRequest(
       503,
     );
   }
+}
+
+async function showcaseResponse(weekId: string, checksum: string): Promise<Response> {
+  if (!z.string().uuid().safeParse(weekId).success || !/^[a-f0-9]{32}$/.test(checksum))
+    return json({ error: "Imagem não encontrada." }, 404);
+  const db = siteDb();
+  const { activeShowcase } = await import("./showcase.server");
+  const active = await activeShowcase(db);
+  // Só a edição aprovada da semana ativa, com imóvel e foto ainda publicados.
+  if (!active || !active.edited || active.weekId !== weekId || active.checksum !== checksum || !active.storagePath)
+    return json({ error: "Imagem não disponível." }, 404);
+  const { data: blob, error } = await db.storage.from("cordial-showcase").download(active.storagePath);
+  if (error || !blob) return json({ error: "Imagem não disponível." }, 404);
+  return new Response(blob, {
+    headers: {
+      ...headers,
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "private, max-age=300, must-revalidate",
+      "Content-Disposition": "inline",
+      ETag: `"${checksum}"`,
+    },
+  });
 }

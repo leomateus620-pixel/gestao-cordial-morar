@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { ShowcaseManager } from "@/components/cordial-site/ShowcaseManager";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
@@ -65,6 +66,7 @@ function Page() {
         {[
           ["publicacoes", "Publicação de imóveis"],
           ["configuracoes", "Identidade e contatos"],
+          ["vitrine", "Vitrine do site"],
           ["responsaveis", "Responsáveis públicos"],
           ["conteudo", "Páginas e notícias"],
           ["contatos", "Contatos recebidos"],
@@ -143,6 +145,7 @@ function Page() {
                 onSaved={refresh}
               />
             )}
+            {tab === "vitrine" && <ShowcaseManager />}
             {tab === "responsaveis" && (
               <ResponsibleEditor snapshot={query.data} onSaved={refresh} />
             )}
