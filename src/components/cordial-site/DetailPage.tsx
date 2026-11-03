@@ -125,6 +125,29 @@ export function DetailPage({
     window.addEventListener("hashchange", restorePhoto);
     return () => window.removeEventListener("hashchange", restorePhoto);
   }, [p.id, p.images.length]);
+  // Warm the lightbox: neighbours of the open photo load before the next click.
+  useEffect(() => {
+    if (!open || p.images.length < 2) return;
+    const n = p.images.length;
+    for (const d of [1, -1, 2]) {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = mediaPath(p.images[(index + d + n) % n], "full", brand);
+    }
+  }, [open, index, p.images, brand]);
+  // After the page settles, fetch the first full photos in the background.
+  useEffect(() => {
+    const run = () =>
+      p.images.slice(0, 3).forEach((m) => {
+        const img = new Image();
+        img.src = mediaPath(m, "full", brand);
+      });
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const t = w.requestIdleCallback ? w.requestIdleCallback(run) : window.setTimeout(run, 1200);
+    return () => {
+      if (!w.requestIdleCallback) window.clearTimeout(t);
+    };
+  }, [p.id, p.images, brand]);
   const move = (n: number) =>
     setIndex((i) => (p.images.length ? (i + n + p.images.length) % p.images.length : 0));
   const url = propertyUrl(p, canonicalOrigin ?? previewOrigin ?? "", brand);
