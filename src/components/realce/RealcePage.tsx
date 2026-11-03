@@ -54,6 +54,8 @@ export function RealcePage({ testId }: { testId: string | null }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const kicking = useRef(false);
   const workBlobs = useRef(new Map<string, Blob>());
+  const presetRunning = useRef(new Set<string>());
+  const orphanHandled = useRef(new Set<string>());
 
   const status = useQuery({ queryKey: ["realce", "status"], queryFn: () => statusFn(), staleTime: 60_000 });
   const aiReady = status.data?.aiConfigured === true;
@@ -203,8 +205,9 @@ export function RealcePage({ testId }: { testId: string | null }) {
       toast.error(error.message.includes("daily_limit") ? "Limite diário de fotos com IA atingido. Tente amanhã ou use o preset." : "Não foi possível iniciar o realce.");
       return;
     }
-    qc.invalidateQueries({ queryKey: ["realce", "items", tid] });
     const started = (data ?? []).map((r: { id: string }) => r.id);
+    if (tech === "preset") started.forEach((id: string) => { presetRunning.current.add(id); orphanHandled.current.delete(id); });
+    qc.invalidateQueries({ queryKey: ["realce", "items", tid] });
     if (tech === "preset" && started.length) await runPreset(started);
   };
 
