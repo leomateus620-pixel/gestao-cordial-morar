@@ -4439,7 +4439,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
   background: #ffffffb3; border: 1px solid #0c2a331a; font-size: 13px; color: var(--cs-ink); font-weight: 600;
 }
-.cs-hx-hero-card .cs-hx-hero-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.cs-hx-hero-card .cs-hx-hero-actions { display: grid; grid-template-columns: 1.5fr 1fr; gap: 8px; margin-top: 12px; }
 .cs-hx-hero-card .cs-hx-hero-actions > * { min-height: 46px; border-radius: 12px; justify-content: center; font-size: 14px; }
 .cs-hx-hero-card .cs-hx-wa {
   display: inline-flex; align-items: center; gap: 8px; width: auto; height: auto; padding: 0 12px;
@@ -4448,3 +4448,4 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 .cs-hx-hero-card .cs-hx-wa:hover { background: #25d3661f; }
 .cs-hx-hero-card .cs-hx-wa svg { width: 20px; height: 20px; }
 @media (max-width: 520px) { .cs-hx-hero-card .cs-hx-hero-actions { grid-template-columns: 1fr; } }
+.cs-hx-hero-card .cs-hx-hero-actions > * { white-space: nowrap; padding-inline: 12px; gap: 6px; }
