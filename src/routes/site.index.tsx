@@ -1,37 +1,43 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadCatalog, loadSummaries } from "@/lib/cordial-site/data";
-import type { SiteBootstrap, SiteCatalog } from "@/lib/cordial-site/contract";
-import { HomePage } from "@/components/cordial-site/HomePage";
+import type { PublicProperty, SiteBootstrap } from "@/lib/cordial-site/contract";
+import { HomePage, type HomeData } from "@/components/cordial-site/HomePage";
+import { HOME_FEATURED_LIMIT, HOME_MORE_LIMIT, selectFeatured, selectMore } from "@/lib/cordial-site/home-selection";
+
+const MAX_PAGES = 4;
+
+async function loadHome(settings: SiteBootstrap["settings"] | undefined, signal: AbortSignal): Promise<HomeData> {
+  const mode = settings?.featuredMode ?? "recentes";
+  const editorialIds = mode === "editorial" ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT) : [];
+  const extraIds = [...editorialIds];
+  if (settings?.heroPropertyId && !extraIds.includes(settings.heroPropertyId)) extraIds.push(settings.heroPropertyId);
+  const [summaries, ...firstPages] = await Promise.all([
+    extraIds.length ? loadSummaries(extraIds, signal).catch(() => ({ items: [], missingIds: [] })) : { items: [] as PublicProperty[], missingIds: [] },
+    loadCatalog({ ordem: "recentes", pagina: 1 }, signal),
+    loadCatalog({ ordem: "recentes", pagina: 2 }, signal).catch(() => null),
+  ]);
+  const pages: PublicProperty[][] = firstPages.filter(Boolean).map((c) => c!.items);
+  const recent = () => pages.flat();
+  let featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent() });
+  let more = selectMore(pages, featured.map((p) => p.id));
+  const total = firstPages[0]!.total;
+  // Percorre páginas extras com limite explícito até completar 5 + 15 elegíveis.
+  for (let page = pages.length + 1; page <= MAX_PAGES && (featured.length < HOME_FEATURED_LIMIT || more.length < HOME_MORE_LIMIT) && recent().length < total; page++) {
+    const next = await loadCatalog({ ordem: "recentes", pagina: page }, signal).catch(() => null);
+    if (!next?.items.length) break;
+    pages.push(next.items);
+    featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent() });
+    more = selectMore(pages, featured.map((p) => p.id));
+  }
+  const heroChoice = summaries.items.find((p) => p.id === settings?.heroPropertyId && p.cover);
+  return { featured, more, hero: heroChoice ?? featured[0] ?? null, total };
+}
+
 export const Route = createFileRoute("/site/")({
   loader: async ({ abortController, parentMatchPromise }) => {
     const parent = await parentMatchPromise;
     const settings = (parent?.loaderData as SiteBootstrap | undefined)?.settings;
-    // Destaques = sempre os 5 imóveis publicados mais recentemente no site.
-    const featured: Promise<SiteCatalog | null> = loadCatalog(
-      { ordem: "recentes" },
-      abortController.signal,
-    )
-      .then((catalog) => {
-        const items = catalog.items.slice(0, 5).map((p) => ({ ...p, featured: true }));
-        return { ...catalog, items, total: items.length, page: 1, pageSize: 5 };
-      })
-      .catch(() => null);
-    return {
-      featured,
-      choices: featured.then(async (selected) => {
-        const picks = selected?.items ?? [];
-        if (settings?.heroPropertyId && !picks.some((p) => p.id === settings.heroPropertyId)) {
-          const chosen = await loadSummaries(
-            [settings.heroPropertyId],
-            abortController.signal,
-          ).catch(() => ({ items: [] }));
-          if (chosen.items[0]?.cover) return [...chosen.items, ...picks];
-        }
-        if (picks.some((p) => p.cover)) return picks;
-        const latest = await loadCatalog({}, abortController.signal).catch(() => null);
-        return [...picks, ...(latest?.items ?? [])];
-      }),
-    };
+    return { home: loadHome(settings, abortController.signal).catch(() => null) };
   },
   component: function SiteRoute() {
     return <HomePage {...Route.useLoaderData()} />;

@@ -207,6 +207,7 @@ export const settingsSchema = z.object({
   instagram: z.union([z.string().url().startsWith("https://"), z.literal("")]).default(""),
   facebook: z.union([z.string().url().startsWith("https://"), z.literal("")]).default(""),
   heroPropertyId: z.string().uuid().nullable().default(null),
+  featuredMode: z.enum(["recentes", "editorial"]).default("recentes"),
   featuredPropertyIds: z
     .array(z.string().uuid())
     .max(9)

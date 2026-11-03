@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown, ListChecks } from "lucide-react";
+import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown, ListChecks, Home, KeyRound, MapPin, HousePlus, Building2, MessageCircle } from "lucide-react";
 import type { SiteBootstrap } from "@/lib/cordial-site/contract";
 import { searchSchema } from "@/lib/cordial-site/contract";
 import { sitePath } from "@/lib/cordial-site/presentation";
@@ -214,17 +214,17 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 aria-label={`${config.name}, início`}
               >
                 <img
-                  src={config.logo}
+                  src={brand === "cordial" ? "/cordial-site/logo-petroleo.png" : config.logo}
                   width={config.logoWidth}
                   height={config.logoHeight}
                   alt={config.name}
                 />
               </SiteLink>
               <nav className="cs-desktop-nav" aria-label="Navegação principal">
-                <SiteLink to={pathFor("/buscar?finalidade=venda")}>Comprar</SiteLink>
-                <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>Alugar</SiteLink>
-                {brand === "cordial" && <SiteLink to={pathFor("/bairros")}>Bairros</SiteLink>}
-                <SiteLink to={pathFor("/anuncie")}>Anunciar meu imóvel</SiteLink>
+                <SiteLink to={pathFor("/buscar?finalidade=venda")}>{brand === "cordial" && <Home size={16} strokeWidth={1.8} aria-hidden />}Comprar</SiteLink>
+                <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>{brand === "cordial" && <KeyRound size={16} strokeWidth={1.8} aria-hidden />}Alugar</SiteLink>
+                {brand === "cordial" && <SiteLink to={pathFor("/bairros")}><MapPin size={16} strokeWidth={1.8} aria-hidden />Bairros</SiteLink>}
+                <SiteLink to={pathFor("/anuncie")}>{brand === "cordial" && <HousePlus size={16} strokeWidth={1.8} aria-hidden />}Anunciar meu imóvel</SiteLink>
                 <details
                   className="cs-menu"
                   onKeyDown={(e) => {
@@ -235,7 +235,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                   }}
                 >
                   <summary>
-                    A {config.shortName} <ChevronDown size={14} />
+                    {brand === "cordial" && <Building2 size={16} strokeWidth={1.8} aria-hidden />}A {config.shortName} <ChevronDown size={14} />
                   </summary>
                   <div>
                     {destinations.map(([label, to]) => (
@@ -252,7 +252,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                     ))}
                   </div>
                 </details>
-                <SiteLink to={pathFor("/contato")}>Contato</SiteLink>
+                <SiteLink to={pathFor("/contato")}>{brand === "cordial" && <MessageCircle size={16} strokeWidth={1.8} aria-hidden />}Contato</SiteLink>
               </nav>
               <div className="cs-header-actions">
                 {brand === "cordial" && (

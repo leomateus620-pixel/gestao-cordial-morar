@@ -714,17 +714,36 @@ function SettingsForm({
       ))}
       <fieldset className="space-y-3 md:col-span-2">
         <legend className="text-sm font-semibold">Destaques editoriais da home</legend>
+        <label className="grid gap-1 text-sm">
+          Como escolher os cinco destaques
+          <select
+            className={input}
+            value={values.featuredMode}
+            onChange={(e) =>
+              setValues((v) => ({ ...v, featuredMode: e.target.value as "recentes" | "editorial" }))
+            }
+          >
+            <option value="recentes">Mais recentes com foto (padrão)</option>
+            <option value="editorial">Escolha manual, até cinco em ordem</option>
+          </select>
+        </label>
         <p className="text-xs text-muted-foreground">
-          Escolha até nove imóveis públicos e ordene a apresentação. A lista vazia mantém os
-          destaques já marcados no cadastro. Itens retirados não aparecem no site e não são
-          substituídos automaticamente.
+          A home mostra cinco destaques, sempre com foto de capa. Na escolha manual, imóveis
+          retirados ou sem foto são trocados pelos mais recentes com foto.
         </p>
+        {values.featuredPropertyIds.length > 5 && (
+          <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs">
+            Há {values.featuredPropertyIds.length} imóveis escolhidos. Só os cinco primeiros aparecem
+            na home; os itens {6}–{values.featuredPropertyIds.length} ficam de fora. Remova os
+            excedentes para salvar uma lista de cinco.
+          </p>
+        )}
         <label className="grid gap-1 text-sm">
           Adicionar imóvel publicado
           <select
             className={input}
             value=""
-            disabled={values.featuredPropertyIds.length >= 9}
+            disabled={values.featuredPropertyIds.length >= 5}
             onChange={(e) => {
               if (e.target.value)
                 setValues((v) => ({
