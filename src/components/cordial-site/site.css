@@ -4396,7 +4396,6 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 }
 
 /* ===== Liquid glass na abertura (busca + Imóvel da semana) ===== */
-.cs-hx-hero:not(.is-neutral) { background: #0c2a33; }
 .cs-hx-hero-media { background: linear-gradient(130deg, #0c2a33, #16424d); }
 .cs-hx-hero:not(.is-neutral) .cs-hx-search .cs-search-form,
 .cs-hx-hero:not(.is-neutral) .cs-hx-hero-card {
