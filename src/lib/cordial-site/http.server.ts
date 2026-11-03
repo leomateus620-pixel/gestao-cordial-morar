@@ -21,6 +21,7 @@ const json = (body: unknown, status = 200) => Response.json(body, { status, head
 class PayloadTooLarge extends Error {}
 /** Per-instance bytes of versioned derivatives; authorization is still checked per request. */
 const memoryCache = new Map<string, Uint8Array>();
+export const clearMediaMemoryCache = () => memoryCache.clear();
 async function readBoundedBody(request: Request) {
   const reader = request.body?.getReader();
   if (!reader) return "";

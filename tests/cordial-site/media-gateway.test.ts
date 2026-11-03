@@ -54,6 +54,7 @@ test("warm persisted image is reauthorized before and after read; withdrawal rel
     assert.equal(conditional.status, 304);
     assert.equal(storageReads, 1);
     assert.equal(authorizations, 3);
+    clearMediaMemoryCache();
     withdrawWhileReading = true;
     const withdrawnDuring = await mediaResponse(id, version, "card");
     assert.equal(withdrawnDuring.status, 404);
