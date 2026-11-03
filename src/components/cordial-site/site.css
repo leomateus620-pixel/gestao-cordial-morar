@@ -2704,9 +2704,9 @@ body:has(.cordial-site) {
   flex-basis: 160px;
 }
 .cordial-site:not(.morar-site) .cs-brand img {
-  width: 160px;
+  width: 230px;
   height: auto;
-  aspect-ratio: 691 / 231;
+  aspect-ratio: 936 / 160;
   object-fit: contain;
 }
 .cordial-site:not(.morar-site) .cs-desktop-nav {
@@ -3455,8 +3455,8 @@ body:has(.cordial-site) {
   }
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img {
-    width: 140px;
-    flex-basis: 140px;
+    width: 200px;
+    flex-basis: 200px;
   }
   .cordial-site:not(.morar-site) .cs-container {
     width: calc(100% - 36px);
@@ -3652,8 +3652,8 @@ body:has(.cordial-site) {
   }
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img {
-    width: 128px;
-    flex-basis: 128px;
+    width: 180px;
+    flex-basis: 180px;
   }
   .cs-search-essential :is(input, select),
   .cs-budget-trigger strong {
@@ -3876,7 +3876,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   flex: 0 0 150px;
 }
 .cordial-site:not(.morar-site) .cs-brand img {
-  width: 150px;
+  width: 230px;
 }
 .cordial-site:not(.morar-site) .cs-desktop-nav {
   gap: 4px;
@@ -3929,8 +3929,8 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   }
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img {
-    flex-basis: 124px;
-    width: 124px;
+    flex-basis: 176px;
+    width: 176px;
   }
 }
 
