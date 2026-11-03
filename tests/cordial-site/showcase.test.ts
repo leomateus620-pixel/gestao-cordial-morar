@@ -57,3 +57,11 @@ test("pedido de nova edição é bloqueado durante a geração", () => {
   assert.equal(canRegenerate("gerando"), false);
   assert.equal(canRegenerate("aguardando_revisao"), true);
 });
+
+import { chooseBest } from "../../src/lib/cordial-site/showcase";
+test("escolhe a foto com maior nota estética, sem repetir imóvel recente", () => {
+  const s = (id: string, score: number) => ({ ...c(id, 1600, 1000, "2026-11-01"), score });
+  assert.equal(chooseBest([s("a", 6), s("b", 9), s("d", 8)], [])?.propertyId, "b");
+  assert.equal(chooseBest([s("a", 6), s("b", 9), s("d", 8)], ["b"])?.propertyId, "d");
+  assert.equal(chooseBest([s("b", 9)], ["b"]), null);
+});
