@@ -158,6 +158,7 @@ export function RealcePage({ testId }: { testId: string | null }) {
   };
 
   const runPreset = async (ids: string[]) => {
+    ids.forEach((id) => presetRunning.current.add(id));
     const { data } = await supabase.from("realce_items").select(itemCols).in("id", ids);
     for (const it of (data ?? []) as Item[]) {
       const t0 = performance.now();
@@ -172,13 +173,29 @@ export function RealcePage({ testId }: { testId: string | null }) {
         const path = `${it.user_id}/${it.test_id}/result/${it.id}-preset-${Date.now()}.jpg`;
         const up = await supabase.storage.from("realce").upload(path, out.blob, { contentType: "image/jpeg" });
         if (up.error) throw new Error();
-        await supabase.rpc("realce_save_preset", { p_item: it.id, p_path: path, p_width: out.width, p_height: out.height, p_duration_ms: Math.round(performance.now() - t0) });
+        const saved = await supabase.rpc("realce_save_preset", { p_item: it.id, p_path: path, p_width: out.width, p_height: out.height, p_duration_ms: Math.round(performance.now() - t0) });
+        if (saved.error) throw new Error();
       } catch {
         await supabase.rpc("realce_fail_preset", { p_item: it.id, p_message: "Não foi possível aplicar o preset." });
+      } finally {
+        presetRunning.current.delete(it.id);
       }
       qc.invalidateQueries({ queryKey: ["realce", "items", it.test_id] });
     }
+    ids.forEach((id) => presetRunning.current.delete(id));
   };
+
+  // Preset roda só nesta aba: itens "processando" de preset que esta aba não está tratando
+  // (aba fechada no meio do lote) viram falha e ganham o botão de tentar de novo.
+  useEffect(() => {
+    const orphans = serverItems.filter(
+      (i) => i.technique === "preset" && i.status === "processando" && !presetRunning.current.has(i.id) && !orphanHandled.current.has(i.id),
+    );
+    if (!orphans.length) return;
+    orphans.forEach((i) => orphanHandled.current.add(i.id));
+    void Promise.all(orphans.map((i) => supabase.rpc("realce_fail_preset", { p_item: i.id, p_message: "Processamento interrompido. Tente de novo." })))
+      .then(() => qc.invalidateQueries({ queryKey: ["realce", "items", testId] }));
+  }, [serverItems, qc, testId]);
 
   const enqueue = async (tid: string, ids: string[], tech: RealceTechnique) => {
     const { data, error } = await supabase.rpc("realce_enqueue", { p_item_ids: ids, p_technique: tech });
