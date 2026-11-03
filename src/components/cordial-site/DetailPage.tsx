@@ -21,6 +21,7 @@ import {
   priceLabel,
   propertyPath,
   sitePath,
+  mediaPath,
 } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
