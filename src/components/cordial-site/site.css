@@ -3964,7 +3964,6 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   background: linear-gradient(90deg, #0c2a33d9 0%, #0c2a3399 34%, #0c2a3300 62%);
 }
 .cs-hx-hero-grid {
-  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 560px) minmax(0, 330px);
   justify-content: space-between;
@@ -4000,9 +3999,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   color: var(--cs-muted);
 }
 .cs-hx-search {
-  background: #fff;
   border-radius: 16px;
-  padding: 6px 18px 4px;
   box-shadow: 0 18px 50px #0b232b33;
 }
 .cs-hx-hero-card {
@@ -4042,7 +4039,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 /* Bloco de destaques + bairros */
 .cs-hx-featured,
 .cs-hx-more {
-  padding-block: 28px 8px;
+  padding-block: 22px 8px;
 }
 .cs-hx-heading {
   display: flex;
@@ -4066,7 +4063,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   grid-template-columns: 1.35fr 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 14px;
-  height: clamp(440px, calc(100svh - 76px - 96px), 600px);
+  height: clamp(420px, calc(100svh - 76px - 104px), 580px);
   min-width: 0;
 }
 .cs-hx-mosaic > .cs-hx-card-lg {
@@ -4192,10 +4189,12 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 .cs-hx-districts {
   background: var(--cs-soft);
   border-radius: 14px;
-  padding: 18px;
+  padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  height: 100%;
+  max-height: clamp(420px, calc(100svh - 76px - 104px), 580px);
   min-width: 0;
 }
 .cs-hx-districts h2 {
@@ -4215,7 +4214,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 }
 .cs-hx-field select,
 .cs-hx-input {
-  height: 40px;
+  height: 38px;
   border: 1px solid var(--cs-line);
   border-radius: 10px;
   background: #fff;
@@ -4253,8 +4252,8 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 44px;
-  padding: 6px 10px;
+  min-height: 42px;
+  padding: 4px 10px;
   border-radius: 10px;
   transition: background 180ms;
 }
@@ -4310,6 +4309,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 }
 @media (max-width: 1100px) {
   .cs-hx-featured-layout { grid-template-columns: 1fr; }
+  .cs-hx-districts { max-height: none; }
   .cs-hx-mosaic { height: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
   .cs-hx-mosaic > .cs-hx-card-lg { grid-row: auto; grid-column: span 2; }
   .cs-hx-mosaic .cs-hx-card-media { flex: none; aspect-ratio: 4 / 3; }

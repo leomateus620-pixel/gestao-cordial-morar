@@ -161,7 +161,6 @@ function DistrictsPanel() {
   return (
     <aside className="cs-hx-districts" aria-labelledby="cs-hx-districts-title">
       <h2 id="cs-hx-districts-title">Bairros</h2>
-      <p className="cs-hx-note">Imóveis publicados agora</p>
       {cities.length > 1 && (
         <label className="cs-hx-field">
           <span>Cidade</span>
@@ -186,9 +185,9 @@ function DistrictsPanel() {
             <SiteLink to={sitePath(`/buscar?${new URLSearchParams({ cidade: d.city, bairro: d.value })}`)}>
               <span>
                 <b>{d.value}</b>
-                {cities.length > 1 && <small>{d.city}</small>}
+                {!city && cities.length > 1 && <small>{d.city}</small>}
               </span>
-              <em>{d.count}</em>
+              <em aria-label={`${d.count} ${d.count === 1 ? "imóvel publicado" : "imóveis publicados"}`}>{d.count}</em>
             </SiteLink>
           </li>
         ))}
