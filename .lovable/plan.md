@@ -1,51 +1,31 @@
-# Descontos e ajustes no recibo de aluguel (Emitir recibo)
+# Recibo — Água e outros acréscimos com descritivo
 
-Escopo: somente Aluguéis → Emissões → Emitir recibo. NF, boleto, sync ImobiBrasil e cadastro de contrato não são tocados. Migração só aditiva. Nada publicado sem autorização.
+Escopo: somente Aluguéis → Emissões → Emitir recibo. Fórmulas, `computeReceiptTotals`, formato de `valores`, NFS-e, boleto, sync ImobiBrasil e previewAuthStorage não mudam. Nada publicado.
 
-## O que o usuário verá
-- Nova seção "Descontos e ajustes do inquilino": itens com Desconto/Acréscimo, descrição (até 60), valor, "Repassar ao proprietário" (ligado por padrão), "Repetir todo mês" (com "até competência" opcional) e remover. Recorrentes do contrato chegam pré-carregados com selo "Recorrente"; remover no mês não apaga o recorrente.
-- Nova seção "Descontos do proprietário": Desconto/Acréscimo, descrição, valor, comprovante opcional (PDF/JPG/PNG até 5 MB).
-- Resumos "Inquilino paga" / "Proprietário recebe" discriminam cada item com sinal, recalculados ao vivo.
-- Honorários continuam iguais (valor do contrato, editável).
-- Bloqueio com mensagem quando: descrição vazia, valor ≤ 0, mais de 10 itens por lado, recorrência com fim antes do início, ou total negativo ("Os descontos não podem deixar o total negativo.").
+## 1. Seção renomeada + atalhos
+- `ReceiptModal.tsx`: "Descontos e ajustes do inquilino" → **"Acréscimos e descontos do inquilino"**.
+- Novo `src/lib/rentals/receipt-presets.ts` com `RECEIPT_ADJUSTMENT_PRESETS` (inquilino: Água, Fundo de reserva, Multa/Juros por atraso, Outro acréscimo; proprietário: Reparo/Manutenção) e `adjustmentFromPreset(id)` com os defaults pedidos (tipo, descrição, repassar, repetir, campo a focar).
+- Chips acima de "+ Adicionar" em cada lado; criam item novo editável e focam valor (ou descrição em "Outro acréscimo"). Respeitam o limite de 10 itens.
 
-## Cálculo (centavos), em `receipt-model.ts`
-- `totalPagar` = aluguel + condomínio + IPTU + seguro + Σ(acréscimos − descontos do inquilino)
-- `totalReceber` = aluguel − honorários + condomínio + Σ(itens do inquilino repassados, com sinal) + Σ(acréscimos − descontos do proprietário)
-- Novos campos opcionais em `ReceiptInput`: `ajustesInquilino`, `ajustesProprietario` (ausentes = `[]`), então recibos sem ajustes saem idênticos.
-- `defaultReceiptInput` recebe opcionalmente os recorrentes ativos da competência (início ≤ competência ≤ fim).
-- Função pura `validateReceiptAdjustments` reutilizada no modal, no servidor e nos testes.
+## 2. Descrição até 120 caracteres
+- Constante `MAX_ADJUSTMENT_DESCRIPTION = 120` em `receipt-model.ts`, usada em `validateReceiptAdjustments` (linha hoje com 60).
+- `receipt-registration.ts`: só os campos `descricao` dos ajustes passam a 120 (o `text` max 60 segue para os demais campos).
+- `emissions.functions.ts` `upsertContractAdjustment`: max 120.
+- Campo com contador "n/120" e placeholder "Ex.: Água ref. set/2026 – leitura 125 m³".
+- Migração aditiva mínima: apenas DROP/ADD do CHECK de `rental_contract_adjustments.descricao` para 1–120.
+- `receipt-pdf.ts`: descrição de ajuste quebra em até 2 linhas (reticências se exceder), e a altura extra entra no cálculo de linhas disponíveis da via; agrupamento "Outros ajustes (n)" mantido; 3 vias em 1 página.
 
-## PDF (`receipt-pdf.ts`)
-- Via locatário: linhas atuais + itens do inquilino ("Desconto – Fundo de reserva  − R$ 15,00").
-- Via locador: linhas atuais + itens repassados + itens do proprietário.
-- Via imob: valores já ajustados + linha "Ajustes: inquilino … / proprietário …" quando houver.
-- Limite de linhas por via calculado pelo espaço; excedentes viram "Outros ajustes (n)" com a soma. Sem ajustes = desenho atual sem mudança. Logos, CNPJ e fontes não mudam.
+## 3. Encerrar recorrência
+- Item com selo "Recorrente" ganha botão "Encerrar recorrência" com confirmação ("O item deixa de aparecer nos próximos recibos. Continuar?").
+- Chama `deactivateContractAdjustment`, invalida `rental-contract-adjustments` e retira o item do recibo atual; em erro, mensagem e item mantido. "Remover só deste mês" continua igual.
 
-## Persistência
-- Migração aditiva `rental_contract_adjustments` (recorrentes): id, contract_id (FK cascade), tipo (desconto/acrescimo), descricao (1–60), valor numeric(12,2) > 0, repassar_proprietario default true, inicio_competencia, fim_competencia null, ativo default true, created_by, created_at, updated_at; gatilho de validação fim ≥ início e updated_at; GRANTs (authenticated, service_role); RLS espelhando o acesso atual de `rental_emissions` (conferido no banco antes de aplicar); política restritiva `meta_reviewer_block`.
-- `rental_emissions.valores` ganha os dois arrays + totais no jsonb (sem coluna nova).
-- Comprovantes no bucket `rental-documents` em `{contractId}/recibos/comprovantes/{competencia}-{ts}-{uuid}.{ext}`, usando o helper de envio já existente.
+## 4. Testes (`receipt-model.vitest.ts`)
+- Defaults de cada preset.
+- Água: aluguel 1.100,00, honorários 100,00, água 85,00 não repassada → inquilino 1.185,00 / proprietário 1.000,00.
+- Descrição 120 aceita / 121 rejeitada (cliente e `checkReceiptValores`).
+- PDF com 6 itens por lado de 120 caracteres → 1 página sem erro.
+- Recorrência desativada não aparece em `activeRecurringFor`/`defaultReceiptInput` da competência seguinte.
+- Suíte completa `bun run test` verde (168 atuais + novos).
 
-## Servidor (`emissions.functions.ts`)
-- `registerRentalReceipt`: schema zod estrito para os arrays; carrega o contrato, recalcula com `buildReceiptModel` e rejeita totais divergentes; valida prefixo/extensão de cada comprovante.
-- Novas: `listContractAdjustments`, `upsertContractAdjustment`, `deactivateContractAdjustment` (desativação, sem apagar), todas autenticadas.
-
-## Modal e orquestração
-- `ReceiptModal.tsx`: duas seções novas e resumos discriminados.
-- `RentalEmissions.tsx`: carrega recorrentes, envia comprovantes antes do PDF, salva novos recorrentes marcados, e o `inputKey` de idempotência inclui os ajustes.
-
-## Testes (`receipt-model.vitest.ts`, `bun run test:receipts`)
-- Sem ajustes: 1.787,80 / 178,78 → pagar 1.787,80, receber 1.609,02.
-- Fundo de reserva 15,00 repassado → 1.772,80 / 1.594,02; honorários 178,78.
-- Não repassado → 1.772,80 / 1.609,02.
-- + reparo 120,00 do proprietário → receber 1.474,02.
-- Multa 35,76 repassada → 1.823,56 / 1.644,78.
-- Precisão 0,10 + 0,20.
-- Erros: descrição vazia, valor ≤ 0, total negativo, >10 itens, fim < início.
-- `valores` legado sem arrays aceito.
-- PDF com 6 itens por lado gera sem erro e contém os textos.
-- Conferência do servidor (função pura extraída) rejeita totais divergentes e comprovante fora do prefixo.
-
-## Fora do escopo
-NFS-e (`src/lib/nfse/*`, `RentalNfseSection.tsx`), boleto, ImobiBrasil, layout geral do PDF. A diferença já conhecida de fonte do telefone/CNPJ (8–8,5pt vs. regra 9–10pt) não será mexida sem sua decisão.
+## Observação fora do escopo (só aviso)
+A regra salva de recibos pede fontes 9–10pt; o PDF hoje usa 8–8,5pt em telefone, site, CNPJ e rótulo da via. Não será alterado neste plano, salvo pedido.
