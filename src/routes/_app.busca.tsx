@@ -137,9 +137,13 @@ function BuscaPage() {
                   <SearchResultCard
                     key={`${item.categoria}-${item.id}`}
                     result={item}
-                    onSelect={(selected) =>
-                      setTarget({ categoria: selected.categoria, id: selected.id })
-                    }
+                    onSelect={(selected) => {
+                      if (selected.contratoId) {
+                        void navigate({ to: "/alugueis", search: { id: selected.contratoId } });
+                        return;
+                      }
+                      setTarget({ categoria: selected.categoria, id: selected.id });
+                    }}
                   />
                 ))}
               </div>
