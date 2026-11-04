@@ -1047,3 +1047,26 @@ body:has(.morar-site) {
   .morar-site .cs-hx-search .ms-filter-trigger > svg:first-child { width: 24px; height: 24px; padding: 5px; }
   .morar-site .cs-hx-search .ms-filter-trigger > span { font-size: 12.5px; }
 }
+
+/* Mobile "filtros" drawer (portal, outside the hero) */
+.ms-drawer.morar-site {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  max-height: 88dvh;
+  padding: 18px 18px 0;
+  border-radius: 22px 22px 0 0;
+  background: #fffaf5;
+  color: #2b2520;
+}
+.ms-drawer .ms-drawer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 16px; }
+.ms-drawer .ms-filter-fields { display: grid; gap: 12px; }
+.ms-drawer .cs-field { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+.ms-drawer .cs-field input, .ms-drawer .cs-field select {
+  min-height: 46px; border: 1px solid #e3cdb4; border-radius: 12px; padding: 0 12px; background: #fff; font-size: 16px; color: #2b2520;
+}
+.ms-drawer .ms-drawer-footer {
+  position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px;
+  margin: 0 -18px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #f0dfcc; background: #fffaf5;
+}
+.ms-drawer .ms-search-count { font-size: 13px; color: #6b5d4e; }
