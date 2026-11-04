@@ -1,32 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { loadBootstrap, loadCatalog, loadDetail } from "@/lib/cordial-site/morar-data";
-import { MorarHomePage } from "@/components/cordial-site/MorarHomePage";
+import type { SiteBootstrap } from "@/lib/cordial-site/contract";
+import { HomePage } from "@/components/cordial-site/HomePage";
+import { loadHome } from "@/lib/cordial-site/home-loader";
 
 export const Route = createFileRoute("/site-morar/")({
-  loader: async ({ abortController }) => {
-    const signal = abortController.signal;
-    const [bootstrap, featured, rentals] = await Promise.allSettled([
-      loadBootstrap(signal),
-      loadCatalog({ destaque: "sim" }, signal),
-      loadCatalog({ finalidade: "aluguel", tipo: "Casa" }, signal),
-    ]);
-    const selection = featured.status === "fulfilled" ? featured.value : null;
-    let hero = selection?.items.find((p) => p.cover) ?? null;
-    if (bootstrap.status === "fulfilled" && bootstrap.value.settings.heroPropertyId) {
-      try {
-        const chosen = await loadDetail(bootstrap.value.settings.heroPropertyId, signal);
-        if (chosen?.cover) hero = chosen;
-      } catch {
-        /* An unavailable editorial photo never blocks the public home. */
-      }
-    }
-    return {
-      featured: selection,
-      rentals: rentals.status === "fulfilled" ? rentals.value : null,
-      hero,
-    };
+  staleTime: 60_000,
+  loader: async ({ abortController, parentMatchPromise }) => {
+    const parent = await parentMatchPromise;
+    const settings = (parent?.loaderData as SiteBootstrap | undefined)?.settings;
+    // No stale fallback: a confirmed withdrawal must disappear from the Morar home.
+    return { home: loadHome(settings, abortController.signal, "morar").catch(() => null) };
   },
   component: function MorarHome() {
-    return <MorarHomePage {...Route.useLoaderData()} />;
+    return <HomePage {...Route.useLoaderData()} />;
   },
 });
