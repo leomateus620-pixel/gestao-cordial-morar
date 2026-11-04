@@ -1,0 +1,2 @@
+ALTER TABLE public.rental_contract_adjustments DROP CONSTRAINT IF EXISTS rental_contract_adjustments_descricao_check;
+ALTER TABLE public.rental_contract_adjustments ADD CONSTRAINT rental_contract_adjustments_descricao_check CHECK (char_length(btrim(descricao)) BETWEEN 1 AND 120);

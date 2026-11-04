@@ -159,7 +159,7 @@ const adjustmentInput = z.object({
   id: z.string().uuid().optional(),
   contractId: z.string().uuid(),
   tipo: z.enum(["desconto", "acrescimo"]),
-  descricao: z.string().trim().min(1).max(60),
+  descricao: z.string().trim().min(1).max(120),
   valor: z.number().finite().gt(0).max(99999999),
   repassarProprietario: z.boolean(),
   inicioCompetencia: competence,

@@ -60,6 +60,7 @@ export type RecurringAdjustment = {
   ativo: boolean;
 };
 export const MAX_ADJUSTMENTS_PER_SIDE = 10;
+export const MAX_ADJUSTMENT_DESCRIPTION = 120;
 export const NEGATIVE_TOTAL_MESSAGE = "Os descontos não podem deixar o total negativo.";
 const cents = (n: number) => Math.round(n * 100);
 const signed = (a: { tipo: AdjustmentKind; valor: number }) =>
@@ -84,7 +85,8 @@ export function validateReceiptAdjustments(input: ReceiptInput) {
   for (const a of [...tenant, ...owner]) {
     const d = a.descricao.trim();
     if (!d) throw new Error("Informe a descrição de cada desconto ou ajuste.");
-    if (d.length > 60) throw new Error("Descrição do ajuste com mais de 60 caracteres.");
+    if (d.length > MAX_ADJUSTMENT_DESCRIPTION)
+      throw new Error(`Descrição do ajuste com mais de ${MAX_ADJUSTMENT_DESCRIPTION} caracteres.`);
     if (a.tipo !== "desconto" && a.tipo !== "acrescimo") throw new Error("Tipo de ajuste inválido.");
     if (!Number.isFinite(a.valor) || a.valor <= 0 || a.valor > 99999999)
       throw new Error("O valor de cada ajuste deve ser maior que zero.");

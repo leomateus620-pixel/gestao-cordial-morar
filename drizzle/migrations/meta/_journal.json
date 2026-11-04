@@ -484,6 +484,13 @@
       "when": 1793824643472,
       "tag": "0068_rental_contract_adjustments",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793825510800,
+      "tag": "0069_rental_adjustment_description_120",
+      "breakpoints": true
     }
   ]
 }

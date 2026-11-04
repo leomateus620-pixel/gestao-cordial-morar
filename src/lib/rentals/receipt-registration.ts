@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { computeReceiptTotals, MAX_ADJUSTMENTS_PER_SIDE, validateReceiptAdjustments } from "./receipt-model";
+import { computeReceiptTotals, MAX_ADJUSTMENT_DESCRIPTION, MAX_ADJUSTMENTS_PER_SIDE, validateReceiptAdjustments } from "./receipt-model";
 
 const money = z.number().finite().min(0).max(99999999);
 const kind = z.enum(["desconto", "acrescimo"]);
-const text = z.string().max(60);
+const text = z.string().max(MAX_ADJUSTMENT_DESCRIPTION);
 export const COMPROVANTE_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"] as const;
 export const COMPROVANTE_MAX_BYTES = 5 * 1024 * 1024;
 
