@@ -134,7 +134,9 @@ export async function buildReceiptPdf(
     ];
     const extra = index === 0 ? tenantAdj : index === 1 ? ownerAdj : [];
     const maxRows = Math.floor((y - 12 - (top - 228)) / 11) + 1;
+    const adjLabels = new Set(extra.map(([l]) => l));
     const labelLines = (label: string) => {
+      if (!adjLabels.has(label)) return [label];
       const lines = wrapWith(label, 258, font);
       if (lines.length <= 2) return lines;
       let second = lines.slice(1).join(" ");
