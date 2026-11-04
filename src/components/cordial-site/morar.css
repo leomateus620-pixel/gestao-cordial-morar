@@ -1040,3 +1040,8 @@ body:has(.morar-site) {
   .morar-site .cs-hx-hero-copy h1 em { color: #aa4707; }
   .morar-site .cs-hx-search { max-width: none; box-shadow: none; padding: 0; background: none; border: 0; backdrop-filter: none; }
 }
+@media (max-width: 420px) {
+  .morar-site .cs-hx-search .ms-filter-trigger { padding: 8px; gap: 7px; }
+  .morar-site .cs-hx-search .ms-filter-trigger > svg:first-child { width: 24px; height: 24px; padding: 5px; }
+  .morar-site .cs-hx-search .ms-filter-trigger > span { font-size: 12.5px; }
+}
