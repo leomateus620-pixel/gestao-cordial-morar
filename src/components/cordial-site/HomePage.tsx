@@ -37,6 +37,11 @@ export type HomeData = {
   heroImage?: { url: string | null; focalX: number; focalY: number } | null;
 };
 
+const HOME_COPY = {
+  cordial: { lead: "Seu próximo lugar.", accent: "Do seu jeito.", sub: "Comprar ou alugar começa com o que importa para você.", about: "Conte com a Cordial.", aboutText: "Cada mudança começa com uma escolha. Nossa equipe acompanha você para comprar, alugar ou anunciar seu imóvel." },
+  morar: { lead: "O seu próximo lar.", accent: "Mais perto de você.", sub: "Comprar ou alugar, com uma equipe por perto.", about: "Conte com a Morar.", aboutText: "Conte para a nossa equipe o que você procura. Juntos, encontramos caminhos para comprar, alugar ou anunciar seu imóvel." },
+} as const;
+
 const opLabel = (p: PublicProperty) => (p.operation === "venda" ? "Venda" : "Aluguel");
 const place = (p: PublicProperty) => [p.district, p.city].filter(Boolean).join(" · ");
 const mainArea = (p: PublicProperty) =>
@@ -263,9 +268,9 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
               <div className="cs-container cs-hx-hero-grid">
                 <div className="cs-hx-hero-copy">
                   <h1>
-                    Seu próximo lugar. <em>Do seu jeito.</em>
+                    {copy.lead} <em>{copy.accent}</em>
                   </h1>
-                  <p>Comprar ou alugar começa com o que importa para você.</p>
+                  <p>{copy.sub}</p>
                   <div className="cs-hx-search">
                     <SearchForm compact initial={{ finalidade: "venda" }} />
                   </div>
@@ -336,12 +341,11 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
         <div className="cs-container cs-about-layout">
           <div>
             <p className="cs-eyebrow">Muito além de um endereço</p>
-            <h2>Conte com a Cordial.</h2>
+            <h2>{copy.about}</h2>
           </div>
           <div>
             <p>
-              {settings.about ||
-                "Cada mudança começa com uma escolha. Nossa equipe acompanha você para comprar, alugar ou anunciar seu imóvel."}
+              {settings.about || copy.aboutText}
             </p>
             <SiteLink to={sitePath("/sobre", brand)} className="cs-text-link">
               Conheça nossa história <ArrowUpRight size={19} />
@@ -390,7 +394,7 @@ function HomeSkeleton() {
       <div className="cs-container cs-hx-hero-grid">
         <div className="cs-hx-hero-copy">
           <h1>
-            Seu próximo lugar. <em>Do seu jeito.</em>
+            {copy.lead} <em>{copy.accent}</em>
           </h1>
           <div className="cs-hx-search">
             <SearchForm compact initial={{ finalidade: "venda" }} />
