@@ -1,5 +1,5 @@
 import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
-import { rentalStorageDeps } from "@/lib/rentals/upload-document.client";
+import { rentalStorageDeps } from "@/lib/rentals/upload-storage";
 import { useEffect, useRef, useState } from "react";
 import {
   Home,
