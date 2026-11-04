@@ -136,20 +136,7 @@ export function useRentals(options: UseRentalsOptions = {}) {
         if (filter === "atrasados" && c.paymentStatus !== "atrasado") return false;
       }
       // search
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        const hay = [
-          c.property.apelido,
-          c.property.bairro ?? "",
-          c.property.cidade ?? "",
-          c.property.logradouro,
-          c.tenant.nome,
-          c.status,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (search.trim() && !matchesRentalSearch(c as never, search)) return false;
       void today;
       return true;
     });
