@@ -1078,3 +1078,12 @@ body:has(.morar-site) {
 .ms-drawer h2 { margin: 0; font-size: 18px; font-weight: 700; padding-right: 48px; }
 .ms-drawer p { margin: 4px 0 0; font-size: 13px; color: #6b5d4e; }
 .ms-drawer-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(30,24,20,.45); }
+.ms-drawer, .ms-drawer * { box-sizing: border-box; }
+.ms-drawer { font-family: Manrope, "Sora", system-ui, sans-serif; }
+.ms-drawer input, .ms-drawer select, .ms-drawer button { font-family: inherit; width: auto; }
+.ms-drawer .cs-field input, .ms-drawer .cs-field select { width: 100%; }
+.ms-drawer > button:not(.cs-button) { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 999px; background: #f4e6d6; color: #2b2520; border: 0; cursor: pointer; }
+.ms-drawer > button:not(.cs-button) span, .ms-drawer .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ms-drawer .ms-drawer-footer .cs-text-link { background: none; border: 0; padding: 8px 4px; cursor: pointer; }
+.ms-drawer .ms-drawer-footer .cs-button { border: 0; cursor: pointer; }
+.ms-drawer .cs-field > span { font-size: 13px; font-weight: 600; color: #3b322b; }
