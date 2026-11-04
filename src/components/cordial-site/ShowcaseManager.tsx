@@ -62,8 +62,8 @@ export function ShowcaseManager({ brand = "cordial" }: { brand?: "cordial" | "mo
         </div>
       </div>
 
-      <WeekCard title="Esta semana" week={live} row={liveRow} live activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} nextChange={activateAt(next, sched)} />
-      <WeekCard title="Próxima semana" week={next} row={nextRow} activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} />
+      <WeekCard title="Esta semana" week={live} row={liveRow} live activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} brand={brand} nextChange={activateAt(next, sched)} />
+      <WeekCard title="Próxima semana" week={next} row={nextRow} activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} brand={brand} />
 
       <ScheduleForm sched={sched} busy={m.isPending} onSave={(s) => m.mutate({ action: "schedule", ...s })} />
 
@@ -93,7 +93,8 @@ export function ShowcaseManager({ brand = "cordial" }: { brand?: "cordial" | "mo
   );
 }
 
-function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange }: {
+function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange, brand }: {
+  brand: "cordial" | "morar";
   title: string;
   week: string;
   row?: Week;
