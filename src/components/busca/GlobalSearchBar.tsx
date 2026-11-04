@@ -156,6 +156,10 @@ export function GlobalSearchBar({ className, allowGlobalSearch }: Props) {
                   compact
                   onSelect={(item) => {
                     setOpen(false);
+                    if (item.contratoId) {
+                      navigate({ to: "/alugueis", search: { id: item.contratoId } });
+                      return;
+                    }
                     setTarget({ categoria: item.categoria, id: item.id });
                   }}
                 />

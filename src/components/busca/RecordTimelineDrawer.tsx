@@ -116,7 +116,8 @@ export function RecordTimelineDrawer({ target, onOpenChange }: Props) {
             </section>
 
             <Link
-              to={record.rota}
+              to={record.contratoId ? "/alugueis" : record.rota}
+              search={record.contratoId ? { id: record.contratoId } : undefined}
               onClick={() => onOpenChange(false)}
               className="inline-flex items-center justify-center rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:bg-primary/90"
             >

@@ -21,6 +21,8 @@ export type BuscaResultado = {
   status?: string;
   data?: string;
   rota: string;
+  /** Contrato de aluguel a abrir direto em /alugueis?id= */
+  contratoId?: string;
 };
 
 export type BuscaTimelineEvento = {
@@ -43,6 +45,8 @@ export type BuscaTimeline = {
   subtitulo: string;
   status?: string;
   rota: string;
+  /** Contrato de aluguel a abrir direto em /alugueis?id= */
+  contratoId?: string;
   campos: BuscaTimelineCampo[];
   eventos: BuscaTimelineEvento[];
 };

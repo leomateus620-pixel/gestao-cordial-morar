@@ -30,6 +30,45 @@ function joinParts(parts: Array<string | null | undefined>, sep = " · ") {
 
 const LIMIT_PER_CATEGORY = 8;
 
+/** Prefere contrato ativo; senão o mais recente. */
+export function pickContract(
+  contracts: Array<{ id: string; status?: string | null; created_at?: string | null }>,
+): string | undefined {
+  if (!contracts.length) return undefined;
+  const sorted = [...contracts].sort((a, b) =>
+    String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")),
+  );
+  return (sorted.find((c) => c.status === "ativo") ?? sorted[0]).id;
+}
+
+async function attachContracts(
+  supabase: Db,
+  items: BuscaResultado[],
+  column: "tenant_id" | "property_id",
+): Promise<BuscaResultado[]> {
+  if (!items.length) return items;
+  const ids = items.map((i) => i.id);
+  const byKey = new Map<string, Array<{ id: string; status: string | null; created_at: string }>>();
+  const add = (key: string, c: { id: string; status: string | null; created_at: string }) => {
+    const list = byKey.get(key) ?? [];
+    if (!list.some((x) => x.id === c.id)) list.push(c);
+    byKey.set(key, list);
+  };
+  const { data } = await supabase
+    .from("rental_contracts")
+    .select(`id, status, created_at, ${column}`)
+    .in(column, ids);
+  for (const c of (data ?? []) as any[]) add(c[column], c);
+  if (column === "tenant_id") {
+    const { data: links } = await supabase
+      .from("rental_contract_tenants")
+      .select("tenant_id, rental_contracts(id, status, created_at)")
+      .in("tenant_id", ids);
+    for (const l of (links ?? []) as any[]) if (l.rental_contracts) add(l.tenant_id, l.rental_contracts);
+  }
+  return items.map((i) => ({ ...i, contratoId: pickContract(byKey.get(i.id) ?? []) }));
+}
+
 export async function runGlobalSearch(
   supabase: Db,
   query: string,
@@ -277,7 +316,8 @@ export async function runGlobalSearch(
               rota: "/alugueis",
             }),
           );
-        }),
+        })
+        .then((items: BuscaResultado[]) => attachContracts(supabase, items, "property_id")),
     );
   }
 
@@ -302,7 +342,8 @@ export async function runGlobalSearch(
               rota: "/alugueis",
             }),
           );
-        }),
+        })
+        .then((items: BuscaResultado[]) => attachContracts(supabase, items, "tenant_id")),
     );
   }
 
@@ -311,7 +352,7 @@ export async function runGlobalSearch(
       supabase
         .from("rental_contracts")
         .select(
-          "id, valor_mensal, status, payment_status, data_inicio, data_fim, proximo_vencimento, updated_at, rental_properties(apelido, logradouro, bairro, cidade), rental_tenants(nome, telefone)",
+          "id, valor_mensal, status, payment_status, data_inicio, data_fim, proximo_vencimento, updated_at, rental_properties(apelido, logradouro, bairro, cidade, proprietario_nome), rental_tenants(nome, telefone)",
         )
         .order("updated_at", { ascending: false })
         .limit(250)
@@ -327,6 +368,7 @@ export async function runGlobalSearch(
                   row.rental_properties?.bairro,
                   row.rental_tenants?.nome,
                   row.rental_tenants?.telefone,
+                  row.rental_properties?.proprietario_nome,
                 ]),
               );
               return hay.includes(needle);
@@ -348,6 +390,7 @@ export async function runGlobalSearch(
                 status: row.status,
                 data: row.updated_at,
                 rota: "/alugueis",
+                contratoId: row.id,
               }),
             );
         }),
@@ -792,6 +835,7 @@ async function aluguelTimeline(supabase: Db, id: string): Promise<BuscaTimeline>
   return {
     categoria: "aluguel",
     id,
+    contratoId: id,
     titulo: row.rental_properties?.apelido ?? "Contrato de locação",
     subtitulo: joinParts([
       row.rental_tenants?.nome && `Inquilino: ${row.rental_tenants.nome}`,
@@ -923,6 +967,7 @@ async function imovelTimeline(supabase: Db, id: string): Promise<BuscaTimeline> 
     subtitulo: joinParts([row.logradouro, row.numero, row.bairro, row.cidade], ", "),
     status: row.status,
     rota: "/alugueis",
+    contratoId: pickContract(contracts ?? []),
     campos: [
       { label: "Tipo", valor: row.tipo ?? "—" },
       { label: "Proprietário", valor: row.proprietario_nome ?? "—" },
@@ -967,6 +1012,7 @@ async function inquilinoTimeline(supabase: Db, id: string): Promise<BuscaTimelin
     titulo: row.nome,
     subtitulo: joinParts([row.telefone, row.email]),
     rota: "/alugueis",
+    contratoId: pickContract(contracts ?? []),
     campos: [
       { label: "CPF/CNPJ", valor: row.cpf_cnpj ?? "—" },
       { label: "Profissão", valor: row.profissao ?? "—" },
