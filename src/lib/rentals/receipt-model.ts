@@ -25,8 +25,107 @@ export type ReceiptInput = {
   seguroFianca: number;
   observacao: string;
   vencimento: string;
+  ajustesInquilino?: TenantAdjustment[];
+  ajustesProprietario?: OwnerAdjustment[];
 };
+export type AdjustmentKind = "desconto" | "acrescimo";
+export type TenantAdjustment = {
+  id: string;
+  tipo: AdjustmentKind;
+  descricao: string;
+  valor: number;
+  repassarProprietario: boolean;
+  /** Recurring contract adjustment this line came from (or was saved as). */
+  recorrenteId?: string;
+  /** UI only: save as a new recurring adjustment. */
+  repetir?: boolean;
+  /** UI only: optional last competence (AAAA-MM) for a new recurring adjustment. */
+  fimCompetencia?: string;
+};
+export type OwnerAdjustment = {
+  id: string;
+  tipo: AdjustmentKind;
+  descricao: string;
+  valor: number;
+  comprovantePath?: string;
+};
+export type RecurringAdjustment = {
+  id: string;
+  tipo: AdjustmentKind;
+  descricao: string;
+  valor: number;
+  repassarProprietario: boolean;
+  inicioCompetencia: string;
+  fimCompetencia: string | null;
+  ativo: boolean;
+};
+export const MAX_ADJUSTMENTS_PER_SIDE = 10;
+export const NEGATIVE_TOTAL_MESSAGE = "Os descontos não podem deixar o total negativo.";
 const cents = (n: number) => Math.round(n * 100);
+const signed = (a: { tipo: AdjustmentKind; valor: number }) =>
+  a.tipo === "acrescimo" ? cents(a.valor) : -cents(a.valor);
+const COMPETENCE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** Recurring adjustments that apply to a competence (start ≤ competence ≤ end). */
+export function activeRecurringFor(list: RecurringAdjustment[], competencia: string) {
+  return list.filter(
+    (r) =>
+      r.ativo &&
+      r.inicioCompetencia <= competencia &&
+      (!r.fimCompetencia || r.fimCompetencia >= competencia),
+  );
+}
+
+export function validateReceiptAdjustments(input: ReceiptInput) {
+  const tenant = input.ajustesInquilino ?? [];
+  const owner = input.ajustesProprietario ?? [];
+  if (tenant.length > MAX_ADJUSTMENTS_PER_SIDE || owner.length > MAX_ADJUSTMENTS_PER_SIDE)
+    throw new Error(`Use no máximo ${MAX_ADJUSTMENTS_PER_SIDE} ajustes por lado.`);
+  for (const a of [...tenant, ...owner]) {
+    const d = a.descricao.trim();
+    if (!d) throw new Error("Informe a descrição de cada desconto ou ajuste.");
+    if (d.length > 60) throw new Error("Descrição do ajuste com mais de 60 caracteres.");
+    if (a.tipo !== "desconto" && a.tipo !== "acrescimo") throw new Error("Tipo de ajuste inválido.");
+    if (!Number.isFinite(a.valor) || a.valor <= 0 || a.valor > 99999999)
+      throw new Error("O valor de cada ajuste deve ser maior que zero.");
+  }
+  for (const a of tenant)
+    if (a.repetir && a.fimCompetencia) {
+      if (!COMPETENCE.test(a.fimCompetencia)) throw new Error("Competência final inválida.");
+      if (a.fimCompetencia < input.competencia)
+        throw new Error("A repetição não pode terminar antes desta competência.");
+    }
+}
+
+/** Pure totals in cents → reais. Missing adjustment arrays (legacy receipts) count as empty. */
+export function computeReceiptTotals(input: ReceiptInput) {
+  const tenant = input.ajustesInquilino ?? [];
+  const owner = input.ajustesProprietario ?? [];
+  const ajusteInquilino = tenant.reduce((s, a) => s + signed(a), 0);
+  const ajusteRepassado = tenant
+    .filter((a) => a.repassarProprietario)
+    .reduce((s, a) => s + signed(a), 0);
+  const ajusteProprietario = owner.reduce((s, a) => s + signed(a), 0);
+  const pagar =
+    cents(input.aluguel) +
+    cents(input.condominio) +
+    cents(input.iptu) +
+    cents(input.seguroFianca) +
+    ajusteInquilino;
+  const receber =
+    cents(input.aluguel) -
+    cents(input.honorarios) +
+    cents(input.condominio) +
+    ajusteRepassado +
+    ajusteProprietario;
+  return {
+    totalPagar: pagar / 100,
+    totalReceber: receber / 100,
+    ajusteInquilino: ajusteInquilino / 100,
+    ajusteRepassado: ajusteRepassado / 100,
+    ajusteProprietario: ajusteProprietario / 100,
+  };
+}
 export function currentRentalCompetence(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
@@ -38,6 +137,7 @@ export function currentRentalCompetence(now = new Date()) {
 export function defaultReceiptInput(
   contract: RentalContractFull,
   competencia: string,
+  recurring: RecurringAdjustment[] = [],
 ): ReceiptInput {
   const [year, month] = competencia.split("-").map(Number);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -52,6 +152,15 @@ export function defaultReceiptInput(
     seguroFianca: contract.seguroValorMensal ?? 0,
     observacao: "",
     vencimento: `${competencia}-${String(Math.min(contract.diaVencimento, lastDay)).padStart(2, "0")}`,
+    ajustesInquilino: activeRecurringFor(recurring, competencia).map((r) => ({
+      id: `rec-${r.id}`,
+      tipo: r.tipo,
+      descricao: r.descricao,
+      valor: r.valor,
+      repassarProprietario: r.repassarProprietario,
+      recorrenteId: r.id,
+    })),
+    ajustesProprietario: [],
   };
 }
 export function buildReceiptModel(contract: RentalContractFull, input: ReceiptInput) {
@@ -74,6 +183,9 @@ export function buildReceiptModel(contract: RentalContractFull, input: ReceiptIn
   }
   if (input.observacao.length > 160 || input.iptuParcela.length > 20)
     throw new Error("Texto do recibo muito longo.");
+  validateReceiptAdjustments(input);
+  const totals = computeReceiptTotals(input);
+  if (totals.totalPagar < 0 || totals.totalReceber < 0) throw new Error(NEGATIVE_TOTAL_MESSAGE);
   const company = RECEIPT_COMPANIES[input.brand];
   const month = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" })
     .format(new Date(`${input.competencia}-01T12:00:00Z`))
@@ -96,13 +208,9 @@ export function buildReceiptModel(contract: RentalContractFull, input: ReceiptIn
     ]
       .filter(Boolean)
       .join(", "),
-    totalPagar:
-      (cents(input.aluguel) +
-        cents(input.iptu) +
-        cents(input.seguroFianca) +
-        cents(input.condominio)) /
-      100,
-    totalReceber: (cents(input.aluguel) - cents(input.honorarios) + cents(input.condominio)) / 100,
+    ajustesInquilino: input.ajustesInquilino ?? [],
+    ajustesProprietario: input.ajustesProprietario ?? [],
+    ...totals,
     fileName: `Recibo - ${input.brand === "morar" ? "Morar" : "Cordial"} - ${input.competencia.slice(5)}-${input.competencia.slice(0, 4)}.pdf`,
   };
 }
