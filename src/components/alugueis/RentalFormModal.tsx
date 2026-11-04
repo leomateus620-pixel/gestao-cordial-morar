@@ -1,3 +1,5 @@
+import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
+import { rentalStorageDeps } from "@/lib/rentals/upload-document.client";
 import { useEffect, useRef, useState } from "react";
 import {
   Home,
@@ -1348,7 +1350,7 @@ export function RentalFormModal({
                                 {p.file.name}
                               </span>
                               <span className="shrink-0 text-foreground/55">
-                                {(p.file.size / 1024 / 1024).toFixed(2)} MB
+                                {p.failed ? "Não enviado" : `${(p.file.size / 1024 / 1024).toFixed(2)} MB`}
                               </span>
                               <button
                                 type="button"
@@ -1401,7 +1403,9 @@ export function RentalFormModal({
                 ? "Salvando…"
                 : uploadingDocs
                   ? "Enviando anexos…"
-                  : isEdit
+                  : pendingDocs.some((d) => d.failed)
+                    ? "Tentar novamente"
+                    : isEdit
                     ? "Salvar alterações"
                     : "Cadastrar aluguel"}
             </button>
