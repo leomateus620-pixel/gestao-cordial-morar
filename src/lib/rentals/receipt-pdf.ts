@@ -3,7 +3,7 @@ import type { ReceiptModel } from "./receipt-model";
 
 const brlAbs = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-const brl = (value: number) => (value < 0 ? `− ${brlAbs(-value)}` : brlAbs(value));
+const brl = (value: number) => (value < 0 ? `- ${brlAbs(-value)}` : brlAbs(value));
 type Adj = { tipo: "desconto" | "acrescimo"; descricao: string; valor: number };
 const adjRow = (a: Adj): [string, number] => [
   `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao}`,
