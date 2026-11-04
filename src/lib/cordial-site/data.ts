@@ -80,5 +80,5 @@ export const loadTours = (id: string, signal?: AbortSignal, brand: SiteBrand = "
   read("tours", id, signal, brand) as Promise<PublicTour[]>;
 
 export type PublicShowcase = { publicId: string; imageUrl: string | null; focalX: number; focalY: number };
-export const loadShowcase = (signal?: AbortSignal) =>
-  read("showcase", null, signal, "cordial") as Promise<PublicShowcase | null>;
+export const loadShowcase = (signal?: AbortSignal, brand: SiteBrand = "cordial") =>
+  read("showcase", null, signal, brand) as Promise<PublicShowcase | null>;

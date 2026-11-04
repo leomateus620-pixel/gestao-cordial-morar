@@ -15,8 +15,8 @@ export async function loadHome(
   const mode = settings?.featuredMode ?? "recentes";
   const editorialIds = mode === "editorial" ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT) : [];
   const extraIds = [...editorialIds];
-  // Weekly showcase backend exists only for Cordial; Morar never reads Cordial campaigns.
-  const showcase = brand === "cordial" ? await loadShowcase(signal).catch(() => null) : null;
+  // Each brand reads only its own weekly showcase (separate tables, bucket and endpoint).
+  const showcase = await loadShowcase(signal, brand).catch(() => null);
   if (showcase && !extraIds.includes(showcase.publicId)) extraIds.push(showcase.publicId);
   if (settings?.heroPropertyId && !extraIds.includes(settings.heroPropertyId)) extraIds.push(settings.heroPropertyId);
   const [summaries, ...firstPages] = await Promise.all([

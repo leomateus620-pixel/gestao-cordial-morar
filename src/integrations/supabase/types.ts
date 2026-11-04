@@ -5801,6 +5801,200 @@ export type Database = {
         }
         Relationships: []
       }
+      morar_site_showcase_attempts: {
+        Row: {
+          attempt_no: number
+          finished_at: string | null
+          id: string
+          message: string | null
+          outcome: string | null
+          requested_by: string | null
+          started_at: string
+          week_id: string
+        }
+        Insert: {
+          attempt_no: number
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          outcome?: string | null
+          requested_by?: string | null
+          started_at?: string
+          week_id: string
+        }
+        Update: {
+          attempt_no?: number
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          outcome?: string | null
+          requested_by?: string | null
+          started_at?: string
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morar_site_showcase_attempts_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_showcase_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      morar_site_showcase_lock: {
+        Row: {
+          id: boolean
+          lease: string | null
+          lease_until: string | null
+        }
+        Insert: {
+          id?: boolean
+          lease?: string | null
+          lease_until?: string | null
+        }
+        Update: {
+          id?: boolean
+          lease?: string | null
+          lease_until?: string | null
+        }
+        Relationships: []
+      }
+      morar_site_showcase_settings: {
+        Row: {
+          activate_hour: number
+          id: boolean
+          last_run_at: string | null
+          last_run_summary: string | null
+          paused: boolean
+          prepare_dow: number
+          prepare_hour: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activate_hour?: number
+          id?: boolean
+          last_run_at?: string | null
+          last_run_summary?: string | null
+          paused?: boolean
+          prepare_dow?: number
+          prepare_hour?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activate_hour?: number
+          id?: boolean
+          last_run_at?: string | null
+          last_run_summary?: string | null
+          paused?: boolean
+          prepare_dow?: number
+          prepare_hour?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      morar_site_showcase_weeks: {
+        Row: {
+          active_from: string | null
+          active_until: string | null
+          approved_at: string | null
+          approved_by: string | null
+          attempts: number
+          checksum: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          focal_x: number
+          focal_y: number
+          height: number | null
+          id: string
+          lease: string | null
+          lease_until: string | null
+          media_id: string
+          media_version: string
+          model: string | null
+          prompt_version: string | null
+          property_id: string
+          public_id: string
+          score: number | null
+          score_reason: string | null
+          source: string
+          state: string
+          storage_path: string | null
+          updated_at: string
+          use_original: boolean
+          week_start: string
+          width: number | null
+        }
+        Insert: {
+          active_from?: string | null
+          active_until?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          attempts?: number
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          focal_x?: number
+          focal_y?: number
+          height?: number | null
+          id?: string
+          lease?: string | null
+          lease_until?: string | null
+          media_id: string
+          media_version: string
+          model?: string | null
+          prompt_version?: string | null
+          property_id: string
+          public_id: string
+          score?: number | null
+          score_reason?: string | null
+          source?: string
+          state?: string
+          storage_path?: string | null
+          updated_at?: string
+          use_original?: boolean
+          week_start: string
+          width?: number | null
+        }
+        Update: {
+          active_from?: string | null
+          active_until?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          attempts?: number
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          focal_x?: number
+          focal_y?: number
+          height?: number | null
+          id?: string
+          lease?: string | null
+          lease_until?: string | null
+          media_id?: string
+          media_version?: string
+          model?: string | null
+          prompt_version?: string | null
+          property_id?: string
+          public_id?: string
+          score?: number | null
+          score_reason?: string | null
+          source?: string
+          state?: string
+          storage_path?: string | null
+          updated_at?: string
+          use_original?: boolean
+          week_start?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       nfse_provider_settings: {
         Row: {
           aliquota_iss: number
@@ -12191,6 +12385,10 @@ export type Database = {
         Returns: boolean
       }
       cordial_site_search: { Args: { f?: Json }; Returns: Json }
+      cordial_site_showcase_activate: {
+        Args: { _original: boolean; _week: string }
+        Returns: boolean
+      }
       cordial_site_showcase_active: {
         Args: never
         Returns: {
@@ -13173,6 +13371,35 @@ export type Database = {
         Returns: boolean
       }
       morar_site_search: { Args: { f?: Json }; Returns: Json }
+      morar_site_showcase_activate: {
+        Args: { _original: boolean; _week: string }
+        Returns: boolean
+      }
+      morar_site_showcase_active: {
+        Args: never
+        Returns: {
+          checksum: string
+          edited: boolean
+          focal_x: number
+          focal_y: number
+          height: number
+          media_id: string
+          media_version: string
+          public_id: string
+          storage_path: string
+          week_id: string
+          width: number
+        }[]
+      }
+      morar_site_showcase_dispatch: { Args: never; Returns: number }
+      morar_site_showcase_release_lock: {
+        Args: { _lease: string }
+        Returns: undefined
+      }
+      morar_site_showcase_take_lock: {
+        Args: { _lease: string; _seconds: number }
+        Returns: boolean
+      }
       morar_site_snapshot_hash: {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string

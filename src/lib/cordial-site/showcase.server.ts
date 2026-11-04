@@ -21,8 +21,9 @@ import {
   type ShowcaseState,
   type WeekRow,
 } from "./showcase";
+import { showcaseAdapter } from "@/lib/site-showcase/brand-adapter";
+import type { SiteBrand } from "./brand";
 
-const BUCKET = "cordial-showcase";
 const GATEWAY = "https://ai.gateway.lovable.dev";
 // Tabelas novas ainda não usadas em tipos gerados por todo o projeto: cliente sem tipos estritos.
 type Db = SupabaseClient;
@@ -115,8 +116,9 @@ async function sha(bytes: Uint8Array) {
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
-export async function readSchedule(db: Db): Promise<ShowcaseSchedule & { paused: boolean }> {
-  const { data } = await db.from("cordial_site_showcase_settings").select("*").eq("id", true).maybeSingle();
+export async function readSchedule(db: Db, brand: SiteBrand = "cordial"): Promise<ShowcaseSchedule & { paused: boolean }> {
+  const A = showcaseAdapter(brand);
+  const { data } = await db.from(A.settings).select("*").eq("id", true).maybeSingle();
   return {
     paused: data?.paused ?? false,
     prepareDow: data?.prepare_dow ?? DEFAULT_SCHEDULE.prepareDow,
@@ -125,11 +127,12 @@ export async function readSchedule(db: Db): Promise<ShowcaseSchedule & { paused:
   };
 }
 
-/** Imóveis publicados no site Cordial com a capa autorizada (primeira foto). */
-export async function loadCandidates(db: Db): Promise<Candidate[]> {
+/** Imóveis publicados no site da marca com a capa autorizada (primeira foto). */
+export async function loadCandidates(db: Db, brand: SiteBrand = "cordial"): Promise<Candidate[]> {
+  const A = showcaseAdapter(brand);
   const [{ data: eligible, error: e1 }, { data: media, error: e2 }] = await Promise.all([
-    db.from("cordial_site_eligible").select("property_id,public_id,published_at").limit(3000),
-    db.from("cordial_site_authorized_media").select("id,public_id,position,version,width,height").order("position").limit(20000),
+    db.from(A.eligible).select("property_id,public_id,published_at").limit(3000),
+    db.from(A.media).select("id,public_id,position,version,width,height").order("position").limit(20000),
   ]);
   if (e1 || e2) throw new Error("Não foi possível ler os imóveis publicados.");
   const cover = new Map<string, { id: string; version: string; width: number | null; height: number | null }>();
@@ -143,11 +146,12 @@ export async function loadCandidates(db: Db): Promise<Candidate[]> {
 export type Scored = Candidate & { score: number; reason: string };
 
 /** Nota estética (0–10) das capas, por IA de visão, em uma única chamada. Falha → null (usa a regra por data). */
-export async function scoreCandidates(db: Db, cands: Candidate[]): Promise<Scored[] | null> {
+export async function scoreCandidates(db: Db, cands: Candidate[], brand: SiteBrand = "cordial"): Promise<Scored[] | null> {
+  const A = showcaseAdapter(brand);
   const key = process.env["LOVABLE_API_KEY"];
   if (!key || !cands.length) return null;
   const list = cands.slice(0, 24);
-  const { data: paths } = await db.from("cordial_site_authorized_media").select("id,version,storage_path").in("id", list.map((c) => c.mediaId));
+  const { data: paths } = await db.from(A.media).select("id,version,storage_path").in("id", list.map((c) => c.mediaId));
   const urls = await Promise.all(
     list.map(async (c) => {
       const p = paths?.find((x) => x.id === c.mediaId && x.version === c.mediaVersion)?.storage_path;
@@ -233,26 +237,28 @@ export async function scoreCandidates(db: Db, cands: Candidate[]): Promise<Score
   }
 }
 
-async function recentPropertyIds(db: Db, week: string) {
+async function recentPropertyIds(db: Db, week: string, brand: SiteBrand) {
+  const A = showcaseAdapter(brand);
   const { data } = await db
-    .from("cordial_site_showcase_weeks")
+    .from(A.weeks)
     .select("property_id")
     .gte("week_start", addWeeks(week, -SHOWCASE_REPEAT_WEEKS))
     .in("state", ["ativo", "encerrado", "pronto", "aguardando_revisao"]);
   return (data ?? []).map((r) => r.property_id as string);
 }
 
-export async function createWeek(db: Db, week: string, opts: { activate?: boolean; pick?: Candidate; userId?: string } = {}) {
+export async function createWeek(db: Db, week: string, opts: { activate?: boolean; pick?: Candidate; userId?: string } = {}, brand: SiteBrand = "cordial") {
+  const A = showcaseAdapter(brand);
   let pick: (Candidate & { score?: number; reason?: string }) | null = opts.pick ?? null;
   if (!pick) {
-    const recent = await recentPropertyIds(db, week);
-    const pool = (await loadCandidates(db)).filter(isLandscape).filter((c) => !recent.includes(c.propertyId)).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-    const scored = await scoreCandidates(db, pool);
+    const recent = await recentPropertyIds(db, week, brand);
+    const pool = (await loadCandidates(db, brand)).filter(isLandscape).filter((c) => !recent.includes(c.propertyId)).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+    const scored = await scoreCandidates(db, pool, brand);
     pick = scored ? chooseBest(scored, recent) : chooseCandidate(pool, recent);
   }
   if (!pick) return null;
   const { data, error } = await db
-    .from("cordial_site_showcase_weeks")
+    .from(A.weeks)
     .insert({
       week_start: week,
       property_id: pick.propertyId,
@@ -272,23 +278,24 @@ export async function createWeek(db: Db, week: string, opts: { activate?: boolea
     if (error.code === "23505") return null; // já existe para a semana: nada a duplicar
     throw new Error("Não foi possível registrar o imóvel da semana.");
   }
-  if (opts.activate) await activate(db, data.id, true);
+  if (opts.activate) await activate(db, data.id, true, brand);
   return data.id as string;
 }
 
-export async function activate(db: Db, weekId: string, withOriginal: boolean) {
-  const now = new Date().toISOString();
-  await db.from("cordial_site_showcase_weeks").update({ state: "encerrado", active_until: now, updated_at: now }).eq("state", "ativo").neq("id", weekId);
-  const { data: row } = await db.from("cordial_site_showcase_weeks").select("approved_at,storage_path").eq("id", weekId).single();
-  const original = withOriginal || !row?.approved_at || !row?.storage_path;
-  await db.from("cordial_site_showcase_weeks").update({ state: "ativo", use_original: original, active_from: now, active_until: null, updated_at: now }).eq("id", weekId);
+export async function activate(db: Db, weekId: string, withOriginal: boolean, brand: SiteBrand = "cordial") {
+  const A = showcaseAdapter(brand);
+  // Atomic in the database: validates candidate and swaps the active week in one transaction.
+  const { data, error } = await db.rpc(A.rpc.activate, { _week: weekId, _original: withOriginal });
+  if (error) throw new Error("Não foi possível ativar a semana.");
+  return data === true;
 }
 
 export type GenerateResult = { ok: boolean; message: string; paused?: boolean };
 
 /** Gera a edição de uma semana. Trava pelo lease: um segundo pedido simultâneo é recusado. */
-export async function generate(db: Db, weekId: string, requestedBy?: string): Promise<GenerateResult> {
-  const { data: row } = await db.from("cordial_site_showcase_weeks").select("*").eq("id", weekId).maybeSingle();
+export async function generate(db: Db, weekId: string, requestedBy?: string, brand: SiteBrand = "cordial"): Promise<GenerateResult> {
+  const A = showcaseAdapter(brand);
+  const { data: row } = await db.from(A.weeks).select("*").eq("id", weekId).maybeSingle();
   if (!row) return { ok: false, message: "Semana não encontrada." };
   const state = row.state as ShowcaseState;
   if (state !== "agendado" && !canRegenerate(state)) return { ok: false, message: "Já existe uma edição em andamento." };
@@ -297,7 +304,7 @@ export async function generate(db: Db, weekId: string, requestedBy?: string): Pr
   const attemptNo = (row.attempts ?? 0) + 1;
   const isLive = state === "ativo";
   let claim = db
-    .from("cordial_site_showcase_weeks")
+    .from(A.weeks)
     .update({
       state: isLive ? "ativo" : "gerando",
       lease,
@@ -311,17 +318,17 @@ export async function generate(db: Db, weekId: string, requestedBy?: string): Pr
   claim = claim.eq("state", state);
   const { data: claimed } = await claim.select("id");
   if (!claimed?.length) return { ok: false, message: "Já existe uma edição em andamento." };
-  const { error: attErr } = await db.from("cordial_site_showcase_attempts").insert({ week_id: weekId, attempt_no: attemptNo, requested_by: requestedBy ?? null });
+  const { error: attErr } = await db.from(A.attempts).insert({ week_id: weekId, attempt_no: attemptNo, requested_by: requestedBy ?? null });
   if (attErr) return { ok: false, message: "Pedido duplicado bloqueado." };
 
   const finish = async (patch: Record<string, unknown>, outcome: string, message: string | null) => {
-    await db.from("cordial_site_showcase_weeks").update({ ...patch, lease: null, lease_until: null, updated_at: new Date().toISOString() }).eq("id", weekId).eq("lease", lease);
-    await db.from("cordial_site_showcase_attempts").update({ outcome, message, finished_at: new Date().toISOString() }).eq("week_id", weekId).eq("attempt_no", attemptNo);
+    await db.from(A.weeks).update({ ...patch, lease: null, lease_until: null, updated_at: new Date().toISOString() }).eq("id", weekId).eq("lease", lease);
+    await db.from(A.attempts).update({ outcome, message, finished_at: new Date().toISOString() }).eq("week_id", weekId).eq("attempt_no", attemptNo);
   };
   const failState = isLive ? {} : { state: "falhou" };
 
   const { data: media } = await db
-    .from("cordial_site_authorized_media")
+    .from(A.media)
     .select("storage_path")
     .eq("id", row.media_id)
     .eq("version", row.media_version)
@@ -341,7 +348,7 @@ export async function generate(db: Db, weekId: string, requestedBy?: string): Pr
   if (out.kind === "ok") {
     const checksum = await sha(out.bytes);
     const path = `${weekId}/${checksum}.jpg`;
-    const { error: upErr } = await db.storage.from(BUCKET).upload(path, new Blob([out.bytes as BlobPart], { type: "image/jpeg" }), { upsert: true, contentType: "image/jpeg" });
+    const { error: upErr } = await db.storage.from(A.bucket).upload(path, new Blob([out.bytes as BlobPart], { type: "image/jpeg" }), { upsert: true, contentType: "image/jpeg" });
     if (upErr) {
       await finish({ ...failState, error: "A edição ficou pronta, mas não foi salva." }, "falhou", "upload");
       return { ok: false, message: "A edição ficou pronta, mas não foi salva." };
@@ -369,41 +376,42 @@ export async function generate(db: Db, weekId: string, requestedBy?: string): Pr
     return { ok: false, message: out.message };
   }
   if (out.kind === "fail" && out.pause) {
-    await db.from("cordial_site_showcase_settings").update({ paused: true, last_run_summary: `Pausada: ${out.message}` }).eq("id", true);
+    await db.from(A.settings).update({ paused: true, last_run_summary: `Pausada: ${out.message}` }).eq("id", true);
   }
   await finish({ ...failState, error: out.message }, out.kind === "fail" && out.pause ? "pausado" : "falhou", out.message);
   return { ok: false, message: out.message, paused: out.kind === "fail" && out.pause };
 }
 
 /** Rotina horária: ativa a semana, prepara a próxima, troca imóvel retirado. Uma geração por execução. */
-export async function runShowcase(db: Db, now = new Date()) {
+export async function runShowcase(db: Db, now = new Date(), brand: SiteBrand = "cordial") {
+  const A = showcaseAdapter(brand);
   const lock = crypto.randomUUID();
-  const { data: got } = await db.rpc("cordial_site_showcase_take_lock", { _lease: lock, _seconds: 360 });
+  const { data: got } = await db.rpc(A.rpc.takeLock, { _lease: lock, _seconds: 360 });
   if (got !== true) return { skipped: "em execução" };
   const log: string[] = [];
   try {
-    const sched = await readSchedule(db);
+    const sched = await readSchedule(db, brand);
     // Lease vencido durante a geração: incerto, sem reenvio automático.
     const { data: stale } = await db
-      .from("cordial_site_showcase_weeks")
+      .from(A.weeks)
       .select("id,state")
       .lt("lease_until", now.toISOString());
     for (const s of stale ?? []) {
-      await db.from("cordial_site_showcase_weeks").update(s.state === "gerando" ? { state: "incerto", lease: null, lease_until: null, error: "A geração foi interrompida." } : { lease: null, lease_until: null }).eq("id", s.id);
-      await db.from("cordial_site_showcase_attempts").update({ outcome: "incerto", message: "interrompida", finished_at: now.toISOString() }).eq("week_id", s.id).is("finished_at", null);
+      await db.from(A.weeks).update(s.state === "gerando" ? { state: "incerto", lease: null, lease_until: null, error: "A geração foi interrompida." } : { lease: null, lease_until: null }).eq("id", s.id);
+      await db.from(A.attempts).update({ outcome: "incerto", message: "interrompida", finished_at: now.toISOString() }).eq("week_id", s.id).is("finished_at", null);
       log.push("geração interrompida marcada como incerta");
     }
     // Imóvel ativo saiu do site ou a foto foi revogada: troca para o próximo válido.
-    const { data: activeRows } = await db.from("cordial_site_showcase_weeks").select("id,week_start").eq("state", "ativo");
+    const { data: activeRows } = await db.from(A.weeks).select("id,week_start").eq("state", "ativo");
     if (activeRows?.length) {
-      const { data: valid } = await db.rpc("cordial_site_showcase_active");
+      const { data: valid } = await db.rpc(A.rpc.active);
       if (!valid?.length) {
-        for (const r of activeRows) await db.from("cordial_site_showcase_weeks").update({ state: "substituido", active_until: now.toISOString(), error: "Imóvel ou foto saiu do site." }).eq("id", r.id);
+        for (const r of activeRows) await db.from(A.weeks).update({ state: "substituido", active_until: now.toISOString(), error: "Imóvel ou foto saiu do site." }).eq("id", r.id);
         log.push("imóvel da semana retirado; substituído");
       }
     }
     const { data: rows } = await db
-      .from("cordial_site_showcase_weeks")
+      .from(A.weeks)
       .select("id,week_start,state,approved_at,use_original")
       .gte("week_start", addWeeks(new Date().toISOString().slice(0, 10), -3))
       .order("created_at");
@@ -411,37 +419,38 @@ export async function runShowcase(db: Db, now = new Date()) {
     let generated = false;
     for (const a of actions) {
       if (a.kind === "create-and-activate") {
-        const id = await createWeek(db, a.week, { activate: true });
+        const id = await createWeek(db, a.week, { activate: true }, brand);
         log.push(id ? "semana ativada com foto original" : "sem imóvel elegível; abertura neutra");
       } else if (a.kind === "activate") {
-        await activate(db, a.weekId, a.withOriginal);
+        await activate(db, a.weekId, a.withOriginal, brand);
         log.push(a.withOriginal ? "semana ativada com foto original" : "semana ativada com edição aprovada");
       } else if (a.kind === "create") {
-        const id = await createWeek(db, a.week);
+        const id = await createWeek(db, a.week, {}, brand);
         log.push(id ? "próxima semana agendada" : "sem imóvel elegível para a próxima semana");
         if (id && !generated) {
           generated = true;
-          const r = await generate(db, id);
+          const r = await generate(db, id, undefined, brand);
           log.push(r.ok ? "edição gerada, aguardando aprovação" : `edição: ${r.message}`);
         }
       } else if (a.kind === "generate" && !generated) {
         generated = true;
-        const r = await generate(db, a.weekId);
+        const r = await generate(db, a.weekId, undefined, brand);
         log.push(r.ok ? "edição gerada, aguardando aprovação" : `edição: ${r.message}`);
       }
     }
     if (sched.paused) log.push("automação pausada");
     const summary = log.join(" · ") || "nada a fazer";
-    await db.from("cordial_site_showcase_settings").update({ last_run_at: now.toISOString(), last_run_summary: summary.slice(0, 500) }).eq("id", true);
+    await db.from(A.settings).update({ last_run_at: now.toISOString(), last_run_summary: summary.slice(0, 500) }).eq("id", true);
     return { ok: true, summary };
   } finally {
-    await db.rpc("cordial_site_showcase_release_lock", { _lease: lock });
+    await db.rpc(A.rpc.releaseLock, { _lease: lock });
   }
 }
 
 /** Leitura pública da vitrine ativa (já validada pelo banco). */
-export async function activeShowcase(db: Db) {
-  const { data, error } = await db.rpc("cordial_site_showcase_active");
+export async function activeShowcase(db: Db, brand: SiteBrand = "cordial") {
+  const A = showcaseAdapter(brand);
+  const { data, error } = await db.rpc(A.rpc.active);
   if (error) return null;
   const r = data?.[0];
   if (!r) return null;

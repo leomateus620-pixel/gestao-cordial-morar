@@ -15,16 +15,16 @@ type ActionInput = Record<string, unknown> & { action: string };
 type Snap = Awaited<ReturnType<typeof showcaseSnapshot>>;
 type Week = Snap["weeks"][number];
 
-export function ShowcaseManager() {
+export function ShowcaseManager({ brand = "cordial" }: { brand?: "cordial" | "morar" } = {}) {
   const load = useServerFn(showcaseSnapshot);
   const act = useServerFn(showcaseAction);
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["cordial-showcase"], queryFn: () => load(), refetchInterval: (s) => (s.state.data?.weeks.some((w) => w.state === "gerando" || w.lease_until) ? 5000 : false) });
+  const q = useQuery({ queryKey: [`${brand}-showcase`], queryFn: () => load({ data: { brand } }), refetchInterval: (s) => (s.state.data?.weeks.some((w) => w.state === "gerando" || w.lease_until) ? 5000 : false) });
   const m = useMutation({
-    mutationFn: (data: ActionInput) => act({ data: data as never }) as Promise<{ message: string }>,
+    mutationFn: (data: ActionInput) => act({ data: { ...data, brand } as never }) as Promise<{ message: string }>,
     onSuccess: (r) => {
       toast.success(r.message);
-      void qc.invalidateQueries({ queryKey: ["cordial-showcase"] });
+      void qc.invalidateQueries({ queryKey: [`${brand}-showcase`] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -62,8 +62,8 @@ export function ShowcaseManager() {
         </div>
       </div>
 
-      <WeekCard title="Esta semana" week={live} row={liveRow} live activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} nextChange={activateAt(next, sched)} />
-      <WeekCard title="Próxima semana" week={next} row={nextRow} activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} />
+      <WeekCard title="Esta semana" week={live} row={liveRow} live activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} brand={brand} nextChange={activateAt(next, sched)} />
+      <WeekCard title="Próxima semana" week={next} row={nextRow} activeWeekId={activeWeekId} busy={m.isPending} act={m.mutate} brand={brand} />
 
       <ScheduleForm sched={sched} busy={m.isPending} onSave={(s) => m.mutate({ action: "schedule", ...s })} />
 
@@ -93,7 +93,8 @@ export function ShowcaseManager() {
   );
 }
 
-function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange }: {
+function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange, brand }: {
+  brand: "cordial" | "morar";
   title: string;
   week: string;
   row?: Week;
@@ -128,7 +129,7 @@ function WeekCard({ title, week, row, live, activeWeekId, busy, act, nextChange 
         <button className={ghost} onClick={() => setPicking((v) => !v)}>Trocar imóvel/foto</button>
       </div>
 
-      {picking && <Picker onPick={(p) => { act({ action: "choose", target: live ? "live" : "next", ...p }); setPicking(false); }} />}
+      {picking && <Picker brand={brand} onPick={(p) => { act({ action: "choose", target: live ? "live" : "next", ...p }); setPicking(false); }} />}
 
       {row?.preview && (
         <div className="grid gap-3 md:grid-cols-2">
@@ -200,10 +201,10 @@ function FocalPreview({ url, view, x, y, onSet }: { url: string; view: "desktop"
   );
 }
 
-function Picker({ onPick }: { onPick: (p: { publicId: string; mediaId: string; mediaVersion: string }) => void }) {
+function Picker({ onPick, brand }: { brand: "cordial" | "morar"; onPick: (p: { publicId: string; mediaId: string; mediaVersion: string }) => void }) {
   const search = useServerFn(searchShowcaseCandidates);
   const [ref, setRef] = useState("");
-  const q = useMutation({ mutationFn: () => search({ data: { reference: ref } }) });
+  const q = useMutation({ mutationFn: () => search({ data: { reference: ref, brand } }) });
   return (
     <div className="space-y-3 rounded-lg border p-3">
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (ref.trim()) q.mutate(); }}>

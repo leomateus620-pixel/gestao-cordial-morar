@@ -338,7 +338,8 @@ export function MorarSearchForm({
           <SheetContent
             side="bottom"
             closeLabel="Fechar sem aplicar"
-            className="morar-site ms-drawer"
+            className="ms-drawer"
+            overlayClassName="ms-drawer-overlay"
             onKeyDown={(event) => {
               if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT") {
                 event.preventDefault();

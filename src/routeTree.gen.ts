@@ -101,6 +101,7 @@ import { Route as ApiPublicHooksFinanceiroSheetsSyncRouteImport } from './routes
 import { Route as ApiPublicHooksGalleryAlignRouteImport } from './routes/api/public/hooks/gallery-align'
 import { Route as ApiPublicHooksGoogleCalendarSyncRouteImport } from './routes/api/public/hooks/google-calendar-sync'
 import { Route as ApiPublicHooksMetaLeadsRouteImport } from './routes/api/public/hooks/meta-leads'
+import { Route as ApiPublicHooksMorarShowcaseRouteImport } from './routes/api/public/hooks/morar-showcase'
 import { Route as ApiPublicHooksNfsePdfRetryRouteImport } from './routes/api/public/hooks/nfse-pdf-retry'
 import { Route as ApiPublicHooksPropertyDriveWorkerRouteImport } from './routes/api/public/hooks/property-drive-worker'
 import { Route as ApiPublicHooksPropertyImageRetryRouteImport } from './routes/api/public/hooks/property-image-retry'
@@ -593,6 +594,12 @@ const ApiPublicHooksMetaLeadsRoute = ApiPublicHooksMetaLeadsRouteImport.update({
   path: '/api/public/hooks/meta-leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksMorarShowcaseRoute =
+  ApiPublicHooksMorarShowcaseRouteImport.update({
+    id: '/api/public/hooks/morar-showcase',
+    path: '/api/public/hooks/morar-showcase',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksNfsePdfRetryRoute =
   ApiPublicHooksNfsePdfRetryRouteImport.update({
     id: '/api/public/hooks/nfse-pdf-retry',
@@ -779,6 +786,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/meta-leads': typeof ApiPublicHooksMetaLeadsRoute
+  '/api/public/hooks/morar-showcase': typeof ApiPublicHooksMorarShowcaseRoute
   '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -884,6 +892,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/meta-leads': typeof ApiPublicHooksMetaLeadsRoute
+  '/api/public/hooks/morar-showcase': typeof ApiPublicHooksMorarShowcaseRoute
   '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -995,6 +1004,7 @@ export interface FileRoutesById {
   '/api/public/hooks/gallery-align': typeof ApiPublicHooksGalleryAlignRoute
   '/api/public/hooks/google-calendar-sync': typeof ApiPublicHooksGoogleCalendarSyncRoute
   '/api/public/hooks/meta-leads': typeof ApiPublicHooksMetaLeadsRoute
+  '/api/public/hooks/morar-showcase': typeof ApiPublicHooksMorarShowcaseRoute
   '/api/public/hooks/nfse-pdf-retry': typeof ApiPublicHooksNfsePdfRetryRoute
   '/api/public/hooks/property-drive-worker': typeof ApiPublicHooksPropertyDriveWorkerRoute
   '/api/public/hooks/property-image-retry': typeof ApiPublicHooksPropertyImageRetryRoute
@@ -1106,6 +1116,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/meta-leads'
+    | '/api/public/hooks/morar-showcase'
     | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -1211,6 +1222,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/meta-leads'
+    | '/api/public/hooks/morar-showcase'
     | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -1321,6 +1333,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/gallery-align'
     | '/api/public/hooks/google-calendar-sync'
     | '/api/public/hooks/meta-leads'
+    | '/api/public/hooks/morar-showcase'
     | '/api/public/hooks/nfse-pdf-retry'
     | '/api/public/hooks/property-drive-worker'
     | '/api/public/hooks/property-image-retry'
@@ -1372,6 +1385,7 @@ export interface RootRouteChildren {
   ApiPublicHooksGalleryAlignRoute: typeof ApiPublicHooksGalleryAlignRoute
   ApiPublicHooksGoogleCalendarSyncRoute: typeof ApiPublicHooksGoogleCalendarSyncRoute
   ApiPublicHooksMetaLeadsRoute: typeof ApiPublicHooksMetaLeadsRoute
+  ApiPublicHooksMorarShowcaseRoute: typeof ApiPublicHooksMorarShowcaseRoute
   ApiPublicHooksNfsePdfRetryRoute: typeof ApiPublicHooksNfsePdfRetryRoute
   ApiPublicHooksPropertyDriveWorkerRoute: typeof ApiPublicHooksPropertyDriveWorkerRoute
   ApiPublicHooksPropertyImageRetryRoute: typeof ApiPublicHooksPropertyImageRetryRoute
@@ -2036,6 +2050,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksMetaLeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/morar-showcase': {
+      id: '/api/public/hooks/morar-showcase'
+      path: '/api/public/hooks/morar-showcase'
+      fullPath: '/api/public/hooks/morar-showcase'
+      preLoaderRoute: typeof ApiPublicHooksMorarShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/nfse-pdf-retry': {
       id: '/api/public/hooks/nfse-pdf-retry'
       path: '/api/public/hooks/nfse-pdf-retry'
@@ -2364,6 +2385,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksGalleryAlignRoute: ApiPublicHooksGalleryAlignRoute,
   ApiPublicHooksGoogleCalendarSyncRoute: ApiPublicHooksGoogleCalendarSyncRoute,
   ApiPublicHooksMetaLeadsRoute: ApiPublicHooksMetaLeadsRoute,
+  ApiPublicHooksMorarShowcaseRoute: ApiPublicHooksMorarShowcaseRoute,
   ApiPublicHooksNfsePdfRetryRoute: ApiPublicHooksNfsePdfRetryRoute,
   ApiPublicHooksPropertyDriveWorkerRoute:
     ApiPublicHooksPropertyDriveWorkerRoute,

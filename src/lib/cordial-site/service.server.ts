@@ -341,9 +341,8 @@ export async function readSite(
     case "page":
       return page(z.string().parse(input), brand, signal);
     case "showcase": {
-      if (brand !== "cordial") return null;
       const { activeShowcase } = await import("./showcase.server");
-      const r = await activeShowcase(siteDb(signal));
+      const r = await activeShowcase(siteDb(signal), brand);
       if (!r) return null;
       return {
         publicId: r.publicId,
