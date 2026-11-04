@@ -233,3 +233,55 @@ describe("Descontos e ajustes do recibo", () => {
     expect((await PDFDocument.load(smallPdf)).getPageCount()).toBe(1);
   });
 });
+
+import { RECEIPT_ADJUSTMENT_PRESETS, tenantAdjustmentFromPreset } from "./receipt-presets";
+
+describe("Atalhos, água e descritivo", () => {
+  const preset = (id: string) => RECEIPT_ADJUSTMENT_PRESETS.find((p) => p.id === id)!;
+  it.each([
+    ["agua", "inquilino", "acrescimo", "Água", false, false],
+    ["fundo-reserva", "inquilino", "desconto", "Fundo de reserva", true, true],
+    ["multa-juros", "inquilino", "acrescimo", "Multa/Juros por atraso", true, false],
+    ["outro-acrescimo", "inquilino", "acrescimo", "", false, false],
+    ["reparo", "proprietario", "desconto", "Reparo/Manutenção", false, false],
+  ] as const)("preset %s", (id, side, tipo, descricao, repassar, repetir) => {
+    const p = preset(id);
+    expect([p.side, p.tipo, p.descricao, p.repassarProprietario, p.repetir]).toEqual([
+      side, tipo, descricao, repassar, repetir,
+    ]);
+  });
+  const c = { ...contract, valorMensal: 1100, comissaoMensal: 100, seguroValorMensal: 0 } as RentalContractFull;
+  it("água 85,00 não repassada: 1.185,00 / 1.000,00", () => {
+    const agua = { ...tenantAdjustmentFromPreset(preset("agua"), "w1"), valor: 85 };
+    const m = buildReceiptModel(c, { ...defaultReceiptInput(c, "2026-10"), ajustesInquilino: [agua] });
+    expect(m.totalPagar).toBe(1185);
+    expect(m.totalReceber).toBe(1000);
+  });
+  it("descrição de 120 aceita, 121 recusada (cliente e servidor)", () => {
+    const mk = (n: number) => ({ ...base(), ajustesInquilino: [{ ...fundo(), descricao: "x".repeat(n) }] });
+    expect(() => buildReceiptModel(maria, mk(120))).not.toThrow();
+    expect(() => buildReceiptModel(maria, mk(121))).toThrow("120");
+    const ok = { ...mk(120), totalPagar: 1772.8, totalReceber: 1594.02 };
+    expect(checkReceiptValores("c", "2026-10", ok).totalPagar).toBe(1772.8);
+    expect(() => checkReceiptValores("c", "2026-10", { ...mk(121), totalPagar: 1772.8, totalReceber: 1594.02 })).toThrow();
+  });
+  it("PDF com 6 itens de 120 caracteres por lado em 1 página", async () => {
+    const long = (i: number) => `Água ref. set/2026 leitura ${i} `.padEnd(120, "m");
+    const tenant = Array.from({ length: 6 }, (_, i) => ({ ...fundo(), id: `t${i}`, descricao: long(i), valor: 1 }));
+    const owner = Array.from({ length: 6 }, (_, i) => ({ ...reparo, id: `o${i}`, descricao: long(i), valor: 1 }));
+    const model = buildReceiptModel(maria, { ...base(), ajustesInquilino: tenant, ajustesProprietario: owner });
+    const bytes = await buildReceiptPdf(model, await readFile(`public${model.company.logo}`));
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+  });
+  it("fitReceiptRows conta linhas de descrições longas", () => {
+    const rows = fitReceiptRows([["Aluguel", 1]], [["a", 1], ["b", 1], ["c", 1]], 4, (l) => (l === "Aluguel" ? 1 : 2));
+    expect(rows).toEqual([["Aluguel", 1], ["Outros ajustes (3)", 3]].slice(0, 1).concat([["a", 1], ["Outros ajustes (2)", 2]] as never));
+  });
+  it("recorrência encerrada não volta na competência seguinte", () => {
+    const rec = [{ id: "11111111-1111-4111-8111-111111111111", tipo: "desconto" as const, descricao: "Fundo", valor: 15, repassarProprietario: true, inicioCompetencia: "2026-10", fimCompetencia: null, ativo: true }];
+    expect(defaultReceiptInput(maria, "2026-11", rec).ajustesInquilino).toHaveLength(1);
+    const ended = rec.map((r) => ({ ...r, ativo: false }));
+    expect(activeRecurringFor(ended, "2026-11")).toHaveLength(0);
+    expect(defaultReceiptInput(maria, "2026-11", ended).ajustesInquilino).toHaveLength(0);
+  });
+});
