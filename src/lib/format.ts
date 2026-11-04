@@ -53,3 +53,20 @@ export function shortTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
+/** Always shows cents: R$ 919,44. */
+export function brlCents(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Parses "1.234,56", "919,44" or "919.44" to a number; NaN when invalid. */
+export function parseBrlInput(raw: string): number {
+  const s = raw.replace(/[R$\s]/g, "");
+  if (!s) return NaN;
+  const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
+  return /^-?\d+(\.\d+)?$/.test(normalized) ? Number(normalized) : NaN;
+}
+
+/** Formats a number for a money text field: 919.4 → "919,40". */
+export function formatBrlInput(value: number) {
+  return Number.isFinite(value) ? value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+}
