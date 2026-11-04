@@ -922,3 +922,32 @@ body:has(.morar-site) {
     order: 4;
   }
 }
+
+/* ===== Renovação Morar: cabeçalho claro e home 5 + 15 ===== */
+.morar-site .cs-header {
+  background: #fffdfb;
+  border-bottom: 1px solid #ece4da;
+  box-shadow: 0 4px 18px #33271a0d;
+}
+.morar-site .cs-header-inner { min-height: 76px; }
+.morar-site .cs-header :where(a, summary) { color: #333; }
+.morar-site .cs-header :where(a, summary):hover { color: #aa4707; }
+.morar-site .cs-header .cs-icon-button:hover { background: #f6efe6; color: #aa4707; }
+.morar-site .cs-header svg { color: #eb7a1c; }
+.morar-site .cs-brand img { width: 150px; max-height: 50px; aspect-ratio: 641 / 200; }
+@media (max-width: 760px) {
+  .morar-site .cs-header-inner { min-height: 64px; }
+  .morar-site .cs-brand img { width: 124px; }
+}
+.morar-site .cs-hx-hero:not(.is-neutral)::before {
+  background: linear-gradient(90deg, #2a2420e0 0%, #2a242099 36%, #2a242000 64%);
+}
+.morar-site .cs-hx-hero-media { background: linear-gradient(130deg, #3a302a, #5b4636); }
+.morar-site .cs-hx-hero-copy h1 em { color: #f6c49a; }
+.morar-site .cs-hx-kicker,
+.morar-site .cs-hx-price { color: #aa4707; }
+.morar-site .cs-hx-badge { background: #fffdfb; color: #aa4707; }
+.morar-site .cs-hx-districts em { background: #f6efe6; color: #8a3a06; }
+.morar-site .cs-hx-districts a:hover { background: #f6efe6; }
+.morar-site .cs-hx-card { border-radius: 14px; }
+.morar-site .cs-hx-card:hover { box-shadow: 0 12px 28px #33271a1f; }

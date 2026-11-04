@@ -20,6 +20,7 @@ import { SitePerformance } from "./SitePerformance";
 import { SiteAnalytics } from "./SiteAnalytics";
 import { loadBootstrap } from "@/lib/cordial-site/data";
 import cordialLogo from "@/assets/logo-cordial-imoveis.png.asset.json";
+import morarLogo from "@/assets/logo-morar-imoveis.png.asset.json";
 const destinationsFor = (name: string) => [
   [`Sobre a ${name}`, "/sobre"],
   ["Bairros", "/bairros"],
@@ -215,9 +216,9 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 aria-label={`${config.name}, início`}
               >
                 <img
-                  src={brand === "cordial" ? cordialLogo.url : config.logo}
-                  width={brand === "cordial" ? 936 : config.logoWidth}
-                  height={brand === "cordial" ? 160 : config.logoHeight}
+                  src={brand === "cordial" ? cordialLogo.url : morarLogo.url}
+                  width={brand === "cordial" ? 936 : 641}
+                  height={brand === "cordial" ? 160 : 200}
                   alt={config.name}
                 />
               </SiteLink>
