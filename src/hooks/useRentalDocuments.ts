@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
-import { rentalStorageDeps } from "@/lib/rentals/upload-document.client";
+import { rentalStorageDeps } from "@/lib/rentals/upload-storage";
 import {
   deleteRentalContractDocument,
   listRentalContractDocuments,
