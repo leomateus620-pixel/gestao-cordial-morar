@@ -14,6 +14,7 @@ import type { RentalContractFull, RentalFilter, RentalPeriodFilter } from "@/typ
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
 import { brl } from "@/lib/format";
+import { useRegisterPageSearch } from "@/lib/page-search";
 import { useRentalFormRequest } from "@/lib/rentals/rental-form-ui";
 
 export const Route = createFileRoute("/_app/alugueis")({
@@ -64,6 +65,11 @@ function Page() {
     corretorId,
     periodo,
     imobiliaria,
+  });
+  useRegisterPageSearch({
+    placeholder: "Buscar inquilino, proprietário, fiador ou imóvel…",
+    value: r.search,
+    onChange: r.setSearch,
   });
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
