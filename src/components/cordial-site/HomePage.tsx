@@ -153,6 +153,7 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
       document.removeEventListener("visibilitychange", vis);
     };
   }, []);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return (
     <div
       className="cs-hx-hero-media"
@@ -161,8 +162,9 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
       style={image ? ({ "--cs-hx-focal": `${Math.round(image.focalX * 100)}% ${Math.round(image.focalY * 100)}%` } as React.CSSProperties) : undefined}
     >
       <div className="cs-hx-hero-layer">
-        {image?.url ? (
-          <img src={image.url} alt="" width={1536} height={1024} fetchPriority="high" decoding="async" className="cs-hx-showcase-img" />
+        {image?.url && failedUrl !== image.url ? (
+          // Edited derivative failed → fall back once to the authorized original of the same property.
+          <img src={image.url} alt="" width={1536} height={1024} fetchPriority="high" decoding="async" className="cs-hx-showcase-img" onError={() => setFailedUrl(image.url)} />
         ) : (
           <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
         )}
