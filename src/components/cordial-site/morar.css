@@ -951,3 +951,19 @@ body:has(.morar-site) {
 .morar-site .cs-hx-districts a:hover { background: #f6efe6; }
 .morar-site .cs-hx-card { border-radius: 14px; }
 .morar-site .cs-hx-card:hover { box-shadow: 0 12px 28px #33271a1f; }
+.morar-site .cs-hx-search {
+  background: #fffdfbeb;
+  border: 1px solid #ffffffb3;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 16px 40px #1f17112e;
+  color: #333;
+}
+.morar-site .cs-hx-search :where(button, a, label, span, small) { color: #333; }
+.morar-site .cs-hx-search .cs-button,
+.morar-site .cs-hx-search .cs-button * { color: #fff; }
+.morar-site .cs-hx-search :where(button, label) { white-space: nowrap; }
+@media (max-width: 1100px) {
+  .morar-site .cs-hx-hero-copy h1 em { color: #aa4707; }
+  .morar-site .cs-hx-search { box-shadow: none; padding: 0; background: none; border: 0; }
+}
