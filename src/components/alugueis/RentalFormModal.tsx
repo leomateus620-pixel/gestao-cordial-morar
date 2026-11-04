@@ -558,43 +558,57 @@ export function RentalFormModal({
         observacoes: obs || null,
         brand,
       };
-      const saved = (await onSubmit(input)) as RentalContractFull | undefined;
-      const contractId = saved?.id ?? initial?.id ?? null;
+      // Contrato novo já salvo numa tentativa anterior: só reenvia anexos (evita duplicar o contrato).
+      let contractId: string | null = savedContractIdRef.current;
+      if (!contractId || isEdit) {
+        const saved = (await onSubmit(input)) as RentalContractFull | undefined;
+        contractId = saved?.id ?? initial?.id ?? null;
+        savedContractIdRef.current = contractId;
+      }
 
       if (pendingDocs.length > 0 && contractId) {
         setUploadingDocs(true);
+        const remaining: PendingDoc[] = [];
         try {
           for (const doc of pendingDocs) {
-            if (doc.file.size > MAX_DOC_BYTES) {
-              throw new Error(`"${doc.file.name}" excede 50 MB.`);
-            }
-            const safeName = sanitizeDocName(doc.file.name);
-            const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
             const contentType = doc.file.type || "application/octet-stream";
-            const { error: upErr } = await supabase.storage
-              .from(DOCS_BUCKET)
-              .upload(filePath, doc.file, { contentType, upsert: false });
-            if (upErr) throw new Error(upErr.message);
+            const filePath =
+              doc.path ?? `${contractId}/${crypto.randomUUID()}-${sanitizeDocName(doc.file.name)}`;
             try {
-              await registerDoc({
-                data: {
-                  contractId,
-                  fileName: doc.file.name,
-                  filePath,
-                  mimeType: contentType,
-                  sizeBytes: doc.file.size,
-                  category: doc.category,
-                },
-              });
+              if (doc.file.size > MAX_DOC_BYTES) throw new Error("excede 50 MB.");
+              await uploadAndRegister(
+                filePath,
+                doc.file,
+                contentType,
+                rentalStorageDeps((p) =>
+                  registerDoc({
+                    data: {
+                      contractId: contractId!,
+                      fileName: doc.file.name,
+                      filePath: p,
+                      mimeType: contentType,
+                      sizeBytes: doc.file.size,
+                      category: doc.category,
+                    },
+                  }),
+                ),
+              );
             } catch (e) {
-              await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
-              throw e;
+              remaining.push({ ...doc, path: filePath, failed: friendlyUploadError(doc.file.name, e) });
             }
           }
         } finally {
           setUploadingDocs(false);
         }
+        if (remaining.length > 0) {
+          setPendingDocs(remaining);
+          setError(
+            `Contrato salvo — ${remaining.length} anexo(s) não foram enviados. ${remaining[0].failed} Clique em "Tentar novamente".`,
+          );
+          return;
+        }
       }
+
 
       reset();
       onOpenChange(false);
