@@ -42,7 +42,13 @@ const MAX_DOC_BYTES = 50 * 1024 * 1024;
 const DOC_ACCEPT =
   ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-type PendingDoc = { key: string; file: File; category: RentalDocumentCategory };
+type PendingDoc = {
+  key: string;
+  file: File;
+  category: RentalDocumentCategory;
+  path?: string;
+  failed?: string;
+};
 
 function sanitizeDocName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
@@ -358,6 +364,7 @@ export function RentalFormModal({
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const docInputsRef = useRef<Record<string, HTMLInputElement | null>>({});
   const registerDoc = useServerFn(registerRentalContractDocument);
+  const savedContractIdRef = useRef<string | null>(null);
 
   function updateTenant(key: string, patch: Partial<TenantEntry>) {
     setTenantEntries((prev) =>
@@ -413,6 +420,7 @@ export function RentalFormModal({
     setBrand("cordial");
     setError(null);
     setPendingDocs([]);
+    savedContractIdRef.current = null;
   }
 
   // Prefill state whenever the modal opens with an `initial` contract, or reset for new.

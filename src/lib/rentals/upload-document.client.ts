@@ -6,13 +6,8 @@ export const RENTAL_DOCS_BUCKET = "rental-documents";
 export function rentalStorageDeps(register: (path: string) => Promise<unknown>): UploadDeps {
   const bucket = () => supabase.storage.from(RENTAL_DOCS_BUCKET);
   return {
-    upload: async (path, file, contentType, signal) => {
-      const { error } = await bucket().upload(path, file, {
-        contentType,
-        upsert: false,
-        // supabase-js repassa opções extras ao fetch; o sinal limita a espera.
-        ...({ signal } as object),
-      });
+    upload: async (path, file, contentType) => {
+      const { error } = await bucket().upload(path, file, { contentType, upsert: false });
       return { error: error ? { message: error.message, statusCode: (error as { statusCode?: string }).statusCode } : null };
     },
     exists: async (path) => {

@@ -27,7 +27,10 @@ export async function uploadAndRegister(path: string, file: Blob, contentType: s
     let errMsg: string | null = null;
     let status: string | number | undefined;
     try {
-      const { error } = await deps.upload(path, file, contentType, ctrl.signal);
+      const timeout = new Promise<never>((_, rej) =>
+        ctrl.signal.addEventListener("abort", () => rej(new Error("timeout")), { once: true }),
+      );
+      const { error } = await Promise.race([deps.upload(path, file, contentType, ctrl.signal), timeout]);
       if (error) { errMsg = error.message; status = error.statusCode; }
     } catch (e) {
       errMsg = e instanceof Error ? e.message : String(e);
