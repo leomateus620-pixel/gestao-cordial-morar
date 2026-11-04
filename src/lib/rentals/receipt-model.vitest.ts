@@ -275,7 +275,7 @@ describe("Atalhos, água e descritivo", () => {
   });
   it("fitReceiptRows conta linhas de descrições longas", () => {
     const rows = fitReceiptRows([["Aluguel", 1]], [["a", 1], ["b", 1], ["c", 1]], 4, (l) => (l === "Aluguel" ? 1 : 2));
-    expect(rows).toEqual([["Aluguel", 1], ["Outros ajustes (3)", 3]].slice(0, 1).concat([["a", 1], ["Outros ajustes (2)", 2]] as never));
+    expect(rows).toEqual([["Aluguel", 1], ["a", 1], ["Outros ajustes (2)", 2]]);
   });
   it("recorrência encerrada não volta na competência seguinte", () => {
     const rec = [{ id: "11111111-1111-4111-8111-111111111111", tipo: "desconto" as const, descricao: "Fundo", valor: 15, repassarProprietario: true, inicioCompetencia: "2026-10", fimCompetencia: null, ativo: true }];
