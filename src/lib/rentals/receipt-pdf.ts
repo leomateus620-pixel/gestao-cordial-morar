@@ -10,9 +10,21 @@ const adjRow = (a: Adj): [string, number] => [
   a.tipo === "acrescimo" ? a.valor : -a.valor,
 ];
 /** Fit rows into the via; overflow adjustments are grouped as "Outros ajustes (n)". */
-export function fitReceiptRows(base: [string, number][], adjustments: [string, number][], max: number) {
-  if (base.length + adjustments.length <= max) return [...base, ...adjustments];
-  const keep = Math.max(0, max - base.length - 1);
+export function fitReceiptRows(
+  base: [string, number][],
+  adjustments: [string, number][],
+  max: number,
+  linesOf: (label: string) => number = () => 1,
+) {
+  const used = base.reduce((s, [l]) => s + linesOf(l), 0);
+  const all = adjustments.reduce((s, [l]) => s + linesOf(l), 0);
+  if (used + all <= max) return [...base, ...adjustments];
+  let keep = 0;
+  let total = used;
+  while (keep < adjustments.length && total + linesOf(adjustments[keep][0]) + 1 <= max) {
+    total += linesOf(adjustments[keep][0]);
+    keep++;
+  }
   const rest = adjustments.slice(keep);
   const sum = rest.reduce((s, [, v]) => s + Math.round(v * 100), 0) / 100;
   return [...base, ...adjustments.slice(0, keep), [`Outros ajustes (${rest.length})`, sum] as [string, number]];
@@ -47,12 +59,15 @@ export async function buildReceiptPdf(
     page.drawText(text, { x, y, size: actual, font: f, color: ink });
   }
   function wrap(s: string, width: number) {
+    return wrapWith(s, width, bold);
+  }
+  function wrapWith(s: string, width: number, f: PDFFont) {
     const words = clean(s).split(/\s+/);
     const lines: string[] = [];
     let current = "";
     for (const word of words) {
       const next = current ? `${current} ${word}` : word;
-      if (bold.widthOfTextAtSize(next, 9) > width && current) {
+      if (f.widthOfTextAtSize(next, 9) > width && current) {
         lines.push(current);
         current = word;
       } else current = next;
@@ -119,12 +134,22 @@ export async function buildReceiptPdf(
     ];
     const extra = index === 0 ? tenantAdj : index === 1 ? ownerAdj : [];
     const maxRows = Math.floor((y - 12 - (top - 228)) / 11) + 1;
-    const fitted = fitReceiptRows(rows, extra, maxRows);
-    rows.length = 0;
-    rows.push(...fitted);
-    rows.forEach(([label, value], i) => {
-      draw(label, 46, y - 12 - i * 11, 9, font, 260);
-      draw(brl(value), 310, y - 12 - i * 11, 9, bold, 78);
+    const labelLines = (label: string) => {
+      const lines = wrapWith(label, 258, font);
+      if (lines.length <= 2) return lines;
+      let second = lines.slice(1).join(" ");
+      while (second && font.widthOfTextAtSize(`${second}…`, 9) > 258) second = second.slice(0, -1);
+      return [lines[0], `${second.trimEnd()}…`];
+    };
+    const fitted = fitReceiptRows(rows, extra, maxRows, (l) => labelLines(l).length);
+    let line = 0;
+    fitted.forEach(([label, value]) => {
+      const lines = labelLines(label);
+      draw(brl(value), 310, y - 12 - line * 11, 9, bold, 78);
+      lines.forEach((t) => {
+        draw(t, 46, y - 12 - line * 11, 9, font, 260);
+        line++;
+      });
     });
     if (index === 0) draw(`Total a pagar: ${brl(model.totalPagar)}`, 398, y - 14, 9, bold, 160);
     if (index === 1) draw(`Total a receber: ${brl(model.totalReceber)}`, 398, y - 14, 9, bold, 160);
