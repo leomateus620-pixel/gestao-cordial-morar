@@ -14,6 +14,25 @@ import { defaultSearch, searchSchema, type SiteSearch } from "@/lib/cordial-site
 import { loadCatalog } from "@/lib/cordial-site/data";
 import { useSite } from "@/lib/cordial-site/context";
 import { searchLabels } from "@/lib/cordial-site/search-labels";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+
+function useIsMobileDrawer() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return mobile;
+}
 
 const groups = [
   { key: "imovel", label: "Tipo de imóvel", icon: House, fields: ["tipo"] },
@@ -79,8 +98,33 @@ export function MorarSearchForm({
   const [countPending, setCountPending] = useState(false);
   const [countError, setCountError] = useState(false);
   const sequence = useRef(0);
+  const isMobile = useIsMobileDrawer();
+  // Mobile drawer edits a draft; applied `values` only change on "Aplicar filtros".
+  const [draft, setDraft] = useState<Values | null>(null);
+  const drawerOpen = isMobile && active !== null && draft !== null;
+  const editing = drawerOpen && draft ? draft : values;
+  const setEditing = drawerOpen ? (setDraft as typeof setValues) : setValues;
   const update = (key: string, value: string) =>
-    setValues((old) => ({ ...old, [key]: value, ...(key === "cidade" ? { bairro: "" } : {}) }));
+    setEditing((old) => ({ ...old, [key]: value, ...(key === "cidade" ? { bairro: "" } : {}) }));
+  const openGroup = (key: Group) => {
+    if (isMobile) {
+      setDraft({ ...values });
+      setActive(key);
+    } else setActive((old) => (old === key ? null : key));
+  };
+  const closeDrawer = (apply: boolean) => {
+    const key = active;
+    if (apply && draft) setValues(draft);
+    setDraft(null);
+    setActive(null);
+    if (key) requestAnimationFrame(() => document.getElementById(`${id}-group-${key}`)?.focus());
+  };
+  useEffect(() => {
+    // Breakpoint change: keep applied filters, drop any unapplied draft so only one UI is mounted.
+    setDraft(null);
+    setActive(null);
+  }, [isMobile]);
+  const countValues = editing;
   useEffect(() => {
     const generation = ++sequence.current;
     const abort = new AbortController();
@@ -91,7 +135,7 @@ export function MorarSearchForm({
       return;
     }
     const timer = setTimeout(() => {
-      const parsed = searchSchema.safeParse(values);
+      const parsed = searchSchema.safeParse(countValues);
       if (!parsed.success) {
         setCount(null);
         setCountPending(false);
@@ -117,7 +161,7 @@ export function MorarSearchForm({
       clearTimeout(timer);
       abort.abort();
     };
-  }, [values, available]);
+  }, [countValues, available]);
   useEffect(() => {
     const key = Object.keys(errors)[0];
     if (key) document.getElementById(`${id}-${key}`)?.focus();
@@ -125,7 +169,7 @@ export function MorarSearchForm({
   const choices: Record<string, Array<[string, string]>> = {
     tipo: facets.types.map((x) => [x.value, `${x.value} (${x.count})`]),
     cidade: facets.cities.map((x) => [x.value, x.value]),
-    bairro: facets.districts.filter((x) => x.city === values.cidade).map((x) => [x.value, x.value]),
+    bairro: facets.districts.filter((x) => x.city === editing.cidade).map((x) => [x.value, x.value]),
     valorModo: [
       ["fixo", "Preço informado"],
       ["consulte", "Sob consulta"],
@@ -181,12 +225,12 @@ export function MorarSearchForm({
         {choices[key] ? (
           <select
             id={`${id}-${key}`}
-            value={values[key] ?? ""}
+            value={editing[key] ?? ""}
             onChange={(e) => update(key, e.target.value)}
-            disabled={key === "bairro" && !values.cidade}
+            disabled={key === "bairro" && !editing.cidade}
           >
             <option value="">
-              {key === "bairro" && !values.cidade ? "Escolha a cidade primeiro" : "Todas as opções"}
+              {key === "bairro" && !editing.cidade ? "Escolha a cidade primeiro" : "Todas as opções"}
             </option>
             {choices[key].map(([value, text]) => (
               <option key={value} value={value}>
@@ -208,7 +252,7 @@ export function MorarSearchForm({
                 : undefined
             }
             maxLength={numeric ? undefined : 100}
-            value={values[key] ?? ""}
+            value={editing[key] ?? ""}
             onChange={(e) => update(key, e.target.value)}
             aria-invalid={!!errors[key]}
             aria-describedby={errors[key] ? `${id}-${key}-error` : undefined}
@@ -272,7 +316,8 @@ export function MorarSearchForm({
               className={`ms-filter-trigger ${active === key ? "is-open" : ""}`}
               aria-expanded={active === key}
               aria-controls={`${id}-panel`}
-              onClick={() => setActive((old) => (old === key ? null : key))}
+              aria-haspopup={isMobile ? "dialog" : undefined}
+              onClick={() => openGroup(key)}
             >
               <Icon size={22} strokeWidth={1.6} aria-hidden="true" />
               <span>
@@ -288,7 +333,55 @@ export function MorarSearchForm({
           );
         })}
       </div>
-      {group && (
+      {isMobile && (
+        <Sheet open={drawerOpen} onOpenChange={(open) => !open && closeDrawer(false)}>
+          <SheetContent
+            side="bottom"
+            closeLabel="Fechar sem aplicar"
+            className="morar-site ms-drawer"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT") {
+                event.preventDefault();
+                closeDrawer(true);
+              }
+            }}
+          >
+            <SheetHeader>
+              <SheetTitle>{group?.label ?? "Filtros"}</SheetTitle>
+              <SheetDescription>As mudanças só valem depois de aplicar.</SheetDescription>
+            </SheetHeader>
+            <div className="ms-drawer-body">
+              <div className="ms-filter-fields">{group?.fields.map(field)}</div>
+            </div>
+            <div className="ms-drawer-footer">
+              <span aria-live="polite" className="ms-search-count">
+                {countPending
+                  ? "Consultando…"
+                  : count != null
+                    ? `${count} ${count === 1 ? "imóvel" : "imóveis"}`
+                    : ""}
+              </span>
+              <button
+                type="button"
+                className="cs-text-link"
+                onClick={() => {
+                  if (!group || !draft) return;
+                  const cleared = { ...draft };
+                  for (const k of group.fields)
+                    cleared[k] = String(defaultSearch[k as keyof SiteSearch] ?? "");
+                  setDraft(cleared);
+                }}
+              >
+                Limpar
+              </button>
+              <button type="button" className="cs-button" onClick={() => closeDrawer(true)}>
+                Aplicar filtros
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+      {group && !isMobile && (
         <section
           className="ms-filter-panel"
           id={`${id}-panel`}
