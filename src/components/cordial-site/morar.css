@@ -962,7 +962,6 @@ body:has(.morar-site) {
 .morar-site .cs-hx-search :where(button, a, label, span, small) { color: #333; }
 .morar-site .cs-hx-search .cs-button,
 .morar-site .cs-hx-search .cs-button * { color: #fff; }
-.morar-site .cs-hx-search :where(button, label) { white-space: nowrap; }
 @media (max-width: 1100px) {
   .morar-site .cs-hx-hero-copy h1 em { color: #aa4707; }
   .morar-site .cs-hx-search { box-shadow: none; padding: 0; background: none; border: 0; }
