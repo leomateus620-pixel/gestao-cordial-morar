@@ -28,7 +28,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { brl } from "@/lib/format";
+import { brl, brlCents } from "@/lib/format";
 import { formatRentalDate, hasRentalOwnerData } from "@/lib/rentals/rental-detail.utils";
 import { cn } from "@/lib/utils";
 import type {
