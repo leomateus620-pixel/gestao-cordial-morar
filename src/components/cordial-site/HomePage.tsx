@@ -21,7 +21,7 @@ import {
   sitePath,
 } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
-import { useSite } from "@/lib/cordial-site/context";
+import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyImage } from "./PropertyCard";
 import { SearchForm } from "./SearchForm";
 import { RecentProperties } from "./RecentProperties";
@@ -74,10 +74,11 @@ function HomeCard({
   variant: "lg" | "sm" | "compact";
   sizes: string;
 }) {
+  const brand = useSiteBrand();
   const title = `${p.type ?? "Imóvel"}${p.district ? ` no ${p.district}` : ""}`;
   return (
     <article className={`cs-hx-card cs-hx-card-${variant}`}>
-      <SiteLink to={propertyPath(p)} className="cs-hx-card-media" aria-label={title} tabIndex={-1}>
+      <SiteLink to={propertyPath(p, brand)} className="cs-hx-card-media" aria-label={title} tabIndex={-1}>
         <PropertyImage media={p.cover} alt={title} sizes={sizes} />
         <span className="cs-hx-badge">{opLabel(p)}</span>
       </SiteLink>
@@ -87,7 +88,7 @@ function HomeCard({
       <div className="cs-hx-card-body">
         <strong className="cs-hx-price">{priceLabel(p)}</strong>
         <h3>
-          <SiteLink to={propertyPath(p)}>{p.type ?? "Imóvel"}</SiteLink>
+          <SiteLink to={propertyPath(p, brand)}>{p.type ?? "Imóvel"}</SiteLink>
         </h3>
         <p className="cs-hx-place">
           <MapPin size={13} aria-hidden /> {place(p) || "Localização sob consulta"}
@@ -167,10 +168,11 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
 }
 
 function HeroCard({ hero }: { hero: PublicProperty }) {
+  const brand = useSiteBrand();
   const site = useSite();
   const [origin, setOrigin] = useState(site.canonicalOrigin ?? "");
   useEffect(() => setOrigin(site.canonicalOrigin ?? location.origin), [site.canonicalOrigin]);
-  const whatsapp = propertyWhatsapp(hero, site.settings.whatsapp, propertyUrl(hero, origin));
+  const whatsapp = propertyWhatsapp(hero, site.settings.whatsapp, propertyUrl(hero, origin, brand));
   return (
     <aside className="cs-hx-hero-card" aria-label="Imóvel da semana">
       <p className="cs-hx-kicker">Imóvel da semana</p>
@@ -181,7 +183,7 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
       <strong className="cs-hx-price">{priceLabel(hero)}</strong>
       <Attributes p={hero} />
       <div className="cs-hx-hero-actions">
-        <SiteLink to={propertyPath(hero)} className="cs-button cs-hx-primary">
+        <SiteLink to={propertyPath(hero, brand)} className="cs-button cs-hx-primary">
           Conhecer este imóvel <ArrowUpRight size={17} />
         </SiteLink>
         {whatsapp && (
@@ -195,6 +197,7 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
 }
 
 function DistrictsPanel() {
+  const brand = useSiteBrand();
   const { facets } = useSite();
   const cities = useMemo(() => [...new Set(facets.districts.map((d) => d.city))].sort((a, b) => a.localeCompare(b, "pt-BR")), [facets.districts]);
   const [city, setCity] = useState("");
@@ -228,7 +231,7 @@ function DistrictsPanel() {
       <ul>
         {list.map((d) => (
           <li key={`${d.city}:${d.value}`}>
-            <SiteLink to={sitePath(`/buscar?${new URLSearchParams({ cidade: d.city, bairro: d.value })}`)}>
+            <SiteLink to={sitePath(`/buscar?${new URLSearchParams({ cidade: d.city, bairro: d.value })}`, brand)}>
               <span>
                 <b>{d.value}</b>
                 {!city && cities.length > 1 && <small>{d.city}</small>}
@@ -239,7 +242,7 @@ function DistrictsPanel() {
         ))}
         {!list.length && <li className="cs-hx-note">Nenhum bairro encontrado.</li>}
       </ul>
-      <SiteLink to={sitePath("/bairros")} className="cs-text-link">
+      <SiteLink to={sitePath("/bairros", brand)} className="cs-text-link">
         Ver todos <ArrowUpRight size={16} />
       </SiteLink>
     </aside>
@@ -248,6 +251,8 @@ function DistrictsPanel() {
 
 export function HomePage({ home }: { home: Promise<HomeData | null> }) {
   const { settings, available } = useSite();
+  const brand = useSiteBrand();
+  const copy = HOME_COPY[brand];
   return (
     <>
       <Await promise={home} fallback={<HomeSkeleton />}>
@@ -272,7 +277,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
             <section className="cs-container cs-hx-featured" aria-labelledby="cs-hx-featured-title">
               <div className="cs-hx-heading">
                 <h2 id="cs-hx-featured-title">Imóveis em destaque</h2>
-                <SiteLink className="cs-text-link" to={sitePath("/buscar")}>
+                <SiteLink className="cs-text-link" to={sitePath("/buscar", brand)}>
                   Explorar imóveis <ArrowUpRight size={18} />
                 </SiteLink>
               </div>
@@ -298,7 +303,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                 ) : (
                   <div className="cs-inline-state">
                     <h3>Encontre seu imóvel na busca.</h3>
-                    <SiteLink className="cs-button cs-button-light" to={sitePath("/buscar")}>
+                    <SiteLink className="cs-button cs-button-light" to={sitePath("/buscar", brand)}>
                       Buscar imóveis <ArrowRight size={17} />
                     </SiteLink>
                   </div>
@@ -318,7 +323,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                   ))}
                 </div>
                 <div className="cs-hx-more-footer">
-                  <SiteLink className="cs-button cs-button-light" to={sitePath("/buscar")}>
+                  <SiteLink className="cs-button cs-button-light" to={sitePath("/buscar", brand)}>
                     Ver todos os imóveis <ArrowRight size={17} />
                   </SiteLink>
                 </div>
@@ -338,7 +343,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
               {settings.about ||
                 "Cada mudança começa com uma escolha. Nossa equipe acompanha você para comprar, alugar ou anunciar seu imóvel."}
             </p>
-            <SiteLink to={sitePath("/sobre")} className="cs-text-link">
+            <SiteLink to={sitePath("/sobre", brand)} className="cs-text-link">
               Conheça nossa história <ArrowUpRight size={19} />
             </SiteLink>
           </div>
@@ -354,7 +359,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
               <s.icon size={27} strokeWidth={1.5} />
               <h3>{s.title}</h3>
               <p>{s.text}</p>
-              <SiteLink to={sitePath(s.to)}>
+              <SiteLink to={sitePath(s.to, brand)}>
                 {s.cta}
                 <ArrowUpRight size={18} />
               </SiteLink>
@@ -369,7 +374,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
             <p className="cs-eyebrow">Conversa de gente para gente</p>
             <h2>Vamos encontrar seu lugar?</h2>
           </div>
-          <SiteLink className="cs-button cs-button-white" to={sitePath("/contato")}>
+          <SiteLink className="cs-button cs-button-white" to={sitePath("/contato", brand)}>
             Falar com a equipe <ArrowUpRight size={19} />
           </SiteLink>
         </div>
@@ -379,6 +384,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
 }
 
 function HomeSkeleton() {
+  const copy = HOME_COPY[useSiteBrand()];
   return (
     <section className="cs-hx-hero is-neutral" role="status" aria-label="Carregando imóveis">
       <div className="cs-container cs-hx-hero-grid">
