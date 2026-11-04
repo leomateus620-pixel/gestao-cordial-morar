@@ -1018,11 +1018,13 @@ body:has(.morar-site) {
   min-width: 0;
   font-size: 13.5px;
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  flex: 1 1 auto;
 }
-.morar-site .cs-hx-search .ms-filter-trigger small { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.morar-site .cs-hx-search .ms-filter-trigger { min-height: 52px; height: auto; }
+.morar-site .cs-hx-search .ms-filter-trigger small { display: block; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .morar-site .cs-hx-search .ms-filter-row .ms-filter-trigger:last-child {
   grid-column: 1 / -1;
   min-height: 38px;

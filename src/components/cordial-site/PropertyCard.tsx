@@ -89,10 +89,19 @@ export function PropertyImage({
   const brand = useSiteBrand();
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const mediaKey = `${brand}:${media?.id ?? ""}:${media?.version ?? ""}:${size}`;
+  // Single reconciliation per photo: reset, then accept an image the browser already finished (cache/SSR).
   useEffect(() => {
     setFailed(false);
-    setLoaded(false);
-  }, [media?.id, media?.version]);
+    const img = imgRef.current;
+    setLoaded(Boolean(img && img.complete && img.naturalWidth > 0));
+  }, [mediaKey]);
+  const responsiveSizes =
+    sizesOverride ??
+    (size === "full"
+      ? "(max-width: 768px) 100vw, 80vw"
+      : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw");
   if (!media || failed)
     return (
       <div className={`cs-photo-fallback ${className}`}>
@@ -109,12 +118,8 @@ export function PropertyImage({
           ? undefined
           : `${mediaPath(media, "thumb", brand)} 480w, ${mediaPath(media, "card", brand)} 960w, ${mediaPath(media, "full", brand)} 1920w`
       }
-      sizes={
-        sizesOverride ??
-        size === "full"
-          ? "(max-width: 768px) 100vw, 80vw"
-          : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-      }
+      ref={imgRef}
+      sizes={responsiveSizes}
       width={media.width ?? 960}
       height={media.height ?? 640}
       loading={priority ? "eager" : "lazy"}
