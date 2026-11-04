@@ -477,6 +477,13 @@
       "when": 1793816167603,
       "tag": "0067_rental_docs_unique_file_path",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1793824643472,
+      "tag": "0068_rental_contract_adjustments",
+      "breakpoints": true
     }
   ]
 }

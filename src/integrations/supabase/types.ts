@@ -9598,6 +9598,59 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_contract_adjustments: {
+        Row: {
+          ativo: boolean
+          contract_id: string
+          created_at: string
+          created_by: string
+          descricao: string
+          fim_competencia: string | null
+          id: string
+          inicio_competencia: string
+          repassar_proprietario: boolean
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ativo?: boolean
+          contract_id: string
+          created_at?: string
+          created_by?: string
+          descricao: string
+          fim_competencia?: string | null
+          id?: string
+          inicio_competencia: string
+          repassar_proprietario?: boolean
+          tipo?: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          ativo?: boolean
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          descricao?: string
+          fim_competencia?: string | null
+          id?: string
+          inicio_competencia?: string
+          repassar_proprietario?: boolean
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_contract_adjustments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_contract_documents: {
         Row: {
           category: string

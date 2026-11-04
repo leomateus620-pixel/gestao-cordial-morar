@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { checkReceiptValores, COMPROVANTE_MAX_BYTES } from "./receipt-registration";
+import type { RecurringAdjustment } from "./receipt-model";
 
 const scope = z.object({
   contractId: z.string().uuid(),
@@ -35,10 +37,7 @@ export const getReceiptCompanyTaxId = createServerFn({ method: "GET" })
 const receiptRegistration = scope.extend({
   filePath: z.string().max(240),
   fileName: z.string().min(1).max(150),
-  valores: z.record(
-    z.string().max(60),
-    z.union([z.string().max(200), z.number().finite().min(-999999999).max(999999999)]),
-  ),
+  valores: z.unknown(),
 });
 export const registerRentalReceipt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -50,6 +49,7 @@ export const registerRentalReceipt = createServerFn({ method: "POST" })
       !/^\d+-[a-f0-9-]+\.pdf$/.test(data.filePath.slice(prefix.length))
     )
       throw new Error("Arquivo inválido.");
+    const valores = checkReceiptValores(data.contractId, data.competencia, data.valores);
     const { data: contract } = await context.supabase
       .from("rental_contracts")
       .select("id")
@@ -75,6 +75,14 @@ export const registerRentalReceipt = createServerFn({ method: "POST" })
       (await file.slice(0, 5).text()) !== "%PDF-"
     )
       throw new Error("PDF não encontrado ou inválido.");
+    for (const a of valores.ajustesProprietario ?? []) {
+      if (!a.comprovantePath) continue;
+      const { data: proof, error: proofError } = await context.supabase.storage
+        .from("rental-documents")
+        .download(a.comprovantePath);
+      if (proofError || !proof || proof.size > COMPROVANTE_MAX_BYTES)
+        throw new Error("Comprovante não encontrado ou muito grande.");
+    }
     const { data: row, error } = await context.supabase
       .from("rental_emissions")
       .insert({
@@ -83,7 +91,7 @@ export const registerRentalReceipt = createServerFn({ method: "POST" })
         competencia: data.competencia,
         file_path: data.filePath,
         file_name: data.fileName,
-        valores: data.valores as Record<string, string | number>,
+        valores: JSON.parse(JSON.stringify(valores)),
         created_by: context.userId,
         provider: "gestao",
       })
@@ -120,4 +128,82 @@ export const getRentalEmissionUrl = createServerFn({ method: "GET" })
       .createSignedUrl(row.file_path, 604800);
     if (error || !signed) throw new Error("Não foi possível abrir o arquivo.");
     return signed.signedUrl;
+  });
+
+const competence = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+export const listContractAdjustments = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { contractId: string }) =>
+    z.object({ contractId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }): Promise<RecurringAdjustment[]> => {
+    const { data: rows, error } = await context.supabase
+      .from("rental_contract_adjustments")
+      .select("id,tipo,descricao,valor,repassar_proprietario,inicio_competencia,fim_competencia,ativo")
+      .eq("contract_id", data.contractId)
+      .eq("ativo", true)
+      .order("created_at");
+    if (error) throw new Error("Não foi possível carregar os ajustes recorrentes.");
+    return (rows ?? []).map((r) => ({
+      id: r.id,
+      tipo: r.tipo === "acrescimo" ? "acrescimo" : "desconto",
+      descricao: r.descricao,
+      valor: Number(r.valor),
+      repassarProprietario: r.repassar_proprietario,
+      inicioCompetencia: r.inicio_competencia,
+      fimCompetencia: r.fim_competencia,
+      ativo: r.ativo,
+    }));
+  });
+const adjustmentInput = z.object({
+  id: z.string().uuid().optional(),
+  contractId: z.string().uuid(),
+  tipo: z.enum(["desconto", "acrescimo"]),
+  descricao: z.string().trim().min(1).max(60),
+  valor: z.number().finite().gt(0).max(99999999),
+  repassarProprietario: z.boolean(),
+  inicioCompetencia: competence,
+  fimCompetencia: competence.nullable(),
+});
+export const upsertContractAdjustment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: z.infer<typeof adjustmentInput>) => adjustmentInput.parse(data))
+  .handler(async ({ data, context }) => {
+    if (data.fimCompetencia && data.fimCompetencia < data.inicioCompetencia)
+      throw new Error("A repetição não pode terminar antes do início.");
+    const row = {
+      contract_id: data.contractId,
+      tipo: data.tipo,
+      descricao: data.descricao,
+      valor: data.valor,
+      repassar_proprietario: data.repassarProprietario,
+      inicio_competencia: data.inicioCompetencia,
+      fim_competencia: data.fimCompetencia,
+    };
+    const query = data.id
+      ? context.supabase
+          .from("rental_contract_adjustments")
+          .update(row)
+          .eq("id", data.id)
+          .eq("contract_id", data.contractId)
+      : context.supabase
+          .from("rental_contract_adjustments")
+          .insert({ ...row, created_by: context.userId });
+    const { data: saved, error } = await query.select("id").single();
+    if (error || !saved) throw new Error("Não foi possível salvar o ajuste recorrente.");
+    return saved;
+  });
+export const deactivateContractAdjustment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string; contractId: string }) =>
+    z.object({ id: z.string().uuid(), contractId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("rental_contract_adjustments")
+      .update({ ativo: false })
+      .eq("id", data.id)
+      .eq("contract_id", data.contractId);
+    if (error) throw new Error("Não foi possível encerrar o ajuste recorrente.");
+    return { ok: true };
   });

@@ -19,8 +19,10 @@ import { useRentalNfse } from "@/hooks/useRentalNfse";
 import {
   getReceiptCompanyTaxId,
   getRentalEmissionUrl,
+  listContractAdjustments,
   listRentalEmissions,
   registerRentalReceipt,
+  upsertContractAdjustment,
 } from "@/lib/rentals/emissions.functions";
 import { buildReceiptModel, type ReceiptInput } from "@/lib/rentals/receipt-model";
 import { buildReceiptPdf } from "@/lib/rentals/receipt-pdf";
@@ -220,6 +222,8 @@ export function RentalEmissions({
   const register = useServerFn(registerRentalReceipt);
   const taxId = useServerFn(getReceiptCompanyTaxId);
   const signedUrl = useServerFn(getRentalEmissionUrl);
+  const listAdjustments = useServerFn(listContractAdjustments);
+  const saveAdjustment = useServerFn(upsertContractAdjustment);
   const qc = useQueryClient();
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -228,8 +232,13 @@ export function RentalEmissions({
     inputKey: string;
     filePath: string;
     fileName: string;
-    valores: Record<string, string | number>;
+    valores: Record<string, unknown>;
   } | null>(null);
+  const recurring = useQuery({
+    queryKey: ["rental-contract-adjustments", contract.id],
+    queryFn: () => listAdjustments({ data: { contractId: contract.id } }),
+    enabled: receiptOpen,
+  });
   const real = useRentalNfse(contract.id, canEmit, false);
   const tests = useRentalNfse(contract.id, canEmit, true);
   const docs = useQuery({
@@ -243,15 +252,50 @@ export function RentalEmissions({
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const nf = notes.find((row) => row.status === "emitida" || row.status === "teste_ok");
   const nfBusy = notes.some((row) => row.status === "processando");
-  async function saveReceipt(input: ReceiptInput) {
+  async function saveReceipt(input: ReceiptInput, proofs: Record<string, File> = {}) {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const inputKey = JSON.stringify(input);
+      const inputKey = JSON.stringify({
+        input,
+        proofs: Object.entries(proofs).map(([id, f]) => [id, f.name, f.size, f.lastModified]),
+      });
       let saved = unfinished.current?.inputKey === inputKey ? unfinished.current : null;
       if (!saved) {
-        const model = buildReceiptModel(contract, input);
+        const ownerAdj = [];
+        for (const a of input.ajustesProprietario ?? []) {
+          const file = proofs[a.id];
+          if (!file) {
+            ownerAdj.push({ id: a.id, tipo: a.tipo, descricao: a.descricao.trim(), valor: a.valor });
+            continue;
+          }
+          const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+          if (!["pdf", "jpg", "jpeg", "png"].includes(ext) || file.size > 5 * 1024 * 1024)
+            throw new Error("Comprovante deve ser PDF, JPG ou PNG de até 5 MB.");
+          const proofPath = `${contract.id}/recibos/comprovantes/${input.competencia}-${Date.now()}-${crypto.randomUUID()}.${ext}`;
+          const { error: proofError } = await supabase.storage
+            .from("rental-documents")
+            .upload(proofPath, file, { contentType: file.type || undefined, upsert: false });
+          if (proofError) throw new Error("Não foi possível guardar o comprovante.");
+          ownerAdj.push({
+            id: a.id,
+            tipo: a.tipo,
+            descricao: a.descricao.trim(),
+            valor: a.valor,
+            comprovantePath: proofPath,
+          });
+        }
+        const tenantAdj = (input.ajustesInquilino ?? []).map((a) => ({
+          id: a.id,
+          tipo: a.tipo,
+          descricao: a.descricao.trim(),
+          valor: a.valor,
+          repassarProprietario: a.repassarProprietario,
+          ...(a.recorrenteId ? { recorrenteId: a.recorrenteId } : {}),
+        }));
+        const clean: ReceiptInput = { ...input, ajustesInquilino: tenantAdj, ajustesProprietario: ownerAdj };
+        const model = buildReceiptModel(contract, clean);
         const cnpj = await taxId({ data: { brand: input.brand } });
         const response = await fetch(model.company.logo);
         if (!response.ok) throw new Error("Não foi possível carregar o logo.");
@@ -272,7 +316,7 @@ export function RentalEmissions({
           inputKey,
           filePath,
           fileName: model.fileName,
-          valores: { ...input, totalPagar: model.totalPagar, totalReceber: model.totalReceber },
+          valores: { ...clean, totalPagar: model.totalPagar, totalReceber: model.totalReceber },
         };
         unfinished.current = saved;
       }
@@ -286,6 +330,28 @@ export function RentalEmissions({
         },
       });
       unfinished.current = null;
+      const toRepeat = (input.ajustesInquilino ?? []).filter((a) => a.repetir && !a.recorrenteId);
+      let repeatFailed = false;
+      for (const a of toRepeat) {
+        try {
+          await saveAdjustment({
+            data: {
+              contractId: contract.id,
+              tipo: a.tipo,
+              descricao: a.descricao.trim(),
+              valor: a.valor,
+              repassarProprietario: a.repassarProprietario,
+              inicioCompetencia: input.competencia,
+              fimCompetencia: a.fimCompetencia ?? null,
+            },
+          });
+        } catch {
+          repeatFailed = true;
+        }
+      }
+      if (repeatFailed)
+        toast.error("Recibo guardado, mas não foi possível salvar um ajuste recorrente.");
+      await qc.invalidateQueries({ queryKey: ["rental-contract-adjustments", contract.id] });
       await qc.invalidateQueries({ queryKey: ["rental-emissions", contract.id] });
       setReceiptOpen(false);
       toast.success("Recibo guardado.");
@@ -388,11 +454,20 @@ export function RentalEmissions({
           </Button>
         </p>
       )}
-      {receiptOpen && (
+      {receiptOpen && recurring.isError && (
+        <p role="alert" className="mt-3 text-xs text-destructive">
+          Não foi possível carregar os ajustes recorrentes.
+          <Button variant="link" size="sm" onClick={() => void recurring.refetch()}>
+            Tentar novamente
+          </Button>
+        </p>
+      )}
+      {receiptOpen && recurring.isSuccess && (
         <ReceiptModal
           key={competencia}
           contract={contract}
           competencia={competencia}
+          recurring={recurring.data}
           onClose={() => setReceiptOpen(false)}
           onSave={saveReceipt}
           pending={busy}
