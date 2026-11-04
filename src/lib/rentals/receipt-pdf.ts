@@ -1,8 +1,22 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import type { ReceiptModel } from "./receipt-model";
 
-const brl = (value: number) =>
+const brlAbs = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+const brl = (value: number) => (value < 0 ? `− ${brlAbs(-value)}` : brlAbs(value));
+type Adj = { tipo: "desconto" | "acrescimo"; descricao: string; valor: number };
+const adjRow = (a: Adj): [string, number] => [
+  `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao}`,
+  a.tipo === "acrescimo" ? a.valor : -a.valor,
+];
+/** Fit rows into the via; overflow adjustments are grouped as "Outros ajustes (n)". */
+export function fitReceiptRows(base: [string, number][], adjustments: [string, number][], max: number) {
+  if (base.length + adjustments.length <= max) return [...base, ...adjustments];
+  const keep = Math.max(0, max - base.length - 1);
+  const rest = adjustments.slice(keep);
+  const sum = rest.reduce((s, [, v]) => s + Math.round(v * 100), 0) / 100;
+  return [...base, ...adjustments.slice(0, keep), [`Outros ajustes (${rest.length})`, sum] as [string, number]];
+}
 export async function buildReceiptPdf(
   model: ReceiptModel,
   logoBytes: Uint8Array,
@@ -98,6 +112,16 @@ export async function buildReceiptPdf(
       rows.push([`IPTU${model.iptuParcela ? ` ${model.iptuParcela}` : ""}`, model.iptu]);
     if (index !== 1 && model.seguroFianca) rows.push(["Seguro Fiança", model.seguroFianca]);
     if (model.condominio) rows.push(["Condomínio", model.condominio]);
+    const tenantAdj = model.ajustesInquilino.map(adjRow);
+    const ownerAdj = [
+      ...model.ajustesInquilino.filter((a) => a.repassarProprietario).map(adjRow),
+      ...model.ajustesProprietario.map(adjRow),
+    ];
+    const extra = index === 0 ? tenantAdj : index === 1 ? ownerAdj : [];
+    const maxRows = Math.floor((y - 12 - (top - 228)) / 11) + 1;
+    const fitted = fitReceiptRows(rows, extra, maxRows);
+    rows.length = 0;
+    rows.push(...fitted);
     rows.forEach(([label, value], i) => {
       draw(label, 46, y - 12 - i * 11, 9, font, 260);
       draw(brl(value), 310, y - 12 - i * 11, 9, bold, 78);
@@ -112,6 +136,17 @@ export async function buildReceiptPdf(
       ].forEach(([label, value], i) =>
         draw(`${label}: ${brl(Number(value))}`, 398, y - 14 - i * 13, 9, bold, 160),
       );
+    if (index === 2 && (model.ajustesInquilino.length || model.ajustesProprietario.length)) {
+      const owner = Math.round((model.ajusteRepassado + model.ajusteProprietario) * 100) / 100;
+      draw(
+        `Ajustes: inquilino ${brl(model.ajusteInquilino)} / proprietário ${brl(owner)}`,
+        398,
+        y - 14 - 3 * 13,
+        8,
+        font,
+        160,
+      );
+    }
     draw("Data: ___/___/____. ______________", 35, top - 239, 9);
     draw(index === 2 ? "Locador" : model.company.name, 35, top - 252, 9, bold);
     if (index < 2)
