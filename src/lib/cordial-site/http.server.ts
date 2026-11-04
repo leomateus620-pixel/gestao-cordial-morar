@@ -304,8 +304,8 @@ export async function handleSiteRequest(
       }
       if (route.startsWith("showcase/")) {
         const [, weekId, checksum, ...rest] = route.split("/");
-        if (rest.length || brand !== "cordial") return json({ error: "Não encontrado." }, 404);
-        return showcaseResponse(weekId ?? "", checksum ?? "");
+        if (rest.length) return json({ error: "Não encontrado." }, 404);
+        return showcaseResponse(weekId ?? "", checksum ?? "", brand);
       }
       if (route.startsWith("video/")) {
         const [, id, version, ...rest] = route.split("/");
@@ -378,16 +378,16 @@ export async function handleSiteRequest(
   }
 }
 
-async function showcaseResponse(weekId: string, checksum: string): Promise<Response> {
+async function showcaseResponse(weekId: string, checksum: string, brand: SiteBrand): Promise<Response> {
   if (!z.string().uuid().safeParse(weekId).success || !/^[a-f0-9]{32}$/.test(checksum))
     return json({ error: "Imagem não encontrada." }, 404);
   const db = siteDb();
   const { activeShowcase } = await import("./showcase.server");
-  const active = await activeShowcase(db);
+  const active = await activeShowcase(db, brand);
   // Só a edição aprovada da semana ativa, com imóvel e foto ainda publicados.
   if (!active || !active.edited || active.weekId !== weekId || active.checksum !== checksum || !active.storagePath)
     return json({ error: "Imagem não disponível." }, 404);
-  const { data: blob, error } = await db.storage.from("cordial-showcase").download(active.storagePath);
+  const { data: blob, error } = await db.storage.from(`${brand}-showcase`).download(active.storagePath);
   if (error || !blob) return json({ error: "Imagem não disponível." }, 404);
   return new Response(blob, {
     headers: {
