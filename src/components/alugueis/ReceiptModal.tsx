@@ -8,6 +8,7 @@ import {
   computeReceiptTotals,
   defaultReceiptInput,
   MAX_ADJUSTMENTS_PER_SIDE,
+  MAX_ADJUSTMENT_DESCRIPTION,
   NEGATIVE_TOTAL_MESSAGE,
   type AdjustmentKind,
   type OwnerAdjustment,
@@ -16,6 +17,15 @@ import {
   type TenantAdjustment,
 } from "@/lib/rentals/receipt-model";
 import { COMPROVANTE_MAX_BYTES } from "@/lib/rentals/receipt-registration";
+import {
+  RECEIPT_ADJUSTMENT_PRESETS,
+  ownerAdjustmentFromPreset,
+  tenantAdjustmentFromPreset,
+  type ReceiptPreset,
+} from "@/lib/rentals/receipt-presets";
+import { deactivateContractAdjustment } from "@/lib/rentals/emissions.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import type { RentalContractFull } from "@/types/rental";
 import { brlCents, formatBrlInput, parseBrlInput } from "@/lib/format";
 
@@ -25,10 +35,12 @@ function MoneyInput({
   label,
   value,
   onChange,
+  inputId,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  inputId?: string;
 }) {
   const [text, setText] = useState(() => formatBrlInput(value));
   const parsed = parseBrlInput(text);
@@ -42,6 +54,7 @@ function MoneyInput({
           R$
         </span>
         <Input
+          id={inputId}
           aria-label={label}
           aria-invalid={invalid || empty}
           inputMode="decimal"
@@ -91,16 +104,30 @@ function KindSelect({
     </label>
   );
 }
-function DescriptionInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function DescriptionInput({
+  value,
+  onChange,
+  inputId,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  inputId?: string;
+}) {
   const empty = value.trim() === "";
   return (
     <label className="block space-y-1 text-xs font-semibold">
-      Descrição
+      <span className="flex justify-between">
+        Descrição
+        <span className="font-normal tabular-nums text-muted-foreground">
+          {value.length}/{MAX_ADJUSTMENT_DESCRIPTION}
+        </span>
+      </span>
       <Input
+        id={inputId}
         aria-label="Descrição do ajuste"
         aria-invalid={empty}
-        maxLength={60}
-        placeholder="Ex.: Fundo de reserva"
+        maxLength={MAX_ADJUSTMENT_DESCRIPTION}
+        placeholder="Ex.: Água ref. set/2026 – leitura 125 m³"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -146,6 +173,50 @@ export function ReceiptModal({
 }) {
   const [input, setInput] = useState(() => defaultReceiptInput(contract, competencia, recurring));
   const [proofs, setProofs] = useState<Record<string, File>>({});
+  const deactivate = useServerFn(deactivateContractAdjustment);
+  const qc = useQueryClient();
+  const [ending, setEnding] = useState<string | null>(null);
+  const [endError, setEndError] = useState<string | null>(null);
+  const focusLater = (id: string) =>
+    setTimeout(() => document.getElementById(id)?.focus(), 0);
+  function addPreset(p: ReceiptPreset) {
+    const id = newId();
+    if (p.side === "inquilino") setTenant([...tenantAdj, tenantAdjustmentFromPreset(p, id)]);
+    else setOwner([...ownerAdj, ownerAdjustmentFromPreset(p, id)]);
+    focusLater(`adj-${p.focus}-${id}`);
+  }
+  async function endRecurring(a: TenantAdjustment) {
+    if (!a.recorrenteId) return;
+    if (!window.confirm("O item deixa de aparecer nos próximos recibos. Continuar?")) return;
+    setEnding(a.id);
+    setEndError(null);
+    try {
+      await deactivate({ data: { id: a.recorrenteId, contractId: contract.id } });
+      setTenant(tenantAdj.filter((x) => x.id !== a.id));
+      await qc.invalidateQueries({ queryKey: ["rental-contract-adjustments", contract.id] });
+    } catch {
+      setEndError("Não foi possível encerrar a recorrência. Tente novamente.");
+    } finally {
+      setEnding(null);
+    }
+  }
+  const Chips = ({ side, full }: { side: ReceiptPreset["side"]; full: boolean }) => (
+    <div className="flex flex-wrap gap-2" aria-label="Atalhos">
+      {RECEIPT_ADJUSTMENT_PRESETS.filter((p) => p.side === side).map((p) => (
+        <Button
+          key={p.id}
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-7 rounded-full px-3 text-xs"
+          disabled={full}
+          onClick={() => addPreset(p)}
+        >
+          <Plus className="size-3" /> {p.label}
+        </Button>
+      ))}
+    </div>
+  );
   const tenantAdj = input.ajustesInquilino ?? [];
   const ownerAdj = input.ajustesProprietario ?? [];
   const setTenant = (list: TenantAdjustment[]) =>
@@ -288,9 +359,14 @@ export function ReceiptModal({
               {money("seguroFianca", "Seguro fiança")}
             </div>
           </Section>
-          <Section title="Descontos e ajustes do inquilino">
+          <Section title="Acréscimos e descontos do inquilino">
             {tenantAdj.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nenhum desconto ou ajuste neste mês.</p>
+              <p className="text-xs text-muted-foreground">Nenhum acréscimo ou desconto neste mês.</p>
+            )}
+            {endError && (
+              <p role="alert" className="text-xs text-destructive">
+                {endError}
+              </p>
             )}
             {tenantAdj.map((a, i) => (
               <div key={a.id} className="space-y-3 rounded-lg border border-border bg-background p-3">
@@ -303,6 +379,20 @@ export function ReceiptModal({
                       </span>
                     )}
                   </span>
+                  <div className="flex flex-wrap gap-1">
+                  {a.recorrenteId && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={ending === a.id}
+                      onClick={() => void endRecurring(a)}
+                    >
+                      {ending === a.id && <Loader2 className="size-4 animate-spin" />}
+                      Encerrar recorrência
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -313,6 +403,7 @@ export function ReceiptModal({
                     <Trash2 className="size-4" />
                     {a.recorrenteId ? "Remover só deste mês" : "Remover"}
                   </Button>
+                  </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[8rem_1fr_9rem]">
                   <KindSelect
@@ -321,11 +412,13 @@ export function ReceiptModal({
                     onChange={(tipo) => patchTenant(a.id, { tipo })}
                   />
                   <DescriptionInput
+                    inputId={`adj-descricao-${a.id}`}
                     value={a.descricao}
                     onChange={(descricao) => patchTenant(a.id, { descricao })}
                   />
                   <MoneyInput
                     label="Valor"
+                    inputId={`adj-valor-${a.id}`}
                     value={a.valor}
                     onChange={(valor) => patchTenant(a.id, { valor })}
                   />
@@ -373,6 +466,7 @@ export function ReceiptModal({
                 </p>
               </div>
             ))}
+            <Chips side="inquilino" full={tenantAdj.length >= MAX_ADJUSTMENTS_PER_SIDE} />
             <Button
               type="button"
               variant="outline"
@@ -385,7 +479,7 @@ export function ReceiptModal({
                 ])
               }
             >
-              <Plus /> Adicionar desconto/ajuste
+              <Plus /> Adicionar acréscimo/desconto
             </Button>
           </Section>
           <Section title="Desconto da administração">
@@ -421,11 +515,13 @@ export function ReceiptModal({
                     onChange={(tipo) => patchOwner(a.id, { tipo })}
                   />
                   <DescriptionInput
+                    inputId={`adj-descricao-${a.id}`}
                     value={a.descricao}
                     onChange={(descricao) => patchOwner(a.id, { descricao })}
                   />
                   <MoneyInput
                     label="Valor"
+                    inputId={`adj-valor-${a.id}`}
                     value={a.valor}
                     onChange={(valor) => patchOwner(a.id, { valor })}
                   />
@@ -449,6 +545,7 @@ export function ReceiptModal({
                 </label>
               </div>
             ))}
+            <Chips side="proprietario" full={ownerAdj.length >= MAX_ADJUSTMENTS_PER_SIDE} />
             <Button
               type="button"
               variant="outline"
