@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Loader2, ReceiptText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,66 @@ import {
   type ReceiptInput,
 } from "@/lib/rentals/receipt-model";
 import type { RentalContractFull } from "@/types/rental";
-import { brl } from "@/lib/format";
+import { brlCents, formatBrlInput, parseBrlInput } from "@/lib/format";
+
+type MoneyKey = "aluguel" | "honorarios" | "condominio" | "iptu" | "seguroFianca";
+
+function MoneyInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [text, setText] = useState(() => formatBrlInput(value));
+  const parsed = parseBrlInput(text);
+  const invalid = text.trim() !== "" && (Number.isNaN(parsed) || parsed < 0);
+  const empty = text.trim() === "";
+  return (
+    <label className="block space-y-1 text-xs font-semibold">
+      {label}
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          R$
+        </span>
+        <Input
+          aria-label={label}
+          aria-invalid={invalid || empty}
+          inputMode="decimal"
+          className="pl-9 text-right font-mono tabular-nums"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            const n = parseBrlInput(e.target.value);
+            onChange(Number.isNaN(n) ? NaN : n);
+          }}
+          onBlur={() => {
+            if (!Number.isNaN(parsed) && parsed >= 0) setText(formatBrlInput(parsed));
+          }}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      </div>
+      {(invalid || empty) && (
+        <span className="block text-[11px] font-normal text-destructive">
+          {empty ? "Informe o valor (use 0,00 se não houver)." : "Valor inválido."}
+        </span>
+      )}
+    </label>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
+      <legend className="px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        {title}
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
 
 export function ReceiptModal({
   contract,
@@ -36,15 +95,15 @@ export function ReceiptModal({
   } catch {
     /* Validation is shown on submit. */
   }
-  const moneyFields = [
-    ["aluguel", "Aluguel"],
-    ["honorarios", "Honorários"],
-    ["condominio", "Condomínio"],
-    ["iptu", "IPTU"],
-    ["seguroFianca", "Seguro fiança"],
-  ] as const;
+  const v = (key: MoneyKey) => (Number.isFinite(input[key]) ? input[key] : 0);
+  const money = (key: MoneyKey, label: string) => (
+    <MoneyInput label={label} value={input[key]} onChange={(n) => edit(key, n)} />
+  );
   async function submit() {
     try {
+      const keys: MoneyKey[] = ["aluguel", "honorarios", "condominio", "iptu", "seguroFianca"];
+      if (keys.some((k) => !Number.isFinite(input[k]) || input[k] < 0))
+        throw new Error("Confira os valores destacados.");
       buildReceiptModel(contract, input);
       setLocalError(null);
       await onSave(input);
@@ -52,6 +111,36 @@ export function ReceiptModal({
       setLocalError(e instanceof Error ? e.message : "Confira os dados.");
     }
   }
+  const pagarLines: [string, number][] = [
+    ["Aluguel", v("aluguel")],
+    ["Condomínio", v("condominio")],
+    ["IPTU", v("iptu")],
+    ["Seguro fiança", v("seguroFianca")],
+  ];
+  const receberLines: [string, number][] = [
+    ["Aluguel", v("aluguel")],
+    ["Honorários", -v("honorarios")],
+    ["Condomínio", v("condominio")],
+  ];
+  const Summary = ({ title, lines, total }: { title: string; lines: [string, number][]; total?: number }) => (
+    <div className="rounded-xl border border-border bg-background p-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{title}</p>
+      <ul className="mt-2 space-y-1 text-xs">
+        {lines.map(([label, value]) => (
+          <li key={label} className="flex justify-between gap-2">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-mono tabular-nums">
+              {value < 0 ? `− ${brlCents(-value)}` : brlCents(value)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 flex justify-between border-t border-border pt-2 text-sm font-semibold">
+        <span>Total</span>
+        <span className="font-mono tabular-nums text-primary">{brlCents(total ?? 0)}</span>
+      </p>
+    </div>
+  );
   return (
     <Dialog
       open
@@ -59,10 +148,7 @@ export function ReceiptModal({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent
-        className="max-h-[90dvh] overflow-y-auto sm:max-w-lg"
-        aria-describedby={undefined}
-      >
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ReceiptText className="size-5 text-primary" />
@@ -75,6 +161,7 @@ export function ReceiptModal({
             void submit();
           }}
           className="space-y-4"
+          noValidate
         >
           {contract.brand === "ambas" && (
             <label className="block space-y-1 text-xs font-semibold">
@@ -90,65 +177,55 @@ export function ReceiptModal({
               </select>
             </label>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            {moneyFields.map(([key, label]) => (
-              <label key={key} className="space-y-1 text-xs font-semibold">
-                {label}
+          <Section title="Valores do mês">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {money("aluguel", "Aluguel")}
+              {money("condominio", "Condomínio")}
+              {money("iptu", "IPTU")}
+              <label className="block space-y-1 text-xs font-semibold">
+                IPTU parcela (x/y)
                 <Input
-                  aria-label={label}
-                  type="number"
-                  min="0"
-                  max="99999999"
-                  step="0.01"
-                  value={input[key]}
-                  onChange={(e) => edit(key, Number(e.target.value))}
+                  aria-label="IPTU parcela x/y"
+                  placeholder="Ex.: 3/10"
+                  value={input.iptuParcela}
+                  maxLength={20}
+                  onChange={(e) => edit("iptuParcela", e.target.value)}
+                />
+              </label>
+              {money("seguroFianca", "Seguro fiança")}
+            </div>
+          </Section>
+          <Section title="Desconto da administração">
+            <div className="grid gap-3 sm:grid-cols-2">{money("honorarios", "Honorários")}</div>
+          </Section>
+          <Section title="Dados do recibo">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1 text-xs font-semibold">
+                Vencimento
+                <Input
+                  aria-label="Vencimento do recibo"
+                  type="date"
+                  value={input.vencimento}
+                  onChange={(e) => edit("vencimento", e.target.value)}
                   required
                 />
               </label>
-            ))}
-            <label className="space-y-1 text-xs font-semibold">
-              IPTU parcela x/y
-              <Input
-                aria-label="IPTU parcela x/y"
-                value={input.iptuParcela}
-                maxLength={20}
-                onChange={(e) => edit("iptuParcela", e.target.value)}
-              />
-            </label>
-            <label className="col-span-2 space-y-1 text-xs font-semibold">
-              Vencimento
-              <Input
-                aria-label="Vencimento do recibo"
-                type="date"
-                value={input.vencimento}
-                onChange={(e) => edit("vencimento", e.target.value)}
-                required
-              />
-            </label>
-            <label className="col-span-2 space-y-1 text-xs font-semibold">
-              Observação de proporcional
-              <Input
-                aria-label="Observação de proporcional"
-                maxLength={160}
-                value={input.observacao}
-                onChange={(e) => edit("observacao", e.target.value)}
-              />
-            </label>
+              <label className="block space-y-1 text-xs font-semibold sm:col-span-2">
+                Observação de proporcional
+                <Input
+                  aria-label="Observação de proporcional"
+                  placeholder="Opcional"
+                  maxLength={160}
+                  value={input.observacao}
+                  onChange={(e) => edit("observacao", e.target.value)}
+                />
+              </label>
+            </div>
+          </Section>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Summary title="Inquilino paga" lines={pagarLines} total={totals?.totalPagar} />
+            <Summary title="Proprietário recebe" lines={receberLines} total={totals?.totalReceber} />
           </div>
-          <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
-            <div>
-              <dt className="text-muted-foreground">Total a pagar</dt>
-              <dd className="mt-1 font-mono text-base font-semibold tabular-nums">
-                {brl(totals?.totalPagar ?? 0)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Total a receber</dt>
-              <dd className="mt-1 font-mono text-base font-semibold tabular-nums">
-                {brl(totals?.totalReceber ?? 0)}
-              </dd>
-            </div>
-          </dl>
           {(localError || error) && (
             <p role="alert" className="text-xs text-destructive">
               {localError || error}

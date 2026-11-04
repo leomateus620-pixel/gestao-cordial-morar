@@ -24,7 +24,7 @@ import {
 } from "@/lib/rentals/emissions.functions";
 import { buildReceiptModel, type ReceiptInput } from "@/lib/rentals/receipt-model";
 import { buildReceiptPdf } from "@/lib/rentals/receipt-pdf";
-import { brl } from "@/lib/format";
+import { brl, brlCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { RentalContractFull } from "@/types/rental";
 import { ReceiptModal } from "./ReceiptModal";
@@ -164,7 +164,7 @@ function EmissionCard({
           </span>
         )}
       </header>
-      <p className="my-6 font-mono text-2xl font-semibold tabular-nums">{brl(value)}</p>
+      <p className="my-6 font-mono text-2xl font-semibold tabular-nums">{brlCents(value)}</p>
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="block">

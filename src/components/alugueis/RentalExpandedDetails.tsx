@@ -28,7 +28,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { brl } from "@/lib/format";
+import { brl, brlCents } from "@/lib/format";
 import { formatRentalDate, hasRentalOwnerData } from "@/lib/rentals/rental-detail.utils";
 import { cn } from "@/lib/utils";
 import type {
@@ -551,7 +551,7 @@ export function RentalExpandedDetails({
                   Aluguel mensal
                 </p>
                 <p className="mt-0.5 font-mono text-lg font-black tabular-nums text-primary">
-                  {brl(contract.valorMensal)}
+                  {brlCents(contract.valorMensal)}
                 </p>
               </div>
               <button
@@ -701,7 +701,7 @@ export function RentalExpandedDetails({
                   <SummaryItem
                     icon={CircleDollarSign}
                     label="Valor mensal"
-                    value={brl(contract.valorMensal)}
+                    value={brlCents(contract.valorMensal)}
                     accent
                   />
                   <SummaryItem
@@ -748,7 +748,7 @@ export function RentalExpandedDetails({
                   className="xl:col-span-5"
                 >
                   <dl className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                    <DetailField label="Valor mensal" value={brl(contract.valorMensal)} emphasis />
+                    <DetailField label="Valor mensal" value={brlCents(contract.valorMensal)} emphasis />
                     <DetailField
                       label="Comissão mensal"
                       value={
