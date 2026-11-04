@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/sheet";
 import { parseBRLNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import { registerRentalContractDocument } from "@/lib/rentals/rentals.functions";
 import {
   RENTAL_DOCUMENT_CATEGORIES,
@@ -39,7 +38,6 @@ import {
   type RentalTenant,
 } from "@/types/rental";
 
-const DOCS_BUCKET = "rental-documents";
 const MAX_DOC_BYTES = 50 * 1024 * 1024;
 const DOC_ACCEPT =
   ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";

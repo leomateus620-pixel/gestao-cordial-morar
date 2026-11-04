@@ -1162,6 +1162,33 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
     const safeName = data.fileName.replace(/[^\w.-]+/g, "_").slice(0, 120);
     const category = normalizeRentalCategory(data.category ?? null);
 
+    // Idempotente: reenvio do mesmo arquivo (após 504) devolve o registro existente.
+    const { data: existing } = await supabase
+      .from("rental_contract_documents")
+      .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
+      .eq("file_path", data.filePath)
+      .maybeSingle();
+    if (existing) {
+      const e = existing as unknown as DocRow;
+      return {
+        id: e.id,
+        contractId: e.contract_id,
+        fileName: e.file_name,
+        filePath: e.file_path,
+        mimeType: e.mime_type,
+        sizeBytes: e.size_bytes,
+        category: normalizeRentalCategory(e.category),
+        url: await signDoc(supabase, e.file_path),
+        createdAt: e.created_at,
+        driveFileId: null,
+        driveUrl: null,
+        driveMimeType: null,
+        driveSyncStatus: "not_enabled",
+        driveLastError: null,
+        driveLastSyncedAt: null,
+      };
+    }
+
     const { data: inserted, error: insErr } = await supabase
       .from("rental_contract_documents")
       .insert({

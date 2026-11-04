@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
+import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
+import { rentalStorageDeps } from "@/lib/rentals/upload-document.client";
 import {
   deleteRentalContractDocument,
   listRentalContractDocuments,
@@ -17,7 +18,6 @@ import {
 import type { RentalContractDocument, RentalDocumentCategory } from "@/types/rental";
 
 const MAX_BYTES = 50 * 1024 * 1024; // 50 MB
-const DOCS_BUCKET = "rental-documents";
 
 function sanitize(name: string) {
   return name.replace(/[^\w.-]+/g, "_").slice(0, 120);
@@ -66,25 +66,19 @@ export function useRentalDocuments(contractId: string | null) {
       const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
       const contentType = file.type || "application/octet-stream";
 
-      const { error: upErr } = await supabase.storage
-        .from(DOCS_BUCKET)
-        .upload(filePath, file, { contentType, upsert: false });
-      if (upErr) throw new Error(upErr.message);
-
       try {
-        return await register({
-          data: {
-            contractId,
-            fileName: file.name,
-            filePath,
-            mimeType: contentType,
-            sizeBytes: file.size,
-            category,
-          },
-        });
+        return await uploadAndRegister(
+          filePath,
+          file,
+          contentType,
+          rentalStorageDeps((p) =>
+            register({
+              data: { contractId, fileName: file.name, filePath: p, mimeType: contentType, sizeBytes: file.size, category },
+            }),
+          ),
+        ) as Awaited<ReturnType<typeof register>>;
       } catch (e) {
-        await supabase.storage.from(DOCS_BUCKET).remove([filePath]);
-        throw e;
+        throw new Error(friendlyUploadError(file.name, e));
       }
     },
     onSuccess: invalidateAll,

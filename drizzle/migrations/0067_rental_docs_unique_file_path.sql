@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS rental_contract_documents_file_path_key ON public.rental_contract_documents (file_path);
