@@ -1,3 +1,4 @@
+import { ShowcaseManager } from "@/components/cordial-site/ShowcaseManager";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -63,6 +64,7 @@ function Page() {
           ["publicacoes", "Publicação de imóveis"],
           ["inventario", "Inventário e ativação"],
           ["configuracoes", "Identidade e contatos"],
+          ["vitrine", "Vitrine semanal"],
           ["conteudo", "Páginas e notícias"],
           ["contatos", "Contatos recebidos"],
           ["historico", "Histórico"],
@@ -140,6 +142,7 @@ function Page() {
                 onSaved={refresh}
               />
             )}
+            {tab === "vitrine" && <ShowcaseManager brand="morar" />}
             {tab === "inventario" && <MorarSiteInventoryPanel onSaved={refresh} />}
             {tab === "conteudo" && <ContentEditor pages={query.data.pages} onSaved={refresh} />}
             {tab === "contatos" && (
