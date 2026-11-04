@@ -1077,4 +1077,4 @@ body:has(.morar-site) {
 .ms-drawer > button[aria-label], .ms-drawer .sheet-close { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 999px; background: #f4e6d6; color: #2b2520; border: 0; }
 .ms-drawer h2 { margin: 0; font-size: 18px; font-weight: 700; padding-right: 48px; }
 .ms-drawer p { margin: 4px 0 0; font-size: 13px; color: #6b5d4e; }
-body > [data-state="open"][aria-hidden="true"].fixed, .ms-drawer-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(30,24,20,.45); }
+.ms-drawer-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(30,24,20,.45); }
