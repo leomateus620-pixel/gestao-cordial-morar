@@ -200,7 +200,7 @@ function FocalPreview({ url, view, x, y, onSet }: { url: string; view: "desktop"
   );
 }
 
-function Picker({ onPick }: { onPick: (p: { publicId: string; mediaId: string; mediaVersion: string }) => void }) {
+function Picker({ onPick, brand }: { brand: "cordial" | "morar"; onPick: (p: { publicId: string; mediaId: string; mediaVersion: string }) => void }) {
   const search = useServerFn(searchShowcaseCandidates);
   const [ref, setRef] = useState("");
   const q = useMutation({ mutationFn: () => search({ data: { reference: ref, brand } }) });
