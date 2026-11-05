@@ -217,3 +217,34 @@ export function buildReceiptModel(contract: RentalContractFull, input: ReceiptIn
   };
 }
 export type ReceiptModel = ReturnType<typeof buildReceiptModel>;
+
+type ViaSource = Pick<
+  ReceiptInput,
+  "aluguel" | "honorarios" | "condominio" | "iptu" | "iptuParcela" | "seguroFianca" | "observacao"
+> & { ajustesInquilino?: TenantAdjustment[]; ajustesProprietario?: OwnerAdjustment[] };
+const viaAdjRow = (a: { tipo: AdjustmentKind; descricao: string; valor: number }): [string, number] => [
+  `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao}`,
+  a.tipo === "acrescimo" ? a.valor : -a.valor,
+];
+/**
+ * Rows of each via (0 = locatário, 1 = locador, 2 = imobiliária), shared by the PDF and
+ * the on-screen preview so both always show the same lines.
+ */
+export function receiptViaRows(m: ViaSource, via: 0 | 1 | 2) {
+  const base: [string, number][] = [
+    [`Aluguel${via === 0 && m.observacao ? ` (${m.observacao})` : ""}`, m.aluguel],
+  ];
+  if (via !== 0 && m.honorarios) base.push(["Honorários", m.honorarios]);
+  if (via !== 1 && m.iptu) base.push([`IPTU${m.iptuParcela ? ` ${m.iptuParcela}` : ""}`, m.iptu]);
+  if (via !== 1 && m.seguroFianca) base.push(["Seguro Fiança", m.seguroFianca]);
+  if (m.condominio) base.push(["Condomínio", m.condominio]);
+  const tenant = m.ajustesInquilino ?? [];
+  const owner = m.ajustesProprietario ?? [];
+  const adjustments =
+    via === 0
+      ? tenant.map(viaAdjRow)
+      : via === 1
+        ? [...tenant.filter((a) => a.repassarProprietario).map(viaAdjRow), ...owner.map(viaAdjRow)]
+        : [];
+  return { base, adjustments };
+}
