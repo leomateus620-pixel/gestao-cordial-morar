@@ -10,6 +10,7 @@ import {
   MAX_ADJUSTMENTS_PER_SIDE,
   MAX_ADJUSTMENT_DESCRIPTION,
   NEGATIVE_TOTAL_MESSAGE,
+  receiptViaRows,
   type AdjustmentKind,
   type OwnerAdjustment,
   type ReceiptInput,
@@ -20,6 +21,8 @@ import { COMPROVANTE_MAX_BYTES } from "@/lib/rentals/receipt-registration";
 import {
   RECEIPT_ADJUSTMENT_PRESETS,
   ownerAdjustmentFromPreset,
+  ownerToTenantAdjustment,
+  suggestTenantSide,
   tenantAdjustmentFromPreset,
   type ReceiptPreset,
 } from "@/lib/rentals/receipt-presets";
@@ -143,12 +146,29 @@ const signedValue = (a: { tipo: AdjustmentKind; valor: number }) =>
 const adjLabel = (a: { tipo: AdjustmentKind; descricao: string }) =>
   `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao.trim() || "sem descrição"}`;
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  subtitle,
+  tone = "default",
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  tone?: "default" | "tenant" | "owner";
+  children: ReactNode;
+}) {
+  const toneClass =
+    tone === "tenant"
+      ? "border-l-4 border-primary/60 bg-primary/5"
+      : tone === "owner"
+        ? "border-l-4 border-accent-foreground/40 bg-accent/40"
+        : "bg-muted/30";
   return (
-    <fieldset className="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
+    <fieldset className={`space-y-3 rounded-xl border border-border p-3 ${toneClass}`}>
       <legend className="px-1 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
         {title}
       </legend>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       {children}
     </fieldset>
   );
@@ -268,22 +288,32 @@ export function ReceiptModal({
       setLocalError(e instanceof Error ? e.message : "Confira os dados.");
     }
   }
-  const pagarLines: [string, number][] = [
-    ["Aluguel", v("aluguel")],
-    ["Condomínio", v("condominio")],
-    ["IPTU", v("iptu")],
-    ["Seguro fiança", v("seguroFianca")],
-    ...tenantAdj.map((a) => [adjLabel(a), signedValue(a)] as [string, number]),
-  ];
-  const receberLines: [string, number][] = [
-    ["Aluguel", v("aluguel")],
-    ["Honorários", -v("honorarios")],
-    ["Condomínio", v("condominio")],
-    ...tenantAdj
-      .filter((a) => a.repassarProprietario)
-      .map((a) => [adjLabel(a), signedValue(a)] as [string, number]),
-    ...ownerAdj.map((a) => [`${adjLabel(a)} (proprietário)`, signedValue(a)] as [string, number]),
-  ];
+  const previewSource = {
+    ...input,
+    aluguel: v("aluguel"),
+    honorarios: v("honorarios"),
+    condominio: v("condominio"),
+    iptu: v("iptu"),
+    seguroFianca: v("seguroFianca"),
+    ajustesInquilino: tenantAdj.map((a) => ({
+      ...a,
+      descricao: a.descricao.trim() || "sem descrição",
+      valor: Number.isFinite(a.valor) ? a.valor : 0,
+    })),
+    ajustesProprietario: ownerAdj.map((a) => ({
+      ...a,
+      descricao: a.descricao.trim() || "sem descrição",
+      valor: Number.isFinite(a.valor) ? a.valor : 0,
+    })),
+  };
+  const viaLines = (via: 0 | 1) => {
+    const { base, adjustments } = receiptViaRows(previewSource, via);
+    return [...base, ...adjustments].map(
+      ([label, value]): [string, number] => [label, label === "Honorários" ? -value : value],
+    );
+  };
+  const pagarLines = viaLines(0);
+  const receberLines = viaLines(1);
   const negative =
     liveTotals && (liveTotals.totalPagar < 0 || liveTotals.totalReceber < 0);
   const Summary = ({ title, lines, total }: { title: string; lines: [string, number][]; total?: number }) => (
@@ -359,7 +389,11 @@ export function ReceiptModal({
               {money("seguroFianca", "Seguro fiança")}
             </div>
           </Section>
-          <Section title="Acréscimos e descontos do inquilino">
+          <Section
+            title="Acréscimos e descontos do inquilino"
+            subtitle="Afeta o que o inquilino paga (aparece na via do locatário)."
+            tone="tenant"
+          >
             {tenantAdj.length === 0 && (
               <p className="text-xs text-muted-foreground">Nenhum acréscimo ou desconto neste mês.</p>
             )}
@@ -431,6 +465,9 @@ export function ReceiptModal({
                       onChange={(e) => patchTenant(a.id, { repassarProprietario: e.target.checked })}
                     />
                     Repassar ao proprietário
+                    <span className="text-muted-foreground">
+                      (também {a.tipo === "acrescimo" ? "acrescenta" : "desconta"} no repasse ao proprietário)
+                    </span>
                   </label>
                   {!a.recorrenteId && (
                     <label className="flex items-center gap-2">
@@ -485,7 +522,14 @@ export function ReceiptModal({
           <Section title="Desconto da administração">
             <div className="grid gap-3 sm:grid-cols-2">{money("honorarios", "Honorários")}</div>
           </Section>
-          <Section title="Descontos do proprietário">
+          <Section
+            title="Descontos só do proprietário (não aparecem para o inquilino)"
+            tone="owner"
+          >
+            <p className="rounded-md border border-border bg-background px-3 py-2 text-xs">
+              Use apenas para despesas descontadas do repasse (ex.: reparo). Para descontos que o
+              inquilino recebe, use a seção do inquilino.
+            </p>
             {ownerAdj.length === 0 && (
               <p className="text-xs text-muted-foreground">
                 Nenhum. Só aparece na via do locador e da imobiliária.
@@ -526,6 +570,33 @@ export function ReceiptModal({
                     onChange={(valor) => patchOwner(a.id, { valor })}
                   />
                 </div>
+                {suggestTenantSide(a.descricao) && (
+                  <div
+                    role="status"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs"
+                  >
+                    <span>
+                      Fundo de reserva costuma ser desconto do inquilino. Aqui ele não aparece na via do
+                      locatário.
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={tenantAdj.length >= MAX_ADJUSTMENTS_PER_SIDE}
+                      onClick={() => {
+                        setInput((c) => ({
+                          ...c,
+                          ajustesProprietario: (c.ajustesProprietario ?? []).filter((x) => x.id !== a.id),
+                          ajustesInquilino: [...(c.ajustesInquilino ?? []), ownerToTenantAdjustment(a)],
+                        }));
+                        setProofs(({ [a.id]: _drop, ...rest }) => rest);
+                      }}
+                    >
+                      Mover para o inquilino (repassado ao proprietário)
+                    </Button>
+                  </div>
+                )}
                 <label className="flex flex-wrap items-center gap-2 text-xs">
                   <Paperclip className="size-4 text-muted-foreground" />
                   Comprovante (opcional, PDF/JPG/PNG até 5 MB)
@@ -555,7 +626,7 @@ export function ReceiptModal({
                 setOwner([...ownerAdj, { id: newId(), tipo: "desconto", descricao: "", valor: NaN }])
               }
             >
-              <Plus /> Adicionar desconto do proprietário
+              <Plus /> Adicionar desconto só do proprietário
             </Button>
           </Section>
           <Section title="Dados do recibo">
@@ -582,17 +653,22 @@ export function ReceiptModal({
               </label>
             </div>
           </Section>
+          <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+            Prévia das vias
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Summary
-              title="Inquilino paga"
+              title="Via do locatário · Total a pagar"
               lines={pagarLines}
               total={totals?.totalPagar ?? liveTotals?.totalPagar}
             />
             <Summary
-              title="Proprietário recebe"
+              title="Via do proprietário · Total a receber"
               lines={receberLines}
               total={totals?.totalReceber ?? liveTotals?.totalReceber}
             />
+          </div>
           </div>
           {negative && (
             <p role="alert" className="text-xs text-destructive">
