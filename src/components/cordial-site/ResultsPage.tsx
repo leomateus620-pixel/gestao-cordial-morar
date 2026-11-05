@@ -45,7 +45,6 @@ export function ResultsPage({
   const config = getSiteBrand(brand);
   const [filters, setFilters] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState(!!search.referencia);
-  const [expanded, setExpanded] = useState(brand === "morar" || result.total === 0);
   const refreshing = useRouterState({
     select: (state) => state.isLoading && state.location.pathname.endsWith("/buscar"),
   });
@@ -118,92 +117,81 @@ export function ResultsPage({
           </p>
           <h1>{brand === "cordial" ? "Encontre seu imóvel" : title}</h1>
         </div>
-        {brand === "morar" && (
-          <button
-            className="cs-button cs-filter-desktop"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-          >
-            <SlidersHorizontal size={18} />
-            Pesquisa completa
-          </button>
-        )}
       </div>
-      <div className="cs-quick-filters">
-        {brand === "cordial" && !search.referencia && (
-          <button
-            className="cs-button cs-button-light cs-reference-toggle"
-            aria-expanded={referenceOpen}
-            onClick={() => setReferenceOpen((value) => !value)}
-          >
-            Buscar por referência
-          </button>
-        )}
-        {(brand === "morar" || referenceOpen || search.referencia) && (
-          <label>
-            <span>Referência {config.shortName}</span>
-            <input
-              id="referencia"
-              key={search.referencia ?? ""}
-              defaultValue={search.referencia ?? ""}
-              placeholder="Buscar por código"
-              maxLength={80}
-              onKeyDown={(e) => {
-                if (e.key === "Enter")
-                  change({ referencia: e.currentTarget.value || undefined, exata: "sim" });
-              }}
-            />
-            <small>
-              Digite a referência e pressione Enter
-              {search.referencia && chips.some(([key]) => !["referencia", "exata"].includes(key))
-                ? "; os demais filtros também se aplicam."
-                : ""}
-            </small>
-            {search.referencia && chips.some(([key]) => !["referencia", "exata"].includes(key)) && (
-              <button
-                type="button"
-                className="cs-text-link"
-                onClick={() =>
-                  void navigate({
-                    to: `${config.basePath}/buscar`,
-                    search: {
-                      ...defaultSearch,
-                      referencia: search.referencia,
-                      exata: search.exata,
-                      visualizacao: search.visualizacao,
-                    },
-                  })
-                }
-              >
-                Pesquisar somente esta referência
-              </button>
-            )}
-          </label>
-        )}
-        <div className="cs-result-purpose">
-          {[
-            ["", "Todos"],
-            ["venda", "Comprar"],
-            ["aluguel", "Alugar"],
-          ].map(([v, l]) => (
+      {brand === "cordial" && (
+        <div className="cs-quick-filters">
+          {brand === "cordial" && !search.referencia && (
             <button
-              key={v}
-              className={(search.finalidade ?? "") === v ? "is-active" : ""}
-              aria-pressed={(search.finalidade ?? "") === v}
-              onClick={() => change({ finalidade: v ? (v as "venda" | "aluguel") : undefined })}
+              className="cs-button cs-button-light cs-reference-toggle"
+              aria-expanded={referenceOpen}
+              onClick={() => setReferenceOpen((value) => !value)}
             >
-              {l}
+              Buscar por referência
             </button>
-          ))}
+          )}
+          {(referenceOpen || search.referencia) && (
+            <label>
+              <span>Referência {config.shortName}</span>
+              <input
+                id="referencia"
+                key={search.referencia ?? ""}
+                defaultValue={search.referencia ?? ""}
+                placeholder="Buscar por código"
+                maxLength={80}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter")
+                    change({ referencia: e.currentTarget.value || undefined, exata: "sim" });
+                }}
+              />
+              <small>
+                Digite a referência e pressione Enter
+                {search.referencia && chips.some(([key]) => !["referencia", "exata"].includes(key))
+                  ? "; os demais filtros também se aplicam."
+                  : ""}
+              </small>
+              {search.referencia &&
+                chips.some(([key]) => !["referencia", "exata"].includes(key)) && (
+                  <button
+                    type="button"
+                    className="cs-text-link"
+                    onClick={() =>
+                      void navigate({
+                        to: `${config.basePath}/buscar`,
+                        search: {
+                          ...defaultSearch,
+                          referencia: search.referencia,
+                          exata: search.exata,
+                          visualizacao: search.visualizacao,
+                        },
+                      })
+                    }
+                  >
+                    Pesquisar somente esta referência
+                  </button>
+                )}
+            </label>
+          )}
+          <div className="cs-result-purpose">
+            {[
+              ["", "Todos"],
+              ["venda", "Comprar"],
+              ["aluguel", "Alugar"],
+            ].map(([v, l]) => (
+              <button
+                key={v}
+                className={(search.finalidade ?? "") === v ? "is-active" : ""}
+                aria-pressed={(search.finalidade ?? "") === v}
+                onClick={() => change({ finalidade: v ? (v as "venda" | "aluguel") : undefined })}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-      {brand === "morar" && expanded && (
+      )}
+      {brand === "morar" && (
         <div className="cs-desktop-filter-panel">
-          <SearchForm
-            key={searchParams(search)}
-            initial={search}
-            onApplied={() => setExpanded(false)}
-          />
+          <SearchForm key={searchParams(search)} initial={search} />
         </div>
       )}
       <div className="cs-results-toolbar">
@@ -223,30 +211,30 @@ export function ResultsPage({
           {refreshing && <span className="cs-results-updating"> · Atualizando resultados…</span>}
         </p>
         <div>
-          <Dialog.Root open={filters} onOpenChange={setFilters}>
-            <Dialog.Trigger
-              className={`cs-button cs-button-light ${brand === "morar" ? "cs-mobile-filter" : "cs-filter-trigger"}`}
-            >
-              <SlidersHorizontal size={18} />
-              Filtros{chips.length > 0 ? ` (${chips.length})` : ""}
-            </Dialog.Trigger>
-            <Dialog.Portal>
-              <Dialog.Overlay className={`${config.themeClass} cs-dialog-overlay`} />
-              <Dialog.Content className={`${config.themeClass} cs-drawer cs-filter-drawer`}>
-                <Dialog.Title>Encontre seu imóvel</Dialog.Title>
-                <Dialog.Description>
-                  Combine filtros e aplique uma vez. Fechar sem aplicar descarta as alterações.
-                </Dialog.Description>
-                <Dialog.Close
-                  className="cs-icon-button cs-dialog-close"
-                  aria-label="Fechar filtros"
-                >
-                  <X />
-                </Dialog.Close>
-                <SearchForm initial={search} onApplied={() => setFilters(false)} />
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
+          {brand === "cordial" && (
+            <Dialog.Root open={filters} onOpenChange={setFilters}>
+              <Dialog.Trigger className="cs-button cs-button-light cs-filter-trigger">
+                <SlidersHorizontal size={18} />
+                Filtros{chips.length > 0 ? ` (${chips.length})` : ""}
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className={`${config.themeClass} cs-dialog-overlay`} />
+                <Dialog.Content className={`${config.themeClass} cs-drawer cs-filter-drawer`}>
+                  <Dialog.Title>Encontre seu imóvel</Dialog.Title>
+                  <Dialog.Description>
+                    Combine filtros e aplique uma vez. Fechar sem aplicar descarta as alterações.
+                  </Dialog.Description>
+                  <Dialog.Close
+                    className="cs-icon-button cs-dialog-close"
+                    aria-label="Fechar filtros"
+                  >
+                    <X />
+                  </Dialog.Close>
+                  <SearchForm initial={search} onApplied={() => setFilters(false)} />
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          )}
           <label className="cs-sort">
             <span className="cs-sr-only">Ordenar imóveis</span>
             <select

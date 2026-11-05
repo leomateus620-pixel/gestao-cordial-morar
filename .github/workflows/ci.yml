@@ -16,6 +16,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Tipos
         run: bun run typecheck
+      - name: Busca direta Morar
+        run: bun run test:morar
       - name: Testes
         run: bun run test
       - name: Meta Ads e Lead Ads

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   House,
@@ -7,12 +7,23 @@ import {
   BedDouble,
   SlidersHorizontal,
   Search,
-  ChevronDown,
-  X,
+  type LucideIcon,
 } from "lucide-react";
 import { defaultSearch, searchSchema, type SiteSearch } from "@/lib/cordial-site/contract";
-import { loadCatalog } from "@/lib/cordial-site/data";
+import { loadCatalogCount } from "@/lib/cordial-site/data";
 import { useSite } from "@/lib/cordial-site/context";
+import { searchDraft, searchQueryKey } from "@/lib/cordial-site/search-state";
+import {
+  advancedCount,
+  advancedDraft,
+  changePurpose,
+  formatSearchPrice,
+  mergeAdvanced,
+  morarAdvancedFields,
+  parseSearchPrice,
+  type AdvancedField,
+  type SearchValues,
+} from "@/lib/cordial-site/morar-search";
 import { searchLabels } from "@/lib/cordial-site/search-labels";
 import {
   Sheet,
@@ -20,62 +31,85 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
+import { MorarIcon } from "./MorarIcon";
+import { MorarLocationCombobox } from "./MorarLocationCombobox";
 
-function useIsMobileDrawer() {
-  const [mobile, setMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const sync = () => setMobile(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return mobile;
+function SearchGroup({
+  icon,
+  title,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset className="ms-search-group">
+      <legend>
+        <MorarIcon icon={icon} size={24} />
+        {title}
+      </legend>
+      {children}
+    </fieldset>
+  );
 }
 
-const groups = [
-  { key: "imovel", label: "Tipo de imóvel", icon: House, fields: ["tipo"] },
-  { key: "local", label: "Onde morar", icon: MapPin, fields: ["cidade", "bairro"] },
-  {
-    key: "valor",
-    label: "Seu orçamento",
-    icon: Wallet,
-    fields: ["precoMin", "precoMax", "valorModo"],
-  },
-  {
-    key: "espacos",
-    label: "Espaços",
-    icon: BedDouble,
-    fields: ["dormitorios", "banheiros", "suites", "vagas", "contagem"],
-  },
-  {
-    key: "mais",
-    label: "Mais filtros",
-    icon: SlidersHorizontal,
-    fields: [
-      "referencia",
-      "exata",
-      "q",
-      "areaTipo",
-      "areaMin",
-      "areaMax",
-      "mobiliado",
-      "permuta",
-      "financiamento",
-      "fotos",
-      "estagio",
-    ],
-  },
-] as const;
-type Group = (typeof groups)[number]["key"];
-type Values = Record<string, string>;
-const initialValues = (initial: Partial<SiteSearch>): Values =>
-  Object.fromEntries(
-    Object.entries({ ...defaultSearch, ...initial })
-      .filter(([, v]) => v != null)
-      .map(([k, v]) => [k, String(v)]),
+function MoneyInput({
+  id,
+  label,
+  value,
+  error,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (value: string) => void;
+}) {
+  const [text, setText] = useState(() => formatSearchPrice(value));
+  const editing = useRef(false);
+  useEffect(() => {
+    if (!editing.current || value === "") setText(formatSearchPrice(value));
+  }, [value]);
+  return (
+    <label className="cs-field" htmlFor={id}>
+      <span>{label}</span>
+      <span className="ms-money-input">
+        <span aria-hidden="true">R$</span>
+        <input
+          id={id}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder={label === "Mínimo" ? "Sem mínimo" : "Sem máximo"}
+          value={text}
+          aria-label={`${label} em reais`}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
+          onFocus={() => {
+            editing.current = true;
+          }}
+          onBlur={() => {
+            editing.current = false;
+            if (value !== "invalid") setText(formatSearchPrice(value));
+          }}
+          onChange={(event) => {
+            setText(event.target.value);
+            onChange(parseSearchPrice(event.target.value));
+          }}
+        />
+      </span>
+      {error && (
+        <small className="cs-field-error" id={`${id}-error`}>
+          {error}
+        </small>
+      )}
+    </label>
   );
+}
 
 export function MorarSearchForm({
   initial = defaultSearch,
@@ -89,94 +123,128 @@ export function MorarSearchForm({
   const { facets, available } = useSite();
   const navigate = useNavigate();
   const id = useId();
-  const [values, setValues] = useState<Values>(() =>
-    initialValues(compact ? { ...initial, finalidade: initial.finalidade ?? "venda" } : initial),
-  );
-  const [active, setActive] = useState<Group | null>(null);
+  const [values, setValues] = useState<SearchValues>(() => searchDraft(initial));
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [count, setCount] = useState<number | null>(null);
-  const [countPending, setCountPending] = useState(false);
+  const [locationPending, setLocationPending] = useState(false);
+  const [locationReset, setLocationReset] = useState(0);
+  const [announcement, setAnnouncement] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [draft, setDraft] = useState<SearchValues>({});
+  const [advancedErrors, setAdvancedErrors] = useState<Record<string, string>>({});
+  const advancedButton = useRef<HTMLButtonElement>(null);
+  const [count, setCount] = useState<{ key: string; total: number } | null>(null);
   const [countError, setCountError] = useState(false);
   const sequence = useRef(0);
-  const isMobile = useIsMobileDrawer();
-  // Mobile drawer edits a draft; applied `values` only change on "Aplicar filtros".
-  const [draft, setDraft] = useState<Values | null>(null);
-  const drawerOpen = isMobile && active !== null && draft !== null;
-  const editing = drawerOpen && draft ? draft : values;
-  const setEditing = drawerOpen ? (setDraft as typeof setValues) : setValues;
-  const update = (key: string, value: string) =>
-    setEditing((old) => ({ ...old, [key]: value, ...(key === "cidade" ? { bairro: "" } : {}) }));
-  const openGroup = (key: Group) => {
-    if (isMobile) {
-      setDraft({ ...values });
-      setActive(key);
-    } else setActive((old) => (old === key ? null : key));
-  };
-  const closeDrawer = (apply: boolean) => {
-    const key = active;
-    if (apply && draft) setValues(draft);
-    setDraft(null);
-    setActive(null);
-    if (key) requestAnimationFrame(() => document.getElementById(`${id}-group-${key}`)?.focus());
-  };
-  useEffect(() => {
-    // Breakpoint change: keep applied filters, drop any unapplied draft so only one UI is mounted.
-    setDraft(null);
-    setActive(null);
-  }, [isMobile]);
-  const countValues = editing;
+  const parsed = searchSchema.safeParse(values);
+  const countKey =
+    parsed.success && !locationPending ? searchQueryKey(parsed.data, true) : "invalid";
+
   useEffect(() => {
     const generation = ++sequence.current;
     const abort = new AbortController();
-    if (!available) {
-      setCount(null);
-      setCountPending(false);
-      setCountError(true);
-      return;
-    }
+    if (!available || countKey === "invalid") return;
+    setCountError(false);
     const timer = setTimeout(() => {
-      const parsed = searchSchema.safeParse(countValues);
-      if (!parsed.success) {
-        setCount(null);
-        setCountPending(false);
-        return;
-      }
-      setCountPending(true);
-      setCountError(false);
-      loadCatalog({ ...parsed.data, pagina: 1 }, abort.signal, "morar")
+      loadCatalogCount(
+        { ...defaultSearch, ...Object.fromEntries(JSON.parse(countKey)), pagina: 1 },
+        abort.signal,
+        "morar",
+      )
         .then((result) => {
-          if (generation === sequence.current) setCount(result.total);
+          if (generation === sequence.current && !abort.signal.aborted)
+            setCount({ key: countKey, total: result.total });
         })
         .catch(() => {
-          if (generation === sequence.current && !abort.signal.aborted) {
-            setCount(null);
-            setCountError(true);
-          }
-        })
-        .finally(() => {
-          if (generation === sequence.current) setCountPending(false);
+          if (generation === sequence.current && !abort.signal.aborted) setCountError(true);
         });
     }, 400);
     return () => {
       clearTimeout(timer);
       abort.abort();
     };
-  }, [countValues, available]);
+  }, [countKey, available]);
+
   useEffect(() => {
-    const key = Object.keys(errors)[0];
+    const key = Object.keys(advancedOpen ? advancedErrors : errors)[0];
     if (key) document.getElementById(`${id}-${key}`)?.focus();
-  }, [errors, active, id]);
-  const choices: Record<string, Array<[string, string]>> = {
-    tipo: facets.types.map((x) => [x.value, `${x.value} (${x.count})`]),
-    cidade: facets.cities.map((x) => [x.value, x.value]),
-    bairro: facets.districts.filter((x) => x.city === editing.cidade).map((x) => [x.value, x.value]),
+  }, [errors, advancedErrors, advancedOpen, id]);
+
+  const update = (key: string, value: string) => {
+    setValues((old) => ({ ...old, [key]: value }));
+    setErrors((old) => {
+      const next = { ...old };
+      delete next[key];
+      return next;
+    });
+  };
+  const openAdvanced = (open: boolean) => {
+    if (open) {
+      setDraft(advancedDraft(values));
+      setAdvancedErrors({});
+    } else setDraft({});
+    setAdvancedOpen(open);
+  };
+  const applyAdvanced = () => {
+    const result = searchSchema.safeParse(mergeAdvanced(values, draft));
+    const issues = result.success
+      ? []
+      : result.error.issues.filter((issue) =>
+          morarAdvancedFields.includes(issue.path[0] as AdvancedField),
+        );
+    if (issues.length) {
+      setAdvancedErrors(Object.fromEntries(issues.map((issue) => [issue.path[0], issue.message])));
+      return;
+    }
+    // Functional merge: the dialog never restores an older purpose/location/budget/count mode.
+    setValues((current) => mergeAdvanced(current, draft));
+    openAdvanced(false);
+  };
+
+  const countMode = values.contagem === "exata" ? "exata" : "minima";
+  const roomOptions = (current: string) =>
+    [
+      ...new Set([
+        ...Array.from({ length: 101 }, (_, value) => value),
+        ...(current ? [Number(current)] : []),
+      ]),
+    ].sort((a, b) => a - b);
+  const roomSelect = (
+    key: string,
+    label: string,
+    current: string,
+    onChange: (value: string) => void,
+    error?: string,
+  ) => (
+    <label className="cs-field" htmlFor={`${id}-${key}`} key={key}>
+      <span>{label}</span>
+      <select
+        id={`${id}-${key}`}
+        name={key}
+        value={current}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={searchLabels[key]}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-${key}-error` : `${id}-count-help`}
+      >
+        <option value="">Todos</option>
+        {roomOptions(current).map((n) => (
+          <option key={n} value={n}>
+            {n}
+            {countMode === "minima" ? "+" : ""}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <small className="cs-field-error" id={`${id}-${key}-error`}>
+          {error}
+        </small>
+      )}
+    </label>
+  );
+  const advancedChoices: Partial<Record<AdvancedField, Array<[string, string]>>> = {
     valorModo: [
       ["fixo", "Preço informado"],
       ["consulte", "Sob consulta"],
-    ],
-    contagem: [
-      ["minima", "Pelo menos"],
-      ["exata", "Quantidade exata"],
     ],
     areaTipo: [
       ["construida", "Área construída"],
@@ -188,10 +256,12 @@ export function MorarSearchForm({
       ["sim", "Referência exata"],
       ["nao", "Parte da referência"],
     ],
-    estagio: facets.stages.map((x) => [x, x]),
+    estagio: [...new Set([...facets.stages, ...(draft.estagio ? [draft.estagio] : [])])].map(
+      (stage) => [stage, stage],
+    ),
     ...Object.fromEntries(
-      ["mobiliado", "permuta", "financiamento", "fotos"].map((k) => [
-        k,
+      ["mobiliado", "permuta", "financiamento", "fotos", "destaque"].map((key) => [
+        key,
         [
           ["sim", "Sim"],
           ["nao", "Não"],
@@ -199,40 +269,38 @@ export function MorarSearchForm({
       ]),
     ),
   };
-  const field = (key: string) => {
-    if (key === "estagio" && !facets.stages.length) return null;
+  const advancedField = (key: AdvancedField) => {
+    if (key === "estagio" && !facets.stages.length && !draft.estagio) return null;
+    const error = advancedErrors[key];
+    const change = (value: string) => {
+      setDraft((old) => ({ ...old, [key]: value }));
+      setAdvancedErrors((old) => {
+        const next = { ...old };
+        delete next[key];
+        return next;
+      });
+    };
+    if (key === "suites") return roomSelect(key, "Suítes", draft[key] ?? "", change, error);
     const label =
       key === "referencia"
         ? "Referência Morar"
-        : key === "q"
-          ? "Tipo, cidade ou bairro"
-          : key === "valorModo"
-            ? "Tipo de preço"
+        : key === "valorModo"
+          ? "Tipo de preço"
+          : key === "destaque"
+            ? "Imóveis em destaque"
             : (searchLabels[key] ?? key);
-    const numeric = [
-      "precoMin",
-      "precoMax",
-      "dormitorios",
-      "banheiros",
-      "suites",
-      "vagas",
-      "areaMin",
-      "areaMax",
-    ].includes(key);
+    const options = advancedChoices[key];
     return (
       <label className="cs-field" htmlFor={`${id}-${key}`} key={key}>
         <span>{label}</span>
-        {choices[key] ? (
+        {options ? (
           <select
             id={`${id}-${key}`}
-            value={editing[key] ?? ""}
-            onChange={(e) => update(key, e.target.value)}
-            disabled={key === "bairro" && !editing.cidade}
+            value={draft[key] ?? ""}
+            onChange={(event) => change(event.target.value)}
           >
-            <option value="">
-              {key === "bairro" && !editing.cidade ? "Escolha a cidade primeiro" : "Todas as opções"}
-            </option>
-            {choices[key].map(([value, text]) => (
+            <option value="">Todas as opções</option>
+            {options.map(([value, text]) => (
               <option key={value} value={value}>
                 {text}
               </option>
@@ -241,207 +309,299 @@ export function MorarSearchForm({
         ) : (
           <input
             id={`${id}-${key}`}
-            type={numeric ? "number" : "text"}
-            inputMode={numeric ? "decimal" : "text"}
-            min={numeric ? 0 : undefined}
-            step={
-              numeric
-                ? ["dormitorios", "banheiros", "suites", "vagas"].includes(key)
-                  ? 1
-                  : "any"
-                : undefined
-            }
-            maxLength={numeric ? undefined : 100}
-            value={editing[key] ?? ""}
-            onChange={(e) => update(key, e.target.value)}
-            aria-invalid={!!errors[key]}
-            aria-describedby={errors[key] ? `${id}-${key}-error` : undefined}
+            type={key.startsWith("area") ? "number" : "text"}
+            inputMode={key.startsWith("area") ? "decimal" : "text"}
+            min={0}
+            step="any"
+            maxLength={100}
+            value={draft[key] ?? ""}
+            onChange={(event) => change(event.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${id}-${key}-error` : undefined}
           />
-        )}{" "}
-        {errors[key] && (
-          <small id={`${id}-${key}-error`} className="cs-field-error">
-            {errors[key]}
+        )}
+        {error && (
+          <small className="cs-field-error" id={`${id}-${key}-error`}>
+            {error}
           </small>
         )}
       </label>
     );
   };
-  const group = groups.find((g) => g.key === active);
+  const activeAdvanced = advancedCount(values);
   return (
-    <form
-      className={`ms-search ${compact ? "is-compact" : ""}`}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const parsed = searchSchema.safeParse(values);
-        if (!parsed.success) {
-          setErrors(Object.fromEntries(parsed.error.issues.map((e) => [e.path[0], e.message])));
-          const invalid = String(parsed.error.issues[0]?.path[0]);
-          setActive(
-            groups.find((candidate) => candidate.fields.some((key) => key === invalid))?.key ??
-              "mais",
-          );
-          return;
-        }
-        setErrors({});
-        void navigate({ to: "/site-morar/buscar", search: { ...parsed.data, pagina: 1 } });
-        onApplied?.();
-      }}
-    >
-      <div className="ms-search-purpose" role="group" aria-label="Comprar ou alugar">
-        {[
-          ["venda", "Quero comprar"],
-          ["aluguel", "Quero alugar"],
-          ...(!compact ? [["", "Todas as opções"]] : []),
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={(values.finalidade ?? "") === value}
-            onClick={() => update("finalidade", value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div className="ms-filter-row">
-        {groups.map(({ key, label, icon: Icon, fields }) => {
-          const selected = fields.filter(
-            (k) => values[k] && values[k] !== String(defaultSearch[k as keyof SiteSearch] ?? ""),
-          ).length;
-          return (
-            <button
-              type="button"
-              id={`${id}-group-${key}`}
-              key={key}
-              className={`ms-filter-trigger ${active === key ? "is-open" : ""}`}
-              aria-expanded={active === key}
-              aria-controls={`${id}-panel`}
-              aria-haspopup={isMobile ? "dialog" : undefined}
-              onClick={() => openGroup(key)}
-            >
-              <Icon size={22} strokeWidth={1.6} aria-hidden="true" />
-              <span>
-                {label}
-                {selected > 0 && (
-                  <small>
-                    {selected} selecionado{selected > 1 ? "s" : ""}
-                  </small>
-                )}
-              </span>
-              <ChevronDown size={15} aria-hidden="true" />
-            </button>
-          );
-        })}
-      </div>
-      {isMobile && (
-        <Sheet open={drawerOpen} onOpenChange={(open) => !open && closeDrawer(false)}>
-          <SheetContent
-            side="bottom"
-            closeLabel="Fechar sem aplicar"
-            className="ms-drawer"
-            overlayClassName="ms-drawer-overlay"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT") {
-                event.preventDefault();
-                closeDrawer(true);
-              }
-            }}
-          >
-            <SheetHeader>
-              <SheetTitle>{group?.label ?? "Filtros"}</SheetTitle>
-              <SheetDescription>As mudanças só valem depois de aplicar.</SheetDescription>
-            </SheetHeader>
-            <div className="ms-drawer-body">
-              <div className="ms-filter-fields">{group?.fields.map(field)}</div>
-            </div>
-            <div className="ms-drawer-footer">
-              <span aria-live="polite" className="ms-search-count">
-                {countPending
-                  ? "Consultando…"
-                  : count != null
-                    ? `${count} ${count === 1 ? "imóvel" : "imóveis"}`
-                    : ""}
-              </span>
-              <button
-                type="button"
-                className="cs-text-link"
-                onClick={() => {
-                  if (!group || !draft) return;
-                  const cleared = { ...draft };
-                  for (const k of group.fields)
-                    cleared[k] = String(defaultSearch[k as keyof SiteSearch] ?? "");
-                  setDraft(cleared);
-                }}
-              >
-                Limpar
-              </button>
-              <button type="button" className="cs-button" onClick={() => closeDrawer(true)}>
-                Aplicar filtros
-              </button>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
-      {group && !isMobile && (
-        <section
-          className="ms-filter-panel"
-          id={`${id}-panel`}
-          aria-labelledby={`${id}-group-${group.key}`}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              event.stopPropagation();
-              setActive(null);
-              document.getElementById(`${id}-group-${group.key}`)?.focus();
+    <Sheet open={advancedOpen} onOpenChange={openAdvanced}>
+      <form
+        className={`ms-search ${compact ? "is-compact" : ""}`}
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (locationPending) {
+            setErrors({
+              localizacao: "Selecione uma cidade ou bairro da lista, ou limpe a localização.",
+            });
+            return;
+          }
+          const result = searchSchema.safeParse(values);
+          if (!result.success) {
+            const invalid = Object.fromEntries(
+              result.error.issues.map((issue) => [
+                issue.path[0],
+                issue.code === "invalid_type" && String(issue.path[0]).startsWith("preco")
+                  ? "Informe um valor válido em reais."
+                  : issue.message,
+              ]),
+            );
+            const advanced = Object.fromEntries(
+              Object.entries(invalid).filter(([key]) =>
+                morarAdvancedFields.includes(key as AdvancedField),
+              ),
+            );
+            setErrors(invalid);
+            if (Object.keys(advanced).length) {
+              setDraft(advancedDraft(values));
+              setAdvancedErrors(advanced);
+              setAdvancedOpen(true);
             }
-          }}
-        >
-          <div className="ms-filter-panel-heading">
-            <h3>{group.label}</h3>
+            return;
+          }
+          setErrors({});
+          void navigate({ to: "/site-morar/buscar", search: { ...result.data, pagina: 1 } });
+          onApplied?.();
+        }}
+      >
+        <div className="ms-search-purpose" role="group" aria-label="Comprar ou alugar">
+          {[
+            ["venda", "Quero comprar"],
+            ["aluguel", "Quero alugar"],
+            ...(!compact ? [["", "Todas as opções"]] : []),
+          ].map(([value, label]) => (
             <button
+              key={value}
               type="button"
-              className="cs-icon-button"
-              aria-label="Recolher filtros"
+              aria-pressed={(values.finalidade ?? "") === value}
               onClick={() => {
-                setActive(null);
-                document.getElementById(`${id}-group-${group.key}`)?.focus();
+                if ((values.finalidade ?? "") === value) return;
+                setValues((old) => changePurpose(old, value));
+                setErrors((old) =>
+                  Object.fromEntries(
+                    Object.entries(old).filter(([key]) => !key.startsWith("preco")),
+                  ),
+                );
+                setAnnouncement(
+                  "Finalidade alterada. O orçamento foi limpo; os demais filtros foram mantidos.",
+                );
               }}
             >
-              <X size={19} />
+              {label}
             </button>
-          </div>
-          <div className="ms-filter-fields">{group.fields.map(field)}</div>
-        </section>
-      )}
-      <div className="ms-search-actions">
-        <button
-          type="button"
-          className="cs-text-link"
-          onClick={() => {
-            setValues(initialValues(compact ? { finalidade: "venda" } : {}));
-            setErrors({});
-          }}
-        >
-          Limpar filtros
-        </button>
-        <span aria-live="polite" className="ms-search-count">
-          {countPending
-            ? "Consultando…"
-            : countError
+          ))}
+        </div>
+        <div className="ms-search-grid">
+          <SearchGroup icon={House} title="Tipo de imóvel">
+            <select
+              id={`${id}-tipo`}
+              name="tipo"
+              aria-label="Tipo de imóvel"
+              value={values.tipo ?? ""}
+              onChange={(event) => update("tipo", event.target.value)}
+            >
+              <option value="">Todos os tipos</option>
+              {values.tipo && !facets.types.some((type) => type.value === values.tipo) && (
+                <option value={values.tipo}>{values.tipo}</option>
+              )}
+              {facets.types.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.value}
+                </option>
+              ))}
+            </select>
+          </SearchGroup>
+          <SearchGroup icon={MapPin} title="Onde morar">
+            <MorarLocationCombobox
+              id={`${id}-localizacao`}
+              facets={facets}
+              city={values.cidade ?? ""}
+              district={values.bairro ?? ""}
+              resetKey={locationReset}
+              error={errors.localizacao}
+              onPendingChange={setLocationPending}
+              onChange={(cidade, bairro) => {
+                setValues((old) => ({ ...old, cidade, bairro }));
+                setErrors((old) => {
+                  const next = { ...old };
+                  delete next.localizacao;
+                  return next;
+                });
+              }}
+            />
+          </SearchGroup>
+          <SearchGroup icon={Wallet} title="Seu orçamento">
+            <div className="ms-budget-fields">
+              <MoneyInput
+                id={`${id}-precoMin`}
+                label="Mínimo"
+                value={values.precoMin ?? ""}
+                error={errors.precoMin}
+                onChange={(value) => update("precoMin", value)}
+              />
+              <MoneyInput
+                id={`${id}-precoMax`}
+                label="Máximo"
+                value={values.precoMax ?? ""}
+                error={errors.precoMax}
+                onChange={(value) => update("precoMax", value)}
+              />
+            </div>
+            <small className="ms-field-help">
+              {values.finalidade === "aluguel"
+                ? "Aluguel por mês"
+                : values.finalidade === "venda"
+                  ? "Valor de compra"
+                  : "Valor do imóvel"}{" "}
+              em reais
+            </small>
+          </SearchGroup>
+          <SearchGroup icon={BedDouble} title="Espaços">
+            <div className="ms-space-fields">
+              {roomSelect(
+                "dormitorios",
+                "Dorm.",
+                values.dormitorios ?? "",
+                (value) => update("dormitorios", value),
+                errors.dormitorios,
+              )}
+              {roomSelect(
+                "banheiros",
+                "Banh.",
+                values.banheiros ?? "",
+                (value) => update("banheiros", value),
+                errors.banheiros,
+              )}
+              {roomSelect(
+                "vagas",
+                "Vagas",
+                values.vagas ?? "",
+                (value) => update("vagas", value),
+                errors.vagas,
+              )}
+            </div>
+            <label className="ms-count-mode">
+              <span>Contagem</span>
+              <select
+                id={`${id}-contagem`}
+                aria-label="Modo de contagem dos espaços"
+                value={countMode}
+                onChange={(event) => update("contagem", event.target.value)}
+              >
+                <option value="minima">Pelo menos (+)</option>
+                <option value="exata">Quantidade exata</option>
+              </select>
+            </label>
+            <span id={`${id}-count-help`} className="cs-sr-only">
+              {countMode === "exata"
+                ? "Quantidade exata, incluindo suítes nos filtros avançados."
+                : "O sinal mais significa pelo menos a quantidade escolhida, incluindo suítes nos filtros avançados."}
+            </span>
+          </SearchGroup>
+        </div>
+        <SheetTrigger asChild>
+          <button ref={advancedButton} type="button" className="ms-more-filters">
+            <MorarIcon icon={SlidersHorizontal} />
+            Mais filtros
+            {activeAdvanced > 0 && (
+              <span aria-label={`${activeAdvanced} filtros avançados ativos`}>
+                {activeAdvanced}
+              </span>
+            )}
+          </button>
+        </SheetTrigger>
+        <div className="ms-search-actions">
+          <button
+            type="button"
+            className="cs-text-link"
+            onClick={() => {
+              setValues(
+                searchDraft({
+                  finalidade: values.finalidade as SiteSearch["finalidade"],
+                  visualizacao: initial.visualizacao,
+                  ordem: initial.ordem,
+                }),
+              );
+              setErrors({});
+              setLocationPending(false);
+              setLocationReset((old) => old + 1);
+              setAnnouncement("Filtros limpos. Finalidade mantida.");
+            }}
+          >
+            Limpar filtros
+          </button>
+          <span
+            role="status"
+            aria-live="polite"
+            className="ms-search-count"
+            aria-busy={
+              available && countKey !== "invalid" && count?.key !== countKey && !countError
+            }
+          >
+            {!available || countError
               ? "Contagem temporariamente indisponível"
-              : count != null
-                ? `${count} ${count === 1 ? "imóvel disponível" : "imóveis disponíveis"}`
-                : "Combine os filtros do seu jeito"}
+              : countKey === "invalid"
+                ? "Revise os campos para atualizar a contagem"
+                : count
+                  ? `${count.total} ${count.total === 1 ? "imóvel disponível" : "imóveis disponíveis"}${count.key !== countKey ? " · atualizando…" : ""}`
+                  : "Consultando imóveis…"}
+          </span>
+          <button type="submit" className="cs-button">
+            <MorarIcon icon={Search} />
+            Encontrar meu lugar
+          </button>
+        </div>
+        <span className="cs-sr-only" role="status">
+          {announcement}
         </span>
-        <button type="submit" className="cs-button">
-          <Search size={18} />
-          {compact
-            ? "Encontrar meu lugar"
-            : count != null
-              ? `Ver ${count} imóveis`
-              : "Aplicar filtros"}
-        </button>
-      </div>
-    </form>
+      </form>
+      <SheetContent
+        side="bottom"
+        closeLabel="Fechar sem aplicar"
+        className="cordial-site morar-site ms-drawer"
+        overlayClassName="cordial-site morar-site ms-drawer-overlay"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          advancedButton.current?.focus();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && (event.target as HTMLElement).tagName === "INPUT") {
+            event.preventDefault();
+            applyAdvanced();
+          }
+        }}
+      >
+        <SheetHeader>
+          <SheetTitle>Mais filtros</SheetTitle>
+          <SheetDescription>
+            Refine sua busca. As mudanças só valem depois de aplicar.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="ms-drawer-body">
+          <div className="ms-advanced-fields">{morarAdvancedFields.map(advancedField)}</div>
+        </div>
+        <div className="ms-drawer-footer">
+          <button
+            type="button"
+            className="cs-text-link"
+            onClick={() => {
+              setDraft(advancedDraft(searchDraft()));
+              setAdvancedErrors({});
+            }}
+          >
+            Limpar avançados
+          </button>
+          <button type="button" className="cs-button" onClick={applyAdvanced}>
+            Aplicar filtros
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

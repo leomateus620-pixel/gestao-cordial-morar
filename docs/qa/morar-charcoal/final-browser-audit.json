@@ -1,0 +1,25 @@
+{
+  "blur": "none",
+  "featured": 5,
+  "forms": 1,
+  "inputFontSizes": [
+    "16px",
+    "16px",
+    "16px",
+    "16px",
+    "16px",
+    "16px",
+    "16px",
+    "16px"
+  ],
+  "logoLoaded": true,
+  "material": "rgb(52, 58, 65)",
+  "more": 15,
+  "overflow": false,
+  "photoLoaded": true,
+  "reducedTransparency": true,
+  "viewport": [
+    319,
+    800
+  ]
+}

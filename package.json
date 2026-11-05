@@ -21,7 +21,9 @@
     "test:marketing": "vitest run --config vitest.marketing.config.ts && tsx --test tests/ads/*.test.ts",
     "preview:marketing": "vite --config tests/marketing/vite.config.ts",
     "test:atendimentos": "tsx --test src/lib/atendimentos/stage-workspace.test.ts src/lib/atendimentos/workspace-navigation.test.ts src/lib/atendimentos/query-cache.test.ts src/lib/attendances/read-all-pages.test.ts src/lib/attendances/broker-scope.test.ts src/lib/attendances/attendance-field-mapping.test.ts src/lib/attendances/whatsapp.test.ts src/lib/atendimentos/handoff-message.test.ts src/services/atendimentos-kitnet.test.ts src/services/atendimentos-origem.test.ts src/lib/access-control.test.ts src/lib/dates.test.ts tests/atendimentos/navigation.test.ts",
-    "preview:atendimentos": "vite --config tests/atendimentos/vite.config.ts"
+    "preview:atendimentos": "vite --config tests/atendimentos/vite.config.ts",
+    "test:morar": "vitest run --config vitest.morar.config.ts",
+    "preview:morar": "vite --config tests/morar-site/preview/vite.config.ts"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.4.0",
@@ -99,6 +101,8 @@
     "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.26.5",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -112,6 +116,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "happy-dom": "^21.0.4",
     "nitro": "3.0.260603-beta",
     "postgres": "^3.4.9",
     "prettier": "^3.7.3",

@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -14,12 +14,7 @@ import {
 } from "lucide-react";
 import { Await } from "@tanstack/react-router";
 import type { PublicProperty } from "@/lib/cordial-site/contract";
-import {
-  areaLabel,
-  priceLabel,
-  propertyPath,
-  sitePath,
-} from "@/lib/cordial-site/presentation";
+import { areaLabel, priceLabel, propertyPath, sitePath } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyImage } from "./PropertyCard";
@@ -38,8 +33,22 @@ export type HomeData = {
 };
 
 const HOME_COPY = {
-  cordial: { lead: "Seu próximo lugar.", accent: "Do seu jeito.", sub: "Comprar ou alugar começa com o que importa para você.", about: "Conte com a Cordial.", aboutText: "Cada mudança começa com uma escolha. Nossa equipe acompanha você para comprar, alugar ou anunciar seu imóvel." },
-  morar: { lead: "O seu próximo lar.", accent: "Mais perto de você.", sub: "Comprar ou alugar, com uma equipe por perto.", about: "Conte com a Morar.", aboutText: "Conte para a nossa equipe o que você procura. Juntos, encontramos caminhos para comprar, alugar ou anunciar seu imóvel." },
+  cordial: {
+    lead: "Seu próximo lugar.",
+    accent: "Do seu jeito.",
+    sub: "Comprar ou alugar começa com o que importa para você.",
+    about: "Conte com a Cordial.",
+    aboutText:
+      "Cada mudança começa com uma escolha. Nossa equipe acompanha você para comprar, alugar ou anunciar seu imóvel.",
+  },
+  morar: {
+    lead: "O seu próximo lar.",
+    accent: "Mais perto de você.",
+    sub: "Comprar ou alugar, com uma equipe por perto.",
+    about: "Conte com a Morar.",
+    aboutText:
+      "Conte para a nossa equipe o que você procura. Juntos, encontramos caminhos para comprar, alugar ou anunciar seu imóvel.",
+  },
 } as const;
 
 const opLabel = (p: PublicProperty) => (p.operation === "venda" ? "Venda" : "Aluguel");
@@ -83,7 +92,12 @@ function HomeCard({
   const title = `${p.type ?? "Imóvel"}${p.district ? ` no ${p.district}` : ""}`;
   return (
     <article className={`cs-hx-card cs-hx-card-${variant}`}>
-      <SiteLink to={propertyPath(p, brand)} className="cs-hx-card-media" aria-label={title} tabIndex={-1}>
+      <SiteLink
+        to={propertyPath(p, brand)}
+        className="cs-hx-card-media"
+        aria-label={title}
+        tabIndex={-1}
+      >
         <PropertyImage media={p.cover} alt={title} sizes={sizes} />
         <span className="cs-hx-badge">{opLabel(p)}</span>
       </SiteLink>
@@ -111,11 +125,15 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
     const el = ref.current;
     if (!el) return;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const save = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    const save = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+      ?.saveData;
     if (reduce || save) return;
     let visible = false;
     let frame = 0;
-    let tx = 0, ty = 0, mx = 0, my = 0;
+    let tx = 0,
+      ty = 0,
+      mx = 0,
+      my = 0;
     const apply = () => {
       frame = 0;
       const r = el.getBoundingClientRect();
@@ -124,9 +142,12 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
       ty += (my * 10 + scrollShift - ty) * 0.12;
       el.style.setProperty("--cs-hx-px", `${tx.toFixed(2)}px`);
       el.style.setProperty("--cs-hx-py", `${ty.toFixed(2)}px`);
-      if (visible && (Math.abs(mx * 14 - tx) > 0.2 || Math.abs(my * 10 + scrollShift - ty) > 0.2)) frame = requestAnimationFrame(apply);
+      if (visible && (Math.abs(mx * 14 - tx) > 0.2 || Math.abs(my * 10 + scrollShift - ty) > 0.2))
+        frame = requestAnimationFrame(apply);
     };
-    const kick = () => { if (visible && !frame) frame = requestAnimationFrame(apply); };
+    const kick = () => {
+      if (visible && !frame) frame = requestAnimationFrame(apply);
+    };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       mx = e.clientX / innerWidth - 0.5;
@@ -159,12 +180,27 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
       className="cs-hx-hero-media"
       ref={ref}
       aria-hidden
-      style={image ? ({ "--cs-hx-focal": `${Math.round(image.focalX * 100)}% ${Math.round(image.focalY * 100)}%` } as React.CSSProperties) : undefined}
+      style={
+        image
+          ? ({
+              "--cs-hx-focal": `${Math.round(image.focalX * 100)}% ${Math.round(image.focalY * 100)}%`,
+            } as React.CSSProperties)
+          : undefined
+      }
     >
       <div className="cs-hx-hero-layer">
         {image?.url && failedUrl !== image.url ? (
           // Edited derivative failed → fall back once to the authorized original of the same property.
-          <img src={image.url} alt="" width={1536} height={1024} fetchPriority="high" decoding="async" className="cs-hx-showcase-img" onError={() => setFailedUrl(image.url)} />
+          <img
+            src={image.url}
+            alt=""
+            width={1536}
+            height={1024}
+            fetchPriority="high"
+            decoding="async"
+            className="cs-hx-showcase-img"
+            onError={() => setFailedUrl(image.url)}
+          />
         ) : (
           <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
         )}
@@ -194,7 +230,13 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
           Conhecer este imóvel <ArrowUpRight size={17} />
         </SiteLink>
         {whatsapp && (
-          <a className="cs-hx-wa" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Conversar no WhatsApp sobre este imóvel">
+          <a
+            className="cs-hx-wa"
+            href={whatsapp}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Conversar no WhatsApp sobre este imóvel"
+          >
             <WhatsAppIcon /> WhatsApp
           </a>
         )}
@@ -206,7 +248,11 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
 function DistrictsPanel() {
   const brand = useSiteBrand();
   const { facets } = useSite();
-  const cities = useMemo(() => [...new Set(facets.districts.map((d) => d.city))].sort((a, b) => a.localeCompare(b, "pt-BR")), [facets.districts]);
+  const cities = useMemo(
+    () =>
+      [...new Set(facets.districts.map((d) => d.city))].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [facets.districts],
+  );
   const [city, setCity] = useState("");
   const [q, setQ] = useState("");
   const norm = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
@@ -238,12 +284,21 @@ function DistrictsPanel() {
       <ul>
         {list.map((d) => (
           <li key={`${d.city}:${d.value}`}>
-            <SiteLink to={sitePath(`/buscar?${new URLSearchParams({ cidade: d.city, bairro: d.value })}`, brand)}>
+            <SiteLink
+              to={sitePath(
+                `/buscar?${new URLSearchParams({ cidade: d.city, bairro: d.value })}`,
+                brand,
+              )}
+            >
               <span>
                 <b>{d.value}</b>
                 {!city && cities.length > 1 && <small>{d.city}</small>}
               </span>
-              <em aria-label={`${d.count} ${d.count === 1 ? "imóvel publicado" : "imóveis publicados"}`}>{d.count}</em>
+              <em
+                aria-label={`${d.count} ${d.count === 1 ? "imóvel publicado" : "imóveis publicados"}`}
+              >
+                {d.count}
+              </em>
             </SiteLink>
           </li>
         ))}
@@ -256,30 +311,74 @@ function DistrictsPanel() {
   );
 }
 
+/** The search stays mounted while the shared home promise streams photos and offers. */
+export function MorarHomeHero({ home }: { home: Promise<HomeData | null> }) {
+  const copy = HOME_COPY.morar;
+  return (
+    <section className="cs-hx-hero">
+      <Suspense fallback={null}>
+        <Await promise={home}>
+          {(data) => (data?.hero ? <HeroImage hero={data.hero} image={data.heroImage} /> : null)}
+        </Await>
+      </Suspense>
+      <div className="cs-container cs-hx-hero-grid">
+        <div className="cs-hx-hero-copy">
+          <h1>
+            {copy.lead} <em>{copy.accent}</em>
+          </h1>
+          <p>{copy.sub}</p>
+          <div className="cs-hx-search">
+            <SearchForm compact initial={{ finalidade: "venda" }} />
+          </div>
+        </div>
+        <Suspense fallback={null}>
+          <Await promise={home}>
+            {(data) => (data?.hero ? <HeroCard hero={data.hero} /> : null)}
+          </Await>
+        </Suspense>
+      </div>
+    </section>
+  );
+}
+
 export function HomePage({ home }: { home: Promise<HomeData | null> }) {
   const { settings, available } = useSite();
   const brand = useSiteBrand();
   const copy = HOME_COPY[brand];
   return (
     <>
-      <Await promise={home} fallback={<HomeSkeleton />}>
+      {brand === "morar" && <MorarHomeHero home={home} />}
+      <Await
+        promise={home}
+        fallback={
+          brand === "morar" ? (
+            <p className="cs-container cs-home-loading" role="status">
+              Carregando os imóveis…
+            </p>
+          ) : (
+            <HomeSkeleton />
+          )
+        }
+      >
         {(data) => (
           <>
-            <section className={`cs-hx-hero ${data?.hero ? "" : "is-neutral"}`}>
-              {data?.hero && <HeroImage hero={data.hero} image={data.heroImage} />}
-              <div className="cs-container cs-hx-hero-grid">
-                <div className="cs-hx-hero-copy">
-                  <h1>
-                    {copy.lead} <em>{copy.accent}</em>
-                  </h1>
-                  <p>{copy.sub}</p>
-                  <div className="cs-hx-search">
-                    <SearchForm compact initial={{ finalidade: "venda" }} />
+            {brand === "cordial" && (
+              <section className={`cs-hx-hero ${data?.hero ? "" : "is-neutral"}`}>
+                {data?.hero && <HeroImage hero={data.hero} image={data.heroImage} />}
+                <div className="cs-container cs-hx-hero-grid">
+                  <div className="cs-hx-hero-copy">
+                    <h1>
+                      {copy.lead} <em>{copy.accent}</em>
+                    </h1>
+                    <p>{copy.sub}</p>
+                    <div className="cs-hx-search">
+                      <SearchForm compact initial={{ finalidade: "venda" }} />
+                    </div>
                   </div>
+                  {data?.hero && <HeroCard hero={data.hero} />}
                 </div>
-                {data?.hero && <HeroCard hero={data.hero} />}
-              </div>
-            </section>
+              </section>
+            )}
 
             <section className="cs-container cs-hx-featured" aria-labelledby="cs-hx-featured-title">
               <div className="cs-hx-heading">
@@ -303,7 +402,11 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                         key={p.id}
                         p={p}
                         variant={i === 0 ? "lg" : "sm"}
-                        sizes={i === 0 ? "(max-width: 768px) 100vw, 40vw" : "(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 20vw"}
+                        sizes={
+                          i === 0
+                            ? "(max-width: 768px) 100vw, 40vw"
+                            : "(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 20vw"
+                        }
                       />
                     ))}
                   </div>
@@ -326,7 +429,12 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                 </div>
                 <div className="cs-hx-more-grid">
                   {data.more.map((p) => (
-                    <HomeCard key={p.id} p={p} variant="compact" sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, (max-width: 1200px) 33vw, 20vw" />
+                    <HomeCard
+                      key={p.id}
+                      p={p}
+                      variant="compact"
+                      sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                    />
                   ))}
                 </div>
                 <div className="cs-hx-more-footer">
@@ -346,9 +454,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
             <h2>{copy.about}</h2>
           </div>
           <div>
-            <p>
-              {settings.about || copy.aboutText}
-            </p>
+            <p>{settings.about || copy.aboutText}</p>
             <SiteLink to={sitePath("/sobre", brand)} className="cs-text-link">
               Conheça nossa história <ArrowUpRight size={19} />
             </SiteLink>
@@ -358,8 +464,20 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
       <section className="cs-container cs-section cs-home-services">
         <div className="cs-services">
           {[
-            { icon: HousePlus, title: "Quer vender ou alugar?", text: "Apresente seu imóvel à nossa equipe.", to: "/anuncie", cta: "Anunciar meu imóvel" },
-            { icon: Landmark, title: "Planeje sua compra", text: "Conheça os caminhos para financiar seu imóvel.", to: "/financiamento", cta: "Ver financiamento" },
+            {
+              icon: HousePlus,
+              title: "Quer vender ou alugar?",
+              text: "Apresente seu imóvel à nossa equipe.",
+              to: "/anuncie",
+              cta: "Anunciar meu imóvel",
+            },
+            {
+              icon: Landmark,
+              title: "Planeje sua compra",
+              text: "Conheça os caminhos para financiar seu imóvel.",
+              to: "/financiamento",
+              cta: "Ver financiamento",
+            },
           ].map((s) => (
             <article key={s.to}>
               <s.icon size={27} strokeWidth={1.5} />
