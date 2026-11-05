@@ -1,31 +1,41 @@
-# Recibo — Água e outros acréscimos com descritivo
+# Recibo — desconto do inquilino na via certa + prévia das vias
 
-Escopo: somente Aluguéis → Emissões → Emitir recibo. Fórmulas, `computeReceiptTotals`, formato de `valores`, NFS-e, boleto, sync ImobiBrasil e previewAuthStorage não mudam. Nada publicado.
+Escopo: Aluguéis → Emissões → Emitir recibo. Sem publicar; sem tocar NFS-e, boleto, sync ImobiBrasil, previewAuthStorage, fontes do PDF nem dados existentes (incluindo a emissão 554b043b).
 
-## 1. Seção renomeada + atalhos
-- `ReceiptModal.tsx`: "Descontos e ajustes do inquilino" → **"Acréscimos e descontos do inquilino"**.
-- Novo `src/lib/rentals/receipt-presets.ts` com `RECEIPT_ADJUSTMENT_PRESETS` (inquilino: Água, Fundo de reserva, Multa/Juros por atraso, Outro acréscimo; proprietário: Reparo/Manutenção) e `adjustmentFromPreset(id)` com os defaults pedidos (tipo, descrição, repassar, repetir, campo a focar).
-- Chips acima de "+ Adicionar" em cada lado; criam item novo editável e focam valor (ou descrição em "Outro acréscimo"). Respeitam o limite de 10 itens.
+## Fase 1 — Seções inequívocas
+- Inquilino: título "Acréscimos e descontos do inquilino", subtítulo "Afeta o que o inquilino paga (aparece na via do locatário)"; legenda do "Repassar ao proprietário": "também desconta/acrescenta no repasse ao proprietário".
+- Proprietário: "Descontos só do proprietário (não aparecem para o inquilino)", aviso fixo com o texto pedido, botão "+ Adicionar desconto só do proprietário".
+- Borda/fundo distintos por seção usando tokens do tema (inquilino: tom primário; proprietário: tom de alerta suave).
 
-## 2. Descrição até 120 caracteres
-- Constante `MAX_ADJUSTMENT_DESCRIPTION = 120` em `receipt-model.ts`, usada em `validateReceiptAdjustments` (linha hoje com 60).
-- `receipt-registration.ts`: só os campos `descricao` dos ajustes passam a 120 (o `text` max 60 segue para os demais campos).
-- `emissions.functions.ts` `upsertContractAdjustment`: max 120.
-- Campo com contador "n/120" e placeholder "Ex.: Água ref. set/2026 – leitura 125 m³".
-- Migração aditiva mínima: apenas DROP/ADD do CHECK de `rental_contract_adjustments.descricao` para 1–120.
-- `receipt-pdf.ts`: descrição de ajuste quebra em até 2 linhas (reticências se exceder), e a altura extra entra no cálculo de linhas disponíveis da via; agrupamento "Outros ajustes (n)" mantido; 3 vias em 1 página.
+## Fase 2 — Proteção contra lado errado
+- `suggestTenantSide(descricao)` em `receipt-presets.ts`: normaliza (minúsculas, sem acentos, espaços) e retorna true se contiver "fundo de reserva".
+- No item do proprietário com descrição sugerida: aviso inline + botão "Mover para o inquilino (repassado ao proprietário)" → remove do lado do proprietário e cria item do inquilino tipo desconto, repassar ON, sem recorrência, mesma descrição/valor. Não bloqueia emissão.
 
-## 3. Encerrar recorrência
-- Item com selo "Recorrente" ganha botão "Encerrar recorrência" com confirmação ("O item deixa de aparecer nos próximos recibos. Continuar?").
-- Chama `deactivateContractAdjustment`, invalida `rental-contract-adjustments` e retira o item do recibo atual; em erro, mensagem e item mantido. "Remover só deste mês" continua igual.
+## Fase 3 — Prévia das vias
+- Bloco "Prévia" acima de Emitir, duas colunas (empilha no celular): Via do locatário (linhas + Total a pagar) e Via do proprietário (linhas + Total a receber).
+- Linhas vêm do mesmo modelo do PDF: extrair de `receipt-pdf.ts` a montagem das linhas por via para uma função pura em `receipt-model.ts` (ex.: `receiptViaLines(model, via)`), usada pelo PDF e pela prévia — sem duplicar regra. Layout/fontes do PDF inalterados (recibo sem ajustes continua idêntico).
 
-## 4. Testes (`receipt-model.vitest.ts`)
-- Defaults de cada preset.
-- Água: aluguel 1.100,00, honorários 100,00, água 85,00 não repassada → inquilino 1.185,00 / proprietário 1.000,00.
-- Descrição 120 aceita / 121 rejeitada (cliente e `checkReceiptValores`).
-- PDF com 6 itens por lado de 120 caracteres → 1 página sem erro.
-- Recorrência desativada não aparece em `activeRecurringFor`/`defaultReceiptInput` da competência seguinte.
-- Suíte completa `bun run test` verde (168 atuais + novos).
+## Fase 4 — Recibo já emitido (proposta, aguarda OK separado)
+Hoje não há bloqueio de duplicidade: a tabela não tem unicidade por contrato/competência e a lista mostra todas as emissões da competência (mais recente primeiro). Portanto, já é possível emitir um novo recibo out/2026 correto sem migração.
 
-## Observação fora do escopo (só aviso)
-A regra salva de recibos pede fontes 9–10pt; o PDF hoje usa 8–8,5pt em telefone, site, CNPJ e rótulo da via. Não será alterado neste plano, salvo pedido.
+Proposta para este ciclo:
+- Botão "Reemitir/substituir" em cada recibo emitido: abre o modal pré-preenchido com os `valores` gravados; ao emitir, cria nova emissão e marca a anterior como substituída.
+- Migração somente aditiva (não será aplicada sem sua aprovação):
+```sql
+ALTER TABLE public.rental_emissions
+  ADD COLUMN substituida_por uuid REFERENCES public.rental_emissions(id) ON DELETE SET NULL,
+  ADD COLUMN substituida_em timestamptz;
+CREATE INDEX rental_emissions_substituida_por_idx ON public.rental_emissions (substituida_por);
+```
+- Marcação feita no servidor, só após a nova emissão registrar com sucesso, e somente se a anterior for do mesmo contrato, tipo recibo e ainda não substituída. Lista mostra "Substituído" na antiga; PDF antigo permanece acessível.
+- Se preferir deixar fora deste ciclo: nada de migração; a equipe emite novo recibo da mesma competência e o mais recente aparece no topo.
+
+## Testes (receipt-model.vitest.ts)
+- Exemplo real: aluguel 2.200, honorários 200, fundo de reserva desconto 69,31 inquilino repassado → 2.130,69 / 1.930,69; linhas da via do locatário (as mesmas do PDF) contêm "Fundo de reserva" e "2.130,69".
+- Mesmo item no proprietário → 2.200,00 / 1.930,69 e `suggestTenantSide` true; variações "FUNDO DE RESERVA", "fundo  de reserva"; "Reparo" → false.
+- Mover para inquilino produz exatamente o caso do inquilino.
+- Prévia e PDF usam a mesma função de linhas/totais.
+- `bun run test:receipts`, `bun run test` e build sem erros.
+
+## Arquivos
+`receipt-presets.ts`, `receipt-model.ts`, `receipt-pdf.ts` (só extração das linhas), `ReceiptModal.tsx`, `receipt-model.vitest.ts`; Fase 4 também `emissions.functions.ts`, `receipt-registration.ts`, `RentalEmissions.tsx` e a migração.
