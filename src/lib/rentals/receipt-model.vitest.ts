@@ -285,3 +285,49 @@ describe("Atalhos, água e descritivo", () => {
     expect(defaultReceiptInput(maria, "2026-11", ended).ajustesInquilino).toHaveLength(0);
   });
 });
+
+describe("fundo de reserva: lado do inquilino x proprietário", async () => {
+  const { receiptViaRows } = await import("./receipt-model");
+  const { suggestTenantSide, ownerToTenantAdjustment } = await import("./receipt-presets");
+  const base = {
+    ...defaultReceiptInput(contract, "2026-10"),
+    aluguel: 2200,
+    honorarios: 200,
+    condominio: 0,
+    iptu: 0,
+    seguroFianca: 0,
+    vencimento: "2026-10-10",
+  };
+  const fundo = { id: "f", tipo: "desconto" as const, descricao: "Fundo de reserva", valor: 69.31 };
+  it("desconto do inquilino repassado: 2.130,69 / 1.930,69 e aparece na via do locatário", () => {
+    const m = buildReceiptModel(contract, {
+      ...base,
+      ajustesInquilino: [{ ...fundo, repassarProprietario: true }],
+      ajustesProprietario: [],
+    });
+    expect(m.totalPagar).toBe(2130.69);
+    expect(m.totalReceber).toBe(1930.69);
+    const via0 = receiptViaRows(m, 0);
+    expect(via0.adjustments).toEqual([["Desconto – Fundo de reserva", -69.31]]);
+    expect(new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2 }).format(m.totalPagar)).toBe("2.130,69");
+  });
+  it("mesmo item só do proprietário: 2.200 / 1.930,69, fora da via do locatário", () => {
+    const m = buildReceiptModel(contract, { ...base, ajustesInquilino: [], ajustesProprietario: [fundo] });
+    expect(m.totalPagar).toBe(2200);
+    expect(m.totalReceber).toBe(1930.69);
+    expect(receiptViaRows(m, 0).adjustments).toEqual([]);
+    expect(receiptViaRows(m, 1).adjustments).toEqual([["Desconto – Fundo de reserva", -69.31]]);
+  });
+  it("suggestTenantSide reconhece variações e ignora reparo", () => {
+    expect(suggestTenantSide("Fundo de reserva")).toBe(true);
+    expect(suggestTenantSide("FUNDO  DE   RESERVA out")).toBe(true);
+    expect(suggestTenantSide("fúndo de résérva")).toBe(true);
+    expect(suggestTenantSide("Reparo/Manutenção")).toBe(false);
+  });
+  it("mover para o inquilino gera o caso correto", () => {
+    const moved = ownerToTenantAdjustment({ ...fundo, tipo: "acrescimo" });
+    expect(moved).toMatchObject({ tipo: "desconto", repassarProprietario: true, valor: 69.31, descricao: "Fundo de reserva" });
+    const m = buildReceiptModel(contract, { ...base, ajustesInquilino: [moved], ajustesProprietario: [] });
+    expect([m.totalPagar, m.totalReceber]).toEqual([2130.69, 1930.69]);
+  });
+});
