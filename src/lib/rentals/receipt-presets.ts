@@ -26,3 +26,14 @@ export function tenantAdjustmentFromPreset(p: ReceiptPreset, id: string): Tenant
 export function ownerAdjustmentFromPreset(p: ReceiptPreset, id: string): OwnerAdjustment {
   return { id, tipo: p.tipo, descricao: p.descricao, valor: NaN };
 }
+
+const normalize = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+/** True when an owner-side description looks like a tenant discount (e.g. "fundo de reserva"). */
+export function suggestTenantSide(descricao: string) {
+  return normalize(descricao).includes("fundo de reserva");
+}
+/** Moves an owner item to the tenant side as a discount passed on to the owner. */
+export function ownerToTenantAdjustment(a: OwnerAdjustment): TenantAdjustment {
+  return { id: a.id, tipo: "desconto", descricao: a.descricao, valor: a.valor, repassarProprietario: true };
+}

@@ -1,14 +1,9 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
-import type { ReceiptModel } from "./receipt-model";
+import { receiptViaRows, type ReceiptModel } from "./receipt-model";
 
 const brlAbs = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 const brl = (value: number) => (value < 0 ? `- ${brlAbs(-value)}` : brlAbs(value));
-type Adj = { tipo: "desconto" | "acrescimo"; descricao: string; valor: number };
-const adjRow = (a: Adj): [string, number] => [
-  `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao}`,
-  a.tipo === "acrescimo" ? a.valor : -a.valor,
-];
 /** Fit rows into the via; overflow adjustments are grouped as "Outros ajustes (n)". */
 export function fitReceiptRows(
   base: [string, number][],
@@ -119,20 +114,7 @@ export async function buildReceiptPdf(
     draw(`Vencimento: ${model.vencimento.split("-").reverse().join("/")}`, 35, y, 9, bold);
     y -= 13;
     draw("Valores:", 35, y, 9, bold);
-    const rows: [string, number][] = [
-      [`Aluguel${index === 0 && model.observacao ? ` (${model.observacao})` : ""}`, model.aluguel],
-    ];
-    if (index !== 0 && model.honorarios) rows.push(["Honorários", model.honorarios]);
-    if (index !== 1 && model.iptu)
-      rows.push([`IPTU${model.iptuParcela ? ` ${model.iptuParcela}` : ""}`, model.iptu]);
-    if (index !== 1 && model.seguroFianca) rows.push(["Seguro Fiança", model.seguroFianca]);
-    if (model.condominio) rows.push(["Condomínio", model.condominio]);
-    const tenantAdj = model.ajustesInquilino.map(adjRow);
-    const ownerAdj = [
-      ...model.ajustesInquilino.filter((a) => a.repassarProprietario).map(adjRow),
-      ...model.ajustesProprietario.map(adjRow),
-    ];
-    const extra = index === 0 ? tenantAdj : index === 1 ? ownerAdj : [];
+    const { base: rows, adjustments: extra } = receiptViaRows(model, index as 0 | 1 | 2);
     const maxRows = Math.floor((y - 12 - (top - 228)) / 11) + 1;
     const adjLabels = new Set(extra.map(([l]) => l));
     const labelLines = (label: string) => {
