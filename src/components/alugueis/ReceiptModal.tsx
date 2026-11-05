@@ -141,10 +141,6 @@ function DescriptionInput({
   );
 }
 const newId = () => crypto.randomUUID();
-const signedValue = (a: { tipo: AdjustmentKind; valor: number }) =>
-  Number.isFinite(a.valor) ? (a.tipo === "acrescimo" ? a.valor : -a.valor) : 0;
-const adjLabel = (a: { tipo: AdjustmentKind; descricao: string }) =>
-  `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao.trim() || "sem descrição"}`;
 
 function Section({
   title,
