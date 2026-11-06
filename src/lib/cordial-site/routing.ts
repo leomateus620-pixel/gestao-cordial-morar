@@ -1,11 +1,20 @@
 import { getSiteBrand, type SiteBrand } from "./brand";
+import { sitePublicHost } from "./domains";
 
 // Activation stays explicit and host-scoped; neither namespace moves on the Gestão host.
 
-export const publicRootHost = import.meta.env?.VITE_CORDIAL_SITE_PUBLIC_HOST?.toLowerCase() ?? "";
+export const publicRootHost = sitePublicHost(
+  "cordial",
+  import.meta.env?.VITE_CORDIAL_SITE_PUBLIC_HOST,
+);
 
-export const morarPublicRootHost =
-  import.meta.env?.VITE_MORAR_SITE_PUBLIC_HOST?.toLowerCase() ?? "";
+export const morarPublicRootHost = sitePublicHost(
+  "morar",
+  import.meta.env?.VITE_MORAR_SITE_PUBLIC_HOST,
+);
+
+const currentHost = () =>
+  typeof window === "undefined" ? null : window.location.host.toLowerCase();
 
 function activation(url: URL, host?: string, brand: SiteBrand = "cordial") {
   if (host !== undefined) return { host, brand };
@@ -59,7 +68,9 @@ export function externalSitePath(path: string, brand: SiteBrand = "cordial") {
 
   const base = getSiteBrand(brand).basePath;
 
-  return host && (path === base || path.startsWith(`${base}/`))
+  // Only drop the prefix when the visitor is actually on the brand domain (previews keep it).
+  const onHost = currentHost();
+  return host && (onHost === null || onHost === host) && (path === base || path.startsWith(`${base}/`))
     ? path.slice(base.length) || "/"
     : path;
 }

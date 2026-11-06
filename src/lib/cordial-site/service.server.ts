@@ -19,6 +19,7 @@ import {
 import { plainText } from "./presentation";
 import type { SiteBrand } from "./brand";
 import { siteChannel, siteDefaultSettings } from "./channel.server";
+import { sitePublicHost } from "./domains";
 
 export class SiteUnavailable extends Error {
   constructor() {
@@ -62,7 +63,9 @@ export function siteEnvironment(brand: SiteBrand = "cordial") {
   const channel = siteChannel(brand);
   let canonicalOrigin: string | null = null;
   try {
-    const url = new URL(process.env[`${channel.envPrefix}_CANONICAL_ORIGIN`] ?? "");
+    const url = new URL(
+      process.env[`${channel.envPrefix}_CANONICAL_ORIGIN`] || `https://${sitePublicHost(brand)}/`,
+    );
     if (url.protocol === "https:" && url.pathname === "/" && !url.username && !url.password)
       canonicalOrigin = url.origin;
   } catch {
@@ -70,7 +73,7 @@ export function siteEnvironment(brand: SiteBrand = "cordial") {
   }
   return {
     canonicalOrigin,
-    indexable: process.env[`${channel.envPrefix}_ENV`] === "production" && !!canonicalOrigin,
+    indexable: (process.env[`${channel.envPrefix}_ENV`] ?? "production") === "production" && !!canonicalOrigin,
   };
 }
 export async function bootstrap(

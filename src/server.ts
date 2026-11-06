@@ -8,6 +8,7 @@ import {
   siteResponseHeaders,
   requestSiteBrand,
 } from "./lib/cordial-site/request.server";
+import { siteDomainRedirect } from "./lib/cordial-site/domains";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -46,6 +47,9 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const moved = siteDomainRedirect(request.url);
+      if (moved && (request.method === "GET" || request.method === "HEAD"))
+        return new Response(null, { status: 301, headers: { Location: moved } });
       const publicRequest = isSiteRequest(request);
       if (publicRequest) {
         const response = await guardSiteRequest(request);
