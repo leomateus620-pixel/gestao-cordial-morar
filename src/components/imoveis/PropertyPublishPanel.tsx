@@ -18,7 +18,7 @@ const fmt = (value: string | null) => (value ? new Date(value).toLocaleString("p
 function ownedState(row: OwnedPublicationView | undefined) {
   if (!row || row.state === "none") return { text: "Não publicado", tone: "text-foreground/65 bg-foreground/8" };
   if (row.state === "published") return { text: "No ar", tone: "text-emerald-700 bg-emerald-500/12" };
-  if (row.state === "draft" || (row.decision === "publish" && row.state !== "published"))
+  if (row.state === "draft" || row.decision === "publish")
     return { text: "Pendente de conferência", tone: "text-amber-700 bg-amber-500/12" };
   return { text: "Retirado", tone: "text-foreground/65 bg-foreground/8" };
 }
