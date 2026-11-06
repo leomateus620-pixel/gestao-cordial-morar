@@ -2794,6 +2794,10 @@ export type Database = {
           area_units_confirmed: boolean
           availability_confirmed: boolean
           cordial_authorized: boolean
+          decision_at: string | null
+          decision_by: string | null
+          decision_revision: number | null
+          own_decision: string | null
           property_id: string
           public_id: string
           public_reference: string
@@ -2807,6 +2811,10 @@ export type Database = {
           area_units_confirmed?: boolean
           availability_confirmed?: boolean
           cordial_authorized?: boolean
+          decision_at?: string | null
+          decision_by?: string | null
+          decision_revision?: number | null
+          own_decision?: string | null
           property_id: string
           public_id?: string
           public_reference: string
@@ -2820,6 +2828,10 @@ export type Database = {
           area_units_confirmed?: boolean
           availability_confirmed?: boolean
           cordial_authorized?: boolean
+          decision_at?: string | null
+          decision_by?: string | null
+          decision_revision?: number | null
+          own_decision?: string | null
           property_id?: string
           public_id?: string
           public_reference?: string
@@ -12313,6 +12325,7 @@ export type Database = {
         Args: { _attendance_id: string }
         Returns: boolean
       }
+      cordial_site_can_publish: { Args: { _actor: string }; Returns: boolean }
       cordial_site_claim_video: { Args: never; Returns: Json }
       cordial_site_content_hash: {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
@@ -12393,6 +12406,15 @@ export type Database = {
       }
       cordial_site_public_responsible: {
         Args: { _property_id: string }
+        Returns: Json
+      }
+      cordial_site_request_publication: {
+        Args: {
+          _expected_revision?: number
+          _property_id: string
+          _publish: boolean
+          _requested_by: string
+        }
         Returns: Json
       }
       cordial_site_review: {
@@ -12595,6 +12617,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      imobi_integration_enabled: { Args: never; Returns: boolean }
       inspection_can_access: { Args: { p_id: string }; Returns: boolean }
       inspection_can_edit: { Args: { p_id: string }; Returns: boolean }
       inspection_create: {

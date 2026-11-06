@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   enqueuePropertySync,
   getPropertySyncStatus,
+  getOwnedPublicationStatus,
+  type OwnedPublicationView,
   getProvidersHealth,
   listProviderCatalog,
   refreshProviderCatalogs,
@@ -19,6 +21,16 @@ export function usePropertySyncStatus(propertyId: string | undefined) {
     // O processamento não depende da tela. Enquanto aberta, ela acompanha
     // inclusive a recuperação de um bloqueio corrigido após o último fetch.
     refetchInterval: 15_000,
+  });
+}
+
+export function useOwnedPublicationStatus(propertyId: string | undefined) {
+  const get = useServerFn(getOwnedPublicationStatus);
+  return useQuery<OwnedPublicationView[]>({
+    queryKey: ["property-sync", propertyId, "owned"],
+    queryFn: () => get({ data: { propertyId: propertyId as string } }),
+    enabled: !!propertyId,
+    refetchInterval: 30_000,
   });
 }
 

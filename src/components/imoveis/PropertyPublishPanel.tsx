@@ -1,158 +1,68 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { CloudUpload, ExternalLink, ImageUp, Loader2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { recoverPropertyMedia } from "@/lib/imoveis/media-recovery.functions";
-import { useEnqueuePropertySync, usePropertySyncStatus } from "@/hooks/usePropertySync";
-import type { PublicationStatusView } from "@/lib/imoveis/publish.functions";
-import { Link } from "@tanstack/react-router";
-import { friendlyPublishError, nextRunLabel } from "@/lib/imoveis/publish-messages";
+import { CloudUpload, ExternalLink, Loader2, PowerOff } from "lucide-react";
+import {
+  useEnqueuePropertySync,
+  useOwnedPublicationStatus,
+  usePropertySyncStatus,
+} from "@/hooks/usePropertySync";
+import type { OwnedPublicationView } from "@/lib/imoveis/publish.functions";
 
-const PROVIDERS = [
-  { key: "cordial", label: "Cordial" },
-  { key: "morar", label: "Morar" },
+const BRANDS = [
+  { key: "cordial", label: "Cordial", host: "cordialimoveis.com" },
+  { key: "morar", label: "Morar", host: "imobiliariamorarimoveis.com.br" },
 ] as const;
 
-const BLOCKING_ERRORS = new Set(["config", "validation", "business", "mapping", "auth"]);
-const fmt = (value: string | null) => value ? new Date(value).toLocaleString("pt-BR") : null;
+const fmt = (value: string | null) => (value ? new Date(value).toLocaleString("pt-BR") : null);
 
-function destinationState(row: PublicationStatusView | undefined, label: string) {
-  if (!row) return { text: "Salvo no Gestão", tone: "text-foreground/65 bg-foreground/8" };
-  if (row.status === "unpublished" && !row.activeJob) {
-    return { text: `Oculto na ${label}`, tone: "text-foreground/65 bg-foreground/8" };
-  }
-  if (
-    (row.remote.matchCount ?? 0) > 1 ||
-    row.cadastro.conflictCount > 0 ||
-    row.media.status === "blocked_image" ||
-    BLOCKING_ERRORS.has(row.lastErrorCategory ?? "")
-  ) {
-    return { text: `Impedimento na ${label}`, tone: "text-destructive bg-destructive/10" };
-  }
-  if (row.remote.createState === "awaiting_create_reconcile") {
-    const minutes = createPendingMinutes(row);
-    return minutes != null && minutes >= 20
-      ? { text: `Ainda não está no ar na ${label} há ${minutes} min`, tone: "text-destructive bg-destructive/10" }
-      : { text: `Aguardando confirmação da ${label}`, tone: "text-amber-700 bg-amber-500/12" };
-  }
-  if (row.rateLimitedUntil && new Date(row.rateLimitedUntil).getTime() > Date.now()) {
-    return { text: `Aguardando limite da ${label}`, tone: "text-amber-700 bg-amber-500/12" };
-  }
-  const cadastroConfirmed = row.cadastro.localRevision != null &&
-    row.cadastro.confirmedRevision != null &&
-    row.cadastro.confirmedRevision >= row.cadastro.localRevision &&
-    row.cadastro.divergent.length === 0 && row.cadastro.unverifiable.length === 0;
-  const mediaConfirmed = row.media.status === "synced" &&
-    row.media.confirmedRevision != null && row.media.desiredRevision != null &&
-    row.media.confirmedRevision >= row.media.desiredRevision;
-  if (row.status === "published" && cadastroConfirmed && mediaConfirmed && !row.activeJob) {
-    return { text: "Atualizado", tone: "text-emerald-700 bg-emerald-500/12" };
-  }
-  if (row.media.status === "needs_attention") {
-    return {
-      text: `Fotos paradas · ${row.media.syncedCount ?? 0} de ${row.media.expectedCount ?? 0}`,
-      tone: "text-destructive bg-destructive/10",
-    };
-  }
-  if (row.media.status === "delivery_unknown") {
-    return { text: "Conferindo envio", tone: "text-amber-700 bg-amber-500/12" };
-  }
-  const expected = row.media.expectedCount ?? 0;
-  const synced = row.media.syncedCount ?? 0;
-  if (expected > synced) {
-    return {
-      text: row.activeJob?.status === "processing" ? `Enviando ${synced} de ${expected}` : `Aguardando envio · ${synced} de ${expected}`,
-      tone: "text-sky-700 bg-sky-500/12",
-    };
-  }
-  return { text: `Atualizando cadastro na ${label}`, tone: "text-sky-700 bg-sky-500/12" };
+function ownedState(row: OwnedPublicationView | undefined) {
+  if (!row || row.state === "none") return { text: "Não publicado", tone: "text-foreground/65 bg-foreground/8" };
+  if (row.state === "published") return { text: "No ar", tone: "text-emerald-700 bg-emerald-500/12" };
+  if (row.state === "draft" || row.decision === "publish")
+    return { text: "Pendente de conferência", tone: "text-amber-700 bg-amber-500/12" };
+  return { text: "Retirado", tone: "text-foreground/65 bg-foreground/8" };
 }
 
-function createPendingMinutes(row: PublicationStatusView): number | null {
-  const since = row.remote.createFirstRequestedAt ?? row.remote.createAmbiguousAt;
-  if (!since) return null;
-  return Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 60_000));
-}
-
-function destinationDetails(row: PublicationStatusView) {
-  const details = [
-    row.cadastro.savedAt ? `Salvo no Gestão: ${fmt(row.cadastro.savedAt)}` : null,
-    row.lastVerifiedAt ? `Última confirmação cadastral: ${fmt(row.lastVerifiedAt)}` : null,
-    row.media.lastVerifiedAt ? `Última conferência das fotos: ${fmt(row.media.lastVerifiedAt)}` : null,
-    nextRunLabel(row.activeJob, Boolean(row.externalPropertyId)),
-    row.rateLimitedUntil ? `Limite do site: aguardando até ${fmt(row.rateLimitedUntil)}` : null,
-    row.media.expectedCount != null ? `Fotos confirmadas: ${row.media.syncedCount ?? 0} de ${row.media.expectedCount}` : null,
-    row.cadastro.divergent.length ? `Campos não confirmados: ${row.cadastro.divergent.join(", ")}` : null,
-    row.cadastro.unverifiable.length ? `Campos sem confirmação: ${row.cadastro.unverifiable.join(", ")}` : null,
-    friendlyPublishError(row.lastErrorMessage)?.text ?? null,
-  ];
-  if ((row.remote.matchCount ?? 0) > 1) {
-    details.push(`Há ${row.remote.matchCount} anúncios com a mesma referência nesta conta. A escolha do anúncio exige decisão administrativa.`);
-  }
-  if (row.remote.createState === "awaiting_create_reconcile") {
-    details.push(`Criação sem resposta confirmada do site: conferência ${Math.min(3, row.remote.createAbsentChecks)} de 3 antes de qualquer nova tentativa. Nenhum anúncio duplicado é criado.`);
-  }
-  if (row.media.status === "delivery_unknown") {
-    details.push("O envio de uma foto ainda não foi confirmado pelo site. A conferência automática evita uma cópia duplicada.");
-  }
-  if (row.media.status === "needs_attention" && row.media.attentionReason) {
-    details.push(row.media.attentionReason);
-  }
-  if (row.media.status === "blocked_image") {
-    details.push("Uma foto ativa não pôde ser preparada. Confira a mensagem dessa foto na galeria e corrija o arquivo; a atualização volta automaticamente.");
-  }
-  if (row.media.orderGuarantee === "remote_content_drift") {
-    details.push("O conteúdo das fotos difere da galeria salva no Gestão; a correção será planejada com os arquivos locais.");
-  }
-  return details.filter((detail): detail is string => Boolean(detail));
-}
-
+/**
+ * Publicação nos sites próprios. A ImobiBrasil está desligada: o estado antigo
+ * dela aparece só como histórico, sem botões que acionem a integração.
+ */
 export function PropertyPublishPanel({
   propertyId,
   canPublish,
-  isAdmin,
 }: {
   propertyId: string;
   canPublish: boolean;
   isAdmin: boolean;
 }) {
-  const status = usePropertySyncStatus(propertyId);
+  const owned = useOwnedPublicationStatus(propertyId);
+  const legacy = usePropertySyncStatus(propertyId);
   const enqueue = useEnqueuePropertySync(propertyId);
   const [selected, setSelected] = useState<string[]>([]);
-  const qc = useQueryClient();
-  const recoverFn = useServerFn(recoverPropertyMedia);
-  const recover = useMutation({
-    mutationFn: (input: { provider: "cordial" | "morar"; mode: "resume" | "clean_rebuild" }) =>
-      recoverFn({ data: { propertyId, ...input } }),
-    onSuccess: (_result, input) => {
-      toast.success(input.mode === "clean_rebuild"
-        ? "Reconstrução da galeria agendada. As fotos do site serão refeitas na ordem do Gestão, sem cópias."
-        : "Envio das fotos retomado. Acompanhe por aqui.");
-      void qc.invalidateQueries({ queryKey: ["property-sync", propertyId] });
-    },
-    onError: (error) => toast.error((error as Error)?.message ?? "Não foi possível retomar o envio das fotos."),
-  });
-  const byProvider = useMemo(
-    () => new Map((status.data ?? []).map((row) => [row.provider, row])),
-    [status.data],
-  );
+  const byBrand = new Map((owned.data ?? []).map((row) => [row.brand, row]));
 
-  async function run(action: "publish" | "unpublish", providers: string[]) {
-    if (!providers.length) {
-      toast.error("Selecione ao menos um destino.");
+  async function run(action: "publish" | "unpublish", brands: string[]) {
+    if (!brands.length) {
+      toast.error("Selecione ao menos um site.");
       return;
     }
     try {
-      await enqueue.mutateAsync({ propertyId, providers, action });
-      toast.success(action === "publish"
-        ? "Decisão de publicação salva no Gestão. Os destinos serão atualizados automaticamente."
-        : "Decisão de ocultar salva no Gestão. Os destinos serão atualizados automaticamente.");
+      const result = (await enqueue.mutateAsync({ propertyId, providers: brands, action })) as {
+        owned?: Array<{ brand: string; ok: boolean; error?: string; pendingReview?: boolean }>;
+      };
+      const failed = (result.owned ?? []).filter((r) => !r.ok);
+      const pending = (result.owned ?? []).filter((r) => r.ok && r.pendingReview);
+      if (failed.length) toast.warning(`Não foi possível em: ${failed.map((r) => r.brand).join(", ")}.`);
+      else if (pending.length)
+        toast.info("Decisão salva. O imóvel entra no ar quando o cadastro estiver completo e disponível.");
+      else toast.success(action === "publish" ? "Publicado nos sites selecionados." : "Retirado do site.");
       setSelected([]);
     } catch (error) {
-      toast.error((error as Error)?.message ?? "Não foi possível salvar a decisão de publicação.");
+      toast.error((error as Error)?.message ?? "Não foi possível salvar a decisão.");
     }
   }
+
+  const legacyRows = (legacy.data ?? []).filter((row) => row.externalPropertyId || row.status !== "draft");
 
   return (
     <section className="glass-panel rounded-3xl p-4">
@@ -160,79 +70,48 @@ export function PropertyPublishPanel({
         <h2 className="flex items-center gap-2 text-sm font-bold">
           <CloudUpload className="size-4 text-primary" /> Publicação nos sites
         </h2>
-        {status.isFetching && <Loader2 className="size-3.5 animate-spin text-foreground/35" />}
+        {owned.isFetching && <Loader2 className="size-3.5 animate-spin text-foreground/35" />}
       </div>
 
       <div className="mt-3 space-y-2">
-        {PROVIDERS.map((provider) => {
-          const row = byProvider.get(provider.key);
-          const state = destinationState(row, provider.label);
+        {BRANDS.map((brand) => {
+          const row = byBrand.get(brand.key);
+          const state = ownedState(row);
           return (
-            <div key={provider.key} className="rounded-2xl bg-white/50 p-3">
+            <div key={brand.key} className="rounded-2xl bg-white/50 p-3">
               <div className="flex flex-wrap items-center gap-2">
                 {canPublish && (
                   <input
                     type="checkbox"
-                    checked={selected.includes(provider.key)}
-                    onChange={() => setSelected((current) => current.includes(provider.key)
-                      ? current.filter((item) => item !== provider.key)
-                      : [...current, provider.key])}
+                    checked={selected.includes(brand.key)}
+                    onChange={() =>
+                      setSelected((current) =>
+                        current.includes(brand.key) ? current.filter((i) => i !== brand.key) : [...current, brand.key],
+                      )
+                    }
                     className="size-4 accent-[hsl(var(--primary))]"
-                    aria-label={`Selecionar ${provider.label}`}
+                    aria-label={`Selecionar ${brand.label}`}
                   />
                 )}
-                <span className="text-sm font-semibold">{provider.label}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${state.tone}`}>
-                  {state.text}
-                </span>
-                {row?.externalPropertyId && (
-                  <span className="font-mono text-[10px] text-foreground/45">#{row.externalPropertyId}</span>
+                <span className="text-sm font-semibold">{brand.label}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${state.tone}`}>{state.text}</span>
+                {row?.publicReference && (
+                  <span className="font-mono text-[10px] text-foreground/45">{row.publicReference}</span>
                 )}
-                {row?.externalPublicUrl && row.enabled && row.status === "published" && (
-                  <a href={row.externalPublicUrl} target="_blank" rel="noreferrer"
+                {row?.url && (
+                  <a href={row.url} target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
-                    Ver anúncio <ExternalLink className="size-3" />
+                    Ver no {brand.host} <ExternalLink className="size-3" />
                   </a>
                 )}
               </div>
-              {row && (
-                <details className="mt-2 text-[11px] text-foreground/65">
-                  <summary className="cursor-pointer font-semibold">Detalhes da atualização</summary>
-                  <div className="mt-2 space-y-1">
-                    {destinationDetails(row).map((detail, index) => <p key={index}>{detail}</p>)}
-                    {!destinationDetails(row).length && <p>Aguardando a primeira confirmação deste destino.</p>}
-                  </div>
-                </details>
+              {row?.updatedAt && (
+                <p className="mt-1 text-[11px] text-foreground/55">Última mudança: {fmt(row.updatedAt)}</p>
               )}
-              {row && friendlyPublishError(row.lastErrorMessage)?.editAddress && (
-                <Link to="/imoveis/$imovelId/editar" params={{ imovelId: propertyId }}
-                  className="mt-2 inline-flex rounded-full bg-destructive/10 px-3 py-1.5 text-[11px] font-semibold text-destructive">
-                  Corrigir número do endereço
-                </Link>
-              )}
-              {isAdmin && row?.externalPropertyId && row.enabled && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button type="button" disabled={recover.isPending}
-                    onClick={() => recover.mutate({ provider: provider.key, mode: "resume" })}
-                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-50">
-                    <ImageUp className="size-3" /> Reenviar fotos
-                  </button>
-                  {row.media.status !== "synced" && (
-                    <button type="button" disabled={recover.isPending}
-                      onClick={() => {
-                        if (window.confirm(`Reconstruir a galeria na ${provider.label}? As fotos do site que não estão no Gestão ou estão fora de ordem serão retiradas e reenviadas a partir do Gestão, com a capa primeiro.`))
-                          recover.mutate({ provider: provider.key, mode: "clean_rebuild" });
-                      }}
-                      className="rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50">
-                      Reconstruir galeria
-                    </button>
-                  )}
-                </div>
-              )}
-              {canPublish && row?.status === "published" && (
-                <button type="button" onClick={() => void run("unpublish", [provider.key])}
-                  className="mt-2 rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold">
-                  Ocultar do site
+              {canPublish && row?.state === "published" && (
+                <button type="button" disabled={enqueue.isPending} onClick={() => void run("unpublish", [brand.key])}
+                  className="mt-2 rounded-full bg-foreground/8 px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50">
+                  Retirar do site
                 </button>
               )}
             </div>
@@ -244,9 +123,26 @@ export function PropertyPublishPanel({
         <button type="button" onClick={() => void run("publish", selected)}
           disabled={enqueue.isPending || selected.length === 0}
           className="mt-3 w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 disabled:opacity-40">
-          {enqueue.isPending ? "Salvando decisão…" : "Publicar / atualizar selecionados"}
+          {enqueue.isPending ? "Salvando decisão…" : "Publicar nos selecionados"}
         </button>
       )}
+
+      <details className="mt-3 rounded-2xl bg-foreground/5 p-3 text-[11px] text-foreground/65">
+        <summary className="flex cursor-pointer items-center gap-1.5 font-semibold">
+          <PowerOff className="size-3" /> ImobiBrasil: desligada (histórico)
+        </summary>
+        <div className="mt-2 space-y-1">
+          <p>A integração está desligada. Nada é enviado nem consultado; o registro abaixo é só o último estado conhecido.</p>
+          {legacyRows.length === 0 && <p>Sem histórico neste imóvel.</p>}
+          {legacyRows.map((row) => (
+            <p key={row.provider}>
+              {row.provider === "cordial" ? "Cordial" : "Morar"}: {row.status}
+              {row.externalPropertyId ? ` · anúncio #${row.externalPropertyId}` : ""}
+              {row.lastVerifiedAt ? ` · última confirmação ${fmt(row.lastVerifiedAt)}` : ""}
+            </p>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }

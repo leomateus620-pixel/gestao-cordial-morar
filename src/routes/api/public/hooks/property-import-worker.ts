@@ -14,6 +14,10 @@ export const Route = createFileRoute("/api/public/hooks/property-import-worker")
       POST: async ({ request }) => {
         const denied = authorizeWorkerRequest(request);
         if (denied) return denied;
+        {
+          const { imobiIntegrationEnabled, imobiDisabledResponse } = await import("@/lib/imobibrasil/integration-switch");
+          if (!imobiIntegrationEnabled()) return imobiDisabledResponse("import");
+        }
 
         let limit = 4;
         let chain = true;

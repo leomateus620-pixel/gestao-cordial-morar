@@ -491,6 +491,48 @@
       "when": 1793825510800,
       "tag": "0069_rental_adjustment_description_120",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1793987797579,
+      "tag": "0070_cordial_site_owned_decision",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1793987823078,
+      "tag": "0071_cordial_site_review_mark_decision_depth",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1793987861920,
+      "tag": "0072_cordial_site_can_publish_ambas",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793987901419,
+      "tag": "0073_imobi_off_park_new_sync_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1793987945692,
+      "tag": "0074_archive_finalize_imobi_off",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1793987989427,
+      "tag": "0075_archive_finalize_cordial_withdraw",
+      "breakpoints": true
     }
   ]
 }
