@@ -505,6 +505,13 @@
       "when": 1793987823078,
       "tag": "0071_cordial_site_review_mark_decision_depth",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1793987861920,
+      "tag": "0072_cordial_site_can_publish_ambas",
+      "breakpoints": true
     }
   ]
 }
