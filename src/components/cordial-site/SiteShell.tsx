@@ -17,6 +17,7 @@ import {
   whatsappNumber,
 } from "@/lib/cordial-site/experience";
 import { SitePerformance } from "./SitePerformance";
+import { WhatsAppFloat } from "./WhatsAppFloat";
 import { SiteAnalytics } from "./SiteAnalytics";
 import { loadBootstrap } from "@/lib/cordial-site/data";
 import cordialLogo from "@/assets/logo-cordial-imoveis.png.asset.json";
@@ -413,7 +414,15 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
               </div>
             </div>
           </footer>
-          {whatsappNumber(settings.whatsapp) && !path.startsWith(`${config.basePath}/imovel/`) && (
+          {brand === "morar" && whatsappNumber(settings.whatsapp) && (
+            <WhatsAppFloat
+              number={whatsappNumber(settings.whatsapp)!}
+              brandName={config.name}
+              shortName={config.shortName}
+              isProperty={path.includes("/imovel/")}
+            />
+          )}
+          {brand !== "morar" && whatsappNumber(settings.whatsapp) && !path.startsWith(`${config.basePath}/imovel/`) && (
             <a
               className="cs-whatsapp"
               href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}

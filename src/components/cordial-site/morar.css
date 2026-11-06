@@ -997,3 +997,91 @@ body:has(.morar-site) {
     transition: none;
   }
 }
+
+/* Botão flutuante do WhatsApp (Morar) */
+.morar-site .ms-wa-float {
+  position: fixed;
+  z-index: 40;
+  right: 22px;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.morar-site .ms-wa-button {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 58px;
+  min-width: 58px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #25d366;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(18, 140, 70, 0.35);
+  animation: ms-wa-pulse 2.2s ease-out 3;
+  transition: gap 0.25s ease, transform 0.2s ease;
+}
+.morar-site .ms-wa-button:hover,
+.morar-site .ms-wa-button:focus-visible {
+  gap: 10px;
+  transform: translateY(-2px);
+}
+.morar-site .ms-wa-button:focus-visible {
+  outline: 3px solid var(--cs-ink);
+  outline-offset: 3px;
+}
+.morar-site .ms-wa-label {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  transition: max-width 0.3s ease;
+}
+.morar-site .ms-wa-button:hover .ms-wa-label,
+.morar-site .ms-wa-button:focus-visible .ms-wa-label {
+  max-width: 180px;
+}
+.morar-site .ms-wa-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 250px;
+  padding: 12px 12px 12px 15px;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--ms-surface, #fff);
+  color: var(--cs-ink);
+  border: 1px solid var(--cs-line);
+  box-shadow: var(--ms-shadow);
+  font-size: 13px;
+  line-height: 1.4;
+  animation: ms-wa-in 0.3s ease-out;
+}
+.morar-site .ms-wa-bubble button {
+  border: 0;
+  background: none;
+  color: var(--cs-muted);
+  cursor: pointer;
+  padding: 2px;
+}
+@keyframes ms-wa-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55), 0 10px 28px rgba(18, 140, 70, 0.35); }
+  100% { box-shadow: 0 0 0 18px rgba(37, 211, 102, 0), 0 10px 28px rgba(18, 140, 70, 0.35); }
+}
+@keyframes ms-wa-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .morar-site .ms-wa-button,
+  .morar-site .ms-wa-bubble { animation: none; transition: none; }
+}
+@media (max-width: 760px) {
+  .morar-site .ms-wa-float { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .morar-site .ms-wa-button { height: 52px; min-width: 52px; padding: 0 13px; }
+  .morar-site:has(.cs-mobile-contact) .ms-wa-float { bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
