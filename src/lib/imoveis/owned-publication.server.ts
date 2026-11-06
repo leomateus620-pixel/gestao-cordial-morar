@@ -8,6 +8,10 @@ export type OwnedBrandResult = {
   pendingReview?: boolean;
   conflict?: boolean;
   unchanged?: boolean;
+  decision?: "publish" | "withdraw" | null;
+  revision?: number | null;
+  blockReason?: string | null;
+  publicId?: string | null;
   error?: string;
 };
 

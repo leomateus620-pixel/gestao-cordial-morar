@@ -2797,6 +2797,7 @@ export type Database = {
           decision_at: string | null
           decision_by: string | null
           decision_revision: number | null
+          decision_source: string | null
           own_decision: string | null
           property_id: string
           public_id: string
@@ -2814,6 +2815,7 @@ export type Database = {
           decision_at?: string | null
           decision_by?: string | null
           decision_revision?: number | null
+          decision_source?: string | null
           own_decision?: string | null
           property_id: string
           public_id?: string
@@ -2831,6 +2833,7 @@ export type Database = {
           decision_at?: string | null
           decision_by?: string | null
           decision_revision?: number | null
+          decision_source?: string | null
           own_decision?: string | null
           property_id?: string
           public_id?: string
@@ -6167,6 +6170,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      owned_channel_inventory: {
+        Row: {
+          cordial_state: string | null
+          id: number
+          media_checksum: string
+          morar_state: string | null
+          property_checksum: string
+          property_id: string
+          snapshot: string
+          taken_at: string
+        }
+        Insert: {
+          cordial_state?: string | null
+          id?: number
+          media_checksum: string
+          morar_state?: string | null
+          property_checksum: string
+          property_id: string
+          snapshot: string
+          taken_at?: string
+        }
+        Update: {
+          cordial_state?: string | null
+          id?: number
+          media_checksum?: string
+          morar_state?: string | null
+          property_checksum?: string
+          property_id?: string
+          snapshot?: string
+          taken_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -13503,6 +13539,10 @@ export type Database = {
           payload: Json
           source_queue: string
         }
+        Returns: number
+      }
+      owned_channel_take_inventory: {
+        Args: { _snapshot: string }
         Returns: number
       }
       phone_key: { Args: { _v: string }; Returns: string }

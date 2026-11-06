@@ -283,8 +283,15 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
           propertyId,
           providers,
           action: "publish",
-        })) as { agency?: { status: string; reason?: string } | null; skippedImages?: number };
-        steps.publish = "ok";
+        })) as {
+          agency?: { status: string; reason?: string } | null;
+          skippedImages?: number;
+          partial?: boolean;
+          partialMessage?: string | null;
+        };
+        // Falha em uma marca não pode concluir como se tudo tivesse sido publicado.
+        steps.publish = result.partial ? "error" : "ok";
+        if (result.partial) messages.push(`Publicação incompleta — ${result.partialMessage}. Tente de novo só nesse site.`);
         skippedImages = result.skippedImages;
         if (!agenciamentoId && result.agency) {
           if (result.agency.status === "created" || result.agency.status === "exists") {

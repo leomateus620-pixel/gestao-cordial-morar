@@ -88,6 +88,8 @@ export type EnqueueSyncInput = {
   propertyId: string;
   providers: string[];
   action?: SyncAction;
+  /** Revisão do imóvel que o usuário estava vendo ao clicar. */
+  expectedRevision?: number | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,13 +127,18 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
         userId: context.userId,
         brands: providers,
         publish,
+        // Versão que o usuário viu na tela; nunca a recém-lida aqui.
+        expectedRevision: data.expectedRevision ?? null,
       });
       const failed = owned.filter((r) => !r.ok);
+      const describe = (r: (typeof owned)[number]) =>
+        `${r.brand}: ${r.conflict ? "cadastro alterado por outra pessoa, recarregue a página" : r.error ?? "erro"}`;
       if (failed.length === owned.length) {
-        throw new Error(failed.map((r) => `${r.brand}: ${r.conflict ? "cadastro alterado, recarregue" : r.error ?? "erro"}`).join("; "));
+        throw new Error(failed.map(describe).join("; "));
       }
+      const partial = failed.length > 0;
       let agency: { status: string; reason?: string } | null = null;
-      if (action === "publish") {
+      if (action === "publish" && owned.some((r) => r.ok)) {
         try {
           const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
           agency = await ensureAutoAgency({ propertyId: property.id, publisherId: context.userId, providers });
@@ -140,7 +147,11 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
           agency = { status: "error", reason: (err as Error)?.message };
         }
       }
-      return { enqueued: [] as string[], owned, durable: true, agency };
+      return {
+        enqueued: [] as string[], owned, durable: true, agency, partial,
+        failedBrands: failed.map((r) => r.brand),
+        partialMessage: partial ? failed.map(describe).join("; ") : null,
+      };
     }
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
     // Uma única transação fixa a decisão de disponibilidade, a revisão e as
@@ -412,6 +423,8 @@ export type OwnedPublicationView = {
   url: string | null;
   decision: "publish" | "withdraw" | null;
   updatedAt: string | null;
+  /** Revisão do imóvel lida junto com este estado (enviada de volta ao publicar). */
+  propertyRevision: number | null;
 };
 
 /** Estado real nos sites próprios (Cordial e Morar), lido do canal de cada marca. */
@@ -421,9 +434,10 @@ export const getOwnedPublicationStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<OwnedPublicationView[]> => {
     // RLS do usuário: só lê o estado de imóveis que ele já pode ver.
     const { data: visible, error } = await context.supabase
-      .from("properties").select("id").eq("id", data.propertyId).maybeSingle();
+      .from("properties").select("id, revision").eq("id", data.propertyId).maybeSingle();
     if (error) throw new Error(error.message);
     if (!visible) throw new Error("Imóvel não encontrado ou sem permissão.");
+    const propertyRevision = ((visible as { revision?: number | null }).revision ?? null) as number | null;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { sitePublicHost } = await import("@/lib/cordial-site/domains");
     const [c, m] = await Promise.all([
@@ -441,6 +455,7 @@ export const getOwnedPublicationStatus = createServerFn({ method: "GET" })
         publicReference: (row?.public_reference as string) ?? null,
         url: state === "published" && row?.public_id ? `https://${sitePublicHost(brand)}/imovel/${row.public_id}` : null,
         updatedAt: (row?.updated_at as string) ?? null,
+        propertyRevision,
       };
     };
     const cr = c.data as Record<string, unknown> | null;

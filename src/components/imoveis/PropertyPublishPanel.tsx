@@ -19,7 +19,7 @@ function ownedState(row: OwnedPublicationView | undefined) {
   if (!row || row.state === "none") return { text: "Não publicado", tone: "text-foreground/65 bg-foreground/8" };
   if (row.state === "published") return { text: "No ar", tone: "text-emerald-700 bg-emerald-500/12" };
   if (row.state === "draft" || row.decision === "publish")
-    return { text: "Pendente de conferência", tone: "text-amber-700 bg-amber-500/12" };
+    return { text: "Decisão salva — aguardando", tone: "text-amber-700 bg-amber-500/12" };
   return { text: "Retirado", tone: "text-foreground/65 bg-foreground/8" };
 }
 
@@ -46,16 +46,25 @@ export function PropertyPublishPanel({
       toast.error("Selecione ao menos um site.");
       return;
     }
+    // Revisão que o usuário está vendo; se outra pessoa salvou, o servidor recusa.
+    const expectedRevision = owned.data?.[0]?.propertyRevision ?? null;
     try {
-      const result = (await enqueue.mutateAsync({ propertyId, providers: brands, action })) as {
-        owned?: Array<{ brand: string; ok: boolean; error?: string; pendingReview?: boolean }>;
+      const result = (await enqueue.mutateAsync({ propertyId, providers: brands, action, expectedRevision })) as {
+        owned?: Array<{ brand: string; ok: boolean; error?: string; conflict?: boolean; pendingReview?: boolean; blockReason?: string | null; state?: string }>;
       };
-      const failed = (result.owned ?? []).filter((r) => !r.ok);
-      const pending = (result.owned ?? []).filter((r) => r.ok && r.pendingReview);
-      if (failed.length) toast.warning(`Não foi possível em: ${failed.map((r) => r.brand).join(", ")}.`);
-      else if (pending.length)
-        toast.info("Decisão salva. O imóvel entra no ar quando o cadastro estiver completo e disponível.");
-      else toast.success(action === "publish" ? "Publicado nos sites selecionados." : "Retirado do site.");
+      const rows = result.owned ?? [];
+      const label = (b: string) => (b === "cordial" ? "Cordial" : "Morar");
+      const failed = rows.filter((r) => !r.ok);
+      const pending = rows.filter((r) => r.ok && action === "publish" && r.state !== "published");
+      if (failed.some((r) => r.conflict)) {
+        toast.error("O cadastro foi alterado por outra pessoa. Atualize a página antes de publicar.");
+      } else if (failed.length) {
+        toast.warning(`Não foi possível em: ${failed.map((r) => `${label(r.brand)} (${r.error ?? "erro"})`).join(", ")}. Os demais foram salvos.`);
+        setSelected(failed.map((r) => r.brand));
+        return;
+      } else if (pending.length) {
+        toast.info(`Decisão salva, ainda não está no ar: ${pending.map((r) => `${label(r.brand)} — ${r.blockReason ?? "aguardando conferência"}`).join("; ")}.`);
+      } else toast.success(action === "publish" ? "No ar nos sites selecionados." : "Retirado do site.");
       setSelected([]);
     } catch (error) {
       toast.error((error as Error)?.message ?? "Não foi possível salvar a decisão.");
@@ -73,10 +82,16 @@ export function PropertyPublishPanel({
         {owned.isFetching && <Loader2 className="size-3.5 animate-spin text-foreground/35" />}
       </div>
 
+      {owned.isError && (
+        <p className="mt-3 rounded-2xl bg-amber-500/12 p-3 text-[11px] font-semibold text-amber-800">
+          Não foi possível confirmar a situação nos sites agora.{" "}
+          <button type="button" className="underline" onClick={() => void owned.refetch()}>Tentar de novo</button>
+        </p>
+      )}
       <div className="mt-3 space-y-2">
         {BRANDS.map((brand) => {
           const row = byBrand.get(brand.key);
-          const state = ownedState(row);
+          const state = owned.isError ? { text: "Não confirmado", tone: "text-amber-700 bg-amber-500/12" } : ownedState(row);
           return (
             <div key={brand.key} className="rounded-2xl bg-white/50 p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +144,7 @@ export function PropertyPublishPanel({
 
       <details className="mt-3 rounded-2xl bg-foreground/5 p-3 text-[11px] text-foreground/65">
         <summary className="flex cursor-pointer items-center gap-1.5 font-semibold">
-          <PowerOff className="size-3" /> ImobiBrasil: desligada (histórico)
+          <PowerOff className="size-3" /> ImobiBrasil: OFF (histórico)
         </summary>
         <div className="mt-2 space-y-1">
           <p>A integração está desligada. Nada é enviado nem consultado; o registro abaixo é só o último estado conhecido.</p>
