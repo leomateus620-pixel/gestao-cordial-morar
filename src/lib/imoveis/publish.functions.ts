@@ -112,10 +112,33 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
     if (!["publish", "update", "unpublish", "delete"].includes(action)) {
       throw new Error("Ação de publicação inválida.");
     }
+    const { imobiIntegrationEnabled } = await import("@/lib/imobibrasil/integration-switch");
+    if (!imobiIntegrationEnabled()) {
+      // Imobi OFF: a decisão vai só para o canal próprio de cada marca, sem fila externa.
+      const { requestOwnedPublication } = await import("@/lib/imoveis/owned-publication.server");
+      const publish = action === "publish" || action === "update";
+      const owned = await requestOwnedPublication(supabaseAdmin, {
+        propertyId: property.id,
+        userId: context.userId,
+        brands: providers,
+        publish,
+      });
+      let agency: { status: string; reason?: string } | null = null;
+      if (action === "publish") {
+        try {
+          const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
+          agency = await ensureAutoAgency({ propertyId: property.id, publisherId: context.userId, providers });
+        } catch (err) {
+          console.error("[auto-agency] falhou", property.id, (err as Error)?.message);
+          agency = { status: "error", reason: (err as Error)?.message };
+        }
+      }
+      return { enqueued: [] as string[], owned, durable: true, agency };
+    }
+    const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
     // Uma única transação fixa a decisão de disponibilidade, a revisão e as
     // intenções por destino. O request HTTP abaixo só acelera o worker.
     const { data: requested, error: requestError } = await supabaseAdmin.rpc(
