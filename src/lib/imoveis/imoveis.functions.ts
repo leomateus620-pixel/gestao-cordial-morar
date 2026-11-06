@@ -2,8 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { validateAddressNumber } from "@/lib/imoveis/address-rules";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
-import { buildStablePublicUrl } from "@/lib/imobibrasil/public-url";
-import { archiveDestinations, retirementTargets } from "@/lib/imoveis/archive-state";
 import type {
   Property,
   PropertyDetail,
