@@ -1,71 +1,25 @@
-import { strict as assert } from "node:assert";
-import test from "node:test";
-import { imobiRequest } from "./client.server";
-import { ImobiApiError } from "./errors";
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { imobiRequest, hasProviderToken } from "./client.server";
 
-process.env["IMOBIBRASIL_CORDIAL_TOKEN"] ??= "teste";
-process.env["IMOBIBRASIL_MORAR_TOKEN"] ??= "teste";
-
-function stubFetch(responses: Array<() => Response>) {
-  let calls = 0;
-  const original = globalThis.fetch;
-  globalThis.fetch = (async () => responses[Math.min(calls++, responses.length - 1)]()) as typeof fetch;
-  return { calls: () => calls, restore: () => (globalThis.fetch = original) };
-}
-
-test("vaga do limitador é pedida antes de cada tentativa", async () => {
+// ImobiBrasil OFF: nenhuma tentativa de rede, nenhuma vaga pedida, mesmo com token.
+test("OFF bloqueia GET e POST antes da rede e da credencial", async () => {
+  process.env.IMOBIBRASIL_CORDIAL_TOKEN = "token-presente";
   let slots = 0;
-  const f = stubFetch([
-    () => new Response("", { status: 503 }),
-    () => new Response(JSON.stringify({ status: true }), { status: 200 }),
-  ]);
+  let calls = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => { calls++; return new Response("{}"); }) as typeof fetch;
   try {
-    await imobiRequest("cordial", "/x", { acquireSlot: async () => void slots++ });
-  } finally { f.restore(); }
-  assert.equal(f.calls(), 2);
-  assert.equal(slots, 2);
-});
-
-test("Retry-After longo não é repetido antes da hora", async () => {
-  const f = stubFetch([() => new Response("", { status: 429, headers: { "Retry-After": "120" } })]);
-  let err: ImobiApiError | null = null;
-  let persisted: { provider: string; seconds: number | null } | null = null;
-  try {
-    await imobiRequest("cordial", "/x", {
-      acquireSlot: async () => {},
-      recordRateLimit: async (provider, seconds) => { persisted = { provider, seconds }; },
-    });
-  } catch (e) { err = e as ImobiApiError; } finally { f.restore(); }
-  assert.equal(f.calls(), 1);
-  assert.equal(err?.category, "rate_limit");
-  assert.equal(err?.retryAfterSeconds, 120);
-  assert.deepEqual(persisted, { provider: "cordial", seconds: 120 });
-});
-
-test("limitador sem vaga/indisponível: o site não é chamado", async () => {
-  const f = stubFetch([() => new Response("{}", { status: 200 })]);
-  await assert.rejects(
-    imobiRequest("morar", "/x", {
-      acquireSlot: async () => {
-        throw new ImobiApiError({ message: "indisponível", category: "rate_limit", retryAfterSeconds: 30 });
-      },
-    }),
-  );
-  f.restore();
-  assert.equal(f.calls(), 0);
-});
-
-test("POST com timeout não é repetido às cegas", async () => {
-  const f = stubFetch([() => { throw new TypeError("fetch failed"); }]);
-  await assert.rejects(imobiRequest("cordial", "/imovel/inserir", { method: "POST", acquireSlot: async () => {} }));
-  f.restore();
-  assert.equal(f.calls(), 1);
-});
-
-test("falha numa conta não consome vaga da outra", async () => {
-  const seen: string[] = [];
-  const f = stubFetch([() => new Response(JSON.stringify({ status: true }), { status: 200 })]);
-  await imobiRequest("morar", "/x", { acquireSlot: async (p) => void seen.push(p) });
-  f.restore();
-  assert.deepEqual(seen, ["morar"]);
+    for (const method of ["GET", "POST"] as const) {
+      await assert.rejects(
+        imobiRequest("cordial", "/x", { method, acquireSlot: async () => void slots++ }),
+        (e: { category?: string; retryable?: boolean }) => e.category === "disabled" && e.retryable === false,
+      );
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.equal(calls, 0);
+  assert.equal(slots, 0);
+  assert.equal(hasProviderToken("cordial"), false);
 });
