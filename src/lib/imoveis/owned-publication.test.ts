@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import { requestOwnedPublication } from "./owned-publication.server";
-import { imobiDisabledResponse, imobiIntegrationEnabled } from "@/lib/imobibrasil/integration-switch";
+import { imobiDisabledResponse, imobiIntegrationEnabled } from "../imobibrasil/integration-switch";
 
 function fakeAdmin(responses: Record<string, { data?: unknown; error?: { message: string } | null }>) {
   const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
@@ -16,9 +17,9 @@ function fakeAdmin(responses: Record<string, { data?: unknown; error?: { message
 
 describe("publicação nos sites próprios (Imobi OFF)", () => {
   it("ImobiBrasil fica desligada e as rotinas respondem sem trabalho", async () => {
-    expect(imobiIntegrationEnabled()).toBe(false);
+    assert.equal(imobiIntegrationEnabled(), false);
     const body = await imobiDisabledResponse("sync").json();
-    expect(body).toMatchObject({ disabled: true, reason: "imobi_off", claimed: 0 });
+    assert.deepEqual([body.disabled, body.reason, body.claimed], [true, "imobi_off", 0]);
   });
 
   it("cada marca usa só o seu canal próprio", async () => {
@@ -29,9 +30,9 @@ describe("publicação nos sites próprios (Imobi OFF)", () => {
     const out = await requestOwnedPublication(admin, {
       propertyId: "p1", userId: "u1", brands: ["cordial", "morar", "cordial"], publish: true,
     });
-    expect(admin.calls.map((c) => c.fn)).toEqual(["cordial_site_request_publication", "morar_site_request_publication"]);
-    expect(admin.calls.some((c) => /imobi|provider|property_publication/.test(c.fn))).toBe(false);
-    expect(out.map((r) => [r.brand, r.state])).toEqual([["cordial", "published"], ["morar", "draft"]]);
+    assert.deepEqual(admin.calls.map((c) => c.fn), ["cordial_site_request_publication", "morar_site_request_publication"]);
+    assert.equal(admin.calls.some((c) => /imobi|provider|property_publication/.test(c.fn)), false);
+    assert.deepEqual(out.map((r) => [r.brand, r.state]), [["cordial", "published"], ["morar", "draft"]]);
   });
 
   it("falta de permissão em uma marca não afeta a outra", async () => {
@@ -42,9 +43,9 @@ describe("publicação nos sites próprios (Imobi OFF)", () => {
     const out = await requestOwnedPublication(admin, {
       propertyId: "p1", userId: "u1", brands: ["cordial", "morar"], publish: false,
     });
-    expect(out[0]).toMatchObject({ brand: "cordial", ok: false });
-    expect(out[1]).toMatchObject({ brand: "morar", ok: true, state: "withdrawn" });
-    expect(admin.calls[1].args._publish).toBe(false);
+    assert.deepEqual([out[0].brand, out[0].ok], ["cordial", false]);
+    assert.deepEqual([out[1].brand, out[1].ok, out[1].state], ["morar", true, "withdrawn"]);
+    assert.equal(admin.calls[1].args._publish, false);
   });
 
   it("conflito de revisão volta como não aplicado", async () => {
@@ -52,7 +53,7 @@ describe("publicação nos sites próprios (Imobi OFF)", () => {
     const [r] = await requestOwnedPublication(admin, {
       propertyId: "p1", userId: "u1", brands: ["cordial"], publish: true, expectedRevision: 3,
     });
-    expect(r).toMatchObject({ ok: false, conflict: true });
-    expect(admin.calls[0].args._expected_revision).toBe(3);
+    assert.deepEqual([r.ok, r.conflict], [false, true]);
+    assert.equal(admin.calls[0].args._expected_revision, 3);
   });
 });
