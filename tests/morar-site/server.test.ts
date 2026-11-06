@@ -248,7 +248,8 @@ test("server boundaries use a closed brand and isolate public data, settings and
         (await guardSiteRequest(new Request("https://morar.example/site-administracao")))?.status,
         404,
       );
-      assert.equal(siteResponseHeaders("morar")["X-Robots-Tag"], "noindex, nofollow");
+      // Domínio oficial em produção: o site deve poder ser indexado (sem noindex).
+      assert.equal(siteResponseHeaders("morar")["X-Robots-Tag"], undefined);
     });
     await t.test("unknown brand cannot choose arbitrary database identifiers", () => {
       assert.throws(() => siteChannel("properties" as never));
