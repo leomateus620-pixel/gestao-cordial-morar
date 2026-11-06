@@ -547,6 +547,13 @@
       "when": 1793990494307,
       "tag": "0077_cordial_owned_decision_independent",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1793990551326,
+      "tag": "0078_cordial_request_publication_full_state",
+      "breakpoints": true
     }
   ]
 }
