@@ -2,13 +2,14 @@ import { siteDb, siteEnvironment } from "./service.server";
 import { limit, sitemap } from "./http.server";
 import { siteChannel } from "./channel.server";
 import type { SiteBrand } from "./brand";
+import { sitePublicHost } from "./domains";
 
 export function requestSiteBrand(request: Request): SiteBrand | null {
   const url = new URL(request.url);
   // Host has precedence: a public Morar host cannot reach Cordial or administrative APIs.
   for (const brand of ["morar", "cordial"] as const) {
     const channel = siteChannel(brand);
-    const host = process.env[`VITE_${channel.envPrefix}_PUBLIC_HOST`]?.toLowerCase();
+    const host = sitePublicHost(brand, process.env[`VITE_${channel.envPrefix}_PUBLIC_HOST`]);
     if (host && url.host.toLowerCase() === host) return brand;
   }
   for (const brand of ["morar", "cordial"] as const) {
@@ -39,7 +40,7 @@ export async function guardSiteRequest(request: Request): Promise<Response | nul
   const channel = siteChannel(brand),
     url = new URL(request.url);
   const headers = siteResponseHeaders(brand);
-  const publicHost = process.env[`VITE_${channel.envPrefix}_PUBLIC_HOST`]?.toLowerCase();
+  const publicHost = sitePublicHost(brand, process.env[`VITE_${channel.envPrefix}_PUBLIC_HOST`]);
   const dedicated = !!publicHost && publicHost === url.host.toLowerCase();
   if (url.search.length > 4000)
     return new Response("Consulta muito longa.", { status: 400, headers });

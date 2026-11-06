@@ -265,7 +265,7 @@ export async function sitemap(brand: SiteBrand = "cordial") {
     );
     pageCursor = data.at(-1)!.slug;
   }
-  const base = process.env[`VITE_${channel.envPrefix}_PUBLIC_HOST`] ? "" : channel.base;
+  const base = "";
   const paths = [
     "/",
     "/bairros",
