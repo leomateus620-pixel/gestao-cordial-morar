@@ -126,6 +126,10 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
         brands: providers,
         publish,
       });
+      const failed = owned.filter((r) => !r.ok);
+      if (failed.length === owned.length) {
+        throw new Error(failed.map((r) => `${r.brand}: ${r.conflict ? "cadastro alterado, recarregue" : r.error ?? "erro"}`).join("; "));
+      }
       let agency: { status: string; reason?: string } | null = null;
       if (action === "publish") {
         try {
