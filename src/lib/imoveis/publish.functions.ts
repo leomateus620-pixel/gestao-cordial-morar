@@ -404,3 +404,49 @@ export const listRemoteDuplicateReferences = createServerFn({ method: "GET" })
       checkedAt: (row.remote_match_checked_at ?? null) as string | null,
     }));
   });
+
+export type OwnedPublicationView = {
+  brand: "cordial" | "morar";
+  state: "published" | "withdrawn" | "draft" | "none";
+  publicReference: string | null;
+  url: string | null;
+  decision: "publish" | "withdraw" | null;
+  updatedAt: string | null;
+};
+
+/** Estado real nos sites próprios (Cordial e Morar), lido do canal de cada marca. */
+export const getOwnedPublicationStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { propertyId: string }) => data)
+  .handler(async ({ data, context }): Promise<OwnedPublicationView[]> => {
+    // RLS do usuário: só lê o estado de imóveis que ele já pode ver.
+    const { data: visible, error } = await context.supabase
+      .from("properties").select("id").eq("id", data.propertyId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!visible) throw new Error("Imóvel não encontrado ou sem permissão.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sitePublicHost } = await import("@/lib/cordial-site/domains");
+    const [c, m] = await Promise.all([
+      supabaseAdmin.from("cordial_site_publications")
+        .select("state, public_id, public_reference, own_decision, updated_at").eq("property_id", data.propertyId).maybeSingle(),
+      supabaseAdmin.from("morar_site_publications")
+        .select("state, public_id, public_reference, manual_withdrawn, updated_at").eq("property_id", data.propertyId).maybeSingle(),
+    ]);
+    if (c.error) throw new Error(c.error.message);
+    if (m.error) throw new Error(m.error.message);
+    const view = (brand: "cordial" | "morar", row: Record<string, unknown> | null, decision: OwnedPublicationView["decision"]): OwnedPublicationView => {
+      const state = (row?.state as OwnedPublicationView["state"]) ?? "none";
+      return {
+        brand, state, decision,
+        publicReference: (row?.public_reference as string) ?? null,
+        url: state === "published" && row?.public_id ? `https://${sitePublicHost(brand)}/imovel/${row.public_id}` : null,
+        updatedAt: (row?.updated_at as string) ?? null,
+      };
+    };
+    const cr = c.data as Record<string, unknown> | null;
+    const mr = m.data as Record<string, unknown> | null;
+    return [
+      view("cordial", cr, (cr?.own_decision as OwnedPublicationView["decision"]) ?? null),
+      view("morar", mr, mr ? (mr.manual_withdrawn ? "withdraw" : "publish") : null),
+    ];
+  });
