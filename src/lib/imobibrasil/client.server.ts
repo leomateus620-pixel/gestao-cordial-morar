@@ -5,6 +5,7 @@
  * servidor e nunca é gravado em tabela, log, erro ou resposta ao frontend.
  */
 
+import { imobiIntegrationEnabled } from "./integration-switch";
 import {
   ImobiApiError,
   categoryForHttpStatus,
