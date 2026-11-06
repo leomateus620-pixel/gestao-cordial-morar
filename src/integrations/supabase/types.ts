@@ -2797,6 +2797,7 @@ export type Database = {
           decision_at: string | null
           decision_by: string | null
           decision_revision: number | null
+          decision_source: string | null
           own_decision: string | null
           property_id: string
           public_id: string
@@ -2814,6 +2815,7 @@ export type Database = {
           decision_at?: string | null
           decision_by?: string | null
           decision_revision?: number | null
+          decision_source?: string | null
           own_decision?: string | null
           property_id: string
           public_id?: string
@@ -2831,6 +2833,7 @@ export type Database = {
           decision_at?: string | null
           decision_by?: string | null
           decision_revision?: number | null
+          decision_source?: string | null
           own_decision?: string | null
           property_id?: string
           public_id?: string
