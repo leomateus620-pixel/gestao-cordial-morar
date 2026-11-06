@@ -423,6 +423,8 @@ export type OwnedPublicationView = {
   url: string | null;
   decision: "publish" | "withdraw" | null;
   updatedAt: string | null;
+  /** Revisão do imóvel lida junto com este estado (enviada de volta ao publicar). */
+  propertyRevision: number | null;
 };
 
 /** Estado real nos sites próprios (Cordial e Morar), lido do canal de cada marca. */
@@ -432,9 +434,10 @@ export const getOwnedPublicationStatus = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<OwnedPublicationView[]> => {
     // RLS do usuário: só lê o estado de imóveis que ele já pode ver.
     const { data: visible, error } = await context.supabase
-      .from("properties").select("id").eq("id", data.propertyId).maybeSingle();
+      .from("properties").select("id, revision").eq("id", data.propertyId).maybeSingle();
     if (error) throw new Error(error.message);
     if (!visible) throw new Error("Imóvel não encontrado ou sem permissão.");
+    const propertyRevision = ((visible as { revision?: number | null }).revision ?? null) as number | null;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { sitePublicHost } = await import("@/lib/cordial-site/domains");
     const [c, m] = await Promise.all([
@@ -452,6 +455,7 @@ export const getOwnedPublicationStatus = createServerFn({ method: "GET" })
         publicReference: (row?.public_reference as string) ?? null,
         url: state === "published" && row?.public_id ? `https://${sitePublicHost(brand)}/imovel/${row.public_id}` : null,
         updatedAt: (row?.updated_at as string) ?? null,
+        propertyRevision,
       };
     };
     const cr = c.data as Record<string, unknown> | null;
