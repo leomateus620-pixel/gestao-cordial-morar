@@ -15,6 +15,10 @@ export const Route = createFileRoute("/api/public/hooks/gallery-align")({
       POST: async ({ request }) => {
         const denied = authorizeWorkerRequest(request);
         if (denied) return denied;
+        {
+          const { imobiIntegrationEnabled, imobiDisabledResponse } = await import("@/lib/imobibrasil/integration-switch");
+          if (!imobiIntegrationEnabled()) return imobiDisabledResponse("gallery-align");
+        }
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return Response.json({ error: "invalid" }, { status: 400 });
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

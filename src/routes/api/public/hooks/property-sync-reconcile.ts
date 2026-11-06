@@ -26,6 +26,9 @@ export const Route = createFileRoute("/api/public/hooks/property-sync-reconcile"
         try {
           const { finalizeStalledArchives } = await import("@/lib/imoveis/purge.server");
           const archivesFinalized = await finalizeStalledArchives(supabaseAdmin);
+          const { imobiIntegrationEnabled } = await import("@/lib/imobibrasil/integration-switch");
+          // Imobi OFF: só a rotina local de arquivamento roda; nenhuma conferência externa.
+          if (!imobiIntegrationEnabled()) return Response.json({ ok: true, archivesFinalized, disabled: true, reason: "imobi_off" });
           const result = await runReconcileSweep(supabaseAdmin, { limit });
           return Response.json({ ok: true, archivesFinalized, ...result });
         } catch (error) {
