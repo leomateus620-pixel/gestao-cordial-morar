@@ -509,10 +509,7 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
         .eq("property_id", data.id)
         .order("position", { ascending: true }),
 
-      context.supabase
-        .from("property_provider_publications")
-        .select("provider, status, external_property_id, external_public_url")
-        .eq("property_id", data.id),
+      loadOwnedChannelLinks([data.id]),
     ]);
     if (error) throw new Error(error.message);
     if (!row) return null;
@@ -556,18 +553,9 @@ export const getPropertyDetail = createServerFn({ method: "GET" })
       }
     }
 
-    const publications = ((links ?? []) as Array<{
-      provider: PropertyPublicationBadge["provider"];
-      status: string;
-      external_property_id: string | null;
-      external_public_url: string | null;
-    }>).map((link) => ({
-      provider: link.provider,
-      status: link.status,
-      externalPropertyId: link.external_property_id,
-      publicUrl:
-        link.external_public_url ?? buildStablePublicUrl(link.provider, link.external_property_id),
-    }));
+    const publications = ((links ?? []) as Array<PropertyPublicationBadge & { propertyId?: string }>).map(
+      ({ propertyId: _omit, ...badge }) => badge as PropertyPublicationBadge,
+    );
 
 
     return mapDetail(row as Record<string, any>, {
@@ -846,12 +834,9 @@ export const archiveImovel = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // Escopo por imobiliária: o usuário precisa poder mexer em todo destino
     // que será retirado — nunca concluir parcialmente.
-    const { data: links, error: linksError } = await supabaseAdmin
-      .from("property_provider_publications")
-      .select("provider, enabled, external_property_id, last_synced_at, create_state, status")
-      .eq("property_id", id);
-    if (linksError) throw new Error(linksError.message);
-    const targets = retirementTargets((links ?? []) as never);
+    // Imobi OFF: os destinos são os sites próprios onde o imóvel está no ar.
+    const { data: ownLinks } = await loadOwnedChannelLinks([id]);
+    const targets = ownLinks.filter((l) => l.status === "published").map((l) => l.provider as string).sort();
     const { assertProviderScope, kickWorker } = await import("@/lib/imoveis/sync-helpers.server");
     if (targets.length) {
       try {
@@ -926,22 +911,24 @@ export const getArchiveProgress = createServerFn({ method: "GET" })
     const [{ data: property, error: pError }, { data: links, error: lError }, { data: site, error: sError }] =
       await Promise.all([
         context.supabase.from("properties").select("removal_state, archived_at").eq("id", data.id).maybeSingle(),
-        context.supabase
-          .from("property_provider_publications")
-          .select("provider, status, desired_availability, publication_intent_revision, archive_intent_revision, last_error_message")
-          .eq("property_id", data.id),
-        context.supabase.from("cordial_site_publications").select("state").eq("property_id", data.id).maybeSingle(),
+        loadOwnedChannelLinks([data.id]).then((r) => ({ ...r, error: null as Error | null })),
+        Promise.resolve({ data: null as { state: string } | null, error: null }),
       ]);
     if (pError) throw new Error(pError.message);
     if (lError) throw new Error(lError.message);
+    const cordial = (links ?? []).find((l) => l.provider === "cordial");
+    void site; void sError;
     return {
       removalState: property?.removal_state ?? null,
       archivedAt: property?.archived_at ?? null,
-      destinations: archiveDestinations((links ?? []) as never),
-      // Sem leitura (perfil não-admin) tratamos pelo estado local: o site próprio
-      // só exibe imóvel sem removal_state.
-      ownSite: sError || !site
-        ? (property?.removal_state ? "fora_do_ar" : "nunca_publicado")
-        : site.state === "published" ? "no_ar" : "fora_do_ar",
+      // Estado real de cada site próprio; nada de confirmação externa fictícia.
+      destinations: property?.removal_state
+        ? (links ?? []).map((l) => ({
+            provider: l.provider as string,
+            state: l.status === "published" ? ("pendente" as const) : ("retirado" as const),
+            message: null,
+          }))
+        : [],
+      ownSite: !cordial ? "nunca_publicado" : cordial.status === "published" ? "no_ar" : "fora_do_ar",
     };
   });
