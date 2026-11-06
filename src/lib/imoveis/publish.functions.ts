@@ -88,6 +88,8 @@ export type EnqueueSyncInput = {
   propertyId: string;
   providers: string[];
   action?: SyncAction;
+  /** Revisão do imóvel que o usuário estava vendo ao clicar. */
+  expectedRevision?: number | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,13 +127,18 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
         userId: context.userId,
         brands: providers,
         publish,
+        // Versão que o usuário viu na tela; nunca a recém-lida aqui.
+        expectedRevision: data.expectedRevision ?? null,
       });
       const failed = owned.filter((r) => !r.ok);
+      const describe = (r: (typeof owned)[number]) =>
+        `${r.brand}: ${r.conflict ? "cadastro alterado por outra pessoa, recarregue a página" : r.error ?? "erro"}`;
       if (failed.length === owned.length) {
-        throw new Error(failed.map((r) => `${r.brand}: ${r.conflict ? "cadastro alterado, recarregue" : r.error ?? "erro"}`).join("; "));
+        throw new Error(failed.map(describe).join("; "));
       }
+      const partial = failed.length > 0;
       let agency: { status: string; reason?: string } | null = null;
-      if (action === "publish") {
+      if (action === "publish" && owned.some((r) => r.ok && r.decision === "publish")) {
         try {
           const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
           agency = await ensureAutoAgency({ propertyId: property.id, publisherId: context.userId, providers });
@@ -140,7 +147,11 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
           agency = { status: "error", reason: (err as Error)?.message };
         }
       }
-      return { enqueued: [] as string[], owned, durable: true, agency };
+      return {
+        enqueued: [] as string[], owned, durable: true, agency, partial,
+        failedBrands: failed.map((r) => r.brand),
+        partialMessage: partial ? failed.map(describe).join("; ") : null,
+      };
     }
     const { buildExternalReference } = await import("@/lib/imobibrasil/serializers");
     // Uma única transação fixa a decisão de disponibilidade, a revisão e as
