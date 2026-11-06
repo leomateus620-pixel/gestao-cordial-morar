@@ -186,6 +186,34 @@ function mapRow(
 }
 
 /**
+ * Estado por marca lido só dos sites próprios (Cordial e Morar); o histórico
+ * da ImobiBrasil não participa. Os ids já vêm filtrados pela RLS do usuário.
+ */
+async function loadOwnedChannelLinks(ids: string[]) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { sitePublicHost } = await import("@/lib/cordial-site/domains");
+  const [c, m] = await Promise.all([
+    supabaseAdmin.from("cordial_site_publications").select("property_id, state, public_id, public_reference").in("property_id", ids),
+    supabaseAdmin.from("morar_site_publications").select("property_id, state, public_id, public_reference").in("property_id", ids),
+  ]);
+  if (c.error) throw new Error(c.error.message);
+  if (m.error) throw new Error(m.error.message);
+  const out: Array<PropertyPublicationBadge & { propertyId: string }> = [];
+  for (const [brand, rows] of [["cordial", c.data], ["morar", m.data]] as const) {
+    for (const r of (rows ?? []) as Array<{ property_id: string; state: string; public_id: string; public_reference: string | null }>) {
+      out.push({
+        propertyId: r.property_id,
+        provider: brand,
+        status: r.state,
+        externalPropertyId: r.public_reference,
+        publicUrl: r.state === "published" ? `https://${sitePublicHost(brand)}/imovel/${r.public_id}` : null,
+      } as PropertyPublicationBadge & { propertyId: string });
+    }
+  }
+  return { data: out };
+}
+
+/**
  * Capa e selos de publicação de um lote de imóveis.
  * As imagens ficam em bucket privado: a URL é assinada a cada listagem.
  */
@@ -208,10 +236,7 @@ async function loadListingExtras(
       // A capa é sempre a foto da posição 0 — ordenar só por posição.
       .order("position", { ascending: true }),
 
-    supabase
-      .from("property_provider_publications")
-      .select("property_id, provider, status, external_property_id, external_public_url")
-      .in("property_id", ids),
+    loadOwnedChannelLinks(ids),
   ]);
 
   const pathByProperty = new Map<string, string>();
@@ -228,24 +253,12 @@ async function loadListingExtras(
     }
   }
 
-  for (const link of (links ?? []) as Array<{
-    property_id: string;
-    provider: PropertyPublicationBadge["provider"];
-    status: string;
-    external_property_id: string | null;
-    external_public_url: string | null;
-  }>) {
-    const list = publications.get(link.property_id) ?? [];
-    list.push({
-      provider: link.provider,
-      status: link.status,
-      externalPropertyId: link.external_property_id,
-      publicUrl:
-        link.external_public_url ?? buildStablePublicUrl(link.provider, link.external_property_id),
-    });
-    publications.set(link.property_id, list);
+  for (const link of (links ?? []) as PropertyPublicationBadge[] & Array<{ propertyId: string }>) {
+    const { propertyId, ...badge } = link as PropertyPublicationBadge & { propertyId: string };
+    const list = publications.get(propertyId) ?? [];
+    list.push(badge);
+    publications.set(propertyId, list);
   }
-
 
   return { covers, publications };
 }
