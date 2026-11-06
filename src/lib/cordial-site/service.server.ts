@@ -19,6 +19,7 @@ import {
 import { plainText } from "./presentation";
 import type { SiteBrand } from "./brand";
 import { siteChannel, siteDefaultSettings } from "./channel.server";
+import { sitePublicHost } from "./domains";
 
 export class SiteUnavailable extends Error {
   constructor() {
