@@ -26,3 +26,4 @@
 - Weekly showcase is brand-scoped through `src/lib/site-showcase/brand-adapter.ts` (own tables, bucket `<brand>-showcase`, RPCs and hourly hook per brand); activation only via the atomic `<brand>_site_showcase_activate` RPC — why: Morar and Cordial campaigns must never mix and concurrent activation must not leave two or zero active weeks.
 
 - Public site domains live in src/lib/cordial-site/domains.ts (env may override); old Gestão /site paths and www hosts 301 to the brand domain in src/server.ts — why: each brand keeps one canonical address.
+- ImobiBrasil OFF is fail-closed via src/lib/imobibrasil/integration-switch.ts, checked in client.server.ts before token and each network attempt; publishing goes only through the owned cordial_site_*/morar_site_* channels — why: no config or leftover credential can silently re-enable external calls.

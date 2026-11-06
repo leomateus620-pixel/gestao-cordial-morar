@@ -5,6 +5,7 @@
  * servidor e nunca é gravado em tabela, log, erro ou resposta ao frontend.
  */
 
+import { imobiIntegrationEnabled } from "./integration-switch";
 import {
   ImobiApiError,
   categoryForHttpStatus,
@@ -38,7 +39,17 @@ export type ImobiResponse<T = unknown> = {
   durationMs: number;
 };
 
+export function assertImobiEnabled(): void {
+  if (!imobiIntegrationEnabled()) {
+    throw new ImobiApiError({
+      message: "Integração ImobiBrasil desativada (OFF).",
+      category: "disabled",
+    });
+  }
+}
+
 function providerToken(provider: ImobiProvider): string {
+  assertImobiEnabled();
   const { tokenSecret } = providerConfig(provider);
   // Tokens colados do painel costumam trazer espaços/quebras de linha; o header
   // HTTP não aceita esses caracteres e a API responde 401 sem explicar o motivo.
@@ -53,6 +64,7 @@ function providerToken(provider: ImobiProvider): string {
 }
 
 export function hasProviderToken(provider: ImobiProvider): boolean {
+  if (!imobiIntegrationEnabled()) return false;
   return Boolean(process.env[providerConfig(provider).tokenSecret]);
 }
 
@@ -170,6 +182,7 @@ export async function imobiRequest<T = unknown>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     // Vaga do limitador ANTES DE CADA tentativa, inclusive nas repetições.
+    assertImobiEnabled();
     if (!options.skipRateLimit) await acquire(provider);
     const started = Date.now();
     const controller = new AbortController();

@@ -14,6 +14,7 @@ export type ImobiErrorCategory =
   | "protocol" // resposta não-JSON, HTML inesperado, JSON inválido
   | "business" // HTTP 2xx com status:false
   | "mapping" // código de catálogo não resolvido localmente
+  | "disabled" // integração desligada (ImobiBrasil OFF), nunca repetir
   | "unknown";
 
 export const RETRYABLE_CATEGORIES: ReadonlySet<ImobiErrorCategory> = new Set([
