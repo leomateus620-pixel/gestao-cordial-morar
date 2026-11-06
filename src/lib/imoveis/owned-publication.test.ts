@@ -57,3 +57,28 @@ describe("publicação nos sites próprios (Imobi OFF)", () => {
     assert.equal(admin.calls[0].args._expected_revision, 3);
   });
 });
+
+describe("falha parcial e clique repetido", () => {
+  it("uma marca falha e a outra é salva: resultado mostra a falha, sem sucesso geral", async () => {
+    const admin = fakeAdmin({
+      cordial_site_request_publication: { data: { ok: true, state: "published" } },
+      morar_site_request_publication: { error: { message: "Forbidden Morar scope" } },
+    });
+    const out = await requestOwnedPublication(admin, {
+      propertyId: "p1", userId: "u1", brands: ["cordial", "morar"], publish: true, expectedRevision: 7,
+    });
+    assert.deepEqual(out.map((r) => [r.brand, r.ok]), [["cordial", true], ["morar", false]]);
+    assert.equal(admin.calls.every((c) => c.args._expected_revision === 7), true);
+  });
+
+  it("clique repetido devolve o estado completo, não só 'unchanged'", async () => {
+    const admin = fakeAdmin({
+      cordial_site_request_publication: {
+        data: { ok: true, unchanged: true, state: "withdrawn", decision: "publish", blockReason: "Falta autorização do proprietário" },
+      },
+    });
+    const [r] = await requestOwnedPublication(admin, { propertyId: "p1", userId: "u1", brands: ["cordial"], publish: true });
+    assert.equal(r.state, "withdrawn");
+    assert.equal(r.blockReason, "Falta autorização do proprietário");
+  });
+});
