@@ -138,7 +138,7 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
       }
       const partial = failed.length > 0;
       let agency: { status: string; reason?: string } | null = null;
-      if (action === "publish" && owned.some((r) => r.ok && r.decision === "publish")) {
+      if (action === "publish" && owned.some((r) => r.ok)) {
         try {
           const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
           agency = await ensureAutoAgency({ propertyId: property.id, publisherId: context.userId, providers });
