@@ -12617,6 +12617,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      imobi_integration_enabled: { Args: never; Returns: boolean }
       inspection_can_access: { Args: { p_id: string }; Returns: boolean }
       inspection_can_edit: { Args: { p_id: string }; Returns: boolean }
       inspection_create: {
