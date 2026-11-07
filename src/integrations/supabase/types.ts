@@ -7579,6 +7579,27 @@ export type Database = {
           },
         ]
       }
+      property_image_dispatch_state: {
+        Row: {
+          id: boolean
+          last_dispatched_at: string | null
+          last_error: string | null
+          last_request_id: number | null
+        }
+        Insert: {
+          id?: boolean
+          last_dispatched_at?: string | null
+          last_error?: string | null
+          last_request_id?: number | null
+        }
+        Update: {
+          id?: boolean
+          last_dispatched_at?: string | null
+          last_error?: string | null
+          last_request_id?: number | null
+        }
+        Relationships: []
+      }
       property_image_jobs: {
         Row: {
           attempts: number
@@ -13545,6 +13566,10 @@ export type Database = {
         Args: { _snapshot: string }
         Returns: number
       }
+      owned_gallery_ready: {
+        Args: { _brand: string; _property_id: string }
+        Returns: boolean
+      }
       phone_key: { Args: { _v: string }; Returns: string }
       property_archive_finalize: {
         Args: { _expected_revision?: number; _property_id: string }
@@ -14037,6 +14062,10 @@ export type Database = {
           _requested_by: string
         }
         Returns: Json
+      }
+      property_worker_dispatch: {
+        Args: { _body?: Json; _hook: string }
+        Returns: number
       }
       provider_rate_acquire: {
         Args: { _limit?: number; _provider: string; _window_seconds?: number }
