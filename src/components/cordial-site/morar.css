@@ -1026,9 +1026,11 @@ html:has(.morar-site .cs-hx-drawer[open]) { overflow: hidden; }
 @media (min-width: 761px) and (max-width: 1179px) {
   /* tablet: Tipo · Onde morar · Orçamento lado a lado; Espaços na segunda linha */
   .morar-site .ms-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .morar-site .ms-search-grid > :nth-child(n + 3) { grid-column: 1 / -1; }
 }
 @media (min-width: 900px) and (max-width: 1179px) {
   .morar-site .ms-search-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.3fr); }
+  .morar-site .ms-search-grid > :nth-child(3) { grid-column: auto; }
   .morar-site .ms-search-grid > :last-child { grid-column: 1 / -1; }
   .morar-site .ms-search-grid > :last-child .ms-space-fields { max-width: 520px; }
 }
@@ -1086,7 +1088,7 @@ html:has(.morar-site .cs-hx-drawer[open]) { overflow: hidden; }
   .morar-site .ms-search.is-compact > .ms-more-filters { flex: 0 0 auto; margin-top: 2px; font-size: 13px; }
   .morar-site .ms-search.is-compact > .ms-search-actions { display: contents; }
   .morar-site .ms-search.is-compact > .ms-search-actions > .cs-text-link { flex: 0 0 auto; font-size: 13px; }
-  .morar-site .ms-search.is-compact > .ms-search-actions > .ms-search-count { flex: 1 1 120px; min-height: 44px; }
+  .morar-site .ms-search.is-compact > .ms-search-actions > .ms-search-count { flex: 1 1 0; min-width: 0; min-height: 44px; }
   .morar-site .ms-search.is-compact > .ms-search-actions > .cs-button { flex: 1 1 100%; margin-top: 4px; }
   /* imóvel da semana: faixa compacta */
   .morar-site .cs-hx-hero .cs-hx-hero-card {
