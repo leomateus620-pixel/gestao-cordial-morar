@@ -311,7 +311,7 @@ function DistrictsBody({ idPrefix }: { idPrefix: string }) {
         {!list.length && <li className="cs-hx-note">Nenhum bairro encontrado.</li>}
       </ul>
       <SiteLink to={sitePath("/bairros", brand)} className="cs-text-link">
-        Ver todos os bairros <ArrowUpRight size={16} />
+        Ver todos <ArrowUpRight size={16} />
       </SiteLink>
     </>
   );
