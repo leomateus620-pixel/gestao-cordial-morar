@@ -393,7 +393,10 @@ export function MorarHomeHero({ home }: { home: Promise<HomeData | null> }) {
           <h1>
             {copy.lead} <em>{copy.accent}</em>
           </h1>
-          <p>{copy.sub}</p>
+          <p>
+            <span className="cs-hx-long">{copy.sub}</span>
+            <span className="cs-hx-short">Comprar ou alugar, perto de você.</span>
+          </p>
           <div className="cs-hx-search">
             <SearchForm compact initial={{ finalidade: "venda" }} />
           </div>
@@ -453,7 +456,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
             <section className="cs-container cs-hx-featured" aria-labelledby="cs-hx-featured-title">
               <div className="cs-hx-heading">
                 <h2 id="cs-hx-featured-title">Imóveis em destaque</h2>
-                {brand === "cordial" && <DistrictsDrawer />}
+                <DistrictsDrawer />
                 <SiteLink className="cs-text-link" to={sitePath("/buscar", brand)}>
                   Explorar imóveis <ArrowUpRight size={18} />
                 </SiteLink>

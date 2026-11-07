@@ -436,7 +436,16 @@ export function MorarSearchForm({
               }}
             />
           </SearchGroup>
-          <SearchGroup icon={Wallet} title="Seu orçamento">
+          <SearchGroup
+            icon={Wallet}
+            title={
+              values.finalidade === "aluguel"
+                ? "Seu orçamento · por mês"
+                : values.finalidade === "venda"
+                  ? "Seu orçamento · compra"
+                  : "Seu orçamento"
+            }
+          >
             <div className="ms-budget-fields">
               <MoneyInput
                 id={`${id}-precoMin`}
