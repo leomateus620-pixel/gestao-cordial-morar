@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authorizeWorkerRequest } from "@/lib/workers/hook-auth";
 
-/** Orçamento de uma execução: lotes paralelos pequenos até ~20 s. */
-const BUDGET_MS = 20_000;
+/**
+ * Uma rodada por execução: a hospedagem limita CPU por pedido, então cada
+ * lote paralelo roda num pedido novo, despachado pelo banco logo em seguida.
+ */
+const BUDGET_MS = 1;
 
 /**
  * Worker da fila de marca-d'água das fotos.

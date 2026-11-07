@@ -192,7 +192,7 @@ async function assertImageLease(admin: Admin, job: Job): Promise<void> {
   const { data, error } = await admin.rpc("property_image_renew_lease", {
     _job_id: job.id,
     _worker: job.locked_by,
-    _lease_seconds: 180,
+    _lease_seconds: 90,
   });
   if (error || data !== true)
     throw new WatermarkError("lease_lost", error?.message ?? "A reserva da foto expirou.");
@@ -387,7 +387,7 @@ export async function runImageWorker(
   const { data: jobs, error } = await admin.rpc("property_image_claim_jobs", {
     _worker: worker,
     _limit: limit,
-    _lease_seconds: 180,
+    _lease_seconds: 90,
   });
   if (error) throw new Error(error.message);
 
