@@ -156,7 +156,7 @@ function CordialSearchForm({
   const [budget, setBudget] = useState(initial.precoMin != null || initial.precoMax != null);
   // Compact home: the budget panel floats over the form on small screens; close on outside tap / Escape.
   useEffect(() => {
-    if (!budget || !compact) return;
+    if (!budget || !compact || !matchMedia("(max-width: 1179px)").matches) return;
     const panel = () => document.getElementById(`${id}-budget`);
     const inside = (t: EventTarget | null) =>
       t instanceof Node &&
