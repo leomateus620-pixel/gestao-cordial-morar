@@ -369,15 +369,18 @@ async function recoverMissingImageJobs(admin: Admin): Promise<number> {
 /** Processa um lote limitado da fila. Lotes pequenos evitam estouro de tempo/memória. */
 export async function runImageWorker(
   admin: Admin,
-  options: { limit?: number } = {},
+  options: { limit?: number; skipRecovery?: boolean } = {},
 ): Promise<{ claimed: number; processed: number; failed: number; pending: number }> {
-  const limit = Math.min(3, Math.max(1, options.limit ?? 2));
+  // Lote = concorrência: fotos do lote são processadas em paralelo (limite fixo).
+  const limit = Math.min(4, Math.max(1, options.limit ?? 2));
   const worker = `image-worker-${crypto.randomUUID().slice(0, 8)}`;
   const { recoverPersistedOriginalUploads, cleanupDuplicateOriginalUploads } =
     await import("./image-upload-recovery.server");
-  await recoverPersistedOriginalUploads(admin, 5);
-  await cleanupDuplicateOriginalUploads(admin, 3);
-  await recoverMissingImageJobs(admin);
+  if (!options.skipRecovery) {
+    await recoverPersistedOriginalUploads(admin, 5);
+    await cleanupDuplicateOriginalUploads(admin, 3);
+    await recoverMissingImageJobs(admin);
+  }
   // Trabalhos travados (lease vencido) voltam para a fila antes de reivindicar.
   const { error: reclaimError } = await admin.rpc("property_image_reclaim_stale", { _max: 50 });
   if (reclaimError) throw new Error(reclaimError.message);
@@ -390,15 +393,17 @@ export async function runImageWorker(
 
   let processed = 0;
   let failed = 0;
-  for (const job of (jobs ?? []) as Job[]) {
-    try {
-      await processImageJob(admin, job);
-      processed += 1;
-    } catch (err) {
-      failed += 1;
-      await failJob(admin, job, err);
-    }
-  }
+  await Promise.all(
+    ((jobs ?? []) as Job[]).map(async (job) => {
+      try {
+        await processImageJob(admin, job);
+        processed += 1;
+      } catch (err) {
+        failed += 1;
+        await failJob(admin, job, err);
+      }
+    }),
+  );
 
   const { count, error: countError } = await admin
     .from("property_image_jobs")
