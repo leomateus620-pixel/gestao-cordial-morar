@@ -293,9 +293,11 @@ export function usePropertyMedia(propertyId: string | undefined) {
       batchFailureFn,
       batchStateFn,
       invalidate,
+      listFn,
       openBatchFn,
       patch,
       propertyId,
+      qc,
       sendOne,
     ],
   );
