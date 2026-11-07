@@ -4569,3 +4569,12 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cordial-site:not(.morar-site) .cs-brand,
   .cordial-site:not(.morar-site) .cs-brand img { flex-basis: 128px; width: 128px; }
 }
+.cordial-site .cs-hx-drawer-body.cs-hx-districts { order: 0; flex: 1 1 auto; }
+.cs-hx-drawer-body .cs-hx-input { overflow: hidden; }
+@media (max-width: 760px) {
+  .cordial-site:not(.morar-site) :is(.cs-hx-card, .cs-hx-hero-card) .cs-hx-place {
+    white-space: normal; overflow: visible; text-overflow: clip; align-items: flex-start;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .cordial-site:not(.morar-site) :is(.cs-hx-card, .cs-hx-hero-card) .cs-hx-place svg { display: none; }
+}
