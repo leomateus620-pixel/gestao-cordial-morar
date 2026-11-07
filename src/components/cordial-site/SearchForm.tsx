@@ -154,6 +154,27 @@ function CordialSearchForm({
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [budget, setBudget] = useState(initial.precoMin != null || initial.precoMax != null);
+  // Compact home: the budget panel floats over the form on small screens; close on outside tap / Escape.
+  useEffect(() => {
+    if (!budget || !compact || !matchMedia("(max-width: 1179px)").matches) return;
+    const panel = () => document.getElementById(`${id}-budget`);
+    const inside = (t: EventTarget | null) =>
+      t instanceof Node &&
+      (panel()?.contains(t) ||
+        (t instanceof Element && !!t.closest(`[aria-controls="${id}-budget"]`)));
+    const down = (e: PointerEvent) => {
+      if (!inside(e.target)) setBudget(false);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setBudget(false);
+    };
+    document.addEventListener("pointerdown", down);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", down);
+      document.removeEventListener("keydown", key);
+    };
+  }, [budget, compact, id]);
   const [reference, setReference] = useState(!!initial.referencia);
   const [retry, setRetry] = useState(0);
   const [count, setCount] = useState<{ key: string; total?: number; error?: boolean }>({ key: "" });
@@ -418,7 +439,19 @@ function CordialSearchForm({
             </button>
           </div>
           {budget && (
-            <div className="cs-budget-fields cs-search-fields" id={`${id}-budget`}>
+            <div
+              className="cs-budget-fields cs-search-fields"
+              id={`${id}-budget`}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setBudget(false);
+                  e.currentTarget.ownerDocument
+                    .querySelector<HTMLElement>(`[aria-controls="${id}-budget"]`)
+                    ?.focus();
+                }
+              }}
+            >
               {pricePresets}
               {numeric("precoMin")}
               {numeric("precoMax")}

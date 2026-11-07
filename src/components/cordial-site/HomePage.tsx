@@ -11,6 +11,7 @@ import {
   MapPin,
   Ruler,
   Search,
+  X,
 } from "lucide-react";
 import { Await } from "@tanstack/react-router";
 import type { PublicProperty } from "@/lib/cordial-site/contract";
@@ -227,7 +228,8 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
       <Attributes p={hero} />
       <div className="cs-hx-hero-actions">
         <SiteLink to={propertyPath(hero, brand)} className="cs-button cs-hx-primary">
-          Conhecer este imóvel <ArrowUpRight size={17} />
+          <span className="cs-hx-long">Conhecer este imóvel</span>
+          <span className="cs-hx-short">Ver detalhes</span> <ArrowUpRight size={17} />
         </SiteLink>
         {whatsapp && (
           <a
@@ -245,7 +247,7 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
   );
 }
 
-function DistrictsPanel() {
+function DistrictsBody({ idPrefix }: { idPrefix: string }) {
   const brand = useSiteBrand();
   const { facets } = useSite();
   const cities = useMemo(
@@ -259,10 +261,9 @@ function DistrictsPanel() {
   const list = facets.districts
     .filter((d) => (!city || d.city === city) && (!q || norm(d.value).includes(norm(q))))
     .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, "pt-BR"))
-    .slice(0, 6);
+    .slice(0, idPrefix === "drawer" ? 30 : 6);
   return (
-    <aside className="cs-hx-districts" aria-labelledby="cs-hx-districts-title">
-      <h2 id="cs-hx-districts-title">Bairros</h2>
+    <>
       {cities.length > 1 && (
         <label className="cs-hx-field">
           <span>Cidade</span>
@@ -278,7 +279,12 @@ function DistrictsPanel() {
         <span>Buscar bairro</span>
         <span className="cs-hx-input">
           <Search size={15} aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ex.: Centro" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Ex.: Centro"
+            data-autofocus={idPrefix === "drawer" ? "" : undefined}
+          />
         </span>
       </label>
       <ul>
@@ -307,7 +313,68 @@ function DistrictsPanel() {
       <SiteLink to={sitePath("/bairros", brand)} className="cs-text-link">
         Ver todos <ArrowUpRight size={16} />
       </SiteLink>
+    </>
+  );
+}
+
+function DistrictsPanel() {
+  return (
+    <aside className="cs-hx-districts" aria-labelledby="cs-hx-districts-title">
+      <h2 id="cs-hx-districts-title">Bairros</h2>
+      <DistrictsBody idPrefix="panel" />
     </aside>
+  );
+}
+
+/** Compact access for phones/narrow tablets: native modal dialog (focus containment + Escape). */
+function DistrictsDrawer() {
+  const ref = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const show = () => {
+    setOpen(true);
+    requestAnimationFrame(() => {
+      ref.current?.showModal();
+      ref.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    });
+  };
+  const close = () => ref.current?.close();
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        className="cs-hx-districts-trigger"
+        aria-haspopup="dialog"
+        onClick={show}
+      >
+        <MapPin size={16} aria-hidden /> Buscar por bairro
+      </button>
+      <dialog
+        ref={ref}
+        className="cs-hx-drawer"
+        aria-labelledby="cs-hx-drawer-title"
+        onClose={() => {
+          setOpen(false);
+          trigger.current?.focus();
+        }}
+        onClick={(e) => {
+          if (e.target === ref.current) close();
+        }}
+      >
+        <div className="cs-hx-drawer-head">
+          <h2 id="cs-hx-drawer-title">Buscar por bairro</h2>
+          <button type="button" className="cs-icon-button" onClick={close} aria-label="Fechar">
+            <X size={20} aria-hidden />
+          </button>
+        </div>
+        {open && (
+          <div className="cs-hx-districts cs-hx-drawer-body">
+            <DistrictsBody idPrefix="drawer" />
+          </div>
+        )}
+      </dialog>
+    </>
   );
 }
 
@@ -370,7 +437,10 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                     <h1>
                       {copy.lead} <em>{copy.accent}</em>
                     </h1>
-                    <p>{copy.sub}</p>
+                    <p>
+                      <span className="cs-hx-long">{copy.sub}</span>
+                      <span className="cs-hx-short">Comprar ou alugar, do seu jeito.</span>
+                    </p>
                     <div className="cs-hx-search">
                       <SearchForm compact initial={{ finalidade: "venda" }} />
                     </div>
@@ -383,6 +453,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
             <section className="cs-container cs-hx-featured" aria-labelledby="cs-hx-featured-title">
               <div className="cs-hx-heading">
                 <h2 id="cs-hx-featured-title">Imóveis em destaque</h2>
+                {brand === "cordial" && <DistrictsDrawer />}
                 <SiteLink className="cs-text-link" to={sitePath("/buscar", brand)}>
                   Explorar imóveis <ArrowUpRight size={18} />
                 </SiteLink>
@@ -404,8 +475,8 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                         variant={i === 0 ? "lg" : "sm"}
                         sizes={
                           i === 0
-                            ? "(max-width: 768px) 100vw, 40vw"
-                            : "(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 20vw"
+                            ? "(max-width: 560px) 45vw, (max-width: 1100px) 100vw, 40vw"
+                            : "(max-width: 1100px) 50vw, 20vw"
                         }
                       />
                     ))}
@@ -433,7 +504,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                       key={p.id}
                       p={p}
                       variant="compact"
-                      sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                      sizes="(max-width: 340px) 40vw, (max-width: 560px) 50vw, (max-width: 900px) 33vw, (max-width: 1200px) 25vw, 20vw"
                     />
                   ))}
                 </div>
