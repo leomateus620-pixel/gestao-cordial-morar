@@ -1,0 +1,2 @@
+ALTER TABLE public.morar_site_publications DROP CONSTRAINT morar_site_publications_decision_source_check;
+ALTER TABLE public.morar_site_publications ADD CONSTRAINT morar_site_publications_decision_source_check CHECK (decision_source = ANY (ARRAY['manual'::text,'registration'::text,'activation'::text,'admin_release'::text]));
