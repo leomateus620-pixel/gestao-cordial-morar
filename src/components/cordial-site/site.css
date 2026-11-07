@@ -4591,3 +4591,6 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 @media (max-width: 1100px) {
   .cordial-site:not(.morar-site) .cs-hx-hero-card .cs-hx-wa { display: none; }
 }
+@media (max-width: 1179px) {
+  .cordial-site:not(.morar-site) .cs-hx-hero-copy { position: relative; z-index: 2; }
+}
