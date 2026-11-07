@@ -42,7 +42,7 @@ function SearchGroup({
   children,
 }: {
   icon: LucideIcon;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -436,7 +436,19 @@ export function MorarSearchForm({
               }}
             />
           </SearchGroup>
-          <SearchGroup icon={Wallet} title="Seu orçamento">
+          <SearchGroup
+            icon={Wallet}
+            title={
+              <>
+                Seu orçamento
+                {values.finalidade && (
+                  <span className="ms-legend-unit">
+                    {values.finalidade === "aluguel" ? " · por mês" : " · compra"}
+                  </span>
+                )}
+              </>
+            }
+          >
             <div className="ms-budget-fields">
               <MoneyInput
                 id={`${id}-precoMin`}
