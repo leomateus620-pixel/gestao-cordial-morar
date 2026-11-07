@@ -346,8 +346,6 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
         ]}
         destinos={destinos}
         onDestinosChange={setDestinos}
-        publishOwnedMorar={publishOwnedMorar}
-        onPublishOwnedMorarChange={setPublishOwnedMorar}
         propertyId={draftId}
         onRequestSave={ensureDraft}
         onValuesChange={(values) => {

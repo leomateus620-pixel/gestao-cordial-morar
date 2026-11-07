@@ -384,8 +384,6 @@ export function PropertyForm({
   showDestinos = true,
   destinos,
   onDestinosChange,
-  publishOwnedMorar,
-  onPublishOwnedMorarChange,
   propertyId,
   onRequestSave,
   onCodeReserved,
@@ -402,8 +400,6 @@ export function PropertyForm({
   showDestinos?: boolean;
   destinos?: PropertyCarteira[];
   onDestinosChange?: (providers: PropertyCarteira[]) => void;
-  publishOwnedMorar?: boolean;
-  onPublishOwnedMorarChange?: (publish: boolean) => void;
   propertyId?: string | null;
   onRequestSave?: () => Promise<string | null>;
   onCodeReserved?: (reservationId: string, provider: PropertyCarteira) => void;
