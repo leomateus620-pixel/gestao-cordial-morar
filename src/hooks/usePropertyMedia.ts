@@ -255,16 +255,23 @@ export function usePropertyMedia(propertyId: string | undefined) {
       const batchIds = uploadedIds.filter((id): id is string => !!id);
       if (propertyId && batchIds.length > 1) {
         try {
-          // Mesma revisão da galeria lida agora: o servidor recusa se outra mudança chegou antes.
-          const snapshot = await snapshotFn({ data: { propertyId } });
-          const current = snapshot.images.map((image) => image.id);
-          const inBatch = new Set(batchIds);
-          const desired = [
-            ...current.filter((id) => !inBatch.has(id)),
-            ...batchIds.filter((id) => current.includes(id)),
-          ];
-          if (desired.length === current.length && desired.join() !== current.join()) {
-            await reorderFn({ data: { propertyId, orderedIds: desired, expectedGalleryRevision: snapshot.revision, move: null } });
+          // Mesma revisão da galeria lida agora: o servidor recusa se outra mudança
+          // chegou antes (ex.: marca d'água concluída); relê e tenta de novo.
+          for (let attempt = 0; attempt < 5; attempt += 1) {
+            const snapshot = await snapshotFn({ data: { propertyId } });
+            const current = snapshot.images.map((image) => image.id);
+            const inBatch = new Set(batchIds);
+            const desired = [
+              ...current.filter((id) => !inBatch.has(id)),
+              ...batchIds.filter((id) => current.includes(id)),
+            ];
+            if (desired.length !== current.length || desired.join() === current.join()) break;
+            try {
+              await reorderFn({ data: { propertyId, orderedIds: desired, expectedGalleryRevision: snapshot.revision, move: null } });
+              break;
+            } catch {
+              await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+            }
           }
         } catch {
           /* a ordem pode ser ajustada arrastando as fotos */
