@@ -418,7 +418,19 @@ function CordialSearchForm({
             </button>
           </div>
           {budget && (
-            <div className="cs-budget-fields cs-search-fields" id={`${id}-budget`}>
+            <div
+              className="cs-budget-fields cs-search-fields"
+              id={`${id}-budget`}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setBudget(false);
+                  e.currentTarget.ownerDocument
+                    .querySelector<HTMLElement>(`[aria-controls="${id}-budget"]`)
+                    ?.focus();
+                }
+              }}
+            >
               {pricePresets}
               {numeric("precoMin")}
               {numeric("precoMax")}
