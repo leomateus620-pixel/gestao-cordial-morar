@@ -4565,3 +4565,7 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cordial-site:not(.morar-site) .cs-hx-hero-media.is-moving .cs-hx-hero-layer img,
   .cordial-site:not(.morar-site) .cs-hx-hero-media.is-moving .cs-hx-hero-light { animation: none; }
 }
+@media (max-width: 340px) {
+  .cordial-site:not(.morar-site) .cs-brand,
+  .cordial-site:not(.morar-site) .cs-brand img { flex-basis: 128px; width: 128px; }
+}
