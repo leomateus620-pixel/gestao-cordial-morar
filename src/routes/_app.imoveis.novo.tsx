@@ -98,7 +98,6 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
-  const [publishOwnedMorar, setPublishOwnedMorar] = useState(false);
   /** Publicar é a ação padrão da última etapa: os destinos vêm da Etapa 1. */
   const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.
@@ -204,17 +203,12 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
           agency.enabled && canRegisterAgency
             ? {
                 finalidade: agency.finalidade,
-                providers: [
-                  ...new Set([...destinos, ...(publishOwnedMorar ? ["morar" as const] : [])]),
-                ].length
-                  ? [...new Set([...destinos, ...(publishOwnedMorar ? ["morar" as const] : [])])]
-                  : [values.carteira],
+                providers: destinos.length ? destinos : [values.carteira],
                 checklist: agency.checklist,
                 descricao: agency.descricao,
               }
             : null,
         publishProviders: publicar ? destinos : [],
-        publishOwnedMorar,
       });
       const propertyId = result.propertyId;
       committed.current = true;

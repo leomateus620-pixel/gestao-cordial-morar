@@ -612,16 +612,8 @@ export function PropertyForm({
           <>
             {showDestinos && (
               <Field
-                label={
-                  onPublishOwnedMorarChange
-                    ? "Sites integrados ao fornecedor anterior"
-                    : "Destino da publicação"
-                }
-                hint={
-                  onPublishOwnedMorarChange
-                    ? "Envio ImobiBrasil existente. A publicação própria Morar é escolhida separadamente abaixo."
-                    : "Escolha os sites onde este imóvel será anunciado."
-                }
+                label="Destino da publicação"
+                hint="Cordial, Morar ou ambos. Ao concluir o cadastro, a publicação começa sozinha nos sites escolhidos."
               >
                 <PublishTargetSelector
                   value={destinos ?? []}
@@ -631,27 +623,6 @@ export function PropertyForm({
                   }}
                 />
               </Field>
-            )}
-            {onPublishOwnedMorarChange && (
-              <fieldset className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
-                <legend className="px-1 text-sm font-semibold">Canal próprio Morar</legend>
-                <label className="flex items-start gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-1 size-4"
-                    checked={publishOwnedMorar === true}
-                    onChange={(e) => onPublishOwnedMorarChange(e.target.checked)}
-                  />
-                  <span>
-                    Solicitar publicação no novo site Morar
-                    <span className="mt-1 block text-xs text-foreground/65">
-                      Ativa após concluir o cadastro e confirmar autorização e disponibilidade.
-                      Funciona sem envio ao fornecedor anterior. Fotos e áreas seguem a revisão do
-                      site.
-                    </span>
-                  </span>
-                </label>
-              </fieldset>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Tipo">
