@@ -575,6 +575,34 @@
       "when": 1794023199719,
       "tag": "0081_reserve_code_no_cross_draft_reuse",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794026400802,
+      "tag": "0082_owned_admin_release",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1794026429629,
+      "tag": "0083_owned_admin_release_morar_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1794026519683,
+      "tag": "0084_owned_admin_release_overrides_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1794026616964,
+      "tag": "0085_owned_admin_release_public_views",
+      "breakpoints": true
     }
   ]
 }

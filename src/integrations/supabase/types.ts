@@ -2791,6 +2791,9 @@ export type Database = {
       }
       cordial_site_publications: {
         Row: {
+          admin_release_at: string | null
+          admin_release_by: string | null
+          admin_release_reason: string | null
           area_units_confirmed: boolean
           availability_confirmed: boolean
           cordial_authorized: boolean
@@ -2809,6 +2812,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_release_at?: string | null
+          admin_release_by?: string | null
+          admin_release_reason?: string | null
           area_units_confirmed?: boolean
           availability_confirmed?: boolean
           cordial_authorized?: boolean
@@ -2827,6 +2833,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_release_at?: string | null
+          admin_release_by?: string | null
+          admin_release_reason?: string | null
           area_units_confirmed?: boolean
           availability_confirmed?: boolean
           cordial_authorized?: boolean
@@ -5631,6 +5640,9 @@ export type Database = {
       }
       morar_site_publications: {
         Row: {
+          admin_release_at: string | null
+          admin_release_by: string | null
+          admin_release_reason: string | null
           area_units_confirmed: boolean
           availability_confirmed: boolean
           decision_revision: number | null
@@ -5647,6 +5659,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_release_at?: string | null
+          admin_release_by?: string | null
+          admin_release_reason?: string | null
           area_units_confirmed?: boolean
           availability_confirmed?: boolean
           decision_revision?: number | null
@@ -5663,6 +5678,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_release_at?: string | null
+          admin_release_by?: string | null
+          admin_release_reason?: string | null
           area_units_confirmed?: boolean
           availability_confirmed?: boolean
           decision_revision?: number | null
@@ -13561,6 +13579,10 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      owned_admin_release_apply: {
+        Args: { _by: string; _ids: string[]; _reason: string }
+        Returns: Json
       }
       owned_channel_take_inventory: {
         Args: { _snapshot: string }
