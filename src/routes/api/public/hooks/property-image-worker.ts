@@ -14,8 +14,14 @@ export const Route = createFileRoute("/api/public/hooks/property-image-worker")(
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Aceita o segredo do servidor ou a credencial do cofre (despachante do banco).
         const denied = authorizeWorkerRequest(request);
-        if (denied) return denied;
+        if (denied) {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { internalTokenAuthorized } = await import("@/lib/workers/internal-token.server");
+          const token = request.headers.get("apikey") ?? request.headers.get("x-api-key");
+          if (!(await internalTokenAuthorized(supabaseAdmin as never, token))) return denied;
+        }
 
         let limit = 3;
         try {
