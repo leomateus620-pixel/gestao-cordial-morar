@@ -133,18 +133,12 @@ async function stableGallery(supabase: Client, propertyId: string): Promise<{ ro
  */
 async function kickImageWorker(limit = 2) {
   try {
-    const secret =
-      workerCallerSecret();
-    if (!secret) return;
-    const request = getRequest();
-    const origin = request?.url ? new URL(request.url).origin : null;
-    if (!origin) return;
-    await fetch(`${origin}/api/public/hooks/property-image-worker`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: secret },
-      body: JSON.stringify({ limit }),
-      signal: AbortSignal.timeout(1000),
-    });
+    // Despachante privado do banco: URL fixa e credencial do cofre, nunca o Host do pedido.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.rpc("property_worker_dispatch" as never, {
+      _hook: "property-image-worker",
+      _body: { limit: Math.max(3, limit) },
+    } as never);
   } catch {
     // pg_cron reprocessa no próximo ciclo
   }

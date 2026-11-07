@@ -30,6 +30,17 @@ export const reservePropertyCode = createServerFn({ method: "POST" })
         | undefined;
       if (!row) throw new Error("Não foi possível gerar um código agora.");
 
+      // Imobi OFF: a unicidade é a do banco (índice único por marca); não há consulta externa.
+      const { imobiIntegrationEnabled } = await import("@/lib/imobibrasil/integration-switch");
+      if (!imobiIntegrationEnabled()) {
+        return {
+          provider: data.provider,
+          code: row.code,
+          reservationId: row.reservation_id,
+          expiresAt: row.expires_at,
+          verified: true,
+        };
+      }
       const taken = await remoteCodeTaken(data.provider, row.code);
       if (taken === true) {
         // Código já usado no site: marca como consumido e tenta o próximo.

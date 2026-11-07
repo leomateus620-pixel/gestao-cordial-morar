@@ -16,10 +16,8 @@ import {
   keepDraftBroker,
   resolveFinalizeAgencyBroker,
 } from "@/lib/imoveis/registration-rules";
-import {
-  prepareOwnedMorarRegistration,
-  type OwnedMorarDecision,
-} from "@/lib/morar-site/registration-workflow";
+import { type OwnedMorarDecision } from "@/lib/morar-site/registration-workflow";
+import { normalizeDestinations } from "@/lib/imoveis/destinations";
 
 export type FinalizeRegistrationInput = {
   /** Rascunho já criado (fotos). Sem ele, o imóvel é criado pela chave de intenção. */
@@ -202,80 +200,33 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
       }
     }
 
-    // 4) A própria Morar guarda a intenção ainda inativa. Só a marca durável
-    // de conclusão permite ativação pelo servidor, sem depender de fila externa.
+    // 4) Destino único: Cordial, Morar ou ambos. `publishOwnedMorar` (clientes
+    // antigos) só acrescenta Morar ao mesmo conjunto — nunca uma segunda intenção.
     let ownedMorarPublication: OwnedMorarDecision | undefined;
-    if (data.publishOwnedMorar === true) {
+    const providers = normalizeDestinations([
+      ...(data.publishProviders ?? []),
+      ...(data.publishOwnedMorar === true ? ["morar"] : []),
+    ]);
+    if (providers.length) {
+      // A marca d'água das fotos segue o destino escolhido antes do processamento.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       try {
-        const { assertProviderScope } = await import("@/lib/imoveis/sync-helpers.server");
-        await assertProviderScope(context.supabase as never, context.userId, ["morar"]);
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { ensureAutoAgency } = await import("@/lib/imoveis/registration.server");
-        const result = await prepareOwnedMorarRegistration({
-          persistIntent: async () => {
-            const { data: decision, error } = await supabaseAdmin.rpc(
-              "morar_site_request_publication" as never,
-              {
-                _property_id: propertyId,
-                _requested_by: context.userId,
-                _publish: true,
-                _expected_revision: state.revision,
-                _review_media: true,
-                _areas_m2: false,
-              } as never,
-            );
-            if (error) throw new Error(error.message);
-            return decision as OwnedMorarDecision;
-          },
-          ensureAgency: () =>
-            ensureAutoAgency({
-              propertyId: propertyId!,
-              publisherId: context.userId,
-              providers: [
-                ...new Set([
-                  ...(data.publishProviders ?? []).filter((p) => p === "cordial" || p === "morar"),
-                  "morar",
-                ]),
-              ],
-            }),
-        });
-        ownedMorarPublication = result.decision;
-        agenciamentoId = agenciamentoId ?? result.agency.id ?? null;
-        if (steps.agency !== "error") {
-          steps.agency = "ok";
-          agencyPending = false;
+        await context.supabase
+          .from("properties")
+          .update({ publish_targets: providers } as never)
+          .eq("id", propertyId)
+          .throwOnError();
+        const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
+        const images = await enqueueImageJobs(supabaseAdmin, propertyId, { targets: providers });
+        if (images.enqueued > 0) {
+          const { kickOwnedMorarImageWorker } = await import("@/lib/morar-site/image-worker.server");
+          await kickOwnedMorarImageWorker();
         }
-        steps.ownedMorar = "ok";
-        try {
-          const { enqueueImageJobs } = await import("@/lib/imoveis/image-pipeline.server");
-          const images = await enqueueImageJobs(supabaseAdmin, propertyId);
-          if (images.enqueued > 0) {
-            messages.push(
-              "Fotos do site Morar aguardando processamento da marca. Elas só aparecem quando o arquivo final for confirmado.",
-            );
-            const { kickOwnedMorarImageWorker } =
-              await import("@/lib/morar-site/image-worker.server");
-            await kickOwnedMorarImageWorker();
-          }
-        } catch {
-          // The transaction stored the destination intent. The existing
-          // private worker recovers it; never enqueue an external provider.
-          messages.push(
-            "A intenção das fotos Morar foi salva; processamento pendente. Confira as fotos no Gestão antes de divulgar.",
-          );
-        }
-        if (result.decision.pendingReview)
-          messages.push(
-            "A intenção do site Morar foi salva. Publicação aguardando confirmação de autorização ou disponibilidade em Configurações → Site público Morar.",
-          );
       } catch (err) {
-        steps.ownedMorar = "error";
-        messages.push(`Site próprio Morar pendente: ${(err as Error)?.message ?? "erro"}`);
+        // A fila persistente e o vigia recuperam fotos sem job.
+        console.error("[finalize_images_deferred]", propertyId, (err as Error)?.message);
       }
     }
-
-    // Publicação externa continua no fluxo existente.
-    const providers = (data.publishProviders ?? []).filter((p) => p === "cordial" || p === "morar");
     let skippedImages: number | undefined;
     if (providers.length) {
       try {
@@ -325,7 +276,7 @@ export const finalizePropertyRegistration = createServerFn({ method: "POST" })
         messages.push(
           "Cadastro salvo, mas a conclusão não foi confirmada. Tente concluir novamente; a intenção Morar permanece inativa.",
         );
-      } else if (data.publishOwnedMorar === true) {
+      } else if (providers.includes("morar")) {
         // Apenas leitura: o trigger é dono da ativação; não repetimos uma
         // decisão de publicação que poderia desfazer uma retirada concorrente.
         const { data: publication, error } = await supabaseAdmin

@@ -192,7 +192,7 @@ async function assertImageLease(admin: Admin, job: Job): Promise<void> {
   const { data, error } = await admin.rpc("property_image_renew_lease", {
     _job_id: job.id,
     _worker: job.locked_by,
-    _lease_seconds: 180,
+    _lease_seconds: 90,
   });
   if (error || data !== true)
     throw new WatermarkError("lease_lost", error?.message ?? "A reserva da foto expirou.");
@@ -369,36 +369,41 @@ async function recoverMissingImageJobs(admin: Admin): Promise<number> {
 /** Processa um lote limitado da fila. Lotes pequenos evitam estouro de tempo/memória. */
 export async function runImageWorker(
   admin: Admin,
-  options: { limit?: number } = {},
+  options: { limit?: number; skipRecovery?: boolean } = {},
 ): Promise<{ claimed: number; processed: number; failed: number; pending: number }> {
-  const limit = Math.min(3, Math.max(1, options.limit ?? 2));
+  // Lote = concorrência: fotos do lote são processadas em paralelo (limite fixo).
+  const limit = Math.min(4, Math.max(1, options.limit ?? 2));
   const worker = `image-worker-${crypto.randomUUID().slice(0, 8)}`;
   const { recoverPersistedOriginalUploads, cleanupDuplicateOriginalUploads } =
     await import("./image-upload-recovery.server");
-  await recoverPersistedOriginalUploads(admin, 5);
-  await cleanupDuplicateOriginalUploads(admin, 3);
-  await recoverMissingImageJobs(admin);
+  if (!options.skipRecovery) {
+    await recoverPersistedOriginalUploads(admin, 5);
+    await cleanupDuplicateOriginalUploads(admin, 3);
+    await recoverMissingImageJobs(admin);
+  }
   // Trabalhos travados (lease vencido) voltam para a fila antes de reivindicar.
   const { error: reclaimError } = await admin.rpc("property_image_reclaim_stale", { _max: 50 });
   if (reclaimError) throw new Error(reclaimError.message);
   const { data: jobs, error } = await admin.rpc("property_image_claim_jobs", {
     _worker: worker,
     _limit: limit,
-    _lease_seconds: 180,
+    _lease_seconds: 90,
   });
   if (error) throw new Error(error.message);
 
   let processed = 0;
   let failed = 0;
-  for (const job of (jobs ?? []) as Job[]) {
-    try {
-      await processImageJob(admin, job);
-      processed += 1;
-    } catch (err) {
-      failed += 1;
-      await failJob(admin, job, err);
-    }
-  }
+  await Promise.all(
+    ((jobs ?? []) as Job[]).map(async (job) => {
+      try {
+        await processImageJob(admin, job);
+        processed += 1;
+      } catch (err) {
+        failed += 1;
+        await failJob(admin, job, err);
+      }
+    }),
+  );
 
   const { count, error: countError } = await admin
     .from("property_image_jobs")
