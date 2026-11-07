@@ -12,7 +12,6 @@ import {
   openPropertyImageBatch,
   registerPropertyImage,
   reorderPropertyImages,
-  listPropertyImages,
   reportPropertyImageBatchFailure,
   setPropertyImageCover,
   setPropertyPublishTargets,
@@ -102,8 +101,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const loadUploadIssues = useServerFn(listPropertyImageUploadIssues);
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
-  const listFn = useServerFn(listPropertyImages);
-  const reorderRef = useRef<((ids: string[]) => void) | null>(null);
+  const snapshotFn = useServerFn(getPropertyGallerySnapshot);
   const removeFn = useServerFn(deletePropertyImage);
   const targetsFn = useServerFn(setPropertyPublishTargets);
   const openBatchFn = useServerFn(openPropertyImageBatch);
@@ -257,16 +255,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
       const batchIds = uploadedIds.filter((id): id is string => !!id);
       if (propertyId && batchIds.length > 1) {
         try {
-          const fresh = await listFn({ data: { propertyId } });
-          const current = fresh.map((image) => image.id);
+          // Mesma revisão da galeria lida agora: o servidor recusa se outra mudança chegou antes.
+          const snapshot = await snapshotFn({ data: { propertyId } });
+          const current = snapshot.images.map((image) => image.id);
           const inBatch = new Set(batchIds);
           const desired = [
             ...current.filter((id) => !inBatch.has(id)),
             ...batchIds.filter((id) => current.includes(id)),
           ];
           if (desired.length === current.length && desired.join() !== current.join()) {
-            qc.setQueryData(["property-images", propertyId], fresh);
-            reorderRef.current?.(desired);
+            await reorderFn({ data: { propertyId, orderedIds: desired, expectedGalleryRevision: snapshot.revision, move: null } });
           }
         } catch {
           /* a ordem pode ser ajustada arrastando as fotos */
@@ -293,11 +291,11 @@ export function usePropertyMedia(propertyId: string | undefined) {
       batchFailureFn,
       batchStateFn,
       invalidate,
-      listFn,
+      reorderFn,
+      snapshotFn,
       openBatchFn,
       patch,
       propertyId,
-      qc,
       sendOne,
     ],
   );
@@ -444,7 +442,6 @@ export function usePropertyMedia(propertyId: string | undefined) {
     },
     [propertyId, qc, persistOrder],
   );
-  reorderRef.current = reorderPhotos;
 
   /**
    * "Concluir": grava agora a ordem pendente e só devolve o controle quando o
