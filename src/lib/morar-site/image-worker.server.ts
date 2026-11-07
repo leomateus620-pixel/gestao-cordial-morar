@@ -1,7 +1,7 @@
 type ImageWorkerDispatcher = {
   rpc(
     name: "property_worker_dispatch",
-    args: { _hook: "property-image-worker"; _body: { limit: 2 } },
+    args: { _hook: "property-image-worker"; _body: { limit: 3 } },
   ): PromiseLike<{ data: unknown; error: unknown }>;
 };
 
@@ -18,7 +18,7 @@ export async function kickOwnedMorarImageWorker(dispatcher?: ImageWorkerDispatch
     }
     await dispatcher.rpc("property_worker_dispatch", {
       _hook: "property-image-worker",
-      _body: { limit: 2 },
+      _body: { limit: 3 },
     });
   } catch {
     // No fallback using Host, forwarded headers or the public site origin.
