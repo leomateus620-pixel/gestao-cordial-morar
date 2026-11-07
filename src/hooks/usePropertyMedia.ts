@@ -101,6 +101,8 @@ export function usePropertyMedia(propertyId: string | undefined) {
   const loadUploadIssues = useServerFn(listPropertyImageUploadIssues);
   const setCoverFn = useServerFn(setPropertyImageCover);
   const reorderFn = useServerFn(reorderPropertyImages);
+  const listFn = useServerFn(listPropertyImages);
+  const reorderRef = useRef<((ids: string[]) => void) | null>(null);
   const removeFn = useServerFn(deletePropertyImage);
   const targetsFn = useServerFn(setPropertyPublishTargets);
   const openBatchFn = useServerFn(openPropertyImageBatch);
@@ -218,13 +220,16 @@ export function usePropertyMedia(propertyId: string | undefined) {
       activeBatch.current = batchId;
 
       let cursor = 0;
+      // Identidade por posição escolhida: o envio paralelo termina fora de ordem.
+      const uploadedIds: (string | null)[] = entries.map(() => null);
       const workers = Array.from(
         { length: Math.min(UPLOAD_CONCURRENCY, entries.length) },
         async () => {
           while (cursor < entries.length) {
-            const entry = entries[cursor++]!;
+            const index = cursor++;
+            const entry = entries[index]!;
             try {
-              await sendOne(entry.key, entry.file);
+              uploadedIds[index] = (await sendOne(entry.key, entry.file)) ?? null;
             } catch (err) {
               const recovering = err instanceof UploadRecoveryPendingError;
               patch(entry.key, {
@@ -247,6 +252,25 @@ export function usePropertyMedia(propertyId: string | undefined) {
       );
       await Promise.all(workers);
       activeBatch.current = null;
+      // Restaura a ordem da seleção (a primeira escolhida vira a capa se a galeria estava vazia).
+      const batchIds = uploadedIds.filter((id): id is string => !!id);
+      if (propertyId && batchIds.length > 1) {
+        try {
+          const fresh = await listFn({ data: { propertyId } });
+          const current = fresh.map((image) => image.id);
+          const inBatch = new Set(batchIds);
+          const desired = [
+            ...current.filter((id) => !inBatch.has(id)),
+            ...batchIds.filter((id) => current.includes(id)),
+          ];
+          if (desired.length === current.length && desired.join() !== current.join()) {
+            qc.setQueryData(["property-images", propertyId], fresh);
+            reorderRef.current?.(desired);
+          }
+        } catch {
+          /* a ordem pode ser ajustada arrastando as fotos */
+        }
+      }
       setUploading(false);
       invalidate();
 
@@ -417,6 +441,7 @@ export function usePropertyMedia(propertyId: string | undefined) {
     },
     [propertyId, qc, persistOrder],
   );
+  reorderRef.current = reorderPhotos;
 
   /**
    * "Concluir": grava agora a ordem pendente e só devolve o controle quando o
