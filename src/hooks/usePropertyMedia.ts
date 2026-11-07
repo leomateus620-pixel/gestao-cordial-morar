@@ -12,6 +12,7 @@ import {
   openPropertyImageBatch,
   registerPropertyImage,
   reorderPropertyImages,
+  listPropertyImages,
   reportPropertyImageBatchFailure,
   setPropertyImageCover,
   setPropertyPublishTargets,
