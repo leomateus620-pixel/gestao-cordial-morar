@@ -18,6 +18,13 @@ import {
 } from "@/lib/cordial-site/contract";
 import { sitePath } from "@/lib/cordial-site/presentation";
 import { PropertyCard } from "./PropertyCard";
+import { resetSpeculativeScope } from "@/lib/cordial-site/card-photo-preload";
+
+/** New filters, page or layout: fresh preparation budget, queued speculative work dropped. */
+function SpeculativeScope({ scope }: { scope: string }) {
+  useEffect(() => resetSpeculativeScope(scope), [scope]);
+  return null;
+}
 import { SearchForm } from "./SearchForm";
 import { searchLabels } from "@/lib/cordial-site/search-labels";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
@@ -304,6 +311,9 @@ export function ResultsPage({
           </button>
         </div>
       )}
+      <SpeculativeScope
+        scope={`${JSON.stringify(search)}|${result.items.map((p) => p.id).join(",")}`}
+      />
       {result.items.length ? (
         <div
           className={`cs-property-grid ${search.visualizacao === "lista" ? "cs-property-list" : ""}`}

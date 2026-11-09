@@ -59,6 +59,7 @@ export function useCardPhotos(
   const photosRef = useRef<PublicMedia[] | null>(null);
   const request = useRef<{ key: string; promise: Promise<PublicMedia[]> } | null>(null);
   const generation = useRef(0);
+  const sizeFor = (i: number) => (i === 0 && !sizesOption ? DEFAULT_CARD_SIZES : sizesRef.current);
   const shown = useRef(0);
   const requested = useRef(0);
   const alive = useRef(true);
@@ -121,11 +122,12 @@ export function useCardPhotos(
         .then((photos) => {
           if (photos.length < 2) return;
           const at = (requested.current + direction + photos.length) % photos.length;
-          return preloadCardImage(photos[at], brand, sizesRef.current, urgent);
+          return preloadCardImage(photos[at], brand, sizeFor(at), urgent);
         })
         .catch(() => {});
     },
-    [enabled, ensurePhotos, brand],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [enabled, ensurePhotos, brand, sizesOption],
   );
 
   const move = useCallback(
@@ -141,16 +143,16 @@ export function useCardPhotos(
         // Latest intent wins: count from the last requested photo, not the one on screen.
         const target = (requested.current + delta + photos.length) % photos.length;
         requested.current = target;
-        await preloadCardImage(photos[target], brand, sizesRef.current, true);
+        await preloadCardImage(photos[target], brand, sizeFor(target), true);
         if (!alive.current || gen !== generation.current || keyRef.current !== captured) return;
         shown.current = target;
         setIndex(target);
         setSwitching(false);
-        const ahead = photos[(target + delta + photos.length) % photos.length];
-        if (ahead) void preloadCardImage(ahead, brand, sizesRef.current).catch(() => {});
-        const behind = photos[(target - delta + photos.length) % photos.length];
-        if (behind && preloadIdle())
-          void preloadCardImage(behind, brand, sizesRef.current).catch(() => {});
+        const ahead = (target + delta + photos.length) % photos.length;
+        void preloadCardImage(photos[ahead], brand, sizeFor(ahead)).catch(() => {});
+        const behind = (target - delta + photos.length) % photos.length;
+        if (behind !== ahead && preloadIdle())
+          void preloadCardImage(photos[behind], brand, sizeFor(behind)).catch(() => {});
       } catch {
         if (alive.current && gen === generation.current) {
           requested.current = shown.current; // keep the photo on screen, arrow retries
