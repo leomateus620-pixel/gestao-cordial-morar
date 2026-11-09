@@ -4594,3 +4594,40 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 @media (max-width: 1179px) {
   .cordial-site:not(.morar-site) .cs-hx-hero-copy { position: relative; z-index: 2; }
 }
+
+/* Código do imóvel na busca inicial (Cordial e Morar) */
+.cs-search-essential .cs-code-field,
+.ms-search .ms-code-field {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  max-width: 420px;
+  margin: 10px auto 12px;
+}
+.cs-search-essential .cs-code-field input,
+.ms-search .ms-code-field input { min-height: 46px; width: 100%; }
+.cs-search-essential .cs-code-field input:focus-visible,
+.ms-search .ms-code-field input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media (max-width: 760px) {
+  .cs-search-essential .cs-code-field,
+  .ms-search .ms-code-field { max-width: none; margin: 6px 0 8px; }
+}
+
+/* Troca de fotos nos cards (catálogo e vitrine, Cordial e Morar) */
+.cs-hx-card-media-link { position: absolute; inset: 0; display: block; }
+.cs-hx-card-media .cs-card-photo-prev,
+.cs-hx-card-media .cs-card-photo-next { width: 32px; height: 36px; opacity: 0.88; }
+.cs-hx-card-media .cs-card-photo-count { bottom: 8px; right: 8px; font-size: 10px; }
+.cs-card-photo-count.is-switching { opacity: 0.6; }
+.cs-card-photo-count.is-switching::after { content: " …"; }
+.morar-site .cs-card-photo-count { background: rgba(15, 19, 24, 0.78); }
+@media (hover: hover) {
+  .cs-hx-card-media .cs-card-photo-prev,
+  .cs-hx-card-media .cs-card-photo-next { opacity: 0; transition: opacity 160ms; }
+  .cs-hx-card:hover .cs-card-photo-prev, .cs-hx-card:hover .cs-card-photo-next,
+  .cs-hx-card-media :focus-visible { opacity: 1; }
+}
+@media (max-width: 420px) {
+  .cs-hx-card-compact .cs-card-photo-prev, .cs-hx-card-compact .cs-card-photo-next,
+  .cs-hx-card-sm .cs-card-photo-prev, .cs-hx-card-sm .cs-card-photo-next { display: none; }
+}

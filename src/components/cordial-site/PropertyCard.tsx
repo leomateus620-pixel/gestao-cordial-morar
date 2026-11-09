@@ -23,7 +23,9 @@ import { SiteLink } from "./SiteShell";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { readFavorites } from "@/lib/cordial-site/favorites";
-import { requestCardGallery } from "@/lib/cordial-site/card-gallery";
+import { cardSrcSet, DEFAULT_CARD_SIZES } from "@/lib/cordial-site/card-photo-preload";
+import { useCardPhotos } from "./useCardPhotos";
+import { CardPhotoControls } from "./CardPhotoControls";
 import { propertyUrl, propertyWhatsapp, trackSiteEvent } from "@/lib/cordial-site/experience";
 import { QuickView } from "./QuickView";
 import { VisitorSelectionButton } from "./VisitorSelectionButton";
@@ -101,7 +103,7 @@ export function PropertyImage({
     sizesOverride ??
     (size === "full"
       ? "(max-width: 768px) 100vw, 80vw"
-      : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw");
+      : DEFAULT_CARD_SIZES);
   if (!media || failed)
     return (
       <div className={`cs-photo-fallback ${className}`}>
@@ -116,7 +118,7 @@ export function PropertyImage({
       srcSet={
         size === "thumb"
           ? undefined
-          : `${mediaPath(media, "thumb", brand)} 480w, ${mediaPath(media, "card", brand)} 960w, ${mediaPath(media, "full", brand)} 1920w`
+          : cardSrcSet(media, brand)
       }
       ref={imgRef}
       sizes={responsiveSizes}
@@ -141,24 +143,17 @@ export function PropertyCard({
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
   const site = useSite();
-  const [images, setImages] = useState<PublicMedia[]>(p.cover ? [p.cover] : []);
-  const [index, setIndex] = useState(0);
-  const [galleryState, setGalleryState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const photoRoot = useRef<HTMLDivElement | null>(null);
+  const photos = useCardPhotos(p, brand, photoRoot);
+  const { images, index, galleryState, ensurePhotos } = photos;
   const [quick, setQuick] = useState(false);
   const [resuming, setResuming] = useState(false);
   const openedHere = useRef(false);
   const quickOriginScroll = useRef(0);
   const quickPhoto = useRef(0);
   const [origin, setOrigin] = useState(site.canonicalOrigin ?? "");
-  const touch = useRef<{ x: number; y: number } | null>(null);
-  const swiped = useRef(false);
   const alive = useRef(true);
   const quickTrigger = useRef<HTMLButtonElement | null>(null);
-  const request = useRef<{ key: string; promise: Promise<PublicMedia[]> } | null>(null);
-  const galleryKey = `${brand}:${p.id}:${p.cover?.id ?? "no-cover"}:${p.cover?.version ?? ""}`;
-  const currentGalleryKey = useRef(galleryKey);
-  const resetGalleryKey = useRef<string | null>(null);
-  currentGalleryKey.current = galleryKey;
   const closeQuick = useCallback(() => setQuick(false), []);
   useEffect(() => {
     alive.current = true;
@@ -167,36 +162,6 @@ export function PropertyCard({
       alive.current = false;
     };
   }, [site.canonicalOrigin]);
-  useEffect(() => {
-    if (resetGalleryKey.current === galleryKey) return;
-    resetGalleryKey.current = galleryKey;
-    setImages(p.cover ? [p.cover] : []);
-    setIndex(0);
-    setGalleryState("idle");
-  }, [galleryKey, p.cover]);
-  const ensurePhotos = useCallback(async () => {
-    if (request.current?.key === galleryKey) return request.current.promise;
-    if (galleryState === "ready") return images;
-    setGalleryState("loading");
-    const capturedKey = galleryKey;
-    const promise = (async () => {
-      try {
-        const photos = await requestCardGallery(p.id, brand);
-        if (alive.current && currentGalleryKey.current === capturedKey) {
-          setImages(photos);
-          setGalleryState("ready");
-        }
-        return photos;
-      } catch {
-        if (alive.current && currentGalleryKey.current === capturedKey) setGalleryState("error");
-        return images;
-      } finally {
-        if (request.current?.key === capturedKey) request.current = null;
-      }
-    })();
-    request.current = { key: capturedKey, promise };
-    return promise;
-  }, [brand, p.id, galleryKey, galleryState, images]);
   useEffect(() => {
     if (brand !== "cordial") return;
     const resume = () => {
@@ -209,104 +174,41 @@ export function PropertyCard({
       ) {
         setResuming(true);
         setQuick(true);
-        void ensurePhotos();
+        void ensurePhotos().catch(() => {});
       }
     };
     window.addEventListener("popstate", resume);
     return () => window.removeEventListener("popstate", resume);
   }, [brand, p.id, quick, ensurePhotos]);
-  const move = async (delta: number) => {
-    const capturedKey = galleryKey;
-    const photos = await ensurePhotos();
-    if (alive.current && currentGalleryKey.current === capturedKey && photos.length)
-      setIndex((i) => (i + delta + photos.length) % photos.length);
-  };
   const whatsapp = propertyWhatsapp(p, site.settings.whatsapp, propertyUrl(p, origin, brand));
   const area = (["construida", "util", "terreno", "total"] as const).find(
     (k) => p.areas[k] != null,
   );
   return (
     <article className="cs-property-card">
-      <div
-        className="cs-card-photo"
-        style={brand === "cordial" ? { touchAction: "pan-y" } : undefined}
-        onClickCapture={(e) => {
-          if (swiped.current) {
-            if (e.detail !== 0) {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-            swiped.current = false;
-          }
-        }}
-        onPointerDown={(e) => {
-          if (
-            brand === "cordial" &&
-            e.pointerType === "touch" &&
-            !(e.target instanceof Element && e.target.closest("button"))
-          ) {
-            touch.current = { x: e.clientX, y: e.clientY };
-            swiped.current = false;
-          }
-        }}
-        onPointerUp={(e) => {
-          const start = touch.current;
-          touch.current = null;
-          if (
-            start &&
-            Math.abs(e.clientX - start.x) > 45 &&
-            Math.abs(e.clientX - start.x) > Math.abs(e.clientY - start.y) * 1.4
-          ) {
-            swiped.current = true;
-            void move(e.clientX < start.x ? 1 : -1);
-          }
-        }}
-        onPointerCancel={() => {
-          touch.current = null;
-        }}
-      >
+      <div className="cs-card-photo" ref={photoRoot} {...photos.swipeHandlers}>
         <SiteLink
           to={propertyPath(p, brand)}
           aria-label={`Ver ${p.type ?? "imóvel"}, referência ${p.reference}`}
-          onClick={(e) => {
-            if (swiped.current) {
-              e.preventDefault();
-              swiped.current = false;
-            }
-          }}
         >
           <PropertyImage
-            media={images[index] ?? p.cover}
+            media={photos.media}
             alt={`${p.type ?? "Imóvel"} — referência ${p.reference}`}
             priority={priority}
           />
         </SiteLink>
         <span className="cs-operation">{p.operation === "venda" ? "À venda" : "Para alugar"}</span>
         <FavoriteButton id={p.id} />
-        {brand === "cordial" && p.photoCount > 1 && (
-          <>
-            <button
-              className="cs-card-photo-prev cs-icon-button"
-              aria-label={`Foto anterior do imóvel ${p.reference}`}
-              onClick={() => void move(-1)}
-            >
-              <ChevronLeft size={19} />
-            </button>
-            <button
-              className="cs-card-photo-next cs-icon-button"
-              aria-label={`Próxima foto do imóvel ${p.reference}`}
-              onClick={() => void move(1)}
-            >
-              <ChevronRight size={19} />
-            </button>
-            <span className="cs-card-photo-count" role="status">
-              {galleryState === "loading"
-                ? "Carregando fotos…"
-                : galleryState === "error"
-                  ? "Tentar novamente nas setas"
-                  : `${index + 1} / ${p.photoCount}`}
-            </span>
-          </>
+        {photos.enabled && (
+          <CardPhotoControls
+            reference={p.reference}
+            index={index}
+            count={galleryState === "ready" ? images.length : p.photoCount}
+            switching={photos.switching}
+            failed={photos.failed}
+            onMove={(d) => void photos.move(d)}
+            onPrepare={() => photos.prepare(true)}
+          />
         )}
       </div>
       <div className="cs-card-content">
@@ -379,7 +281,7 @@ export function PropertyCard({
                 quickPhoto.current = index;
                 setResuming(false);
                 setQuick(true);
-                void ensurePhotos();
+                void ensurePhotos().catch(() => {});
               }}
             >
               <ScanEye size={17} /> Visualização rápida
@@ -420,7 +322,7 @@ export function PropertyCard({
           loading={galleryState === "loading"}
           failed={galleryState === "error"}
           onRetry={() => {
-            void ensurePhotos();
+            void ensurePhotos().catch(() => {});
           }}
         />
       )}

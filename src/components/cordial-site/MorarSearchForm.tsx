@@ -282,9 +282,7 @@ export function MorarSearchForm({
     };
     if (key === "suites") return roomSelect(key, "Suítes", draft[key] ?? "", change, error);
     const label =
-      key === "referencia"
-        ? "Referência Morar"
-        : key === "valorModo"
+      key === "valorModo"
           ? "Tipo de preço"
           : key === "destaque"
             ? "Imóveis em destaque"
@@ -436,6 +434,22 @@ export function MorarSearchForm({
               }}
             />
           </SearchGroup>
+          <label className="cs-field ms-code-field" htmlFor={`${id}-referencia`}>
+            <span>Código do imóvel</span>
+            <input
+              id={`${id}-referencia`}
+              name="referencia"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              maxLength={80}
+              value={values.referencia ?? ""}
+              onChange={(event) =>
+                setValues((old) => ({ ...old, referencia: event.target.value }))
+              }
+              placeholder="Digite a referência"
+            />
+          </label>
           <SearchGroup
             icon={Wallet}
             title={

@@ -175,7 +175,6 @@ function CordialSearchForm({
       document.removeEventListener("keydown", key);
     };
   }, [budget, compact, id]);
-  const [reference, setReference] = useState(!!initial.referencia);
   const [retry, setRetry] = useState(0);
   const [count, setCount] = useState<{ key: string; total?: number; error?: boolean }>({ key: "" });
   const [regionFacets, setRegionFacets] = useState<{
@@ -457,6 +456,19 @@ function CordialSearchForm({
               {numeric("precoMax")}
             </div>
           )}
+          <label className="cs-field cs-code-field" htmlFor={`${id}-referencia`}>
+            <span>Código do imóvel</span>
+            <input
+              id={`${id}-referencia`}
+              name="referencia"
+              type="text"
+              autoComplete="off"
+              value={values.referencia ?? ""}
+              maxLength={80}
+              onChange={(e) => update("referencia", e.target.value)}
+              placeholder="Digite a referência"
+            />
+          </label>
           <button className="cs-button cs-search-submit" type="submit">
             <Search size={19} />
             Buscar imóveis
@@ -466,21 +478,7 @@ function CordialSearchForm({
               <SlidersHorizontal size={15} />
               Pesquisa completa
             </SiteLink>
-            <button
-              className="cs-text-link"
-              type="button"
-              aria-expanded={reference}
-              aria-controls={`${id}-reference`}
-              onClick={() => setReference((old) => !old)}
-            >
-              Buscar por referência <ArrowRight size={15} />
-            </button>
           </div>
-          {reference && (
-            <div className="cs-search-fields" id={`${id}-reference`}>
-              {referenceFields}
-            </div>
-          )}
         </>
       ) : (
         <>

@@ -20,6 +20,8 @@ import { SiteLink } from "./SiteShell";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyImage } from "./PropertyCard";
 import { SearchForm } from "./SearchForm";
+import { useCardPhotos } from "./useCardPhotos";
+import { CardPhotoControls } from "./CardPhotoControls";
 import { RecentProperties } from "./RecentProperties";
 import { propertyUrl, propertyWhatsapp } from "@/lib/cordial-site/experience";
 import { WhatsAppIcon } from "./SocialIcons";
@@ -35,8 +37,8 @@ export type HomeData = {
 
 const HOME_COPY = {
   cordial: {
-    lead: "Seu próximo lugar.",
-    accent: "Do seu jeito.",
+    lead: "Sentir-se em casa.",
+    accent: "Esse é o nosso compromisso com você.",
     sub: "Comprar ou alugar começa com o que importa para você.",
     about: "Conte com a Cordial.",
     aboutText:
@@ -91,17 +93,32 @@ function HomeCard({
 }) {
   const brand = useSiteBrand();
   const title = `${p.type ?? "Imóvel"}${p.district ? ` no ${p.district}` : ""}`;
+  const photoRoot = useRef<HTMLDivElement | null>(null);
+  const photos = useCardPhotos(p, brand, photoRoot, sizes);
   return (
     <article className={`cs-hx-card cs-hx-card-${variant}`}>
-      <SiteLink
-        to={propertyPath(p, brand)}
-        className="cs-hx-card-media"
-        aria-label={title}
-        tabIndex={-1}
-      >
-        <PropertyImage media={p.cover} alt={title} sizes={sizes} />
-        <span className="cs-hx-badge">{opLabel(p)}</span>
-      </SiteLink>
+      <div className="cs-hx-card-media" ref={photoRoot} {...photos.swipeHandlers}>
+        <SiteLink
+          to={propertyPath(p, brand)}
+          className="cs-hx-card-media-link"
+          aria-label={title}
+          tabIndex={-1}
+        >
+          <PropertyImage media={photos.media} alt={title} sizes={sizes} />
+          <span className="cs-hx-badge">{opLabel(p)}</span>
+        </SiteLink>
+        {photos.enabled && (
+          <CardPhotoControls
+            reference={p.reference}
+            index={photos.index}
+            count={photos.galleryState === "ready" ? photos.images.length : p.photoCount}
+            switching={photos.switching}
+            failed={photos.failed}
+            onMove={(d) => void photos.move(d)}
+            onPrepare={() => photos.prepare(true)}
+          />
+        )}
+      </div>
       <div className="cs-hx-fav">
         <FavoriteButton id={p.id} />
       </div>
