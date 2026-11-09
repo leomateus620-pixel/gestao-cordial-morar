@@ -193,6 +193,7 @@ export function PropertyCard({
         >
           <PropertyImage
             media={photos.media}
+            sizes={photos.imageSizes}
             alt={`${p.type ?? "Imóvel"} — referência ${p.reference}`}
             priority={priority}
           />
