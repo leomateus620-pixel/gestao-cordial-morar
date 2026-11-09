@@ -119,6 +119,7 @@ export function useCardPhotos(
       request.current = { key: captured, promise };
       return promise;
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [brand, p.id, galleryKey],
   );
 
