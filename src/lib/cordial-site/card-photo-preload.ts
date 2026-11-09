@@ -112,3 +112,4 @@ export function resetSpeculativeScope(next: string) {
     if (!queue[i].urgent) queue.splice(i, 1)[0].drop();
   dropSpeculativeGalleries();
 }
+export const preloadIdle = () => running === 0 && queue.length === 0;
