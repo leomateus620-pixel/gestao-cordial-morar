@@ -15,7 +15,7 @@ export const morarAdvancedFields = [
   "permuta",
   "fotos",
   "estagio",
-  "referencia",
+  // `referencia` lives in the main form (always visible), so the dialog never overwrites it.
   "exata",
   "q",
   "destaque",

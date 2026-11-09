@@ -436,6 +436,22 @@ export function MorarSearchForm({
               }}
             />
           </SearchGroup>
+          <label className="cs-field ms-code-field" htmlFor={`${id}-referencia`}>
+            <span>Código do imóvel</span>
+            <input
+              id={`${id}-referencia`}
+              name="referencia"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              maxLength={80}
+              value={values.referencia ?? ""}
+              onChange={(event) =>
+                setValues((old) => ({ ...old, referencia: event.target.value }))
+              }
+              placeholder="Digite a referência"
+            />
+          </label>
           <SearchGroup
             icon={Wallet}
             title={

@@ -35,8 +35,8 @@ export type HomeData = {
 
 const HOME_COPY = {
   cordial: {
-    lead: "Seu próximo lugar.",
-    accent: "Do seu jeito.",
+    lead: "Sentir-se em casa.",
+    accent: "Esse é o nosso compromisso com você.",
     sub: "Comprar ou alugar começa com o que importa para você.",
     about: "Conte com a Cordial.",
     aboutText:
