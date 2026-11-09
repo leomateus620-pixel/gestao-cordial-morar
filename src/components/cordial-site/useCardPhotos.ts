@@ -92,8 +92,16 @@ export function useCardPhotos(
       }
       const captured = galleryKey;
       if (urgent) setGalleryState("loading");
+      const cover = p.cover;
       const promise = requestCardGallery(p.id, brand, urgent).then(
-        (photos) => {
+        (list) => {
+          // The photo on screen stays the cover: the gallery is ordered from it, never replaced.
+          const photos =
+            cover && list.some((m) => m.id === cover.id)
+              ? [list.find((m) => m.id === cover.id)!, ...list.filter((m) => m.id !== cover.id)]
+              : cover
+                ? [cover, ...list]
+                : list;
           if (alive.current && keyRef.current === captured) {
             photosRef.current = photos;
             setImages(photos);
