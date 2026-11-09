@@ -104,7 +104,7 @@ function HomeCard({
           aria-label={title}
           tabIndex={-1}
         >
-          <PropertyImage media={photos.media} alt={title} sizes={sizes} />
+          <PropertyImage media={photos.media} alt={title} sizes={photos.imageSizes} />
           <span className="cs-hx-badge">{opLabel(p)}</span>
         </SiteLink>
         {photos.enabled && (

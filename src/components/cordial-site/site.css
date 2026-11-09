@@ -4615,8 +4615,19 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 
 /* Troca de fotos nos cards (catálogo e vitrine, Cordial e Morar) */
 .cs-hx-card-media-link { position: absolute; inset: 0; display: block; }
+/* Arrows never move while pressed/hovered: no transform, so :active scale can't shift the hit area. */
+.cs-card-photo-prev,
+.cs-card-photo-next { transform: none; top: calc(50% - 22px); z-index: 3; touch-action: manipulation; }
+.cs-card-photo-prev:active,
+.cs-card-photo-next:active { transform: none; filter: brightness(0.94); }
+.cs-card-photo-prev svg,
+.cs-card-photo-next svg { pointer-events: none; }
+.cs-card-photo-prev:focus-visible,
+.cs-card-photo-next:focus-visible { opacity: 1 !important; outline: 2px solid var(--cs-dark, currentColor); outline-offset: 2px; }
 .cs-hx-card-media .cs-card-photo-prev,
-.cs-hx-card-media .cs-card-photo-next { width: 32px; height: 36px; opacity: 0.88; }
+.cs-hx-card-media .cs-card-photo-next { width: 32px; height: 36px; top: calc(50% - 18px); opacity: 0.88; }
+.cs-hx-card-media img { transition: opacity 120ms ease; }
+@media (prefers-reduced-motion: reduce) { .cs-hx-card-media img { transition: none; } }
 .cs-hx-card-media .cs-card-photo-count { bottom: 8px; right: 8px; font-size: 10px; }
 .cs-card-photo-count.is-switching { opacity: 0.6; }
 .cs-card-photo-count.is-switching::after { content: " …"; }
@@ -4629,5 +4640,9 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 }
 @media (max-width: 420px) {
   .cs-hx-card-compact .cs-card-photo-prev, .cs-hx-card-compact .cs-card-photo-next,
-  .cs-hx-card-sm .cs-card-photo-prev, .cs-hx-card-sm .cs-card-photo-next { display: none; }
+  .cs-hx-card-sm .cs-card-photo-prev, .cs-hx-card-sm .cs-card-photo-next {
+    width: 28px; height: 32px; top: calc(50% - 16px); opacity: 0.9;
+  }
+  .cs-hx-card-compact .cs-card-photo-prev, .cs-hx-card-sm .cs-card-photo-prev { left: 4px; }
+  .cs-hx-card-compact .cs-card-photo-next, .cs-hx-card-sm .cs-card-photo-next { right: 4px; }
 }
