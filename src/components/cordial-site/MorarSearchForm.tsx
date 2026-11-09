@@ -282,9 +282,7 @@ export function MorarSearchForm({
     };
     if (key === "suites") return roomSelect(key, "Suítes", draft[key] ?? "", change, error);
     const label =
-      key === "referencia"
-        ? "Referência Morar"
-        : key === "valorModo"
+      key === "valorModo"
           ? "Tipo de preço"
           : key === "destaque"
             ? "Imóveis em destaque"
