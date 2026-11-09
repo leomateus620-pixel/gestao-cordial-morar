@@ -175,7 +175,6 @@ function CordialSearchForm({
       document.removeEventListener("keydown", key);
     };
   }, [budget, compact, id]);
-  const [reference, setReference] = useState(!!initial.referencia);
   const [retry, setRetry] = useState(0);
   const [count, setCount] = useState<{ key: string; total?: number; error?: boolean }>({ key: "" });
   const [regionFacets, setRegionFacets] = useState<{
