@@ -4612,3 +4612,22 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cs-search-essential .cs-code-field,
   .ms-search .ms-code-field { max-width: none; margin: 6px 0 8px; }
 }
+
+/* Troca de fotos nos cards (catálogo e vitrine, Cordial e Morar) */
+.cs-hx-card-media-link { position: absolute; inset: 0; display: block; }
+.cs-hx-card-media .cs-card-photo-prev,
+.cs-hx-card-media .cs-card-photo-next { width: 32px; height: 36px; opacity: 0.88; }
+.cs-hx-card-media .cs-card-photo-count { bottom: 8px; right: 8px; font-size: 10px; }
+.cs-card-photo-count.is-switching { opacity: 0.6; }
+.cs-card-photo-count.is-switching::after { content: " …"; }
+.morar-site .cs-card-photo-count { background: rgba(15, 19, 24, 0.78); }
+@media (hover: hover) {
+  .cs-hx-card-media .cs-card-photo-prev,
+  .cs-hx-card-media .cs-card-photo-next { opacity: 0; transition: opacity 160ms; }
+  .cs-hx-card:hover .cs-card-photo-prev, .cs-hx-card:hover .cs-card-photo-next,
+  .cs-hx-card-media :focus-visible { opacity: 1; }
+}
+@media (max-width: 420px) {
+  .cs-hx-card-compact .cs-card-photo-prev, .cs-hx-card-compact .cs-card-photo-next,
+  .cs-hx-card-sm .cs-card-photo-prev, .cs-hx-card-sm .cs-card-photo-next { display: none; }
+}
