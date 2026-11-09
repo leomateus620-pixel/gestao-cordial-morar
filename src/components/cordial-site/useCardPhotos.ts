@@ -239,7 +239,8 @@ export function useCardPhotos(
         },
         onClickCapture: (e: React.MouseEvent) => {
           if (swiped.current) {
-            if (e.detail !== 0) {
+            const onButton = e.target instanceof Element && e.target.closest("button");
+            if (e.detail !== 0 && !onButton) {
               e.preventDefault();
               e.stopPropagation();
             }
