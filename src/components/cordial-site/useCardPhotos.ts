@@ -232,6 +232,7 @@ export function useCardPhotos(
         },
         onPointerCancel: () => {
           touch.current = null;
+          swiped.current = false;
         },
         onPointerEnter: (e: React.PointerEvent) => {
           if (e.pointerType === "mouse") prepare(true);
