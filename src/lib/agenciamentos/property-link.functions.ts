@@ -168,13 +168,15 @@ export async function finalizePropertyAgencyCore(
     // Idempotência: retry ou duplo clique reaproveita o mesmo agenciamento.
     const { data: existing } = await context.supabase
       .from("agenciamentos")
-      .select("id,placa_foto_path")
+      .select("id,placa_foto_path,placa_instalada,fotos_horizontal,fotos_vertical,fotos_realizadas,fotos_drive,video_realizado,descricao_imovel")
       .eq("source_operation_key", operationKey)
       .maybeSingle();
 
     if (existing?.id) {
       // Nunca apagar código já preenchido: o trigger do banco só completa colunas vazias.
-      const { codigo_cordial: _c, codigo_morar: _m, data_agenciamento: _d, ...updatePayload } = payload;
+      const { codigo_cordial: _c, codigo_morar: _m, data_agenciamento: _d, ...rawUpdate } = payload;
+      const { mergeAgencyUpdate } = await import("./agency-merge");
+      const updatePayload = mergeAgencyUpdate(existing as Record<string, unknown>, rawUpdate);
       const { data: updated, error } = await context.supabase
         .from("agenciamentos")
         .update(updatePayload as never)
@@ -183,7 +185,7 @@ export async function finalizePropertyAgencyCore(
         .single();
       if (error) throw new Error(error.message);
       const oldPhoto = (existing as { placa_foto_path?: string | null }).placa_foto_path;
-      if (oldPhoto && !data.checklist?.placaInstalada) {
+      if (oldPhoto && !data.checklist?.placaInstalada && !(existing as { placa_instalada?: boolean }).placa_instalada) {
         await context.supabase.storage.from("agenciamento-placa-photos").remove([oldPhoto]);
       }
       return rowToAgenciamento(updated as unknown as AgenciamentoDbRow);

@@ -98,6 +98,35 @@ function NovoImovelPage({ resume }: { resume?: PropertyDetail } = {}) {
   const canRegisterAgency = !!session && canAccessModule(session, "agenciamentos");
   const [agency, setAgency] = useState<AgencyStepState>(() => emptyAgencyStepState("venda"));
   const [destinos, setDestinos] = useState<PropertyCarteira[]>([]);
+  // "Concluir cadastro": a etapa de agenciamento volta com o que já foi salvo.
+  useEffect(() => {
+    if (!resume?.id) return;
+    let alive = true;
+    void (async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { agencyStepFromRow } = await import("@/lib/agenciamentos/agency-merge");
+      const { data } = await supabase
+        .from("agenciamentos")
+        .select("*")
+        .eq("property_id", resume.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (!alive || !data) return;
+      const saved = agencyStepFromRow(data as Record<string, unknown>);
+      setAgency((prev) => ({
+        ...prev,
+        enabled: true,
+        finalidadeTouched: true,
+        finalidade: (saved.finalidade as AgencyStepState["finalidade"]) ?? prev.finalidade,
+        descricao: saved.descricao,
+        checklist: saved.checklist,
+      }));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [resume?.id]);
   /** Publicar é a ação padrão da última etapa: os destinos vêm da Etapa 1. */
   const publicar = destinos.length > 0;
   // Rascunho criado sob demanda para que as fotos da etapa 6 tenham onde ser anexadas.

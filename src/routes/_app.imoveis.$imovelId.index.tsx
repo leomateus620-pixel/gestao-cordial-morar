@@ -291,7 +291,7 @@ function DetalhePage() {
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-destructive/10 p-3 text-[13px] text-destructive">
               <span className="font-semibold">Cadastro não concluído</span>
               <span className="text-foreground/65">
-                Ainda sem agenciamento e sem envio aos sites.
+                Ainda não enviado aos sites. O agenciamento já salvo é mantido ao concluir.
               </span>
               <Link
                 to="/imoveis/novo"
