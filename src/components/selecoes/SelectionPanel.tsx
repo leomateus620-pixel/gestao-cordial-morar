@@ -53,10 +53,8 @@ import {
 
 const WA_KEY = "cordial:selecao:whatsapp";
 
-export function selectionPublicUrl(token: string) {
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  return `${origin}/s/${token}`;
-}
+export { selectionPublicUrl } from "@/lib/selecoes/public-url";
+import { selectionPublicUrl } from "@/lib/selecoes/public-url";
 
 export async function copyText(text: string, ok = "Link copiado.") {
   try {
@@ -285,7 +283,7 @@ export function SelectionReviewSheet({
       const result = { id: res.id, token: res.token, title: title.trim(), clientName: clientName.trim() };
       setDone(result);
       setShareText(
-        buildBrokerShareText({ title: result.title, link: selectionPublicUrl(res.token), clientName: result.clientName }),
+        buildBrokerShareText({ title: result.title, link: selectionPublicUrl(res.token, agency), clientName: result.clientName }),
       );
       selectionDraft.finish();
       qc.invalidateQueries({ queryKey: ["selecoes"] });
@@ -317,10 +315,10 @@ export function SelectionReviewSheet({
               <Check className="size-4" /> Seleção salva. O mesmo link vale para futuras edições.
             </div>
             <div className="flex gap-2">
-              <Input readOnly value={selectionPublicUrl(done.token)} aria-label="Link da seleção" onFocus={(e) => e.currentTarget.select()} />
+              <Input readOnly value={selectionPublicUrl(done.token, agency)} aria-label="Link da seleção" onFocus={(e) => e.currentTarget.select()} />
               <button
                 type="button"
-                onClick={() => copyText(selectionPublicUrl(done.token))}
+                onClick={() => copyText(selectionPublicUrl(done.token, agency))}
                 className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold"
               >
                 <Copy className="size-3.5" /> Copiar link

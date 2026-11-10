@@ -13,6 +13,7 @@ import {
   type PublicSelectionItem,
 } from "@/lib/selecoes/selecoes.functions";
 import { cn } from "@/lib/utils";
+import { selectionPropertyUrl, selectionRedirectTarget } from "@/lib/selecoes/public-url";
 
 export const Route = createFileRoute("/s/$token")({
   loader: ({ params }) => getPublicSelection({ data: { token: params.token } }),
@@ -95,6 +96,12 @@ function Specs({ item }: { item: Available }) {
 function PublicSelectionPage() {
   const data = Route.useLoaderData() as PublicSelection;
   const { token } = Route.useParams();
+  const agency = data.state === "ok" || data.state === "closed" || data.state === "expired" ? data.agency : null;
+  useEffect(() => {
+    if (!agency) return;
+    const target = selectionRedirectTarget(window.location.href, agency);
+    if (target) window.location.replace(target);
+  }, [agency]);
 
   if (data.state === "invalid")
     return (
@@ -272,6 +279,16 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
                   </p>
                 ) : null}
                 <Specs item={detail} />
+                {detail.sitePublicId ? (
+                  <a
+                    href={selectionPropertyUrl(detail.sitePublicId, data.agency)}
+                    target="_blank"
+                    rel="noopener"
+                    className="mr-2 inline-flex h-10 items-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
+                  >
+                    Ver anúncio no site
+                  </a>
+                ) : null}
                 <button
                   type="button"
                   aria-pressed={favs.includes(String(detail.key))}

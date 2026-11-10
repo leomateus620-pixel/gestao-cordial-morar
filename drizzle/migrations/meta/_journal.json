@@ -610,6 +610,13 @@
       "when": 1794335587555,
       "tag": "0086_publish_without_signed_authorization",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794336505231,
+      "tag": "0087_shared_selection_site_link",
+      "breakpoints": true
     }
   ]
 }

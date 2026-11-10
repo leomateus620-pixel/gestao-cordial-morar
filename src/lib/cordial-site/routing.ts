@@ -33,6 +33,7 @@ export function rewritePublicInput(url: URL, host?: string, brand: SiteBrand = "
     url.host.toLowerCase() !== target.host ||
     url.pathname.startsWith("/site") ||
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/s/") ||
     url.pathname.startsWith("/_")
   )
     return;

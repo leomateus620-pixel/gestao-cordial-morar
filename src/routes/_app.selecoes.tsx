@@ -152,7 +152,7 @@ function SelecoesPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <IconBtn label="Copiar link" onClick={() => copyText(selectionPublicUrl(row.token))} disabled={st !== "ativa"}>
+                  <IconBtn label="Copiar link" onClick={() => copyText(selectionPublicUrl(row.token, row.agency === "morar" ? "morar" : "cordial"))} disabled={st !== "ativa"}>
                     <Copy className="size-3.5" />
                   </IconBtn>
                   <a
