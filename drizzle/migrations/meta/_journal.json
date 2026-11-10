@@ -617,6 +617,13 @@
       "when": 1794336505231,
       "tag": "0087_shared_selection_site_link",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794337716772,
+      "tag": "0088_shared_selection_cross_brand_site_link",
+      "breakpoints": true
     }
   ]
 }

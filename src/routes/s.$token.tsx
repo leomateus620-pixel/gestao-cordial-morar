@@ -281,7 +281,7 @@ function SelectionView({ data, token }: { data: Extract<PublicSelection, { state
                 <Specs item={detail} />
                 {detail.sitePublicId ? (
                   <a
-                    href={selectionPropertyUrl(detail.sitePublicId, data.agency)}
+                    href={selectionPropertyUrl(detail.sitePublicId, detail.siteBrand ?? data.agency)}
                     target="_blank"
                     rel="noopener"
                     className="mr-2 inline-flex h-10 items-center rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground"

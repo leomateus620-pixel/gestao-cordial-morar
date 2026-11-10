@@ -19,6 +19,7 @@ export type PublicSelectionItem =
       parking: number | null;
       area: number | null;
       sitePublicId: string | null;
+      siteBrand: "cordial" | "morar" | null;
       photos: string[];
     };
 
@@ -71,6 +72,7 @@ export function toPublicSelection(raw: any, signed: Map<string, string>): Public
         parking: num(i.parking),
         area: num(i.area),
         sitePublicId: str(i.site_public_id),
+        siteBrand: i.site_brand === "morar" ? "morar" : i.site_brand === "cordial" ? "cordial" : null,
         photos: (Array.isArray(i.photos) ? i.photos : [])
           .map((p: any) => (typeof p === "string" ? signed.get(p) : undefined))
           .filter(Boolean) as string[],

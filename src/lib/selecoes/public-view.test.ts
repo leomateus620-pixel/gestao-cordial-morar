@@ -57,3 +57,15 @@ test("links encerrados/expirados/inválidos não trazem dados", () => {
   assert.deepEqual(toPublicSelection(null, new Map()), { state: "invalid" });
   assert.deepEqual(toPublicSelection({ state: "weird" }, new Map()), { state: "invalid" });
 });
+
+import { selectionPropertyUrl } from "./public-url";
+test("imóvel Morar numa seleção Cordial abre no site da Morar", () => {
+  const v = toPublicSelection(
+    { state: "ok", agency: "cordial", items: [{ available: true, key: 1, site_public_id: "abc", site_brand: "morar" }] },
+    new Map(),
+  );
+  if (v.state !== "ok" || !v.items[0].available) throw new Error("estado");
+  const it0 = v.items[0];
+  assert.equal(it0.siteBrand, "morar");
+  assert.ok(selectionPropertyUrl(it0.sitePublicId!, it0.siteBrand ?? v.agency).includes("imobiliariamorarimoveis.com.br"));
+});
