@@ -69,7 +69,9 @@ export function autoPropertySeo(p: SeoInput): { title: string; description: stri
     .join(" ");
   const area = p.areas?.util ?? p.areas?.construida ?? p.areas?.total ?? null;
   const price =
-    p.priceMode === "fixo" && p.price ? `${money(p.price)}${p.operation === "aluguel" ? "/mês" : ""}` : "";
+    p.priceMode === "fixo" && p.price
+      ? `${money(p.price)}${p.operation === "aluguel" ? "/mês" : ""}`
+      : "";
   const description = [
     `${type}${op ? ` ${op}` : ""}${where ? ` em ${where}` : ""}`,
     rooms,
@@ -79,5 +81,8 @@ export function autoPropertySeo(p: SeoInput): { title: string; description: stri
   ]
     .filter(Boolean)
     .join(" · ");
-  return { title: title.slice(0, 70), description: `${description}. Fale com a nossa equipe.`.slice(0, 160) };
+  return {
+    title: title.slice(0, 70),
+    description: `${description}. Fale com a nossa equipe.`.slice(0, 160),
+  };
 }

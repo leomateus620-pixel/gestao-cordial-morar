@@ -110,14 +110,20 @@ export async function guardSiteRequest(request: Request): Promise<Response | nul
           const origin = dedicated ? `https://${publicHost}` : `${url.origin}${channel.base}`;
           return new Response(null, {
             status: 301,
-            headers: { ...headers, Location: `${origin}/imovel/${await slugFor(brand, target.publicId)}` },
+            headers: {
+              ...headers,
+              Location: `${origin}/imovel/${await slugFor(brand, target.publicId)}`,
+            },
           });
         }
         if (target?.state === "withdrawn")
-          return new Response(withdrawnPage(brand, dedicated ? "/buscar" : `${channel.base}/buscar`), {
-            status: 410,
-            headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
-          });
+          return new Response(
+            withdrawnPage(brand, dedicated ? "/buscar" : `${channel.base}/buscar`),
+            {
+              status: 410,
+              headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
+            },
+          );
       }
     } catch {
       return new Response(

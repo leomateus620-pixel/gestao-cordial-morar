@@ -13,7 +13,11 @@ export const Route = createFileRoute("/site/imovel/$publicId")({
     if (!id) throw notFound();
     const property = await loadDetail(id, abortController.signal);
     if (property && params.publicId !== propertySlug(property))
-      throw redirect({ to: "/site/imovel/$publicId", params: { publicId: propertySlug(property) }, statusCode: 301 });
+      throw redirect({
+        to: "/site/imovel/$publicId",
+        params: { publicId: propertySlug(property) },
+        statusCode: 301,
+      });
     if (!property) {
       const status = await loadDetailState(id, abortController.signal);
       if (status === "missing") throw notFound();

@@ -2,7 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { parseRedirectCsv, previewRedirects, applicable, normalizeOldPath } from "./redirect-import";
+import {
+  parseRedirectCsv,
+  previewRedirects,
+  applicable,
+  normalizeOldPath,
+} from "./redirect-import";
 
 const brandSchema = z.enum(["cordial", "morar"]);
 async function requireAdmin(client: SupabaseClient, userId: string) {
@@ -20,7 +25,8 @@ async function references(db: SupabaseClient, brand: "cordial" | "morar") {
       .order("public_id")
       .range(from, from + 999);
     if (error) throw new Error("Não foi possível ler os imóveis publicados.");
-    for (const r of data ?? []) if (r.public_reference) map.set(String(r.public_reference).toLowerCase(), r.public_id);
+    for (const r of data ?? [])
+      if (r.public_reference) map.set(String(r.public_reference).toLowerCase(), r.public_id);
     if (!data || data.length < 1000) return map;
   }
 }
@@ -42,7 +48,10 @@ export const listSiteRedirects = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase as unknown as SupabaseClient, context.userId);
     const { siteDb } = await import("./service.server");
     const db = siteDb();
-    const [rows, refs] = await Promise.all([existingRedirects(db, data.brand), references(db, data.brand)]);
+    const [rows, refs] = await Promise.all([
+      existingRedirects(db, data.brand),
+      references(db, data.brand),
+    ]);
     const byId = new Map([...refs].map(([ref, id]) => [id, ref]));
     return rows.map((r) => ({
       oldPath: r.old_path as string,
@@ -83,9 +92,17 @@ export const applySiteRedirects = createServerFn({ method: "POST" })
     const { siteDb } = await import("./service.server");
     const db = siteDb();
     // Recalcula a prévia no servidor: nunca confia em ids enviados pelo navegador.
-    const [own, existing] = await Promise.all([references(db, data.brand), existingRedirects(db, data.brand)]);
+    const [own, existing] = await Promise.all([
+      references(db, data.brand),
+      existingRedirects(db, data.brand),
+    ]);
     const rows = applicable(
-      previewRedirects(parseRedirectCsv(data.csv), own, new Set(), new Set(existing.map((e) => e.old_path as string))),
+      previewRedirects(
+        parseRedirectCsv(data.csv),
+        own,
+        new Set(),
+        new Set(existing.map((e) => e.old_path as string)),
+      ),
     );
     if (!rows.length) return { applied: 0 };
     const now = new Date().toISOString();
@@ -104,13 +121,18 @@ export const applySiteRedirects = createServerFn({ method: "POST" })
 
 export const deleteSiteRedirect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ brand: brandSchema, oldPath: z.string().max(300) }).parse(i))
+  .inputValidator((i: unknown) =>
+    z.object({ brand: brandSchema, oldPath: z.string().max(300) }).parse(i),
+  )
   .handler(async ({ context, data }) => {
     await requireAdmin(context.supabase as unknown as SupabaseClient, context.userId);
     const path = normalizeOldPath(data.oldPath);
     if (!path) throw new Error("Endereço inválido.");
     const { siteDb } = await import("./service.server");
-    const { error } = await siteDb().from(`${data.brand}_site_redirects`).delete().eq("old_path", path);
+    const { error } = await siteDb()
+      .from(`${data.brand}_site_redirects`)
+      .delete()
+      .eq("old_path", path);
     if (error) throw new Error("Não foi possível remover o redirecionamento.");
     return { ok: true };
   });

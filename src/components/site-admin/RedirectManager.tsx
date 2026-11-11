@@ -26,7 +26,10 @@ export function RedirectManager({ brand }: { brand: SiteBrand }) {
   const preview = useServerFn(previewSiteRedirects);
   const apply = useServerFn(applySiteRedirects);
   const remove = useServerFn(deleteSiteRedirect);
-  const query = useQuery({ queryKey: ["site-redirects", brand], queryFn: () => list({ data: { brand } }) });
+  const query = useQuery({
+    queryKey: ["site-redirects", brand],
+    queryFn: () => list({ data: { brand } }),
+  });
   const [csv, setCsv] = useState("");
   const [rows, setRows] = useState<RedirectPreview[] | null>(null);
   const [msg, setMsg] = useState("");
@@ -53,7 +56,8 @@ export function RedirectManager({ brand }: { brand: SiteBrand }) {
       <fieldset className="space-y-2 rounded-md border p-4">
         <legend className="px-1 text-sm font-semibold">Importar planilha (CSV)</legend>
         <p className="text-xs text-muted-foreground">
-          Duas colunas por linha: endereço antigo; referência do imóvel. Ex.: https://site-antigo/imovel/2093999;1398
+          Duas colunas por linha: endereço antigo; referência do imóvel. Ex.:
+          https://site-antigo/imovel/2093999;1398
         </p>
         <input
           type="file"
@@ -65,9 +69,23 @@ export function RedirectManager({ brand }: { brand: SiteBrand }) {
             setRows(null);
           }}
         />
-        <textarea className="w-full rounded-md border bg-background p-2 font-mono text-xs" rows={5} value={csv} onChange={(e) => { setCsv(e.target.value); setRows(null); }} placeholder="/imovel/2093999;1398" />
+        <textarea
+          className="w-full rounded-md border bg-background p-2 font-mono text-xs"
+          rows={5}
+          value={csv}
+          onChange={(e) => {
+            setCsv(e.target.value);
+            setRows(null);
+          }}
+          placeholder="/imovel/2093999;1398"
+        />
         <div className="flex gap-2">
-          <button type="button" className={btn} disabled={!csv.trim() || busy} onClick={() => run(async () => setRows(await preview({ data: { brand, csv } })))}>
+          <button
+            type="button"
+            className={btn}
+            disabled={!csv.trim() || busy}
+            onClick={() => run(async () => setRows(await preview({ data: { brand, csv } })))}
+          >
             Ver prévia
           </button>
           <button
@@ -89,26 +107,61 @@ export function RedirectManager({ brand }: { brand: SiteBrand }) {
         </div>
         {rows && (
           <table className="w-full text-left text-xs">
-            <thead><tr><th>Linha</th><th>Endereço antigo</th><th>Referência</th><th>Situação</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Linha</th>
+                <th>Endereço antigo</th>
+                <th>Referência</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.line} className={r.status === "valido" || r.status === "substitui" ? "" : "text-destructive"}>
-                  <td>{r.line}</td><td>{r.oldPath ?? r.raw}</td><td>{r.reference}</td><td>{statusLabel[r.status]}</td>
+                <tr
+                  key={r.line}
+                  className={
+                    r.status === "valido" || r.status === "substitui" ? "" : "text-destructive"
+                  }
+                >
+                  <td>{r.line}</td>
+                  <td>{r.oldPath ?? r.raw}</td>
+                  <td>{r.reference}</td>
+                  <td>{statusLabel[r.status]}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </fieldset>
-      {msg && <p role="status" className="text-sm">{msg}</p>}
+      {msg && (
+        <p role="status" className="text-sm">
+          {msg}
+        </p>
+      )}
       <fieldset className="space-y-2 rounded-md border p-4">
-        <legend className="px-1 text-sm font-semibold">Redirecionamentos manuais ({query.data?.length ?? 0})</legend>
-        {query.isError && <p className="text-sm text-destructive">Não foi possível carregar a lista.</p>}
+        <legend className="px-1 text-sm font-semibold">
+          Redirecionamentos manuais ({query.data?.length ?? 0})
+        </legend>
+        {query.isError && (
+          <p className="text-sm text-destructive">Não foi possível carregar a lista.</p>
+        )}
         <ul className="divide-y text-sm">
           {query.data?.map((r) => (
             <li key={r.oldPath} className="flex items-center gap-2 py-1.5">
-              <span className="mr-auto font-mono text-xs">{r.oldPath} → REF. {r.reference ?? "retirado"}</span>
-              <button type="button" className={btn} disabled={busy} onClick={() => run(async () => { await remove({ data: { brand, oldPath: r.oldPath } }); await query.refetch(); })}>
+              <span className="mr-auto font-mono text-xs">
+                {r.oldPath} → REF. {r.reference ?? "retirado"}
+              </span>
+              <button
+                type="button"
+                className={btn}
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    await remove({ data: { brand, oldPath: r.oldPath } });
+                    await query.refetch();
+                  })
+                }
+              >
                 Remover
               </button>
             </li>

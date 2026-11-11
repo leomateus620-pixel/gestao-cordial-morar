@@ -13,37 +13,70 @@ export async function loadHome(
   brand: SiteBrand,
 ): Promise<HomeData> {
   const mode = settings?.featuredMode ?? "recentes";
-  const editorialIds = mode === "editorial" ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT) : [];
+  const editorialIds =
+    mode === "editorial" ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT) : [];
   const extraIds = [...editorialIds];
   // Each brand reads only its own weekly showcase (separate tables, bucket and endpoint).
   const showcase = await loadShowcase(signal, brand).catch(() => null);
   if (showcase && !extraIds.includes(showcase.publicId)) extraIds.push(showcase.publicId);
-  if (settings?.heroPropertyId && !extraIds.includes(settings.heroPropertyId)) extraIds.push(settings.heroPropertyId);
+  if (settings?.heroPropertyId && !extraIds.includes(settings.heroPropertyId))
+    extraIds.push(settings.heroPropertyId);
   const [summaries, ...firstPages] = await Promise.all([
     extraIds.length
-      ? loadSummaries(extraIds, signal, brand).catch(() => ({ items: [] as PublicProperty[], missingIds: [] }))
+      ? loadSummaries(extraIds, signal, brand).catch(() => ({
+          items: [] as PublicProperty[],
+          missingIds: [],
+        }))
       : { items: [] as PublicProperty[], missingIds: [] },
     loadCatalog({ ordem: "recentes", pagina: 1 }, signal, brand),
     loadCatalog({ ordem: "recentes", pagina: 2 }, signal, brand).catch(() => null),
   ]);
   const pages: PublicProperty[][] = firstPages.filter(Boolean).map((c) => c!.items);
   const recent = () => pages.flat();
-  let featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent(), mix: settings?.featuredMix });
-  let more = selectMore(pages, featured.map((p) => p.id));
+  let featured = selectFeatured({
+    mode,
+    editorialIds,
+    editorial: summaries.items,
+    recent: recent(),
+    mix: settings?.featuredMix,
+  });
+  let more = selectMore(
+    pages,
+    featured.map((p) => p.id),
+  );
   const total = firstPages[0]!.total;
   for (
     let page = pages.length + 1;
-    page <= MAX_PAGES && (featured.length < HOME_FEATURED_LIMIT || more.length < HOME_MORE_LIMIT) && recent().length < total;
+    page <= MAX_PAGES &&
+    (featured.length < HOME_FEATURED_LIMIT || more.length < HOME_MORE_LIMIT) &&
+    recent().length < total;
     page++
   ) {
-    const next = await loadCatalog({ ordem: "recentes", pagina: page }, signal, brand).catch(() => null);
+    const next = await loadCatalog({ ordem: "recentes", pagina: page }, signal, brand).catch(
+      () => null,
+    );
     if (!next?.items.length) break;
     pages.push(next.items);
-    featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent(), mix: settings?.featuredMix });
-    more = selectMore(pages, featured.map((p) => p.id));
+    featured = selectFeatured({
+      mode,
+      editorialIds,
+      editorial: summaries.items,
+      recent: recent(),
+      mix: settings?.featuredMix,
+    });
+    more = selectMore(
+      pages,
+      featured.map((p) => p.id),
+    );
   }
-  const weekly = showcase ? summaries.items.find((p) => p.id === showcase.publicId && p.cover) : undefined;
-  const heroChoice = weekly ?? summaries.items.find((p) => p.id === settings?.heroPropertyId && p.cover);
-  const heroImage = weekly && showcase ? { url: showcase.imageUrl, focalX: showcase.focalX, focalY: showcase.focalY } : null;
+  const weekly = showcase
+    ? summaries.items.find((p) => p.id === showcase.publicId && p.cover)
+    : undefined;
+  const heroChoice =
+    weekly ?? summaries.items.find((p) => p.id === settings?.heroPropertyId && p.cover);
+  const heroImage =
+    weekly && showcase
+      ? { url: showcase.imageUrl, focalX: showcase.focalX, focalY: showcase.focalY }
+      : null;
   return { featured, more, hero: heroChoice ?? featured[0] ?? null, total, heroImage };
 }

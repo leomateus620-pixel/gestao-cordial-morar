@@ -199,13 +199,25 @@ export const bannerSchema = z
     title: z.string().trim().max(80).default(""),
     caption: z.string().trim().max(160).default(""),
     // Link interno do site (/buscar?...) ou https externo.
-    href: z.union([z.string().regex(/^\/(?!\/)[^\s]*$/).max(300), httpsUrl, z.literal("")]).default(""),
+    href: z
+      .union([
+        z
+          .string()
+          .regex(/^\/(?!\/)[^\s]*$/)
+          .max(300),
+        httpsUrl,
+        z.literal(""),
+      ])
+      .default(""),
     alt: z.string().trim().min(3).max(140),
     startsAt: z.string().datetime({ offset: true }).nullable().default(null),
     endsAt: z.string().datetime({ offset: true }).nullable().default(null),
     active: z.boolean().default(true),
   })
-  .refine((b) => !b.startsAt || !b.endsAt || b.startsAt < b.endsAt, "O fim precisa ser depois do início.");
+  .refine(
+    (b) => !b.startsAt || !b.endsAt || b.startsAt < b.endsAt,
+    "O fim precisa ser depois do início.",
+  );
 export type SiteBanner = z.infer<typeof bannerSchema>;
 export const settingsSchema = z.object({
   brand: z.string().max(80).default("Cordial Imóveis"),
@@ -248,7 +260,9 @@ export const settingsSchema = z.object({
   // SEO da home: título usado inteiro (sem sufixo da marca) quando preenchido.
   homeTitle: z.string().trim().max(60).default(""),
   homeDescription: z.string().trim().max(160).default(""),
-  socialImageUrl: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
+  socialImageUrl: z
+    .union([z.string().url().startsWith("https://").max(500), z.literal("")])
+    .default(""),
   youtube: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
   tiktok: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
   linkedin: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
@@ -286,7 +300,9 @@ export const settingsSchema = z.object({
     .default([]),
   banners: z.array(bannerSchema).max(8).default([]),
   // Busca: ordenação padrão, atalhos e tipos por finalidade (vazio = todos).
-  searchDefaultOrder: z.enum(["recentes", "preco_asc", "preco_desc", "area_desc"]).default("recentes"),
+  searchDefaultOrder: z
+    .enum(["recentes", "preco_asc", "preco_desc", "area_desc"])
+    .default("recentes"),
   quickSearches: z
     .array(
       z.object({
@@ -307,7 +323,10 @@ export const settingsSchema = z.object({
     .default({ venda: [], aluguel: [] }),
   // Destaques: quantos dos cinco devem ser de venda e de aluguel (0 = sem preferência).
   featuredMix: z
-    .object({ venda: z.number().int().min(0).max(5).default(0), aluguel: z.number().int().min(0).max(5).default(0) })
+    .object({
+      venda: z.number().int().min(0).max(5).default(0),
+      aluguel: z.number().int().min(0).max(5).default(0),
+    })
     .refine((m) => m.venda + m.aluguel <= 5, "A soma de venda e aluguel não pode passar de cinco.")
     .default({ venda: 0, aluguel: 0 }),
 });

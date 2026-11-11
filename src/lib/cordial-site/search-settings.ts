@@ -13,7 +13,10 @@ export function allowedTypes<T extends { value: string }>(
   finalidade: string | undefined,
   settings: SearchCfg,
 ): T[] {
-  const allow = finalidade === "venda" || finalidade === "aluguel" ? settings?.searchTypes?.[finalidade] : undefined;
+  const allow =
+    finalidade === "venda" || finalidade === "aluguel"
+      ? settings?.searchTypes?.[finalidade]
+      : undefined;
   if (!allow?.length) return [...types];
   const set = new Set(allow.map((t) => t.toLowerCase()));
   return types.filter((t) => set.has(t.value.toLowerCase()));

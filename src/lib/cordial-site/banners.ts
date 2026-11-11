@@ -1,7 +1,10 @@
 import type { SiteBanner } from "./contract";
 
 /** Banners exibidos agora: ativos, dentro do período (início incluso, fim exclusivo), na ordem do painel. */
-export function activeBanners(list: readonly SiteBanner[] | undefined, now: Date = new Date()): SiteBanner[] {
+export function activeBanners(
+  list: readonly SiteBanner[] | undefined,
+  now: Date = new Date(),
+): SiteBanner[] {
   const t = now.getTime();
   return (list ?? []).filter(
     (b) =>

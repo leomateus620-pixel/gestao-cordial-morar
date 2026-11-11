@@ -27,7 +27,9 @@ const themeColor = (brand: SiteBrand) => (brand === "morar" ? "#2f3437" : "#0f4c
 export function brandShareImage(data: SiteBootstrap | undefined, brand: SiteBrand) {
   const custom = data?.settings?.socialImageUrl;
   if (custom) return custom;
-  return data?.canonicalOrigin ? `${data.canonicalOrigin}${brandAssets(brand)}/og-default.jpg` : null;
+  return data?.canonicalOrigin
+    ? `${data.canonicalOrigin}${brandAssets(brand)}/og-default.jpg`
+    : null;
 }
 export function siteHead(
   title: string,
@@ -65,10 +67,12 @@ export function siteHead(
         ? [
             { property: "og:image", content: shareImage },
             { property: "og:image:alt", content: `${name} — ${title}` },
-            ...(image ? [] : [
-              { property: "og:image:width", content: "1200" },
-              { property: "og:image:height", content: "630" },
-            ]),
+            ...(image
+              ? []
+              : [
+                  { property: "og:image:width", content: "1200" },
+                  { property: "og:image:height", content: "630" },
+                ]),
             { name: "twitter:image", content: shareImage },
           ]
         : []),
@@ -89,7 +93,9 @@ export function siteLayoutHead(data: SiteBootstrap | undefined, brand: SiteBrand
       ...(s?.googleSiteVerification
         ? [{ name: "google-site-verification", content: s.googleSiteVerification }]
         : []),
-      ...(s?.bingSiteVerification ? [{ name: "msvalidate.01", content: s.bingSiteVerification }] : []),
+      ...(s?.bingSiteVerification
+        ? [{ name: "msvalidate.01", content: s.bingSiteVerification }]
+        : []),
     ],
     links: [
       { rel: "icon", href: `${dir}/favicon.ico`, sizes: "any" },
@@ -141,12 +147,18 @@ export function detailHead(p: PublicDetail, data?: SiteBootstrap, brand: SiteBra
 /** Trilha Início › Comprar/Alugar › Cidade › Imóvel, nos mesmos endereços oficiais da navegação. */
 export function breadcrumbJsonLd(p: PublicDetail, origin: string, brand: SiteBrand = "cordial") {
   const op = p.operation === "venda" ? "Comprar" : "Alugar";
-  const search = (q: string) => publicSiteUrl(`${getSiteBrand(brand).basePath}/buscar?${q}`, origin, brand);
+  const search = (q: string) =>
+    publicSiteUrl(`${getSiteBrand(brand).basePath}/buscar?${q}`, origin, brand);
   const items = [
     { name: "Início", item: publicSiteUrl(`${getSiteBrand(brand).basePath}/`, origin, brand) },
     { name: op, item: search(`finalidade=${p.operation}`) },
     ...(p.city
-      ? [{ name: p.city, item: search(`finalidade=${p.operation}&cidade=${encodeURIComponent(p.city)}`) }]
+      ? [
+          {
+            name: p.city,
+            item: search(`finalidade=${p.operation}&cidade=${encodeURIComponent(p.city)}`),
+          },
+        ]
       : []),
     { name: `${p.type ?? "Imóvel"} · Ref. ${p.reference}`, item: propertyUrl(p, origin, brand) },
   ];

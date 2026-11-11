@@ -103,11 +103,7 @@ export function publicSiteUrl(path: string, origin: string, brand: SiteBrand = "
     return path;
   }
 }
-export function propertyUrl(
-  p: SlugInput,
-  origin: string,
-  brand: SiteBrand = "cordial",
-) {
+export function propertyUrl(p: SlugInput, origin: string, brand: SiteBrand = "cordial") {
   return publicSiteUrl(propertyPath(p, brand), origin, brand);
 }
 export function whatsappNumber(input: string | undefined | null) {

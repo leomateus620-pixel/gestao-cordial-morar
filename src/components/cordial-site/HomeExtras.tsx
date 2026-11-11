@@ -36,7 +36,9 @@ export function HomeExtras() {
           {banners.map((b, i) => {
             const img = (
               <picture>
-                {b.mobileImageUrl && <source media="(max-width: 640px)" srcSet={b.mobileImageUrl} />}
+                {b.mobileImageUrl && (
+                  <source media="(max-width: 640px)" srcSet={b.mobileImageUrl} />
+                )}
                 <img
                   src={b.imageUrl}
                   alt={b.alt}
@@ -58,7 +60,12 @@ export function HomeExtras() {
                 )}
               </>
             );
-            if (!b.href) return <div key={b.id} className="cs-banner">{body}</div>;
+            if (!b.href)
+              return (
+                <div key={b.id} className="cs-banner">
+                  {body}
+                </div>
+              );
             return b.href.startsWith("https://") ? (
               <a key={b.id} className="cs-banner" href={b.href} rel="noopener" target="_blank">
                 {body}

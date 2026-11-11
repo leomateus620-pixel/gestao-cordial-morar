@@ -1,7 +1,13 @@
 // Importação de redirecionamentos manuais (endereço antigo do ImobiBrasil → imóvel atual). Puro e testável.
 export type RedirectRow = { line: number; oldPath: string | null; reference: string; raw: string };
 export type RedirectPreview = RedirectRow & {
-  status: "valido" | "endereco_invalido" | "nao_encontrado" | "outra_marca" | "repetido" | "substitui";
+  status:
+    | "valido"
+    | "endereco_invalido"
+    | "nao_encontrado"
+    | "outra_marca"
+    | "repetido"
+    | "substitui";
   publicId?: string;
 };
 
