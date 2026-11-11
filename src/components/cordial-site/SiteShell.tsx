@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUpRight, Heart, Menu, Phone, X, ChevronDown, ListChecks, Home, KeyRound, MapPin, HousePlus, Building2, MessageCircle } from "lucide-react";
+import {
+  ArrowUpRight,
+  Heart,
+  Menu,
+  Phone,
+  X,
+  ChevronDown,
+  ListChecks,
+  Home,
+  KeyRound,
+  MapPin,
+  HousePlus,
+  Building2,
+  MessageCircle,
+} from "lucide-react";
 import type { SiteBootstrap } from "@/lib/cordial-site/contract";
 import { searchSchema } from "@/lib/cordial-site/contract";
 import { sitePath } from "@/lib/cordial-site/presentation";
@@ -224,10 +238,23 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 />
               </SiteLink>
               <nav className="cs-desktop-nav" aria-label="Navegação principal">
-                <SiteLink to={pathFor("/buscar?finalidade=venda")}>{brand === "cordial" && <Home size={16} strokeWidth={1.8} aria-hidden />}Comprar</SiteLink>
-                <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>{brand === "cordial" && <KeyRound size={16} strokeWidth={1.8} aria-hidden />}Alugar</SiteLink>
-                {brand === "cordial" && <SiteLink to={pathFor("/bairros")}><MapPin size={16} strokeWidth={1.8} aria-hidden />Bairros</SiteLink>}
-                <SiteLink to={pathFor("/anuncie")}>{brand === "cordial" && <HousePlus size={16} strokeWidth={1.8} aria-hidden />}Anunciar meu imóvel</SiteLink>
+                <SiteLink to={pathFor("/buscar?finalidade=venda")}>
+                  {brand === "cordial" && <Home size={16} strokeWidth={1.8} aria-hidden />}Comprar
+                </SiteLink>
+                <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>
+                  {brand === "cordial" && <KeyRound size={16} strokeWidth={1.8} aria-hidden />}
+                  Alugar
+                </SiteLink>
+                {brand === "cordial" && (
+                  <SiteLink to={pathFor("/bairros")}>
+                    <MapPin size={16} strokeWidth={1.8} aria-hidden />
+                    Bairros
+                  </SiteLink>
+                )}
+                <SiteLink to={pathFor("/anuncie")}>
+                  {brand === "cordial" && <HousePlus size={16} strokeWidth={1.8} aria-hidden />}
+                  Anunciar meu imóvel
+                </SiteLink>
                 <details
                   className="cs-menu"
                   onKeyDown={(e) => {
@@ -238,7 +265,8 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                   }}
                 >
                   <summary>
-                    {brand === "cordial" && <Building2 size={16} strokeWidth={1.8} aria-hidden />}A {config.shortName} <ChevronDown size={14} />
+                    {brand === "cordial" && <Building2 size={16} strokeWidth={1.8} aria-hidden />}A{" "}
+                    {config.shortName} <ChevronDown size={14} />
                   </summary>
                   <div>
                     {destinations.map(([label, to]) => (
@@ -255,7 +283,10 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                     ))}
                   </div>
                 </details>
-                <SiteLink to={pathFor("/contato")}>{brand === "cordial" && <MessageCircle size={16} strokeWidth={1.8} aria-hidden />}Contato</SiteLink>
+                <SiteLink to={pathFor("/contato")}>
+                  {brand === "cordial" && <MessageCircle size={16} strokeWidth={1.8} aria-hidden />}
+                  Contato
+                </SiteLink>
               </nav>
               <div className="cs-header-actions">
                 {brand === "cordial" && (
@@ -347,12 +378,24 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                         {(settings.instagram || settings.facebook) && (
                           <div className="cs-nav-social">
                             {settings.instagram && (
-                              <a className="cs-icon-button" href={settings.instagram} target="_blank" rel="noopener noreferrer" aria-label={`Instagram da ${config.name}`}>
+                              <a
+                                className="cs-icon-button"
+                                href={settings.instagram}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Instagram da ${config.name}`}
+                              >
                                 <InstagramIcon width={22} height={22} />
                               </a>
                             )}
                             {settings.facebook && (
-                              <a className="cs-icon-button" href={settings.facebook} target="_blank" rel="noopener noreferrer" aria-label={`Facebook da ${config.name}`}>
+                              <a
+                                className="cs-icon-button"
+                                href={settings.facebook}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Facebook da ${config.name}`}
+                              >
                                 <FacebookIcon width={22} height={22} />
                               </a>
                             )}
@@ -463,22 +506,24 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
               isProperty={path.includes("/imovel/")}
             />
           )}
-          {brand !== "morar" && whatsappNumber(settings.whatsapp) && !path.startsWith(`${config.basePath}/imovel/`) && (
-            <a
-              className="cs-whatsapp"
-              href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Conversar com a ${config.shortName} no WhatsApp`}
-              onClick={() => {
-                if (brand === "cordial")
-                  trackSiteEvent("whatsapp_click", { source: "institutional" });
-              }}
-            >
-              <WhatsAppIcon width={23} height={23} />
-              <span>Vamos conversar</span>
-            </a>
-          )}
+          {brand !== "morar" &&
+            whatsappNumber(settings.whatsapp) &&
+            !path.startsWith(`${config.basePath}/imovel/`) && (
+              <a
+                className="cs-whatsapp"
+                href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Conversar com a ${config.shortName} no WhatsApp`}
+                onClick={() => {
+                  if (brand === "cordial")
+                    trackSiteEvent("whatsapp_click", { source: "institutional" });
+                }}
+              >
+                <WhatsAppIcon width={23} height={23} />
+                <span>Vamos conversar</span>
+              </a>
+            )}
         </div>
       </SiteContext.Provider>
     </SiteBrandContext.Provider>
