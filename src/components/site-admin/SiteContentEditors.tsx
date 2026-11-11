@@ -131,7 +131,7 @@ export function BannerEditor({ values, setValues }: Omit<Props, "brand" | "optio
             ).map(([k, l]) => (
               <label key={k} className="text-sm">
                 {l}
-                <input className={input} value={b[k]} onChange={(e) => update(i, { [k]: e.target.value.trim() === "" && k !== "title" && k !== "caption" ? "" : e.target.value })} />
+                <input className={input} value={b[k]} onChange={(e) => update(i, { [k]: e.target.value })} />
               </label>
             ))}
             <label className="text-sm">
