@@ -388,7 +388,7 @@ function SettingsForm({
           />
         </label>
       ))}
-      <SiteGoogleSettings brand="morar" values={values} setValues={setValues} />
+      <SiteGoogleSettings brand="morar" values={values} setValues={setValues} options={heroOptions} />
       <fieldset className="space-y-3 md:col-span-2">
         <legend className="text-sm font-semibold">Links de financiamento aprovados</legend>
         {values.links.map((link, i) => (
