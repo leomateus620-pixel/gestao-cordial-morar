@@ -33,6 +33,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RentalContractFull } from "@/types/rental";
 import { brlCents, formatBrlInput, parseBrlInput } from "@/lib/format";
+import { sameMoneyValue, syncMoneyText } from "@/lib/rentals/money-input-sync";
 
 type MoneyKey = "aluguel" | "honorarios" | "condominio" | "iptu" | "seguroFianca";
 
@@ -48,6 +49,12 @@ function MoneyInput({
   inputId?: string;
 }) {
   const [text, setText] = useState(() => formatBrlInput(value));
+  const [lastValue, setLastValue] = useState(value);
+  // Value changed from outside (e.g. "Usar estes valores"): show it, unless the typed text already means it.
+  if (!sameMoneyValue(lastValue, value)) {
+    setLastValue(value);
+    setText((t) => syncMoneyText(t, value));
+  }
   const parsed = parseBrlInput(text);
   const invalid = text.trim() !== "" && (Number.isNaN(parsed) || parsed < 0);
   const empty = text.trim() === "";
