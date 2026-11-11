@@ -81,6 +81,6 @@ export function autoPropertySeo(p: SeoInput): { title: string; description: stri
     .join(" · ");
   return {
     title: title.slice(0, 70),
-    description: `${description}. Fale com a nossa equipe.`.slice(0, 160),
+    description: `${description}. Fale com a nossa equipe.`,
   };
 }

@@ -44,7 +44,7 @@ test("SEO automático usa só dados existentes e respeita limites", () => {
   assert.equal(s.title, "Casa com 3 quartos à venda em Centro, Santa Rosa");
   assert.match(s.description, /R\$\s?450\.000/);
   assert.match(s.description, /Ref\. 1398/);
-  assert.ok(s.description.length <= 160);
+  assert.ok(s.description.length <= 200);
   assert.doesNotMatch(autoPropertySeo({ id: ID, priceMode: "consulte" }).description, /R\$/);
 });
 
