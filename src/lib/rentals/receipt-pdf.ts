@@ -22,7 +22,30 @@ export function fitReceiptRows(
   }
   const rest = adjustments.slice(keep);
   const sum = rest.reduce((s, [, v]) => s + Math.round(v * 100), 0) / 100;
-  return [...base, ...adjustments.slice(0, keep), [`Outros ajustes (${rest.length})`, sum] as [string, number]];
+  return [
+    ...base,
+    ...adjustments.slice(0, keep),
+    [`Outros ajustes (${rest.length})`, sum] as [string, number],
+  ];
+}
+export const RENT_NOTE_WIDTH = 258;
+export const RENT_NOTE_MAX_LINES = 3;
+/** Rent description: font 8, word-wrapped, at most 3 lines with ellipsis (never shrunk). */
+export function wrapRentNote(note: string, widthOf: (s: string) => number) {
+  const lines: string[] = [];
+  let current = "";
+  for (const word of note.split(/\s+/).filter(Boolean)) {
+    const next = current ? `${current} ${word}` : word;
+    if (widthOf(next) > RENT_NOTE_WIDTH && current) {
+      lines.push(current);
+      current = word;
+    } else current = next;
+  }
+  if (current) lines.push(current);
+  if (lines.length <= RENT_NOTE_MAX_LINES) return lines;
+  let last = lines.slice(RENT_NOTE_MAX_LINES - 1).join(" ");
+  while (last && widthOf(`${last}…`) > RENT_NOTE_WIDTH) last = last.slice(0, -1);
+  return [...lines.slice(0, RENT_NOTE_MAX_LINES - 1), `${last.trimEnd()}…`];
 }
 export async function buildReceiptPdf(
   model: ReceiptModel,
@@ -56,13 +79,13 @@ export async function buildReceiptPdf(
   function wrap(s: string, width: number) {
     return wrapWith(s, width, bold);
   }
-  function wrapWith(s: string, width: number, f: PDFFont) {
+  function wrapWith(s: string, width: number, f: PDFFont, size = 9) {
     const words = clean(s).split(/\s+/);
     const lines: string[] = [];
     let current = "";
     for (const word of words) {
       const next = current ? `${current} ${word}` : word;
-      if (f.widthOfTextAtSize(next, 9) > width && current) {
+      if (f.widthOfTextAtSize(next, size) > width && current) {
         lines.push(current);
         current = word;
       } else current = next;
@@ -70,6 +93,8 @@ export async function buildReceiptPdf(
     if (current) lines.push(current);
     return lines;
   }
+  const rentNoteLines = (note: string) =>
+    wrapRentNote(clean(note), (t) => font.widthOfTextAtSize(t, 8));
   const vias = ["1 via locatário", "1 via locador", "1 via imob"];
   vias.forEach((via, index) => {
     const top = 817 - index * 274;
@@ -114,10 +139,12 @@ export async function buildReceiptPdf(
     draw(`Vencimento: ${model.vencimento.split("-").reverse().join("/")}`, 35, y, 9, bold);
     y -= 13;
     draw("Valores:", 35, y, 9, bold);
-    const { base: rows, adjustments: extra } = receiptViaRows(model, index as 0 | 1 | 2);
+    const { base: rows, adjustments: extra, rentNote } = receiptViaRows(model, index as 0 | 1 | 2);
+    const noteLines = rentNote ? rentNoteLines(rentNote) : [];
     const maxRows = Math.floor((y - 12 - (top - 228)) / 11) + 1;
     const adjLabels = new Set(extra.map(([l]) => l));
     const labelLines = (label: string) => {
+      if (label === "Aluguel" && !adjLabels.has(label)) return [label, ...noteLines];
       if (!adjLabels.has(label)) return [label];
       const lines = wrapWith(label, 258, font);
       if (lines.length <= 2) return lines;
@@ -130,8 +157,10 @@ export async function buildReceiptPdf(
     fitted.forEach(([label, value]) => {
       const lines = labelLines(label);
       draw(brl(value), 310, y - 12 - line * 11, 9, bold, 78);
-      lines.forEach((t) => {
-        draw(t, 46, y - 12 - line * 11, 9, font, 260);
+      lines.forEach((t, i) => {
+        const isNote = label === "Aluguel" && i > 0;
+        if (isNote) page.drawText(t, { x: 46, y: y - 12 - line * 11, size: 8, font, color: ink });
+        else draw(t, 46, y - 12 - line * 11, 9, font, 260);
         line++;
       });
     });

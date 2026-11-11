@@ -1,5 +1,6 @@
+import { RentProportionalPanel } from "./RentProportionalPanel";
 import { useState, type ReactNode } from "react";
-import { Loader2, Paperclip, Plus, ReceiptText, Trash2 } from "lucide-react";
+import { Calculator, Loader2, Paperclip, Plus, ReceiptText, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import {
   MAX_ADJUSTMENT_DESCRIPTION,
   NEGATIVE_TOTAL_MESSAGE,
   receiptViaRows,
+  MAX_RENT_DESCRIPTION,
   type AdjustmentKind,
   type OwnerAdjustment,
   type ReceiptInput,
@@ -193,8 +195,7 @@ export function ReceiptModal({
   const qc = useQueryClient();
   const [ending, setEnding] = useState<string | null>(null);
   const [endError, setEndError] = useState<string | null>(null);
-  const focusLater = (id: string) =>
-    setTimeout(() => document.getElementById(id)?.focus(), 0);
+  const focusLater = (id: string) => setTimeout(() => document.getElementById(id)?.focus(), 0);
   function addPreset(p: ReceiptPreset) {
     const id = newId();
     if (p.side === "inquilino") setTenant([...tenantAdj, tenantAdjustmentFromPreset(p, id)]);
@@ -247,14 +248,21 @@ export function ReceiptModal({
     try {
       return computeReceiptTotals({
         ...input,
-        ajustesInquilino: tenantAdj.map((a) => ({ ...a, valor: Number.isFinite(a.valor) ? a.valor : 0 })),
-        ajustesProprietario: ownerAdj.map((a) => ({ ...a, valor: Number.isFinite(a.valor) ? a.valor : 0 })),
+        ajustesInquilino: tenantAdj.map((a) => ({
+          ...a,
+          valor: Number.isFinite(a.valor) ? a.valor : 0,
+        })),
+        ajustesProprietario: ownerAdj.map((a) => ({
+          ...a,
+          valor: Number.isFinite(a.valor) ? a.valor : 0,
+        })),
       });
     } catch {
       return null;
     }
   })();
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showProportional, setShowProportional] = useState(false);
   const edit = <K extends keyof ReceiptInput>(key: K, value: ReceiptInput[K]) =>
     setInput((current) => ({ ...current, [key]: value }));
   let totals: ReturnType<typeof buildReceiptModel> | null = null;
@@ -303,25 +311,43 @@ export function ReceiptModal({
     })),
   };
   const viaLines = (via: 0 | 1) => {
-    const { base, adjustments } = receiptViaRows(previewSource, via);
-    return [...base, ...adjustments].map(
-      ([label, value]): [string, number] => [label, label === "Honorários" ? -value : value],
-    );
+    const { base, adjustments, rentNote } = receiptViaRows(previewSource, via);
+    return [...base, ...adjustments].map(([label, value], i): [string, number, string?] => [
+      label,
+      label === "Honorários" ? -value : value,
+      i === 0 ? rentNote : undefined,
+    ]);
   };
   const pagarLines = viaLines(0);
   const receberLines = viaLines(1);
-  const negative =
-    liveTotals && (liveTotals.totalPagar < 0 || liveTotals.totalReceber < 0);
-  const Summary = ({ title, lines, total }: { title: string; lines: [string, number][]; total?: number }) => (
+  const negative = liveTotals && (liveTotals.totalPagar < 0 || liveTotals.totalReceber < 0);
+  const Summary = ({
+    title,
+    lines,
+    total,
+  }: {
+    title: string;
+    lines: [string, number, string?][];
+    total?: number;
+  }) => (
     <div className="rounded-xl border border-border bg-background p-3">
-      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{title}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        {title}
+      </p>
       <ul className="mt-2 space-y-1 text-xs">
-        {lines.map(([label, value], i) => (
-          <li key={`${label}-${i}`} className="flex justify-between gap-2">
-            <span className="text-muted-foreground">{label}</span>
-            <span className="font-mono tabular-nums">
-              {value < 0 ? `− ${brlCents(-value)}` : brlCents(value)}
-            </span>
+        {lines.map(([label, value, note], i) => (
+          <li key={`${label}-${i}`}>
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">{label}</span>
+              <span className="font-mono tabular-nums">
+                {value < 0 ? `− ${brlCents(-value)}` : brlCents(value)}
+              </span>
+            </div>
+            {note && (
+              <p className="whitespace-normal break-words text-[11px] text-muted-foreground/80">
+                {note}
+              </p>
+            )}
           </li>
         ))}
       </ul>
@@ -338,7 +364,10 @@ export function ReceiptModal({
         if (!open && !pending) onClose();
       }}
     >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl" aria-describedby={undefined}>
+      <DialogContent
+        className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ReceiptText className="size-5 text-primary" />
@@ -370,6 +399,47 @@ export function ReceiptModal({
           <Section title="Valores do mês">
             <div className="grid gap-3 sm:grid-cols-2">
               {money("aluguel", "Aluguel")}
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  aria-expanded={showProportional}
+                  onClick={() => setShowProportional((o) => !o)}
+                >
+                  <Calculator /> Calcular proporcional
+                </Button>
+              </div>
+              {showProportional && (
+                <div className="sm:col-span-2">
+                  <RentProportionalPanel
+                    contract={contract}
+                    competencia={input.competencia}
+                    onApply={(valor, descricao) => {
+                      setInput((c) => ({ ...c, aluguel: valor, observacao: descricao }));
+                      setShowProportional(false);
+                    }}
+                  />
+                </div>
+              )}
+              <label className="block space-y-1 text-xs font-semibold sm:col-span-2">
+                <span className="flex justify-between">
+                  <span>Descrição do aluguel (opcional)</span>
+                  <span className="font-normal text-muted-foreground tabular-nums">
+                    {input.observacao.length}/{MAX_RENT_DESCRIPTION}
+                  </span>
+                </span>
+                <Input
+                  aria-label="Descrição do aluguel"
+                  placeholder="Ex.: referente aos 26 dias morados em outubro"
+                  maxLength={MAX_RENT_DESCRIPTION}
+                  value={input.observacao}
+                  onChange={(e) => edit("observacao", e.target.value)}
+                />
+                <span className="block font-normal text-muted-foreground">
+                  Aparece ao lado do valor do aluguel em todas as vias do recibo.
+                </span>
+              </label>
               {money("condominio", "Condomínio")}
               {money("iptu", "IPTU")}
               <label className="block space-y-1 text-xs font-semibold">
@@ -391,7 +461,9 @@ export function ReceiptModal({
             tone="tenant"
           >
             {tenantAdj.length === 0 && (
-              <p className="text-xs text-muted-foreground">Nenhum acréscimo ou desconto neste mês.</p>
+              <p className="text-xs text-muted-foreground">
+                Nenhum acréscimo ou desconto neste mês.
+              </p>
             )}
             {endError && (
               <p role="alert" className="text-xs text-destructive">
@@ -399,7 +471,10 @@ export function ReceiptModal({
               </p>
             )}
             {tenantAdj.map((a, i) => (
-              <div key={a.id} className="space-y-3 rounded-lg border border-border bg-background p-3">
+              <div
+                key={a.id}
+                className="space-y-3 rounded-lg border border-border bg-background p-3"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold">
                     Ajuste {i + 1}
@@ -410,29 +485,29 @@ export function ReceiptModal({
                     )}
                   </span>
                   <div className="flex flex-wrap gap-1">
-                  {a.recorrenteId && (
+                    {a.recorrenteId && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        disabled={ending === a.id}
+                        onClick={() => void endRecurring(a)}
+                      >
+                        {ending === a.id && <Loader2 className="size-4 animate-spin" />}
+                        Encerrar recorrência
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-destructive"
-                      disabled={ending === a.id}
-                      onClick={() => void endRecurring(a)}
+                      aria-label={`Remover ajuste ${i + 1}`}
+                      onClick={() => setTenant(tenantAdj.filter((x) => x.id !== a.id))}
                     >
-                      {ending === a.id && <Loader2 className="size-4 animate-spin" />}
-                      Encerrar recorrência
+                      <Trash2 className="size-4" />
+                      {a.recorrenteId ? "Remover só deste mês" : "Remover"}
                     </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Remover ajuste ${i + 1}`}
-                    onClick={() => setTenant(tenantAdj.filter((x) => x.id !== a.id))}
-                  >
-                    <Trash2 className="size-4" />
-                    {a.recorrenteId ? "Remover só deste mês" : "Remover"}
-                  </Button>
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[8rem_1fr_9rem]">
@@ -458,11 +533,14 @@ export function ReceiptModal({
                     <input
                       type="checkbox"
                       checked={a.repassarProprietario}
-                      onChange={(e) => patchTenant(a.id, { repassarProprietario: e.target.checked })}
+                      onChange={(e) =>
+                        patchTenant(a.id, { repassarProprietario: e.target.checked })
+                      }
                     />
                     Repassar ao proprietário
                     <span className="text-muted-foreground">
-                      (também {a.tipo === "acrescimo" ? "acrescenta" : "desconta"} no repasse ao proprietário)
+                      (também {a.tipo === "acrescimo" ? "acrescenta" : "desconta"} no repasse ao
+                      proprietário)
                     </span>
                   </label>
                   {!a.recorrenteId && (
@@ -508,7 +586,13 @@ export function ReceiptModal({
               onClick={() =>
                 setTenant([
                   ...tenantAdj,
-                  { id: newId(), tipo: "desconto", descricao: "", valor: NaN, repassarProprietario: true },
+                  {
+                    id: newId(),
+                    tipo: "desconto",
+                    descricao: "",
+                    valor: NaN,
+                    repassarProprietario: true,
+                  },
                 ])
               }
             >
@@ -532,7 +616,10 @@ export function ReceiptModal({
               </p>
             )}
             {ownerAdj.map((a, i) => (
-              <div key={a.id} className="space-y-3 rounded-lg border border-border bg-background p-3">
+              <div
+                key={a.id}
+                className="space-y-3 rounded-lg border border-border bg-background p-3"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold">Item {i + 1}</span>
                   <Button
@@ -572,8 +659,8 @@ export function ReceiptModal({
                     className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs"
                   >
                     <span>
-                      Fundo de reserva costuma ser desconto do inquilino. Aqui ele não aparece na via do
-                      locatário.
+                      Fundo de reserva costuma ser desconto do inquilino. Aqui ele não aparece na
+                      via do locatário.
                     </span>
                     <Button
                       type="button"
@@ -583,8 +670,13 @@ export function ReceiptModal({
                       onClick={() => {
                         setInput((c) => ({
                           ...c,
-                          ajustesProprietario: (c.ajustesProprietario ?? []).filter((x) => x.id !== a.id),
-                          ajustesInquilino: [...(c.ajustesInquilino ?? []), ownerToTenantAdjustment(a)],
+                          ajustesProprietario: (c.ajustesProprietario ?? []).filter(
+                            (x) => x.id !== a.id,
+                          ),
+                          ajustesInquilino: [
+                            ...(c.ajustesInquilino ?? []),
+                            ownerToTenantAdjustment(a),
+                          ],
                         }));
                         setProofs(({ [a.id]: _drop, ...rest }) => rest);
                       }}
@@ -603,7 +695,9 @@ export function ReceiptModal({
                     className="text-xs"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      setProofs(({ [a.id]: _old, ...rest }) => (file ? { ...rest, [a.id]: file } : rest));
+                      setProofs(({ [a.id]: _old, ...rest }) =>
+                        file ? { ...rest, [a.id]: file } : rest,
+                      );
                     }}
                   />
                   {proofs[a.id] && proofs[a.id].size > COMPROVANTE_MAX_BYTES && (
@@ -619,7 +713,10 @@ export function ReceiptModal({
               size="sm"
               disabled={ownerAdj.length >= MAX_ADJUSTMENTS_PER_SIDE}
               onClick={() =>
-                setOwner([...ownerAdj, { id: newId(), tipo: "desconto", descricao: "", valor: NaN }])
+                setOwner([
+                  ...ownerAdj,
+                  { id: newId(), tipo: "desconto", descricao: "", valor: NaN },
+                ])
               }
             >
               <Plus /> Adicionar desconto só do proprietário
@@ -637,34 +734,24 @@ export function ReceiptModal({
                   required
                 />
               </label>
-              <label className="block space-y-1 text-xs font-semibold sm:col-span-2">
-                Observação de proporcional
-                <Input
-                  aria-label="Observação de proporcional"
-                  placeholder="Opcional"
-                  maxLength={160}
-                  value={input.observacao}
-                  onChange={(e) => edit("observacao", e.target.value)}
-                />
-              </label>
             </div>
           </Section>
           <div className="space-y-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-            Prévia das vias
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Summary
-              title="Via do locatário · Total a pagar"
-              lines={pagarLines}
-              total={totals?.totalPagar ?? liveTotals?.totalPagar}
-            />
-            <Summary
-              title="Via do proprietário · Total a receber"
-              lines={receberLines}
-              total={totals?.totalReceber ?? liveTotals?.totalReceber}
-            />
-          </div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              Prévia das vias
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Summary
+                title="Via do locatário · Total a pagar"
+                lines={pagarLines}
+                total={totals?.totalPagar ?? liveTotals?.totalPagar}
+              />
+              <Summary
+                title="Via do proprietário · Total a receber"
+                lines={receberLines}
+                total={totals?.totalReceber ?? liveTotals?.totalReceber}
+              />
+            </div>
           </div>
           {negative && (
             <p role="alert" className="text-xs text-destructive">

@@ -162,7 +162,11 @@ describe("Descontos e ajustes do recibo", () => {
     expect(() =>
       buildReceiptModel(maria, {
         ...base(),
-        ajustesInquilino: Array.from({ length: 11 }, (_, i) => ({ ...fundo(), id: `x${i}`, valor: 1 })),
+        ajustesInquilino: Array.from({ length: 11 }, (_, i) => ({
+          ...fundo(),
+          id: `x${i}`,
+          valor: 1,
+        })),
       }),
     ).toThrow("máximo");
   });
@@ -199,14 +203,21 @@ describe("Descontos e ajustes do recibo", () => {
   });
   it("servidor recusa totais divergentes e comprovante fora do prefixo", () => {
     const cid = "22222222-2222-4222-8222-222222222222";
-    const ok = { ...base(), ajustesInquilino: [fundo()], totalPagar: 1772.8, totalReceber: 1594.02 };
+    const ok = {
+      ...base(),
+      ajustesInquilino: [fundo()],
+      totalPagar: 1772.8,
+      totalReceber: 1594.02,
+    };
     expect(checkReceiptValores(cid, "2026-10", ok).totalPagar).toBe(1772.8);
     expect(() => checkReceiptValores(cid, "2026-10", { ...ok, totalReceber: 1609.02 })).toThrow(
       "não conferem",
     );
     const proof = {
       ...base(),
-      ajustesProprietario: [{ ...reparo, comprovantePath: `outro/recibos/comprovantes/2026-10-1-ab.pdf` }],
+      ajustesProprietario: [
+        { ...reparo, comprovantePath: `outro/recibos/comprovantes/2026-10-1-ab.pdf` },
+      ],
       totalPagar: 1787.8,
       totalReceber: 1489.02,
     };
@@ -215,18 +226,46 @@ describe("Descontos e ajustes do recibo", () => {
     expect(checkReceiptValores(cid, "2026-10", proof).totalReceber).toBe(1489.02);
   });
   it("agrupa excedentes em Outros ajustes", () => {
-    const rows = fitReceiptRows([["Aluguel", 100]], [["a", -1], ["b", -2], ["c", -3]], 3);
-    expect(rows).toEqual([["Aluguel", 100], ["a", -1], ["Outros ajustes (2)", -5]]);
+    const rows = fitReceiptRows(
+      [["Aluguel", 100]],
+      [
+        ["a", -1],
+        ["b", -2],
+        ["c", -3],
+      ],
+      3,
+    );
+    expect(rows).toEqual([
+      ["Aluguel", 100],
+      ["a", -1],
+      ["Outros ajustes (2)", -5],
+    ]);
   });
   it("gera PDF com 6 itens por lado", async () => {
-    const tenant = Array.from({ length: 6 }, (_, i) => ({ ...fundo(), id: `t${i}`, descricao: `Item inquilino ${i}`, valor: 1 }));
-    const owner = Array.from({ length: 6 }, (_, i) => ({ ...reparo, id: `o${i}`, descricao: `Item dono ${i}`, valor: 1 }));
-    const model = buildReceiptModel(maria, { ...base(), ajustesInquilino: tenant, ajustesProprietario: owner });
+    const tenant = Array.from({ length: 6 }, (_, i) => ({
+      ...fundo(),
+      id: `t${i}`,
+      descricao: `Item inquilino ${i}`,
+      valor: 1,
+    }));
+    const owner = Array.from({ length: 6 }, (_, i) => ({
+      ...reparo,
+      id: `o${i}`,
+      descricao: `Item dono ${i}`,
+      valor: 1,
+    }));
+    const model = buildReceiptModel(maria, {
+      ...base(),
+      ajustesInquilino: tenant,
+      ajustesProprietario: owner,
+    });
     const logo = await readFile(`public${model.company.logo}`);
     const bytes = await buildReceiptPdf(model, logo);
     const pdf = await PDFDocument.load(bytes);
     expect(pdf.getPageCount()).toBe(1);
-    const raw = Buffer.from(await PDFDocument.load(bytes).then((d) => d.save({ useObjectStreams: false }))).toString("latin1");
+    const raw = Buffer.from(
+      await PDFDocument.load(bytes).then((d) => d.save({ useObjectStreams: false })),
+    ).toString("latin1");
     expect(raw.length).toBeGreaterThan(1000);
     const small = buildReceiptModel(maria, { ...base(), ajustesInquilino: [fundo()] });
     const smallPdf = await buildReceiptPdf(small, logo);
@@ -247,38 +286,97 @@ describe("Atalhos, água e descritivo", () => {
   ] as const)("preset %s", (id, side, tipo, descricao, repassar, repetir) => {
     const p = preset(id);
     expect([p.side, p.tipo, p.descricao, p.repassarProprietario, p.repetir]).toEqual([
-      side, tipo, descricao, repassar, repetir,
+      side,
+      tipo,
+      descricao,
+      repassar,
+      repetir,
     ]);
   });
-  const c = { ...contract, valorMensal: 1100, comissaoMensal: 100, seguroValorMensal: 0 } as RentalContractFull;
+  const c = {
+    ...contract,
+    valorMensal: 1100,
+    comissaoMensal: 100,
+    seguroValorMensal: 0,
+  } as RentalContractFull;
   it("água 85,00 não repassada: 1.185,00 / 1.000,00", () => {
     const agua = { ...tenantAdjustmentFromPreset(preset("agua"), "w1"), valor: 85 };
-    const m = buildReceiptModel(c, { ...defaultReceiptInput(c, "2026-10"), ajustesInquilino: [agua] });
+    const m = buildReceiptModel(c, {
+      ...defaultReceiptInput(c, "2026-10"),
+      ajustesInquilino: [agua],
+    });
     expect(m.totalPagar).toBe(1185);
     expect(m.totalReceber).toBe(1000);
   });
   it("descrição de 120 aceita, 121 recusada (cliente e servidor)", () => {
-    const mk = (n: number) => ({ ...base(), ajustesInquilino: [{ ...fundo(), descricao: "x".repeat(n) }] });
+    const mk = (n: number) => ({
+      ...base(),
+      ajustesInquilino: [{ ...fundo(), descricao: "x".repeat(n) }],
+    });
     expect(() => buildReceiptModel(maria, mk(120))).not.toThrow();
     expect(() => buildReceiptModel(maria, mk(121))).toThrow("120");
     const ok = { ...mk(120), totalPagar: 1772.8, totalReceber: 1594.02 };
     expect(checkReceiptValores("c", "2026-10", ok).totalPagar).toBe(1772.8);
-    expect(() => checkReceiptValores("c", "2026-10", { ...mk(121), totalPagar: 1772.8, totalReceber: 1594.02 })).toThrow();
+    expect(() =>
+      checkReceiptValores("c", "2026-10", {
+        ...mk(121),
+        totalPagar: 1772.8,
+        totalReceber: 1594.02,
+      }),
+    ).toThrow();
   });
   it("PDF com 6 itens de 120 caracteres por lado em 1 página", async () => {
     const long = (i: number) => `Água ref. set/2026 leitura ${i} `.padEnd(120, "m");
-    const tenant = Array.from({ length: 6 }, (_, i) => ({ ...fundo(), id: `t${i}`, descricao: long(i), valor: 1 }));
-    const owner = Array.from({ length: 6 }, (_, i) => ({ ...reparo, id: `o${i}`, descricao: long(i), valor: 1 }));
-    const model = buildReceiptModel(maria, { ...base(), ajustesInquilino: tenant, ajustesProprietario: owner });
+    const tenant = Array.from({ length: 6 }, (_, i) => ({
+      ...fundo(),
+      id: `t${i}`,
+      descricao: long(i),
+      valor: 1,
+    }));
+    const owner = Array.from({ length: 6 }, (_, i) => ({
+      ...reparo,
+      id: `o${i}`,
+      descricao: long(i),
+      valor: 1,
+    }));
+    const model = buildReceiptModel(maria, {
+      ...base(),
+      ajustesInquilino: tenant,
+      ajustesProprietario: owner,
+    });
     const bytes = await buildReceiptPdf(model, await readFile(`public${model.company.logo}`));
     expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
   });
   it("fitReceiptRows conta linhas de descrições longas", () => {
-    const rows = fitReceiptRows([["Aluguel", 1]], [["a", 1], ["b", 1], ["c", 1]], 4, (l) => (l === "Aluguel" ? 1 : 2));
-    expect(rows).toEqual([["Aluguel", 1], ["a", 1], ["Outros ajustes (2)", 2]]);
+    const rows = fitReceiptRows(
+      [["Aluguel", 1]],
+      [
+        ["a", 1],
+        ["b", 1],
+        ["c", 1],
+      ],
+      4,
+      (l) => (l === "Aluguel" ? 1 : 2),
+    );
+    expect(rows).toEqual([
+      ["Aluguel", 1],
+      ["a", 1],
+      ["Outros ajustes (2)", 2],
+    ]);
   });
   it("recorrência encerrada não volta na competência seguinte", () => {
-    const rec = [{ id: "11111111-1111-4111-8111-111111111111", tipo: "desconto" as const, descricao: "Fundo", valor: 15, repassarProprietario: true, inicioCompetencia: "2026-10", fimCompetencia: null, ativo: true }];
+    const rec = [
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        tipo: "desconto" as const,
+        descricao: "Fundo",
+        valor: 15,
+        repassarProprietario: true,
+        inicioCompetencia: "2026-10",
+        fimCompetencia: null,
+        ativo: true,
+      },
+    ];
     expect(defaultReceiptInput(maria, "2026-11", rec).ajustesInquilino).toHaveLength(1);
     const ended = rec.map((r) => ({ ...r, ativo: false }));
     expect(activeRecurringFor(ended, "2026-11")).toHaveLength(0);
@@ -309,10 +407,16 @@ describe("fundo de reserva: lado do inquilino x proprietário", async () => {
     expect(m.totalReceber).toBe(1930.69);
     const via0 = receiptViaRows(m, 0);
     expect(via0.adjustments).toEqual([["Desconto – Fundo de reserva", -69.31]]);
-    expect(new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2 }).format(m.totalPagar)).toBe("2.130,69");
+    expect(new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2 }).format(m.totalPagar)).toBe(
+      "2.130,69",
+    );
   });
   it("mesmo item só do proprietário: 2.200 / 1.930,69, fora da via do locatário", () => {
-    const m = buildReceiptModel(contract, { ...base, ajustesInquilino: [], ajustesProprietario: [fundo] });
+    const m = buildReceiptModel(contract, {
+      ...base,
+      ajustesInquilino: [],
+      ajustesProprietario: [fundo],
+    });
     expect(m.totalPagar).toBe(2200);
     expect(m.totalReceber).toBe(1930.69);
     expect(receiptViaRows(m, 0).adjustments).toEqual([]);
@@ -326,8 +430,115 @@ describe("fundo de reserva: lado do inquilino x proprietário", async () => {
   });
   it("mover para o inquilino gera o caso correto", () => {
     const moved = ownerToTenantAdjustment({ ...fundo, tipo: "acrescimo" });
-    expect(moved).toMatchObject({ tipo: "desconto", repassarProprietario: true, valor: 69.31, descricao: "Fundo de reserva" });
-    const m = buildReceiptModel(contract, { ...base, ajustesInquilino: [moved], ajustesProprietario: [] });
+    expect(moved).toMatchObject({
+      tipo: "desconto",
+      repassarProprietario: true,
+      valor: 69.31,
+      descricao: "Fundo de reserva",
+    });
+    const m = buildReceiptModel(contract, {
+      ...base,
+      ajustesInquilino: [moved],
+      ajustesProprietario: [],
+    });
     expect([m.totalPagar, m.totalReceber]).toEqual([2130.69, 1930.69]);
+  });
+});
+
+import { receiptViaRows, MAX_RENT_DESCRIPTION } from "./receipt-model";
+import { wrapRentNote } from "./receipt-pdf";
+import { StandardFonts } from "pdf-lib";
+
+describe("Descrição do aluguel", () => {
+  const input = () => defaultReceiptInput(contract, "2026-10");
+  it("sem descrição, a linha é só Aluguel em todas as vias", () => {
+    for (const via of [0, 1, 2] as const) {
+      const r = receiptViaRows({ ...input(), aluguel: 385 }, via);
+      expect(r.base[0]).toEqual(["Aluguel", 385]);
+      expect(r.rentNote).toBeUndefined();
+    }
+  });
+  it("com descrição, aparece nas vias 0, 1 e 2", () => {
+    const m = { ...input(), observacao: "referente aos 26 dias morados em outubro" };
+    for (const via of [0, 1, 2] as const) {
+      expect(receiptViaRows(m, via).rentNote).toBe("referente aos 26 dias morados em outubro");
+      expect(receiptViaRows(m, via).base[0][0]).toBe("Aluguel");
+    }
+  });
+  it("160 passa, 161 é recusado; só espaços vira vazio", () => {
+    expect(MAX_RENT_DESCRIPTION).toBe(160);
+    expect(
+      buildReceiptModel(contract, { ...input(), observacao: "a".repeat(160) }).observacao,
+    ).toHaveLength(160);
+    expect(() => buildReceiptModel(contract, { ...input(), observacao: "a".repeat(161) })).toThrow(
+      "muito longo",
+    );
+    expect(buildReceiptModel(contract, { ...input(), observacao: "   " }).observacao).toBe("");
+  });
+  it("servidor aceita recibo antigo com observação e recusa 161", () => {
+    const ok = {
+      ...input(),
+      observacao: "referente aos 26 dias",
+      totalPagar: 385,
+      totalReceber: 346.5,
+    };
+    expect(checkReceiptValores("c", "2026-10", ok).observacao).toBe("referente aos 26 dias");
+    expect(() =>
+      checkReceiptValores("c", "2026-10", { ...ok, observacao: "a".repeat(161) }),
+    ).toThrow();
+  });
+  it("160 caracteres cabem em até 3 linhas na fonte 8", async () => {
+    const font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+    const note =
+      "referente aos vinte e seis dias morados em outubro de dois mil e vinte e seis conforme contrato assinado entre as partes e vistoria de entrada realizada no imovel"
+        .padEnd(160, " x")
+        .slice(0, 160);
+    const lines = wrapRentNote(note, (t) => font.widthOfTextAtSize(t, 8));
+    expect(lines.length).toBeLessThanOrEqual(3);
+    for (const l of lines) expect(font.widthOfTextAtSize(l, 8)).toBeLessThanOrEqual(258);
+    const long = wrapRentNote("palavra ".repeat(80), (t) => font.widthOfTextAtSize(t, 8));
+    expect(long).toHaveLength(3);
+    expect(long[2].endsWith("…")).toBe(true);
+  });
+  it("linhas da descrição contam no agrupamento de ajustes", () => {
+    const rows = fitReceiptRows(
+      [["Aluguel", 100]],
+      [
+        ["a", -1],
+        ["b", -2],
+        ["c", -3],
+      ],
+      5,
+      (l) => (l === "Aluguel" ? 3 : 1),
+    );
+    expect(rows).toEqual([
+      ["Aluguel", 100],
+      ["a", -1],
+      ["Outros ajustes (2)", -5],
+    ]);
+  });
+  it("PDF com descrição longa e 10 ajustes por lado tem 1 página", async () => {
+    const adj = (i: number) => ({
+      id: `t${i}`,
+      tipo: "acrescimo" as const,
+      descricao: `Item ${i}`,
+      valor: 1,
+      repassarProprietario: true,
+    });
+    const own = (i: number) => ({
+      id: `o${i}`,
+      tipo: "desconto" as const,
+      descricao: `Dono ${i}`,
+      valor: 1,
+    });
+    const model = buildReceiptModel(contract, {
+      ...input(),
+      observacao: "palavra ".repeat(20).trim(),
+      ajustesInquilino: Array.from({ length: 10 }, (_, i) => adj(i)),
+      ajustesProprietario: Array.from({ length: 10 }, (_, i) => own(i)),
+    });
+    const logo = await readFile(`public${model.company.logo}`);
+    const pdf = await PDFDocument.load(await buildReceiptPdf(model, logo));
+    expect(pdf.getPageCount()).toBe(1);
   });
 });

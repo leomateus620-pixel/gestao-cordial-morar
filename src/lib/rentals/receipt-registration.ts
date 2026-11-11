@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { computeReceiptTotals, MAX_ADJUSTMENT_DESCRIPTION, MAX_ADJUSTMENTS_PER_SIDE, validateReceiptAdjustments } from "./receipt-model";
+import {
+  computeReceiptTotals,
+  MAX_ADJUSTMENT_DESCRIPTION,
+  MAX_ADJUSTMENTS_PER_SIDE,
+  MAX_RENT_DESCRIPTION,
+  validateReceiptAdjustments,
+} from "./receipt-model";
 
 const money = z.number().finite().min(0).max(99999999);
 const kind = z.enum(["desconto", "acrescimo"]);
@@ -17,7 +23,7 @@ export const receiptValoresSchema = z
     iptu: money,
     iptuParcela: z.string().max(20),
     seguroFianca: money,
-    observacao: z.string().max(160),
+    observacao: z.string().max(MAX_RENT_DESCRIPTION),
     vencimento: z.string().max(10),
     totalPagar: z.number().finite(),
     totalReceber: z.number().finite(),

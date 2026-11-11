@@ -14,6 +14,8 @@ export const RECEIPT_COMPANY_DETAILS = {
   city: "CEP: 98780-753 Santa Rosa/RS",
   phone: "55 2021-0199 ou 55 99659-0199",
 };
+/** Max length of the optional rent description (stored as `observacao`). */
+export const MAX_RENT_DESCRIPTION = 160;
 export type ReceiptInput = {
   competencia: string;
   brand: "cordial" | "morar";
@@ -87,7 +89,8 @@ export function validateReceiptAdjustments(input: ReceiptInput) {
     if (!d) throw new Error("Informe a descrição de cada desconto ou ajuste.");
     if (d.length > MAX_ADJUSTMENT_DESCRIPTION)
       throw new Error(`Descrição do ajuste com mais de ${MAX_ADJUSTMENT_DESCRIPTION} caracteres.`);
-    if (a.tipo !== "desconto" && a.tipo !== "acrescimo") throw new Error("Tipo de ajuste inválido.");
+    if (a.tipo !== "desconto" && a.tipo !== "acrescimo")
+      throw new Error("Tipo de ajuste inválido.");
     if (!Number.isFinite(a.valor) || a.valor <= 0 || a.valor > 99999999)
       throw new Error("O valor de cada ajuste deve ser maior que zero.");
   }
@@ -183,7 +186,8 @@ export function buildReceiptModel(contract: RentalContractFull, input: ReceiptIn
     if (!Number.isFinite(n) || n < 0 || n > 99999999)
       throw new Error("Confira os valores do recibo.");
   }
-  if (input.observacao.length > 160 || input.iptuParcela.length > 20)
+  input = { ...input, observacao: (input.observacao ?? "").trim() };
+  if (input.observacao.length > MAX_RENT_DESCRIPTION || input.iptuParcela.length > 20)
     throw new Error("Texto do recibo muito longo.");
   validateReceiptAdjustments(input);
   const totals = computeReceiptTotals(input);
@@ -222,7 +226,11 @@ type ViaSource = Pick<
   ReceiptInput,
   "aluguel" | "honorarios" | "condominio" | "iptu" | "iptuParcela" | "seguroFianca" | "observacao"
 > & { ajustesInquilino?: TenantAdjustment[]; ajustesProprietario?: OwnerAdjustment[] };
-const viaAdjRow = (a: { tipo: AdjustmentKind; descricao: string; valor: number }): [string, number] => [
+const viaAdjRow = (a: {
+  tipo: AdjustmentKind;
+  descricao: string;
+  valor: number;
+}): [string, number] => [
   `${a.tipo === "acrescimo" ? "Acréscimo" : "Desconto"} – ${a.descricao}`,
   a.tipo === "acrescimo" ? a.valor : -a.valor,
 ];
@@ -231,9 +239,9 @@ const viaAdjRow = (a: { tipo: AdjustmentKind; descricao: string; valor: number }
  * the on-screen preview so both always show the same lines.
  */
 export function receiptViaRows(m: ViaSource, via: 0 | 1 | 2) {
-  const base: [string, number][] = [
-    [`Aluguel${via === 0 && m.observacao ? ` (${m.observacao})` : ""}`, m.aluguel],
-  ];
+  const base: [string, number][] = [["Aluguel", m.aluguel]];
+  /** Optional rent description shown under the "Aluguel" row in every via. */
+  const rentNote = (m.observacao ?? "").trim() || undefined;
   if (via !== 0 && m.honorarios) base.push(["Honorários", m.honorarios]);
   if (via !== 1 && m.iptu) base.push([`IPTU${m.iptuParcela ? ` ${m.iptuParcela}` : ""}`, m.iptu]);
   if (via !== 1 && m.seguroFianca) base.push(["Seguro Fiança", m.seguroFianca]);
@@ -246,5 +254,5 @@ export function receiptViaRows(m: ViaSource, via: 0 | 1 | 2) {
       : via === 1
         ? [...tenant.filter((a) => a.repassarProprietario).map(viaAdjRow), ...owner.map(viaAdjRow)]
         : [];
-  return { base, adjustments };
+  return { base, adjustments, rentNote };
 }
