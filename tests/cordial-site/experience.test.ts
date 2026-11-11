@@ -152,18 +152,18 @@ test("card focus is stored on the source entry and used only for the same recogn
 test("public links preserve the Gestão /site prefix and distinguish Morar", () => {
   assert.equal(
     propertyUrl(property, "https://cordialgestao.com"),
-    `https://cordialgestao.com/site/imovel/${id}`,
+    `https://cordialgestao.com/site/imovel/ref-471-${id}`,
   );
   assert.equal(
     propertyUrl(property, "https://preview.invalid/ignored-path"),
-    `https://preview.invalid/site/imovel/${id}`,
+    `https://preview.invalid/site/imovel/ref-471-${id}`,
   );
   assert.equal(
     propertyUrl(property, "https://cordialgestao.com", "morar"),
-    `https://cordialgestao.com/site-morar/imovel/${id}`,
+    `https://cordialgestao.com/site-morar/imovel/ref-471-${id}`,
   );
-  assert.equal(propertyUrl(property, ""), `/site/imovel/${id}`);
-  assert.equal(propertyUrl(property, "javascript:alert(1)"), `/site/imovel/${id}`);
+  assert.equal(propertyUrl(property, ""), `/site/imovel/ref-471-${id}`);
+  assert.equal(propertyUrl(property, "javascript:alert(1)"), `/site/imovel/ref-471-${id}`);
 });
 
 test("WhatsApp resolves the published person, valid central fallback, and REF/link without waiting for analytics", () => {
