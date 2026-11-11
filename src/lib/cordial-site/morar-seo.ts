@@ -14,3 +14,6 @@ export const detailHead = (property: PublicDetail, data?: SiteBootstrap) =>
   seo.detailHead(property, data, "morar");
 export const listingJsonLd = (property: PublicDetail, origin: string) =>
   seo.listingJsonLd(property, origin, "morar");
+export const homeHead = (data?: SiteBootstrap) => seo.homeHead(data, "morar");
+export const siteLayoutHead = (data?: SiteBootstrap) => seo.siteLayoutHead(data, "morar");
+export const agentJsonLd = (data?: SiteBootstrap) => seo.agentJsonLd(data, "morar");

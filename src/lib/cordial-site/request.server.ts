@@ -75,52 +75,48 @@ export async function guardSiteRequest(request: Request): Promise<Response | nul
   )
     return new Response("Não encontrado.", { status: 404, headers });
   if (url.pathname.startsWith(`${channel.api}/`)) return null;
-  if (["/robots.txt", `${channel.base}/robots.txt`].includes(url.pathname)) {
-    const env = siteEnvironment(brand);
-    return new Response(
-      env.indexable
-        ? `User-agent: *\nDisallow: /api/\nDisallow: /_\nSitemap: ${env.canonicalOrigin}${channel.api}/sitemap.xml\n`
-        : "User-agent: *\nDisallow: /\n",
-      { headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" } },
-    );
+  if (["/robots.txt", `${channel.base}/robots.txt`].includes(url.pathname))
+    return new Response(robotsTxt(brand), {
+      headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+    });
+  if (
+    dedicated &&
+    url.pathname === "/favicon.ico" &&
+    (request.method === "GET" || request.method === "HEAD")
+  ) {
+    // The Gestão keeps public/favicon.ico; brand hosts get their own icon.
+    const icon = new URL(`/${brand === "morar" ? "morar-site" : "cordial-site"}/favicon.ico`, url);
+    return Response.redirect(icon.toString(), 301);
   }
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
+      const sitePath = url.pathname.startsWith(`${channel.base}/`)
+        ? url.pathname.slice(channel.base.length)
+        : url.pathname;
+      const legacyId =
+        request.method === "GET" || request.method === "HEAD" ? legacyImobiId(sitePath) : null;
+      const isSitemap = ["/sitemap.xml", `${channel.base}/sitemap.xml`].includes(url.pathname);
       if (!(await limit(request, "html", 120, brand)))
         return new Response("Muitas consultas. Tente novamente em um minuto.", {
           status: 429,
           headers: { ...headers, "Retry-After": "60" },
         });
-      if (["/sitemap.xml", `${channel.base}/sitemap.xml`].includes(url.pathname))
-        return sitemap(brand);
-      const oldPath = url.pathname.startsWith(`${channel.base}/`)
-        ? url.pathname.slice(channel.base.length)
-        : url.pathname;
-      if (/^\/imovel\/\d+\//.test(oldPath)) {
-        const db = siteDb();
-        const { data, error } = await db
-          .from(`${channel.namespace}_redirects`)
-          .select("publication_id")
-          .eq("old_path", oldPath)
-          .maybeSingle();
-        if (error) throw error;
-        if (data) {
-          const { data: eligible, error: lookupError } = await db
-            .from(`${channel.namespace}_eligible`)
-            .select("public_id")
-            .eq("public_id", data.publication_id)
-            .maybeSingle();
-          if (lookupError) throw lookupError;
-          if (eligible)
-            return Response.redirect(
-              `${url.origin}${dedicated ? "" : channel.base}/imovel/${eligible.public_id}`,
-              308,
-            );
-          return new Response(
-            "Este imóvel foi retirado do catálogo. Consulte outras opções na busca.",
-            { status: 410, headers },
-          );
+      if (isSitemap) return sitemap(brand);
+      if (!legacyId) return null;
+      if (legacyId) {
+        const target = await resolveLegacy(brand, sitePath, legacyId);
+        if (target?.state === "eligible") {
+          const origin = dedicated ? `https://${publicHost}` : `${url.origin}${channel.base}`;
+          return new Response(null, {
+            status: 301,
+            headers: { ...headers, Location: `${origin}/imovel/${target.publicId}` },
+          });
         }
+        if (target?.state === "withdrawn")
+          return new Response(withdrawnPage(brand, dedicated ? "/buscar" : `${channel.base}/buscar`), {
+            status: 410,
+            headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
+          });
       }
     } catch {
       return new Response(
@@ -130,4 +126,64 @@ export async function guardSiteRequest(request: Request): Promise<Response | nul
     }
   }
   return null;
+}
+
+/** Numeric ImobiBrasil id from /imovel/{id}, /imovel/{id}/ or /imovel/{id}/{slug}; never a UUID. */
+export function legacyImobiId(path: string): string | null {
+  return /^\/imovel\/(\d{3,10})(?:\/[^?#]*)?$/.exec(path)?.[1] ?? null;
+}
+
+export function robotsTxt(brand: SiteBrand): string {
+  const env = siteEnvironment(brand);
+  const channel = siteChannel(brand);
+  if (!env.indexable) return "User-agent: *\nDisallow: /\n";
+  return [
+    "User-agent: *",
+    `Allow: ${channel.api}/media/`,
+    `Allow: ${channel.api}/sitemap.xml`,
+    "Disallow: /api/",
+    "Disallow: /_",
+    `Sitemap: ${env.canonicalOrigin}/sitemap.xml`,
+    "",
+  ].join("\n");
+}
+
+async function resolveLegacy(
+  brand: SiteBrand,
+  path: string,
+  imobiId: string,
+): Promise<{ publicId: string; state: "eligible" | "withdrawn" } | null> {
+  const channel = siteChannel(brand);
+  const db = siteDb();
+  // Manual override first (admin-confirmed), then automatic resolution by the brand's own Imobi id.
+  const normalized = path.replace(/\/+$/, "");
+  const { data: manual, error } = await db
+    .from(`${channel.namespace}_redirects`)
+    .select("publication_id")
+    .in("old_path", [normalized, `${normalized}/`])
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (manual) {
+    const { data: eligible, error: e2 } = await db
+      .from(`${channel.namespace}_eligible`)
+      .select("public_id")
+      .eq("public_id", manual.publication_id)
+      .maybeSingle();
+    if (e2) throw e2;
+    return { publicId: manual.publication_id, state: eligible ? "eligible" : "withdrawn" };
+  }
+  const { data, error: rpcError } = await db.rpc(`${channel.namespace}_resolve_legacy`, {
+    _imobi_id: imobiId,
+  });
+  // Resolver not deployed yet: behave as an unknown address (normal 404), never a 503.
+  if (rpcError) return null;
+  const row = (data as { public_id: string; state: string }[] | null)?.[0];
+  if (!row?.public_id) return null;
+  return { publicId: row.public_id, state: row.state === "eligible" ? "eligible" : "withdrawn" };
+}
+
+function withdrawnPage(brand: SiteBrand, searchHref: string) {
+  const name = brand === "morar" ? "Morar Imóveis" : "Cordial Imóveis";
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Imóvel retirado do catálogo | ${name}</title><style>body{font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 24px;line-height:1.5}a{display:inline-block;margin-top:12px;padding:10px 18px;border:1px solid currentColor;border-radius:8px;color:inherit;text-decoration:none}</style></head><body><h1>Imóvel retirado do catálogo</h1><p>Este imóvel não está mais disponível na ${name}. Veja outras opções na busca.</p><a href="${searchHref}">Ver imóveis disponíveis</a></body></html>`;
 }

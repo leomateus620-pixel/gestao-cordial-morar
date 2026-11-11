@@ -1,3 +1,4 @@
+import { SiteGoogleSettings } from "@/components/site-admin/SiteGoogleSettings";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -668,7 +669,6 @@ function SettingsForm({
         ["address", "Endereço da empresa"],
         ["hours", "Horários"],
         ["creci", "CRECI"],
-        ["instagram", "Instagram (URL https)"],
       ].map(([k, label]) => (
         <div key={k} className={k === "analyticsMeasurementId" ? "space-y-3 md:col-span-2" : ""}>
           <label className="block text-sm">
@@ -715,6 +715,7 @@ function SettingsForm({
           />
         </label>
       ))}
+      <SiteGoogleSettings brand="cordial" values={values} setValues={setValues} />
       <fieldset className="space-y-3 md:col-span-2">
         <legend className="text-sm font-semibold">Destaques editoriais da home</legend>
         <label className="grid gap-1 text-sm">

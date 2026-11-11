@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { SiteLink } from "./SiteShell";
+import { sitePath } from "@/lib/cordial-site/presentation";
+import type { SiteBrand } from "@/lib/cordial-site/brand";
+import { isGtmId, isPixelId, loadGtm, loadMetaPixel, pixelEventFor } from "@/lib/cordial-site/meta-pixel";
 import type { SiteSettings } from "@/lib/cordial-site/contract";
 import {
   ANALYTICS_CONSENT_KEY,
@@ -12,14 +15,42 @@ import {
 } from "@/lib/cordial-site/analytics-consent";
 
 const key = ANALYTICS_CONSENT_KEY;
-export function SiteAnalytics({ settings }: { settings: SiteSettings }) {
+export function SiteAnalytics({
+  settings,
+  brand = "cordial",
+}: {
+  settings: SiteSettings;
+  brand?: SiteBrand;
+}) {
   const [consent, setConsent] = useState<AnalyticsConsent>(null);
   const [editing, setEditing] = useState(false);
   const id = settings.analyticsMeasurementId;
-  const configured =
+  const privacyPath = sitePath("/privacidade", brand);
+  const gaConfigured =
     /^G-[A-Z0-9]{4,20}$/.test(id ?? "") &&
     !!settings.privacy &&
     settings.analyticsManualEventsOnly === true;
+  const pixelId = settings.metaPixelId ?? "";
+  const gtmId = settings.gtmContainerId ?? "";
+  const extras = !!settings.privacy && (isPixelId(pixelId) || isGtmId(gtmId));
+  const configured = gaConfigured || extras;
+  useEffect(() => {
+    if (!extras || consent !== "granted") return;
+    const w = window as never;
+    const stopPixel = loadMetaPixel(w, pixelId);
+    const stopGtm = loadGtm(w, gtmId);
+    const onEvent = (event: Event) => {
+      const mapped = pixelEventFor((event as CustomEvent<Record<string, unknown>>).detail ?? {});
+      const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
+      if (mapped && fbq && isPixelId(pixelId)) fbq("track", mapped[0], mapped[1]);
+    };
+    window.addEventListener("cordial:analytics", onEvent);
+    return () => {
+      window.removeEventListener("cordial:analytics", onEvent);
+      stopPixel();
+      stopGtm();
+    };
+  }, [extras, consent, pixelId, gtmId]);
   useEffect(() => {
     const target = window as unknown as AnalyticsRuntime;
     let listener: ((event: StorageEvent) => void) | undefined;
@@ -37,7 +68,7 @@ export function SiteAnalytics({ settings }: { settings: SiteSettings }) {
   }, [id]);
   useEffect(() => {
     const target = window as unknown as AnalyticsRuntime;
-    if (!configured || consent !== "granted") {
+    if (!gaConfigured || consent !== "granted") {
       updateAnalyticsConsent(target, id, "denied");
       return;
     }
@@ -109,7 +140,7 @@ export function SiteAnalytics({ settings }: { settings: SiteSettings }) {
       updateAnalyticsConsent(target, id, "denied");
       script.remove();
     };
-  }, [configured, consent, id]);
+  }, [gaConfigured, consent, id]);
   if (!configured) return null;
   const choose = (next: Exclude<AnalyticsConsent, null>) => {
     const target = window as unknown as AnalyticsRuntime;
@@ -141,7 +172,7 @@ export function SiteAnalytics({ settings }: { settings: SiteSettings }) {
           <p>
             Podemos usar métricas de navegação para melhorar o site. Seus dados do formulário não
             são enviados às métricas.{" "}
-            <SiteLink to="/site/privacidade">Ler política de privacidade</SiteLink>
+            <SiteLink to={privacyPath}>Ler política de privacidade</SiteLink>
           </p>
           <div>
             <button className="cs-button cs-button-light" onClick={() => choose("denied")}>

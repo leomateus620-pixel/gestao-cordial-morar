@@ -228,7 +228,39 @@ export const settingsSchema = z.object({
     .array(z.object({ label: z.string().max(100), url: z.string().url().startsWith("https://") }))
     .max(12)
     .default([]),
+  // SEO da home: título usado inteiro (sem sufixo da marca) quando preenchido.
+  homeTitle: z.string().trim().max(60).default(""),
+  homeDescription: z.string().trim().max(160).default(""),
+  socialImageUrl: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
+  youtube: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
+  tiktok: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
+  linkedin: z.union([z.string().url().startsWith("https://").max(500), z.literal("")]).default(""),
+  googleSiteVerification: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9_-]{20,100}$|^$/)
+    .default(""),
+  bingSiteVerification: z
+    .string()
+    .trim()
+    .regex(/^[A-F0-9]{32}$|^$/)
+    .default(""),
+  metaPixelId: z
+    .string()
+    .trim()
+    .regex(/^\d{10,20}$|^$/)
+    .default(""),
+  gtmContainerId: z
+    .string()
+    .trim()
+    .regex(/^GTM-[A-Z0-9]{4,10}$|^$/)
+    .default(""),
 });
+/** Accepts the bare code or the full <meta ... content="..."> tag pasted by the admin. */
+export function verificationCode(input: string): string {
+  const m = /content\s*=\s*["']([^"']+)["']/i.exec(input);
+  return (m ? m[1] : input).trim();
+}
 export type SiteSettings = z.infer<typeof settingsSchema>;
 export type SitePage = {
   slug: string;

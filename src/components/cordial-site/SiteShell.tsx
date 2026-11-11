@@ -400,16 +400,22 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                   © {new Date().getFullYear()} {settings.brand}
                 </span>
                 <SiteLink to={pathFor("/privacidade")}>Privacidade</SiteLink>
-                {brand === "cordial" && <SiteAnalytics settings={settings} />}
-                {settings.instagram && (
-                  <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
-                    <InstagramIcon width={18} height={18} /> Instagram <ArrowUpRight size={14} />
-                  </a>
-                )}
-                {settings.facebook && (
-                  <a href={settings.facebook} target="_blank" rel="noopener noreferrer">
-                    Facebook <ArrowUpRight size={14} />
-                  </a>
+                <SiteAnalytics settings={settings} brand={brand} />
+                {(
+                  [
+                    ["instagram", "Instagram"],
+                    ["facebook", "Facebook"],
+                    ["youtube", "YouTube"],
+                    ["tiktok", "TikTok"],
+                    ["linkedin", "LinkedIn"],
+                  ] as const
+                ).map(([k, label]) =>
+                  settings[k] ? (
+                    <a key={k} href={settings[k]} target="_blank" rel="noopener noreferrer">
+                      {k === "instagram" && <InstagramIcon width={18} height={18} />} {label}{" "}
+                      <ArrowUpRight size={14} />
+                    </a>
+                  ) : null,
                 )}
               </div>
             </div>

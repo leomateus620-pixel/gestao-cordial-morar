@@ -47,6 +47,11 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Worker bindings live in `env`; the site guard runs before the framework populates
+      // process.env, so copy string bindings first (this made /sitemap.xml 404 in production).
+      if (env && typeof env === "object" && typeof process !== "undefined" && process.env)
+        for (const [k, v] of Object.entries(env as Record<string, unknown>))
+          if (typeof v === "string" && process.env[k] === undefined) process.env[k] = v;
       const moved = siteDomainRedirect(request.url);
       if (moved && (request.method === "GET" || request.method === "HEAD"))
         return new Response(null, { status: 301, headers: { Location: moved } });

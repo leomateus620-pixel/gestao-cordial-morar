@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { homeHead, siteMatchData } from "@/lib/cordial-site/seo";
 import type { SiteBootstrap } from "@/lib/cordial-site/contract";
 import { HomePage, type HomeData } from "@/components/cordial-site/HomePage";
 import { loadHome } from "@/lib/cordial-site/home-loader";
@@ -11,6 +12,7 @@ let lastMorarHome: HomeData | null = null;
 
 export const Route = createFileRoute("/site-morar/")({
   staleTime: 5 * 60_000,
+  head: ({ matches }) => homeHead(siteMatchData(matches, "morar"), "morar"),
   loader: async ({ abortController, parentMatchPromise }) => {
     const parent = await parentMatchPromise;
     const settings = (parent?.loaderData as SiteBootstrap | undefined)?.settings;

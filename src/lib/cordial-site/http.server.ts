@@ -234,18 +234,23 @@ export async function sitemap(brand: SiteBrand = "cordial") {
   if (!env.indexable || !env.canonicalOrigin) return new Response("", { status: 404, headers });
   const db = siteDb();
   const urls: string[] = [];
+  const lastmod = new Map<string, string>();
   let cursor: string | undefined;
   while (true) {
     let q = db
       .from(`${channel.namespace}_eligible`)
-      .select("public_id")
+      .select("public_id,published_at")
       .order("public_id")
       .limit(500);
     if (cursor) q = q.gt("public_id", cursor);
     const { data, error } = await q;
     if (error) throw new SiteUnavailable();
     if (!data?.length) break;
-    urls.push(...data.map((p) => `/imovel/${p.public_id}`));
+    for (const p of data) {
+      const path = `/imovel/${p.public_id}`;
+      urls.push(path);
+      if (p.published_at) lastmod.set(path, String(p.published_at).slice(0, 10));
+    }
     cursor = data.at(-1)!.public_id;
   }
   let pageCursor: string | undefined;
@@ -265,7 +270,6 @@ export async function sitemap(brand: SiteBrand = "cordial") {
     );
     pageCursor = data.at(-1)!.slug;
   }
-  const base = "";
   const paths = [
     "/",
     "/bairros",
@@ -277,7 +281,7 @@ export async function sitemap(brand: SiteBrand = "cordial") {
     ...urls,
   ];
   return new Response(
-    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((p) => `<url><loc>${xml(env.canonicalOrigin! + base + p)}</loc></url>`).join("")}</urlset>`,
+    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((p) => `<url><loc>${xml(env.canonicalOrigin! + p)}</loc>${lastmod.has(p) ? `<lastmod>${lastmod.get(p)}</lastmod>` : ""}</url>`).join("")}</urlset>`,
     { headers: { ...headers, "Content-Type": "application/xml; charset=utf-8" } },
   );
 }

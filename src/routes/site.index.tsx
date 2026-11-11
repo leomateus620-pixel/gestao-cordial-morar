@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadHome as loadSharedHome } from "@/lib/cordial-site/home-loader";
+import { homeHead, siteMatchData } from "@/lib/cordial-site/seo";
 import type { SiteBootstrap } from "@/lib/cordial-site/contract";
 import { HomePage, type HomeData } from "@/components/cordial-site/HomePage";
 
@@ -12,6 +13,7 @@ let lastHome: HomeData | null = null;
 
 export const Route = createFileRoute("/site/")({
   staleTime: 5 * 60_000,
+  head: ({ matches }) => homeHead(siteMatchData(matches, "cordial"), "cordial"),
   loader: async ({ abortController, parentMatchPromise }) => {
     const parent = await parentMatchPromise;
     const settings = (parent?.loaderData as SiteBootstrap | undefined)?.settings;

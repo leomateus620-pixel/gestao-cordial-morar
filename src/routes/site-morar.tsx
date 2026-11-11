@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadBootstrap } from "@/lib/cordial-site/morar-data";
-import { siteHead } from "@/lib/cordial-site/morar-seo";
+import { agentJsonLd, homeHead, siteLayoutHead } from "@/lib/cordial-site/morar-seo";
 import { SiteBrandContext } from "@/lib/cordial-site/context";
 import {
   SiteShell,
@@ -14,13 +14,26 @@ import morarCss from "@/components/cordial-site/morar.css?url";
 export const Route = createFileRoute("/site-morar")({
   loader: ({ abortController }) => loadBootstrap(abortController.signal),
   head: ({ loaderData }) => {
-    const head = siteHead(
-      "Seu próximo lar, mais perto de você",
-      "Encontre imóveis para comprar ou alugar com a Morar Imóveis.",
-      loaderData,
-    );
+    // Layout keeps a fallback title/description but no canonical/og:url/og:image (pages own them).
+    const base = homeHead(loaderData);
+    const layout = siteLayoutHead(loaderData);
+    const head = {
+      meta: [
+        ...base.meta.filter(
+          (m) =>
+            !("property" in m && ["og:url", "og:image", "og:image:alt", "og:image:width", "og:image:height"].includes(String(m.property))) &&
+            !("name" in m && m.name === "twitter:image"),
+        ),
+        ...layout.meta,
+      ],
+      links: layout.links,
+    };
+    const agent = agentJsonLd(loaderData);
     return {
-      ...head,
+      meta: head.meta,
+      scripts: agent
+        ? [{ type: "application/ld+json", children: JSON.stringify(agent).replace(/</g, "\\u003c") }]
+        : [],
       links: [
         ...head.links,
         { rel: "stylesheet", href: sharedCss },

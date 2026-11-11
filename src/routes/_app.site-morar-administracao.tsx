@@ -1,3 +1,4 @@
+import { SiteGoogleSettings } from "@/components/site-admin/SiteGoogleSettings";
 import { ShowcaseManager } from "@/components/cordial-site/ShowcaseManager";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -363,8 +364,6 @@ function SettingsForm({
         ["address", "Endereço da empresa"],
         ["hours", "Horários"],
         ["creci", "CRECI"],
-        ["instagram", "Instagram (URL https)"],
-        ["facebook", "Facebook (URL https)"],
       ].map(([k, label]) => (
         <label key={k} className="text-sm">
           {label}
@@ -389,6 +388,7 @@ function SettingsForm({
           />
         </label>
       ))}
+      <SiteGoogleSettings brand="morar" values={values} setValues={setValues} />
       <fieldset className="space-y-3 md:col-span-2">
         <legend className="text-sm font-semibold">Links de financiamento aprovados</legend>
         {values.links.map((link, i) => (

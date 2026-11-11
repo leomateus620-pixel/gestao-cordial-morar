@@ -10,6 +10,24 @@ export function siteMatchData(
     | SiteBootstrap
     | undefined;
 }
+/** Plain single-line text for meta tags: no HTML, arrows, bullets or broken words. */
+export function seoText(input: unknown, max = 160): string {
+  const text = plainText(input)
+    .replace(/[=\-]+>|<[=\-]+|[→←⇒➔➜►▶•●▪◆✓✔]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.;:–-]+$/, "")}…`;
+}
+const brandAssets = (brand: SiteBrand) => (brand === "morar" ? "/morar-site" : "/cordial-site");
+const themeColor = (brand: SiteBrand) => (brand === "morar" ? "#2f3437" : "#0f4c5c");
+export function brandShareImage(data: SiteBootstrap | undefined, brand: SiteBrand) {
+  const custom = data?.settings?.socialImageUrl;
+  if (custom) return custom;
+  return data?.canonicalOrigin ? `${data.canonicalOrigin}${brandAssets(brand)}/og-default.jpg` : null;
+}
 export function siteHead(
   title: string,
   description: string,
@@ -18,31 +36,95 @@ export function siteHead(
   noindex = false,
   image?: string,
   brand: SiteBrand = "cordial",
+  fullTitle = false,
 ) {
   const canonical = data?.canonicalOrigin ? publicSiteUrl(path, data.canonicalOrigin, brand) : null;
+  const name = getSiteBrand(brand).name;
+  const pageTitle = fullTitle ? title : `${title} | ${name}`;
+  const desc = seoText(description);
+  const shareImage = image ?? brandShareImage(data, brand);
   return {
     meta: [
-      { title: `${title} | ${getSiteBrand(brand).name}` },
-      { name: "description", content: description },
-      { property: "og:title", content: `${title} | ${getSiteBrand(brand).name}` },
-      { property: "og:description", content: description },
+      { title: pageTitle },
+      { name: "description", content: desc },
+      { property: "og:title", content: pageTitle },
+      { property: "og:description", content: desc },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: name },
+      { property: "og:locale", content: "pt_BR" },
       {
         name: "robots",
         content: !data?.indexable || noindex ? "noindex, nofollow" : "index, follow",
       },
-      { name: "twitter:card", content: image ? "summary_large_image" : "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: pageTitle },
+      { name: "twitter:description", content: desc },
       ...(canonical ? [{ property: "og:url", content: canonical }] : []),
-      ...(image ? [{ property: "og:image", content: image }] : []),
+      ...(shareImage
+        ? [
+            { property: "og:image", content: shareImage },
+            { property: "og:image:alt", content: `${name} — ${title}` },
+            ...(image ? [] : [
+              { property: "og:image:width", content: "1200" },
+              { property: "og:image:height", content: "630" },
+            ]),
+            { name: "twitter:image", content: shareImage },
+          ]
+        : []),
     ],
     links: canonical ? [{ rel: "canonical", href: canonical }] : [],
   };
+}
+/**
+ * Brand-wide head for the /site and /site-morar layouts: icons, theme and verification only.
+ * Never canonical, og:url or og:image — those belong to each page (TanStack concatenates links).
+ */
+export function siteLayoutHead(data: SiteBootstrap | undefined, brand: SiteBrand) {
+  const dir = brandAssets(brand);
+  const s = data?.settings;
+  return {
+    meta: [
+      { name: "theme-color", content: themeColor(brand) },
+      ...(s?.googleSiteVerification
+        ? [{ name: "google-site-verification", content: s.googleSiteVerification }]
+        : []),
+      ...(s?.bingSiteVerification ? [{ name: "msvalidate.01", content: s.bingSiteVerification }] : []),
+    ],
+    links: [
+      { rel: "icon", href: `${dir}/favicon.ico`, sizes: "any" },
+      { rel: "icon", type: "image/png", href: `${dir}/icon-192.png`, sizes: "192x192" },
+      { rel: "apple-touch-icon", href: `${dir}/apple-touch-icon.png` },
+    ],
+  };
+}
+export function homeHead(data: SiteBootstrap | undefined, brand: SiteBrand) {
+  const fallback =
+    brand === "morar"
+      ? {
+          title: "Seu próximo lar, mais perto de você",
+          description: "Encontre imóveis para comprar ou alugar com a Morar Imóveis.",
+        }
+      : {
+          title: "Sentir-se em casa!",
+          description: "Encontre imóveis para comprar ou alugar com a Cordial.",
+        };
+  const custom = data?.settings?.homeTitle;
+  return siteHead(
+    custom || fallback.title,
+    data?.settings?.homeDescription || fallback.description,
+    data,
+    brand === "morar" ? "/site-morar/" : "/site/",
+    false,
+    undefined,
+    brand,
+    !!custom,
+  );
 }
 export function detailHead(p: PublicDetail, data?: SiteBootstrap, brand: SiteBrand = "cordial") {
   const title = `${p.type ?? "Imóvel"} ${p.operation === "venda" ? "à venda" : "para alugar"} · ${p.reference}`;
   return siteHead(
     title,
-    `${locationLabel(p)}. ${priceLabel(p)}. ${plainText(p.description).slice(0, 130)}`,
+    `${locationLabel(p)}. ${priceLabel(p)}. ${seoText(p.description, 200)}`,
     data,
     propertyPath(p, brand),
     false,
@@ -81,5 +163,24 @@ export function listingJsonLd(p: PublicDetail, origin: string, brand: SiteBrand 
           },
         }
       : {}),
+  };
+}
+
+/** RealEstateAgent JSON-LD built only from the brand's own settings (NAP must match the Google profile). */
+export function agentJsonLd(data: SiteBootstrap | undefined, brand: SiteBrand) {
+  const st = data?.settings;
+  if (!st || !data?.canonicalOrigin) return null;
+  const sameAs = [st.instagram, st.facebook, st.youtube, st.tiktok, st.linkedin].filter(Boolean);
+  return {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    name: st.brand || getSiteBrand(brand).name,
+    url: `${data.canonicalOrigin}/`,
+    logo: `${data.canonicalOrigin}${brandAssets(brand)}/icon-192.png`,
+    ...(st.phone ? { telephone: st.phone } : {}),
+    ...(st.email ? { email: st.email } : {}),
+    ...(st.address ? { address: st.address } : {}),
+    ...(st.hours ? { openingHours: st.hours } : {}),
+    ...(sameAs.length ? { sameAs } : {}),
   };
 }
