@@ -12,6 +12,7 @@ import {
 import { defaultSearch, searchSchema, type SiteSearch } from "@/lib/cordial-site/contract";
 import { loadCatalogCount } from "@/lib/cordial-site/data";
 import { useSite } from "@/lib/cordial-site/context";
+import { allowedTypes, defaultOrder } from "@/lib/cordial-site/search-settings";
 import { searchDraft, searchQueryKey } from "@/lib/cordial-site/search-state";
 import {
   advancedCount,
@@ -120,7 +121,7 @@ export function MorarSearchForm({
   compact?: boolean;
   onApplied?: () => void;
 }) {
-  const { facets, available } = useSite();
+  const { facets, available, settings } = useSite();
   const navigate = useNavigate();
   const id = useId();
   const [values, setValues] = useState<SearchValues>(() => searchDraft(initial));
@@ -364,7 +365,10 @@ export function MorarSearchForm({
             return;
           }
           setErrors({});
-          void navigate({ to: "/site-morar/buscar", search: { ...result.data, pagina: 1 } });
+          void navigate({
+            to: "/site-morar/buscar",
+            search: { ...result.data, ordem: defaultOrder(result.data.ordem, compact, settings), pagina: 1 },
+          });
           onApplied?.();
         }}
       >
@@ -408,7 +412,7 @@ export function MorarSearchForm({
               {values.tipo && !facets.types.some((type) => type.value === values.tipo) && (
                 <option value={values.tipo}>{values.tipo}</option>
               )}
-              {facets.types.map((type) => (
+              {allowedTypes(facets.types, values.finalidade, settings).map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.value}
                 </option>

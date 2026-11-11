@@ -28,7 +28,7 @@ export async function loadHome(
   ]);
   const pages: PublicProperty[][] = firstPages.filter(Boolean).map((c) => c!.items);
   const recent = () => pages.flat();
-  let featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent() });
+  let featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent(), mix: settings?.featuredMix });
   let more = selectMore(pages, featured.map((p) => p.id));
   const total = firstPages[0]!.total;
   for (
@@ -39,7 +39,7 @@ export async function loadHome(
     const next = await loadCatalog({ ordem: "recentes", pagina: page }, signal, brand).catch(() => null);
     if (!next?.items.length) break;
     pages.push(next.items);
-    featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent() });
+    featured = selectFeatured({ mode, editorialIds, editorial: summaries.items, recent: recent(), mix: settings?.featuredMix });
     more = selectMore(pages, featured.map((p) => p.id));
   }
   const weekly = showcase ? summaries.items.find((p) => p.id === showcase.publicId && p.cover) : undefined;

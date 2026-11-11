@@ -1,3 +1,4 @@
+import { HomeExtras } from "./HomeExtras";
 import type React from "react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -470,6 +471,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
               </section>
             )}
 
+            <HomeExtras />
             <section className="cs-container cs-hx-featured" aria-labelledby="cs-hx-featured-title">
               <div className="cs-hx-heading">
                 <h2 id="cs-hx-featured-title">Imóveis em destaque</h2>

@@ -18,6 +18,7 @@ import {
 } from "@/lib/cordial-site/search-state";
 import { SiteLink } from "./SiteShell";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
+import { allowedTypes, defaultOrder } from "@/lib/cordial-site/search-settings";
 import { MorarSearchForm } from "./MorarSearchForm";
 import { searchLabels as labels } from "@/lib/cordial-site/search-labels";
 import { trackSiteEvent } from "@/lib/cordial-site/experience";
@@ -284,7 +285,7 @@ function CordialSearchForm({
   );
   const typeField = select(
     "tipo",
-    facets.types.map((x) => [x.value, x.value]),
+    allowedTypes(facets.types, values.finalidade, settings).map((x) => [x.value, x.value]),
     "Todos os tipos",
   );
   const cityField = select(
@@ -400,7 +401,10 @@ function CordialSearchForm({
           source: compact ? "home" : "filters",
           ...(currentCount?.total != null ? { count: currentCount.total } : {}),
         });
-        void navigate({ to: "/site/buscar", search: { ...valid.data, pagina: 1 } });
+        void navigate({
+          to: "/site/buscar",
+          search: { ...valid.data, ordem: defaultOrder(valid.data.ordem, compact, settings), pagina: 1 },
+        });
         onApplied?.();
       }}
     >

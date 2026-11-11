@@ -1,3 +1,4 @@
+import { propertySlug } from "./property-slug";
 import { z } from "zod";
 import { leadSchema } from "./contract";
 import { readSite, siteDb, siteEnvironment, SiteUnavailable } from "./service.server";
@@ -239,7 +240,7 @@ export async function sitemap(brand: SiteBrand = "cordial") {
   while (true) {
     let q = db
       .from(`${channel.namespace}_eligible`)
-      .select("public_id,published_at")
+      .select("public_id,published_at,public_reference,operacao,tipo,cidade,bairro,dormitorios")
       .order("public_id")
       .limit(500);
     if (cursor) q = q.gt("public_id", cursor);
@@ -247,7 +248,15 @@ export async function sitemap(brand: SiteBrand = "cordial") {
     if (error) throw new SiteUnavailable();
     if (!data?.length) break;
     for (const p of data) {
-      const path = `/imovel/${p.public_id}`;
+      const path = `/imovel/${propertySlug({
+        id: p.public_id,
+        reference: p.public_reference,
+        operation: p.operacao,
+        type: p.tipo,
+        city: p.cidade,
+        district: p.bairro,
+        bedrooms: p.dormitorios,
+      })}`;
       urls.push(path);
       if (p.published_at) lastmod.set(path, String(p.published_at).slice(0, 10));
     }

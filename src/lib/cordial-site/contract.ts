@@ -190,6 +190,23 @@ const priceStepsSchema = z
     (steps) => steps.every((value, index) => index === 0 || value > steps[index - 1]),
     "Informe tetos distintos em ordem crescente.",
   );
+const httpsUrl = z.string().url().startsWith("https://").max(500);
+export const bannerSchema = z
+  .object({
+    id: z.string().uuid(),
+    imageUrl: httpsUrl,
+    mobileImageUrl: z.union([httpsUrl, z.literal("")]).default(""),
+    title: z.string().trim().max(80).default(""),
+    caption: z.string().trim().max(160).default(""),
+    // Link interno do site (/buscar?...) ou https externo.
+    href: z.union([z.string().regex(/^\/(?!\/)[^\s]*$/).max(300), httpsUrl, z.literal("")]).default(""),
+    alt: z.string().trim().min(3).max(140),
+    startsAt: z.string().datetime({ offset: true }).nullable().default(null),
+    endsAt: z.string().datetime({ offset: true }).nullable().default(null),
+    active: z.boolean().default(true),
+  })
+  .refine((b) => !b.startsAt || !b.endsAt || b.startsAt < b.endsAt, "O fim precisa ser depois do início.");
+export type SiteBanner = z.infer<typeof bannerSchema>;
 export const settingsSchema = z.object({
   brand: z.string().max(80).default("Cordial Imóveis"),
   tagline: z.string().max(140).default("Sentir-se em casa!"),
@@ -255,6 +272,44 @@ export const settingsSchema = z.object({
     .trim()
     .regex(/^GTM-[A-Z0-9]{4,10}$|^$/)
     .default(""),
+  // SEO individual por imóvel (vazio = automático).
+  seoOverrides: z
+    .array(
+      z.object({
+        publicId: z.string().uuid(),
+        title: z.string().trim().max(70).default(""),
+        description: z.string().trim().max(160).default(""),
+      }),
+    )
+    .max(500)
+    .refine((l) => new Set(l.map((o) => o.publicId)).size === l.length, "Imóvel repetido no SEO.")
+    .default([]),
+  banners: z.array(bannerSchema).max(8).default([]),
+  // Busca: ordenação padrão, atalhos e tipos por finalidade (vazio = todos).
+  searchDefaultOrder: z.enum(["recentes", "preco_asc", "preco_desc", "area_desc"]).default("recentes"),
+  quickSearches: z
+    .array(
+      z.object({
+        label: z.string().trim().min(2).max(40),
+        finalidade: z.enum(["venda", "aluguel"]),
+        tipo: z.string().trim().max(100).default(""),
+        cidade: z.string().trim().max(100).default(""),
+        bairro: z.string().trim().max(100).default(""),
+      }),
+    )
+    .max(8)
+    .default([]),
+  searchTypes: z
+    .object({
+      venda: z.array(z.string().max(100)).max(40).default([]),
+      aluguel: z.array(z.string().max(100)).max(40).default([]),
+    })
+    .default({ venda: [], aluguel: [] }),
+  // Destaques: quantos dos cinco devem ser de venda e de aluguel (0 = sem preferência).
+  featuredMix: z
+    .object({ venda: z.number().int().min(0).max(5).default(0), aluguel: z.number().int().min(0).max(5).default(0) })
+    .refine((m) => m.venda + m.aluguel <= 5, "A soma de venda e aluguel não pode passar de cinco.")
+    .default({ venda: 0, aluguel: 0 }),
 });
 /** Accepts the bare code or the full <meta ... content="..."> tag pasted by the admin. */
 export function verificationCode(input: string): string {

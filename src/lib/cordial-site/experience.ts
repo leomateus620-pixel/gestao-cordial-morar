@@ -1,6 +1,7 @@
 import type { PublicProperty } from "./contract";
 import type { SiteBrand } from "./brand";
 import { propertyPath } from "./presentation";
+import type { SlugInput } from "./property-slug";
 import { rewritePublicInput, rewritePublicOutput } from "./routing";
 
 /** One-based URL fragment; it changes presentation only and never the canonical identity. */
@@ -103,7 +104,7 @@ export function publicSiteUrl(path: string, origin: string, brand: SiteBrand = "
   }
 }
 export function propertyUrl(
-  p: Pick<PublicProperty, "id">,
+  p: SlugInput,
   origin: string,
   brand: SiteBrand = "cordial",
 ) {
