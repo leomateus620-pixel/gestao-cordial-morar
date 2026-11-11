@@ -4,6 +4,15 @@ import { verificationCode } from "@/lib/cordial-site/contract";
 import type { SiteBrand } from "@/lib/cordial-site/brand";
 import { SITE_PUBLIC_HOSTS } from "@/lib/cordial-site/domains";
 import { privacyTemplate, privacyIssues } from "@/lib/cordial-site/privacy-template";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FeaturedEditor, type PropertyOption } from "./FeaturedEditor";
+import {
+  BannerEditor,
+  FeaturedMixEditor,
+  PropertySeoEditor,
+  SearchSettingsEditor,
+} from "./SiteContentEditors";
+import { RedirectManager } from "./RedirectManager";
 
 const input = "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm";
 
@@ -13,8 +22,51 @@ type Props = {
   setValues: Dispatch<SetStateAction<SiteSettings>>;
 };
 
-/** Painel "Site e Google": SEO da home, identidade, redes, verificação e medição — por marca. */
-export function SiteGoogleSettings({ brand, values, setValues }: Props) {
+/** Central "Site e Google": tudo o que o administrador ajusta nos sites, separado por marca. */
+export function SiteGoogleSettings(props: Props & { options: PropertyOption[] }) {
+  return (
+    <section className="rounded-xl border bg-card p-4 md:col-span-2" aria-label="Site e Google">
+      <h2 className="mb-1 text-base font-semibold">Site e Google</h2>
+      <p className="mb-4 text-xs text-muted-foreground">
+        Alterações das abas abaixo entram no ar ao salvar as configurações. Redirecionamentos são
+        salvos na própria aba.
+      </p>
+      <Tabs defaultValue="identidade">
+        <TabsList className="flex h-auto flex-wrap justify-start">
+          <TabsTrigger value="identidade">Identidade e Google</TabsTrigger>
+          <TabsTrigger value="inicio">Página inicial</TabsTrigger>
+          <TabsTrigger value="busca">Busca</TabsTrigger>
+          <TabsTrigger value="imoveis">SEO dos imóveis</TabsTrigger>
+          <TabsTrigger value="redirecionamentos">Redirecionamentos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="identidade" className="pt-4">
+          <IdentitySeoSection {...props} />
+        </TabsContent>
+        <TabsContent value="inicio" className="space-y-6 pt-4">
+          <FeaturedMixEditor {...props} />
+          <FeaturedEditor
+            values={props.values}
+            setValues={props.setValues}
+            options={props.options}
+          />
+          <BannerEditor values={props.values} setValues={props.setValues} />
+        </TabsContent>
+        <TabsContent value="busca" className="pt-4">
+          <SearchSettingsEditor {...props} />
+        </TabsContent>
+        <TabsContent value="imoveis" className="pt-4">
+          <PropertySeoEditor {...props} />
+        </TabsContent>
+        <TabsContent value="redirecionamentos" className="pt-4">
+          <RedirectManager brand={props.brand} />
+        </TabsContent>
+      </Tabs>
+    </section>
+  );
+}
+
+/** Identidade, SEO da home, redes, verificação, medição e privacidade — por marca. */
+function IdentitySeoSection({ brand, values, setValues }: Props) {
   const set = (k: keyof SiteSettings, v: string) => setValues((s) => ({ ...s, [k]: v }));
   const host = SITE_PUBLIC_HOSTS[brand];
   const name = brand === "morar" ? "Morar Imóveis" : "Cordial Imóveis";
@@ -38,11 +90,14 @@ export function SiteGoogleSettings({ brand, values, setValues }: Props) {
     </label>
   );
   return (
-    <div className="space-y-6 md:col-span-2">
+    <div className="space-y-6">
       <fieldset className="space-y-2 rounded-md border p-4">
         <legend className="px-1 text-sm font-semibold">Política de privacidade</legend>
         {issues.length > 0 ? (
-          <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm"
+          >
             Formulário de contato desativado: falta publicar a política de privacidade.{" "}
             {issues.join(" ")}
           </p>
@@ -67,7 +122,12 @@ export function SiteGoogleSettings({ brand, values, setValues }: Props) {
 
       <fieldset className="grid gap-3 rounded-md border p-4 md:grid-cols-2">
         <legend className="px-1 text-sm font-semibold">Site e Google — página inicial</legend>
-        {text("homeTitle", "Título da página inicial", "Usado inteiro. Ideal até 60 caracteres.", 60)}
+        {text(
+          "homeTitle",
+          "Título da página inicial",
+          "Usado inteiro. Ideal até 60 caracteres.",
+          60,
+        )}
         {text(
           "homeDescription",
           "Descrição da página inicial",
@@ -76,7 +136,10 @@ export function SiteGoogleSettings({ brand, values, setValues }: Props) {
             : undefined,
           160,
         )}
-        <div className="rounded-md bg-muted/40 p-3 text-sm md:col-span-2" aria-label="Prévia no Google">
+        <div
+          className="rounded-md bg-muted/40 p-3 text-sm md:col-span-2"
+          aria-label="Prévia no Google"
+        >
           <div className="text-xs text-muted-foreground">{host}</div>
           <div className="text-primary">{title}</div>
           <div className="text-xs text-muted-foreground">

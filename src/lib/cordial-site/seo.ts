@@ -1,7 +1,8 @@
 import { getSiteBrand, type SiteBrand } from "./brand";
 import type { SiteBootstrap, PublicDetail } from "./contract";
-import { locationLabel, mediaPath, propertyPath, priceLabel, plainText } from "./presentation";
+import { mediaPath, propertyPath, plainText } from "./presentation";
 import { publicSiteUrl, propertyUrl } from "./experience";
+import { autoPropertySeo } from "./property-slug";
 export function siteMatchData(
   matches: readonly { routeId: string; loaderData?: unknown }[],
   brand: SiteBrand = "cordial",
@@ -13,7 +14,7 @@ export function siteMatchData(
 /** Plain single-line text for meta tags: no HTML, arrows, bullets or broken words. */
 export function seoText(input: unknown, max = 160): string {
   const text = plainText(input)
-    .replace(/[=\-]+>|<[=\-]+|[→←⇒➔➜►▶•●▪◆✓✔]/g, " ")
+    .replace(/[=-]+>|<[=-]+|[→←⇒➔➜►▶•●▪◆✓✔]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (text.length <= max) return text;
@@ -26,7 +27,9 @@ const themeColor = (brand: SiteBrand) => (brand === "morar" ? "#2f3437" : "#0f4c
 export function brandShareImage(data: SiteBootstrap | undefined, brand: SiteBrand) {
   const custom = data?.settings?.socialImageUrl;
   if (custom) return custom;
-  return data?.canonicalOrigin ? `${data.canonicalOrigin}${brandAssets(brand)}/og-default.jpg` : null;
+  return data?.canonicalOrigin
+    ? `${data.canonicalOrigin}${brandAssets(brand)}/og-default.jpg`
+    : null;
 }
 export function siteHead(
   title: string,
@@ -64,10 +67,12 @@ export function siteHead(
         ? [
             { property: "og:image", content: shareImage },
             { property: "og:image:alt", content: `${name} — ${title}` },
-            ...(image ? [] : [
-              { property: "og:image:width", content: "1200" },
-              { property: "og:image:height", content: "630" },
-            ]),
+            ...(image
+              ? []
+              : [
+                  { property: "og:image:width", content: "1200" },
+                  { property: "og:image:height", content: "630" },
+                ]),
             { name: "twitter:image", content: shareImage },
           ]
         : []),
@@ -88,7 +93,9 @@ export function siteLayoutHead(data: SiteBootstrap | undefined, brand: SiteBrand
       ...(s?.googleSiteVerification
         ? [{ name: "google-site-verification", content: s.googleSiteVerification }]
         : []),
-      ...(s?.bingSiteVerification ? [{ name: "msvalidate.01", content: s.bingSiteVerification }] : []),
+      ...(s?.bingSiteVerification
+        ? [{ name: "msvalidate.01", content: s.bingSiteVerification }]
+        : []),
     ],
     links: [
       { rel: "icon", href: `${dir}/favicon.ico`, sizes: "any" },
@@ -121,10 +128,13 @@ export function homeHead(data: SiteBootstrap | undefined, brand: SiteBrand) {
   );
 }
 export function detailHead(p: PublicDetail, data?: SiteBootstrap, brand: SiteBrand = "cordial") {
-  const title = `${p.type ?? "Imóvel"} ${p.operation === "venda" ? "à venda" : "para alugar"} · ${p.reference}`;
+  const override = data?.settings?.seoOverrides?.find((o) => o.publicId === p.id);
+  const auto = autoPropertySeo(p);
+  const title = override?.title || auto.title;
+  const description = override?.description || auto.description;
   return siteHead(
     title,
-    `${locationLabel(p)}. ${priceLabel(p)}. ${seoText(p.description, 200)}`,
+    description,
     data,
     propertyPath(p, brand),
     false,
@@ -133,6 +143,30 @@ export function detailHead(p: PublicDetail, data?: SiteBootstrap, brand: SiteBra
       : undefined,
     brand,
   );
+}
+/** Trilha Início › Comprar/Alugar › Cidade › Imóvel, nos mesmos endereços oficiais da navegação. */
+export function breadcrumbJsonLd(p: PublicDetail, origin: string, brand: SiteBrand = "cordial") {
+  const op = p.operation === "venda" ? "Comprar" : "Alugar";
+  const search = (q: string) =>
+    publicSiteUrl(`${getSiteBrand(brand).basePath}/buscar?${q}`, origin, brand);
+  const items = [
+    { name: "Início", item: publicSiteUrl(`${getSiteBrand(brand).basePath}/`, origin, brand) },
+    { name: op, item: search(`finalidade=${p.operation}`) },
+    ...(p.city
+      ? [
+          {
+            name: p.city,
+            item: search(`finalidade=${p.operation}&cidade=${encodeURIComponent(p.city)}`),
+          },
+        ]
+      : []),
+    { name: `${p.type ?? "Imóvel"} · Ref. ${p.reference}`, item: propertyUrl(p, origin, brand) },
+  ];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, ...it })),
+  };
 }
 export function listingJsonLd(p: PublicDetail, origin: string, brand: SiteBrand = "cordial") {
   const url = propertyUrl(p, origin, brand);

@@ -1,3 +1,4 @@
+import { propertySlug } from "./property-slug";
 import { siteDb, siteEnvironment } from "./service.server";
 import { limit, sitemap } from "./http.server";
 import { siteChannel } from "./channel.server";
@@ -109,14 +110,20 @@ export async function guardSiteRequest(request: Request): Promise<Response | nul
           const origin = dedicated ? `https://${publicHost}` : `${url.origin}${channel.base}`;
           return new Response(null, {
             status: 301,
-            headers: { ...headers, Location: `${origin}/imovel/${target.publicId}` },
+            headers: {
+              ...headers,
+              Location: `${origin}/imovel/${await slugFor(brand, target.publicId)}`,
+            },
           });
         }
         if (target?.state === "withdrawn")
-          return new Response(withdrawnPage(brand, dedicated ? "/buscar" : `${channel.base}/buscar`), {
-            status: 410,
-            headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
-          });
+          return new Response(
+            withdrawnPage(brand, dedicated ? "/buscar" : `${channel.base}/buscar`),
+            {
+              status: 410,
+              headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
+            },
+          );
       }
     } catch {
       return new Response(
@@ -146,6 +153,25 @@ export function robotsTxt(brand: SiteBrand): string {
     `Sitemap: ${env.canonicalOrigin}/sitemap.xml`,
     "",
   ].join("\n");
+}
+
+/** Endereço amigável atual do imóvel, para que o 301 vá direto ao destino final (um salto só). */
+async function slugFor(brand: SiteBrand, publicId: string): Promise<string> {
+  const { data } = await siteDb()
+    .from(`${siteChannel(brand).namespace}_eligible`)
+    .select("public_id,public_reference,operacao,tipo,cidade,bairro,dormitorios")
+    .eq("public_id", publicId)
+    .maybeSingle();
+  if (!data) return publicId;
+  return propertySlug({
+    id: data.public_id,
+    reference: data.public_reference,
+    operation: data.operacao,
+    type: data.tipo,
+    city: data.cidade,
+    district: data.bairro,
+    bedrooms: data.dormitorios,
+  });
 }
 
 async function resolveLegacy(

@@ -1,11 +1,12 @@
 import { decodeHTML } from "entities";
 import type { PublicProperty, PublicMedia } from "./contract";
 import { getSiteBrand, type SiteBrand } from "./brand";
+import { propertySlug, type SlugInput } from "./property-slug";
 export const SITE_BASE = "/site";
 export const sitePath = (path = "", brand: SiteBrand = "cordial") =>
   `${getSiteBrand(brand).basePath}${path}`;
-export const propertyPath = (p: Pick<PublicProperty, "id">, brand: SiteBrand = "cordial") =>
-  sitePath(`/imovel/${p.id}`, brand);
+export const propertyPath = (p: SlugInput, brand: SiteBrand = "cordial") =>
+  sitePath(`/imovel/${propertySlug(p)}`, brand);
 export const mediaPath = (
   m: PublicMedia,
   size: "thumb" | "card" | "full" = "card",

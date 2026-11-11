@@ -4646,3 +4646,14 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   .cs-hx-card-compact .cs-card-photo-prev, .cs-hx-card-sm .cs-card-photo-prev { left: 4px; }
   .cs-hx-card-compact .cs-card-photo-next, .cs-hx-card-sm .cs-card-photo-next { right: 4px; }
 }
+
+/* Atalhos de busca e banners programados (painel Site e Google), ambas as marcas. */
+.cs-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.cs-quick-chip{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border:1px solid var(--cs-line);border-radius:999px;background:var(--cs-paper);color:var(--cs-ink);font-size:.92rem;text-decoration:none}
+.cs-quick-chip:hover,.cs-quick-chip:focus-visible{border-color:var(--cs-accent);color:var(--cs-accent)}
+.cs-banners{display:grid;gap:16px;margin-top:24px}
+.cs-banner{position:relative;display:block;overflow:hidden;border-radius:var(--cs-radius);background:var(--cs-soft);color:var(--cs-paper);text-decoration:none}
+.cs-banner img{display:block;width:100%;height:auto;aspect-ratio:16/5;object-fit:cover}
+.cs-banner-copy{position:absolute;inset:auto 0 0 0;display:grid;gap:4px;padding:20px 24px;background:linear-gradient(transparent,rgb(0 0 0 / .62))}
+.cs-banner-copy strong{font-size:1.25rem}
+@media (max-width:640px){.cs-banner img{aspect-ratio:4/3}.cs-banner-copy{padding:14px 16px}.cs-banner-copy strong{font-size:1.05rem}.cs-quick{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}}

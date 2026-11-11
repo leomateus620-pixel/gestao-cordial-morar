@@ -16,6 +16,8 @@ export function selectFeatured(input: {
   editorial: PublicProperty[];
   recent: PublicProperty[];
   limit?: number;
+  /** Vagas reservadas por finalidade entre os recentes (0 = sem preferência). */
+  mix?: { venda: number; aluguel: number };
 }): PublicProperty[] {
   const limit = input.limit ?? HOME_FEATURED_LIMIT;
   const out: PublicProperty[] = [];
@@ -29,7 +31,22 @@ export function selectFeatured(input: {
     const byId = new Map(input.editorial.map((p) => [p.id, p]));
     for (const id of input.editorialIds.slice(0, limit)) push(byId.get(id));
   }
+  const mix = input.mix ?? { venda: 0, aluguel: 0 };
+  for (const op of ["venda", "aluguel"] as const) {
+    let need = mix[op] - out.filter((p) => p.operation === op).length;
+    for (const p of input.recent) {
+      if (need <= 0) break;
+      if (p.operation !== op || seen.has(p.id) || !hasCover(p)) continue;
+      push(p);
+      need--;
+    }
+  }
   for (const p of input.recent) push(p);
+  // Mantém a ordem de publicação entre os recentes após reservar as vagas.
+  if (input.mode !== "editorial") {
+    const rank = new Map(input.recent.map((p, i) => [p.id, i]));
+    out.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+  }
   return out;
 }
 

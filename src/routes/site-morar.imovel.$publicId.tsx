@@ -1,4 +1,6 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
+import { parsePropertyParam, propertySlug } from "@/lib/cordial-site/property-slug";
+import { breadcrumbJsonLd } from "@/lib/cordial-site/seo";
 import { loadCatalog, loadDetail, loadDetailState } from "@/lib/cordial-site/morar-data";
 import { detailHead, siteHead, listingJsonLd, siteMatchData } from "@/lib/cordial-site/morar-seo";
 import { safeJsonLd, sitePath as defaultSitePath } from "@/lib/cordial-site/presentation";
@@ -8,9 +10,17 @@ import { useSite } from "@/lib/cordial-site/context";
 const sitePath = (path: string) => defaultSitePath(path, "morar");
 export const Route = createFileRoute("/site-morar/imovel/$publicId")({
   loader: async ({ params, abortController }) => {
-    const property = await loadDetail(params.publicId, abortController.signal);
+    const id = parsePropertyParam(params.publicId);
+    if (!id) throw notFound();
+    const property = await loadDetail(id, abortController.signal);
+    if (property && params.publicId !== propertySlug(property))
+      throw redirect({
+        to: "/site-morar/imovel/$publicId",
+        params: { publicId: propertySlug(property) },
+        statusCode: 301,
+      });
     if (!property) {
-      const status = await loadDetailState(params.publicId, abortController.signal);
+      const status = await loadDetailState(id, abortController.signal);
       if (status === "missing") throw notFound();
       return { property: null, related: null };
     }
@@ -62,6 +72,14 @@ export const Route = createFileRoute("/site-morar/imovel/$publicId")({
             type="application/ld+json"
             dangerouslySetInnerHTML={{
               __html: safeJsonLd(listingJsonLd(data.property, site.canonicalOrigin)),
+            }}
+          />
+        )}
+        {site.canonicalOrigin && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: safeJsonLd(breadcrumbJsonLd(data.property, site.canonicalOrigin, "morar")),
             }}
           />
         )}

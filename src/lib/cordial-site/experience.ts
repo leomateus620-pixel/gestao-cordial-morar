@@ -1,6 +1,7 @@
 import type { PublicProperty } from "./contract";
 import type { SiteBrand } from "./brand";
 import { propertyPath } from "./presentation";
+import type { SlugInput } from "./property-slug";
 import { rewritePublicInput, rewritePublicOutput } from "./routing";
 
 /** One-based URL fragment; it changes presentation only and never the canonical identity. */
@@ -102,11 +103,7 @@ export function publicSiteUrl(path: string, origin: string, brand: SiteBrand = "
     return path;
   }
 }
-export function propertyUrl(
-  p: Pick<PublicProperty, "id">,
-  origin: string,
-  brand: SiteBrand = "cordial",
-) {
+export function propertyUrl(p: SlugInput, origin: string, brand: SiteBrand = "cordial") {
   return publicSiteUrl(propertyPath(p, brand), origin, brand);
 }
 export function whatsappNumber(input: string | undefined | null) {

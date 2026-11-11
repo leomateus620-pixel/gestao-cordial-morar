@@ -1,3 +1,4 @@
+import { propertySlug } from "./property-slug";
 import { z } from "zod";
 import { leadSchema } from "./contract";
 import { readSite, siteDb, siteEnvironment, SiteUnavailable } from "./service.server";
@@ -239,7 +240,7 @@ export async function sitemap(brand: SiteBrand = "cordial") {
   while (true) {
     let q = db
       .from(`${channel.namespace}_eligible`)
-      .select("public_id,published_at")
+      .select("public_id,published_at,public_reference,operacao,tipo,cidade,bairro,dormitorios")
       .order("public_id")
       .limit(500);
     if (cursor) q = q.gt("public_id", cursor);
@@ -247,7 +248,15 @@ export async function sitemap(brand: SiteBrand = "cordial") {
     if (error) throw new SiteUnavailable();
     if (!data?.length) break;
     for (const p of data) {
-      const path = `/imovel/${p.public_id}`;
+      const path = `/imovel/${propertySlug({
+        id: p.public_id,
+        reference: p.public_reference,
+        operation: p.operacao,
+        type: p.tipo,
+        city: p.cidade,
+        district: p.bairro,
+        bedrooms: p.dormitorios,
+      })}`;
       urls.push(path);
       if (p.published_at) lastmod.set(path, String(p.published_at).slice(0, 10));
     }
@@ -382,16 +391,28 @@ export async function handleSiteRequest(
   }
 }
 
-async function showcaseResponse(weekId: string, checksum: string, brand: SiteBrand): Promise<Response> {
+async function showcaseResponse(
+  weekId: string,
+  checksum: string,
+  brand: SiteBrand,
+): Promise<Response> {
   if (!z.string().uuid().safeParse(weekId).success || !/^[a-f0-9]{32}$/.test(checksum))
     return json({ error: "Imagem não encontrada." }, 404);
   const db = siteDb();
   const { activeShowcase } = await import("./showcase.server");
   const active = await activeShowcase(db, brand);
   // Só a edição aprovada da semana ativa, com imóvel e foto ainda publicados.
-  if (!active || !active.edited || active.weekId !== weekId || active.checksum !== checksum || !active.storagePath)
+  if (
+    !active ||
+    !active.edited ||
+    active.weekId !== weekId ||
+    active.checksum !== checksum ||
+    !active.storagePath
+  )
     return json({ error: "Imagem não disponível." }, 404);
-  const { data: blob, error } = await db.storage.from(`${brand}-showcase`).download(active.storagePath);
+  const { data: blob, error } = await db.storage
+    .from(`${brand}-showcase`)
+    .download(active.storagePath);
   if (error || !blob) return json({ error: "Imagem não disponível." }, 404);
   return new Response(blob, {
     headers: {
