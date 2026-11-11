@@ -12492,6 +12492,13 @@ export type Database = {
         }
         Returns: Json
       }
+      cordial_site_resolve_legacy: {
+        Args: { _imobi_id: string }
+        Returns: {
+          public_id: string
+          state: string
+        }[]
+      }
       cordial_site_review: {
         Args: {
           _areas_m2?: boolean
@@ -13492,6 +13499,13 @@ export type Database = {
           _review_media?: boolean
         }
         Returns: Json
+      }
+      morar_site_resolve_legacy: {
+        Args: { _imobi_id: string }
+        Returns: {
+          public_id: string
+          state: string
+        }[]
       }
       morar_site_review: {
         Args: {
