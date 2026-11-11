@@ -150,7 +150,7 @@ export function robotsTxt(brand: SiteBrand): string {
     `Allow: ${channel.api}/sitemap.xml`,
     "Disallow: /api/",
     "Disallow: /_",
-    `Sitemap: ${env.canonicalOrigin}/sitemap.xml`,
+    `Sitemap: ${env.canonicalOrigin}${channel.api}/sitemap.xml`,
     "",
   ].join("\n");
 }
