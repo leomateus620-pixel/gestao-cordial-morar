@@ -1,0 +1,4 @@
+# Public sites (src/lib/cordial-site)
+- Site SEO: layouts (/site, /site-morar) emit only brand icons, theme, verification and RealEstateAgent JSON-LD via siteLayoutHead; canonical/og:url/og:image/twitter:image come only from each leaf siteHead, with the brand og-default.jpg as fallback — why: TanStack concatenates links, which produced two canonicals, and hosting injected the Gestão share image.
+- src/server.ts copies string Worker env bindings into process.env before guardSiteRequest; legacy /imovel/{digits} resolves via service-only <brand>_site_resolve_legacy (manual *_site_redirects first) to a single 301, 410 when withdrawn, normal 404 when unknown — why: process.env was empty there in production, so /sitemap.xml and redirects never ran.
+- Meta Pixel/GTM load only after the same LGPD consent as GA4 (src/lib/cordial-site/meta-pixel.ts) and receive only reference/type — why: no tracking or PII before or beyond consent.
