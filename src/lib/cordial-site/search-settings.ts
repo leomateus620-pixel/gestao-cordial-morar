@@ -10,10 +10,10 @@ export function defaultOrder(current: SiteSearch["ordem"], compact: boolean, set
 /** Tipos oferecidos por finalidade; lista vazia no painel = todos os tipos disponíveis. */
 export function allowedTypes<T extends { value: string }>(
   types: readonly T[],
-  finalidade: SiteSearch["finalidade"],
+  finalidade: string | undefined,
   settings: SearchCfg,
 ): T[] {
-  const allow = finalidade ? settings?.searchTypes?.[finalidade] : undefined;
+  const allow = finalidade === "venda" || finalidade === "aluguel" ? settings?.searchTypes?.[finalidade] : undefined;
   if (!allow?.length) return [...types];
   const set = new Set(allow.map((t) => t.toLowerCase()));
   return types.filter((t) => set.has(t.value.toLowerCase()));
