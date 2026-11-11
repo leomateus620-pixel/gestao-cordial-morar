@@ -61,12 +61,10 @@ export function autoPropertySeo(p: SeoInput): { title: string; description: stri
   const op = p.operation === "venda" ? "à venda" : p.operation === "aluguel" ? "para alugar" : "";
   const where = [p.district, p.city].filter(Boolean).join(", ");
   const rooms = p.bedrooms ? `${p.bedrooms} quarto${p.bedrooms > 1 ? "s" : ""}` : "";
-  const title = [
-    [type, rooms && `com ${rooms}`, op].filter(Boolean).join(" "),
-    where && `em ${where}`,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const head = [type, rooms && `com ${rooms}`, op].filter(Boolean).join(" ");
+  // Título curto o bastante para o Google: tira o bairro (e depois a cidade) antes de cortar palavras.
+  const candidates = [where, p.city ?? "", ""].map((w) => (w ? `${head} em ${w}` : head));
+  const title = candidates.find((t) => t.length <= 70) ?? head.slice(0, 70);
   const area = p.areas?.util ?? p.areas?.construida ?? p.areas?.total ?? null;
   const price =
     p.priceMode === "fixo" && p.price
@@ -75,7 +73,7 @@ export function autoPropertySeo(p: SeoInput): { title: string; description: stri
   const description = [
     `${type}${op ? ` ${op}` : ""}${where ? ` em ${where}` : ""}`,
     rooms,
-    area ? `${area} m²` : "",
+    area ? `${area.toLocaleString("pt-BR")} m²` : "",
     price,
     p.reference ? `Ref. ${p.reference}` : "",
   ]
