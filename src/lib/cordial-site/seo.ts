@@ -14,7 +14,7 @@ export function siteMatchData(
 /** Plain single-line text for meta tags: no HTML, arrows, bullets or broken words. */
 export function seoText(input: unknown, max = 160): string {
   const text = plainText(input)
-    .replace(/[=\-]+>|<[=\-]+|[→←⇒➔➜►▶•●▪◆✓✔]/g, " ")
+    .replace(/[=-]+>|<[=-]+|[→←⇒➔➜►▶•●▪◆✓✔]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (text.length <= max) return text;
