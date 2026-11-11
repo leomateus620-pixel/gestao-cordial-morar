@@ -7,7 +7,7 @@ import { searchSchema } from "@/lib/cordial-site/contract";
 import { sitePath } from "@/lib/cordial-site/presentation";
 
 import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
-import { WhatsAppIcon, InstagramIcon } from "./SocialIcons";
+import { WhatsAppIcon, InstagramIcon, FacebookIcon } from "./SocialIcons";
 import { SiteContext, SiteBrandContext, useSiteBrand } from "@/lib/cordial-site/context";
 import { useVisitorSelection } from "@/lib/selecoes/visitor-store";
 import {
@@ -268,6 +268,26 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                     {selectedIds.length > 0 && <span>{selectedIds.length}</span>}
                   </SiteLink>
                 )}
+                {(
+                  [
+                    ["instagram", "Instagram", InstagramIcon],
+                    ["facebook", "Facebook", FacebookIcon],
+                  ] as const
+                ).map(([k, label, Icon]) =>
+                  settings[k] ? (
+                    <a
+                      key={k}
+                      href={settings[k]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cs-icon-button cs-header-social"
+                      aria-label={`${label} da ${config.name} (abre em nova aba)`}
+                      title={label}
+                    >
+                      <Icon width={20} height={20} />
+                    </a>
+                  ) : null,
+                )}
                 <SiteLink
                   to={pathFor("/favoritos")}
                   className="cs-icon-button"
@@ -323,6 +343,20 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                             Conversar pelo WhatsApp
                             <ArrowUpRight size={18} />
                           </a>
+                        )}
+                        {(settings.instagram || settings.facebook) && (
+                          <div className="cs-nav-social">
+                            {settings.instagram && (
+                              <a className="cs-icon-button" href={settings.instagram} target="_blank" rel="noopener noreferrer" aria-label={`Instagram da ${config.name}`}>
+                                <InstagramIcon width={22} height={22} />
+                              </a>
+                            )}
+                            {settings.facebook && (
+                              <a className="cs-icon-button" href={settings.facebook} target="_blank" rel="noopener noreferrer" aria-label={`Facebook da ${config.name}`}>
+                                <FacebookIcon width={22} height={22} />
+                              </a>
+                            )}
+                          </div>
                         )}
                       </nav>
                     </Dialog.Content>
@@ -412,7 +446,8 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 ).map(([k, label]) =>
                   settings[k] ? (
                     <a key={k} href={settings[k]} target="_blank" rel="noopener noreferrer">
-                      {k === "instagram" && <InstagramIcon width={18} height={18} />} {label}{" "}
+                      {k === "instagram" && <InstagramIcon width={18} height={18} />}
+                      {k === "facebook" && <FacebookIcon width={18} height={18} />} {label}{" "}
                       <ArrowUpRight size={14} />
                     </a>
                   ) : null,
