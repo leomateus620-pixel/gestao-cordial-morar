@@ -88,7 +88,10 @@ const contextColors: Record<string, string> = {
 
 function DashboardGate() {
   const session = useSession();
-  if (session?.perfil === "meta_reviewer") return <Navigate to="/marketing" search={{} as never} replace />;
+  if (session?.perfil === "meta_reviewer")
+    return <Navigate to="/marketing" search={{} as never} replace />;
+  if (session?.perfil === "atendimentos_viewer")
+    return <Navigate to="/atendimentos" search={{} as never} replace />;
   return <Dashboard />;
 }
 

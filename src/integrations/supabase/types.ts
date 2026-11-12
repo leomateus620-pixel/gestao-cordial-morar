@@ -12763,6 +12763,7 @@ export type Database = {
         Args: { _token: string }
         Returns: boolean
       }
+      is_atendimentos_viewer: { Args: never; Returns: boolean }
       is_meta_reviewer: { Args: never; Returns: boolean }
       list_assignable_brokers: {
         Args: { _agency?: string }
@@ -14114,6 +14115,10 @@ export type Database = {
           rate_limited_until: string
         }[]
       }
+      provision_atendimentos_viewer: {
+        Args: { _agencies: string[]; _user_id: string }
+        Returns: undefined
+      }
       public_site_claim_derivative: { Args: { _key: string }; Returns: string }
       public_site_finish_derivative: {
         Args: { _checksum: string; _key: string; _lease: string }
@@ -14384,6 +14389,7 @@ export type Database = {
         | "corretor"
         | "financeiro"
         | "meta_reviewer"
+        | "atendimentos_viewer"
       attendance_assignment_status:
         | "pending_open"
         | "opened"
@@ -14614,6 +14620,7 @@ export const Constants = {
         "corretor",
         "financeiro",
         "meta_reviewer",
+        "atendimentos_viewer",
       ],
       attendance_assignment_status: [
         "pending_open",

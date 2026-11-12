@@ -39,7 +39,6 @@ export function canSelfAssignAttendance(session: SessionLike): boolean {
   return session?.perfil === "corretor";
 }
 
-
 /**
  * Operational response-time metrics are intentionally narrower than financial
  * insights. Brokers and finance roles must never receive first-open timing.
@@ -68,11 +67,25 @@ export function canManageAttendanceTerminalState(session: SessionLike): boolean 
  * Exclusão definitiva de um atendimento. Espelha a policy RLS de DELETE:
  * administradores ou o usuário que criou o registro.
  */
+/**
+ * Escrita no menu Atendimentos (criar, editar, mover etapa, anotar, converter,
+ * e-mail). O perfil "Consulta de Atendimentos" é somente leitura; o banco
+ * aplica a mesma trava por RLS e guarda de RPC.
+ */
+export function canWriteAttendances(session: SessionLike): boolean {
+  if (!session || isAttendanceViewer(session)) return false;
+  return canAccessModule(session, "atendimentos");
+}
+
+export function isAttendanceViewer(session: SessionLike): boolean {
+  return session?.perfil === "atendimentos_viewer";
+}
+
 export function canDeleteAttendance(
   session: (SessionLike & { id?: string }) | null | undefined,
   attendance: { criadoPorId?: string } | null | undefined,
 ): boolean {
-  if (!session || !attendance) return false;
+  if (!session || !attendance || isAttendanceViewer(session)) return false;
   if (isAdminUser(session)) return true;
   return Boolean(attendance.criadoPorId && attendance.criadoPorId === session.id);
 }

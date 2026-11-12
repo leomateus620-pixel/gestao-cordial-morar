@@ -29,6 +29,7 @@ import {
   type ContactMatch,
 } from "@/lib/attendances/duplicate-detection";
 import { readAllAttendancePages } from "@/lib/attendances/read-all-pages";
+import { assertAttendanceWriter } from "./read-only-guard";
 
 type DbRow = {
   id: string;
@@ -380,9 +381,13 @@ export const getAttendanceById = createServerFn({ method: "GET" })
 export const listAttendances = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const [{ data: isAdmin }, { data: isSecretaria }] = await Promise.all([
+    const [{ data: isAdmin }, { data: isSecretaria }, { data: isViewer }] = await Promise.all([
       context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
       context.supabase.rpc("has_role", { _user_id: context.userId, _role: "secretaria" }),
+      context.supabase.rpc("has_role", {
+        _user_id: context.userId,
+        _role: "atendimentos_viewer" as never,
+      }),
     ]);
     const rows = await readAllAttendancePages<DbRow>(async (from, to) => {
       let query = context.supabase
@@ -390,7 +395,7 @@ export const listAttendances = createServerFn({ method: "GET" })
         .select(ATTENDANCE_SAFE_COLUMNS, { count: "exact" })
         .order("created_at", { ascending: false })
         .order("id", { ascending: false });
-      if (!isAdmin && !isSecretaria) {
+      if (!isAdmin && !isSecretaria && !isViewer) {
         query = query.or(`created_by.eq.${context.userId},corretor_id.eq.${context.userId}`);
       }
       const page = await query.range(from, to);
@@ -472,6 +477,7 @@ export const createAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: AtendimentoCreateInput) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     validate(data);
     // Corretor comum não pode assumir, por cadastro novo, lead aberto de outro corretor.
     const [isAdmin, isSecretaria] = await Promise.all([
@@ -518,6 +524,7 @@ export const updateAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: UpdateInput) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const patch: Record<string, unknown> = {};
     const p = data.patch;
     if (p.clienteId !== undefined) patch.cliente_id = asUuid(p.clienteId);
@@ -646,6 +653,7 @@ export const transitionAttendanceStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: TransitionStageInput) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const { data: current, error: currentError } = await context.supabase
       .from("attendances")
       .select(ATTENDANCE_SAFE_COLUMNS)
@@ -686,6 +694,7 @@ export const deleteAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const { error } = await context.supabase.from("attendances").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -741,6 +750,7 @@ export const addAttendanceNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { attendanceId: string; texto: string }) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const { error } = await (
       context.supabase as unknown as {
         rpc: (
@@ -759,6 +769,7 @@ export const findClientByContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { phone?: string; email?: string; document?: string }) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const matches = await lookupContactMatches(context.supabase as never, data);
     return matches
       .filter((m) => m.source === "client")
@@ -820,6 +831,7 @@ export const findExistingAttendanceByContact = createServerFn({ method: "POST" }
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { phone?: string; email?: string; document?: string }) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const matches = await lookupContactMatches(context.supabase as never, data);
     return rankMatches(matches, 20);
   });

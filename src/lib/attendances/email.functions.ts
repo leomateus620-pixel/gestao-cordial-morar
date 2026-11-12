@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAttendanceWriter } from "./read-only-guard";
 
 const EMAIL_TYPE = "first_attendance_thank_you";
 const TEMPLATE_NAME = "first-attendance-thank-you";
@@ -21,6 +22,7 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { attendanceId: string }) => d)
   .handler(async ({ data, context }): Promise<SendResult> => {
+    await assertAttendanceWriter(context);
     const { supabase, userId } = context;
 
     const { data: att, error: attErr } = await supabase
@@ -85,8 +87,8 @@ export const sendFirstAttendanceEmail = createServerFn({ method: "POST" })
       att.imobiliaria === "cordial"
         ? "Obrigado pelo contato com a Cordial Imóveis"
         : att.imobiliaria === "morar"
-        ? "Obrigado pelo contato com a Morar Imóveis"
-        : "Obrigado pelo contato com a Gestão Cordial & Morar";
+          ? "Obrigado pelo contato com a Morar Imóveis"
+          : "Obrigado pelo contato com a Gestão Cordial & Morar";
 
     const { data: pending, error: insErr } = await supabase
       .from("email_logs")
@@ -183,6 +185,7 @@ export const sendBrokerAssignmentEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { attendanceId: string; corretorId: string }) => d)
   .handler(async ({ data, context }): Promise<SendResult> => {
+    await assertAttendanceWriter(context);
     const { supabase, userId } = context;
 
     const [{ data: att }, { data: corretor }, { data: atribuidoProfile }] = await Promise.all([
@@ -220,10 +223,10 @@ export const sendBrokerAssignmentEmail = createServerFn({ method: "POST" })
       telefone: att.telefone ?? undefined,
       imobiliaria: att.imobiliaria,
       finalidade: att.finalidade
-        ? finalidadeLabelMap[att.finalidade as string] ?? att.finalidade
+        ? (finalidadeLabelMap[att.finalidade as string] ?? att.finalidade)
         : undefined,
       tipoImovel: att.tipo_imovel
-        ? tipoImovelLabelMap[att.tipo_imovel as string] ?? att.tipo_imovel
+        ? (tipoImovelLabelMap[att.tipo_imovel as string] ?? att.tipo_imovel)
         : undefined,
       regiao: att.bairro_interesse ?? undefined,
       orcamentoMin: att.orcamento_min !== null ? Number(att.orcamento_min) : undefined,
@@ -291,5 +294,3 @@ export const sendBrokerAssignmentEmail = createServerFn({ method: "POST" })
       return { status: "failed", error: msg };
     }
   });
-
-

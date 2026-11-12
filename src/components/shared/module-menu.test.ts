@@ -127,7 +127,7 @@ test("removes only the Clientes navigation reference and preserves role authoriz
     false,
   );
 
-  for (const profile of (Object.keys(roleDefinitions) as UserProfile[]).filter((p) => p !== "meta_reviewer")) {
+  for (const profile of (Object.keys(roleDefinitions) as UserProfile[]).filter((p) => p !== "meta_reviewer" && p !== "atendimentos_viewer")) {
     assert.equal(roleDefinitions[profile].modules.includes("clientes"), true, profile);
   }
 });
@@ -146,4 +146,8 @@ test("Meta review account only sees Marketing and Meta Ads integration", () => {
   for (const blocked of ["/", "/imoveis", "/atendimentos", "/vendas", "/alugueis", "/agenda"]) {
     assert.ok(!paths.includes(blocked), blocked);
   }
+});
+
+test("Consulta de Atendimentos only sees Atendimentos (no bot)", () => {
+  assert.deepEqual(sidebarPaths("atendimentos_viewer"), ["/atendimentos"]);
 });

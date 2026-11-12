@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAttendanceReadOnly } from "./attendance-read-only";
 import { AtendimentoConvertSaleCard } from "./AtendimentoConvertSaleCard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -126,6 +127,7 @@ export function AtendimentoDetailDrawer({
   const [stagePending, setStagePending] = useState(false);
   const qc = useQueryClient();
   const session = useSession();
+  const readOnly = useAttendanceReadOnly();
 
   const historyQuery = useQuery({
     queryKey: [...attendanceHistoryQueryKey(atendimento?.id), session?.id],
@@ -163,7 +165,8 @@ export function AtendimentoDetailDrawer({
   const attendanceIdForOpen = atendimento?.id ?? null;
   const userIdForOpen = session?.id;
   useEffect(() => {
-    if (!open || !attendanceIdForOpen || !userIdForOpen) return;
+    // Consulta-only profiles never change the team's first-open metrics.
+    if (readOnly || !open || !attendanceIdForOpen || !userIdForOpen) return;
     const firstOpenKey = `${userIdForOpen}:${attendanceIdForOpen}`;
     if (firstOpenSentRef.current === firstOpenKey) return;
     firstOpenSentRef.current = firstOpenKey;
@@ -179,7 +182,7 @@ export function AtendimentoDetailDrawer({
         // Keep the timer active if the mutation fails
         if (firstOpenSentRef.current === firstOpenKey) firstOpenSentRef.current = null;
       });
-  }, [open, attendanceIdForOpen, userIdForOpen, qc]);
+  }, [readOnly, open, attendanceIdForOpen, userIdForOpen, qc]);
 
   if (!atendimento) return null;
   const pipeline = getPipelineContext(atendimento);
@@ -188,7 +191,7 @@ export function AtendimentoDetailDrawer({
   const converted = atendimento.convertidoEmCliente || Boolean(atendimento.clienteConvertidoId);
 
   async function changeStage(stage: PipelineStage) {
-    if (stage === atendimento!.pipelineStage || stagePending) return;
+    if (readOnly || stage === atendimento!.pipelineStage || stagePending) return;
     setStagePending(true);
     try {
       await onStageChange(atendimento!.id, stage);
@@ -237,14 +240,16 @@ export function AtendimentoDetailDrawer({
                   </SheetDescription>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(atendimento)}
-                    className="hidden min-h-10 items-center gap-1.5 rounded-xl border border-stone-900/12 bg-white px-3 text-xs font-bold text-stone-800 transition duration-200 hover:bg-stone-50 sm:inline-flex"
-                  >
-                    <Edit3 className="size-3.5" />
-                    Editar atendimento
-                  </button>
+                  {readOnly ? null : (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(atendimento)}
+                      className="hidden min-h-10 items-center gap-1.5 rounded-xl border border-stone-900/12 bg-white px-3 text-xs font-bold text-stone-800 transition duration-200 hover:bg-stone-50 sm:inline-flex"
+                    >
+                      <Edit3 className="size-3.5" />
+                      Editar atendimento
+                    </button>
+                  )}
                   <SheetClose asChild>
                     <button
                       type="button"
@@ -262,8 +267,9 @@ export function AtendimentoDetailDrawer({
               <div className="space-y-4">
                 <StageProgress
                   atendimento={atendimento}
-                  pending={stagePending}
+                  pending={stagePending || readOnly}
                   onPick={(stage) => {
+                    if (readOnly) return;
                     if (
                       stage === "fechamento" &&
                       canManageTerminalState &&
@@ -461,120 +467,128 @@ export function AtendimentoDetailDrawer({
                   </div>
 
                   <div className="space-y-4 md:sticky md:top-0">
-                    <SectionCard
-                      eyebrow="Operação"
-                      title="Ações do atendimento"
-                      icon={MoreHorizontal}
-                    >
-                      <div className="grid grid-cols-2 gap-2">
-                        <ActionButton icon={Edit3} onClick={() => onEdit(atendimento)}>
-                          Editar atendimento
-                        </ActionButton>
-                        {canAssignBroker ? (
-                          <ActionButton
-                            icon={UserRoundCog}
-                            onClick={() => setActiveKind("vincular-corretor")}
-                          >
-                            Atribuir corretor
-                          </ActionButton>
-                        ) : null}
-                        <ActionButton
-                          icon={CalendarClock}
-                          onClick={() => setActiveKind("criar-retorno")}
+                    {readOnly ? (
+                      <p className="rounded-2xl border border-stone-900/10 bg-stone-50 px-3 py-2.5 text-xs font-semibold text-stone-600">
+                        Somente consulta: este perfil não cadastra nem altera atendimentos.
+                      </p>
+                    ) : (
+                      <>
+                        <SectionCard
+                          eyebrow="Operação"
+                          title="Ações do atendimento"
+                          icon={MoreHorizontal}
                         >
-                          Agendar retorno
-                        </ActionButton>
-                        <ActionButton
-                          icon={CalendarCheck2}
-                          onClick={() => setActiveKind("criar-visita")}
-                        >
-                          Criar visita
-                        </ActionButton>
-                        <ActionButton
-                          icon={FilePenLine}
-                          onClick={() => void onRegisterProposal(atendimento)}
-                        >
-                          Registrar proposta
-                        </ActionButton>
-                        <ActionButton
-                          icon={UserCheck}
-                          disabled={converted}
-                          onClick={() => void onConvert(atendimento.id)}
-                        >
-                          {converted ? "Cliente vinculado" : "Vincular a cliente"}
-                        </ActionButton>
-                      </div>
-                      <div className="mt-3 border-t border-stone-900/8 pt-3">
-                        <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
-                          Fila de espera
-                        </p>
-                        {atendimento.pipelineStage === WAITING_PIPELINE_STAGE ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <ActionButton icon={Edit3} onClick={() => onEdit(atendimento)}>
+                              Editar atendimento
+                            </ActionButton>
+                            {canAssignBroker ? (
+                              <ActionButton
+                                icon={UserRoundCog}
+                                onClick={() => setActiveKind("vincular-corretor")}
+                              >
+                                Atribuir corretor
+                              </ActionButton>
+                            ) : null}
+                            <ActionButton
+                              icon={CalendarClock}
+                              onClick={() => setActiveKind("criar-retorno")}
+                            >
+                              Agendar retorno
+                            </ActionButton>
+                            <ActionButton
+                              icon={CalendarCheck2}
+                              onClick={() => setActiveKind("criar-visita")}
+                            >
+                              Criar visita
+                            </ActionButton>
+                            <ActionButton
+                              icon={FilePenLine}
+                              onClick={() => void onRegisterProposal(atendimento)}
+                            >
+                              Registrar proposta
+                            </ActionButton>
+                            <ActionButton
+                              icon={UserCheck}
+                              disabled={converted}
+                              onClick={() => void onConvert(atendimento.id)}
+                            >
+                              {converted ? "Cliente vinculado" : "Vincular a cliente"}
+                            </ActionButton>
+                          </div>
+                          <div className="mt-3 border-t border-stone-900/8 pt-3">
+                            <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-amber-700">
+                              Fila de espera
+                            </p>
+                            {atendimento.pipelineStage === WAITING_PIPELINE_STAGE ? (
+                              <button
+                                type="button"
+                                disabled={stagePending}
+                                onClick={() => void changeStage("primeiro_contato")}
+                                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal-700/45 bg-teal-50 px-3 text-[11px] font-extrabold text-teal-900 transition duration-200 hover:border-teal-700 hover:bg-teal-100 active:scale-[0.99] disabled:opacity-60"
+                              >
+                                <PlayCircle className="size-4 shrink-0" />
+                                Retomar atendimento
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={stagePending}
+                                onClick={() => void changeStage(WAITING_PIPELINE_STAGE)}
+                                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-600/45 bg-amber-50 px-3 text-[11px] font-extrabold text-amber-900 transition duration-200 hover:border-amber-600 hover:bg-amber-100 active:scale-[0.99] disabled:opacity-60"
+                              >
+                                <PauseCircle className="size-4 shrink-0" />
+                                Colocar em espera
+                              </button>
+                            )}
+                            <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
+                              Atendimentos em espera saem do funil e ficam no card “Fila de espera”.
+                            </p>
+                          </div>
+
+                          {canManageTerminalState ? (
+                            <div className="mt-3 border-t border-stone-900/8 pt-3">
+                              <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-700/80">
+                                Marcar como perdido
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setActiveKind("motivo-perda")}
+                                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-600/45 bg-rose-50 px-3 text-[11px] font-extrabold text-rose-800 transition duration-200 hover:border-rose-600 hover:bg-rose-100 hover:text-rose-900 active:scale-[0.99]"
+                              >
+                                <XCircle className="size-4 shrink-0" />
+                                Perdido
+                              </button>
+                              <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
+                                Para encerrar como ganho, use a etapa “Fechamento” em Progresso do
+                                atendimento.
+                              </p>
+                            </div>
+                          ) : null}
+                        </SectionCard>
+
+                        <SectionCard eyebrow="Registro" title="Nova nota" icon={MessageSquare}>
+                          <textarea
+                            value={note}
+                            onChange={(event) => setNote(event.target.value)}
+                            rows={3}
+                            placeholder="Registre uma observação, follow-up ou contexto..."
+                            className="min-h-24 w-full resize-y rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm leading-5 text-stone-900 outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-700/15"
+                          />
                           <button
                             type="button"
-                            disabled={stagePending}
-                            onClick={() => void changeStage("primeiro_contato")}
-                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal-700/45 bg-teal-50 px-3 text-[11px] font-extrabold text-teal-900 transition duration-200 hover:border-teal-700 hover:bg-teal-100 active:scale-[0.99] disabled:opacity-60"
+                            disabled={!note.trim() || noteMutation.isPending}
+                            onClick={() => noteMutation.mutate(note.trim())}
+                            className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-teal-800 px-3 text-xs font-extrabold text-white transition duration-200 hover:bg-teal-900 disabled:opacity-45"
                           >
-                            <PlayCircle className="size-4 shrink-0" />
-                            Retomar atendimento
+                            <Send className="size-3.5" />
+                            {noteMutation.isPending ? "Registrando..." : "Adicionar ao histórico"}
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={stagePending}
-                            onClick={() => void changeStage(WAITING_PIPELINE_STAGE)}
-                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-600/45 bg-amber-50 px-3 text-[11px] font-extrabold text-amber-900 transition duration-200 hover:border-amber-600 hover:bg-amber-100 active:scale-[0.99] disabled:opacity-60"
-                          >
-                            <PauseCircle className="size-4 shrink-0" />
-                            Colocar em espera
-                          </button>
-                        )}
-                        <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
-                          Atendimentos em espera saem do funil e ficam no card “Fila de espera”.
-                        </p>
-                      </div>
+                        </SectionCard>
 
-                      {canManageTerminalState ? (
-                        <div className="mt-3 border-t border-stone-900/8 pt-3">
-                          <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-rose-700/80">
-                            Marcar como perdido
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setActiveKind("motivo-perda")}
-                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-600/45 bg-rose-50 px-3 text-[11px] font-extrabold text-rose-800 transition duration-200 hover:border-rose-600 hover:bg-rose-100 hover:text-rose-900 active:scale-[0.99]"
-                          >
-                            <XCircle className="size-4 shrink-0" />
-                            Perdido
-                          </button>
-                          <p className="mt-1.5 text-[10px] leading-4 text-stone-500">
-                            Para encerrar como ganho, use a etapa “Fechamento” em Progresso do
-                            atendimento.
-                          </p>
-                        </div>
-                      ) : null}
-                    </SectionCard>
-
-                    <SectionCard eyebrow="Registro" title="Nova nota" icon={MessageSquare}>
-                      <textarea
-                        value={note}
-                        onChange={(event) => setNote(event.target.value)}
-                        rows={3}
-                        placeholder="Registre uma observação, follow-up ou contexto..."
-                        className="min-h-24 w-full resize-y rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm leading-5 text-stone-900 outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-700/15"
-                      />
-                      <button
-                        type="button"
-                        disabled={!note.trim() || noteMutation.isPending}
-                        onClick={() => noteMutation.mutate(note.trim())}
-                        className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-teal-800 px-3 text-xs font-extrabold text-white transition duration-200 hover:bg-teal-900 disabled:opacity-45"
-                      >
-                        <Send className="size-3.5" />
-                        {noteMutation.isPending ? "Registrando..." : "Adicionar ao histórico"}
-                      </button>
-                    </SectionCard>
-
-                    <AtendimentoConvertSaleCard atendimento={atendimento} />
+                        <AtendimentoConvertSaleCard atendimento={atendimento} />
+                      </>
+                    )}
 
                     <section aria-labelledby="history-title">
                       <div className="mb-2 flex items-center justify-between gap-2 px-1">
@@ -605,16 +619,18 @@ export function AtendimentoDetailDrawer({
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-stone-900/10 bg-[#fffdf9]/96 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden">
-              <button
-                type="button"
-                onClick={() => onEdit(atendimento)}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-800 px-4 text-sm font-extrabold text-white"
-              >
-                <Edit3 className="size-4" />
-                Editar atendimento
-              </button>
-            </div>
+            {readOnly ? null : (
+              <div className="shrink-0 border-t border-stone-900/10 bg-[#fffdf9]/96 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden">
+                <button
+                  type="button"
+                  onClick={() => onEdit(atendimento)}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-800 px-4 text-sm font-extrabold text-white"
+                >
+                  <Edit3 className="size-4" />
+                  Editar atendimento
+                </button>
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>

@@ -36,35 +36,8 @@ type ProfileRow = {
   iniciais: string | null;
 };
 
-function pickHighestRole(roles: UserProfile[]): UserProfile {
-  // meta_reviewer first: an external review account must never inherit a staff profile.
-  const order: UserProfile[] = [
-    "meta_reviewer",
-    "admin_owner",
-    "financeiro_admin",
-    "secretaria",
-    "corretor",
-  ];
-  for (const r of order) if (roles.includes(r)) return r;
-  return "corretor";
-}
-
-// Map DB enum (app_role) -> existing UserProfile keys used by permissions.
-function mapDbRole(role: string): UserProfile {
-  switch (role) {
-    case "admin":
-      return "admin_owner";
-    case "financeiro":
-      return "financeiro_admin";
-    case "secretaria":
-      return "secretaria";
-    case "meta_reviewer":
-      return "meta_reviewer";
-    case "corretor":
-    default:
-      return "corretor";
-  }
-}
+export { pickHighestRole, mapDbRole } from "./role-mapping.ts";
+import { pickHighestRole, mapDbRole } from "./role-mapping.ts";
 
 function buildSession(profile: ProfileRow, perfil: UserProfile): MockUser {
   const role = roleDefinitions[perfil];
@@ -84,10 +57,16 @@ async function loadSession(userId: string): Promise<MockUser | null> {
   const [profileRes, rolesRes] = await Promise.all([
     retryRead(() =>
       Promise.resolve(
-        supabase.from("profiles").select("id,nome,email,cargo,iniciais").eq("id", userId).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("id,nome,email,cargo,iniciais")
+          .eq("id", userId)
+          .maybeSingle(),
       ),
     ),
-    retryRead(() => Promise.resolve(supabase.from("user_roles").select("role").eq("user_id", userId))),
+    retryRead(() =>
+      Promise.resolve(supabase.from("user_roles").select("role").eq("user_id", userId)),
+    ),
   ]);
   if (profileRes.error) throw profileRes.error;
   if (rolesRes.error) throw rolesRes.error;
@@ -287,7 +266,9 @@ export async function signUp(
   return { ok: true, error: null };
 }
 
-export async function requestPasswordReset(email: string): Promise<{ ok: boolean; error: string | null }> {
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ ok: boolean; error: string | null }> {
   const redirect =
     typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

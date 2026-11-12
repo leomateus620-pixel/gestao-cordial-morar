@@ -3,7 +3,8 @@ export type UserProfile =
   | "secretaria"
   | "corretor"
   | "financeiro_admin"
-  | "meta_reviewer";
+  | "meta_reviewer"
+  | "atendimentos_viewer";
 
 export type AppModule =
   | "dashboard"
@@ -197,6 +198,14 @@ export const roleDefinitions: Record<UserProfile, RoleDefinition> = {
     description: "Conta externa de avaliação: somente Marketing e o painel Meta Ads.",
     modules: ["marketing", "integracoes"],
     permissions: ["marketing:read", "marketing:write", "integracoes:read"],
+  },
+  atendimentos_viewer: {
+    profile: "atendimentos_viewer",
+    label: "Consulta de Atendimentos",
+    description:
+      "Visualização dos funis e dos dados preenchidos no menu Atendimentos, sem cadastro nem edição.",
+    modules: ["atendimentos"],
+    permissions: ["atendimentos:read"],
   },
   financeiro_admin: {
     profile: "financeiro_admin",

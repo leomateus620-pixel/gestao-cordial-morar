@@ -631,6 +631,20 @@
       "when": 1794375310390,
       "tag": "0089_site_legacy_redirects",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794505426917,
+      "tag": "0090_atendimentos_viewer_role_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794505473626,
+      "tag": "0091_atendimentos_viewer_boundary",
+      "breakpoints": true
     }
   ]
 }

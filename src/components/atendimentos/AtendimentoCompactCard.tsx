@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAttendanceReadOnly } from "./attendance-read-only";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -52,6 +53,7 @@ export function AtendimentoCompactCard({
   onStageChange,
 }: Props) {
   const [moving, setMoving] = useState(false);
+  const readOnly = useAttendanceReadOnly();
   const [moveError, setMoveError] = useState<string | null>(null);
   const cardRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -105,7 +107,7 @@ export function AtendimentoCompactCard({
   );
 
   async function moveTo(stage: PipelineStage) {
-    if (moving || stage === atendimento.pipelineStage) return;
+    if (readOnly || moving || stage === atendimento.pipelineStage) return;
     const card = cardRef.current;
     const grid = card?.parentElement;
     const active = document.activeElement;
@@ -290,52 +292,54 @@ export function AtendimentoCompactCard({
             </a>
           </Button>
         ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={moving}
-              className="size-10 rounded-xl"
-              aria-label={`Mover atendimento de ${name}`}
-              title="Mover para outra etapa"
-            >
-              {moving ? (
-                <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
-              ) : (
-                <MoreHorizontal aria-hidden="true" />
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent ref={menuRef} align="end" className="w-60">
-            <DropdownMenuLabel>Mover para outra etapa</DropdownMenuLabel>
-            {WORKSPACE_PIPELINE_STAGES.map((stage) => (
-              <DropdownMenuItem
-                key={stage}
-                disabled={stage === atendimento.pipelineStage}
-                onSelect={() => {
-                  if (stage === "perdido" || stage === "fechamento") onOpen(atendimento);
-                  else void moveTo(stage);
-                }}
-                className="min-h-10 gap-2"
+        {readOnly ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={moving}
+                className="size-10 rounded-xl"
+                aria-label={`Mover atendimento de ${name}`}
+                title="Mover para outra etapa"
               >
-                <span
-                  aria-hidden="true"
-                  className={cn("size-2 shrink-0 rounded-full", pipelineStageUi[stage].dot)}
-                />
-                {stage === "perdido" || stage === "fechamento" ? (
-                  <span>Gerenciar {pipelineStageLabel(stage).toLowerCase()} na ficha</span>
+                {moving ? (
+                  <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
                 ) : (
-                  pipelineStageLabel(stage)
+                  <MoreHorizontal aria-hidden="true" />
                 )}
-                {stage === atendimento.pipelineStage ? (
-                  <Check aria-hidden="true" className="ml-auto size-4" />
-                ) : null}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent ref={menuRef} align="end" className="w-60">
+              <DropdownMenuLabel>Mover para outra etapa</DropdownMenuLabel>
+              {WORKSPACE_PIPELINE_STAGES.map((stage) => (
+                <DropdownMenuItem
+                  key={stage}
+                  disabled={stage === atendimento.pipelineStage}
+                  onSelect={() => {
+                    if (stage === "perdido" || stage === "fechamento") onOpen(atendimento);
+                    else void moveTo(stage);
+                  }}
+                  className="min-h-10 gap-2"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn("size-2 shrink-0 rounded-full", pipelineStageUi[stage].dot)}
+                  />
+                  {stage === "perdido" || stage === "fechamento" ? (
+                    <span>Gerenciar {pipelineStageLabel(stage).toLowerCase()} na ficha</span>
+                  ) : (
+                    pipelineStageLabel(stage)
+                  )}
+                  {stage === atendimento.pipelineStage ? (
+                    <Check aria-hidden="true" className="ml-auto size-4" />
+                  ) : null}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {moveError ? (
           <p
             role="alert"

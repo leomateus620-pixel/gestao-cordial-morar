@@ -1,7 +1,15 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileDown, Inbox, LayoutGrid, List, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import {
+  FileDown,
+  Inbox,
+  LayoutGrid,
+  List,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useRegisterPageSearch } from "@/lib/page-search";
 import { AtendimentoHistoryReportDialog } from "@/components/atendimentos/AtendimentoHistoryReportDialog";
 import {
@@ -23,6 +31,7 @@ import {
 } from "@/lib/atendimentos/workspace-navigation";
 import { AtendimentoKanban } from "@/components/atendimentos/AtendimentoKanban";
 import { AtendimentoDetailDrawer } from "@/components/atendimentos/AtendimentoDetailDrawer";
+import { AttendanceReadOnlyContext } from "@/components/atendimentos/attendance-read-only";
 import { PipelineTrackSelector } from "@/components/atendimentos/PipelineTrackSelector";
 import type { AtendimentoActionPayload } from "@/components/atendimentos/AtendimentoActionsDialog";
 import { buildLocalIso } from "@/components/atendimentos/atendimento-action-utils";
@@ -51,6 +60,7 @@ import { useSession } from "@/lib/auth-mock";
 import {
   canAccessModule,
   canDeleteAttendance,
+  canWriteAttendances,
   canManageAttendanceAssignments,
   canSelfAssignAttendance,
   canManageAttendanceTerminalState,
@@ -106,6 +116,7 @@ export const Route = createFileRoute("/_app/atendimentos")({
 
 function Page() {
   const session = useSession();
+  const readOnly = !canWriteAttendances(session);
   const canViewFinancialInsights = canSeeFinancialInsights(session);
   const canAssignBroker =
     canManageAttendanceAssignments(session) || canSelfAssignAttendance(session);
@@ -420,6 +431,7 @@ function Page() {
   }, [isError, error]);
 
   async function createAtendimento(input: AtendimentoCreateInput) {
+    if (readOnly) throw new Error(READ_ONLY_MESSAGE);
     try {
       const created = await addAtendimento(input);
       setOpen(false);
@@ -473,6 +485,7 @@ function Page() {
   }
 
   async function handleConvert(id: string) {
+    if (readOnly) throw new Error(READ_ONLY_MESSAGE);
     try {
       await convertAtendimento(id);
       toast.success("Cadastro criado em Clientes.");
@@ -482,6 +495,7 @@ function Page() {
   }
 
   async function handleAction(payload: AtendimentoActionPayload, atendimento: Atendimento) {
+    if (readOnly) throw new Error(READ_ONLY_MESSAGE);
     try {
       if (payload.kind === "vincular-corretor") {
         await updateAtendimento({
@@ -580,6 +594,7 @@ function Page() {
   }
 
   async function handleStageChange(id: string, stage: PipelineStage) {
+    if (readOnly) throw new Error(READ_ONLY_MESSAGE);
     const atendimento = atendimentos.find((item) => item.id === id);
     if (!atendimento) throw new Error("Atendimento não encontrado.");
     if (stage === "em_espera") {
@@ -636,6 +651,7 @@ function Page() {
   }
 
   async function registerProposal(atendimento: Atendimento) {
+    if (readOnly) throw new Error(READ_ONLY_MESSAGE);
     try {
       await updateAtendimento({
         id: atendimento.id,
@@ -652,6 +668,7 @@ function Page() {
   }
 
   async function closeAtendimento(atendimento: Atendimento) {
+    if (readOnly) throw new Error(READ_ONLY_MESSAGE);
     try {
       await updateAtendimento({
         id: atendimento.id,
@@ -725,368 +742,389 @@ function Page() {
           <span className="hidden xl:inline">Histórico em PDF</span>
         </button>
       )}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-orange-400 px-4 text-sm font-semibold text-stone-900 shadow-[0_10px_24px_-12px_rgba(251,146,60,0.75)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 active:scale-[0.98]"
-      >
-        <Plus className="size-4 transition-transform group-hover:rotate-90" />
-        <span className="hidden sm:inline">Novo atendimento</span>
-        <span className="sm:hidden">Novo</span>
-      </button>
+      {readOnly ? null : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-orange-400 px-4 text-sm font-semibold text-stone-900 shadow-[0_10px_24px_-12px_rgba(251,146,60,0.75)] ring-1 ring-orange-300/40 transition hover:bg-orange-300 active:scale-[0.98]"
+        >
+          <Plus className="size-4 transition-transform group-hover:rotate-90" />
+          <span className="hidden sm:inline">Novo atendimento</span>
+          <span className="sm:hidden">Novo</span>
+        </button>
+      )}
     </>
   );
 
   return (
-    <div className="space-y-3">
-      {workspace.kind !== "etapa" ? (
-        <section className="relative overflow-hidden rounded-[1.4rem] bg-[linear-gradient(120deg,#174d61_0%,#1e647d_60%,#244a52_100%)] px-4 py-3 text-white shadow-[0_18px_40px_-26px_rgba(23,27,33,0.55)] ring-1 ring-white/12 md:px-5">
-          <span className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-cyan-200/10 blur-3xl" />
-          <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/12 ring-1 ring-white/18">
-                <Inbox className="size-[18px] text-orange-200" />
-              </span>
-              <h1 className="truncate font-display text-lg font-semibold tracking-tight sm:text-xl">
-                Atendimentos
-              </h1>
-              <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">{headerActions}</div>
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="min-w-0 flex-1 lg:flex-none">
-                <PipelineTrackSelector value={track} onChange={setTrack} counts={trackCounts} compact />
+    <AttendanceReadOnlyContext.Provider value={readOnly}>
+      <div className="space-y-3">
+        {workspace.kind !== "etapa" ? (
+          <section className="relative overflow-hidden rounded-[1.4rem] bg-[linear-gradient(120deg,#174d61_0%,#1e647d_60%,#244a52_100%)] px-4 py-3 text-white shadow-[0_18px_40px_-26px_rgba(23,27,33,0.55)] ring-1 ring-white/12 md:px-5">
+            <span className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-cyan-200/10 blur-3xl" />
+            <div className="relative flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/12 ring-1 ring-white/18">
+                  <Inbox className="size-[18px] text-orange-200" />
+                </span>
+                <h1 className="truncate font-display text-lg font-semibold tracking-tight sm:text-xl">
+                  Atendimentos
+                </h1>
+                <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">
+                  {headerActions}
+                </div>
               </div>
-              <div className="hidden items-center gap-2 lg:flex">{headerActions}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1 lg:flex-none">
+                  <PipelineTrackSelector
+                    value={track}
+                    onChange={setTrack}
+                    counts={trackCounts}
+                    compact
+                  />
+                </div>
+                <div className="hidden items-center gap-2 lg:flex">{headerActions}</div>
+              </div>
             </div>
+          </section>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="text-lg font-semibold tracking-tight">Atendimentos</h1>
+            {readOnly ? null : (
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Plus className="size-4" />
+                Novo atendimento
+              </button>
+            )}
           </div>
-        </section>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-lg font-semibold tracking-tight">Atendimentos</h1>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <Plus className="size-4" />
-            Novo atendimento
-          </button>
-        </div>
-      )}
+        )}
 
-      {isAdmin && (
-        <AtendimentoHistoryReportDialog
-          open={historyOpen}
-          onOpenChange={setHistoryOpen}
-          brokers={brokers}
-          atendimentos={atendimentos}
-          onPrint={(payload) => {
-            setHistoryOpen(false);
-            setPrintPayload({ ...payload });
-          }}
-        />
-      )}
-      {isAdmin && printPayload && <AtendimentoHistoryPrintReport payload={printPayload} />}
-
-      <AtendimentoFilters
-        toolbar={false}
-        open={filtersOpen}
-        filters={filters}
-        onFiltersChange={applyFilters}
-        brokerOptions={brokers}
-      />
-
-      {agency !== "todas" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/60 px-4 py-2 text-xs">
-          <span>
-            Mostrando só <strong>{agency === "cordial" ? "Cordial" : "Morar"}</strong>
-            {allAtendimentos.length - atendimentos.length > 0
-              ? ` · ${allAtendimentos.length - atendimentos.length} atendimento(s) da outra imobiliária ocultos`
-              : ""}
-          </span>
-          <button
-            type="button"
-            className="font-semibold text-primary underline"
-            onClick={() => {
-              setAgency("todas");
-              if (imobiliaria)
-                navigate({ to: ".", search: (prev) => ({ ...prev, imobiliaria: undefined }) });
+        {isAdmin && (
+          <AtendimentoHistoryReportDialog
+            open={historyOpen}
+            onOpenChange={setHistoryOpen}
+            brokers={brokers}
+            atendimentos={atendimentos}
+            onPrint={(payload) => {
+              setHistoryOpen(false);
+              setPrintPayload({ ...payload });
             }}
-          >
-            Mostrar todas
-          </button>
-        </div>
-      )}
+          />
+        )}
+        {isAdmin && printPayload && <AtendimentoHistoryPrintReport payload={printPayload} />}
 
-      {searchOutsideScope.length > 0 && (
-        <div className="space-y-1 rounded-2xl border border-border bg-muted/60 px-4 py-2 text-xs">
-          <p className="font-semibold">
-            {searchOutsideScope.length} encontrado(s) fora desta aba ou filtro:
-          </p>
-          <ul className="space-y-1">
-            {searchOutsideScope.slice(0, 6).map((a) => (
-              <li key={a.id}>
-                <button
-                  type="button"
-                  className="text-left text-primary underline"
-                  onClick={() => {
-                    setAgency("todas");
-                    setFilters({ ...defaultAtendimentoFilters });
-                    const t = finalidadeToTrack(a.finalidade);
-                    navigate({
-                      to: ".",
-                      search: (prev) => ({
-                        ...prev,
-                        imobiliaria: undefined,
-                        corretorId: undefined,
-                        periodo: undefined,
-                        status: undefined,
-                        id: a.id,
-                        etapa: undefined,
-                        track: t === "ambos" ? prev.track : t,
-                      }),
-                    });
-                    detailOrigin.current = a.id;
-                  }}
-                >
-                  {a.clienteNome} · {a.finalidade === "aluguel" ? "Aluguéis" : "Vendas"} ·{" "}
-                  {a.imobiliaria === "morar"
-                    ? "Morar"
-                    : a.imobiliaria === "cordial"
-                      ? "Cordial"
-                      : "Ambas"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <AtendimentoSummaryCards
-        stats={stageStats}
-        selectedStage={selectedStage}
-        onStageChange={setSelectedStage}
-        onExpandStage={expandStage}
-        showInsights={workspace.kind !== "etapa"}
-        canViewFinancialInsights={canViewFinancialInsights}
-      />
-
-      {workspace.kind === "etapa" ? (
-        <AtendimentoStageExpandedView
-          key={`${workspace.stage}:${track}:${agency}`}
-          stage={workspace.stage}
-          atendimentos={grouped.byStage[workspace.stage]}
-          context={`${trackLabel(track)} · ${agency === "todas" ? "Todas as imobiliárias" : agency === "cordial" ? "Cordial" : "Morar"}${clienteIdFilter ? " · Recorte por cliente" : ""} · Filtros globais aplicados`}
-          onBack={() =>
-            void navigate({
-              to: ".",
-              search: (prev) => ({
-                ...prev,
-                modo: workspace.returnTo,
-                etapa: isWorkspacePipelineStage(overviewStage.current)
-                  ? overviewStage.current
-                  : prev.etapa,
-              }),
-              resetScroll: false,
-            })
-          }
-          backLabel={workspace.returnTo === "lista" ? "Voltar à lista" : "Voltar ao funil"}
-          onOpen={(a) => setDetailId(a.id)}
-          onStageChange={handleStageChange}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          isError={isError}
-          onRetry={() => void refetch()}
-          globalEmptyState={
-            !hasAtendimentos
-              ? "crm-empty"
-              : !filteredAtendimentos.length
-                ? "filtered-empty"
-                : undefined
-          }
-          density={density}
-          onDensityChange={changeDensity}
+        <AtendimentoFilters
+          toolbar={false}
+          open={filtersOpen}
+          filters={filters}
+          onFiltersChange={applyFilters}
+          brokerOptions={brokers}
         />
-      ) : (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">CRM comercial</h2>
-              <p className="text-[11px] text-foreground/50">
-                {activeFilteredCount} ativo{activeFilteredCount === 1 ? "" : "s"}
-                {filteredAtendimentos.length !== activeFilteredCount
-                  ? ` · ${filteredAtendimentos.length} no recorte atual`
-                  : " no recorte atual"}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setView("kanban")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-                  view === "kanban"
-                    ? "bg-teal-700 text-white shadow"
-                    : "text-teal-800 hover:bg-teal-700/8",
-                )}
-              >
-                <LayoutGrid className="size-3" /> Funil
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("list")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
-                  view === "list"
-                    ? "bg-teal-700 text-white shadow"
-                    : "text-teal-800 hover:bg-teal-700/8",
-                )}
-              >
-                <List className="size-3" /> Lista
-              </button>
-            </div>
-          </div>
 
-          {isLoading ? (
-            <EmptyState
-              title="Carregando atendimentos..."
-              description="Buscando registros na nuvem."
-              icon={<Inbox className="size-5" />}
-            />
-          ) : isError && !filteredAtendimentos.length ? (
-            <EmptyState
-              title="Não foi possível carregar os atendimentos."
-              description={error?.message ?? "Verifique sua conexão e tente novamente."}
-              icon={<Inbox className="size-5" />}
-              action={
-                <button
-                  type="button"
-                  onClick={() => void refetch()}
-                  className="rounded-xl bg-teal-800 px-4 py-2.5 text-xs font-bold text-white"
-                >
-                  Tentar novamente
-                </button>
-              }
-            />
-          ) : filteredAtendimentos.length > 0 ? (
-            view === "kanban" ? (
-              <AtendimentoKanban
-                atendimentos={filteredAtendimentos}
-                selectedStage={selectedStage}
-                onSelectedStageChange={setSelectedStage}
-                highlightId={highlightId}
-                onOpenDetail={(a) => setDetailId(a.id)}
-                onStageChange={handleStageChange}
-                onAction={handleAction}
-                brokerOptions={brokers}
-              />
-            ) : (
-              <div className="grid gap-3 xl:grid-cols-2">
-                {filteredAtendimentos.map((atendimento) => (
-                  <div
-                    key={atendimento.id}
-                    className={
-                      highlightId === atendimento.id
-                        ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
-                        : undefined
-                    }
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest("button,select,textarea,input,a"))
-                        return;
-                      setDetailId(atendimento.id);
+        {agency !== "todas" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/60 px-4 py-2 text-xs">
+            <span>
+              Mostrando só <strong>{agency === "cordial" ? "Cordial" : "Morar"}</strong>
+              {allAtendimentos.length - atendimentos.length > 0
+                ? ` · ${allAtendimentos.length - atendimentos.length} atendimento(s) da outra imobiliária ocultos`
+                : ""}
+            </span>
+            <button
+              type="button"
+              className="font-semibold text-primary underline"
+              onClick={() => {
+                setAgency("todas");
+                if (imobiliaria)
+                  navigate({ to: ".", search: (prev) => ({ ...prev, imobiliaria: undefined }) });
+              }}
+            >
+              Mostrar todas
+            </button>
+          </div>
+        )}
+
+        {searchOutsideScope.length > 0 && (
+          <div className="space-y-1 rounded-2xl border border-border bg-muted/60 px-4 py-2 text-xs">
+            <p className="font-semibold">
+              {searchOutsideScope.length} encontrado(s) fora desta aba ou filtro:
+            </p>
+            <ul className="space-y-1">
+              {searchOutsideScope.slice(0, 6).map((a) => (
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    className="text-left text-primary underline"
+                    onClick={() => {
+                      setAgency("todas");
+                      setFilters({ ...defaultAtendimentoFilters });
+                      const t = finalidadeToTrack(a.finalidade);
+                      navigate({
+                        to: ".",
+                        search: (prev) => ({
+                          ...prev,
+                          imobiliaria: undefined,
+                          corretorId: undefined,
+                          periodo: undefined,
+                          status: undefined,
+                          id: a.id,
+                          etapa: undefined,
+                          track: t === "ambos" ? prev.track : t,
+                        }),
+                      });
+                      detailOrigin.current = a.id;
                     }}
                   >
-                    <AtendimentoCard
-                      atendimento={atendimento}
-                      onOpen={(item) => setDetailId(item.id)}
-                      onStageChange={handleStageChange}
-                      onAction={handleAction}
-                      brokerOptions={brokers}
-                    />
-                  </div>
-                ))}
+                    {a.clienteNome} · {a.finalidade === "aluguel" ? "Aluguéis" : "Vendas"} ·{" "}
+                    {a.imobiliaria === "morar"
+                      ? "Morar"
+                      : a.imobiliaria === "cordial"
+                        ? "Cordial"
+                        : "Ambas"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <AtendimentoSummaryCards
+          stats={stageStats}
+          selectedStage={selectedStage}
+          onStageChange={setSelectedStage}
+          onExpandStage={expandStage}
+          showInsights={workspace.kind !== "etapa"}
+          canViewFinancialInsights={canViewFinancialInsights}
+        />
+
+        {workspace.kind === "etapa" ? (
+          <AtendimentoStageExpandedView
+            key={`${workspace.stage}:${track}:${agency}`}
+            stage={workspace.stage}
+            atendimentos={grouped.byStage[workspace.stage]}
+            context={`${trackLabel(track)} · ${agency === "todas" ? "Todas as imobiliárias" : agency === "cordial" ? "Cordial" : "Morar"}${clienteIdFilter ? " · Recorte por cliente" : ""} · Filtros globais aplicados`}
+            onBack={() =>
+              void navigate({
+                to: ".",
+                search: (prev) => ({
+                  ...prev,
+                  modo: workspace.returnTo,
+                  etapa: isWorkspacePipelineStage(overviewStage.current)
+                    ? overviewStage.current
+                    : prev.etapa,
+                }),
+                resetScroll: false,
+              })
+            }
+            backLabel={workspace.returnTo === "lista" ? "Voltar à lista" : "Voltar ao funil"}
+            onOpen={(a) => setDetailId(a.id)}
+            onStageChange={handleStageChange}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            isError={isError}
+            onRetry={() => void refetch()}
+            globalEmptyState={
+              !hasAtendimentos
+                ? "crm-empty"
+                : !filteredAtendimentos.length
+                  ? "filtered-empty"
+                  : undefined
+            }
+            density={density}
+            onDensityChange={changeDensity}
+          />
+        ) : (
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight">CRM comercial</h2>
+                <p className="text-[11px] text-foreground/50">
+                  {activeFilteredCount} ativo{activeFilteredCount === 1 ? "" : "s"}
+                  {filteredAtendimentos.length !== activeFilteredCount
+                    ? ` · ${filteredAtendimentos.length} no recorte atual`
+                    : " no recorte atual"}
+                </p>
               </div>
-            )
-          ) : hasAtendimentos ? (
-            <EmptyState
-              title="Nenhum atendimento encontrado com os filtros atuais."
-              description="Ajuste a busca ou os filtros para ver outros registros."
-              icon={<Inbox className="size-5" />}
-            />
-          ) : (
-            <EmptyState
-              title="Nenhum atendimento cadastrado ainda."
-              description="Clique em Novo atendimento para registrar o primeiro contato comercial."
-              icon={<Inbox className="size-5" />}
-              action={
+              <div className="flex items-center gap-1 rounded-full bg-white/55 p-1 shadow-sm">
                 <button
                   type="button"
-                  onClick={() => setOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-700/25 transition hover:bg-teal-800 active:scale-[0.98]"
+                  onClick={() => setView("kanban")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                    view === "kanban"
+                      ? "bg-teal-700 text-white shadow"
+                      : "text-teal-800 hover:bg-teal-700/8",
+                  )}
                 >
-                  <Plus className="size-3.5" />
-                  Novo atendimento
+                  <LayoutGrid className="size-3" /> Funil
                 </button>
-              }
-            />
-          )}
-        </section>
-      )}
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition",
+                    view === "list"
+                      ? "bg-teal-700 text-white shadow"
+                      : "text-teal-800 hover:bg-teal-700/8",
+                  )}
+                >
+                  <List className="size-3" /> Lista
+                </button>
+              </div>
+            </div>
 
-      <AtendimentoDetailDrawer
-        atendimento={detailAtendimento}
-        open={detailId !== null}
-        onOpenChange={(o) => {
-          if (!o) setDetailId(null);
-        }}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          restoreDetailFocus();
-        }}
-        onStageChange={handleStageChange}
-        onAction={handleAction}
-        onEdit={(atendimento) => {
-          setDetailId(null);
-          setEditId(atendimento.id);
-        }}
-        onConvert={handleConvert}
-        onRegisterProposal={registerProposal}
-        onCloseAttendance={closeAtendimento}
-        brokerOptions={brokers}
-        canAssignBroker={canAssignBroker}
-        canManageTerminalState={canManageTerminalState}
-      />
+            {isLoading ? (
+              <EmptyState
+                title="Carregando atendimentos..."
+                description="Buscando registros na nuvem."
+                icon={<Inbox className="size-5" />}
+              />
+            ) : isError && !filteredAtendimentos.length ? (
+              <EmptyState
+                title="Não foi possível carregar os atendimentos."
+                description={error?.message ?? "Verifique sua conexão e tente novamente."}
+                icon={<Inbox className="size-5" />}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => void refetch()}
+                    className="rounded-xl bg-teal-800 px-4 py-2.5 text-xs font-bold text-white"
+                  >
+                    Tentar novamente
+                  </button>
+                }
+              />
+            ) : filteredAtendimentos.length > 0 ? (
+              view === "kanban" ? (
+                <AtendimentoKanban
+                  atendimentos={filteredAtendimentos}
+                  selectedStage={selectedStage}
+                  onSelectedStageChange={setSelectedStage}
+                  highlightId={highlightId}
+                  onOpenDetail={(a) => setDetailId(a.id)}
+                  onStageChange={handleStageChange}
+                  onAction={handleAction}
+                  brokerOptions={brokers}
+                />
+              ) : (
+                <div className="grid gap-3 xl:grid-cols-2">
+                  {filteredAtendimentos.map((atendimento) => (
+                    <div
+                      key={atendimento.id}
+                      className={
+                        highlightId === atendimento.id
+                          ? "rounded-3xl ring-2 ring-orange-400 ring-offset-2 ring-offset-background transition"
+                          : undefined
+                      }
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest("button,select,textarea,input,a"))
+                          return;
+                        setDetailId(atendimento.id);
+                      }}
+                    >
+                      <AtendimentoCard
+                        atendimento={atendimento}
+                        onOpen={(item) => setDetailId(item.id)}
+                        onStageChange={handleStageChange}
+                        onAction={handleAction}
+                        brokerOptions={brokers}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : hasAtendimentos ? (
+              <EmptyState
+                title="Nenhum atendimento encontrado com os filtros atuais."
+                description="Ajuste a busca ou os filtros para ver outros registros."
+                icon={<Inbox className="size-5" />}
+              />
+            ) : (
+              <EmptyState
+                title="Nenhum atendimento cadastrado ainda."
+                description={
+                  readOnly
+                    ? "Ainda não há atendimentos para consultar."
+                    : "Clique em Novo atendimento para registrar o primeiro contato comercial."
+                }
+                icon={<Inbox className="size-5" />}
+                action={
+                  readOnly ? undefined : (
+                    <button
+                      type="button"
+                      onClick={() => setOpen(true)}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-700/25 transition hover:bg-teal-800 active:scale-[0.98]"
+                    >
+                      <Plus className="size-3.5" />
+                      Novo atendimento
+                    </button>
+                  )
+                }
+              />
+            )}
+          </section>
+        )}
 
-      {open && (
-        <AtendimentoFormModal
-          open={open}
-          onOpenChange={setOpen}
-          onSubmit={createAtendimento}
-          brokerOptions={brokers}
-          presetTrack={track}
-        />
-      )}
-      <AtendimentoHandoffDialog
-        atendimento={handoffAtendimento}
-        autorNome={session?.nome}
-        onClose={() => setHandoffAtendimento(null)}
-      />
-      {editId && editAtendimento ? (
-        <AtendimentoFormModal
-          open
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) setEditId(null);
+        <AtendimentoDetailDrawer
+          atendimento={detailAtendimento}
+          open={detailId !== null}
+          onOpenChange={(o) => {
+            if (!o) setDetailId(null);
           }}
-          onSubmit={saveEditedAtendimento}
-          initialValue={editAtendimento}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restoreDetailFocus();
+          }}
+          onStageChange={handleStageChange}
+          onAction={handleAction}
+          onEdit={(atendimento) => {
+            setDetailId(null);
+            setEditId(atendimento.id);
+          }}
+          onConvert={handleConvert}
+          onRegisterProposal={registerProposal}
+          onCloseAttendance={closeAtendimento}
           brokerOptions={brokers}
-          canDelete={canDeleteAttendance(session, editAtendimento)}
-          onDelete={deleteEditedAtendimento}
+          canAssignBroker={canAssignBroker}
+          canManageTerminalState={canManageTerminalState}
         />
-      ) : null}
-    </div>
+
+        {open && !readOnly && (
+          <AtendimentoFormModal
+            open={open}
+            onOpenChange={setOpen}
+            onSubmit={createAtendimento}
+            brokerOptions={brokers}
+            presetTrack={track}
+          />
+        )}
+        <AtendimentoHandoffDialog
+          atendimento={handoffAtendimento}
+          autorNome={session?.nome}
+          onClose={() => setHandoffAtendimento(null)}
+        />
+        {!readOnly && editId && editAtendimento ? (
+          <AtendimentoFormModal
+            open
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) setEditId(null);
+            }}
+            onSubmit={saveEditedAtendimento}
+            initialValue={editAtendimento}
+            brokerOptions={brokers}
+            canDelete={canDeleteAttendance(session, editAtendimento)}
+            onDelete={deleteEditedAtendimento}
+          />
+        ) : null}
+      </div>
+    </AttendanceReadOnlyContext.Provider>
   );
 }
+
+const READ_ONLY_MESSAGE = "Perfil somente de consulta: não é possível alterar atendimentos.";
 
 const BROKER_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

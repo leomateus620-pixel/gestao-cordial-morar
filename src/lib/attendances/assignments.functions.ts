@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAttendanceWriter } from "./read-only-guard";
 
 type RpcClient = {
   rpc: (
@@ -24,6 +25,7 @@ export const markAttendanceFirstOpened = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { attendanceId: string }) => d)
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const { data: result, error } = await (context.supabase as unknown as RpcClient).rpc(
       "mark_attendance_first_opened",
       { _attendance_id: data.attendanceId },
@@ -39,6 +41,7 @@ export const getCorretoresResponseMetrics = createServerFn({ method: "POST" })
     (d: { start?: string | null; end?: string | null; imobiliaria?: string | null }) => d,
   )
   .handler(async ({ data, context }) => {
+    await assertAttendanceWriter(context);
     const { data: rows, error } = await (context.supabase as unknown as RpcClient).rpc(
       "get_corretores_response_metrics",
       {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAttendanceReadOnly } from "./attendance-read-only";
 import {
   Building2,
   CalendarDays,
@@ -42,13 +43,9 @@ type Props = {
   brokerOptions?: Array<{ id: string; nome: string }>;
 };
 
-export function AtendimentoCard({
-  atendimento,
-  onOpen,
-  onStageChange,
-}: Props) {
-
+export function AtendimentoCard({ atendimento, onOpen, onStageChange }: Props) {
   const [moving, setMoving] = useState(false);
+  const readOnly = useAttendanceReadOnly();
   const initials = getInitials(atendimento.clienteNome);
 
   const whatsapp = whatsappHref(atendimento.telefone);
@@ -57,7 +54,7 @@ export function AtendimentoCard({
   const stageUi = pipelineStageUi[atendimento.pipelineStage];
 
   async function moveTo(stage: PipelineStage) {
-    if (moving || stage === atendimento.pipelineStage) return;
+    if (readOnly || moving || stage === atendimento.pipelineStage) return;
     setMoving(true);
     try {
       await onStageChange(atendimento.id, stage);
@@ -123,7 +120,6 @@ export function AtendimentoCard({
 
         <section
           className="mt-3 rounded-2xl border border-stone-900/8 bg-white px-3 py-2.5"
-
           aria-label="Última ação"
         >
           <div className="flex flex-col gap-1">
@@ -136,7 +132,10 @@ export function AtendimentoCard({
                 <p className="text-[10px] font-semibold leading-4 text-stone-500">
                   {formatDateTime(atendimento.ultimaAcao.em)}
                   {atendimento.ultimaAcao.ator ? (
-                    <span className="font-medium text-stone-400"> · por {atendimento.ultimaAcao.ator}</span>
+                    <span className="font-medium text-stone-400">
+                      {" "}
+                      · por {atendimento.ultimaAcao.ator}
+                    </span>
                   ) : null}
                 </p>
               ) : null}
@@ -169,7 +168,6 @@ export function AtendimentoCard({
             </p>
           </div>
         ) : null}
-
 
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[11px]">
           <ContextRow icon={UserRound} label="Corretor">
@@ -218,8 +216,12 @@ export function AtendimentoCard({
       </div>
 
       <footer className="border-t border-stone-900/8 bg-stone-50/75 p-3">
-        {FUNNEL_PIPELINE_STAGES.includes(atendimento.pipelineStage) ||
-        atendimento.pipelineStage === WAITING_PIPELINE_STAGE ? (
+        {readOnly ? (
+          <p className="text-[11px] font-semibold text-stone-500">
+            {pipelineStageLabel(atendimento.pipelineStage)} · somente consulta
+          </p>
+        ) : FUNNEL_PIPELINE_STAGES.includes(atendimento.pipelineStage) ||
+          atendimento.pipelineStage === WAITING_PIPELINE_STAGE ? (
           <label className="block">
             <span className="sr-only">Mover atendimento para outra etapa</span>
             <select
@@ -286,10 +288,7 @@ export function AtendimentoCard({
             <ChevronRight className="size-3.5" />
           </button>
         ) : null}
-
-
       </footer>
-
     </article>
   );
 }
@@ -309,7 +308,9 @@ function ContextRow({
         <Icon className="size-3" />
         {label}
       </dt>
-      <dd className="mt-0.5 font-semibold leading-4 text-stone-700 [overflow-wrap:anywhere]">{children}</dd>
+      <dd className="mt-0.5 font-semibold leading-4 text-stone-700 [overflow-wrap:anywhere]">
+        {children}
+      </dd>
     </div>
   );
 }

@@ -46,3 +46,45 @@ test("meta_reviewer can open marketing and integracoes only", () => {
   for (const m of ["imoveis", "clientes", "atendimentos", "financeiro", "configuracoes", "dashboard"] as const)
     assert.equal(canAccessModule(s, m), false, m);
 });
+
+test("atendimentos_viewer only opens Atendimentos and never writes", async () => {
+  const { canWriteAttendances, canManageAttendanceAssignments, canSelfAssignAttendance, canManageAttendanceTerminalState, canSeeAttendanceHandoffMessage, canSeeFinancialInsights, canSeeAdminInsights, canSeeNotificationMetrics } = await import("./access-control.ts");
+  const { roleDefinitions } = await import("./mock/permissions.ts");
+  const s = { id: "u-viewer", perfil: "atendimentos_viewer" as const, modules: [] };
+  assert.deepEqual(roleDefinitions.atendimentos_viewer.modules, ["atendimentos"]);
+  assert.deepEqual(roleDefinitions.atendimentos_viewer.permissions, ["atendimentos:read"]);
+  assert.equal(canAccessModule(s, "atendimentos"), true);
+  for (const m of ["dashboard", "imoveis", "clientes", "agenda", "marketing", "alugueis", "vendas", "financeiro", "configuracoes", "busca", "integracoes"] as const)
+    assert.equal(canAccessModule(s, m), false, m);
+  assert.equal(canWriteAttendances(s), false);
+  assert.equal(canDeleteAttendance(s, { criadoPorId: "u-viewer" }), false);
+  for (const fn of [canManageAttendanceAssignments, canSelfAssignAttendance, canManageAttendanceTerminalState, canSeeAttendanceHandoffMessage, canSeeFinancialInsights, canSeeAdminInsights, canSeeNotificationMetrics])
+    assert.equal(fn(s), false, fn.name);
+  assert.equal(canWriteAttendances(corretor), true);
+  assert.equal(canWriteAttendances(secretaria), true);
+});
+
+test("deny-dominant roles win over staff roles", async () => {
+  const { pickHighestRole, mapDbRole } = await import("./role-mapping.ts");
+  assert.equal(mapDbRole("atendimentos_viewer"), "atendimentos_viewer");
+  assert.equal(mapDbRole("algo_desconhecido"), "corretor");
+  assert.equal(pickHighestRole(["corretor", "atendimentos_viewer"]), "atendimentos_viewer");
+  assert.equal(pickHighestRole(["admin_owner", "atendimentos_viewer"]), "atendimentos_viewer");
+  assert.equal(pickHighestRole(["admin_owner", "meta_reviewer"]), "meta_reviewer");
+  assert.equal(pickHighestRole(["admin_owner", "corretor"]), "admin_owner");
+});
+
+test("database boundary for atendimentos_viewer stays deny-dominant", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sql = readFileSync("drizzle/migrations/0091_atendimentos_viewer_boundary.sql", "utf8");
+  // has_role keeps meta_reviewer and adds the viewer.
+  assert.match(sql, /role::text='meta_reviewer'\)\)\s*AND \(_role::text='atendimentos_viewer' OR NOT EXISTS/);
+  // Allowlist is exactly the attendance tables plus session identity.
+  assert.match(sql, /NOT IN \('attendances','attendance_history','attendance_assignments','profiles','user_roles','user_agencies'\)/);
+  assert.match(sql, /atendimentos_viewer_no_insert/);
+  assert.match(sql, /atendimentos_viewer_no_update/);
+  assert.match(sql, /atendimentos_viewer_no_delete/);
+  assert.match(sql, /atendimentos_viewer_entry_guard_v1[\s\S]*ERRCODE=''42501''/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.provision_atendimentos_viewer\(uuid, text\[\]\) FROM PUBLIC, anon, authenticated/);
+  assert.doesNotMatch(sql, /raw_user_meta_data/);
+});

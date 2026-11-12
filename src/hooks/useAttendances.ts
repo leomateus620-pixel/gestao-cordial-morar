@@ -139,7 +139,8 @@ export function useAttendances(
   const brokersQuery = useQuery({
     queryKey: attendanceBrokersQueryKey(user?.id),
     queryFn: () => listAttendanceBrokers(),
-    enabled: canAccessModule(user, "atendimentos"),
+    // The consulta-only profile cannot list the team; it filters by brokers already on the cards.
+    enabled: canAccessModule(user, "atendimentos") && user?.perfil !== "atendimentos_viewer",
     staleTime: 60_000,
   });
 
@@ -249,7 +250,10 @@ export function useAttendances(
     atendimentos: agencyAtendimentos,
     trackAtendimentos,
     trackCounts,
-    brokers: brokersQuery.data ?? [],
+    brokers:
+      user?.perfil === "atendimentos_viewer"
+        ? brokersFromAttendances(atendimentos)
+        : (brokersQuery.data ?? []),
     filteredAtendimentos,
     stats,
     isLoading: attendancesQuery.isLoading,
@@ -442,4 +446,13 @@ function matchesPeriod(item: Atendimento, period: AtendimentoPeriodFilter) {
     return created >= start && created <= now;
   }
   return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+}
+
+function brokersFromAttendances(list: Atendimento[]) {
+  const byId = new Map<string, { id: string; nome: string; agencies: ("cordial" | "morar")[] }>();
+  for (const a of list) {
+    if (!a.corretorId || !a.corretorNome || byId.has(a.corretorId)) continue;
+    byId.set(a.corretorId, { id: a.corretorId, nome: a.corretorNome, agencies: [] });
+  }
+  return [...byId.values()].sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
 }

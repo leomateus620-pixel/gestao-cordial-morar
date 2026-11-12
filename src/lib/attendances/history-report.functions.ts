@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAttendanceWriter } from "./read-only-guard";
 
 /** Limite de eventos por relatório; acima disso o relatório avisa que foi truncado. */
 const MAX_EVENTS = 2000;
@@ -132,7 +133,9 @@ async function loadRelated(
   for (let i = 0; i < ids.length && !truncated; i += 150) {
     let q = supabase
       .from("attendance_history")
-      .select("id,attendance_id,event_type,actor_name,description,previous_value,new_value,created_at")
+      .select(
+        "id,attendance_id,event_type,actor_name,description,previous_value,new_value,created_at",
+      )
       .in("attendance_id", ids.slice(i, i + 150))
       .order("created_at", { ascending: true })
       .limit(MAX_EVENTS + 1);
@@ -191,6 +194,7 @@ export const listBrokerAttendanceHistoryReport = createServerFn({ method: "POST"
     return { brokerId: input.brokerId, ...parsePeriod(input) };
   })
   .handler(async ({ data, context }): Promise<HistoryReportResult> => {
+    await assertAttendanceWriter(context);
     await assertAdmin(context);
     const supabase = context.supabase as AnyClient;
     const range = bounds(data);
@@ -232,10 +236,17 @@ export const listClientAttendanceHistoryReport = createServerFn({ method: "POST"
         email?: string | null;
       } & HistoryReportPeriod,
     ) => {
-      const attendanceIds = (input?.attendanceIds ?? []).filter((id) => UUID_RE.test(id)).slice(0, 200);
+      const attendanceIds = (input?.attendanceIds ?? [])
+        .filter((id) => UUID_RE.test(id))
+        .slice(0, 200);
       const clientId = input?.clientId && UUID_RE.test(input.clientId) ? input.clientId : null;
-      const phone = String(input?.phone ?? "").replace(/\D/g, "").slice(-8);
-      const email = String(input?.email ?? "").trim().toLowerCase().slice(0, 200);
+      const phone = String(input?.phone ?? "")
+        .replace(/\D/g, "")
+        .slice(-8);
+      const email = String(input?.email ?? "")
+        .trim()
+        .toLowerCase()
+        .slice(0, 200);
       if (!clientId && attendanceIds.length === 0 && phone.length < 8 && !email)
         throw new Error("Selecione um cliente.");
       return {
@@ -248,6 +259,7 @@ export const listClientAttendanceHistoryReport = createServerFn({ method: "POST"
     },
   )
   .handler(async ({ data, context }): Promise<HistoryReportResult> => {
+    await assertAttendanceWriter(context);
     await assertAdmin(context);
     const supabase = context.supabase as AnyClient;
     const range = bounds(data);
@@ -255,7 +267,10 @@ export const listClientAttendanceHistoryReport = createServerFn({ method: "POST"
     const add = (list: Row[] | null) => (list ?? []).forEach((r) => found.set(r.id as string, r));
 
     if (data.attendanceIds.length > 0) {
-      const { data: rows, error } = await supabase.from("attendances").select(COLUMNS).in("id", data.attendanceIds);
+      const { data: rows, error } = await supabase
+        .from("attendances")
+        .select(COLUMNS)
+        .in("id", data.attendanceIds);
       if (error) throw new Error(error.message);
       add(rows);
     }
@@ -268,8 +283,12 @@ export const listClientAttendanceHistoryReport = createServerFn({ method: "POST"
       if (error) throw new Error(error.message);
       const ids = ((all ?? []) as Row[])
         .filter((r) => {
-          const p = String(r.telefone ?? "").replace(/\D/g, "").slice(-8);
-          const e = String(r.email ?? "").trim().toLowerCase();
+          const p = String(r.telefone ?? "")
+            .replace(/\D/g, "")
+            .slice(-8);
+          const e = String(r.email ?? "")
+            .trim()
+            .toLowerCase();
           return (data.phone && p === data.phone) || (data.email && e === data.email);
         })
         .map((r) => r.id as string)
@@ -325,10 +344,13 @@ export type HistoryReportContactRow = {
 export const listAttendanceReportContacts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<HistoryReportContactRow[]> => {
+    await assertAttendanceWriter(context);
     await assertAdmin(context);
     const { data, error } = await (context.supabase as AnyClient)
       .from("attendances")
-      .select("id,cliente_nome,telefone,email,cliente_id,cliente_convertido_id,corretor_nome,created_at")
+      .select(
+        "id,cliente_nome,telefone,email,cliente_id,cliente_convertido_id,corretor_nome,created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(5000);
     if (error) throw new Error(error.message);
