@@ -37,4 +37,4 @@
 
 - Signed owner authorization (`autorizacao`) is informational only: owned-site publication of a completed Gestão registration never depends on it, and blank availability counts as available (only an explicit 'no' blocks) — why: the user ruled it out after it silently blocked registrations.
 - Re-finalizing a registration merges into the existing agenciamento via src/lib/agenciamentos/agency-merge.ts (checked items and description never downgrade) and the wizard hydrates the agency step from it — why: an empty resumed step was overwriting the broker's work.
-- `atendimentos_viewer` is deny-dominant like `meta_reviewer` (has_role, RESTRICTIVE `atendimentos_viewer_block` except attendance tables SELECT-only + identity, RPC guard `atendimentos_viewer_entry_guard_v1`, granted only via service-only `provision_atendimentos_viewer`) — why: read-only funnel access; new RLS tables/RPCs need the same.
+- `atendimentos_viewer` is deny-dominant like `meta_reviewer` (has_role, RESTRICTIVE block except attendance tables read-only, RPC guard, service-only provisioning) — why: read-only funnel; new tables/RPCs need it.
