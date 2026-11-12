@@ -1,7 +1,11 @@
 import { inspectionLayout } from "@/lib/vistoria/layout";
+import { canUseAssistant } from "@/lib/access-control";
+
+type LauncherSession = Parameters<typeof canUseAssistant>[0];
 
 /** Mesmas regras do antigo botão flutuante: fora do Assistente e da vistoria. */
-export function shouldShowAssistantLauncher(pathname: string): boolean {
+export function shouldShowAssistantLauncher(pathname: string, session: LauncherSession): boolean {
+  if (!canUseAssistant(session)) return false;
   return !pathname.startsWith("/assistente") && !inspectionLayout(pathname);
 }
 

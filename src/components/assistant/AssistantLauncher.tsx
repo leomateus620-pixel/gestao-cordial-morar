@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { AssistantMark } from "@/components/brand/AssistantMark";
 import { CordialBotWordmark } from "@/components/brand/CordialBotBrand";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-mock";
 import { assistantLauncherStore, shouldShowAssistantLauncher } from "./launcher-state";
 
 export function useAssistantLauncher() {
@@ -17,8 +18,9 @@ export function useAssistantLauncher() {
 
 export function AssistantLauncherButton({ variant }: { variant: "desktop" | "mobile" }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const session = useSession();
   const { setOpen } = useAssistantLauncher();
-  if (!shouldShowAssistantLauncher(pathname)) return null;
+  if (!shouldShowAssistantLauncher(pathname, session)) return null;
   return (
     <button
       type="button"

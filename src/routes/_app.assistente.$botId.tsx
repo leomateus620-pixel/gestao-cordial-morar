@@ -1,3 +1,4 @@
+import { RequireAssistantAccess } from "@/components/assistant/RequireAssistantAccess";
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { AgentWorkspace } from "@/components/assistant/AgentWorkspace";
 import type { AssistantRecordContext } from "@/lib/agent/use-assistant";
@@ -26,7 +27,11 @@ export const Route = createFileRoute("/_app/assistente/$botId")({
         ? search.record
         : undefined,
   }),
-  component: Page,
+  component: () => (
+    <RequireAssistantAccess>
+      <Page />
+    </RequireAssistantAccess>
+  ),
 });
 function Page() {
   const { botId } = Route.useParams();

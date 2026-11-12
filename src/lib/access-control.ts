@@ -77,6 +77,11 @@ export function canWriteAttendances(session: SessionLike): boolean {
   return canAccessModule(session, "atendimentos");
 }
 
+/** CORDIAL bot: indisponível só para o perfil "Consulta de Atendimentos". */
+export function canUseAssistant(session: SessionLike): boolean {
+  return Boolean(session) && !isAttendanceViewer(session);
+}
+
 export function isAttendanceViewer(session: SessionLike): boolean {
   return session?.perfil === "atendimentos_viewer";
 }

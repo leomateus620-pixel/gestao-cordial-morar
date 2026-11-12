@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canAccessModule, canArchiveProperty, canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
+import { canAccessModule, canUseAssistant, canArchiveProperty, canDeleteAttendance, canSelfAssignAttendance } from "./access-control.ts";
 
 const admin = { id: "u-admin", perfil: "admin_owner" as const, modules: [] };
 const corretor = { id: "u-corretor", perfil: "corretor" as const, modules: [] };
@@ -87,4 +87,12 @@ test("database boundary for atendimentos_viewer stays deny-dominant", async () =
   assert.match(sql, /atendimentos_viewer_entry_guard_v1[\s\S]*ERRCODE=''42501''/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.provision_atendimentos_viewer\(uuid, text\[\]\) FROM PUBLIC, anon, authenticated/);
   assert.doesNotMatch(sql, /raw_user_meta_data/);
+});
+
+test("CORDIAL bot: bloqueado só para Consulta de Atendimentos", () => {
+  for (const perfil of ["admin_owner", "secretaria", "corretor", "financeiro_admin", "meta_reviewer"]) {
+    assert.equal(canUseAssistant({ perfil, modules: [] } as never), true, perfil);
+  }
+  assert.equal(canUseAssistant({ perfil: "atendimentos_viewer", modules: ["atendimentos"] } as never), false);
+  assert.equal(canUseAssistant(null), false);
 });

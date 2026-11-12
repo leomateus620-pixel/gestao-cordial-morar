@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/sheet";
 import { allowedBotsForRole, getAgentBot } from "@/lib/agent/bots";
 import { useSession } from "@/lib/auth-mock";
+import { canUseAssistant } from "@/lib/access-control";
+import { assistantLauncherStore } from "./launcher-state";
 import {
   useAssistant,
   useAssistantContext,
@@ -38,6 +40,16 @@ import {
 } from "@/lib/agent/context-routing";
 
 export function GlobalAssistant() {
+  const session = useSession();
+  const allowed = canUseAssistant(session);
+  useEffect(() => {
+    if (!allowed) assistantLauncherStore.set(false);
+  }, [allowed]);
+  if (!allowed) return null;
+  return <GlobalAssistantPanel />;
+}
+
+function GlobalAssistantPanel() {
   const session = useSession();
   const location = useRouterState({ select: (s) => s.location });
   const navigate = useNavigate();

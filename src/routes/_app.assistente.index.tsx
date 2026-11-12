@@ -1,3 +1,4 @@
+import { RequireAssistantAccess } from "@/components/assistant/RequireAssistantAccess";
 import { createFileRoute, useNavigate, type SearchSchemaInput } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AgentWorkspace } from "@/components/assistant/AgentWorkspace";
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/_app/assistente/")({
       action: id(search.action),
     };
   },
-  component: Page,
+  component: () => (
+    <RequireAssistantAccess>
+      <Page />
+    </RequireAssistantAccess>
+  ),
 });
 function Page() {
   const session = useSession();

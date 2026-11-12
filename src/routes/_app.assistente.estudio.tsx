@@ -1,3 +1,4 @@
+import { RequireAssistantAccess } from "@/components/assistant/RequireAssistantAccess";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useRef, useState } from "react";
@@ -22,7 +23,11 @@ import {
 
 export const Route = createFileRoute("/_app/assistente/estudio")({
   head: () => ({ meta: [{ title: "Estúdio de Conteúdo — Cordial Bot" }] }),
-  component: Page,
+  component: () => (
+    <RequireAssistantAccess>
+      <Page />
+    </RequireAssistantAccess>
+  ),
 });
 
 type Step = "imovel" | "marca" | "formato" | "textos" | "previa" | "aprovado";
