@@ -1,5 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bath, Bed, Car, Check, Image as ImageIcon, MapPin, Maximize2, Pencil, Plus } from "lucide-react";
+import {
+  Bath,
+  Bed,
+  Car,
+  Check,
+  Image as ImageIcon,
+  MapPin,
+  Maximize2,
+  Pencil,
+  Plus,
+} from "lucide-react";
 import { CardGallery } from "./CardGallery";
 import { rememberCatalogAnchor } from "@/lib/imoveis/search-memory";
 import { brl } from "@/lib/format";
@@ -19,13 +29,18 @@ const PROVIDER_INITIAL: Record<string, string> = { cordial: "C", morar: "M" };
 
 function statusTone(status: string, tone: "overlay" | "surface" = "overlay") {
   if (status === "published") return "bg-emerald-400";
-  if (status === "error" || status === "out_of_sync" || status === "conflict") return "bg-amber-400";
+  if (status === "error" || status === "out_of_sync" || status === "conflict")
+    return "bg-amber-400";
   if (status === "unpublished" || status === "draft")
     return tone === "overlay" ? "bg-white/60" : "bg-foreground/30";
   return "bg-sky-300";
 }
 
-type CodeChip = { provider: "cordial" | "morar" | "legado"; label: string; value: string };
+type CodeChip = {
+  provider: "cordial" | "morar" | "legado" | "arquivado";
+  label: string;
+  value: string;
+};
 
 function propertyCodes(property: Property): CodeChip[] {
   const codes: CodeChip[] = [];
@@ -35,6 +50,8 @@ function propertyCodes(property: Property): CodeChip[] {
     codes.push({ provider: "morar", label: "Morar", value: property.codigoMorar });
   if (codes.length === 0 && property.codigo)
     codes.push({ provider: "legado", label: "Código", value: property.codigo });
+  if (property.archivedAt)
+    codes.push({ provider: "arquivado", label: "Situação", value: "Arquivado" });
   return codes;
 }
 
@@ -52,6 +69,7 @@ function CodeChips({ codes, className }: { codes: CodeChip[]; className?: string
               "bg-[var(--cordial-primary)]/10 text-[var(--cordial-primary)]",
             code.provider === "morar" && "bg-[var(--morar-primary)]/12 text-[#b95f20]",
             code.provider === "legado" && "bg-foreground/[0.06] text-foreground/55",
+            code.provider === "arquivado" && "bg-amber-500/15 font-sans text-amber-800",
           )}
         >
           {code.value}
@@ -302,7 +320,11 @@ export function PropertyCatalogCard({
       <article
         id={`imovel-${property.id}`}
         onClickCapture={() => rememberCatalogAnchor(property.id)}
-        className={cn(CARD_SHELL, "flex items-stretch gap-3 p-2.5 sm:gap-4 sm:p-3", selected && "border-primary ring-2 ring-primary/40")}
+        className={cn(
+          CARD_SHELL,
+          "flex items-stretch gap-3 p-2.5 sm:gap-4 sm:p-3",
+          selected && "border-primary ring-2 ring-primary/40",
+        )}
       >
         <Link
           to="/imoveis/$imovelId"
@@ -329,10 +351,10 @@ export function PropertyCatalogCard({
                 <CodeChips codes={codes} className="hidden sm:flex" />
               </div>
               {property.isDraft ? (
-            <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-              Cadastro não concluído
-            </span>
-          ) : null}
+                <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                  Cadastro não concluído
+                </span>
+              ) : null}
               {localidade ? (
                 <p className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-foreground/55">
                   <MapPin className="size-3 shrink-0 text-foreground/40" />
@@ -372,7 +394,11 @@ export function PropertyCatalogCard({
     <article
       id={`imovel-${property.id}`}
       onClickCapture={() => rememberCatalogAnchor(property.id)}
-      className={cn(CARD_SHELL, "flex flex-col", selected && "border-primary ring-2 ring-primary/40")}
+      className={cn(
+        CARD_SHELL,
+        "flex flex-col",
+        selected && "border-primary ring-2 ring-primary/40",
+      )}
     >
       <Link
         to="/imoveis/$imovelId"
@@ -414,10 +440,10 @@ export function PropertyCatalogCard({
           <CodeChips codes={codes} />
         </div>
         {property.isDraft ? (
-            <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-              Cadastro não concluído
-            </span>
-          ) : null}
+          <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+            Cadastro não concluído
+          </span>
+        ) : null}
 
         <Price property={property} className="text-[19px] leading-none" />
 

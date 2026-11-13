@@ -1,7 +1,10 @@
+import { normalizePropertyCode } from "./code-search";
 import type { ImoveisSort, ListImoveisInput } from "./imoveis.functions";
 
 export type CatalogFilters = {
   q: string;
+  /** Código exato (Cordial/Morar), já normalizado; "" quando inativo. */
+  codigo: string;
   carteira: "todas" | "cordial" | "morar" | "ambas";
   operacao: "todos" | "venda" | "aluguel";
   tipo: string;
@@ -24,6 +27,7 @@ export type CatalogFilters = {
 
 export const DEFAULT_FILTERS: CatalogFilters = {
   q: "",
+  codigo: "",
   carteira: "todas",
   operacao: "todos",
   tipo: "",
@@ -63,6 +67,10 @@ export function parseCatalogSearch(search: Record<string, unknown>): CatalogFilt
   const page = number(search["page"]);
   return {
     q: text(search["q"]),
+    codigo:
+      normalizePropertyCode(
+        typeof search["codigo"] === "number" ? String(search["codigo"]) : search["codigo"],
+      ) ?? "",
     carteira: oneOf(search["carteira"], ["todas", "cordial", "morar", "ambas"] as const, "todas"),
     operacao: oneOf(search["operacao"], ["todos", "venda", "aluguel"] as const, "todos"),
     tipo: text(search["tipo"]),
@@ -102,6 +110,7 @@ export function toListInput(filters: CatalogFilters, pageSize: number): ListImov
     cidade: filters.cidade || null,
     bairro: filters.bairro || null,
     search: filters.q.trim() || null,
+    codigo: filters.codigo || null,
     valorMin: filters.valorMin,
     valorMax: filters.valorMax,
     dormitoriosMin: filters.dormitoriosMin,
@@ -186,6 +195,7 @@ export function statusLabel(value: string): string {
 /** Quantos filtros (além da busca, carteira, ordenação e página) estão ativos. */
 export function countActiveFilters(filters: CatalogFilters): number {
   const keys: Array<keyof CatalogFilters> = [
+    "codigo",
     "operacao",
     "tipo",
     "cidade",
@@ -212,6 +222,7 @@ export type ActiveChip = { key: keyof CatalogFilters; label: string };
 export function activeChips(filters: CatalogFilters): ActiveChip[] {
   const chips: ActiveChip[] = [];
   const push = (key: keyof CatalogFilters, label: string) => chips.push({ key, label });
+  if (filters.codigo) push("codigo", `Código ${filters.codigo}`);
   if (filters.arquivados === "somente") push("arquivados", "Arquivados");
   if (filters.carteira !== "todas")
     push(

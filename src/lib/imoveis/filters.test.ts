@@ -86,3 +86,16 @@ test("chips usam rótulos legíveis para status e valor", () => {
     ["Status: Divergente", "A partir de R$ 800 mil"],
   );
 });
+
+test("código: lê, normaliza, descarta inválido e faz ida e volta pela URL", () => {
+  assert.equal(parseCatalogSearch({ codigo: " #01442 " }).codigo, "1442");
+  assert.equal(parseCatalogSearch({ codigo: 1442 }).codigo, "1442");
+  assert.equal(parseCatalogSearch({ codigo: "14a2" }).codigo, "");
+  assert.equal("codigo" in serializeCatalogSearch(parseCatalogSearch({})), false);
+  const filters = parseCatalogSearch({ codigo: "1442", carteira: "morar", tipo: "Casa" });
+  assert.deepEqual(parseCatalogSearch(serializeCatalogSearch(filters)), filters);
+  assert.equal(toListInput(filters, 24).codigo, "1442");
+  assert.equal(toListInput(DEFAULT_FILTERS, 24).codigo, null);
+  assert.equal(countActiveFilters({ ...DEFAULT_FILTERS, codigo: "1442" }), 1);
+  assert.deepEqual(activeChips({ ...DEFAULT_FILTERS, codigo: "1442" })[0], { key: "codigo", label: "Código 1442" });
+});

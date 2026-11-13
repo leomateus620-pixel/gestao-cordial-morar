@@ -15,6 +15,7 @@ import type { Property } from "@/types/property";
 import { SearchX } from "lucide-react";
 import { Fab } from "@/components/fab";
 import { EmptyState } from "@/components/shared/empty-state";
+import { codeSearchLabel } from "@/lib/imoveis/code-search";
 import {
   PropertyCatalogCard,
   PropertyCatalogCardSkeleton,
@@ -96,6 +97,8 @@ function summaryFor(filters: CatalogFilters): string {
   if (filters.carteira === "cordial") parts.push("Cordial");
   if (filters.carteira === "morar") parts.push("Morar");
   if (filters.carteira === "ambas") parts.push("Cordial + Morar");
+  if (filters.codigo)
+    return `Código ${filters.codigo}${filters.carteira === "cordial" ? " · Cordial" : filters.carteira === "morar" ? " · Morar" : ""} · ativos e arquivados`;
   if (filters.q.trim()) parts.push(`“${filters.q.trim()}”`);
   return parts.join(" · ");
 }
@@ -156,7 +159,8 @@ function Page() {
     anchorRef.current = null;
     if (!items.some((im) => im.id === id)) return;
     // Depois da restauração de rolagem do roteador, ancora no imóvel visitado.
-    const scroll = () => document.getElementById(`imovel-${id}`)?.scrollIntoView({ block: "center" });
+    const scroll = () =>
+      document.getElementById(`imovel-${id}`)?.scrollIntoView({ block: "center" });
     const timers = [window.setTimeout(scroll, 60), window.setTimeout(scroll, 350)];
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [items, query.isPending]);
@@ -177,12 +181,24 @@ function Page() {
   const draft = useSelectionDraft();
   const selectedSet = useMemo(() => new Set(draft.ids), [draft.ids]);
   const toggleSelect = useCallback((id: string) => selectionDraft.toggle(id), []);
-  const [sheet, setSheet] = useState<{ open: boolean; step: "review" | "create" }>({ open: false, step: "review" });
+  const [sheet, setSheet] = useState<{ open: boolean; step: "review" | "create" }>({
+    open: false,
+    step: "review",
+  });
   const agencyFilter = useApp((s) => s.agency);
 
-  const [lightbox, setLightbox] = useState<{ title: string; photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    title: string;
+    photos: string[];
+    index: number;
+  } | null>(null);
   const openLightbox = useCallback((p: Property, list: string[], index: number) => {
-    setLightbox({ title: `${p.tipo ?? "Imóvel"} ${[p.codigoCordial, p.codigoMorar].filter(Boolean).join(" / ")}`.trim(), photos: list, index });
+    setLightbox({
+      title:
+        `${p.tipo ?? "Imóvel"} ${[p.codigoCordial, p.codigoMorar].filter(Boolean).join(" / ")}`.trim(),
+      photos: list,
+      index,
+    });
   }, []);
 
   const gridClass =
@@ -242,7 +258,38 @@ function Page() {
         />
       )}
 
-      {!query.isPending && !query.isError && items.length === 0 && (
+      {!query.isPending && !query.isError && items.length === 0 && filters.codigo && (
+        <EmptyState
+          icon={<SearchX className="size-5" />}
+          title={`Nenhum imóvel com o ${codeSearchLabel(filters.codigo, filters.carteira)}`}
+          description={
+            query.data?.otherBrandMatch ? (
+              <button
+                type="button"
+                onClick={() =>
+                  applyFilters({ carteira: query.data?.otherBrandMatch ?? "todas", page: 0 })
+                }
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                Existe com {codeSearchLabel(filters.codigo, query.data.otherBrandMatch)}: ver
+              </button>
+            ) : (
+              "Confira o número ou limpe o código para voltar aos filtros."
+            )
+          }
+          action={
+            <button
+              type="button"
+              onClick={() => applyFilters({ codigo: "", page: 0 })}
+              className="inline-flex h-10 items-center rounded-full border border-primary/25 bg-primary/10 px-4 text-[12px] font-semibold text-primary transition hover:bg-primary/15"
+            >
+              Limpar código
+            </button>
+          }
+        />
+      )}
+
+      {!query.isPending && !query.isError && items.length === 0 && !filters.codigo && (
         <EmptyState
           icon={<SearchX className="size-5" />}
           title="Nenhum imóvel encontrado"

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { validateAddressNumber } from "@/lib/imoveis/address-rules";
+import { codeColumnsFor, normalizePropertyCode, otherBrandFor } from "./code-search";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
 import type {
@@ -280,6 +281,8 @@ export type ListImoveisInput = {
   cidade?: string | null;
   bairro?: string | null;
   search?: string | null;
+  /** Código exato (só dígitos). Quando válido, pausa todos os outros filtros. */
+  codigo?: string | null;
   valorMin?: number | null;
   valorMax?: number | null;
   dormitoriosMin?: number | null;
@@ -299,13 +302,24 @@ export type ListImoveisInput = {
 export const listImoveis = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: ListImoveisInput) => data ?? {})
-  .handler(async ({ data, context }): Promise<{ items: Property[]; total: number; page: number; pageSize: number }> => {
-    const page = Math.max(0, data.page ?? 0);
+  .handler(async ({ data, context }): Promise<{ items: Property[]; total: number; page: number; pageSize: number; otherBrandMatch?: "cordial" | "morar" | null }> => {
     const pageSize = Math.min(100, Math.max(1, data.pageSize ?? 24));
+    const codeRequested = typeof data.codigo === "string" && data.codigo.trim() !== "";
+    const code = codeRequested ? normalizePropertyCode(data.codigo) : null;
+    if (codeRequested && !code) return { items: [], total: 0, page: 0, pageSize };
+    const page = code ? 0 : Math.max(0, data.page ?? 0);
+
+    let otherBrandMatch: "cordial" | "morar" | null = null;
+    let query = context.supabase.from("properties_catalog").select("*", { count: "exact" });
+
+    if (code) {
+      // Busca exata: ativos e arquivados, sem os demais filtros; a marca só escolhe a coluna.
+      const columns = codeColumnsFor(data.carteira);
+      query = columns.length === 1 ? query.eq(columns[0], code) : query.or(columns.map((c) => `${c}.eq.${code}`).join(","));
+    } else {
 
     // A view `properties_catalog` resolve, no banco, em quais sites o imóvel
     // está publicado (ou a carteira de origem quando ainda não há vínculo).
-    let query = context.supabase.from("properties_catalog").select("*", { count: "exact" });
 
     // Arquivados ficam guardados no sistema, mas fora do catálogo ativo.
     query =
@@ -353,6 +367,7 @@ export const listImoveis = createServerFn({ method: "GET" })
         ].join(","),
       );
     }
+    }
 
     switch (data.sort) {
       case "codigo":
@@ -380,6 +395,15 @@ export const listImoveis = createServerFn({ method: "GET" })
     const { data: rows, count, error } = await query.range(from, from + pageSize - 1);
     if (error) throw new Error(error.message);
 
+    const other = code ? otherBrandFor(data.carteira) : null;
+    if (other && !(count ?? 0)) {
+      const { count: otherCount } = await context.supabase
+        .from("properties_catalog")
+        .select("id", { count: "exact", head: true })
+        .eq(other === "cordial" ? "codigo_cordial" : "codigo_morar", code as string);
+      otherBrandMatch = (otherCount ?? 0) > 0 ? other : null;
+    }
+
     const list = (rows ?? []) as Row[];
     const { covers, publications } = await loadListingExtras(
       context.supabase as never,
@@ -397,6 +421,7 @@ export const listImoveis = createServerFn({ method: "GET" })
       total: count ?? 0,
       page,
       pageSize,
+      otherBrandMatch,
     };
   });
 
