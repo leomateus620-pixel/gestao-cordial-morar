@@ -1,3 +1,5 @@
+import type { PropertySituacao } from "@/lib/imoveis/situacao";
+
 export type PropertyCarteira = "cordial" | "morar";
 export type PropertyOperacao = "venda" | "aluguel";
 export type PropertyValorModo = "fixo" | "consulte";
@@ -52,6 +54,10 @@ export type Property = {
   publications: PropertyPublicationBadge[];
   removalState: string | null;
   archivedAt: string | null;
+  /** Situação no catálogo (disponível, desativado ou arquivado), vinda de `situacao_rank`. */
+  situacao?: PropertySituacao;
+  exibirImovel?: boolean | null;
+  disponibilidade?: string | null;
 };
 
 export type PropertyImageProcessingStatus =

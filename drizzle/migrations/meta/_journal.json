@@ -645,6 +645,13 @@
       "when": 1794505473626,
       "tag": "0091_atendimentos_viewer_boundary",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794596028196,
+      "tag": "0092_catalog_situacao_rank",
+      "breakpoints": true
     }
   ]
 }

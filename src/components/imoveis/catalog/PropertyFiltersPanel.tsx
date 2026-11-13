@@ -37,9 +37,11 @@ import { cn } from "@/lib/utils";
 export type CatalogFacets = { tipos: string[]; cidades: string[]; bairros: string[] };
 
 /** Rótulos curtos para caber no segmento lado a lado com o status. */
-const CATALOGO_SEGMENTS: Array<{ value: CatalogFilters["arquivados"]; label: string }> = [
-  { value: "ocultar", label: "Ativos" },
-  { value: "somente", label: "Arquivados" },
+const SITUACAO_SEGMENTS: Array<{ value: CatalogFilters["situacao"]; label: string }> = [
+  { value: "todos", label: "Todos" },
+  { value: "disponiveis", label: "Disponíveis" },
+  { value: "desativados", label: "Desativados" },
+  { value: "arquivados", label: "Arquivados" },
 ];
 
 function formatBRL(value: number | null): string {
@@ -260,7 +262,6 @@ export function PropertyFiltersPanel({
   facets,
   total,
   onApply,
-  onReset,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -268,7 +269,8 @@ export function PropertyFiltersPanel({
   facets: CatalogFacets | undefined;
   total: number;
   onApply: (next: CatalogFilters) => void;
-  onReset: () => void;
+  /** Mantido por compatibilidade; o "Limpar" do painel preserva busca, marca e código. */
+  onReset?: () => void;
 }) {
   const isMobile = useIsMobile();
   const [draft, setDraft] = useState<CatalogFilters>(filters);
@@ -469,15 +471,15 @@ export function PropertyFiltersPanel({
                 options={STATUS_OPTIONS}
                 onChange={(status) => patch({ status })}
               />
-              <label className="flex flex-col gap-1 text-[11px] font-semibold text-foreground/55">
+              <label className="col-span-2 flex flex-col gap-1 text-[11px] font-semibold text-foreground/55">
                 <span className="flex items-center gap-1">
-                  <Archive className="size-3" /> Catálogo
+                  <Archive className="size-3" /> Situação
                 </span>
                 <Segmented
-                  ariaLabel="Catálogo"
-                  value={draft.arquivados}
-                  options={CATALOGO_SEGMENTS}
-                  onChange={(arquivados) => patch({ arquivados })}
+                  ariaLabel="Situação"
+                  value={draft.situacao}
+                  options={SITUACAO_SEGMENTS}
+                  onChange={(situacao) => patch({ situacao })}
                 />
               </label>
             </div>
@@ -506,8 +508,15 @@ export function PropertyFiltersPanel({
           <button
             type="button"
             onClick={() => {
-              setDraft({ ...DEFAULT_FILTERS, q: filters.q, carteira: filters.carteira });
-              onReset();
+              // Limpa só os filtros do painel: busca, marca e código continuam.
+              const cleared = {
+                ...DEFAULT_FILTERS,
+                q: filters.q,
+                carteira: filters.carteira,
+                codigo: filters.codigo,
+              };
+              setDraft(cleared);
+              onApply(cleared);
               onOpenChange(false);
             }}
             className="inline-flex h-11 items-center gap-1.5 rounded-2xl px-3.5 text-[12px] font-semibold text-foreground/60 transition hover:bg-foreground/[0.05] hover:text-foreground"

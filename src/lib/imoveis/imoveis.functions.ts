@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { validateAddressNumber } from "@/lib/imoveis/address-rules";
 import { codeColumnsFor, normalizePropertyCode, otherBrandFor } from "./code-search";
+import {
+  propertySituacao,
+  situacaoFilterRank,
+  situacaoFromRank,
+  type CatalogSituacao,
+} from "./situacao";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { watermarkLabel, type WatermarkVariant } from "@/lib/imoveis/watermark-config";
 import type {
@@ -181,6 +187,16 @@ function mapRow(
     removalState: r.removal_state ?? null,
     archivedAt: r.archived_at ?? null,
     isDraft: r.is_draft ?? false,
+    exibirImovel: r.exibir_imovel ?? null,
+    disponibilidade: r.disponibilidade ?? null,
+    situacao:
+      situacaoFromRank(r.situacao_rank) ??
+      propertySituacao({
+        archivedAt: r.archived_at,
+        isDraft: r.is_draft,
+        exibirImovel: r.exibir_imovel,
+        disponibilidade: r.disponibilidade,
+      }),
   };
 }
 
@@ -292,8 +308,13 @@ export type ListImoveisInput = {
   areaMin?: number | null;
   areaMax?: number | null;
   statusPublicacao?: string | null;
-  /** "ocultar" (padrão) esconde arquivados; "somente" mostra apenas os arquivados. */
+  /** Legado: sem `situacao`, "ocultar" (padrão) esconde arquivados; "somente" mostra só eles. */
   arquivados?: "ocultar" | "somente";
+  /**
+   * Situação do catálogo. Quando enviada, substitui `arquivados` e ordena por grupo
+   * (disponíveis → desativados → arquivados). Seletores externos usam "disponiveis".
+   */
+  situacao?: CatalogSituacao;
   sort?: ImoveisSort;
   page?: number;
   pageSize?: number;
@@ -322,10 +343,15 @@ export const listImoveis = createServerFn({ method: "GET" })
     // está publicado (ou a carteira de origem quando ainda não há vínculo).
 
     // Arquivados ficam guardados no sistema, mas fora do catálogo ativo.
-    query =
-      data.arquivados === "somente"
-        ? query.not("archived_at", "is", null)
-        : query.is("archived_at", null);
+    if (data.situacao) {
+      const rank = situacaoFilterRank(data.situacao);
+      if (rank !== null) query = query.eq("situacao_rank", rank);
+    } else {
+      query =
+        data.arquivados === "somente"
+          ? query.not("archived_at", "is", null)
+          : query.is("archived_at", null);
+    }
 
     if (data.carteira === "ambas") {
       query = query.contains("providers", ["cordial"]).contains("providers", ["morar"]);
@@ -368,6 +394,9 @@ export const listImoveis = createServerFn({ method: "GET" })
       );
     }
     }
+
+    // Catálogo e busca por código: disponíveis primeiro, depois desativados e arquivados.
+    if (data.situacao || code) query = query.order("situacao_rank", { ascending: true });
 
     switch (data.sort) {
       case "codigo":

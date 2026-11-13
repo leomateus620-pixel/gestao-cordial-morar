@@ -474,6 +474,7 @@ export function MetaFormMapping({ connection }: { connection: AdConnectionPublic
         data: {
           carteira: connection.imobiliaria as MarketingAgencyId,
           search: debouncedPropertySearch,
+          situacao: "disponiveis",
           page: 0,
           pageSize: 15,
         },

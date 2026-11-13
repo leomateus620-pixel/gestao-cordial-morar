@@ -50,6 +50,7 @@ function Page() {
       tipo,
       cidade,
       search: debounced || null,
+      situacao: "disponiveis" as const,
       page: 0,
       pageSize: 24,
     }),

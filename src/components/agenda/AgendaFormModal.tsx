@@ -117,7 +117,9 @@ export function AgendaFormModal({
   const termoImovel = useDebouncedValue(imovelBusca.trim(), 300);
   const imoveisQuery = useQuery({
     queryKey: ["agenda", "imoveis-busca", termoImovel],
-    queryFn: () => searchImoveis({ data: { search: termoImovel, pageSize: 8, sort: "recentes" } }),
+    queryFn: () => searchImoveis({
+        data: { search: termoImovel, pageSize: 8, sort: "recentes", situacao: "disponiveis" },
+      }),
     enabled: open && termoImovel.length >= 2,
     staleTime: 30_000,
   });

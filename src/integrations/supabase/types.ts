@@ -11747,6 +11747,7 @@ export type Database = {
           seo_descricao: string | null
           seo_titulo: string | null
           seo_url: string | null
+          situacao_rank: number | null
           source: string | null
           source_catalog_page: number | null
           source_catalog_url: string | null
@@ -11873,6 +11874,7 @@ export type Database = {
           seo_descricao?: string | null
           seo_titulo?: string | null
           seo_url?: string | null
+          situacao_rank?: never
           source?: string | null
           source_catalog_page?: number | null
           source_catalog_url?: string | null
@@ -11999,6 +12001,7 @@ export type Database = {
           seo_descricao?: string | null
           seo_titulo?: string | null
           seo_url?: string | null
+          situacao_rank?: never
           source?: string | null
           source_catalog_page?: number | null
           source_catalog_url?: string | null

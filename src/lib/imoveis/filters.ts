@@ -1,4 +1,5 @@
 import { normalizePropertyCode } from "./code-search";
+import type { CatalogSituacao } from "./situacao";
 import type { ImoveisSort, ListImoveisInput } from "./imoveis.functions";
 
 export type CatalogFilters = {
@@ -19,8 +20,8 @@ export type CatalogFilters = {
   areaMin: number | null;
   areaMax: number | null;
   status: string;
-  /** "ocultar" = catálogo ativo (padrão) · "somente" = imóveis arquivados. */
-  arquivados: "ocultar" | "somente";
+  /** Situação no catálogo; "todos" (padrão) mostra disponíveis, desativados e arquivados. */
+  situacao: CatalogSituacao;
   sort: ImoveisSort;
   page: number;
 };
@@ -42,7 +43,7 @@ export const DEFAULT_FILTERS: CatalogFilters = {
   areaMin: null,
   areaMax: null,
   status: "",
-  arquivados: "ocultar",
+  situacao: "todos",
   sort: "recentes",
   page: 0,
 };
@@ -60,6 +61,17 @@ function number(value: unknown): number | null {
 
 function oneOf<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
   return options.includes(value as T) ? (value as T) : fallback;
+}
+
+const SITUACOES = ["todos", "disponiveis", "desativados", "arquivados"] as const;
+
+/** `situacao` da URL; links antigos com `arquivados` continuam abrindo a mesma lista. */
+function parseSituacao(search: Record<string, unknown>): CatalogSituacao {
+  if (SITUACOES.includes(search["situacao"] as CatalogSituacao))
+    return search["situacao"] as CatalogSituacao;
+  if (search["arquivados"] === "somente") return "arquivados";
+  if (search["arquivados"] === "ocultar") return "disponiveis";
+  return "todos";
 }
 
 /** Lê os filtros da URL, sempre devolvendo valores seguros. */
@@ -85,7 +97,7 @@ export function parseCatalogSearch(search: Record<string, unknown>): CatalogFilt
     areaMin: number(search["areaMin"]),
     areaMax: number(search["areaMax"]),
     status: text(search["status"]),
-    arquivados: oneOf(search["arquivados"], ["ocultar", "somente"] as const, "ocultar"),
+    situacao: parseSituacao(search),
     sort: oneOf(search["sort"], SORTS, "recentes"),
     page: page === null ? 0 : Math.min(9999, Math.floor(page)),
   };
@@ -120,7 +132,7 @@ export function toListInput(filters: CatalogFilters, pageSize: number): ListImov
     areaMin: filters.areaMin,
     areaMax: filters.areaMax,
     statusPublicacao: filters.status || null,
-    arquivados: filters.arquivados,
+    situacao: filters.situacao,
     sort: filters.sort,
     page: filters.page,
     pageSize,
@@ -141,10 +153,16 @@ export const SORT_OPTIONS: Array<{ value: ImoveisSort; label: string }> = [
   { value: "area_desc", label: "Maior área" },
 ];
 
-export const ARQUIVADOS_OPTIONS: Array<{ value: CatalogFilters["arquivados"]; label: string }> = [
-  { value: "ocultar", label: "Catálogo ativo" },
-  { value: "somente", label: "Arquivados" },
+export const SITUACAO_OPTIONS: Array<{ value: CatalogSituacao; label: string }> = [
+  { value: "todos", label: "Todos" },
+  { value: "disponiveis", label: "Disponíveis" },
+  { value: "desativados", label: "Desativados" },
+  { value: "arquivados", label: "Arquivados" },
 ];
+
+export function situacaoFilterLabel(value: CatalogSituacao): string {
+  return SITUACAO_OPTIONS.find((option) => option.value === value)?.label ?? "Todos";
+}
 
 export const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "", label: "Qualquer status" },
@@ -209,7 +227,7 @@ export function countActiveFilters(filters: CatalogFilters): number {
     "areaMin",
     "areaMax",
     "status",
-    "arquivados",
+    "situacao",
   ];
   return keys.filter((key) => {
     const value = filters[key];
@@ -223,7 +241,8 @@ export function activeChips(filters: CatalogFilters): ActiveChip[] {
   const chips: ActiveChip[] = [];
   const push = (key: keyof CatalogFilters, label: string) => chips.push({ key, label });
   if (filters.codigo) push("codigo", `Código ${filters.codigo}`);
-  if (filters.arquivados === "somente") push("arquivados", "Arquivados");
+  if (filters.situacao !== "todos")
+    push("situacao", `Situação: ${situacaoFilterLabel(filters.situacao)}`);
   if (filters.carteira !== "todas")
     push(
       "carteira",

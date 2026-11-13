@@ -51,6 +51,9 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-situacao-arquivado: var(--situacao-arquivado);
+  --color-situacao-desativado: var(--situacao-desativado);
+  --color-situacao-foreground: var(--situacao-foreground);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -72,6 +75,10 @@
 }
 
 :root {
+  /* Situação do imóvel no catálogo: vinho (arquivado) e âmbar queimado (desativado), texto branco AA. */
+  --situacao-arquivado: #7f1d1d;
+  --situacao-desativado: #b45309;
+  --situacao-foreground: #ffffff;
   --emission-nf: oklch(0.49 0.12 162);
   --emission-boleto: oklch(0.53 0.12 73);
   --emission-surface: oklch(1 0 0);

@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  ARQUIVADOS_OPTIONS,
   DEFAULT_FILTERS,
   OPERACAO_OPTIONS,
   PRICE_PRESETS,
+  SITUACAO_OPTIONS,
   SORT_OPTIONS,
   activeChips,
   countActiveFilters,
@@ -186,8 +186,9 @@ function CodeFilterInput({
   }, [value, onInvalidChange]);
 
   const apply = (raw: string) => {
-    const trimmed = raw.trim();
-    const code = trimmed ? normalizePropertyCode(trimmed) : "";
+    // Só "#" ou espaços conta como vazio: nada a avisar nem a buscar.
+    const bare = raw.replace(/[\s#]+/g, "");
+    const code = bare ? normalizePropertyCode(raw) : "";
     onInvalidChange(code === null);
     if (code === null || code === lastApplied.current) return;
     lastApplied.current = code;
@@ -394,12 +395,12 @@ export function PropertyFilterBar({
           <FilterChipSelect
             className={muted}
             icon={Archive}
-            label="Catálogo"
-            emptyLabel="Catálogo ativo"
-            value={filters.arquivados}
-            emptyValue="ocultar"
-            options={ARQUIVADOS_OPTIONS}
-            onChange={(arquivados) => onChange({ arquivados, page: 0 })}
+            label="Situação"
+            emptyLabel="Situação: todos"
+            value={filters.situacao}
+            emptyValue="todos"
+            options={SITUACAO_OPTIONS}
+            onChange={(situacao) => onChange({ situacao, page: 0 })}
             iconOnlyOnMobile
           />
         </div>

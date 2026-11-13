@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { PhotoLightbox } from "@/components/imoveis/PhotoLightbox";
@@ -16,6 +16,8 @@ import { SearchX } from "lucide-react";
 import { Fab } from "@/components/fab";
 import { EmptyState } from "@/components/shared/empty-state";
 import { codeSearchLabel } from "@/lib/imoveis/code-search";
+import { situacaoFilterLabel } from "@/lib/imoveis/filters";
+import { propertySituacao } from "@/lib/imoveis/situacao";
 import {
   PropertyCatalogCard,
   PropertyCatalogCardSkeleton,
@@ -93,7 +95,9 @@ function useCatalogView(): [CatalogView, (view: CatalogView) => void] {
 
 function summaryFor(filters: CatalogFilters): string {
   const parts: string[] = [];
-  parts.push(filters.arquivados === "somente" ? "Arquivados" : "Catálogo ativo");
+  parts.push(
+    filters.situacao === "todos" ? "Todas as situações" : situacaoFilterLabel(filters.situacao),
+  );
   if (filters.carteira === "cordial") parts.push("Cordial");
   if (filters.carteira === "morar") parts.push("Morar");
   if (filters.carteira === "ambas") parts.push("Cordial + Morar");
@@ -143,6 +147,11 @@ function Page() {
   const facets = useImoveisFacets();
   const items = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
+  // Separador "Desativados e arquivados": só quando a lista junta todos os grupos.
+  const firstInactiveIndex =
+    filters.situacao === "todos" && !filters.codigo
+      ? items.findIndex((im) => (im.situacao ?? propertySituacao(im)) !== "disponivel")
+      : -1;
   const hasFilters = countActiveFilters(filters) > 0 || filters.q.trim().length > 0;
 
   // Memória da busca: guarda a pesquisa atual para o "voltar" da ficha.
@@ -238,16 +247,27 @@ function Page() {
           ))}
 
         {!query.isPending &&
-          items.map((im) => (
-            <PropertyCatalogCard
-              key={im.id}
-              property={im}
-              view={view}
-              photos={photos.data?.[im.id]}
-              selected={selectedSet.has(im.id)}
-              onToggleSelect={toggleSelect}
-              onExpand={openLightbox}
-            />
+          items.map((im, index) => (
+            <Fragment key={im.id}>
+              {index === firstInactiveIndex ? (
+                <div
+                  role="separator"
+                  className="col-span-full flex items-center gap-3 pt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-foreground/50"
+                >
+                  <span className="h-px flex-1 bg-foreground/15" />
+                  Desativados e arquivados
+                  <span className="h-px flex-1 bg-foreground/15" />
+                </div>
+              ) : null}
+              <PropertyCatalogCard
+                property={im}
+                view={view}
+                photos={photos.data?.[im.id]}
+                selected={selectedSet.has(im.id)}
+                onToggleSelect={toggleSelect}
+                onExpand={openLightbox}
+              />
+            </Fragment>
           ))}
       </div>
 

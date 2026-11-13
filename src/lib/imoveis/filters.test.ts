@@ -63,7 +63,7 @@ test("conta todos os filtros ativos ignorando busca, carteira e ordenação", ()
       operacao: "aluguel",
       cidade: "Santa Rosa",
       valorMax: 500_000,
-      arquivados: "somente",
+      situacao: "arquivados",
     }),
     4,
   );
@@ -97,5 +97,29 @@ test("código: lê, normaliza, descarta inválido e faz ida e volta pela URL", (
   assert.equal(toListInput(filters, 24).codigo, "1442");
   assert.equal(toListInput(DEFAULT_FILTERS, 24).codigo, null);
   assert.equal(countActiveFilters({ ...DEFAULT_FILTERS, codigo: "1442" }), 1);
-  assert.deepEqual(activeChips({ ...DEFAULT_FILTERS, codigo: "1442" })[0], { key: "codigo", label: "Código 1442" });
+  assert.deepEqual(activeChips({ ...DEFAULT_FILTERS, codigo: "1442" })[0], {
+    key: "codigo",
+    label: "Código 1442",
+  });
+});
+
+test("situação: padrão todos, ida e volta pela URL e links antigos", () => {
+  assert.equal(parseCatalogSearch({}).situacao, "todos");
+  assert.equal("situacao" in serializeCatalogSearch(parseCatalogSearch({})), false);
+  assert.equal(parseCatalogSearch({ situacao: "desativados" }).situacao, "desativados");
+  assert.equal(parseCatalogSearch({ situacao: "xyz" }).situacao, "todos");
+  assert.equal(parseCatalogSearch({ arquivados: "somente" }).situacao, "arquivados");
+  assert.equal(parseCatalogSearch({ arquivados: "ocultar" }).situacao, "disponiveis");
+  assert.equal(parseCatalogSearch({ situacao: "todos", arquivados: "somente" }).situacao, "todos");
+  const legacy = serializeCatalogSearch(parseCatalogSearch({ arquivados: "somente" }));
+  assert.deepEqual(legacy, { situacao: "arquivados" });
+  const f = parseCatalogSearch({ situacao: "arquivados", tipo: "Casa" });
+  assert.deepEqual(parseCatalogSearch(serializeCatalogSearch(f)), f);
+  assert.equal(toListInput(f, 24).situacao, "arquivados");
+  assert.equal(toListInput(DEFAULT_FILTERS, 24).situacao, "todos");
+  assert.equal(countActiveFilters({ ...DEFAULT_FILTERS, situacao: "desativados" }), 1);
+  assert.equal(countActiveFilters(DEFAULT_FILTERS), 0);
+  assert.deepEqual(activeChips({ ...DEFAULT_FILTERS, situacao: "desativados" }), [
+    { key: "situacao", label: "Situação: Desativados" },
+  ]);
 });

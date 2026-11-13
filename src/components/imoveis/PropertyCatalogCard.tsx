@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  Archive,
   Bath,
   Bed,
   Car,
   Check,
+  EyeOff,
   Image as ImageIcon,
   MapPin,
   Maximize2,
@@ -14,6 +16,7 @@ import { CardGallery } from "./CardGallery";
 import { rememberCatalogAnchor } from "@/lib/imoveis/search-memory";
 import { brl } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { propertySituacao, SITUACAO_LABEL, type PropertySituacao } from "@/lib/imoveis/situacao";
 import {
   formatArea,
   propertyLocalidade,
@@ -37,7 +40,7 @@ function statusTone(status: string, tone: "overlay" | "surface" = "overlay") {
 }
 
 type CodeChip = {
-  provider: "cordial" | "morar" | "legado" | "arquivado";
+  provider: "cordial" | "morar" | "legado";
   label: string;
   value: string;
 };
@@ -50,8 +53,6 @@ function propertyCodes(property: Property): CodeChip[] {
     codes.push({ provider: "morar", label: "Morar", value: property.codigoMorar });
   if (codes.length === 0 && property.codigo)
     codes.push({ provider: "legado", label: "Código", value: property.codigo });
-  if (property.archivedAt)
-    codes.push({ provider: "arquivado", label: "Situação", value: "Arquivado" });
   return codes;
 }
 
@@ -69,7 +70,6 @@ function CodeChips({ codes, className }: { codes: CodeChip[]; className?: string
               "bg-[var(--cordial-primary)]/10 text-[var(--cordial-primary)]",
             code.provider === "morar" && "bg-[var(--morar-primary)]/12 text-[#b95f20]",
             code.provider === "legado" && "bg-foreground/[0.06] text-foreground/55",
-            code.provider === "arquivado" && "bg-amber-500/15 font-sans text-amber-800",
           )}
         >
           {code.value}
@@ -254,6 +254,58 @@ function CardActions({ property, className }: { property: Property; className?: 
   );
 }
 
+type InactiveSituacao = Exclude<PropertySituacao, "disponivel">;
+
+function inactiveSituacao(property: Property): InactiveSituacao | null {
+  const situacao = property.situacao ?? propertySituacao(property);
+  return situacao === "disponivel" ? null : situacao;
+}
+
+const SITUACAO_ICON = { arquivado: Archive, desativado: EyeOff } as const;
+const SITUACAO_BG = {
+  arquivado: "bg-situacao-arquivado",
+  desativado: "bg-situacao-desativado",
+} as const;
+const SITUACAO_SHELL = {
+  arquivado: "border-2 border-dashed border-situacao-arquivado/55 bg-muted/70",
+  desativado: "border-2 border-dashed border-situacao-desativado/60 bg-muted/70",
+} as const;
+/** Foto apagada: tons de cinza e um pouco mais escura. */
+const INACTIVE_PHOTO = "[&_img]:grayscale [&_img]:brightness-90 [&_img]:opacity-85";
+
+/** Faixa larga no topo da foto: ícone + texto em caixa alta (não depende só da cor). */
+function SituacaoBanner({ situacao }: { situacao: InactiveSituacao }) {
+  const Icon = SITUACAO_ICON[situacao];
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-x-0 top-0 z-[3] flex h-9 items-center justify-center gap-2 text-[13px] font-extrabold uppercase tracking-[0.18em] text-situacao-foreground shadow-[0_6px_16px_-6px_rgba(0,0,0,0.45)]",
+        SITUACAO_BG[situacao],
+      )}
+    >
+      <Icon className="size-4" strokeWidth={2.6} aria-hidden />
+      {SITUACAO_LABEL[situacao]}
+    </div>
+  );
+}
+
+/** Selo junto do nome, nas mesmas cores da faixa. */
+function SituacaoPill({ situacao, className }: { situacao: InactiveSituacao; className?: string }) {
+  const Icon = SITUACAO_ICON[situacao];
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 w-fit shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-situacao-foreground",
+        SITUACAO_BG[situacao],
+        className,
+      )}
+    >
+      <Icon className="size-3.5" strokeWidth={2.6} aria-hidden />
+      {SITUACAO_LABEL[situacao]}
+    </span>
+  );
+}
+
 const CARD_SHELL =
   "group relative overflow-hidden rounded-[22px] border border-white/70 bg-white/72 shadow-[0_12px_32px_-18px_rgba(23,27,33,0.28)] backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-white hover:shadow-[0_22px_48px_-20px_rgba(23,27,33,0.32)] focus-within:ring-2 focus-within:ring-primary/35 motion-reduce:transform-none";
 
@@ -262,11 +314,34 @@ export function SelectToggle({
   selected,
   onToggle,
   className,
+  unavailable = false,
 }: {
   selected: boolean;
   onToggle: () => void;
   className?: string;
+  /** Desativado/arquivado: não pode entrar numa seleção para clientes. */
+  unavailable?: boolean;
 }) {
+  if (unavailable && !selected) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Indisponível para envio a clientes"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        className={cn(
+          "relative z-10 inline-flex h-8 cursor-not-allowed items-center gap-1 rounded-full border-2 border-white/70 bg-white/85 px-2.5 text-[11px] font-semibold text-foreground/55 shadow-sm backdrop-blur-md",
+          className,
+        )}
+      >
+        <EyeOff className="size-3.5" aria-hidden />
+        Indisponível para envio
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -314,6 +389,7 @@ export function PropertyCatalogCard({
   const title = property.tipo ?? "Imóvel";
   const ariaLabel = `Abrir ficha: ${title}${codeLabel ? ` ${codeLabel}` : ""}${localidade ? `, ${localidade}` : ""}`;
   const alt = `Foto do imóvel ${codeLabel || title}${property.cidade ? ` em ${property.cidade}` : ""}`;
+  const inactive = inactiveSituacao(property);
 
   if (view === "list") {
     return (
@@ -323,6 +399,7 @@ export function PropertyCatalogCard({
         className={cn(
           CARD_SHELL,
           "flex items-stretch gap-3 p-2.5 sm:gap-4 sm:p-3",
+          inactive && SITUACAO_SHELL[inactive],
           selected && "border-primary ring-2 ring-primary/40",
         )}
       >
@@ -332,11 +409,21 @@ export function PropertyCatalogCard({
           aria-label={ariaLabel}
           className="absolute inset-0 z-[1] rounded-[22px] outline-none"
         />
-        <div className="relative w-24 shrink-0 self-stretch overflow-hidden rounded-2xl sm:aspect-[4/3] sm:w-44 sm:self-auto">
+        <div
+          className={cn(
+            "relative w-24 shrink-0 self-stretch overflow-hidden rounded-2xl sm:aspect-[4/3] sm:w-44 sm:self-auto",
+            inactive && INACTIVE_PHOTO,
+          )}
+        >
+          {inactive ? (
+            <div className="hidden sm:block">
+              <SituacaoBanner situacao={inactive} />
+            </div>
+          ) : null}
           <div className="absolute inset-0">
             <Cover property={property} alt={alt} />
           </div>
-          <span className="absolute left-2 top-2 hidden sm:block">
+          <span className={cn("absolute left-2 hidden sm:block", inactive ? "top-11" : "top-2")}>
             <OperacaoBadge operacao={property.operacao} />
           </span>
         </div>
@@ -344,6 +431,7 @@ export function PropertyCatalogCard({
         <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5 py-0.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
+              {inactive ? <SituacaoPill situacao={inactive} className="mb-1" /> : null}
               <div className="flex items-center gap-2">
                 <h3 className="truncate text-[14px] font-semibold leading-tight text-foreground sm:text-[15px]">
                   {title}
@@ -381,7 +469,11 @@ export function PropertyCatalogCard({
                 <CardActions property={property} />
               </span>
               {onToggleSelect ? (
-                <SelectToggle selected={selected} onToggle={() => onToggleSelect(property.id)} />
+                <SelectToggle
+                  selected={selected}
+                  unavailable={Boolean(inactive)}
+                  onToggle={() => onToggleSelect(property.id)}
+                />
               ) : null}
             </div>
           </div>
@@ -397,6 +489,7 @@ export function PropertyCatalogCard({
       className={cn(
         CARD_SHELL,
         "flex flex-col",
+        inactive && SITUACAO_SHELL[inactive],
         selected && "border-primary ring-2 ring-primary/40",
       )}
     >
@@ -407,7 +500,13 @@ export function PropertyCatalogCard({
         className="absolute inset-0 z-[1] rounded-[22px] outline-none"
       />
 
-      <div className="relative z-[2] aspect-[4/3] w-full overflow-hidden sm:aspect-[16/10]">
+      <div
+        className={cn(
+          "relative z-[2] aspect-[4/3] w-full overflow-hidden sm:aspect-[16/10]",
+          inactive && INACTIVE_PHOTO,
+        )}
+      >
+        {inactive ? <SituacaoBanner situacao={inactive} /> : null}
         <CardGallery
           photos={gallery}
           alt={alt}
@@ -416,7 +515,12 @@ export function PropertyCatalogCard({
           overlay={
             <>
               <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
-              <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-3 flex items-start justify-between gap-2",
+                  inactive ? "top-12" : "top-3",
+                )}
+              >
                 <OperacaoBadge operacao={property.operacao} />
                 <PublicationBadges property={property} />
               </div>
@@ -426,6 +530,7 @@ export function PropertyCatalogCard({
         {onToggleSelect ? (
           <SelectToggle
             selected={selected}
+            unavailable={Boolean(inactive)}
             onToggle={() => onToggleSelect(property.id)}
             className="!absolute bottom-2 left-2"
           />
@@ -433,6 +538,7 @@ export function PropertyCatalogCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3.5 sm:p-4">
+        {inactive ? <SituacaoPill situacao={inactive} /> : null}
         <div className="flex items-start justify-between gap-2">
           <h3 className="min-w-0 truncate text-[15px] font-semibold leading-tight text-foreground">
             {title}
