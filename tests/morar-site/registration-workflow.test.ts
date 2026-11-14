@@ -96,7 +96,7 @@ test("worker próprio despacha somente o hook fixo pelo cofre e falhas não inte
     calls,
     Array.from({ length: 3 }, () => ({
       name: "property_worker_dispatch",
-      args: { _hook: "property-image-worker", _body: { limit: 2 } },
+      args: { _hook: "property-image-worker", _body: { limit: 3 } },
     })),
   );
   assert.equal(outboundFetch.mock.callCount(), 0);

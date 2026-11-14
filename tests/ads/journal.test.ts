@@ -14,8 +14,11 @@ test("registered marketing migrations apply cumulatively in journal order", asyn
     await db.exec(
       "CREATE SCHEMA storage; CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[])",
     );
-    // The fixture has the complete authorization migration0047; subsequent schema is additive.
-    for (const entry of journal.entries.filter((entry: { idx: number }) => entry.idx >= 48)) {
+    // 0061 grants access to an existing account in production. Model only its foreign key here.
+    await db.exec("INSERT INTO auth.users VALUES ('b06a522f-65b4-4e2a-8bb4-e9e1f0675b75')");
+    // This fixture covers the contiguous marketing migrations after 0047. Other feature schemas
+    // have their own fixtures, while readMigrationFiles above still checks the entire journal.
+    for (const entry of journal.entries.slice(48, 62)) {
       assert.equal(journal.entries[entry.idx].tag, entry.tag);
       const migration = migrations[entry.idx];
       assert.match(migration.hash, /^[a-f0-9]{64}$/);

@@ -58,13 +58,12 @@ function publicRoutes(brand: SiteBrand) {
   const home = createRoute({
     getParentRoute: () => site,
     path: "/",
-    loader: async ({ abortController, parentMatchPromise }) => ({
-      home: loadHome(
-        (await parentMatchPromise).loaderData?.settings,
+    loader: ({ abortController, parentMatchPromise }) =>
+      loadHome(
+        parentMatchPromise.then((parent) => parent.loaderData?.settings),
         abortController.signal,
         brand,
       ),
-    }),
     component: () => <HomePage {...home.useLoaderData()} />,
   });
   const results = createRoute({
@@ -88,7 +87,7 @@ function publicRoutes(brand: SiteBrand) {
       loadDetail(params.publicId, abortController.signal, brand),
     component: () => {
       const property = detail.useLoaderData();
-      return property ? <DetailPage property={property} related={null} /> : <SiteNotFound />;
+      return property ? <DetailPage key={property.id} property={property} /> : <SiteNotFound />;
     },
   });
   const contact = createRoute({

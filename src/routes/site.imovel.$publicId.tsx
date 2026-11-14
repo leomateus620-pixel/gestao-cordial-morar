@@ -21,11 +21,11 @@ export const Route = createFileRoute("/site/imovel/$publicId")({
     if (!property) {
       const status = await loadDetailState(id, abortController.signal);
       if (status === "missing") throw notFound();
-      return { property: null, related: null };
+      return { property: null };
     }
     // Recommendations are secondary and load inside DetailPage after the useful
     // SSR property. Their failure never delays this route or its SEO content.
-    return { property, related: null };
+    return { property };
   },
   headers: ({ loaderData }) =>
     loaderData && !loaderData.property ? { "X-Cordial-Page-Status": "410" } : undefined,
@@ -71,7 +71,7 @@ export const Route = createFileRoute("/site/imovel/$publicId")({
             }}
           />
         )}
-        <DetailPage property={data.property} related={data.related} />
+        <DetailPage key={data.property.id} property={data.property} />
       </>
     );
   },

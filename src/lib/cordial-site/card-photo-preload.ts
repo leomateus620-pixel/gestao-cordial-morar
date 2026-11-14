@@ -9,23 +9,46 @@ export const DEFAULT_CARD_SIZES = "(max-width: 640px) 100vw, (max-width: 1024px)
 export const cardSrcSet = (m: PublicMedia, brand: SiteBrand) =>
   `${mediaPath(m, "thumb", brand)} 480w, ${mediaPath(m, "card", brand)} 960w, ${mediaPath(m, "full", brand)} 1920w`;
 
-// Priority queue: interaction jumps ahead of (and promotes) speculative work; max 2 concurrent.
+// Leave one slot free for navigation even if a background request is slow.
 const MAX_CONCURRENT = 2;
-type Entry = { key: string; start: () => void; drop: () => void; urgent: boolean };
-let running = 0;
+const MAX_READY = 8;
+const IMAGE_TIMEOUT = 12_000;
+type PhotoSize = "card" | "full";
+type Entry = {
+  key: string;
+  start: () => void;
+  drop: () => void;
+  urgent: boolean;
+  image?: HTMLImageElement;
+};
 const queue: Entry[] = [];
-const ready = new Set<string>();
+const running = new Map<string, Entry>();
+const ready = new Map<string, HTMLImageElement>();
 const pending = new Map<string, Promise<void>>();
 
 export class PreloadDropped extends Error {}
 
-export const preloadKey = (m: PublicMedia, brand: SiteBrand, sizes: string) =>
-  `${brand}:${m.id}:${m.version}:${sizes}`;
-export const isPreloaded = (m: PublicMedia, brand: SiteBrand, sizes: string) =>
-  ready.has(preloadKey(m, brand, sizes));
+export function canSpeculatePhotos() {
+  const connection = (
+    navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }
+  ).connection;
+  return (
+    document.visibilityState !== "hidden" &&
+    !connection?.saveData &&
+    connection?.effectiveType !== "slow-2g" &&
+    connection?.effectiveType !== "2g"
+  );
+}
 
 function pump() {
-  while (running < MAX_CONCURRENT && queue.length) queue.shift()!.start();
+  while (running.size < MAX_CONCURRENT && queue.length) {
+    let urgent = queue.length - 1;
+    while (urgent >= 0 && !queue[urgent].urgent) urgent--;
+    if (urgent < 0 && running.size > 0) return;
+    const [entry] = queue.splice(Math.max(0, urgent), 1);
+    if (!entry.urgent && !canSpeculatePhotos()) entry.drop();
+    else entry.start();
+  }
 }
 
 export function preloadCardImage(
@@ -33,56 +56,73 @@ export function preloadCardImage(
   brand: SiteBrand,
   sizes = DEFAULT_CARD_SIZES,
   urgent = false,
+  size: PhotoSize = "card",
 ): Promise<void> {
-  const key = preloadKey(m, brand, sizes);
-  if (ready.has(key)) return Promise.resolve();
+  const key = `${brand}:${m.id}:${m.version}:${size}:${sizes}:${window.innerWidth}:${window.devicePixelRatio}`;
+  const cached = ready.get(key);
+  if (cached) {
+    ready.delete(key);
+    ready.set(key, cached);
+    return Promise.resolve();
+  }
   const old = pending.get(key);
   if (old) {
     if (urgent) {
-      const i = queue.findIndex((e) => e.key === key);
-      if (i >= 0) {
-        const [entry] = queue.splice(i, 1);
+      const index = queue.findIndex((entry) => entry.key === key);
+      const entry = index < 0 ? running.get(key) : queue.splice(index, 1)[0];
+      if (entry) {
         entry.urgent = true;
-        queue.unshift(entry);
+        if (index >= 0) queue.push(entry);
+        else if (entry.image) entry.image.fetchPriority = "high";
+        pump();
       }
     }
     return old;
   }
-  const promise = new Promise<void>((resolve, reject) => {
+  const promise = new Promise<HTMLImageElement>((resolve, reject) => {
     const entry: Entry = {
       key,
       urgent,
       start: () => {
-        running++;
         const img = new Image();
+        entry.image = img;
+        running.set(key, entry);
         img.decoding = "async";
-        img.sizes = sizes;
-        img.srcset = cardSrcSet(m, brand);
-        img.src = mediaPath(m, "card", brand);
+        img.fetchPriority = entry.urgent ? "high" : "low";
         let settled = false;
         const done = (ok: boolean) => {
           if (settled) return;
           settled = true;
-          running--;
+          window.clearTimeout(timer);
+          img.onload = img.onerror = null;
+          running.delete(key);
+          if (ok) resolve(img);
+          else {
+            img.removeAttribute("srcset");
+            img.removeAttribute("src");
+            reject(new Error("Não foi possível carregar a foto."));
+          }
           pump();
-          if (ok) resolve();
-          else reject(new Error("image"));
         };
+        const timer = window.setTimeout(() => done(false), IMAGE_TIMEOUT);
         img.onload = () =>
           (img.decode ? img.decode() : Promise.resolve()).then(
             () => done(true),
             () => done(img.naturalWidth > 0),
           );
         img.onerror = () => done(false);
+        img.sizes = sizes;
+        img.srcset = cardSrcSet(m, brand);
+        img.src = mediaPath(m, size, brand);
       },
       drop: () => reject(new PreloadDropped()),
     };
-    if (urgent) queue.unshift(entry);
-    else queue.push(entry);
+    queue.push(entry);
     pump();
   }).then(
-    () => {
-      ready.add(key);
+    (img) => {
+      ready.set(key, img);
+      if (ready.size > MAX_READY) ready.delete(ready.keys().next().value!);
       pending.delete(key);
     },
     (error) => {
@@ -99,7 +139,7 @@ const SPECULATIVE_CARDS = 3;
 let scope = "";
 let budget = SPECULATIVE_CARDS;
 export function takeSpeculativeSlot() {
-  if (budget <= 0) return false;
+  if (budget <= 0 || !canSpeculatePhotos()) return false;
   budget--;
   return true;
 }
@@ -108,8 +148,6 @@ export function resetSpeculativeScope(next: string) {
   if (next === scope) return;
   scope = next;
   budget = SPECULATIVE_CARDS;
-  for (let i = queue.length - 1; i >= 0; i--)
-    if (!queue[i].urgent) queue.splice(i, 1)[0].drop();
+  for (let i = queue.length - 1; i >= 0; i--) if (!queue[i].urgent) queue.splice(i, 1)[0].drop();
   dropSpeculativeGalleries();
 }
-export const preloadIdle = () => running === 0 && queue.length === 0;

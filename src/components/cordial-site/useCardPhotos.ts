@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { PublicMedia, PublicProperty } from "@/lib/cordial-site/contract";
 import type { SiteBrand } from "@/lib/cordial-site/brand";
-import { requestCardGallery, SpeculativeDropped } from "@/lib/cordial-site/card-gallery";
+import {
+  requestCardGallery,
+  SpeculativeDropped,
+  type CardGalleryHint,
+} from "@/lib/cordial-site/card-gallery";
 import {
   DEFAULT_CARD_SIZES,
   PreloadDropped,
+  canSpeculatePhotos,
   preloadCardImage,
-  preloadIdle,
   takeSpeculativeSlot,
 } from "@/lib/cordial-site/card-photo-preload";
 
 export type GalleryState = "idle" | "loading" | "ready" | "error";
 const dropped = (e: unknown) => e instanceof SpeculativeDropped || e instanceof PreloadDropped;
+const wrapPhoto = (index: number, length: number) => ((index % length) + length) % length;
 
 /** Real rendered width of the photo box, so cards pick thumb/card instead of oversized files. */
 function useMeasuredSizes(rootRef: RefObject<HTMLElement | null>, enabled: boolean) {
@@ -42,24 +47,29 @@ export function useCardPhotos(
   brand: SiteBrand,
   rootRef: RefObject<HTMLElement | null>,
   sizesOption?: string,
+  galleryHint?: Promise<CardGalleryHint | null>,
 ) {
   const enabled = p.photoCount > 1;
   const measured = useMeasuredSizes(rootRef, enabled && !sizesOption);
   const sizes = sizesOption ?? measured ?? DEFAULT_CARD_SIZES;
-  const sizesRef = useRef(sizes);
-  sizesRef.current = sizes;
+  const sizePolicy = useRef({ sizes, cover: sizesOption ?? DEFAULT_CARD_SIZES });
+  sizePolicy.current = { sizes, cover: sizesOption ?? DEFAULT_CARD_SIZES };
   const [images, setImages] = useState<PublicMedia[]>(p.cover ? [p.cover] : []);
   const [index, setIndex] = useState(0);
   const [galleryState, setGalleryState] = useState<GalleryState>("idle");
   const [switching, setSwitching] = useState(false);
   const [failed, setFailed] = useState(false);
-  const galleryKey = `${brand}:${p.id}:${p.cover?.id ?? "no-cover"}:${p.cover?.version ?? ""}`;
+  const galleryKey = `${brand}:${p.id}:${p.cover?.id ?? "no-cover"}:${p.cover?.version ?? ""}:${p.photoCount}`;
   const keyRef = useRef(galleryKey);
   keyRef.current = galleryKey;
+  const [displayKey, setDisplayKey] = useState(galleryKey);
   const photosRef = useRef<PublicMedia[] | null>(null);
   const request = useRef<{ key: string; promise: Promise<PublicMedia[]> } | null>(null);
   const generation = useRef(0);
-  const sizeFor = (i: number) => (i === 0 && !sizesOption ? DEFAULT_CARD_SIZES : sizesRef.current);
+  const sizeFor = useCallback(
+    (i: number) => (i === 0 ? sizePolicy.current.cover : sizePolicy.current.sizes),
+    [],
+  );
   const shown = useRef(0);
   const requested = useRef(0);
   const alive = useRef(true);
@@ -75,6 +85,7 @@ export function useCardPhotos(
     request.current = null;
     generation.current++;
     shown.current = requested.current = 0;
+    setDisplayKey(galleryKey);
     setImages(p.cover ? [p.cover] : []);
     setIndex(0);
     setGalleryState("idle");
@@ -83,32 +94,55 @@ export function useCardPhotos(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [galleryKey]);
 
+  const acceptGallery = useCallback(
+    (list: PublicMedia[], cover: PublicMedia | null) => {
+      const photos = cover ? [cover, ...list.filter((photo) => photo.id !== cover.id)] : list;
+      if (alive.current && keyRef.current === galleryKey) {
+        photosRef.current = photos;
+        setImages(photos);
+        setGalleryState("ready");
+      }
+      return photos;
+    },
+    [galleryKey],
+  );
+
+  const cover = p.cover;
+  useEffect(() => {
+    if (!galleryHint || !cover || !canSpeculatePhotos()) return;
+    let current = true;
+    void galleryHint
+      .then((hint) => {
+        if (
+          current &&
+          !request.current &&
+          !photosRef.current &&
+          hint?.propertyId === p.id &&
+          hint.coverRevision === `${cover.id}:${cover.version}` &&
+          hint.items.some((photo) => photo.id === cover.id && photo.version === cover.version)
+        )
+          acceptGallery(hint.items, cover);
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [acceptGallery, cover, galleryHint, p.id]);
+
   const ensurePhotos = useCallback(
     async (urgent = true): Promise<PublicMedia[]> => {
       if (photosRef.current) return photosRef.current;
       if (request.current?.key === galleryKey) {
-        if (urgent) void requestCardGallery(p.id, brand, true).catch(() => {}); // promote
+        if (urgent) {
+          setGalleryState("loading");
+          void requestCardGallery(p.id, brand, true, galleryKey).catch(() => {}); // promote
+        }
         return request.current.promise;
       }
       const captured = galleryKey;
       if (urgent) setGalleryState("loading");
-      const cover = p.cover;
-      const promise = requestCardGallery(p.id, brand, urgent).then(
-        (list) => {
-          // The photo on screen stays the cover: the gallery is ordered from it, never replaced.
-          const photos =
-            cover && list.some((m) => m.id === cover.id)
-              ? [cover, ...list.filter((m) => m.id !== cover.id)]
-              : cover
-                ? [cover, ...list]
-                : list;
-          if (alive.current && keyRef.current === captured) {
-            photosRef.current = photos;
-            setImages(photos);
-            setGalleryState("ready");
-          }
-          return photos;
-        },
+      const promise = requestCardGallery(p.id, brand, urgent, galleryKey).then(
+        (list) => acceptGallery(list, cover),
         (error) => {
           if (request.current?.key === captured) request.current = null;
           if (alive.current && keyRef.current === captured && !dropped(error))
@@ -119,94 +153,126 @@ export function useCardPhotos(
       request.current = { key: captured, promise };
       return promise;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [brand, p.id, galleryKey],
+    [acceptGallery, brand, cover, p.id, galleryKey],
   );
 
   /** Fetch the list and decode the neighbour in the given direction. */
   const prepare = useCallback(
-    (urgent = false, direction = 1) => {
-      if (!enabled) return;
-      ensurePhotos(urgent)
+    (direction: -1 | 1) => {
+      if (!enabled || !canSpeculatePhotos()) return;
+      ensurePhotos(false)
         .then((photos) => {
-          if (photos.length < 2) return;
-          const at = (requested.current + direction + photos.length) % photos.length;
-          return preloadCardImage(photos[at], brand, sizeFor(at), urgent);
+          if (
+            !alive.current ||
+            keyRef.current !== galleryKey ||
+            photos.length < 2 ||
+            !canSpeculatePhotos() ||
+            requested.current !== shown.current
+          )
+            return;
+          const at = wrapPhoto(shown.current + direction, photos.length);
+          return preloadCardImage(photos[at], brand, sizeFor(at));
         })
         .catch(() => {});
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, ensurePhotos, brand, sizesOption],
+    [enabled, ensurePhotos, brand, galleryKey, sizeFor],
   );
 
   const move = useCallback(
     async (delta: number) => {
       if (!enabled) return;
       const gen = ++generation.current;
-      const captured = keyRef.current;
+      requested.current += delta;
       setSwitching(true);
       setFailed(false);
       try {
         const photos = await ensurePhotos(true);
-        if (gen !== generation.current || keyRef.current !== captured || !photos.length) return;
-        // Latest intent wins: count from the last requested photo, not the one on screen.
-        const target = (requested.current + delta + photos.length) % photos.length;
+        if (!alive.current || gen !== generation.current || keyRef.current !== galleryKey) return;
+        if (photos.length < 2) {
+          // The published count and its gallery can change between requests.
+          photosRef.current = null;
+          request.current = null;
+          throw new Error("Outras fotos não estão disponíveis.");
+        }
+        // Count every click, including the clicks that arrived before we knew the list length.
+        const target = wrapPhoto(requested.current, photos.length);
         requested.current = target;
-        await preloadCardImage(photos[target], brand, sizeFor(target), true);
-        if (!alive.current || gen !== generation.current || keyRef.current !== captured) return;
+        if (target !== shown.current) {
+          const photoSizes = sizeFor(target);
+          await preloadCardImage(photos[target], brand, photoSizes, true);
+          if (!alive.current || gen !== generation.current || keyRef.current !== galleryKey) return;
+          // A layout change during decode may select another responsive candidate.
+          if (photoSizes !== sizeFor(target)) {
+            await preloadCardImage(photos[target], brand, sizeFor(target), true);
+          }
+        }
+        if (!alive.current || gen !== generation.current || keyRef.current !== galleryKey) return;
         shown.current = target;
         setIndex(target);
         setSwitching(false);
-        const ahead = (target + delta + photos.length) % photos.length;
-        void preloadCardImage(photos[ahead], brand, sizeFor(ahead)).catch(() => {});
-        const behind = (target - delta + photos.length) % photos.length;
-        if (behind !== ahead && preloadIdle())
-          void preloadCardImage(photos[behind], brand, sizeFor(behind)).catch(() => {});
+        prepare(delta < 0 ? -1 : 1);
       } catch {
-        if (alive.current && gen === generation.current) {
+        if (alive.current && gen === generation.current && keyRef.current === galleryKey) {
           requested.current = shown.current; // keep the photo on screen, arrow retries
           setSwitching(false);
           setFailed(true);
         }
       }
     },
-    [enabled, ensurePhotos, brand],
+    [enabled, ensurePhotos, brand, galleryKey, prepare, sizeFor],
   );
 
-  // Once the card is visible AND its own cover is on screen, prepare the 2nd photo for a
-  // small number of cards (budget per results scope). No timers, no hover needed.
+  // Start metadata for a few visible cards while their covers load. Only download a
+  // neighbour once the cover is ready, so it doesn't compete with the first paint.
   useEffect(() => {
     const el = rootRef.current;
     if (!enabled || !el || typeof IntersectionObserver === "undefined") return;
-    let done = false;
-    let cleanupImg: (() => void) | null = null;
-    const whenCoverReady = (run: () => void) => {
+    let selected = false;
+    let visible = false;
+    const warm = () => {
       const img = el.querySelector("img");
-      if (!img || (img.complete && img.naturalWidth > 0)) return run();
-      const onLoad = () => run();
-      img.addEventListener("load", onLoad, { once: true });
-      cleanupImg = () => img.removeEventListener("load", onLoad);
+      if (!selected || !visible || !img?.complete || !img.naturalWidth) return;
+      prepare(1);
+      el.removeEventListener("load", warm, true);
+      observer.disconnect();
     };
     const observer = new IntersectionObserver(
       (entries) => {
-        if (done || !entries.some((e) => e.isIntersecting)) return;
-        done = true;
-        observer.disconnect();
-        whenCoverReady(() => {
-          if (alive.current && takeSpeculativeSlot()) prepare(false);
-        });
+        visible = entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.5);
+        if (visible && !selected) {
+          if (!takeSpeculativeSlot()) {
+            observer.disconnect();
+            return;
+          }
+          selected = true;
+          if (galleryHint) {
+            // A single lead card can prepare its adjacent image while the cover downloads.
+            void galleryHint
+              .finally(() => {
+                if (visible && el.isConnected && keyRef.current === galleryKey) prepare(1);
+              })
+              .catch(() => {});
+            observer.disconnect();
+            el.removeEventListener("load", warm, true);
+            return;
+          }
+          void ensurePhotos(false).catch(() => {});
+        }
+        warm();
       },
       { threshold: 0.5 },
     );
     observer.observe(el);
+    el.addEventListener("load", warm, true);
     return () => {
+      visible = false;
       observer.disconnect();
-      cleanupImg?.();
+      el.removeEventListener("load", warm, true);
     };
-  }, [enabled, rootRef, prepare, galleryKey]);
+  }, [enabled, rootRef, ensurePhotos, prepare, galleryKey, galleryHint]);
 
   // Swipe: horizontal gesture changes the photo, vertical scroll stays native (touch-action: pan-y).
-  const touch = useRef<{ x: number; y: number } | null>(null);
+  const touch = useRef<{ x: number; y: number; direction?: -1 | 1 } | null>(null);
   const swiped = useRef(false);
   const swipeHandlers = enabled
     ? {
@@ -216,7 +282,15 @@ export function useCardPhotos(
           if (e.target instanceof Element && e.target.closest("button")) return;
           touch.current = { x: e.clientX, y: e.clientY };
           swiped.current = false;
-          prepare(true);
+        },
+        onPointerMove: (e: React.PointerEvent) => {
+          const start = touch.current;
+          if (!start || start.direction) return;
+          const dx = e.clientX - start.x;
+          if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(e.clientY - start.y) * 1.4) {
+            start.direction = dx < 0 ? 1 : -1;
+            prepare(start.direction);
+          }
         },
         onPointerUp: (e: React.PointerEvent) => {
           const start = touch.current;
@@ -234,9 +308,6 @@ export function useCardPhotos(
           touch.current = null;
           swiped.current = false;
         },
-        onPointerEnter: (e: React.PointerEvent) => {
-          if (e.pointerType === "mouse") prepare(true);
-        },
         onClickCapture: (e: React.MouseEvent) => {
           if (swiped.current) {
             const onButton = e.target instanceof Element && e.target.closest("button");
@@ -251,15 +322,15 @@ export function useCardPhotos(
     : {};
 
   return {
-    images,
-    index,
-    media: images[index] ?? p.cover,
+    images: displayKey === galleryKey ? images : p.cover ? [p.cover] : [],
+    index: displayKey === galleryKey ? index : 0,
+    media: (displayKey === galleryKey ? images[index] : null) ?? p.cover,
     // Cover keeps the default policy (already downloaded); other photos use the measured width,
     // the same string used to preload them, so the browser reuses the download.
-    imageSizes: index === 0 && !sizesOption ? DEFAULT_CARD_SIZES : sizes,
-    galleryState,
-    switching,
-    failed,
+    imageSizes: sizeFor(displayKey === galleryKey ? index : 0),
+    galleryState: displayKey === galleryKey ? galleryState : "idle",
+    switching: displayKey === galleryKey && switching,
+    failed: displayKey === galleryKey && failed,
     enabled,
     ensurePhotos,
     prepare,
