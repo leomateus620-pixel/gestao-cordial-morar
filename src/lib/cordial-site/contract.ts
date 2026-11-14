@@ -73,6 +73,7 @@ export function searchParams(value: Partial<SiteSearch>): string {
   return params.toString();
 }
 export const mediaSchema = z.object({
+  enhancement: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   id: z.string().uuid(),
   version: z.string().regex(/^[a-f0-9]{32}$/),
   width: z.number().positive().nullable(),

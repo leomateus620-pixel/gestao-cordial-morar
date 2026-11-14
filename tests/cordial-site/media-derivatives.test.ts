@@ -78,3 +78,19 @@ test("derived identity isolates brands, source revisions, size and transformer",
   assert.notEqual(a, derivativeKey("cordial", id, "a".repeat(32), "full"));
   assert.ok(a.endsWith("960-jpeg-q80-purejs-v2.jpg"));
 });
+
+test("private derivative metadata and bytes start together; non-ready bytes are never accepted", async () => {
+  const { derivativeStore } = await import("../../src/lib/cordial-site/media-derivatives.server");
+  let release!: (value: unknown) => void;
+  let downloads = 0;
+  const metadata = new Promise(resolve => { release = resolve; });
+  const query = { select: () => query, eq: () => query, maybeSingle: () => metadata };
+  const db = {
+    from: () => query,
+    storage: { from: () => ({ download: async () => { downloads++; return { data: new Blob([jpeg()]), error: null }; } }) },
+  };
+  const reading = derivativeStore(db as any).read("private-version");
+  assert.equal(downloads, 1);
+  release({ data: { state: "processing", checksum: "not-committed" }, error: null });
+  assert.equal(await reading, null);
+});

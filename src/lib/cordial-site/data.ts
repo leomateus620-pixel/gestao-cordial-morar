@@ -82,3 +82,6 @@ export const loadTours = (id: string, signal?: AbortSignal, brand: SiteBrand = "
 export type PublicShowcase = { publicId: string; imageUrl: string | null; focalX: number; focalY: number };
 export const loadShowcase = (signal?: AbortSignal, brand: SiteBrand = "cordial") =>
   read("showcase", null, signal, brand) as Promise<PublicShowcase | null>;
+
+export const loadFeatured = (signal?: AbortSignal, brand: SiteBrand = "cordial") =>
+  read("featured", null, signal, brand) as Promise<import("../site-showcase/featured-public.server").PublicFeatured>;

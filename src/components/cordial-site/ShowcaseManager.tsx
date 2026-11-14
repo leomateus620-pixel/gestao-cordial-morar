@@ -1,3 +1,4 @@
+import { FeaturedManager } from "./FeaturedManager";
 import { useState, type PointerEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ export function ShowcaseManager({ brand = "cordial" }: { brand?: "cordial" | "mo
   const nextRow = current(next);
   return (
     <div className="space-y-6">
+      <FeaturedManager brand={brand} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4 text-sm">
         <div>
           <p className="font-semibold">Imagem da semana na abertura do site</p>

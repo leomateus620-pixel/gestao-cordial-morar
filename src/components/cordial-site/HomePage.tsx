@@ -26,6 +26,7 @@ import { Await } from "@tanstack/react-router";
 import type { SiteBrand } from "@/lib/cordial-site/brand";
 import type { PublicProperty } from "@/lib/cordial-site/contract";
 import type { HomeData, HomeHeroData } from "@/lib/cordial-site/home-loader";
+import type { CardGalleryHint } from "@/lib/cordial-site/card-gallery";
 import { cardSrcSet, resetSpeculativeScope } from "@/lib/cordial-site/card-photo-preload";
 import {
   areaLabel,
@@ -40,6 +41,7 @@ import { FavoriteButton, PropertyImage } from "./PropertyCard";
 import { SearchForm } from "./SearchForm";
 import { useCardPhotos } from "./useCardPhotos";
 import { CardPhotoControls } from "./CardPhotoControls";
+import { FeaturedPhoto } from "./FeaturedPhoto";
 import { RecentProperties } from "./RecentProperties";
 import { propertyUrl, propertyWhatsapp } from "@/lib/cordial-site/experience";
 import { WhatsAppIcon } from "./SocialIcons";
@@ -150,18 +152,28 @@ function HomeCard({
   variant,
   sizes,
   galleryHint,
+  featuredReady = false,
   renderOffscreenImages,
 }: {
   p: PublicProperty;
   variant: HomeCardVariant;
   sizes: string;
-  galleryHint?: HomeData["leadGallery"];
+  galleryHint?: Promise<CardGalleryHint | null>;
+  featuredReady?: boolean;
   renderOffscreenImages: boolean;
 }) {
   const brand = useSiteBrand();
   const title = `${p.type ?? "Imóvel"}${p.district ? ` no ${p.district}` : ""}`;
   const photoRoot = useRef<HTMLDivElement | null>(null);
-  const photos = useCardPhotos(p, brand, photoRoot, sizes, galleryHint);
+  const photos = useCardPhotos(
+    p,
+    brand,
+    photoRoot,
+    sizes,
+    galleryHint,
+    variant !== "compact",
+    featuredReady,
+  );
   const [nearViewport, setNearViewport] = useState(false);
   const showPhoto = nearViewport || renderOffscreenImages || !p.cover;
   useEffect(() => {
@@ -184,14 +196,27 @@ function HomeCard({
   }, [showPhoto]);
   return (
     <article className={`cs-hx-card cs-hx-card-${variant}`}>
-      <div className="cs-hx-card-media" ref={photoRoot} {...photos.swipeHandlers}>
+      <div
+        className="cs-hx-card-media"
+        ref={photoRoot}
+        {...photos.swipeHandlers}
+        onPointerEnter={(e) => e.pointerType !== "touch" && photos.prepare(1)}
+      >
         <SiteLink
           to={propertyPath(p, brand)}
           className="cs-hx-card-media-link"
           aria-label={title}
           tabIndex={-1}
         >
-          {showPhoto ? (
+          {showPhoto && variant !== "compact" ? (
+            <FeaturedPhoto
+              key={`${p.id}:${p.cover?.version}`}
+              media={photos.media}
+              sizes={photos.imageSizes}
+              alt={title}
+              fetchPriority={variant === "lg" ? "auto" : "low"}
+            />
+          ) : showPhoto ? (
             <PropertyImage
               media={photos.media}
               alt={title}
@@ -569,7 +594,7 @@ export function HomeHero({ hero, onSettled }: Pick<HomeData, "hero"> & { onSettl
   );
 }
 
-export function HomePage({ hero, listings, leadGallery }: HomeData) {
+export function HomePage({ hero, listings, featuredGalleries }: HomeData) {
   const { settings } = useSite();
   const brand = useSiteBrand();
   const copy = HOME_COPY[brand];
@@ -577,6 +602,17 @@ export function HomePage({ hero, listings, leadGallery }: HomeData) {
   // section visible until the replacement is ready, including a confirmed empty result.
   const visibleHero = useDeferredValue(hero);
   const visibleListings = useDeferredValue(listings);
+  const galleryHints = useMemo(() => {
+    const hints = new Map<string, Promise<CardGalleryHint | null>>();
+    return (id: string) => {
+      if (!hints.has(id))
+        hints.set(
+          id,
+          featuredGalleries.then((items) => items[id] ?? null),
+        );
+      return hints.get(id)!;
+    };
+  }, [featuredGalleries]);
   const [heroSettled, setHeroSettled] = useState(false);
   const [wideViewport, setWideViewport] = useState(false);
   useEffect(() => {
@@ -627,7 +663,8 @@ export function HomePage({ hero, listings, leadGallery }: HomeData) {
                         p={p}
                         variant={i === 0 ? "lg" : "sm"}
                         sizes={homeCardSizes(brand, i === 0 ? "lg" : "sm", data.featured.length)}
-                        galleryHint={i === 0 ? leadGallery : undefined}
+                        galleryHint={galleryHints(p.id)}
+                        featuredReady={heroSettled}
                         renderOffscreenImages={renderOffscreenImages}
                       />
                     ))}
