@@ -4642,6 +4642,12 @@ body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
 .cs-hx-card-media .cs-card-photo-prev,
 .cs-hx-card-media .cs-card-photo-next { width: 32px; height: 36px; top: calc(50% - 18px); opacity: 0.88; }
 .cs-hx-card-media img { transition: opacity 120ms ease; }
+.cs-featured-photo-layer { position: absolute; inset: 0; pointer-events: none; }
+.cs-featured-photo-outgoing.is-releasing { animation: cs-featured-photo-release 140ms ease-out both; }
+@keyframes cs-featured-photo-release { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-featured-photo-outgoing.is-releasing { animation: none; opacity: 0; }
+}
 @media (prefers-reduced-motion: reduce) { .cs-hx-card-media img { transition: none; } }
 .cs-hx-card-media .cs-card-photo-count { bottom: 8px; right: 8px; font-size: 10px; }
 .cs-card-photo-count.is-switching { opacity: 0.6; }

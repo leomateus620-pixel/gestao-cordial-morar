@@ -11,7 +11,7 @@ export const mediaPath = (
   m: PublicMedia,
   size: "thumb" | "card" | "full" = "card",
   brand: SiteBrand = "cordial",
-) => `${getSiteBrand(brand).apiBase}/media/${m.id}/${m.version}/${size}`;
+) => `${getSiteBrand(brand).apiBase}/media/${m.id}/${m.version}/${size}${m.enhancement ? `?enhancement=${m.enhancement}` : ""}`;
 export const money = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 export function priceLabel(p: Pick<PublicProperty, "price" | "priceMode" | "operation">) {

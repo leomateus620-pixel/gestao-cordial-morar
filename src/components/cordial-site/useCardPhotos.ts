@@ -48,6 +48,8 @@ export function useCardPhotos(
   rootRef: RefObject<HTMLElement | null>,
   sizesOption?: string,
   galleryHint?: Promise<CardGalleryHint | null>,
+  featured = false,
+  featuredReady = false,
 ) {
   const enabled = p.photoCount > 1;
   const measured = useMeasuredSizes(rootRef, enabled && !sizesOption);
@@ -59,7 +61,7 @@ export function useCardPhotos(
   const [galleryState, setGalleryState] = useState<GalleryState>("idle");
   const [switching, setSwitching] = useState(false);
   const [failed, setFailed] = useState(false);
-  const galleryKey = `${brand}:${p.id}:${p.cover?.id ?? "no-cover"}:${p.cover?.version ?? ""}:${p.photoCount}`;
+  const galleryKey = `${brand}:${p.id}:${p.cover?.id ?? "no-cover"}:${p.cover?.version ?? ""}:${p.cover?.enhancement ?? ""}:${p.photoCount}`;
   const keyRef = useRef(galleryKey);
   keyRef.current = galleryKey;
   const [displayKey, setDisplayKey] = useState(galleryKey);
@@ -108,26 +110,35 @@ export function useCardPhotos(
   );
 
   const cover = p.cover;
+  const matchingHint = useCallback(
+    (hint: CardGalleryHint | null) =>
+      hint?.propertyId === p.id &&
+      cover &&
+      (hint.coverRevision === `${cover.id}:${cover.version}:${cover.enhancement ?? ""}` ||
+        (!cover.enhancement && hint.coverRevision === `${cover.id}:${cover.version}`)) &&
+      hint.items.some(
+        (photo) =>
+          photo.id === cover.id &&
+          photo.version === cover.version &&
+          photo.enhancement === cover.enhancement,
+      )
+        ? hint.items
+        : null,
+    [p.id, cover],
+  );
   useEffect(() => {
     if (!galleryHint || !cover || !canSpeculatePhotos()) return;
     let current = true;
     void galleryHint
       .then((hint) => {
-        if (
-          current &&
-          !request.current &&
-          !photosRef.current &&
-          hint?.propertyId === p.id &&
-          hint.coverRevision === `${cover.id}:${cover.version}` &&
-          hint.items.some((photo) => photo.id === cover.id && photo.version === cover.version)
-        )
-          acceptGallery(hint.items, cover);
+        if (current && !request.current && !photosRef.current && matchingHint(hint))
+          acceptGallery(matchingHint(hint)!, cover);
       })
       .catch(() => {});
     return () => {
       current = false;
     };
-  }, [acceptGallery, cover, galleryHint, p.id]);
+  }, [acceptGallery, cover, galleryHint, matchingHint]);
 
   const ensurePhotos = useCallback(
     async (urgent = true): Promise<PublicMedia[]> => {
@@ -135,13 +146,22 @@ export function useCardPhotos(
       if (request.current?.key === galleryKey) {
         if (urgent) {
           setGalleryState("loading");
-          void requestCardGallery(p.id, brand, true, galleryKey).catch(() => {}); // promote
+          if (!featured || !galleryHint)
+            void requestCardGallery(p.id, brand, true, galleryKey).catch(() => {}); // promote
         }
         return request.current.promise;
       }
       const captured = galleryKey;
       if (urgent) setGalleryState("loading");
-      const promise = requestCardGallery(p.id, brand, urgent, galleryKey).then(
+      const metadata =
+        featured && galleryHint
+          ? galleryHint
+              .catch(() => null)
+              .then(
+                (hint) => matchingHint(hint) ?? requestCardGallery(p.id, brand, urgent, galleryKey),
+              )
+          : requestCardGallery(p.id, brand, urgent, galleryKey);
+      const promise = metadata.then(
         (list) => acceptGallery(list, cover),
         (error) => {
           if (request.current?.key === captured) request.current = null;
@@ -153,7 +173,31 @@ export function useCardPhotos(
       request.current = { key: captured, promise };
       return promise;
     },
-    [acceptGallery, brand, cover, p.id, galleryKey],
+    [acceptGallery, brand, cover, p.id, galleryKey, featured, galleryHint, matchingHint],
+  );
+
+  const warmWindow = useCallback(
+    (photos: PublicMedia[], at: number, direction: -1 | 1) => {
+      if (!featured || !canSpeculatePhotos()) return;
+      // Five ahead plus the reverse neighbour cover repeated clicks and direction changes.
+      // The active card's window passes idle work for the other featured cards.
+      const targets = new Set(
+        [direction, direction * 2, direction * 3, direction * 4, direction * 5, -direction].map(
+          (offset) => wrapPhoto(at + offset, photos.length),
+        ),
+      );
+      targets.delete(at);
+      for (const target of targets)
+        void preloadCardImage(
+          photos[target],
+          brand,
+          sizeFor(target),
+          false,
+          "card",
+          "intent",
+        ).catch(() => {});
+    },
+    [featured, brand, sizeFor],
   );
 
   /** Fetch the list and decode the neighbour in the given direction. */
@@ -171,11 +215,15 @@ export function useCardPhotos(
           )
             return;
           const at = wrapPhoto(shown.current + direction, photos.length);
+          if (featured) {
+            warmWindow(photos, shown.current, direction);
+            return;
+          }
           return preloadCardImage(photos[at], brand, sizeFor(at));
         })
         .catch(() => {});
     },
-    [enabled, ensurePhotos, brand, galleryKey, sizeFor],
+    [enabled, ensurePhotos, brand, galleryKey, sizeFor, featured, warmWindow],
   );
 
   const move = useCallback(
@@ -199,7 +247,10 @@ export function useCardPhotos(
         requested.current = target;
         if (target !== shown.current) {
           const photoSizes = sizeFor(target);
-          await preloadCardImage(photos[target], brand, photoSizes, true);
+          const decoded = preloadCardImage(photos[target], brand, photoSizes, true);
+          // Begin the following images while the requested one is in flight.
+          warmWindow(photos, target, delta < 0 ? -1 : 1);
+          await decoded;
           if (!alive.current || gen !== generation.current || keyRef.current !== galleryKey) return;
           // A layout change during decode may select another responsive candidate.
           if (photoSizes !== sizeFor(target)) {
@@ -219,14 +270,52 @@ export function useCardPhotos(
         }
       }
     },
-    [enabled, ensurePhotos, brand, galleryKey, prepare, sizeFor],
+    [enabled, ensurePhotos, brand, galleryKey, prepare, sizeFor, warmWindow],
   );
+
+  // The five home highlights have their own budget. Start only after the opening
+  // hero has settled, including offscreen cards, so scrolling doesn't start a cold gallery.
+  useEffect(() => {
+    if (!featured || !featuredReady || !enabled) return;
+    let cancelled = false;
+    const warm = async () => {
+      if (!canSpeculatePhotos()) return;
+      try {
+        const photos = await ensurePhotos(false);
+        if (photos.length < 2) return;
+        const warmed = new Set<number>([shown.current]);
+        for (const offset of [1, 2, 3, 4, 5, -1]) {
+          if (cancelled || keyRef.current !== galleryKey || !canSpeculatePhotos()) return;
+          const target = wrapPhoto(shown.current + offset, photos.length);
+          if (!warmed.has(target)) {
+            warmed.add(target);
+            await preloadCardImage(
+              photos[target],
+              brand,
+              sizeFor(target),
+              false,
+              "card",
+              "featured",
+            );
+          }
+        }
+      } catch {
+        /* Navigation retries a failed speculative read/download. */
+      }
+    };
+    void warm();
+    document.addEventListener("visibilitychange", warm);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", warm);
+    };
+  }, [featured, featuredReady, enabled, ensurePhotos, galleryKey, brand, sizeFor, sizes]);
 
   // Start metadata for a few visible cards while their covers load. Only download a
   // neighbour once the cover is ready, so it doesn't compete with the first paint.
   useEffect(() => {
     const el = rootRef.current;
-    if (!enabled || !el || typeof IntersectionObserver === "undefined") return;
+    if (featured || !enabled || !el || typeof IntersectionObserver === "undefined") return;
     let selected = false;
     let visible = false;
     const warm = () => {
@@ -269,7 +358,7 @@ export function useCardPhotos(
       observer.disconnect();
       el.removeEventListener("load", warm, true);
     };
-  }, [enabled, rootRef, ensurePhotos, prepare, galleryKey, galleryHint]);
+  }, [enabled, rootRef, ensurePhotos, prepare, galleryKey, galleryHint, featured]);
 
   // Swipe: horizontal gesture changes the photo, vertical scroll stays native (touch-action: pan-y).
   const touch = useRef<{ x: number; y: number; direction?: -1 | 1 } | null>(null);

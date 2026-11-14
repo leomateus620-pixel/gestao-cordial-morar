@@ -48,6 +48,50 @@ const showcase: PublicShowcase = {
   focalY: 0.4,
 };
 
+test("weekly highlights keep the five slots, use only matching treated covers and preserve 15 distinct extras", async () => {
+  const weekly = [30, 31, 32, 33, 34].map((id, i) => ({
+    slot: i + 1,
+    public_id: String(id),
+    media_id: String(id),
+    media_version: i === 1 ? "old" : "v1",
+    checksum: "b".repeat(64),
+    ordinal: 0,
+  }));
+  const home = loadHome(Promise.resolve(options({})), signal, "cordial", {
+    loadCatalog: async ({ pagina }) => catalog(pagina!),
+    loadShowcase: async () => null,
+    loadFeatured: async () => weekly,
+    loadSummaries: async (ids) => ({
+      items: ids.map((id) => property(Number(id))),
+      missingIds: [],
+    }),
+  });
+  const listing = await home.listings;
+  assert.deepEqual(
+    listing?.featured.map((p) => p.id),
+    ["30", "31", "32", "33", "34"],
+  );
+  assert.equal(listing?.featured[0].cover?.enhancement, "b".repeat(64));
+  assert.equal(listing?.featured[1].cover?.enhancement, undefined);
+  assert.equal(listing?.more.length, 15);
+  assert.equal(new Set([...listing!.featured, ...listing!.more].map((p) => p.id)).size, 20);
+});
+
+test("unavailable weekly treatment falls back to the existing home selection", async () => {
+  const home = loadHome(Promise.resolve(options({})), signal, "morar", {
+    loadCatalog: async ({ pagina }) => catalog(pagina!),
+    loadShowcase: async () => null,
+    loadFeatured: async () => {
+      throw new Error("temporarily unavailable");
+    },
+    loadSummaries: async () => ({ items: [], missingIds: [] }),
+  });
+  assert.deepEqual(
+    (await home.listings)?.featured.map((p) => p.id),
+    ["1", "2", "3", "4", "5"],
+  );
+});
+
 test("home starts both catalog pages and the brand's showcase before settings; listings never wait for showcase", async () => {
   const settings = deferred<SiteSettings>();
   const weekly = deferred<PublicShowcase | null>();
@@ -159,27 +203,78 @@ test("a reserved mix keeps the same first featured property while additional pag
   assert.deepEqual(pages, [4]);
 });
 
-test("home hints only the lead card without waiting for the second page or sending image requests", async () => {
-  const second = deferred<SiteCatalog>();
+test("home streams all five selected galleries without delaying hero or listings", async () => {
+  const metadata = deferred<ReturnType<typeof property>["cover"][]>();
   const galleryIds: string[] = [];
-  const media = property(56).cover!;
   const home = loadHome(Promise.resolve(options({})), signal, "morar", {
-    loadCatalog: async ({ pagina }) => (pagina === 1 ? catalog(1) : second.promise),
+    loadCatalog: async ({ pagina }) => catalog(pagina!),
     loadShowcase: async () => null,
     loadSummaries: async () => ({ items: [], missingIds: [] }),
     async loadGallery(id, activeSignal, brand) {
-      assert.equal(activeSignal, signal);
+      assert.equal(activeSignal?.aborted, false);
       assert.equal(brand, "morar");
       galleryIds.push(id);
-      return [media];
+      await metadata.promise;
+      if (id === "3") throw new Error("unavailable");
+      return [property(Number(id)).cover!];
     },
   });
-  assert.deepEqual(await home.leadGallery, {
-    propertyId: "1",
-    coverRevision: "1:v1",
-    items: [media],
-  });
-  assert.deepEqual(galleryIds, ["1"]);
-  second.resolve(catalog(2));
+  assert.equal((await home.hero)?.property.id, "1");
   assert.equal((await home.listings)?.featured.length, 5);
+  assert.deepEqual(galleryIds, ["1", "2", "3", "4", "5"]);
+  metadata.resolve([]);
+  assert.deepEqual(
+    (await Promise.all(Object.values(await home.featuredGalleries)))
+      .filter((h) => h !== null)
+      .map((h) => h.propertyId),
+    ["1", "2", "4", "5"],
+  );
+});
+
+test("editorial/mixed homes prepare the actual five, never unrelated catalog cards", async () => {
+  const galleryIds: string[] = [];
+  const home = loadHome(
+    Promise.resolve(
+      options({ featuredMode: "editorial", featuredPropertyIds: ["31", "32", "33", "34", "35"] }),
+    ),
+    signal,
+    "cordial",
+    {
+      loadCatalog: async ({ pagina }) => catalog(pagina!),
+      loadShowcase: async () => null,
+      loadSummaries: async (ids) => ({
+        items: ids.map(Number).map((n) => property(n)),
+        missingIds: [],
+      }),
+      async loadGallery(id) {
+        galleryIds.push(id);
+        return [property(Number(id)).cover!];
+      },
+    },
+  );
+  const hints = (await Promise.all(Object.values(await home.featuredGalleries))).filter(
+    (h) => h !== null,
+  );
+  assert.deepEqual(
+    galleryIds,
+    (await home.listings)?.featured.map((p) => p.id),
+  );
+  assert.deepEqual(
+    hints.map((h) => h.propertyId),
+    ["31", "32", "33", "34", "35"],
+  );
+});
+
+test("a slow featured gallery does not hold back the other four streamed hints", async () => {
+  const slow = deferred<NonNullable<PublicProperty["cover"]>[]>();
+  const home = loadHome(Promise.resolve(options({})), signal, "morar", {
+    loadCatalog: async ({ pagina }) => catalog(pagina!),
+    loadShowcase: async () => null,
+    loadSummaries: async () => ({ items: [], missingIds: [] }),
+    loadGallery: async (id) => (id === "1" ? slow.promise : [property(Number(id)).cover!]),
+  });
+  const hints = await home.featuredGalleries;
+  assert.equal((await hints["5"])?.propertyId, "5");
+  slow.resolve([]);
+  assert.deepEqual((await hints["1"])?.items, []);
 });

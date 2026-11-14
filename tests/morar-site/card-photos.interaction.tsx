@@ -141,3 +141,90 @@ it("reuses matching server metadata and ignores a hint from another cover versio
   expect(result.current.galleryState).toBe("idle");
   expect(result.current.images).toHaveLength(1);
 });
+
+it("prepares all five featured cards after the hero without consuming catalog visibility slots", async () => {
+  mocks.speculate.mockReturnValue(true);
+  const firstWave = deferred<void>();
+  mocks.preload.mockReturnValue(firstWave.promise);
+  const hooks = Array.from({ length: 5 }, (_, i) =>
+    renderHook(
+      ({ ready }) =>
+        useCardPhotos(
+          { ...property, id: `featured-${i}` },
+          "cordial",
+          root,
+          "240px",
+          undefined,
+          true,
+          ready,
+        ),
+      { initialProps: { ready: false } },
+    ),
+  );
+  expect(mocks.preload).not.toHaveBeenCalled();
+  await act(async () => hooks.forEach((h) => h.rerender({ ready: true })));
+  expect(mocks.load).toHaveBeenCalledTimes(5);
+  expect(mocks.preload).toHaveBeenCalledTimes(5);
+  expect(
+    mocks.preload.mock.calls.every((call) => call[0] === photos[1] && call[5] === "featured"),
+  ).toBe(true);
+  await act(async () => firstWave.resolve(undefined));
+  expect(mocks.preload.mock.calls.filter((call) => call[0] === photos[2])).toHaveLength(5);
+  expect(mocks.preload.mock.calls.filter((call) => call[0] === photos[3])).toHaveLength(5);
+});
+
+it("prepares following photos before a requested featured image finishes downloading", async () => {
+  mocks.speculate.mockReturnValue(true);
+  const pendingImage = deferred<void>();
+  mocks.preload.mockImplementation((_photo, _brand, _sizes, urgent) =>
+    urgent ? pendingImage.promise : Promise.resolve(),
+  );
+  const { result } = renderHook(() =>
+    useCardPhotos(property, "morar", root, "240px", undefined, true),
+  );
+  await act(async () => {
+    void result.current.move(1);
+  });
+  expect(result.current.media?.id).toBe("cover");
+  expect(mocks.preload.mock.calls).toEqual(
+    expect.arrayContaining([
+      [photos[1], "morar", "240px", true],
+      [photos[2], "morar", "240px", false, "card", "intent"],
+      [photos[3], "morar", "240px", false, "card", "intent"],
+    ]),
+  );
+  await act(async () => pendingImage.resolve(undefined));
+  expect(result.current.media?.id).toBe("next");
+});
+
+it("does not speculate for featured cards with data saving, but explicit navigation still works", async () => {
+  const { result } = renderHook(() =>
+    useCardPhotos(property, "morar", root, "240px", undefined, true, true),
+  );
+  await act(async () => {});
+  expect(mocks.load).not.toHaveBeenCalled();
+  await act(() => result.current.move(1));
+  expect(result.current.media?.id).toBe("next");
+  expect(mocks.preload).toHaveBeenCalledTimes(1);
+});
+
+it("shares pending streamed featured metadata with a click and falls back on a stale hint", async () => {
+  mocks.speculate.mockReturnValue(true);
+  const hint = deferred<CardGalleryHint>();
+  const { result, rerender } = renderHook(
+    (p) => useCardPhotos(p, "cordial", root, "240px", hint.promise, true, true),
+    { initialProps: property },
+  );
+  await act(async () => {
+    void result.current.move(1);
+  });
+  expect(mocks.load).not.toHaveBeenCalled();
+  await act(async () =>
+    hint.resolve({ propertyId: property.id, coverRevision: "cover:version", items: photos }),
+  );
+  expect(result.current.index).toBe(1);
+  expect(mocks.load).not.toHaveBeenCalled();
+  await act(async () => rerender({ ...property, cover: { ...photos[0], version: "replaced" } }));
+  expect(mocks.load).toHaveBeenCalledWith(property.id, "cordial", false, expect.any(String));
+  expect(result.current.index).toBe(0);
+});

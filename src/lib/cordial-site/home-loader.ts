@@ -1,11 +1,11 @@
 import type { PublicProperty, SiteSettings } from "./contract";
 import type { SiteBrand } from "./brand";
 import type { CardGalleryHint } from "./card-gallery";
-import { loadCatalog, loadGallery, loadShowcase, loadSummaries } from "./data";
+import { loadCatalog, loadGallery, loadShowcase, loadSummaries, loadFeatured } from "./data";
 import { HOME_FEATURED_LIMIT, HOME_MORE_LIMIT, selectFeatured, selectMore } from "./home-selection";
 
 const MAX_PAGES = 4;
-const publicReads = { loadCatalog, loadShowcase, loadSummaries, loadGallery };
+const publicReads = { loadCatalog, loadShowcase, loadSummaries, loadGallery, loadFeatured };
 
 export type HomeHeroData = {
   property: PublicProperty;
@@ -18,7 +18,7 @@ type HomeListings = { featured: PublicProperty[]; more: PublicProperty[] };
 export type HomeData = {
   hero: Promise<HomeHeroData | null>;
   listings: Promise<HomeListings | null>;
-  leadGallery: Promise<CardGalleryHint | null>;
+  featuredGalleries: Promise<Record<string, Promise<CardGalleryHint | null>>>;
 };
 
 /** Both sections can stream as soon as their own authoritative reads are ready. */
@@ -26,12 +26,13 @@ export function loadHome(
   settings: Promise<SiteSettings | undefined>,
   signal: AbortSignal,
   brand: SiteBrand,
-  reads: Omit<typeof publicReads, "loadGallery"> &
-    Partial<Pick<typeof publicReads, "loadGallery">> = publicReads,
+  reads: Omit<typeof publicReads, "loadGallery" | "loadFeatured"> &
+    Partial<Pick<typeof publicReads, "loadGallery" | "loadFeatured">> = publicReads,
 ): HomeData {
   const catalog = (pagina: number) =>
     reads.loadCatalog({ ordem: "recentes", pagina }, signal, brand).catch(() => null);
   // Start all brand-specific reads that do not depend on the parent layout.
+  const weeklyFeatured = reads.loadFeatured?.(signal, brand).catch(() => []) ?? Promise.resolve([]);
   const firstPage = catalog(1);
   const secondPage = catalog(2);
   const weeklyHero = reads
@@ -49,12 +50,16 @@ export function loadHome(
     })
     .catch(() => null);
 
-  const config = settings
-    .then(async (settings) => {
-      const mode = settings?.featuredMode ?? "recentes";
+  const config = Promise.all([settings, weeklyFeatured])
+    .then(async ([settings, weekly]) => {
+      const weeklyIds = [...new Set(weekly.map((p) => p.public_id))];
+      const mode = weeklyIds.length ? "editorial" : (settings?.featuredMode ?? "recentes");
       const editorialIds =
         mode === "editorial"
-          ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT)
+          ? (weeklyIds.length ? weeklyIds : (settings?.featuredPropertyIds ?? [])).slice(
+              0,
+              HOME_FEATURED_LIMIT,
+            )
           : [];
       const manualId = settings?.heroPropertyId;
       const ids = [...new Set(manualId ? [...editorialIds, manualId] : editorialIds)];
@@ -64,7 +69,12 @@ export function loadHome(
       return {
         mode,
         editorialIds,
-        editorial: summaries?.items ?? [],
+        editorial: (summaries?.items ?? []).map((p) => {
+          const edit = weekly.find(
+            (m) => m.media_id === p.cover?.id && m.media_version === p.cover?.version,
+          );
+          return edit && p.cover ? { ...p, cover: { ...p.cover, enhancement: edit.checksum } } : p;
+        }),
         mix: settings?.featuredMix,
         manualHero: summaries?.items.find((p) => p.id === manualId && p.cover),
       };
@@ -123,10 +133,10 @@ export function loadHome(
         })
       | undefined
   )?.connection;
-  // A common recent-only home can discover the lead card as soon as page one resolves.
-  // When editorial ordering or a mix is in use, leave preparation to the visible cards.
-  const leadGallery = Promise.all([config, firstPage])
-    .then(async ([settings, first]): Promise<CardGalleryHint | null> => {
+  // Stream metadata for the actual five selected cards, including editorial/mixed homes.
+  // This never blocks the hero or listings and does not transfer any image bytes.
+  const featuredGalleries = listings
+    .then((selection): Record<string, Promise<CardGalleryHint | null>> => {
       if (
         !reads.loadGallery ||
         connection?.saveData ||
@@ -134,18 +144,30 @@ export function loadHome(
         connection?.effectiveType === "slow-2g" ||
         signal.aborted
       )
-        return null;
-      if (!settings || settings.mode !== "recentes" || settings.mix?.venda || settings.mix?.aluguel)
-        return null;
-      const lead = first?.items.find((property) => property.cover);
-      if (!lead?.cover || lead.photoCount < 2) return null;
-      return {
-        propertyId: lead.id,
-        coverRevision: `${lead.cover.id}:${lead.cover.version}`,
-        items: await reads.loadGallery(lead.id, signal, brand),
-      };
+        return {};
+      return Object.fromEntries(
+        (selection?.featured ?? []).map((property) => [
+          property.id,
+          (async (): Promise<CardGalleryHint | null> => {
+            if (!property.cover || property.photoCount < 2) return null;
+            try {
+              return {
+                propertyId: property.id,
+                coverRevision: `${property.cover.id}:${property.cover.version}${property.cover.enhancement ? `:${property.cover.enhancement}` : ""}`,
+                items: await reads.loadGallery!(
+                  property.id,
+                  AbortSignal.any([signal, AbortSignal.timeout(5_000)]),
+                  brand,
+                ),
+              };
+            } catch {
+              return null; // One unavailable gallery must not discard the other four.
+            }
+          })(),
+        ]),
+      );
     })
-    .catch(() => null);
+    .catch(() => ({}));
 
-  return { hero, listings, leadGallery };
+  return { hero, listings, featuredGalleries };
 }
