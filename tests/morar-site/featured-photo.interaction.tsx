@@ -4,11 +4,16 @@ import { FeaturedPhoto } from "../../src/components/cordial-site/FeaturedPhoto";
 import type { PublicMedia } from "../../src/lib/cordial-site/contract";
 
 vi.mock("../../src/components/cordial-site/PropertyCard", () => ({
-  PropertyImage: ({ media, alt, className, onImageReady }: any) =>
-    <img src={media.id} alt={alt} className={className} onLoad={onImageReady} />,
+  PropertyImage: ({ media, alt, className, onImageReady }: any) => (
+    <img src={media.id} alt={alt} className={className} onLoad={onImageReady} />
+  ),
 }));
-afterEach(() => { cleanup(); vi.useRealTimers(); });
-const media = (id: string) => ({ id, version: "v", position: 0, width: 480, height: 320 }) as PublicMedia;
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+const media = (id: string) =>
+  ({ id, version: "v", position: 0, width: 480, height: 320 }) as PublicMedia;
 
 it("retains the actual outgoing DOM image until the replacement loads and its short fade ends", () => {
   vi.useFakeTimers();
@@ -38,5 +43,24 @@ it("a rapid next change cannot be cleared by the previous transition's timer", (
   view.rerender(<FeaturedPhoto {...props} media={media("third")} />);
   act(() => vi.advanceTimersByTime(200));
   expect(view.container.querySelector(".cs-featured-photo-outgoing img")).toBe(second);
-  expect(view.container.querySelector(".cs-featured-photo-current")?.getAttribute("src")).toBe("third");
+  expect(view.container.querySelector(".cs-featured-photo-current")?.getAttribute("src")).toBe(
+    "third",
+  );
+});
+
+it("returning to the still-mounted outgoing photo does not wait for a second load event", () => {
+  vi.useFakeTimers();
+  const props = { sizes: "240px", alt: "Casa", fetchPriority: "low" as const };
+  const view = render(<FeaturedPhoto {...props} media={media("cover")} />);
+  const cover = view.container.querySelector("img")!;
+  fireEvent.load(cover);
+  view.rerender(<FeaturedPhoto {...props} media={media("second")} />);
+  view.rerender(<FeaturedPhoto {...props} media={media("cover")} />);
+  expect(view.container.querySelector(".cs-featured-photo-current")).toBe(cover);
+  expect(view.container.querySelector(".cs-featured-photo-outgoing")?.className).toContain(
+    "is-releasing",
+  );
+  act(() => vi.advanceTimersByTime(150));
+  expect(view.container.querySelectorAll("img")).toHaveLength(1);
+  expect(view.container.querySelector("img")).toBe(cover);
 });

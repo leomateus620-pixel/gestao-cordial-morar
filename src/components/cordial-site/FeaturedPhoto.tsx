@@ -17,14 +17,25 @@ export function FeaturedPhoto({
   fetchPriority: "auto" | "low";
 }) {
   const next = { media, sizes };
-  const [frame, setFrame] = useState<{ current: Frame; previous: Frame | null; ready: boolean }>({
+  const [frame, setFrame] = useState<{
+    current: Frame;
+    previous: Frame | null;
+    ready: boolean;
+    previousReady: boolean;
+  }>({
     current: next,
     previous: null,
     ready: false,
+    previousReady: false,
   });
   const key = identity(next);
   if (identity(frame.current) !== key) {
-    setFrame({ current: next, previous: frame.current, ready: false });
+    setFrame({
+      current: next,
+      previous: frame.current,
+      ready: Boolean(frame.previous && identity(frame.previous) === key && frame.previousReady),
+      previousReady: frame.ready,
+    });
   }
   useEffect(() => {
     if (!frame.ready || !frame.previous) return;
@@ -52,15 +63,15 @@ export function FeaturedPhoto({
             priority={Boolean(frame.previous)}
             fetchPriority={fetchPriority}
             className={i === 0 ? "cs-featured-photo-current" : ""}
-            onImageReady={
-              i === 0
-                ? () =>
-                    setFrame((value) =>
-                      identity(value.current) === key && !value.ready
-                        ? { ...value, ready: true }
-                        : value,
-                    )
-                : undefined
+            onImageReady={() =>
+              setFrame((value) => {
+                const loaded = identity(photo);
+                if (identity(value.current) === loaded && !value.ready)
+                  return { ...value, ready: true };
+                if (value.previous && identity(value.previous) === loaded && !value.previousReady)
+                  return { ...value, previousReady: true };
+                return value;
+              })
             }
           />
         </span>

@@ -53,3 +53,4 @@
 - [x] Fase 2: imagem semanal editada por IA (registro, worker, agendamento)
 - [x] Fase 3: área "Vitrine do site" no painel
 - [ ] Comprovar a primeira troca automática real (domingo 18h / segunda 06h) — depende de publicar
+- [ ] Piloto tratamento fiel: 3 fotos Cordial 1441 (lote 71049acb), aguardar conferência antes das 27 restantes

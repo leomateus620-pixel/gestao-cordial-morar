@@ -1,16 +1,20 @@
-# Verificação (somente leitura): IA dos destaques semanais
+# Destaques semanais: primeiro teste controlado (aguardando código)
 
-## Resultado
-- Chave da IA: configurada no projeto (gerenciada) e presente no ambiente do servidor. Valor não exibido.
-- Modelo usado por `editPhoto`: `openai/gpt-image-2.5-sunburst` (definido em `src/lib/cordial-site/showcase.ts`).
-- Disponibilidade: o modelo aparece na lista oficial de modelos do serviço de IA (consulta gratuita, resposta 200). Também existe uma versão mais nova, `openai/gpt-image-2.6-sunburst`, se quiser avaliar depois.
-- Nenhuma imagem gerada, nenhuma chamada paga, nada alterado.
+## Já verificado (somente leitura)
+- A chave da IA está configurada e disponível no servidor. O valor não foi exibido.
+- O modelo da edição de fotos (`openai/gpt-image-2.5-sunburst`) está disponível no serviço de IA.
+- Nenhuma imagem foi gerada e nada foi alterado ou cobrado.
 
-## Execução controlada (quando você pedir)
-Sim, consigo: depois que o código/migração estiverem no projeto e você autorizar, rodo a função só no servidor, para um imóvel/marca e até 3 fotos por vez, sem expor a chave. Pontos de atenção:
-- Cada foto é uma chamada paga (qualidade alta).
-- Créditos insuficientes (402) ou bloqueio (403) pausam a rotina, como já previsto no código.
-- Antes de rodar, confirmo marca, imóvel e quantas fotos.
+## Decisões
+- Só ajustes fiéis feitos pela IA sobre a foto original.
+- Primeiro teste: 1 imóvel com as 3 primeiras fotos dele.
 
-## Próximo passo
-Nenhuma ação agora. Aguardo seu código e o pedido de execução.
+## Quando você mandar o código validado e pedir a execução
+1. Confirmo com você a marca e o imóvel antes de rodar.
+2. Rodo a edição só no servidor, uma vez para cada uma das 3 fotos (3 chamadas pagas).
+3. O resultado fica como edição aguardando aprovação. Nada vai para o site sem a aprovação de um administrador.
+4. Mostro o antes e o depois das 3 fotos para você conferir se ficaram fiéis.
+5. Se faltar crédito ou a IA bloquear o acesso, a rotina para e eu aviso.
+
+## Agora
+Nenhuma ação até eu receber o código e a sua instrução.

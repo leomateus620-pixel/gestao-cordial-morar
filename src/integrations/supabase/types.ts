@@ -2605,6 +2605,206 @@ export type Database = {
         }
         Relationships: []
       }
+      cordial_site_featured_events: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: number
+          kind: string
+          photo_id: string | null
+          week_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: never
+          kind: string
+          photo_id?: string | null
+          week_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: never
+          kind?: string
+          photo_id?: string | null
+          week_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_featured_events_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_featured_authorized_photos"
+            referencedColumns: ["photo_id"]
+          },
+          {
+            foreignKeyName: "cordial_site_featured_events_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_featured_photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cordial_site_featured_events_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_featured_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_featured_items: {
+        Row: {
+          expected_photos: number
+          id: string
+          property_id: string
+          public_id: string
+          slot: number
+          week_id: string
+        }
+        Insert: {
+          expected_photos: number
+          id?: string
+          property_id: string
+          public_id: string
+          slot: number
+          week_id: string
+        }
+        Update: {
+          expected_photos?: number
+          id?: string
+          property_id?: string
+          public_id?: string
+          slot?: number
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_featured_items_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_featured_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_featured_photos: {
+        Row: {
+          attempts: number
+          checksum: string | null
+          error: string | null
+          height: number | null
+          id: string
+          item_id: string
+          lease: string | null
+          lease_until: string | null
+          media_id: string
+          media_version: string
+          model: string | null
+          ordinal: number
+          parameters: Json | null
+          prepared_at: string | null
+          source_position: number
+          state: string
+          storage_prefix: string | null
+          treatment_version: string | null
+          variants: Json
+          width: number | null
+        }
+        Insert: {
+          attempts?: number
+          checksum?: string | null
+          error?: string | null
+          height?: number | null
+          id?: string
+          item_id: string
+          lease?: string | null
+          lease_until?: string | null
+          media_id: string
+          media_version: string
+          model?: string | null
+          ordinal: number
+          parameters?: Json | null
+          prepared_at?: string | null
+          source_position: number
+          state?: string
+          storage_prefix?: string | null
+          treatment_version?: string | null
+          variants?: Json
+          width?: number | null
+        }
+        Update: {
+          attempts?: number
+          checksum?: string | null
+          error?: string | null
+          height?: number | null
+          id?: string
+          item_id?: string
+          lease?: string | null
+          lease_until?: string | null
+          media_id?: string
+          media_version?: string
+          model?: string | null
+          ordinal?: number
+          parameters?: Json | null
+          prepared_at?: string | null
+          source_position?: number
+          state?: string
+          storage_prefix?: string | null
+          treatment_version?: string | null
+          variants?: Json
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_featured_photos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_featured_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cordial_site_featured_weeks: {
+        Row: {
+          active_from: string | null
+          active_until: string | null
+          approval_basis: Json
+          approved_at: string
+          approved_by: string | null
+          created_at: string
+          expected_items: number
+          id: string
+          state: string
+          week_start: string
+        }
+        Insert: {
+          active_from?: string | null
+          active_until?: string | null
+          approval_basis: Json
+          approved_at: string
+          approved_by?: string | null
+          created_at?: string
+          expected_items: number
+          id?: string
+          state?: string
+          week_start: string
+        }
+        Update: {
+          active_from?: string | null
+          active_until?: string | null
+          approval_basis?: Json
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          expected_items?: number
+          id?: string
+          state?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       cordial_site_leads: {
         Row: {
           attendance_id: string | null
@@ -3100,6 +3300,7 @@ export type Database = {
       cordial_site_showcase_settings: {
         Row: {
           activate_hour: number
+          featured_policy: Json | null
           id: boolean
           last_run_at: string | null
           last_run_summary: string | null
@@ -3111,6 +3312,7 @@ export type Database = {
         }
         Insert: {
           activate_hour?: number
+          featured_policy?: Json | null
           id?: boolean
           last_run_at?: string | null
           last_run_summary?: string | null
@@ -3122,6 +3324,7 @@ export type Database = {
         }
         Update: {
           activate_hour?: number
+          featured_policy?: Json | null
           id?: boolean
           last_run_at?: string | null
           last_run_summary?: string | null
@@ -5454,6 +5657,206 @@ export type Database = {
         }
         Relationships: []
       }
+      morar_site_featured_events: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: number
+          kind: string
+          photo_id: string | null
+          week_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: never
+          kind: string
+          photo_id?: string | null
+          week_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: never
+          kind?: string
+          photo_id?: string | null
+          week_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morar_site_featured_events_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_featured_authorized_photos"
+            referencedColumns: ["photo_id"]
+          },
+          {
+            foreignKeyName: "morar_site_featured_events_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_featured_photos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "morar_site_featured_events_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_featured_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      morar_site_featured_items: {
+        Row: {
+          expected_photos: number
+          id: string
+          property_id: string
+          public_id: string
+          slot: number
+          week_id: string
+        }
+        Insert: {
+          expected_photos: number
+          id?: string
+          property_id: string
+          public_id: string
+          slot: number
+          week_id: string
+        }
+        Update: {
+          expected_photos?: number
+          id?: string
+          property_id?: string
+          public_id?: string
+          slot?: number
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morar_site_featured_items_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_featured_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      morar_site_featured_photos: {
+        Row: {
+          attempts: number
+          checksum: string | null
+          error: string | null
+          height: number | null
+          id: string
+          item_id: string
+          lease: string | null
+          lease_until: string | null
+          media_id: string
+          media_version: string
+          model: string | null
+          ordinal: number
+          parameters: Json | null
+          prepared_at: string | null
+          source_position: number
+          state: string
+          storage_prefix: string | null
+          treatment_version: string | null
+          variants: Json
+          width: number | null
+        }
+        Insert: {
+          attempts?: number
+          checksum?: string | null
+          error?: string | null
+          height?: number | null
+          id?: string
+          item_id: string
+          lease?: string | null
+          lease_until?: string | null
+          media_id: string
+          media_version: string
+          model?: string | null
+          ordinal: number
+          parameters?: Json | null
+          prepared_at?: string | null
+          source_position: number
+          state?: string
+          storage_prefix?: string | null
+          treatment_version?: string | null
+          variants?: Json
+          width?: number | null
+        }
+        Update: {
+          attempts?: number
+          checksum?: string | null
+          error?: string | null
+          height?: number | null
+          id?: string
+          item_id?: string
+          lease?: string | null
+          lease_until?: string | null
+          media_id?: string
+          media_version?: string
+          model?: string | null
+          ordinal?: number
+          parameters?: Json | null
+          prepared_at?: string | null
+          source_position?: number
+          state?: string
+          storage_prefix?: string | null
+          treatment_version?: string | null
+          variants?: Json
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morar_site_featured_photos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_featured_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      morar_site_featured_weeks: {
+        Row: {
+          active_from: string | null
+          active_until: string | null
+          approval_basis: Json
+          approved_at: string
+          approved_by: string | null
+          created_at: string
+          expected_items: number
+          id: string
+          state: string
+          week_start: string
+        }
+        Insert: {
+          active_from?: string | null
+          active_until?: string | null
+          approval_basis: Json
+          approved_at: string
+          approved_by?: string | null
+          created_at?: string
+          expected_items: number
+          id?: string
+          state?: string
+          week_start: string
+        }
+        Update: {
+          active_from?: string | null
+          active_until?: string | null
+          approval_basis?: Json
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          expected_items?: number
+          id?: string
+          state?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       morar_site_leads: {
         Row: {
           attendance_id: string | null
@@ -5896,6 +6299,7 @@ export type Database = {
       morar_site_showcase_settings: {
         Row: {
           activate_hour: number
+          featured_policy: Json | null
           id: boolean
           last_run_at: string | null
           last_run_summary: string | null
@@ -5907,6 +6311,7 @@ export type Database = {
         }
         Insert: {
           activate_hour?: number
+          featured_policy?: Json | null
           id?: boolean
           last_run_at?: string | null
           last_run_summary?: string | null
@@ -5918,6 +6323,7 @@ export type Database = {
         }
         Update: {
           activate_hour?: number
+          featured_policy?: Json | null
           id?: boolean
           last_run_at?: string | null
           last_run_summary?: string | null
@@ -11460,6 +11866,32 @@ export type Database = {
         }
         Relationships: []
       }
+      cordial_site_featured_authorized_photos: {
+        Row: {
+          checksum: string | null
+          height: number | null
+          media_id: string | null
+          media_version: string | null
+          ordinal: number | null
+          photo_id: string | null
+          public_id: string | null
+          slot: number | null
+          source_position: number | null
+          storage_prefix: string | null
+          variants: Json | null
+          week_id: string | null
+          width: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cordial_site_featured_items_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "cordial_site_featured_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       morar_site_admin_catalog: {
         Row: {
           archived_at: string | null
@@ -11654,6 +12086,32 @@ export type Database = {
           valor_modo: string | null
         }
         Relationships: []
+      }
+      morar_site_featured_authorized_photos: {
+        Row: {
+          checksum: string | null
+          height: number | null
+          media_id: string | null
+          media_version: string | null
+          ordinal: number | null
+          photo_id: string | null
+          public_id: string | null
+          slot: number | null
+          source_position: number | null
+          storage_prefix: string | null
+          variants: Json | null
+          week_id: string | null
+          width: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morar_site_featured_items_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "morar_site_featured_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       properties_catalog: {
         Row: {
@@ -12415,6 +12873,56 @@ export type Database = {
         Returns: string
       }
       cordial_site_facets: { Args: never; Returns: Json }
+      cordial_site_featured_activate: {
+        Args: { _week: string }
+        Returns: boolean
+      }
+      cordial_site_featured_active: {
+        Args: never
+        Returns: {
+          checksum: string
+          media_id: string
+          media_version: string
+          ordinal: number
+          public_id: string
+          slot: number
+        }[]
+      }
+      cordial_site_featured_claim: {
+        Args: { _lease: string; _week: string }
+        Returns: {
+          attempts: number
+          checksum: string | null
+          error: string | null
+          height: number | null
+          id: string
+          item_id: string
+          lease: string | null
+          lease_until: string | null
+          media_id: string
+          media_version: string
+          model: string | null
+          ordinal: number
+          parameters: Json | null
+          prepared_at: string | null
+          source_position: number
+          state: string
+          storage_prefix: string | null
+          treatment_version: string | null
+          variants: Json
+          width: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cordial_site_featured_photos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cordial_site_featured_plan: {
+        Args: { _items: Json; _week: string }
+        Returns: string
+      }
       cordial_site_filtered: {
         Args: { f?: Json }
         Returns: {
@@ -13426,6 +13934,56 @@ export type Database = {
         Returns: string
       }
       morar_site_facets: { Args: never; Returns: Json }
+      morar_site_featured_activate: {
+        Args: { _week: string }
+        Returns: boolean
+      }
+      morar_site_featured_active: {
+        Args: never
+        Returns: {
+          checksum: string
+          media_id: string
+          media_version: string
+          ordinal: number
+          public_id: string
+          slot: number
+        }[]
+      }
+      morar_site_featured_claim: {
+        Args: { _lease: string; _week: string }
+        Returns: {
+          attempts: number
+          checksum: string | null
+          error: string | null
+          height: number | null
+          id: string
+          item_id: string
+          lease: string | null
+          lease_until: string | null
+          media_id: string
+          media_version: string
+          model: string | null
+          ordinal: number
+          parameters: Json | null
+          prepared_at: string | null
+          source_position: number
+          state: string
+          storage_prefix: string | null
+          treatment_version: string | null
+          variants: Json
+          width: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "morar_site_featured_photos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      morar_site_featured_plan: {
+        Args: { _items: Json; _week: string }
+        Returns: string
+      }
       morar_site_filtered: {
         Args: { f?: Json }
         Returns: {
