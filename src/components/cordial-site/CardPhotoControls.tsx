@@ -16,7 +16,7 @@ export function CardPhotoControls({
   switching: boolean;
   failed: boolean;
   onMove: (delta: number) => void;
-  onPrepare: () => void;
+  onPrepare: (direction: -1 | 1) => void;
 }) {
   return (
     <>
@@ -24,7 +24,8 @@ export function CardPhotoControls({
         type="button"
         className="cs-card-photo-prev cs-icon-button"
         aria-label={`Foto anterior do imóvel ${reference}`}
-        onFocus={onPrepare}
+        onFocus={() => onPrepare(-1)}
+        onPointerEnter={(e) => e.pointerType !== "touch" && onPrepare(-1)}
         onClick={() => onMove(-1)}
       >
         <ChevronLeft size={19} />
@@ -33,7 +34,8 @@ export function CardPhotoControls({
         type="button"
         className="cs-card-photo-next cs-icon-button"
         aria-label={`Próxima foto do imóvel ${reference}`}
-        onFocus={onPrepare}
+        onFocus={() => onPrepare(1)}
+        onPointerEnter={(e) => e.pointerType !== "touch" && onPrepare(1)}
         onClick={() => onMove(1)}
       >
         <ChevronRight size={19} />

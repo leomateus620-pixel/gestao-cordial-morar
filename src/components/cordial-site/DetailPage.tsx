@@ -21,10 +21,9 @@ import {
   priceLabel,
   propertyPath,
   sitePath,
-  mediaPath,
 } from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
-import { getSiteBrand } from "@/lib/cordial-site/brand";
+import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
 import { WhatsAppIcon } from "./SocialIcons";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyCard, PropertyImage } from "./PropertyCard";
@@ -43,28 +42,43 @@ import { VisitorSelectionButton } from "./VisitorSelectionButton";
 import { PropertyVideo } from "./PropertyVideo";
 import { PropertyTour } from "./PropertyTour";
 import { PropertyShare } from "./PropertyShare";
-export function DetailPage({
-  property: p,
-  related,
-}: {
-  property: PublicDetail;
-  related: SiteCatalog | null;
-}) {
+import { useGalleryPhotos } from "./useGalleryPhotos";
+
+const LIGHTBOX_SIZES = "(max-width: 640px) calc(100vw - 30px), calc(92vw - 180px)";
+
+/** Mirror the mosaic and container widths so smaller tiles request smaller derivatives. */
+function detailPhotoSizes(tile: number, count: number, brand: SiteBrand) {
+  const mobile = brand === "cordial" ? 36 : 40;
+  if (count === 1)
+    return `(max-width: 640px) calc(100vw - ${mobile}px), (max-width: 1120px) calc(100vw - 64px), min(1280px, calc(100vw - 96px))`;
+  return tile === 0
+    ? `(max-width: 640px) calc(100vw - ${mobile}px), (max-width: 1120px) calc(64vw - 48px), min(815px, calc(64vw - 69px))`
+    : `(max-width: 640px) calc(50vw - ${mobile / 2 + 4}px), (max-width: 1120px) calc(36vw - 27px), min(453px, calc(36vw - 39px))`;
+}
+
+export function DetailPage({ property: p }: { property: PublicDetail }) {
   const { settings, canonicalOrigin } = useSite();
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
-  const [index, setIndex] = useState(0);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [recommendations, setRecommendations] = useState(related);
+  const [recommendations, setRecommendations] = useState<SiteCatalog | null>(null);
   const [returnTo, setReturnTo] = useState(sitePath("/buscar", brand));
   const [contactOpen, setContactOpen] = useState(false);
   const [videos, setVideos] = useState<PublicVideo[]>([]);
   const galleryTrigger = useRef<HTMLButtonElement | null>(null);
-  const touch = useRef<number | null>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
   const shareRef = useRef<HTMLInputElement>(null);
   const [previewOrigin, setPreviewOrigin] = useState<string | null>(null);
+  const photos = useGalleryPhotos({
+    active: open,
+    images: p.images,
+    brand,
+    sizes: LIGHTBOX_SIZES,
+    size: "full",
+  });
+  const { index, move, goTo, selectImmediately } = photos;
   useEffect(() => {
     if (!canonicalOrigin) setPreviewOrigin(window.location.origin);
   }, [canonicalOrigin]);
@@ -75,10 +89,6 @@ export function DetailPage({
     trackSiteEvent("property_open", { propertyId: p.id, reference: p.reference, source: "detail" });
   }, [p.id, p.city, p.type, p.operation, p.reference, brand]);
   useEffect(() => {
-    if (brand === "morar") setRecommendations(related);
-  }, [brand, related]);
-  useEffect(() => {
-    if (brand !== "cordial") return;
     let abort: AbortController;
     const refresh = () => {
       abort?.abort();
@@ -95,11 +105,12 @@ export function DetailPage({
           if (!current.signal.aborted) setRecommendations(result);
         })
         .catch(() => {});
-      loadVideos(p.id, current.signal, brand)
-        .then((result) => {
-          if (!current.signal.aborted) setVideos(result);
-        })
-        .catch(() => {});
+      if (brand === "cordial")
+        loadVideos(p.id, current.signal, brand)
+          .then((result) => {
+            if (!current.signal.aborted) setVideos(result);
+          })
+          .catch(() => {});
     };
     refresh();
     window.addEventListener(`${brand}:availability-refresh`, refresh);
@@ -109,48 +120,22 @@ export function DetailPage({
     };
   }, [p.id, p.city, p.type, p.operation, brand]);
   useEffect(() => {
-    setIndex((i) => (i < p.images.length ? i : 0));
     if (!p.images.length) setOpen(false);
   }, [p.images.length]);
   useEffect(() => {
-    const initial = photoIndexFromHash(window.location.hash, p.images.length) ?? 0;
-    setIndex(initial);
-    setPreviewIndex(initial);
+    setPreviewIndex(photoIndexFromHash(window.location.hash, p.images.length) ?? 0);
+  }, [p.id, p.images.length]);
+  useEffect(() => {
     const restorePhoto = () => {
       const requested = photoIndexFromHash(window.location.hash, p.images.length);
       if (requested !== null) {
-        setIndex(requested);
         setPreviewIndex(requested);
+        if (open) void goTo(requested);
       }
     };
     window.addEventListener("hashchange", restorePhoto);
     return () => window.removeEventListener("hashchange", restorePhoto);
-  }, [p.id, p.images.length]);
-  // Warm the lightbox: neighbours of the open photo load before the next click.
-  useEffect(() => {
-    if (!open || p.images.length < 2) return;
-    const n = p.images.length;
-    for (const d of [1, -1, 2]) {
-      const img = new Image();
-      img.decoding = "async";
-      img.src = mediaPath(p.images[(index + d + n) % n], "full", brand);
-    }
-  }, [open, index, p.images, brand]);
-  // After the page settles, fetch the first full photos in the background.
-  useEffect(() => {
-    const run = () =>
-      p.images.slice(0, 3).forEach((m) => {
-        const img = new Image();
-        img.src = mediaPath(m, "full", brand);
-      });
-    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
-    const t = w.requestIdleCallback ? w.requestIdleCallback(run) : window.setTimeout(run, 1200);
-    return () => {
-      if (!w.requestIdleCallback) window.clearTimeout(t);
-    };
-  }, [p.id, p.images, brand]);
-  const move = (n: number) =>
-    setIndex((i) => (p.images.length ? (i + n + p.images.length) % p.images.length : 0));
+  }, [p.id, p.images.length, open, goTo]);
   const url = propertyUrl(p, canonicalOrigin ?? previewOrigin ?? "", brand);
   const whatsapp = propertyWhatsapp(p, settings.whatsapp, url);
   return (
@@ -296,7 +281,7 @@ export function DetailPage({
                   className={`cs-gallery-tile cs-gallery-tile-${tile}`}
                   onClick={(e) => {
                     galleryTrigger.current = e.currentTarget;
-                    setIndex(i);
+                    selectImmediately(i);
                     setOpen(true);
                     if (brand === "cordial")
                       trackSiteEvent("gallery_open", {
@@ -311,6 +296,7 @@ export function DetailPage({
                     media={m}
                     alt={`Foto ${i + 1} do imóvel ${p.reference}`}
                     size={tile === 0 ? "full" : "card"}
+                    sizes={detailPhotoSizes(tile, p.images.length, brand)}
                     priority={tile === 0}
                   />
                   {tile === 0 && (
@@ -346,12 +332,21 @@ export function DetailPage({
                 }
               }}
               onPointerDown={(e) => {
-                if (e.pointerType === "touch") touch.current = e.clientX;
+                if (
+                  e.pointerType === "touch" &&
+                  !(e.target instanceof Element && e.target.closest("button"))
+                )
+                  touch.current = { x: e.clientX, y: e.clientY };
               }}
               onPointerUp={(e) => {
-                if (touch.current != null && Math.abs(e.clientX - touch.current) > 50)
-                  move(e.clientX < touch.current ? 1 : -1);
+                const start = touch.current;
                 touch.current = null;
+                if (
+                  start &&
+                  Math.abs(e.clientX - start.x) > 50 &&
+                  Math.abs(e.clientX - start.x) > Math.abs(e.clientY - start.y) * 1.4
+                )
+                  move(e.clientX < start.x ? 1 : -1);
               }}
               onPointerCancel={() => {
                 touch.current = null;
@@ -372,13 +367,14 @@ export function DetailPage({
                 >
                   <ArrowLeft />
                 </button>
-                {p.images[index] && (
+                {photos.current && (
                   <PropertyImage
-                    key={p.images[index].id}
-                    media={p.images[index]}
+                    media={photos.current}
                     alt={`Foto ${index + 1} do imóvel ${p.reference}`}
                     size="full"
+                    sizes={LIGHTBOX_SIZES}
                     priority
+                    onImageReady={photos.onImageReady}
                   />
                 )}
                 <button
@@ -391,6 +387,12 @@ export function DetailPage({
               </div>
               <p className="cs-photo-counter" aria-live="polite">
                 {index + 1} / {p.images.length}
+                {photos.pending?.status === "loading" && <span> · Carregando…</span>}
+                {photos.pending?.status === "failed" && (
+                  <button className="cs-photo-retry" type="button" onClick={photos.retry}>
+                    Tentar carregar foto {photos.pending.index + 1} novamente
+                  </button>
+                )}
               </p>
               <div className="cs-thumbnails">
                 {p.images.map((m, i) =>
@@ -399,7 +401,7 @@ export function DetailPage({
                       aria-label={`Ver foto ${i + 1}`}
                       aria-current={index === i ? "true" : undefined}
                       key={m.id}
-                      onClick={() => setIndex(i)}
+                      onClick={() => void goTo(i)}
                     >
                       <PropertyImage media={m} alt="" size="thumb" />
                     </button>

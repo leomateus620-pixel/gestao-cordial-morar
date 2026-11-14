@@ -1,6 +1,14 @@
 import { HomeExtras } from "./HomeExtras";
 import type React from "react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -15,8 +23,17 @@ import {
   X,
 } from "lucide-react";
 import { Await } from "@tanstack/react-router";
+import type { SiteBrand } from "@/lib/cordial-site/brand";
 import type { PublicProperty } from "@/lib/cordial-site/contract";
-import { areaLabel, priceLabel, propertyPath, sitePath } from "@/lib/cordial-site/presentation";
+import type { HomeData, HomeHeroData } from "@/lib/cordial-site/home-loader";
+import { cardSrcSet, resetSpeculativeScope } from "@/lib/cordial-site/card-photo-preload";
+import {
+  areaLabel,
+  mediaPath,
+  priceLabel,
+  propertyPath,
+  sitePath,
+} from "@/lib/cordial-site/presentation";
 import { SiteLink } from "./SiteShell";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { FavoriteButton, PropertyImage } from "./PropertyCard";
@@ -26,15 +43,6 @@ import { CardPhotoControls } from "./CardPhotoControls";
 import { RecentProperties } from "./RecentProperties";
 import { propertyUrl, propertyWhatsapp } from "@/lib/cordial-site/experience";
 import { WhatsAppIcon } from "./SocialIcons";
-
-export type HomeData = {
-  featured: PublicProperty[];
-  more: PublicProperty[];
-  hero: PublicProperty | null;
-  total: number;
-  /** Imagem da semana aprovada (edição por IA) e ponto de foco; null usa a foto original. */
-  heroImage?: { url: string | null; focalX: number; focalY: number } | null;
-};
 
 const HOME_COPY = {
   cordial: {
@@ -82,20 +90,98 @@ function Attributes({ p, max = 3 }: { p: PublicProperty; max?: number }) {
   );
 }
 
+type HomeCardVariant = "lg" | "sm" | "compact";
+
+/** Mirrors the home grid, including the split first card and 116px images on narrow screens. */
+function homeCardSizes(brand: SiteBrand, variant: HomeCardVariant, count: number) {
+  const mobileGutter = brand === "cordial" ? 36 : 40;
+  const tabletGutter = brand === "cordial" ? 36 : 64;
+  const desktopContainer = "min(1280px, 100vw - 96px)";
+
+  if (variant === "compact")
+    return [
+      "(max-width: 341px) 116px",
+      `(max-width: 560px) calc((100vw - ${mobileGutter + 10}px) / 2 - 2px)`,
+      `(max-width: 640px) calc((100vw - ${mobileGutter + 24}px) / 3 - 2px)`,
+      ...(brand === "cordial" ? ["(max-width: 768px) calc((100vw - 60px) / 3 - 2px)"] : []),
+      "(max-width: 900px) calc((100vw - 88px) / 3 - 2px)",
+      `(max-width: 1100px) calc((100vw - ${brand === "cordial" ? 106 : 100}px) / 4 - 2px)`,
+      "(max-width: 1120px) calc((100vw - 106px) / 4 - 2px)",
+      "(max-width: 1200px) calc((100vw - 138px) / 4 - 2px)",
+      `calc((${desktopContainer} - 56px) / 5 - 2px)`,
+    ].join(", ");
+
+  const desktopRatio = count === 1 ? 1 : count === 2 ? 2.35 : 3.35;
+  const desktopGaps = count === 1 ? 18 : count === 2 ? 32 : 46;
+  const column = variant === "lg" && count > 1 ? 1.35 : 1;
+  const desktopSize = (width: string) =>
+    `calc((${width} * 0.77 - ${desktopGaps}px) * ${column} / ${desktopRatio} - 2px)`;
+  const desktopSizes = [
+    `(max-width: 1120px) ${desktopSize("(100vw - 64px)")}`,
+    desktopSize(desktopContainer),
+  ];
+
+  if (variant === "lg")
+    return [
+      `(max-width: 380px) calc(100vw - ${mobileGutter + 2}px)`,
+      `(max-width: 640px) calc((100vw - ${mobileGutter + 2}px) * 0.45)`,
+      `(max-width: 760px) calc((100vw - ${tabletGutter + 2}px) * 0.45)`,
+      ...(brand === "cordial" ? ["(max-width: 768px) calc(100vw - 38px)"] : []),
+      "(max-width: 1100px) calc(100vw - 66px)",
+      ...desktopSizes,
+    ].join(", ");
+
+  const tabletRatio = count === 2 ? 2.35 : 2;
+  return [
+    "(max-width: 341px) 116px",
+    `(max-width: 640px) calc((100vw - ${mobileGutter + 10}px) / 2 - 2px)`,
+    `(max-width: 760px) calc((100vw - ${tabletGutter + 10}px) / 2 - 2px)`,
+    ...(brand === "cordial"
+      ? [`(max-width: 768px) calc((100vw - 50px) / ${tabletRatio} - 2px)`]
+      : []),
+    `(max-width: 1100px) calc((100vw - 78px) / ${tabletRatio} - 2px)`,
+    ...desktopSizes,
+  ].join(", ");
+}
+
 /** Card compacto da home: foto + dados essenciais, uma ação principal e favorito. */
 function HomeCard({
   p,
   variant,
   sizes,
+  galleryHint,
+  renderOffscreenImages,
 }: {
   p: PublicProperty;
-  variant: "lg" | "sm" | "compact";
+  variant: HomeCardVariant;
   sizes: string;
+  galleryHint?: HomeData["leadGallery"];
+  renderOffscreenImages: boolean;
 }) {
   const brand = useSiteBrand();
   const title = `${p.type ?? "Imóvel"}${p.district ? ` no ${p.district}` : ""}`;
   const photoRoot = useRef<HTMLDivElement | null>(null);
-  const photos = useCardPhotos(p, brand, photoRoot, sizes);
+  const photos = useCardPhotos(p, brand, photoRoot, sizes, galleryHint);
+  const [nearViewport, setNearViewport] = useState(false);
+  const showPhoto = nearViewport || renderOffscreenImages || !p.cover;
+  useEffect(() => {
+    const target = photoRoot.current;
+    if (!target || showPhoto) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: "80px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [showPhoto]);
   return (
     <article className={`cs-hx-card cs-hx-card-${variant}`}>
       <div className="cs-hx-card-media" ref={photoRoot} {...photos.swipeHandlers}>
@@ -105,7 +191,29 @@ function HomeCard({
           aria-label={title}
           tabIndex={-1}
         >
-          <PropertyImage media={photos.media} alt={title} sizes={photos.imageSizes} />
+          {showPhoto ? (
+            <PropertyImage
+              media={photos.media}
+              alt={title}
+              sizes={photos.imageSizes}
+              fetchPriority={variant === "lg" ? "auto" : "low"}
+            />
+          ) : (
+            p.cover && (
+              <noscript>
+                <img
+                  src={mediaPath(p.cover, "card", brand)}
+                  srcSet={cardSrcSet(p.cover, brand)}
+                  sizes={sizes}
+                  width={p.cover.width ?? 960}
+                  height={p.cover.height ?? 640}
+                  alt={title}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </noscript>
+            )
+          )}
           <span className="cs-hx-badge">{opLabel(p)}</span>
         </SiteLink>
         {photos.enabled && (
@@ -116,7 +224,7 @@ function HomeCard({
             switching={photos.switching}
             failed={photos.failed}
             onMove={(d) => void photos.move(d)}
-            onPrepare={() => photos.prepare(true)}
+            onPrepare={(direction) => photos.prepare(direction)}
           />
         )}
       </div>
@@ -138,8 +246,9 @@ function HomeCard({
   );
 }
 
-function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["heroImage"] }) {
+function HeroImage({ property, image, onSettled }: HomeHeroData & { onSettled?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const edited = useRef<HTMLImageElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -194,6 +303,14 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
     };
   }, []);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const editUrl = image?.url;
+  const showEdit = Boolean(editUrl && failedUrl !== editUrl);
+  useEffect(() => {
+    const img = edited.current;
+    if (!showEdit || !editUrl || !img?.complete) return;
+    if (img.naturalWidth) onSettled?.();
+    else setFailedUrl(editUrl);
+  }, [editUrl, showEdit, onSettled]);
   return (
     <div
       className="cs-hx-hero-media"
@@ -208,20 +325,30 @@ function HeroImage({ hero, image }: { hero: PublicProperty; image?: HomeData["he
       }
     >
       <div className="cs-hx-hero-layer">
-        {image?.url && failedUrl !== image.url ? (
+        {showEdit ? (
           // Edited derivative failed → fall back once to the authorized original of the same property.
           <img
-            src={image.url}
+            ref={edited}
+            src={editUrl ?? undefined}
             alt=""
             width={1536}
             height={1024}
             fetchPriority="high"
             decoding="async"
             className="cs-hx-showcase-img"
-            onError={() => setFailedUrl(image.url)}
+            onLoad={onSettled}
+            onError={() => setFailedUrl(editUrl ?? null)}
           />
         ) : (
-          <PropertyImage media={hero.cover} alt="" priority size="full" sizes="100vw" />
+          <PropertyImage
+            media={property.cover}
+            alt=""
+            priority
+            size="full"
+            sizes="100vw"
+            onImageReady={onSettled}
+            onImageError={onSettled}
+          />
         )}
       </div>
       <span className="cs-hx-hero-light" />
@@ -396,16 +523,25 @@ function DistrictsDrawer() {
   );
 }
 
-/** The search stays mounted while the shared home promise streams photos and offers. */
-export function MorarHomeHero({ home }: { home: Promise<HomeData | null> }) {
-  const copy = HOME_COPY.morar;
+function EmptyHomeHero({ onSettled }: { onSettled?: () => void }) {
+  useEffect(() => onSettled?.(), [onSettled]);
+  return <div className="cs-hx-hero-media" aria-hidden />;
+}
+
+export function HomeHero({ hero, onSettled }: Pick<HomeData, "hero"> & { onSettled?: () => void }) {
+  const brand = useSiteBrand();
+  const copy = HOME_COPY[brand];
   return (
     <section className="cs-hx-hero">
-      <Suspense fallback={null}>
-        <Await promise={home}>
-          {(data) => (data?.hero ? <HeroImage hero={data.hero} image={data.heroImage} /> : null)}
-        </Await>
-      </Suspense>
+      <Await promise={hero} fallback={<div className="cs-hx-hero-media" aria-hidden />}>
+        {(data) =>
+          data ? (
+            <HeroImage {...data} onSettled={onSettled} />
+          ) : (
+            <EmptyHomeHero onSettled={onSettled} />
+          )
+        }
+      </Await>
       <div className="cs-container cs-hx-hero-grid">
         <div className="cs-hx-hero-copy">
           <h1>
@@ -413,15 +549,19 @@ export function MorarHomeHero({ home }: { home: Promise<HomeData | null> }) {
           </h1>
           <p>
             <span className="cs-hx-long">{copy.sub}</span>
-            <span className="cs-hx-short">Comprar ou alugar, perto de você.</span>
+            <span className="cs-hx-short">
+              {brand === "morar"
+                ? "Comprar ou alugar, perto de você."
+                : "Comprar ou alugar, do seu jeito."}
+            </span>
           </p>
           <div className="cs-hx-search">
             <SearchForm compact initial={{ finalidade: "venda" }} />
           </div>
         </div>
         <Suspense fallback={null}>
-          <Await promise={home}>
-            {(data) => (data?.hero ? <HeroCard hero={data.hero} /> : null)}
+          <Await promise={hero}>
+            {(data) => (data ? <HeroCard hero={data.property} /> : null)}
           </Await>
         </Suspense>
       </div>
@@ -429,49 +569,40 @@ export function MorarHomeHero({ home }: { home: Promise<HomeData | null> }) {
   );
 }
 
-export function HomePage({ home }: { home: Promise<HomeData | null> }) {
-  const { settings, available } = useSite();
+export function HomePage({ hero, listings, leadGallery }: HomeData) {
+  const { settings } = useSite();
   const brand = useSiteBrand();
   const copy = HOME_COPY[brand];
+  // Route invalidation can deliver newer promises before their data. Keep the current
+  // section visible until the replacement is ready, including a confirmed empty result.
+  const visibleHero = useDeferredValue(hero);
+  const visibleListings = useDeferredValue(listings);
+  const [heroSettled, setHeroSettled] = useState(false);
+  const [wideViewport, setWideViewport] = useState(false);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 761px)");
+    const update = () => setWideViewport(desktop.matches);
+    update();
+    desktop.addEventListener("change", update);
+    return () => desktop.removeEventListener("change", update);
+  }, []);
+  const releaseCardImages = useCallback(() => setHeroSettled(true), []);
+  const renderOffscreenImages = wideViewport && heroSettled;
+  useEffect(() => resetSpeculativeScope(`${brand}:home`), [brand]);
   return (
     <>
-      {brand === "morar" && <MorarHomeHero home={home} />}
+      <HomeHero hero={visibleHero} onSettled={releaseCardImages} />
+      <HomeExtras />
       <Await
-        promise={home}
+        promise={visibleListings}
         fallback={
-          brand === "morar" ? (
-            <p className="cs-container cs-home-loading" role="status">
-              Carregando os imóveis…
-            </p>
-          ) : (
-            <HomeSkeleton />
-          )
+          <p className="cs-container cs-home-loading" role="status">
+            Carregando os imóveis…
+          </p>
         }
       >
         {(data) => (
           <>
-            {brand === "cordial" && (
-              <section className={`cs-hx-hero ${data?.hero ? "" : "is-neutral"}`}>
-                {data?.hero && <HeroImage hero={data.hero} image={data.heroImage} />}
-                <div className="cs-container cs-hx-hero-grid">
-                  <div className="cs-hx-hero-copy">
-                    <h1>
-                      {copy.lead} <em>{copy.accent}</em>
-                    </h1>
-                    <p>
-                      <span className="cs-hx-long">{copy.sub}</span>
-                      <span className="cs-hx-short">Comprar ou alugar, do seu jeito.</span>
-                    </p>
-                    <div className="cs-hx-search">
-                      <SearchForm compact initial={{ finalidade: "venda" }} />
-                    </div>
-                  </div>
-                  {data?.hero && <HeroCard hero={data.hero} />}
-                </div>
-              </section>
-            )}
-
-            <HomeExtras />
             <section className="cs-container cs-hx-featured" aria-labelledby="cs-hx-featured-title">
               <div className="cs-hx-heading">
                 <h2 id="cs-hx-featured-title">Imóveis em destaque</h2>
@@ -481,7 +612,7 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                 </SiteLink>
               </div>
               <div className="cs-hx-featured-layout">
-                {!available || !data ? (
+                {!data ? (
                   <div className="cs-inline-state" role="status">
                     <h3>Não foi possível atualizar os destaques.</h3>
                     <button className="cs-button cs-button-light" onClick={() => location.reload()}>
@@ -495,11 +626,9 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                         key={p.id}
                         p={p}
                         variant={i === 0 ? "lg" : "sm"}
-                        sizes={
-                          i === 0
-                            ? "(max-width: 560px) 45vw, (max-width: 1100px) 100vw, 40vw"
-                            : "(max-width: 1100px) 50vw, 20vw"
-                        }
+                        sizes={homeCardSizes(brand, i === 0 ? "lg" : "sm", data.featured.length)}
+                        galleryHint={i === 0 ? leadGallery : undefined}
+                        renderOffscreenImages={renderOffscreenImages}
                       />
                     ))}
                   </div>
@@ -526,7 +655,8 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
                       key={p.id}
                       p={p}
                       variant="compact"
-                      sizes="(max-width: 340px) 40vw, (max-width: 560px) 50vw, (max-width: 900px) 33vw, (max-width: 1200px) 25vw, 20vw"
+                      sizes={homeCardSizes(brand, "compact", data.more.length)}
+                      renderOffscreenImages={renderOffscreenImages}
                     />
                   ))}
                 </div>
@@ -597,23 +727,5 @@ export function HomePage({ home }: { home: Promise<HomeData | null> }) {
         </div>
       </section>
     </>
-  );
-}
-
-function HomeSkeleton() {
-  const copy = HOME_COPY[useSiteBrand()];
-  return (
-    <section className="cs-hx-hero is-neutral" role="status" aria-label="Carregando imóveis">
-      <div className="cs-container cs-hx-hero-grid">
-        <div className="cs-hx-hero-copy">
-          <h1>
-            {copy.lead} <em>{copy.accent}</em>
-          </h1>
-          <div className="cs-hx-search">
-            <SearchForm compact initial={{ finalidade: "venda" }} />
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }

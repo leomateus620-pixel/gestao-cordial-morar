@@ -1,7 +1,7 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { parsePropertyParam, propertySlug } from "@/lib/cordial-site/property-slug";
 import { breadcrumbJsonLd } from "@/lib/cordial-site/seo";
-import { loadCatalog, loadDetail, loadDetailState } from "@/lib/cordial-site/morar-data";
+import { loadDetail, loadDetailState } from "@/lib/cordial-site/morar-data";
 import { detailHead, siteHead, listingJsonLd, siteMatchData } from "@/lib/cordial-site/morar-seo";
 import { safeJsonLd, sitePath as defaultSitePath } from "@/lib/cordial-site/presentation";
 import { DetailPage } from "@/components/cordial-site/DetailPage";
@@ -22,22 +22,9 @@ export const Route = createFileRoute("/site-morar/imovel/$publicId")({
     if (!property) {
       const status = await loadDetailState(id, abortController.signal);
       if (status === "missing") throw notFound();
-      return { property: null, related: null };
+      return { property: null };
     }
-    let related = null;
-    try {
-      related = await loadCatalog(
-        {
-          cidade: property.city ?? undefined,
-          tipo: property.type ?? undefined,
-          finalidade: property.operation,
-        },
-        abortController.signal,
-      );
-    } catch {
-      /* Related offers must not hide the requested property. */
-    }
-    return { property, related };
+    return { property };
   },
   headers: ({ loaderData }) =>
     loaderData && !loaderData.property ? { "X-Cordial-Page-Status": "410" } : undefined,
@@ -83,7 +70,7 @@ export const Route = createFileRoute("/site-morar/imovel/$publicId")({
             }}
           />
         )}
-        <DetailPage property={data.property} related={data.related} />
+        <DetailPage key={data.property.id} property={data.property} />
       </>
     );
   },

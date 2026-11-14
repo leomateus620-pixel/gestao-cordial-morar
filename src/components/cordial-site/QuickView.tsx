@@ -16,6 +16,10 @@ import { propertyUrl, propertyWhatsapp, trackSiteEvent } from "@/lib/cordial-sit
 import { PropertyImage } from "./PropertyCard";
 import { SiteLink } from "./SiteShell";
 import { WhatsAppIcon } from "./SocialIcons";
+import { useGalleryPhotos } from "./useGalleryPhotos";
+
+const PREVIEW_SIZES = "(max-width: 768px) calc(100vw - 36px), min(496px, calc(53.5vw - 65px))";
+const GALLERY_SIZES = "(max-width: 640px) calc(100vw - 30px), calc(92vw - 56px)";
 
 export function QuickView({
   property: p,
@@ -26,6 +30,7 @@ export function QuickView({
   resume = false,
   originScrollTop,
   onIndexChange,
+  galleryReady = false,
   loading = false,
   failed = false,
   onRetry,
@@ -38,6 +43,7 @@ export function QuickView({
   resume?: boolean;
   originScrollTop?: number;
   onIndexChange?: (index: number) => void;
+  galleryReady?: boolean;
   loading?: boolean;
   failed?: boolean;
   onRetry?: () => void;
@@ -49,7 +55,10 @@ export function QuickView({
   const [surface, setSurface] = useState<"preview" | "gallery">(
     resume && location.hash === `#galeria-${p.id}` ? "gallery" : "preview",
   );
-  const [index, setIndex] = useState(initialIndex);
+  const sizes = surface === "gallery" ? GALLERY_SIZES : PREVIEW_SIZES;
+  const size = surface === "gallery" ? "full" : "card";
+  const photos = useGalleryPhotos({ images, brand, sizes, size, initialIndex });
+  const { current, index: currentIndex, move, pending, retry } = photos;
   const expand = useRef<HTMLButtonElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const gesture = useRef<{ x: number; y: number } | null>(null);
@@ -103,16 +112,11 @@ export function QuickView({
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, [p.id, site.canonicalOrigin, onClose, router]);
-  const photos = images.length ? images : p.cover ? [p.cover] : [];
-  const currentIndex = Math.min(index, Math.max(photos.length - 1, 0));
-  const current = photos[currentIndex];
   useEffect(() => {
-    onIndexChange?.(currentIndex);
-  }, [currentIndex, onIndexChange]);
-  const move = (delta: number) =>
-    setIndex((i) =>
-      photos.length ? (Math.min(i, photos.length - 1) + delta + photos.length) % photos.length : 0,
-    );
+    // During history restoration only the cover may be known. Keep the prior committed
+    // index until the list arrives so a rapid Back/Forward does not reset it.
+    if (galleryReady || initialIndex < images.length) onIndexChange?.(currentIndex);
+  }, [currentIndex, initialIndex, images.length, galleryReady, onIndexChange]);
   const leave = () => {
     if (surface === "gallery") {
       history.back();
@@ -198,13 +202,14 @@ export function QuickView({
               }}
             >
               <PropertyImage
-                key={current?.id ?? "empty"}
-                media={current ?? null}
+                media={current ?? p.cover}
                 alt={`Foto ${currentIndex + 1} do imóvel ${p.reference}`}
-                size={surface === "gallery" ? "full" : "card"}
+                size={size}
+                sizes={sizes}
                 priority
+                onImageReady={photos.onImageReady}
               />
-              {photos.length > 1 && (
+              {images.length > 1 && (
                 <div className="cs-photo-navigation">
                   <button
                     className="cs-icon-button"
@@ -214,7 +219,8 @@ export function QuickView({
                     <ArrowLeft />
                   </button>
                   <span aria-live="polite">
-                    {currentIndex + 1} / {photos.length}
+                    {currentIndex + 1} / {images.length}
+                    {pending?.status === "loading" && " · Carregando…"}
                   </span>
                   <button
                     className="cs-icon-button"
@@ -225,6 +231,15 @@ export function QuickView({
                   </button>
                 </div>
               )}
+              {pending?.status === "failed" && (
+                <button
+                  className="cs-photo-retry cs-preview-photo-retry"
+                  type="button"
+                  onClick={retry}
+                >
+                  Tentar carregar foto {pending.index + 1} novamente
+                </button>
+              )}
               {loading && <p role="status">Carregando outras fotos…</p>}
               {failed && (
                 <p role="status">
@@ -234,7 +249,7 @@ export function QuickView({
                   </button>
                 </p>
               )}
-              {surface === "preview" && photos.length > 0 && (
+              {surface === "preview" && (images.length > 0 || p.cover) && (
                 <button
                   ref={expand}
                   className="cs-expand-preview"

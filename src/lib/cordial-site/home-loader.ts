@@ -1,82 +1,151 @@
-// Shared home loader: same 5 + 15 selection for every brand, always scoped by brand.
-import type { PublicProperty, SiteBootstrap } from "./contract";
+import type { PublicProperty, SiteSettings } from "./contract";
 import type { SiteBrand } from "./brand";
-import { loadCatalog, loadShowcase, loadSummaries } from "./data";
+import type { CardGalleryHint } from "./card-gallery";
+import { loadCatalog, loadGallery, loadShowcase, loadSummaries } from "./data";
 import { HOME_FEATURED_LIMIT, HOME_MORE_LIMIT, selectFeatured, selectMore } from "./home-selection";
-import type { HomeData } from "@/components/cordial-site/HomePage";
 
 const MAX_PAGES = 4;
+const publicReads = { loadCatalog, loadShowcase, loadSummaries, loadGallery };
 
-export async function loadHome(
-  settings: SiteBootstrap["settings"] | undefined,
+export type HomeHeroData = {
+  property: PublicProperty;
+  /** An approved weekly edit can have its own URL and focal point. */
+  image: { url: string | null; focalX: number; focalY: number } | null;
+};
+
+type HomeListings = { featured: PublicProperty[]; more: PublicProperty[] };
+
+export type HomeData = {
+  hero: Promise<HomeHeroData | null>;
+  listings: Promise<HomeListings | null>;
+  leadGallery: Promise<CardGalleryHint | null>;
+};
+
+/** Both sections can stream as soon as their own authoritative reads are ready. */
+export function loadHome(
+  settings: Promise<SiteSettings | undefined>,
   signal: AbortSignal,
   brand: SiteBrand,
-): Promise<HomeData> {
-  const mode = settings?.featuredMode ?? "recentes";
-  const editorialIds =
-    mode === "editorial" ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT) : [];
-  const extraIds = [...editorialIds];
-  // Each brand reads only its own weekly showcase (separate tables, bucket and endpoint).
-  const showcase = await loadShowcase(signal, brand).catch(() => null);
-  if (showcase && !extraIds.includes(showcase.publicId)) extraIds.push(showcase.publicId);
-  if (settings?.heroPropertyId && !extraIds.includes(settings.heroPropertyId))
-    extraIds.push(settings.heroPropertyId);
-  const [summaries, ...firstPages] = await Promise.all([
-    extraIds.length
-      ? loadSummaries(extraIds, signal, brand).catch(() => ({
-          items: [] as PublicProperty[],
-          missingIds: [],
-        }))
-      : { items: [] as PublicProperty[], missingIds: [] },
-    loadCatalog({ ordem: "recentes", pagina: 1 }, signal, brand),
-    loadCatalog({ ordem: "recentes", pagina: 2 }, signal, brand).catch(() => null),
-  ]);
-  const pages: PublicProperty[][] = firstPages.filter(Boolean).map((c) => c!.items);
-  const recent = () => pages.flat();
-  let featured = selectFeatured({
-    mode,
-    editorialIds,
-    editorial: summaries.items,
-    recent: recent(),
-    mix: settings?.featuredMix,
-  });
-  let more = selectMore(
-    pages,
-    featured.map((p) => p.id),
-  );
-  const total = firstPages[0]!.total;
-  for (
-    let page = pages.length + 1;
-    page <= MAX_PAGES &&
-    (featured.length < HOME_FEATURED_LIMIT || more.length < HOME_MORE_LIMIT) &&
-    recent().length < total;
-    page++
-  ) {
-    const next = await loadCatalog({ ordem: "recentes", pagina: page }, signal, brand).catch(
-      () => null,
-    );
-    if (!next?.items.length) break;
-    pages.push(next.items);
-    featured = selectFeatured({
-      mode,
-      editorialIds,
-      editorial: summaries.items,
-      recent: recent(),
-      mix: settings?.featuredMix,
-    });
-    more = selectMore(
-      pages,
-      featured.map((p) => p.id),
-    );
-  }
-  const weekly = showcase
-    ? summaries.items.find((p) => p.id === showcase.publicId && p.cover)
-    : undefined;
-  const heroChoice =
-    weekly ?? summaries.items.find((p) => p.id === settings?.heroPropertyId && p.cover);
-  const heroImage =
-    weekly && showcase
-      ? { url: showcase.imageUrl, focalX: showcase.focalX, focalY: showcase.focalY }
-      : null;
-  return { featured, more, hero: heroChoice ?? featured[0] ?? null, total, heroImage };
+  reads: Omit<typeof publicReads, "loadGallery"> &
+    Partial<Pick<typeof publicReads, "loadGallery">> = publicReads,
+): HomeData {
+  const catalog = (pagina: number) =>
+    reads.loadCatalog({ ordem: "recentes", pagina }, signal, brand).catch(() => null);
+  // Start all brand-specific reads that do not depend on the parent layout.
+  const firstPage = catalog(1);
+  const secondPage = catalog(2);
+  const weeklyHero = reads
+    .loadShowcase(signal, brand)
+    .then(async (showcase): Promise<HomeHeroData | null> => {
+      if (!showcase) return null;
+      const { items } = await reads.loadSummaries([showcase.publicId], signal, brand);
+      const property = items.find((p) => p.id === showcase.publicId && p.cover);
+      return property
+        ? {
+            property,
+            image: { url: showcase.imageUrl, focalX: showcase.focalX, focalY: showcase.focalY },
+          }
+        : null;
+    })
+    .catch(() => null);
+
+  const config = settings
+    .then(async (settings) => {
+      const mode = settings?.featuredMode ?? "recentes";
+      const editorialIds =
+        mode === "editorial"
+          ? (settings?.featuredPropertyIds ?? []).slice(0, HOME_FEATURED_LIMIT)
+          : [];
+      const manualId = settings?.heroPropertyId;
+      const ids = [...new Set(manualId ? [...editorialIds, manualId] : editorialIds)];
+      const summaries = ids.length
+        ? await reads.loadSummaries(ids, signal, brand).catch(() => null)
+        : null;
+      return {
+        mode,
+        editorialIds,
+        editorial: summaries?.items ?? [],
+        mix: settings?.featuredMix,
+        manualHero: summaries?.items.find((p) => p.id === manualId && p.cover),
+      };
+    })
+    .catch(() => null);
+
+  const listings = Promise.all([config, firstPage, secondPage])
+    .then(async ([settings, first, second]) => {
+      if (!settings || !first) return null;
+
+      const pages = second ? [first.items, second.items] : [first.items];
+      let page = pages.length;
+      for (;;) {
+        const recent = pages.flat();
+        const featured = selectFeatured({ ...settings, recent });
+        const more = selectMore(
+          pages,
+          featured.map((p) => p.id),
+        );
+        if (
+          (featured.length >= HOME_FEATURED_LIMIT && more.length >= HOME_MORE_LIMIT) ||
+          recent.length >= first.total ||
+          page >= MAX_PAGES ||
+          signal.aborted
+        )
+          return { featured, more };
+
+        const next = await catalog(++page);
+        if (!next?.items.length) return { featured, more };
+        pages.push(next.items);
+      }
+    })
+    .catch(() => null);
+
+  const hero = weeklyHero
+    .then(async (weekly) => {
+      if (weekly) return weekly;
+      const settings = await config;
+      if (!settings) return null;
+
+      let property: PublicProperty | undefined =
+        settings.manualHero ?? selectFeatured({ ...settings, recent: [] }).at(0);
+      if (!property && !settings.mix?.venda && !settings.mix?.aluguel) {
+        property = (await firstPage)?.items.find((p) => p.cover);
+      }
+      // A reserved operation mix can change the first featured property when another page arrives.
+      property ??= (await listings)?.featured[0];
+      return property ? { property, image: null } : null;
+    })
+    .catch(() => null);
+
+  const connection = (
+    globalThis.navigator as
+      | (Navigator & {
+          connection?: { saveData?: boolean; effectiveType?: string };
+        })
+      | undefined
+  )?.connection;
+  // A common recent-only home can discover the lead card as soon as page one resolves.
+  // When editorial ordering or a mix is in use, leave preparation to the visible cards.
+  const leadGallery = Promise.all([config, firstPage])
+    .then(async ([settings, first]): Promise<CardGalleryHint | null> => {
+      if (
+        !reads.loadGallery ||
+        connection?.saveData ||
+        connection?.effectiveType === "2g" ||
+        connection?.effectiveType === "slow-2g" ||
+        signal.aborted
+      )
+        return null;
+      if (!settings || settings.mode !== "recentes" || settings.mix?.venda || settings.mix?.aluguel)
+        return null;
+      const lead = first?.items.find((property) => property.cover);
+      if (!lead?.cover || lead.photoCount < 2) return null;
+      return {
+        propertyId: lead.id,
+        coverRevision: `${lead.cover.id}:${lead.cover.version}`,
+        items: await reads.loadGallery(lead.id, signal, brand),
+      };
+    })
+    .catch(() => null);
+
+  return { hero, listings, leadGallery };
 }

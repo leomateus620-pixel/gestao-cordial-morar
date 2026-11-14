@@ -652,6 +652,13 @@
       "when": 1794596028196,
       "tag": "0092_catalog_situacao_rank",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1794624398000,
+      "tag": "0093_bound_public_showcase_lookup",
+      "breakpoints": true
     }
   ]
 }

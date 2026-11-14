@@ -1481,7 +1481,6 @@ body:has(.cordial-site) {
   min-width: 0;
   max-width: calc(100% - 124px);
   object-fit: contain;
-  animation: cs-fade-in 300ms;
 }
 .cs-lightbox .cs-photo-fallback {
   min-height: 0;
@@ -1492,6 +1491,22 @@ body:has(.cordial-site) {
   text-align: center;
   font-size: 12px;
   margin: 12px 0 !important;
+}
+.cs-photo-retry {
+  display: block;
+  margin: 6px auto 0;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background: #142d31;
+  color: #fff;
+  font-size: 12px;
+  text-decoration: underline;
+}
+.cs-preview-photo-retry {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 .cs-thumbnails {
   display: flex;

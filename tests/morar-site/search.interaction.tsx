@@ -1,18 +1,35 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act as testingAct,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { renderToString } from "react-dom/server";
 import { hydrateRoot } from "react-dom/client";
 import { MorarSearchForm } from "../../src/components/cordial-site/MorarSearchForm";
 import { SiteContext, SiteBrandContext } from "../../src/lib/cordial-site/context";
-import { MorarHomeHero, type HomeData } from "../../src/components/cordial-site/HomePage";
-import { settingsSchema, type SiteSearch } from "../../src/lib/cordial-site/contract";
+import { HomeHero, HomePage } from "../../src/components/cordial-site/HomePage";
+import type { HomeHeroData } from "../../src/lib/cordial-site/home-loader";
+import {
+  settingsSchema,
+  type PublicProperty,
+  type SiteSearch,
+} from "../../src/lib/cordial-site/contract";
 
 const mocks = vi.hoisted(() => ({ navigate: vi.fn(), count: vi.fn() }));
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
   useNavigate: () => mocks.navigate,
+  useRouterState: () => "/",
+  Link: ({ to, children }: { to: string; children?: React.ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 vi.mock("@/lib/cordial-site/data", () => ({ loadCatalogCount: mocks.count }));
 
@@ -25,6 +42,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 const facets = {
@@ -70,9 +88,67 @@ function mount(initial: Partial<SiteSearch> = { finalidade: "venda" }) {
 const lastSearch = () => mocks.navigate.mock.lastCall?.[0]?.search;
 
 describe("Morar direct search", () => {
+  it.each([true, false])(
+    "streams featured listings independently of the hero (desktop: %s)",
+    async (wideViewport) => {
+      vi.spyOn(window, "matchMedia").mockReturnValue({
+        matches: wideViewport,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      } as unknown as MediaQueryList);
+      let resolveHero!: (value: HomeHeroData | null) => void;
+      const hero = new Promise<HomeHeroData | null>((done) => {
+        resolveHero = done;
+      });
+      const property = {
+        id: "listed-house",
+        type: "Casa",
+        district: "Centro",
+        city: "Santa Rosa",
+        operation: "venda",
+        price: 100000,
+        priceMode: "fixo",
+        photoCount: 1,
+        areas: {},
+        cover: { id: "house-cover", version: "v1" },
+      } as PublicProperty;
+      const listings = Promise.resolve({ featured: [property], more: [] });
+      const leadGallery = Promise.resolve(null);
+      const view = await testingAct(async () =>
+        render(
+          <SiteBrandContext.Provider value="morar">
+            <SiteContext.Provider
+              value={{
+                facets,
+                settings: settingsSchema.parse({}),
+                available: true,
+                canonicalOrigin: null,
+                indexable: false,
+              }}
+            >
+              <HomePage hero={hero} listings={listings} leadGallery={leadGallery} />
+            </SiteContext.Provider>
+          </SiteBrandContext.Provider>,
+        ),
+      );
+
+      await screen.findByRole("heading", { name: "Imóveis em destaque" });
+      expect(screen.getByRole("heading", { name: "Casa" })).toBeTruthy();
+      expect(view.container.querySelector(".cs-hx-card-media img:not(noscript img)")).toBeNull();
+      expect(view.container.querySelector(".cs-hx-card-media noscript")).not.toBeNull();
+
+      await testingAct(async () => resolveHero(null));
+      // Happy DOM cannot fetch the test image; either a live img or its error state
+      // proves the cover was attached. The mobile gate remains below the viewport.
+      expect(Boolean(view.container.querySelector(".cs-hx-card-media noscript"))).toBe(
+        !wideViewport,
+      );
+    },
+  );
+
   it("keeps filled controls and the advanced draft mounted when the home finishes loading", async () => {
-    let resolve!: (value: HomeData) => void;
-    const home = new Promise<HomeData>((done) => {
+    let resolve!: (value: HomeHeroData | null) => void;
+    const hero = new Promise<HomeHeroData | null>((done) => {
       resolve = done;
     });
     const user = userEvent.setup();
@@ -87,7 +163,7 @@ describe("Morar direct search", () => {
             indexable: false,
           }}
         >
-          <MorarHomeHero home={home} />
+          <HomeHero hero={hero} />
         </SiteContext.Provider>
       </SiteBrandContext.Provider>,
     );
@@ -97,7 +173,7 @@ describe("Morar direct search", () => {
     await user.click(screen.getByRole("button", { name: "Mais filtros" }));
     await user.selectOptions(screen.getByLabelText("Mobiliado"), "sim");
     await act(async () => {
-      resolve({ hero: null, featured: [], more: [], total: 37 });
+      resolve(null);
     });
     expect(screen.getByRole("dialog", { name: "Mais filtros" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));

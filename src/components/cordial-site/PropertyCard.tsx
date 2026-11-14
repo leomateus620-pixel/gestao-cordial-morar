@@ -77,33 +77,44 @@ export function PropertyImage({
   media,
   alt,
   priority = false,
+  fetchPriority,
   size = "card",
   className = "",
   sizes: sizesOverride,
+  onImageReady,
+  onImageError,
 }: {
   media: PublicMedia | null;
   alt: string;
   priority?: boolean;
+  fetchPriority?: "high" | "low" | "auto";
   size?: "thumb" | "card" | "full";
   className?: string;
   sizes?: string;
+  onImageReady?: () => void;
+  onImageError?: () => void;
 }) {
   const brand = useSiteBrand();
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const readyCallback = useRef(onImageReady);
+  readyCallback.current = onImageReady;
+  const errorCallback = useRef(onImageError);
+  errorCallback.current = onImageError;
   const mediaKey = `${brand}:${media?.id ?? ""}:${media?.version ?? ""}:${size}`;
   // Single reconciliation per photo: reset, then accept an image the browser already finished (cache/SSR).
   useEffect(() => {
-    setFailed(false);
     const img = imgRef.current;
-    setLoaded(Boolean(img && img.complete && img.naturalWidth > 0));
+    const ready = Boolean(img && img.complete && img.naturalWidth > 0);
+    const broken = Boolean(img?.complete && img.currentSrc && !img.naturalWidth);
+    setFailed(broken);
+    setLoaded(ready);
+    if (ready) readyCallback.current?.();
+    if (broken) errorCallback.current?.();
   }, [mediaKey]);
   const responsiveSizes =
-    sizesOverride ??
-    (size === "full"
-      ? "(max-width: 768px) 100vw, 80vw"
-      : DEFAULT_CARD_SIZES);
+    sizesOverride ?? (size === "full" ? "(max-width: 768px) 100vw, 80vw" : DEFAULT_CARD_SIZES);
   if (!media || failed)
     return (
       <div className={`cs-photo-fallback ${className}`}>
@@ -115,36 +126,40 @@ export function PropertyImage({
     <img
       className={`${className} ${loaded ? "is-photo-ready" : "is-photo-loading"}`}
       src={mediaPath(media, size, brand)}
-      srcSet={
-        size === "thumb"
-          ? undefined
-          : cardSrcSet(media, brand)
-      }
+      srcSet={size === "thumb" ? undefined : cardSrcSet(media, brand)}
       ref={imgRef}
       sizes={responsiveSizes}
       width={media.width ?? 960}
       height={media.height ?? 640}
       loading={priority ? "eager" : "lazy"}
-      fetchPriority={priority ? "high" : "auto"}
+      fetchPriority={fetchPriority ?? (priority ? "high" : "auto")}
       decoding="async"
       alt={alt}
-      onError={() => setFailed(true)}
-      onLoad={() => setLoaded(true)}
+      onError={() => {
+        setFailed(true);
+        errorCallback.current?.();
+      }}
+      onLoad={() => {
+        setLoaded(true);
+        readyCallback.current?.();
+      }}
     />
   );
 }
 export function PropertyCard({
   property: p,
   priority = false,
+  sizes,
 }: {
   property: PublicProperty;
   priority?: boolean;
+  sizes?: string;
 }) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
   const site = useSite();
   const photoRoot = useRef<HTMLDivElement | null>(null);
-  const photos = useCardPhotos(p, brand, photoRoot);
+  const photos = useCardPhotos(p, brand, photoRoot, sizes);
   const { images, index, galleryState, ensurePhotos } = photos;
   const [quick, setQuick] = useState(false);
   const [resuming, setResuming] = useState(false);
@@ -208,7 +223,7 @@ export function PropertyCard({
             switching={photos.switching}
             failed={photos.failed}
             onMove={(d) => void photos.move(d)}
-            onPrepare={() => photos.prepare(true)}
+            onPrepare={photos.prepare}
           />
         )}
       </div>
@@ -320,6 +335,7 @@ export function PropertyCard({
           }}
           onClose={closeQuick}
           returnFocus={quickTrigger.current}
+          galleryReady={galleryState === "ready"}
           loading={galleryState === "loading"}
           failed={galleryState === "error"}
           onRetry={() => {

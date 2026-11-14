@@ -50,6 +50,19 @@ export function ResultsPage({
 }) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
+  const compactWidth = brand === "cordial" ? 36 : 40;
+  const photoSizes =
+    search.visualizacao === "lista"
+      ? `(max-width: 640px) calc(100vw - ${compactWidth}px), (max-width: 900px) 280px, 330px`
+      : [
+          `(max-width: 640px) calc(100vw - ${compactWidth}px)`,
+          brand === "cordial" && "(max-width: 768px) calc((100vw - 56px) / 2)",
+          "(max-width: 900px) calc((100vw - 84px) / 2)",
+          "(max-width: 1120px) calc((100vw - 104px) / 3)",
+          "min(410px, calc((100vw - 146px) / 3))",
+        ]
+          .filter(Boolean)
+          .join(", ");
   const [filters, setFilters] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState(!!search.referencia);
   const refreshing = useRouterState({
@@ -312,14 +325,14 @@ export function ResultsPage({
         </div>
       )}
       <SpeculativeScope
-        scope={`${JSON.stringify(search)}|${result.items.map((p) => p.id).join(",")}`}
+        scope={`${brand}:${JSON.stringify(search)}|${result.items.map((p) => p.id).join(",")}`}
       />
       {result.items.length ? (
         <div
           className={`cs-property-grid ${search.visualizacao === "lista" ? "cs-property-list" : ""}`}
         >
           {result.items.map((p, i) => (
-            <PropertyCard property={p} key={p.id} priority={i === 0} />
+            <PropertyCard property={p} key={p.id} priority={i === 0} sizes={photoSizes} />
           ))}
         </div>
       ) : !failed ? (
