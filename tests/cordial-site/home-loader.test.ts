@@ -92,6 +92,21 @@ test("unavailable weekly treatment falls back to the existing home selection", a
   );
 });
 
+test("a stalled treatment lookup is bounded and cannot hold the home indefinitely", async () => {
+  let treatmentSignal: AbortSignal | undefined;
+  const home = loadHome(Promise.resolve(options({})), signal, "cordial", {
+    loadCatalog: async ({ pagina }) => catalog(pagina!),
+    loadShowcase: async () => null,
+    loadFeatured: async (signal) => {
+      treatmentSignal = signal;
+      return new Promise(() => {});
+    },
+    loadSummaries: async () => ({ items: [], missingIds: [] }),
+  });
+  assert.equal((await home.listings)?.featured.length, 5);
+  assert.equal(treatmentSignal?.aborted, true);
+});
+
 test("home starts both catalog pages and the brand's showcase before settings; listings never wait for showcase", async () => {
   const settings = deferred<SiteSettings>();
   const weekly = deferred<PublicShowcase | null>();

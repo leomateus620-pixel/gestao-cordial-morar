@@ -32,7 +32,19 @@ export function loadHome(
   const catalog = (pagina: number) =>
     reads.loadCatalog({ ordem: "recentes", pagina }, signal, brand).catch(() => null);
   // Start all brand-specific reads that do not depend on the parent layout.
-  const weeklyFeatured = reads.loadFeatured?.(signal, brand).catch(() => []) ?? Promise.resolve([]);
+  // An optional weekly treatment must not stall the existing catalog if its read is unavailable.
+  const weeklyFeatured = new Promise<Awaited<ReturnType<typeof loadFeatured>>>((resolve) => {
+    if (!reads.loadFeatured) return resolve([]);
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+      resolve([]);
+    }, 1_000);
+    void reads
+      .loadFeatured(AbortSignal.any([signal, controller.signal]), brand)
+      .then(resolve, () => resolve([]))
+      .finally(() => clearTimeout(timer));
+  });
   const firstPage = catalog(1);
   const secondPage = catalog(2);
   const weeklyHero = reads

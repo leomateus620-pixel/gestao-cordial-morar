@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   analyzeFeaturedPhoto,
+  processFeaturedPhoto,
   renderFeaturedVariants,
 } from "../../src/lib/site-showcase/featured.server";
 import { encodeJpeg, decodeRaster } from "../../src/lib/imoveis/watermark-purejs.server";
@@ -18,6 +19,49 @@ const plan = {
   sharpness: 0.1,
   reason: "Abrir as sombras com suavidade.",
 };
+
+test("a scoped pilot cannot claim another property or process a lost reservation", async () => {
+  const oldFetch = globalThis.fetch;
+  const db = createClient("https://pilot-qa.invalid", "controlled-test-service-key", {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const publicId = "00000000-0000-4000-8000-000000000003";
+  let hasItem = false,
+    updates = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith("_weeks")) return Response.json([{ id: "week" }]);
+    if (url.pathname.endsWith("_items")) {
+      assert.equal(url.searchParams.get("public_id"), `eq.${publicId}`);
+      assert.equal(url.searchParams.get("week_id"), "eq.week");
+      return Response.json(hasItem ? [{ id: "item" }] : []);
+    }
+    if (url.pathname.endsWith("_photos")) {
+      if (init?.method === "PATCH") {
+        updates++;
+        assert.equal(url.searchParams.get("state"), "eq.queued");
+        assert.equal(url.searchParams.get("attempts"), "eq.0");
+        return Response.json([]); // Another worker already acquired it.
+      }
+      assert.equal(url.searchParams.get("item_id"), "eq.item");
+      return Response.json([{ id: "photo", attempts: 0 }]);
+    }
+    throw new Error("No AI or storage operation is allowed without a valid claim");
+  };
+  try {
+    assert.deepEqual(await processFeaturedPhoto(db, "week", "cordial", publicId), {
+      processed: false,
+    });
+    assert.equal(updates, 0);
+    hasItem = true;
+    assert.deepEqual(await processFeaturedPhoto(db, "week", "cordial", publicId), {
+      processed: false,
+    });
+    assert.equal(updates, 1);
+  } finally {
+    globalThis.fetch = oldFetch;
+  }
+});
 test("AI analysis is bounded and interrupted streaming is not silently retried", async () => {
   const originalFetch = globalThis.fetch,
     key = process.env.LOVABLE_API_KEY;

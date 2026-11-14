@@ -200,10 +200,77 @@ export async function planFeaturedWeek(
   return data as string;
 }
 
-export async function processFeaturedPhoto(db: SupabaseClient, weekId: string, brand: SiteBrand) {
+/** Optional property scope for a controlled administrator pilot; the hourly worker uses the RPC. */
+async function claimSelected(
+  db: SupabaseClient,
+  weekId: string,
+  brand: SiteBrand,
+  lease: string,
+  publicId: string,
+) {
+  const A = featuredAdapter(brand);
+  const week = await db
+    .from(A.weeks)
+    .select("id")
+    .eq("id", weekId)
+    .eq("state", "preparing")
+    .maybeSingle();
+  if (week.error || !week.data) return { data: [], error: week.error };
+  const item = await db
+    .from(A.items)
+    .select("id")
+    .eq("week_id", weekId)
+    .eq("public_id", publicId)
+    .maybeSingle();
+  if (item.error || !item.data) return { data: [], error: item.error };
+  const next = await db
+    .from(A.photos)
+    .select("*")
+    .eq("item_id", item.data.id)
+    .eq("state", "queued")
+    .lt("attempts", 3)
+    .order("ordinal")
+    .limit(1)
+    .maybeSingle();
+  if (next.error || !next.data) return { data: [], error: next.error };
+  const claim = await db
+    .from(A.photos)
+    .update({
+      state: "processing",
+      lease,
+      lease_until: new Date(Date.now() + 300_000).toISOString(),
+      attempts: next.data.attempts + 1,
+      error: null,
+    })
+    .eq("id", next.data.id)
+    .eq("state", "queued")
+    .eq("attempts", next.data.attempts)
+    .select("*");
+  if (claim.data?.length) {
+    const event = await db
+      .from(A.events)
+      .insert({
+        week_id: weekId,
+        photo_id: next.data.id,
+        kind: "processing",
+        detail: { scope: "selected_property" },
+      });
+    failure(event.error, "Não foi possível registrar a reserva da foto.");
+  }
+  return claim;
+}
+
+export async function processFeaturedPhoto(
+  db: SupabaseClient,
+  weekId: string,
+  brand: SiteBrand,
+  publicId?: string,
+) {
   const A = featuredAdapter(brand),
     lease = crypto.randomUUID();
-  const claim = await db.rpc(A.claim, { _week: weekId, _lease: lease });
+  const claim = publicId
+    ? await claimSelected(db, weekId, brand, lease, z.string().uuid().parse(publicId))
+    : await db.rpc(A.claim, { _week: weekId, _lease: lease });
   failure(claim.error, "Não foi possível reservar a próxima foto.");
   const photo = claim.data?.[0];
   if (!photo) return { processed: false };
