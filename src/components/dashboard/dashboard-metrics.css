@@ -1,0 +1,490 @@
+.dashboard-metrics {
+  margin-bottom: 1.25rem;
+  container-type: inline-size;
+}
+.dashboard-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+.dashboard-metric {
+  --metric-color: #158678;
+  --metric-ink: #11685f;
+  --metric-tint: color-mix(in srgb, var(--metric-color) 9%, transparent);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  box-shadow:
+    0 3px 5px -4px rgb(23 27 33 / 0.08),
+    0 16px 32px -26px rgb(23 27 33 / 0.22);
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.dashboard-metric[data-accent="emerald"] {
+  --metric-color: #229466;
+  --metric-ink: #146c47;
+}
+.dashboard-metric[data-accent="amber"] {
+  --metric-color: #be7e28;
+  --metric-ink: #915b16;
+}
+.dashboard-metric[data-accent="violet"] {
+  --metric-color: #9270c7;
+  --metric-ink: #7550a8;
+}
+.dashboard-metric[data-accent="sky"] {
+  --metric-color: #328dbb;
+  --metric-ink: #236d94;
+}
+.dashboard-metric:hover,
+.dashboard-metric:focus-within {
+  border-color: color-mix(in srgb, var(--metric-color) 32%, transparent);
+  box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--metric-color) 30%, transparent);
+}
+.metric-body {
+  padding: 1.125rem 1.125rem 0.875rem;
+}
+.metric-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+.metric-heading h2 {
+  padding-top: 0.5rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
+}
+.metric-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.metric-link svg {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.metric-link:hover svg,
+.metric-link:focus-visible svg {
+  opacity: 0.65;
+}
+.metric-period-trigger {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  color: var(--metric-ink);
+  background: var(--metric-tint);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.metric-period-trigger:hover,
+.metric-period-trigger[data-state="open"] {
+  background: color-mix(in srgb, var(--metric-color) 18%, transparent);
+}
+.metric-period-trigger:active {
+  transform: scale(0.96);
+}
+.metric-period-chevron {
+  position: absolute;
+  right: 3px;
+  bottom: 4px;
+}
+.metric-selected-period {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+  min-height: 1rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 550;
+  line-height: 1.4;
+}
+.metric-selected-period svg {
+  flex-shrink: 0;
+}
+.metric-reading {
+  margin-top: 0.5rem;
+}
+.metric-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.1cqw, 2.5rem);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+}
+.metric-detail {
+  margin-top: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  min-height: 1.5em;
+}
+.metric-chart-section {
+  margin-top: auto;
+  padding: 0.75rem 1.125rem 0.875rem;
+  border-top: 1px solid color-mix(in srgb, var(--metric-color) 10%, transparent);
+  background: color-mix(in srgb, var(--metric-color) 3%, transparent);
+  border-radius: 0 0 1.5rem 1.5rem;
+}
+.metric-chart-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+.metric-chart-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: var(--metric-color);
+}
+.metric-chart {
+  min-width: 0;
+  margin-top: 0.25rem;
+}
+.metric-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.375rem;
+  border-top: 1px solid color-mix(in srgb, var(--metric-color) 18%, transparent);
+}
+.metric-chart-empty {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.metric-chart-tooltip {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.625rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-size: 0.625rem;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.1);
+}
+.metric-chart-tooltip strong {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 0.125rem;
+}
+.metric-undated {
+  margin-top: 0.375rem;
+  color: var(--muted-foreground);
+  font-size: 0.625rem;
+}
+.metric-chart-state {
+  display: flex;
+  min-height: 127px;
+  padding: 1.125rem;
+  margin-top: auto;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--border);
+}
+.metric-skeleton,
+.metric-chart-skeleton {
+  display: block;
+  border-radius: 0.5rem;
+  background: var(--muted);
+  animation: metric-pulse 1.4s ease-in-out infinite alternate;
+}
+.metric-skeleton {
+  width: 4rem;
+  height: 3rem;
+}
+.metric-chart-skeleton {
+  width: 100%;
+  height: 60px;
+}
+.metric-retry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-size: 0.75rem;
+  color: var(--metric-ink);
+  cursor: pointer;
+}
+.metric-period-popover {
+  width: min(304px, calc(100vw - 24px));
+  padding: 0.875rem;
+  border-radius: 1rem;
+  box-shadow: 0 16px 48px -16px rgb(23 27 33 / 0.3);
+  max-height: var(--radix-popover-content-available-height);
+  overflow-y: auto;
+}
+.metric-picker-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+.metric-picker-heading h3 {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+.metric-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.metric-close:hover {
+  background: var(--muted);
+}
+.metric-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+.metric-presets button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  padding: 0.375rem 0.25rem;
+  font-size: 0.6875rem;
+  text-align: left;
+  cursor: pointer;
+}
+.metric-presets button:hover {
+  background: var(--muted);
+}
+.metric-presets button[aria-pressed="true"] {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  font-weight: 650;
+}
+.metric-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0.25rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.625rem;
+  border-radius: 0.75rem;
+  background: var(--muted);
+}
+.metric-mode label {
+  position: relative;
+  padding: 0.5rem 0.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.6875rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.metric-mode label:has(:checked) {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+  font-weight: 600;
+}
+.metric-mode input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.metric-date-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.metric-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+}
+.metric-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  padding: 0.5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font: inherit;
+  font-size: 0.75rem;
+  color-scheme: light;
+}
+.metric-field input[aria-invalid="true"] {
+  border-color: var(--destructive);
+}
+.metric-date-error {
+  font-size: 0.75rem;
+  color: var(--destructive);
+  margin-top: 0.5rem;
+}
+.metric-apply {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.metric-apply:hover {
+  opacity: 0.9;
+}
+.metric-reset {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  margin-top: 0.25rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  cursor: pointer;
+}
+.dashboard-metrics :is(a, button, svg[tabindex]):focus-visible,
+.metric-period-popover :is(button, input):focus-visible,
+.metric-mode label:has(:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+.dark .dashboard-metric {
+  --metric-ink: color-mix(in srgb, var(--metric-color) 55%, white);
+}
+.dark .metric-field input {
+  color-scheme: dark;
+}
+@container (min-width: 660px) {
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container (min-width: 1060px) {
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+@container (max-width: 399px) {
+  .dashboard-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .metric-body {
+    padding: 1rem 1.25rem;
+  }
+  .metric-selected-period {
+    min-height: 1.25rem;
+  }
+  .metric-detail {
+    min-height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-metrics *,
+  .metric-period-popover,
+  .metric-period-popover * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .dashboard-metric {
+    background: var(--popover);
+  }
+}
+@keyframes metric-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+.metric-heading-copy {
+  min-width: 0;
+}
+.metric-heading-copy .metric-link {
+  display: inline;
+}
+.metric-heading-copy .metric-link svg {
+  display: none;
+}
+.metric-heading-copy .metric-link:hover {
+  color: var(--metric-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .metric-period-popover button,
+  .metric-mode label {
+    min-height: 44px;
+  }
+}
+
+.metric-presets button:nth-child(n + 7) {
+  grid-column: 1 / -1;
+}
+.metric-presets button svg {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+}
+.metric-picker-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.metric-picker-actions :is(.metric-apply, .metric-reset) {
+  margin: 0;
+  min-height: 44px;
+  justify-content: center;
+}

@@ -19,7 +19,6 @@ import { AgenciamentosQuickStrip } from "@/components/agenciamentos/Agenciamento
 import { DailyBriefing } from "@/components/assistant/AgentWorkspace";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCards";
-import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { PropertyIntelligenceCard } from "@/components/dashboard/PropertyIntelligenceCard";
@@ -110,7 +109,6 @@ function Dashboard() {
   const { dashboardSummary: agenciamentosSummary, dashboardRanking: agenciamentosRanking } =
     useAgenciamentos({ skipDashboard: !isAdminOwner });
   const equipePerformance = useEquipePerformance({ enabled: isAdminOwner });
-  const metrics = useDashboardMetrics();
   const filterByAgency = <T extends { imobiliaria: "cordial" | "morar" | "ambas" }>(items: T[]) =>
     agency === "todas"
       ? items
