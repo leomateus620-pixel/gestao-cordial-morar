@@ -6,7 +6,7 @@ import { canSpeculatePhotos, preloadCardImage } from "@/lib/cordial-site/card-ph
 type GallerySize = "card" | "full";
 type PendingPhoto = { index: number; status: "loading" | "failed" };
 
-const photoKey = (photo: PublicMedia | undefined) => (photo ? `${photo.id}:${photo.version}` : "");
+const photoKey = (photo: PublicMedia | undefined) => (photo ? `${photo.id}:${photo.version}:${photo.enhancement ?? ""}` : "");
 const clampIndex = (index: number, length: number) => Math.max(0, Math.min(index, length - 1));
 const wrapIndex = (index: number, length: number) => ((index % length) + length) % length;
 

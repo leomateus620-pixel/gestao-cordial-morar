@@ -1,0 +1,6066 @@
+{
+  "baseline": "927e8898 (PR #45)",
+  "candidate": "featured photo preparation and persistent frames; AI inactive in timing fixture",
+  "runs": [
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 1,
+      "bytes": 2333895,
+      "hero": 1451,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 45,
+          "ms": 731,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 365,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 9,
+          "ms": 117,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 56,
+          "ms": 916,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 114,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 117,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 114,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 56,
+          "ms": 914,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 101,
+          "step": 4
+        }
+      ],
+      "profile": "desktop"
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 1,
+      "bytes": 2470599,
+      "hero": 1501,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 34,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        }
+      ],
+      "profile": "desktop"
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 2,
+      "profile": "desktop",
+      "bytes": 2333895,
+      "hero": 1441,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 45,
+          "ms": 732,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 367,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 2,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 101,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 114,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 56,
+          "ms": 916,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 98,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 117,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 2,
+      "profile": "desktop",
+      "bytes": 2470599,
+      "hero": 1395,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 34,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 34,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 3,
+      "profile": "desktop",
+      "bytes": 2333895,
+      "hero": 1438,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 44,
+          "ms": 716,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 55,
+          "ms": 897,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 116,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 2,
+          "ms": 13,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 117,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 98,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 56,
+          "ms": 915,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 99,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 3,
+      "profile": "desktop",
+      "bytes": 2470599,
+      "hero": 1394,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 4,
+      "profile": "desktop",
+      "bytes": 2333895,
+      "hero": 1439,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 45,
+          "ms": 732,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 365,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 55,
+          "ms": 899,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 116,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 101,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 2,
+          "ms": 14,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 99,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 117,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 2,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 117,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 4,
+      "profile": "desktop",
+      "bytes": 2470599,
+      "hero": 1395,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 5,
+      "profile": "desktop",
+      "bytes": 2333895,
+      "hero": 1441,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 44,
+          "ms": 717,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 365,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 98,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 2,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 117,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 59,
+          "ms": 942,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 9,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 9,
+          "ms": 114,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 57,
+          "ms": 914,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 98,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 9,
+          "ms": 115,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 98,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 5,
+      "profile": "desktop",
+      "bytes": 2470599,
+      "hero": 1395,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 1,
+      "profile": "desktop",
+      "bytes": 2285635,
+      "hero": 1448,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 28,
+          "ms": 447,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 365,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 8,
+          "ms": 115,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 56,
+          "ms": 915,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 2,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 98,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 56,
+          "ms": 915,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 2,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 101,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 1,
+      "profile": "desktop",
+      "bytes": 2422339,
+      "hero": 1396,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 16,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 30,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 2,
+      "profile": "desktop",
+      "bytes": 2285635,
+      "hero": 1443,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 45,
+          "ms": 729,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 365,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 8,
+          "ms": 117,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 56,
+          "ms": 913,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 101,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 9,
+          "ms": 114,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 56,
+          "ms": 915,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 2,
+          "ms": 14,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 117,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 2,
+          "ms": 17,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 115,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 100,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 2,
+      "profile": "desktop",
+      "bytes": 2422339,
+      "hero": 1393,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 3,
+      "profile": "desktop",
+      "bytes": 2285635,
+      "hero": 1448,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 27,
+          "ms": 432,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 365,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 367,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 56,
+          "ms": 914,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 101,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 114,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 2,
+          "ms": 13,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 117,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 57,
+          "ms": 915,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 9,
+          "ms": 115,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 9,
+          "ms": 115,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 14,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 9,
+          "ms": 114,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 99,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 3,
+      "profile": "desktop",
+      "bytes": 2422339,
+      "hero": 1396,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 29,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 4,
+      "profile": "desktop",
+      "bytes": 2285635,
+      "hero": 1443,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 45,
+          "ms": 720,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 24,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 22,
+          "ms": 361,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 8,
+          "ms": 105,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 56,
+          "ms": 914,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 117,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 56,
+          "ms": 914,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 100,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 115,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 103,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 11,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 9,
+          "ms": 114,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 100,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 9,
+          "ms": 115,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 12,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 101,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 9,
+          "ms": 115,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 9,
+          "ms": 114,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 4,
+      "profile": "desktop",
+      "bytes": 2422339,
+      "hero": 1398,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 5,
+      "profile": "desktop",
+      "bytes": 2285635,
+      "hero": 1446,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 45,
+          "ms": 729,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 23,
+          "ms": 366,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 8,
+          "ms": 116,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 2,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 98,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 56,
+          "ms": 916,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 2,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 8,
+          "ms": 116,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 7,
+          "ms": 101,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 56,
+          "ms": 914,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 99,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 8,
+          "ms": 117,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 5,
+      "profile": "desktop",
+      "bytes": 2422339,
+      "hero": 1401,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 34,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        }
+      ]
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 1,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2437,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1162,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 799,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 41,
+          "ms": 649,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 29,
+          "ms": 449,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 16,
+          "ms": 231,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 66,
+          "ms": 1065,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 233,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 26,
+          "ms": 398,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 231,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 383,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 23,
+          "ms": 348,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4331/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 1,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2468,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 24,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1166,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 8,
+          "ms": 100,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 36,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 27,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 40,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 24,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4332/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 1,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2433,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 74,
+          "ms": 1190,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 39,
+          "ms": 615,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 798,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 41,
+          "ms": 648,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 30,
+          "ms": 465,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 16,
+          "ms": 233,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 13,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 23,
+          "ms": 350,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 30,
+          "ms": 466,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 250,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4331/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 1,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2477,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 25,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1165,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4332/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 2,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2455,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 71,
+          "ms": 1148,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 17,
+          "ms": 246,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 797,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 633,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 67,
+          "ms": 1078,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 248,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 12,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 24,
+          "ms": 364,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 231,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 67,
+          "ms": 1082,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 17,
+          "ms": 247,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 379,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 12,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 23,
+          "ms": 347,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 26,
+          "ms": 398,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4331/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 2,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2469,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 25,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1166,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 5,
+          "ms": 49,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 30,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 30,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 30,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4332/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 2,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2444,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 73,
+          "ms": 1173,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 632,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 797,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 17,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 30,
+          "ms": 463,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 25,
+          "ms": 383,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 248,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 67,
+          "ms": 1079,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 231,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 17,
+          "ms": 246,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 11,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 23,
+          "ms": 348,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 16,
+          "ms": 234,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4331/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 2,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2472,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 34,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 30,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 69,
+          "ms": 1118,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 29,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 6,
+          "ms": 51,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 29,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 29,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 34,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 29,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 30,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 29,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4332/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 3,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2443,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1154,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 629,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 797,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 14,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 29,
+          "ms": 449,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 16,
+          "ms": 231,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 248,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 68,
+          "ms": 1096,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 26,
+          "ms": 396,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 13,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 24,
+          "ms": 366,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 26,
+          "ms": 396,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 248,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4331/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 3,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2472,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 35,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1166,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 7,
+          "ms": 99,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 29,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4332/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 3,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2448,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 74,
+          "ms": 1191,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 632,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 799,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 632,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 31,
+          "ms": 482,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 23,
+          "ms": 349,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 233,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 30,
+          "ms": 465,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 26,
+          "ms": 399,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 66,
+          "ms": 1064,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 16,
+          "ms": 233,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4331/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 3,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2475,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 24,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 70,
+          "ms": 1133,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 42,
+          "ms": 665,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4332/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 4,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2434,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1156,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 798,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 632,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 67,
+          "ms": 1080,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 14,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 23,
+          "ms": 348,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 383,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 23,
+          "ms": 347,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4331/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 4,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2477,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 25,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 34,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 71,
+          "ms": 1162,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 15,
+          "ms": 232,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 34,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 29,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 6,
+          "ms": 49,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 35,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 29,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 30,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 28,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4332/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 4,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2434,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 74,
+          "ms": 1187,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 634,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 797,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 632,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 12,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 30,
+          "ms": 484,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 26,
+          "ms": 395,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 248,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 67,
+          "ms": 1079,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 380,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 15,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 30,
+          "ms": 465,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 17,
+          "ms": 245,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 23,
+          "ms": 348,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 26,
+          "ms": 397,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 17,
+          "ms": 247,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4331/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 4,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2477,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 26,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 71,
+          "ms": 1149,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 5,
+          "ms": 35,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 5,
+          "ms": 50,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 27,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 40,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 23,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 30,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4332/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "before",
+      "run": 5,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2446,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1157,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 16,
+          "ms": 232,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 798,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 41,
+          "ms": 647,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 247,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 249,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 13,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 24,
+          "ms": 364,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 380,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 17,
+          "ms": 251,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 68,
+          "ms": 1093,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 233,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 26,
+          "ms": 396,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 24,
+          "ms": 364,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 25,
+          "ms": 383,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4331/",
+      "width": 390
+    },
+    {
+      "brand": "cordial",
+      "variant": "after",
+      "run": 5,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2472,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 34,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 71,
+          "ms": 1148,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 41,
+          "ms": 650,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 35,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 29,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 30,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 30,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 31,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 33,
+          "step": 4
+        }
+      ],
+      "url": "http://localhost:4332/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "before",
+      "run": 5,
+      "profile": "mobile",
+      "bytes": 1452962,
+      "dpr": 2,
+      "hero": 2430,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 72,
+          "ms": 1158,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 17,
+          "ms": 248,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 50,
+          "ms": 798,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 40,
+          "ms": 632,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 67,
+          "ms": 1081,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 15,
+          "ms": 215,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 25,
+          "ms": 381,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 17,
+          "ms": 248,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 16,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 22,
+          "ms": 330,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 16,
+          "ms": 231,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 3,
+          "ms": 19,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 29,
+          "ms": 444,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 25,
+          "ms": 383,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 16,
+          "ms": 231,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 65,
+          "ms": 1049,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 16,
+          "ms": 231,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 25,
+          "ms": 382,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 16,
+          "ms": 232,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4331/",
+      "width": 390
+    },
+    {
+      "brand": "morar",
+      "variant": "after",
+      "run": 5,
+      "profile": "mobile",
+      "bytes": 1559259,
+      "dpr": 2,
+      "hero": 2478,
+      "swaps": [
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 3,
+          "ms": 26,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 71,
+          "ms": 1149,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 1,
+          "frames": 19,
+          "ms": 284,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 3,
+          "ms": 33,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 2,
+          "frames": 4,
+          "ms": 31,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 32,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 29,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 3,
+          "ms": 34,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 3,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 36,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 21,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 33,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 4,
+          "frames": 4,
+          "ms": 32,
+          "step": 4
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 28,
+          "step": 1
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 31,
+          "step": 2
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 3,
+          "ms": 27,
+          "step": 3
+        },
+        {
+          "blank": 0,
+          "card": 5,
+          "frames": 4,
+          "ms": 34,
+          "step": 4
+        }
+      ],
+      "url": "http://127.0.0.1:4332/",
+      "width": 390
+    }
+  ]
+}

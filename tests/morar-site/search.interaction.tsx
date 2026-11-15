@@ -113,7 +113,7 @@ describe("Morar direct search", () => {
         cover: { id: "house-cover", version: "v1" },
       } as PublicProperty;
       const listings = Promise.resolve({ featured: [property], more: [] });
-      const leadGallery = Promise.resolve(null);
+      const featuredGalleries = Promise.resolve({});
       const view = await testingAct(async () =>
         render(
           <SiteBrandContext.Provider value="morar">
@@ -126,7 +126,7 @@ describe("Morar direct search", () => {
                 indexable: false,
               }}
             >
-              <HomePage hero={hero} listings={listings} leadGallery={leadGallery} />
+              <HomePage hero={hero} listings={listings} featuredGalleries={featuredGalleries} />
             </SiteContext.Provider>
           </SiteBrandContext.Provider>,
         ),

@@ -73,7 +73,9 @@ export function siteEnvironment(brand: SiteBrand = "cordial") {
   }
   return {
     canonicalOrigin,
-    indexable: (process.env[`${channel.envPrefix}_ENV`] ?? "production") === "production" && !!canonicalOrigin,
+    indexable:
+      (process.env[`${channel.envPrefix}_ENV`] ?? "production") === "production" &&
+      !!canonicalOrigin,
   };
 }
 export async function bootstrap(
@@ -177,15 +179,20 @@ export async function summaries(
 }
 export async function gallery(id: string, brand: SiteBrand = "cordial", signal?: AbortSignal) {
   if (!z.string().uuid().safeParse(id).success) return [];
-  const { data, error } = await siteDb(signal)
+  const db = siteDb(signal);
+  const photos = db
     .from(`${siteChannel(brand).namespace}_authorized_media`)
     .select("id,version,width,height,position")
     .eq("public_id", id)
     .order("position")
     .order("id")
-    .limit(100);
-  if (error) throw new SiteUnavailable();
-  return z.array(mediaSchema).parse(data ?? []);
+    .limit(100)
+    .then(({ data, error }) => {
+      if (error) throw new SiteUnavailable();
+      return z.array(mediaSchema).parse(data ?? []);
+    });
+  const { enhanceGallery } = await import("../site-showcase/featured-public.server");
+  return enhanceGallery(db, brand, id, photos);
 }
 export async function detail(
   id: string,
@@ -202,20 +209,15 @@ export async function detail(
     .maybeSingle();
   if (error) throw new SiteUnavailable();
   if (!data) return null;
-  const { data: media, error: mediaError } = await db
-    .from(`${channel.namespace}_authorized_media`)
-    .select("id,version,width,height,position")
-    .eq("public_id", id)
-    .order("position")
-    .order("id");
-  if (mediaError) throw new SiteUnavailable();
+  const media = await gallery(id, brand, signal);
   const item = publicProjection(publicPropertySchema.parse(data.document), brand);
   // Content is rendered as text, never trusted HTML. It was approved against its current hash.
   return {
     ...item,
     description: plainText(item.description),
     features: item.features.map(plainText),
-    images: z.array(mediaSchema).parse(media ?? []),
+    cover: media.find((m) => m.id === item.cover?.id) ?? item.cover,
+    images: media,
   };
 }
 export async function videos(id: string, brand: SiteBrand = "cordial", signal?: AbortSignal) {
@@ -343,6 +345,10 @@ export async function readSite(
       return pages(typeof input === "string" ? input : undefined, brand, signal);
     case "page":
       return page(z.string().parse(input), brand, signal);
+    case "featured": {
+      const { activeFeatured } = await import("../site-showcase/featured-public.server");
+      return activeFeatured(siteDb(signal), brand);
+    }
     case "showcase": {
       const { activeShowcase } = await import("./showcase.server");
       const r = await activeShowcase(siteDb(signal), brand);

@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clearMediaMemoryCache, mediaResponse, videoResponse } from "../../src/lib/cordial-site/http.server";
+import {
+  clearMediaMemoryCache,
+  mediaResponse,
+  videoResponse,
+} from "../../src/lib/cordial-site/http.server";
 import { checksum } from "../../src/lib/cordial-site/media-derivatives.server";
 test("warm persisted image is reauthorized before and after read; withdrawal releases no bytes", async () => {
   const originalFetch = globalThis.fetch;
@@ -42,6 +46,14 @@ test("warm persisted image is reauthorized before and after read; withdrawal rel
     assert.equal(storageReads, 1);
     assert.equal(warm.headers.get("Cache-Control"), "private, max-age=86400, immutable");
     assert.deepEqual(new Uint8Array(await warm.arrayBuffer()), bytes);
+    const memory = await mediaResponse(id, version, "card");
+    assert.equal(memory.status, 200);
+    assert.equal(authorizations, 3); // fresh authorization, no redundant network read
+    assert.equal(storageReads, 1);
+    withdrawn = true;
+    assert.equal((await mediaResponse(id, version, "card")).status, 404);
+    assert.equal(authorizations, 4); // even memory hits must not bypass withdrawal
+    withdrawn = false;
     const conditional = await mediaResponse(
       id,
       version,
@@ -53,12 +65,12 @@ test("warm persisted image is reauthorized before and after read; withdrawal rel
     );
     assert.equal(conditional.status, 304);
     assert.equal(storageReads, 1);
-    assert.equal(authorizations, 3);
+    assert.equal(authorizations, 5);
     clearMediaMemoryCache();
     withdrawWhileReading = true;
     const withdrawnDuring = await mediaResponse(id, version, "card");
     assert.equal(withdrawnDuring.status, 404);
-    assert.equal(authorizations, 5);
+    assert.equal(authorizations, 7);
     assert.equal(storageReads, 2);
     assert.equal((await mediaResponse(id, version, "card")).status, 404);
     assert.equal(storageReads, 2);

@@ -84,6 +84,11 @@ export async function mediaResponse(
   )
     return json({ error: "Imagem não encontrada." }, 404);
   const db = siteDb();
+  const enhancement = request && new URL(request.url).searchParams.get("enhancement");
+  if (enhancement) {
+    const { featuredMediaResponse } = await import("../site-showcase/featured-public.server");
+    return featuredMediaResponse(db, brand, id, version, size, enhancement, request);
+  }
   const { data, error } = await db
     .from(`${siteChannel(brand).namespace}_authorized_media`)
     .select("storage_path,width,height")
@@ -142,15 +147,18 @@ export async function mediaResponse(
     memoryCache.set(key, output);
     while (memoryCache.size > 60) memoryCache.delete(memoryCache.keys().next().value!);
   }
-  // A withdrawal or revision may happen while reading/encoding: recheck before releasing bytes.
-  const { data: stillAuthorized, error: authorizationError } = await db
-    .from(`${siteChannel(brand).namespace}_authorized_media`)
-    .select("id")
-    .eq("id", id)
-    .eq("version", version)
-    .maybeSingle();
-  if (authorizationError) throw new SiteUnavailable();
-  if (!stillAuthorized) return json({ error: "Imagem não disponível." }, 404);
+  // Recheck after asynchronous storage/encoding. A memory hit has no intervening
+  // await after this request's fresh authorization, just like the 304 path above.
+  if (!memo) {
+    const { data: stillAuthorized, error: authorizationError } = await db
+      .from(`${siteChannel(brand).namespace}_authorized_media`)
+      .select("id")
+      .eq("id", id)
+      .eq("version", version)
+      .maybeSingle();
+    if (authorizationError) throw new SiteUnavailable();
+    if (!stillAuthorized) return json({ error: "Imagem não disponível." }, 404);
+  }
   // Re-encoding strips EXIF/GPS. No new watermark is applied to an already approved image.
   return new Response(new Blob([new Uint8Array(output)], { type: "image/jpeg" }), {
     headers: { ...cacheHeaders, "Content-Type": "image/jpeg", "Content-Disposition": "inline" },
@@ -340,6 +348,7 @@ export async function handleSiteRequest(
           "videos",
           "tours",
           "showcase",
+          "featured",
         ].includes(route)
       )
         return json({ error: "Não encontrado." }, 404);

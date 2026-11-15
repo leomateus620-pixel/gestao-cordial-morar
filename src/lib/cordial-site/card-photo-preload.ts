@@ -10,8 +10,9 @@ export const cardSrcSet = (m: PublicMedia, brand: SiteBrand) =>
   `${mediaPath(m, "thumb", brand)} 480w, ${mediaPath(m, "card", brand)} 960w, ${mediaPath(m, "full", brand)} 1920w`;
 
 // Leave one slot free for navigation even if a background request is slow.
-const MAX_CONCURRENT = 2;
-const MAX_READY = 8;
+const MAX_CONCURRENT = 6;
+const MAX_READY = 32;
+const MAX_READY_PIXELS = 12_000_000;
 const IMAGE_TIMEOUT = 12_000;
 type PhotoSize = "card" | "full";
 type Entry = {
@@ -19,12 +20,23 @@ type Entry = {
   start: () => void;
   drop: () => void;
   urgent: boolean;
+  priority: number;
   image?: HTMLImageElement;
 };
 const queue: Entry[] = [];
 const running = new Map<string, Entry>();
 const ready = new Map<string, HTMLImageElement>();
 const pending = new Map<string, Promise<void>>();
+// naturalWidth on a srcset image is density-corrected, so account for the actual
+// decoded candidate rather than undercounting memory on Retina/mobile screens.
+const decodedPixels = (img: HTMLImageElement) => {
+  const width = img.currentSrc?.split("?")[0].endsWith("/full")
+    ? 1920
+    : img.currentSrc?.split("?")[0].endsWith("/card")
+      ? 960
+      : 480;
+  return width * width * (img.naturalHeight / img.naturalWidth || 1);
+};
 
 export class PreloadDropped extends Error {}
 
@@ -42,10 +54,19 @@ export function canSpeculatePhotos() {
 
 function pump() {
   while (running.size < MAX_CONCURRENT && queue.length) {
-    let urgent = queue.length - 1;
-    while (urgent >= 0 && !queue[urgent].urgent) urgent--;
-    if (urgent < 0 && running.size > 0) return;
-    const [entry] = queue.splice(Math.max(0, urgent), 1);
+    const next = queue.reduce(
+      (best, entry, i) =>
+        entry.priority > queue[best].priority ||
+        (entry.urgent && entry.priority === queue[best].priority)
+          ? i
+          : best,
+      0,
+    );
+    const candidate = queue[next];
+    // Ordinary catalog speculation stays serial. The five featured cards can use
+    // one slot per featured card, always leaving a sixth for an actual click.
+    if (!candidate.urgent && running.size >= (candidate.priority > 0 ? 5 : 1)) return;
+    const [entry] = queue.splice(next, 1);
     if (!entry.urgent && !canSpeculatePhotos()) entry.drop();
     else entry.start();
   }
@@ -57,8 +78,9 @@ export function preloadCardImage(
   sizes = DEFAULT_CARD_SIZES,
   urgent = false,
   size: PhotoSize = "card",
+  preparation: "background" | "featured" | "intent" = "background",
 ): Promise<void> {
-  const key = `${brand}:${m.id}:${m.version}:${size}:${sizes}:${window.innerWidth}:${window.devicePixelRatio}`;
+  const key = `${brand}:${m.id}:${m.version}:${m.enhancement ?? ""}:${size}:${sizes}:${window.innerWidth}:${window.devicePixelRatio}`;
   const cached = ready.get(key);
   if (cached) {
     ready.delete(key);
@@ -66,14 +88,16 @@ export function preloadCardImage(
     return Promise.resolve();
   }
   const old = pending.get(key);
+  const priority = urgent ? 3 : preparation === "intent" ? 2 : preparation === "featured" ? 1 : 0;
   if (old) {
-    if (urgent) {
+    if (priority > 0) {
       const index = queue.findIndex((entry) => entry.key === key);
       const entry = index < 0 ? running.get(key) : queue.splice(index, 1)[0];
       if (entry) {
-        entry.urgent = true;
+        entry.urgent ||= urgent;
+        entry.priority = Math.max(entry.priority, priority);
         if (index >= 0) queue.push(entry);
-        else if (entry.image) entry.image.fetchPriority = "high";
+        else if (entry.image && urgent) entry.image.fetchPriority = "high";
         pump();
       }
     }
@@ -83,6 +107,7 @@ export function preloadCardImage(
     const entry: Entry = {
       key,
       urgent,
+      priority,
       start: () => {
         const img = new Image();
         entry.image = img;
@@ -122,7 +147,13 @@ export function preloadCardImage(
   }).then(
     (img) => {
       ready.set(key, img);
-      if (ready.size > MAX_READY) ready.delete(ready.keys().next().value!);
+      let pixels = [...ready.values()].reduce((total, photo) => total + decodedPixels(photo), 0);
+      while (ready.size > MAX_READY || (ready.size > 1 && pixels > MAX_READY_PIXELS)) {
+        const oldest = ready.keys().next().value!;
+        const photo = ready.get(oldest)!;
+        pixels -= decodedPixels(photo);
+        ready.delete(oldest);
+      }
       pending.delete(key);
     },
     (error) => {

@@ -81,14 +81,14 @@ export async function resolveDerivative(
 export function derivativeStore(db: SupabaseClient): DerivativeStore {
   return {
     async read(key) {
-      const { data, error } = await db
-        .from("public_site_derivatives")
-        .select("checksum,state")
-        .eq("key", key)
-        .maybeSingle();
+      // The gateway has already authorized this version. Metadata and private
+      // bytes are independent reads; release only a ready, checksum-verified object.
+      const [{ data, error }, downloaded] = await Promise.all([
+        db.from("public_site_derivatives").select("checksum,state").eq("key", key).maybeSingle(),
+        db.storage.from(derivativeBucket).download(key),
+      ]);
       if (error) throw new Error("Derivative metadata unavailable");
       if (!data || data.state !== "ready") return null;
-      const downloaded = await db.storage.from(derivativeBucket).download(key);
       if (downloaded.error || !downloaded.data) {
         // A lost object is repairable; an unavailable storage service must not trigger duplicate work.
         const code = String((downloaded.error as { statusCode?: string } | null)?.statusCode ?? "");

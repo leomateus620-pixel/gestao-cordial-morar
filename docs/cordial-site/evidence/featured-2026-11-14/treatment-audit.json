@@ -1,0 +1,1389 @@
+{
+  "validation": {
+    "downloaded_variants": 90,
+    "byte_sizes_and_sha256_verified": true,
+    "pilot_visually_reviewed_photos": 3
+  },
+  "rows": [
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "b2ce264e764bb60de5ab3662d49e765bf3a131ce4cdbb060e32243b7a426600a",
+      "media_id": "8a3458c6-1b5a-4b05-a900-029b31278c5a",
+      "media_version": "435574cbd0f896dd6245ccd25940bfe0",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 0.99,
+        "exposure": 0.03,
+        "reason": "Foto já bem exposta e com cores vivas. Ajustes mínimos para suavizar o contraste e revelar discretamente as áreas cobertas, preservando altas luzes, materiais, marcas d’água e aspecto natural.",
+        "saturation": 1,
+        "shadows": 0.025,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "10cf4b03-47cf-4888-8fb8-f836ae03f8fe",
+      "slot": 1,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 193324,
+          "checksum": "b4e4961146957d0b34de243ae3b93858d7f1958605bb4d896ea6f55b341d20be",
+          "height": 640,
+          "width": 960
+        },
+        "full": {
+          "bytes": 474097,
+          "checksum": "b2ce264e764bb60de5ab3662d49e765bf3a131ce4cdbb060e32243b7a426600a",
+          "height": 1024,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 50398,
+          "checksum": "6daa414201b25ee027b45e9f40d2cb749627a57a7a3a0d50f704a19160a4157d",
+          "height": 320,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "446b18189ebc6791e19c9413386e0e507c7343548dd07be8c591494d9687f697",
+      "media_id": "66dacf68-e4c8-487c-87fe-a453064447c2",
+      "media_version": "5e75d382de1e536a0d666affe534cf9f",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.03,
+        "reason": "Foto bem exposta, com cores naturais. Abertura discreta das sombras da garagem e nitidez leve, preservando o piso claro, os materiais, as marcas de uso e as marcas d’água.",
+        "saturation": 1,
+        "shadows": 0.03,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "10cf4b03-47cf-4888-8fb8-f836ae03f8fe",
+      "slot": 1,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 117297,
+          "checksum": "25a6f726991e9aa32e049ee22e11dee7e6702f0569a9b51681fd78b99f9ce4e8",
+          "height": 640,
+          "width": 960
+        },
+        "full": {
+          "bytes": 278322,
+          "checksum": "446b18189ebc6791e19c9413386e0e507c7343548dd07be8c591494d9687f697",
+          "height": 1024,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 31726,
+          "checksum": "f0e3ae96d075be6286df067705ca673332e9672a41ffae8a3d3028ac13b16761",
+          "height": 320,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "6d062c0abfd77f7d986aa977c86e420ed8bc53debab726f6f2212c139304a1e9",
+      "media_id": "18e8c882-1865-453f-8e59-8a3f57dc3643",
+      "media_version": "7c5bdb4e6d9d0eddcb43e8c510db674a",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.08,
+        "reason": "Leve abertura das sombras da área coberta, mantendo o exterior luminoso e o reflexo azulado natural no piso. Nitidez discreta, sem alterar materiais, marcas de conservação ou marca d’água.",
+        "saturation": 1,
+        "shadows": 0.03,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "10cf4b03-47cf-4888-8fb8-f836ae03f8fe",
+      "slot": 1,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 106299,
+          "checksum": "1a7727fccd18fc656f27743ac58baa9ae4374a20a1f8479669474d5bb8085e53",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 191323,
+          "checksum": "6d062c0abfd77f7d986aa977c86e420ed8bc53debab726f6f2212c139304a1e9",
+          "height": 960,
+          "width": 1280
+        },
+        "thumb": {
+          "bytes": 27357,
+          "checksum": "45857ad1f9759a8a7826708b114343eab21ab54030289a460d3f31ff44093310",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "777c7a2315a33d7829b1e54715f854e73b758133b59ad81eba46aee006c1e739",
+      "media_id": "77a6df7a-3270-411a-86fa-96b1f45f5f8b",
+      "media_version": "50c52b654b6d5c79e0d37ecc9eb6aa33",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.02,
+        "reason": "Foto bem exposta e com cores naturais. Leve abertura das sombras na vegetação e nitidez discreta, preservando as altas luzes, os materiais e as marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "a1674fc8-bb05-4be4-8e19-d059db9d5eff",
+      "slot": 2,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 283788,
+          "checksum": "925677a68d80ee5e40553109909d7dba05c57878e61e843a90ec43e1f065e3ef",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 754409,
+          "checksum": "777c7a2315a33d7829b1e54715f854e73b758133b59ad81eba46aee006c1e739",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 75173,
+          "checksum": "68dbb750fb9e70e4c4050cc0d5433c137b86b960a074124289fdf0a5619141f5",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "cb2e56e6cdb10b167add93e9b4a80613bb6a737dad250caaf12cd6f2b37b397e",
+      "media_id": "a5439509-0f88-4d49-82d1-473e5cde0e97",
+      "media_version": "8ae941ce1d2ee8af44fb71e71388a1d8",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.02,
+        "reason": "A foto já apresenta boa exposição e cores naturais. Abertura discreta das sombras e nitidez leve preservam o céu claro, as texturas, o estado dos materiais e as marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.025,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "a1674fc8-bb05-4be4-8e19-d059db9d5eff",
+      "slot": 2,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 268634,
+          "checksum": "6f42cdf62a08b688b0872db30eddddebb30fe3ab2a2a42c854227e950e409af5",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 727303,
+          "checksum": "cb2e56e6cdb10b167add93e9b4a80613bb6a737dad250caaf12cd6f2b37b397e",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 68799,
+          "checksum": "87f4f5076a152e522eabf679e3dd5b7f3a1064851bbf4e3fdb5e064f363e9d4b",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "c619e3a9fb89b07a7db6846aed86118382fc85bb277bd7ebd6c6dc43e255db84",
+      "media_id": "0d4cf827-982a-4ce1-b7ca-08d6cca5ecb9",
+      "media_version": "f4cfb8ea68d1b2d35a9a30d40613e7f2",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.02,
+        "reason": "Foto bem exposta e com cores naturais. Ajustes mínimos, com leve abertura das sombras na vegetação e nitidez discreta, preservando altas luzes, materiais e marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "a1674fc8-bb05-4be4-8e19-d059db9d5eff",
+      "slot": 2,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 296291,
+          "checksum": "604b38a9a624ace489f6ca354a08fdef2d050f1c7bea4470d25c2eec7c8ada55",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 787505,
+          "checksum": "c619e3a9fb89b07a7db6846aed86118382fc85bb277bd7ebd6c6dc43e255db84",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 77525,
+          "checksum": "5880c412c5b21db9dbf0be839b076f0fa747a96fd16e178badd223b68594f562",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "04993525efe68492c430d2147b3deaeae44279fade3b98a9a687ded3d2051d67",
+      "media_id": "4a63c0c8-e142-4ef1-8ca6-4c2b1b2e1e26",
+      "media_version": "9128bb84084f7857004e47bcd83e96ed",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.08,
+        "reason": "A foto já apresenta boa exposição e cores naturais. Leve ganho nos meios-tons e abertura discreta das sombras valorizam as áreas cobertas sem estourar o céu, preservando materiais, marcas e conservação.",
+        "saturation": 1,
+        "shadows": 0.04,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "b2bee30c-5df1-45e9-8dd0-813c6d2f9d60",
+      "slot": 3,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 161509,
+          "checksum": "7c9ad6292b34cf2f94ca563a59aba39d07c14c2ea45dd9f6ed5be0983c8f8ec9",
+          "height": 539,
+          "width": 960
+        },
+        "full": {
+          "bytes": 355400,
+          "checksum": "04993525efe68492c430d2147b3deaeae44279fade3b98a9a687ded3d2051d67",
+          "height": 768,
+          "width": 1367
+        },
+        "thumb": {
+          "bytes": 43787,
+          "checksum": "97bc96192cff1eb61e4270aa5882a3e7c3390941cd79aee7b03ca440e6079991",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "76a8b8be41c9d367e742cb89a2816f394604dd97472708aa42ec4652c3bac739",
+      "media_id": "5c7ca1c7-002d-45b2-8118-1120cebb6289",
+      "media_version": "5d87d28d8499b3cbaec57f2309d6337a",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.12,
+        "reason": "Leve aumento dos meios-tons e abertura discreta das sombras para valorizar a entrada, preservando as paredes claras, as cores dos materiais, os sinais de conservação e a marca d'água.",
+        "saturation": 1,
+        "shadows": 0.03,
+        "sharpness": 0.12,
+        "warmth": 0
+      },
+      "public_id": "b2bee30c-5df1-45e9-8dd0-813c6d2f9d60",
+      "slot": 3,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 71621,
+          "checksum": "4041ae0d64cb412103ca158e7798995f93b9db43804dab778714a56c720dcc1b",
+          "height": 539,
+          "width": 960
+        },
+        "full": {
+          "bytes": 116521,
+          "checksum": "76a8b8be41c9d367e742cb89a2816f394604dd97472708aa42ec4652c3bac739",
+          "height": 719,
+          "width": 1280
+        },
+        "thumb": {
+          "bytes": 19659,
+          "checksum": "4d1074d403e48590e9285b7982250d575bc3c0f7c060d32828d8f4acf6bd5f66",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "5b3e72dde269794ca81d85dadb0fca8dc06f408d4bdaf65e8535f481f05ccd08",
+      "media_id": "1ae07428-bb6b-4f87-a07d-2952d35d7fad",
+      "media_version": "6a377066b527e7581a79e1d8d1270fc0",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.02,
+        "exposure": 0.03,
+        "reason": "A imagem já está bem iluminada. Ajustes mínimos de contraste e nitidez, com leve abertura de sombras, preservam os tons dos materiais e as altas luzes, sem alterar marcas ou condições de conservação.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "b2bee30c-5df1-45e9-8dd0-813c6d2f9d60",
+      "slot": 3,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 86106,
+          "checksum": "072cfae8d9c04170b47eed29a6d947f5be03b705ef6f2568d0a06b265244ecf3",
+          "height": 539,
+          "width": 960
+        },
+        "full": {
+          "bytes": 200598,
+          "checksum": "5b3e72dde269794ca81d85dadb0fca8dc06f408d4bdaf65e8535f481f05ccd08",
+          "height": 768,
+          "width": 1367
+        },
+        "thumb": {
+          "bytes": 23627,
+          "checksum": "99cd1f7a431d7d3d06adde3932c9e7bf37fe0cf52283c37dd651619a5e6b7500",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "0a033a35265324ac82436440b8d24f09c48785fa9b6226ec75ee16d8f50be358",
+      "media_id": "e87eea42-34ee-47a2-8c23-6ad526b48c28",
+      "media_version": "7173f18418d4950c6f9ad4257b366272",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.03,
+        "reason": "Foto bem exposta e com cores definidas. Leve abertura das sombras da fachada e nitidez discreta, preservando altas luzes, cores dos materiais, marcas de conservação e marcas d’água.",
+        "saturation": 1,
+        "shadows": 0.025,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "c4045057-a9e2-44ab-9cb0-6f63c6f2cba5",
+      "slot": 4,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 146681,
+          "checksum": "ec7e771155d1d7b04b40f77145c8e56c260474036c632095f4b63334ba340484",
+          "height": 540,
+          "width": 960
+        },
+        "full": {
+          "bytes": 414921,
+          "checksum": "0a033a35265324ac82436440b8d24f09c48785fa9b6226ec75ee16d8f50be358",
+          "height": 864,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 38157,
+          "checksum": "9a07e8192f88e3031d3ee3d91d8c6c4c141d8cd5286189445fdfe826b82f9cce",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "14c582b29981329c810bed3ffd43dc3cd35aa23471d69ab1c4b91296834dfdb9",
+      "media_id": "8c342684-bc2a-4fe3-99a8-1efaaf5d3906",
+      "media_version": "b1dfc4387ce80a7d80998b190900786a",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.02,
+        "reason": "Foto bem exposta, com cores vivas e luz natural forte. Ajustes mínimos de sombras e nitidez preservam as altas luzes, os materiais, as condições do imóvel e as marcas d’água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "c4045057-a9e2-44ab-9cb0-6f63c6f2cba5",
+      "slot": 4,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 157442,
+          "checksum": "b3c9ea61d4e0b219f99f9aafd4883914e68b995cc7213c1365c23e28dc25ec33",
+          "height": 540,
+          "width": 960
+        },
+        "full": {
+          "bytes": 455237,
+          "checksum": "14c582b29981329c810bed3ffd43dc3cd35aa23471d69ab1c4b91296834dfdb9",
+          "height": 864,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 37887,
+          "checksum": "5c8aae8a8d867725256219d6ed41e2959dd599d43da13c219ea1cccf6ae478ac",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "720f4f153e0facab2150708b1ad8ba14275eb4163b6b730561aaa279b1f63bf6",
+      "media_id": "90561c2a-a7ff-45d0-a103-772c753b2b46",
+      "media_version": "237eb41e72569594c4fd351d311c54ba",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.02,
+        "exposure": 0.04,
+        "reason": "A foto já tem boa luminosidade e cores neutras. Ajustes mínimos de exposição, sombras e nitidez valorizam o ambiente sem estourar as áreas claras, preservando materiais, marcas de uso e marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "c4045057-a9e2-44ab-9cb0-6f63c6f2cba5",
+      "slot": 4,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 58260,
+          "checksum": "edd484eec398ae05a93b136e54a1e1228cb6702d6c210ec56bb0d9c5e982880b",
+          "height": 540,
+          "width": 960
+        },
+        "full": {
+          "bytes": 172584,
+          "checksum": "720f4f153e0facab2150708b1ad8ba14275eb4163b6b730561aaa279b1f63bf6",
+          "height": 864,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 16010,
+          "checksum": "658fd5e6d5276bdf71bdfdf3f562ab16e6d1b81d6b6bca106f834a6579300e47",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "18ca55860dc3f5bec8903c543d1ca9b1249098b243d7c3ea02660952653e2503",
+      "media_id": "03a0b17f-c279-44b9-80a5-ce3bb0b14dfe",
+      "media_version": "72e524bb8da43580f612bd637cae18d0",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.12,
+        "reason": "Abrir suavemente as sombras da fachada, mantendo o contraste natural do sol forte e preservando altas luzes, cores dos materiais, marcas e objetos.",
+        "saturation": 1,
+        "shadows": 0.07,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "94d397f6-9338-44cb-8c10-b2c2a6a6c1eb",
+      "slot": 5,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 163465,
+          "checksum": "77da3b135f9a632a76cfd4518a5f065bf16ebf8bf5d130a722ba74bbd837bdf2",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 442593,
+          "checksum": "18ca55860dc3f5bec8903c543d1ca9b1249098b243d7c3ea02660952653e2503",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 41698,
+          "checksum": "dba0a91e2958cf708a0669070fb4cfcdde3a636cdd040837bc00224a454db2f0",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "8bc2974b62a4f0d40a2c809d36f0a016e9c61c3607bca031795e1d23c3a32d68",
+      "media_id": "f5db6058-dfb6-41af-b89b-56c6ec1e1506",
+      "media_version": "64317f021e2ab96639c88a039a272b30",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.16,
+        "reason": "Leve abertura das sombras para melhorar a leitura da fachada, mantendo o contraste natural do sol, as cores dos materiais e as altas luzes. Nitidez discreta, sem alterar objetos, imperfeições ou marca d'água.",
+        "saturation": 1,
+        "shadows": 0.07,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "94d397f6-9338-44cb-8c10-b2c2a6a6c1eb",
+      "slot": 5,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 163340,
+          "checksum": "54dfb32b932bf3cb6f5e87b9e9fe08cd2c109acf03541eb0cd3d4ec5e6545ea4",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 426124,
+          "checksum": "8bc2974b62a4f0d40a2c809d36f0a016e9c61c3607bca031795e1d23c3a32d68",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 44332,
+          "checksum": "1ca0ea4d16aedfffb9dc31ee415808803ed71248ed6582e442aacec0983c5d5c",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "cordial",
+      "checksum": "68aa18893a40d1d63a8befd8d2c89d913113b2e3d10530b2769f43bfd49340a1",
+      "media_id": "0a365036-a5ad-4c79-b3ee-4b349d906467",
+      "media_version": "e45642ba31205358db0064d7e6fc1208",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.04,
+        "reason": "Foto bem exposta, com sol forte e sombras marcadas. Ajuste mínimo de luminosidade e abertura suave das sombras, preservando cores, altas luzes, marcas de conservação e marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.04,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "94d397f6-9338-44cb-8c10-b2c2a6a6c1eb",
+      "slot": 5,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 141913,
+          "checksum": "d0f52ba7ad82a8433b1fadc97cbaa220e48e67e70719bbedf77fea76b8df8577",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 361919,
+          "checksum": "68aa18893a40d1d63a8befd8d2c89d913113b2e3d10530b2769f43bfd49340a1",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 39634,
+          "checksum": "0e55e6041f6036fe37c3fd091bf6f35f4a07511bfa3483c9647898e75f080afb",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "71049acb-2981-4aba-afb6-5b8ca6e75039",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "1048a2a831d9cd85f307f61c2b325cc343ff2a247c2469edd6e27ff5220a850f",
+      "media_id": "73c9f5f2-e6f9-40c4-8081-60555cca1aa1",
+      "media_version": "435574cbd0f896dd6245ccd25940bfe0",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.02,
+        "reason": "Foto bem exposta, com luz solar forte. Abertura discreta das sombras e leve suavização do contraste preservam as altas luzes, as cores dos materiais e a aparência natural.",
+        "saturation": 1,
+        "shadows": 0.03,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "2570cac8-4f66-4d9d-a83b-30a7b0d6d803",
+      "slot": 1,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 192117,
+          "checksum": "c2d6225659a7cfe736793ccd246ae9844ac24418d9276438a23ff280a258efda",
+          "height": 640,
+          "width": 960
+        },
+        "full": {
+          "bytes": 472259,
+          "checksum": "1048a2a831d9cd85f307f61c2b325cc343ff2a247c2469edd6e27ff5220a850f",
+          "height": 1024,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 50068,
+          "checksum": "d37dc6fdf837bac2f47e4c99900dca6c0d74b3ea6f21bee7030fe92e095a9348",
+          "height": 320,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "74046aaae95499d0227955c9297b51aa9a1552e26b9f6f907df67f6daf99a0fe",
+      "media_id": "7616fc62-02ee-42ae-a25b-86db5d1a3367",
+      "media_version": "5e75d382de1e536a0d666affe534cf9f",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.02,
+        "reason": "Foto já bem exposta e com cores vivas. Abertura discreta das sombras da garagem e nitidez leve, preservando os brancos iluminados, as cores dos materiais e as marcas d’água.",
+        "saturation": 1,
+        "shadows": 0.035,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "2570cac8-4f66-4d9d-a83b-30a7b0d6d803",
+      "slot": 1,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 117406,
+          "checksum": "2070a0173513e40b3c4a05035d8e384fc26bc67a7df33dca40101044ea45aee1",
+          "height": 640,
+          "width": 960
+        },
+        "full": {
+          "bytes": 278508,
+          "checksum": "74046aaae95499d0227955c9297b51aa9a1552e26b9f6f907df67f6daf99a0fe",
+          "height": 1024,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 31694,
+          "checksum": "01dfe49fee82dc5f656e06ce4c4c874b0b2e82721edfd3563f9df8cc558c8883",
+          "height": 320,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "5fb5ce275fc50b27bcec02b2567a16a12c1aeb061159793c806eeabab63929e8",
+      "media_id": "fb82c83b-b0ed-48c9-aaae-2c51cfebf103",
+      "media_version": "7c5bdb4e6d9d0eddcb43e8c510db674a",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.06,
+        "reason": "A exposição já está equilibrada entre a área coberta e o exterior. Leve abertura de sombras e nitidez discreta preservam o céu, as cores dos materiais, as marcas de uso e a marca d’água.",
+        "saturation": 1,
+        "shadows": 0.035,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "2570cac8-4f66-4d9d-a83b-30a7b0d6d803",
+      "slot": 1,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 106507,
+          "checksum": "061ac0da6b2f4f247d94733e14b6b5aa8e077993b50b4181bb0371eea68ddbee",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 191543,
+          "checksum": "5fb5ce275fc50b27bcec02b2567a16a12c1aeb061159793c806eeabab63929e8",
+          "height": 960,
+          "width": 1280
+        },
+        "thumb": {
+          "bytes": 27399,
+          "checksum": "8f4f6c5d894c080ef63614633b7534752814de2f669cc0974432c4eecf95ca99",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "51defe9c4820b54f3eabc408c22dd0b79e90b1e019f01797cbd40c4c6da105ab",
+      "media_id": "c15bce78-6852-4c4a-850e-978b72ee2644",
+      "media_version": "50c52b654b6d5c79e0d37ecc9eb6aa33",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0,
+        "reason": "Foto bem exposta e com cores naturais. Abertura discreta das sombras na vegetação e leve nitidez, preservando as altas luzes, os materiais e as marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "50a4bb48-1bed-4c18-8ac5-2f14eb777e09",
+      "slot": 2,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 286426,
+          "checksum": "3baddce0076266770b7d6f95ffa1ffc22177c288f263ab9e3573aaefa06ce706",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 758124,
+          "checksum": "51defe9c4820b54f3eabc408c22dd0b79e90b1e019f01797cbd40c4c6da105ab",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 75742,
+          "checksum": "81987813f772742b75f8fa8b50b77088e46ea5cc08ac434eef15df6bdc8b529d",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "e1c94afe2a96275dc24363025d416a279073672829b86039eec33737310aa3c9",
+      "media_id": "875cb5ab-e45d-4563-ae7a-540865f953f0",
+      "media_version": "8ae941ce1d2ee8af44fb71e71388a1d8",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.03,
+        "reason": "Foto bem exposta, com céu claro e vegetação sombreada. Ajustes mínimos de luminosidade, sombras e nitidez preservam cores, texturas, estado de conservação e marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.03,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "50a4bb48-1bed-4c18-8ac5-2f14eb777e09",
+      "slot": 2,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 269797,
+          "checksum": "0ee9abaf72436b1534d5bf8e55e7b9a8ca0a6780dcb382411fdc9b4ddb630fcd",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 729099,
+          "checksum": "e1c94afe2a96275dc24363025d416a279073672829b86039eec33737310aa3c9",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 69088,
+          "checksum": "c0030f3e1d98abaae6a1b539d19edf006128c643fc435e43d32a3693e68a079b",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "c619e3a9fb89b07a7db6846aed86118382fc85bb277bd7ebd6c6dc43e255db84",
+      "media_id": "8a4c7aaf-579b-45cf-b8b3-b3d7bd4128be",
+      "media_version": "f4cfb8ea68d1b2d35a9a30d40613e7f2",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.02,
+        "reason": "Foto bem exposta e com cores naturais. Ajustes mínimos de luminosidade e nitidez, com leve abertura das sombras na vegetação, preservam as altas luzes, os materiais e as marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "50a4bb48-1bed-4c18-8ac5-2f14eb777e09",
+      "slot": 2,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 296291,
+          "checksum": "604b38a9a624ace489f6ca354a08fdef2d050f1c7bea4470d25c2eec7c8ada55",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 787505,
+          "checksum": "c619e3a9fb89b07a7db6846aed86118382fc85bb277bd7ebd6c6dc43e255db84",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 77525,
+          "checksum": "5880c412c5b21db9dbf0be839b076f0fa747a96fd16e178badd223b68594f562",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "dc91097bdfc63efeee70c0a2db914b460fd87484c300e7c7e77f857835494640",
+      "media_id": "46d77dd0-78d5-49ae-b486-3f89bc4f7dbc",
+      "media_version": "9128bb84084f7857004e47bcd83e96ed",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.08,
+        "reason": "A foto já tem boa exposição e cores vivas. Ajuste leve de meios-tons e sombras para melhorar a leitura das áreas cobertas, preservando céu, materiais, marcas e nitidez natural.",
+        "saturation": 1,
+        "shadows": 0.03,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "6debb11f-45fc-4ce9-8be5-d444615c97dc",
+      "slot": 3,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 162769,
+          "checksum": "b2c4605b3c05b560377f315623b2a89b7cc84c8120ba68dd11987cefe5620fdb",
+          "height": 539,
+          "width": 960
+        },
+        "full": {
+          "bytes": 356308,
+          "checksum": "dc91097bdfc63efeee70c0a2db914b460fd87484c300e7c7e77f857835494640",
+          "height": 768,
+          "width": 1367
+        },
+        "thumb": {
+          "bytes": 44164,
+          "checksum": "71f2d6ec646c7e888dd812f16673c10e836ee2b6171b36eb99c10a95e2fd5e0c",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "5b632ccd33c3e84aabcaca41df235e56182b3208145a608ef5e67ff2c3930293",
+      "media_id": "35bfd33f-5f7e-4e4f-8c66-8b8cf6fc343e",
+      "media_version": "5d87d28d8499b3cbaec57f2309d6337a",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1.01,
+        "exposure": 0.1,
+        "reason": "Leve ganho de luminosidade e abertura discreta das sombras na porta, mantendo as paredes claras sem excesso de brilho. Preserva cores dos materiais, sinais de conservação e marca d'água.",
+        "saturation": 1,
+        "shadows": 0.025,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "6debb11f-45fc-4ce9-8be5-d444615c97dc",
+      "slot": 3,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 71693,
+          "checksum": "5f8a9facd6528086d89b41b54511bcb2bc31e539b08bd86d621fe92751edcb4b",
+          "height": 539,
+          "width": 960
+        },
+        "full": {
+          "bytes": 116237,
+          "checksum": "5b632ccd33c3e84aabcaca41df235e56182b3208145a608ef5e67ff2c3930293",
+          "height": 719,
+          "width": 1280
+        },
+        "thumb": {
+          "bytes": 19685,
+          "checksum": "ee6a30427adf04fbf1b06077b0665b63cbbf85ca91744fe600aec83a467774e1",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "5b3e72dde269794ca81d85dadb0fca8dc06f408d4bdaf65e8535f481f05ccd08",
+      "media_id": "9d19e104-f8a3-4633-8c27-fc361e9e7ef9",
+      "media_version": "6a377066b527e7581a79e1d8d1270fc0",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.02,
+        "exposure": 0.03,
+        "reason": "A foto já está bem iluminada. Ajustes mínimos de contraste, sombras e nitidez valorizam a leitura do ambiente, preservando os tons dos materiais, as marcas de uso e a marca d’água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "6debb11f-45fc-4ce9-8be5-d444615c97dc",
+      "slot": 3,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 86106,
+          "checksum": "072cfae8d9c04170b47eed29a6d947f5be03b705ef6f2568d0a06b265244ecf3",
+          "height": 539,
+          "width": 960
+        },
+        "full": {
+          "bytes": 200598,
+          "checksum": "5b3e72dde269794ca81d85dadb0fca8dc06f408d4bdaf65e8535f481f05ccd08",
+          "height": 768,
+          "width": 1367
+        },
+        "thumb": {
+          "bytes": 23627,
+          "checksum": "99cd1f7a431d7d3d06adde3932c9e7bf37fe0cf52283c37dd651619a5e6b7500",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "0a033a35265324ac82436440b8d24f09c48785fa9b6226ec75ee16d8f50be358",
+      "media_id": "f70cd4a0-4330-451f-af5c-094f24d18f18",
+      "media_version": "7173f18418d4950c6f9ad4257b366272",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.03,
+        "reason": "Foto bem exposta e com cores definidas. Leve abertura das sombras da fachada e nitidez discreta, preservando altas luzes, materiais, marcas d’água e condições reais do imóvel.",
+        "saturation": 1,
+        "shadows": 0.025,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "11b4616f-806b-47aa-9bd0-9f979389829d",
+      "slot": 4,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 146681,
+          "checksum": "ec7e771155d1d7b04b40f77145c8e56c260474036c632095f4b63334ba340484",
+          "height": 540,
+          "width": 960
+        },
+        "full": {
+          "bytes": 414921,
+          "checksum": "0a033a35265324ac82436440b8d24f09c48785fa9b6226ec75ee16d8f50be358",
+          "height": 864,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 38157,
+          "checksum": "9a07e8192f88e3031d3ee3d91d8c6c4c141d8cd5286189445fdfe826b82f9cce",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "14c582b29981329c810bed3ffd43dc3cd35aa23471d69ab1c4b91296834dfdb9",
+      "media_id": "b7074e80-f32f-4bd7-8c43-9b74842b9312",
+      "media_version": "b1dfc4387ce80a7d80998b190900786a",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 1,
+        "exposure": 0.02,
+        "reason": "Foto bem exposta e com cores vivas. Ajuste mínimo de luminosidade e sombras para revelar discretamente a fachada, preservando céu, materiais, conservação e marcas d’água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "11b4616f-806b-47aa-9bd0-9f979389829d",
+      "slot": 4,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 157442,
+          "checksum": "b3c9ea61d4e0b219f99f9aafd4883914e68b995cc7213c1365c23e28dc25ec33",
+          "height": 540,
+          "width": 960
+        },
+        "full": {
+          "bytes": 455237,
+          "checksum": "14c582b29981329c810bed3ffd43dc3cd35aa23471d69ab1c4b91296834dfdb9",
+          "height": 864,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 37887,
+          "checksum": "5c8aae8a8d867725256219d6ed41e2959dd599d43da13c219ea1cccf6ae478ac",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "720f4f153e0facab2150708b1ad8ba14275eb4163b6b730561aaa279b1f63bf6",
+      "media_id": "7f7d17ce-ef6c-47bc-8fa8-a8175d88edc3",
+      "media_version": "237eb41e72569594c4fd351d311c54ba",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 1.02,
+        "exposure": 0.04,
+        "reason": "A foto já está bem iluminada. Ajustes mínimos de luminosidade, sombras e nitidez preservam os brancos, as cores dos materiais, as marcas de conservação e a marca d'água.",
+        "saturation": 1,
+        "shadows": 0.02,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "11b4616f-806b-47aa-9bd0-9f979389829d",
+      "slot": 4,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 58260,
+          "checksum": "edd484eec398ae05a93b136e54a1e1228cb6702d6c210ec56bb0d9c5e982880b",
+          "height": 540,
+          "width": 960
+        },
+        "full": {
+          "bytes": 172584,
+          "checksum": "720f4f153e0facab2150708b1ad8ba14275eb4163b6b730561aaa279b1f63bf6",
+          "height": 864,
+          "width": 1536
+        },
+        "thumb": {
+          "bytes": 16010,
+          "checksum": "658fd5e6d5276bdf71bdfdf3f562ab16e6d1b81d6b6bca106f834a6579300e47",
+          "height": 270,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "2fdfa38df1ab0de81679d3ae20a4df813e03de13bd9408e303052a53832fb77d",
+      "media_id": "7e2e3c48-5edd-4671-bb64-d8dc56cdb5a9",
+      "media_version": "72e524bb8da43580f612bd637cae18d0",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 0,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.12,
+        "reason": "Leve abertura das sombras para melhorar a leitura da fachada em contraluz, preservando o céu, as cores dos materiais, as marcas de conservação e a marca d’água, sem aspecto HDR.",
+        "saturation": 1,
+        "shadows": 0.06,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "db5be24d-7ab4-4d04-93a3-3f1b6a587c3a",
+      "slot": 5,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 163745,
+          "checksum": "cb90448c1450acbfd9bd71186b1df814f062cea59d55ec362a24f5f20f67c640",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 442704,
+          "checksum": "2fdfa38df1ab0de81679d3ae20a4df813e03de13bd9408e303052a53832fb77d",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 41805,
+          "checksum": "3e818636f5ba02a143b7f2b66b40efa79b996b82307c6af732b27bb9fe064c7a",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "c0ae8eb16f8649cfed9e4290231e1769b0cde497a2b0bd09b36df0f6856e2109",
+      "media_id": "f2280aa8-ed39-4a45-849e-f1ca1f0bc847",
+      "media_version": "64317f021e2ab96639c88a039a272b30",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 1,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.16,
+        "reason": "Leve ganho nos meios-tons e abertura das sombras para melhorar a leitura da fachada, preservando o céu, as áreas ensolaradas, as cores dos materiais e as marcas d'água.",
+        "saturation": 1,
+        "shadows": 0.06,
+        "sharpness": 0.1,
+        "warmth": 0
+      },
+      "public_id": "db5be24d-7ab4-4d04-93a3-3f1b6a587c3a",
+      "slot": 5,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 163266,
+          "checksum": "be009f4847e9a6a79d7069141115b5307ac2416ff23636b4a72e8ccea30cb9f5",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 425732,
+          "checksum": "c0ae8eb16f8649cfed9e4290231e1769b0cde497a2b0bd09b36df0f6856e2109",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 44351,
+          "checksum": "49e8aed564bb687893a87e298229079aa5d7062aef1ba0c194f8354a0327cfbf",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    },
+    {
+      "active_from": "2026-11-14 05:10:29.179465+00",
+      "attempts": 1,
+      "brand": "morar",
+      "checksum": "d9b1885fad68992ca4bdf60c761210fc73f6796c2d02407823ca7e78dc3712ea",
+      "media_id": "4b841453-ea16-4281-90b6-7787e57412a9",
+      "media_version": "e45642ba31205358db0064d7e6fc1208",
+      "model": "openai/gpt-6-astra",
+      "ordinal": 2,
+      "parameters": {
+        "contrast": 0.98,
+        "exposure": 0.04,
+        "reason": "Foto bem exposta sob sol forte. Abertura discreta das sombras e leve redução de contraste equilibram a fachada sem estourar áreas claras, preservando cores, marcas e aparência natural.",
+        "saturation": 1,
+        "shadows": 0.04,
+        "sharpness": 0.08,
+        "warmth": 0
+      },
+      "public_id": "db5be24d-7ab4-4d04-93a3-3f1b6a587c3a",
+      "slot": 5,
+      "state": "ready",
+      "treatment_version": "faithful-tone-v1",
+      "variants": {
+        "card": {
+          "bytes": 141478,
+          "checksum": "7438250f96a0d3911c378467b0ba4e14be32ff94dea01bd8987e9986bdd2f860",
+          "height": 720,
+          "width": 960
+        },
+        "full": {
+          "bytes": 361446,
+          "checksum": "d9b1885fad68992ca4bdf60c761210fc73f6796c2d02407823ca7e78dc3712ea",
+          "height": 1200,
+          "width": 1600
+        },
+        "thumb": {
+          "bytes": 39594,
+          "checksum": "22e436064ce1e270b1609d1e5f992ffb645643af9fd47cd0d7c9db691575ae37",
+          "height": 360,
+          "width": 480
+        }
+      },
+      "week_id": "a3b09ce0-8907-4ff3-8426-31d2739b1f19",
+      "week_start": "2026-11-09",
+      "week_state": "active"
+    }
+  ]
+}

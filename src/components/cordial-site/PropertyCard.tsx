@@ -102,7 +102,7 @@ export function PropertyImage({
   readyCallback.current = onImageReady;
   const errorCallback = useRef(onImageError);
   errorCallback.current = onImageError;
-  const mediaKey = `${brand}:${media?.id ?? ""}:${media?.version ?? ""}:${size}`;
+  const mediaKey = `${brand}:${media?.id ?? ""}:${media?.version ?? ""}:${media?.enhancement ?? ""}:${size}`;
   // Single reconciliation per photo: reset, then accept an image the browser already finished (cache/SSR).
   useEffect(() => {
     const img = imgRef.current;
