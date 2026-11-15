@@ -1,166 +1,471 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   BadgeDollarSign,
   CalendarCheck,
+  CalendarDays,
+  Check,
+  ChevronDown,
   Handshake,
   Home,
+  RotateCcw,
   TrendingUp,
+  X,
   type LucideIcon,
 } from "lucide-react";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
-import { cn } from "@/lib/utils";
-
-type Accent = "teal" | "emerald" | "amber" | "sky" | "violet";
-
-const accentRing: Record<Accent, string> = {
-  teal: "bg-teal-500/12 text-teal-700",
-  emerald: "bg-emerald-500/12 text-emerald-700",
-  amber: "bg-amber-500/14 text-amber-700",
-  sky: "bg-sky-500/12 text-sky-700",
-  violet: "bg-violet-500/12 text-violet-700",
-};
-
-const accentBar: Record<Accent, string> = {
-  teal: "bg-teal-500/70",
-  emerald: "bg-emerald-500/70",
-  amber: "bg-amber-500/70",
-  sky: "bg-sky-500/70",
-  violet: "bg-violet-500/70",
-};
+import {
+  defaultDashboardPeriods,
+  isValidMetricMonth,
+  validateMetricDates,
+  type DashboardMetric,
+  type DashboardPeriods,
+  type MetricBucket,
+  type MetricId,
+  type MetricPeriod,
+} from "@/lib/dashboard/metrics";
+import "./dashboard-metrics.css";
 
 type CardDef = {
-  id: string;
+  id: MetricId;
   label: string;
-  value: number;
-  detail: string;
   icon: LucideIcon;
-  accent: Accent;
-  to: string;
-  search?: Record<string, string>;
+  accent: string;
+  to: "/atendimentos" | "/agenda";
+  search?: { track: "aluguel" | "venda" };
 };
+const cards: CardDef[] = [
+  {
+    id: "atendimentos",
+    label: "Atendimentos",
+    icon: TrendingUp,
+    accent: "teal",
+    to: "/atendimentos",
+  },
+  {
+    id: "clientes",
+    label: "Novos clientes",
+    icon: Handshake,
+    accent: "emerald",
+    to: "/atendimentos",
+  },
+  {
+    id: "aluguel",
+    label: "Buscando aluguel",
+    icon: Home,
+    accent: "amber",
+    to: "/atendimentos",
+    search: { track: "aluguel" },
+  },
+  {
+    id: "compra",
+    label: "Buscando compra",
+    icon: BadgeDollarSign,
+    accent: "violet",
+    to: "/atendimentos",
+    search: { track: "venda" },
+  },
+  { id: "visitas", label: "Visitas agendadas", icon: CalendarCheck, accent: "sky", to: "/agenda" },
+];
+const presets: { period: MetricPeriod; label: string }[] = [
+  { period: { kind: "today" }, label: "Hoje" },
+  { period: { kind: "7d" }, label: "7 dias" },
+  { period: { kind: "30d" }, label: "30 dias" },
+  { period: { kind: "month" }, label: "Este mês" },
+  { period: { kind: "previous-month" }, label: "Mês anterior" },
+  { period: { kind: "year" }, label: "Este ano" },
+];
 
-export function DashboardMetricCards() {
-  const metrics = useDashboardMetrics();
-
-  const delta = metrics.atendimentosMes - metrics.atendimentosMesAnterior;
-  const hasBaseline = metrics.atendimentosMesAnterior > 0 || metrics.atendimentosMes > 0;
-
-  const cards: CardDef[] = [
-    {
-      id: "atendimentos",
-      label: "Atendimentos do mês",
-      value: metrics.atendimentosMes,
-      detail: hasBaseline
-        ? `${delta >= 0 ? "+" : ""}${delta} vs. mês anterior`
-        : "nenhum registro ainda",
-      icon: TrendingUp,
-      accent: "teal",
-      to: "/atendimentos",
-    },
-    {
-      id: "clientes",
-      label: "Novos clientes",
-      value: metrics.novosClientes,
-      detail: "etapa fechamento no mês",
-      icon: Handshake,
-      accent: "emerald",
-      to: "/atendimentos",
-    },
-    {
-      id: "aluguel",
-      label: "Buscando aluguel",
-      value: metrics.buscandoAluguel,
-      detail: "atendimentos ativos",
-      icon: Home,
-      accent: "amber",
-      to: "/atendimentos",
-      search: { track: "aluguel" },
-    },
-    {
-      id: "compra",
-      label: "Buscando compra",
-      value: metrics.buscandoCompra,
-      detail: "atendimentos ativos",
-      icon: BadgeDollarSign,
-      accent: "violet",
-      to: "/atendimentos",
-      search: { track: "venda" },
-    },
-    {
-      id: "visitas",
-      label: "Visitas agendadas",
-      value: metrics.visitasAgendadas,
-      detail: "de hoje em diante",
-      icon: CalendarCheck,
-      accent: "sky",
-      to: "/agenda",
-    },
+function PeriodPicker({
+  card,
+  metric,
+  period,
+  onChange,
+}: {
+  card: CardDef;
+  metric: DashboardMetric;
+  period: MetricPeriod;
+  onChange: (period: MetricPeriod) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"month" | "range">("month");
+  const [month, setMonth] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const Icon = card.icon;
+  const id = `metric-period-${card.id}`;
+  const choices = [
+    ...presets,
+    { period: { kind: "all" } as MetricPeriod, label: "Todo o período" },
   ];
+  if (card.id === "visitas")
+    choices.push({ period: { kind: "upcoming" }, label: "A partir de hoje" });
+
+  function apply(next: MetricPeriod) {
+    onChange(next);
+    setOpen(false);
+  }
+  function changeOpen(next: boolean) {
+    if (next) {
+      setMode(period.kind === "custom" ? "range" : "month");
+      setMonth(period.kind === "selected-month" ? period.month : "");
+      setStart(period.kind === "custom" ? period.start : "");
+      setEnd(period.kind === "custom" ? period.end : "");
+      setError(null);
+    }
+    setOpen(next);
+  }
 
   return (
-    <section className="mb-5" aria-label="Indicadores do painel" aria-busy={metrics.isLoading}>
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Link
-              key={card.id}
-              to={card.to}
-              search={card.search as never}
-              className="group relative flex min-w-0 flex-col overflow-hidden rounded-[1.25rem] border border-white/70 bg-white/[0.68] px-3.5 py-3.5 shadow-[0_16px_36px_-30px_rgba(23,27,33,0.5)] backdrop-blur-lg transition duration-200 hover:-translate-y-0.5 hover:bg-white/[0.82] hover:shadow-[0_20px_38px_-26px_rgba(23,27,33,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+    <Popover open={open} onOpenChange={changeOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="metric-period-trigger"
+          aria-label={`Alterar período de ${card.label}: ${metric.periodLabel}`}
+          title="Personalizar período"
+        >
+          <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+          <ChevronDown size={11} className="metric-period-chevron" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={10}
+        collisionPadding={12}
+        className="metric-period-popover"
+        aria-labelledby={`${id}-title`}
+      >
+        <div className="metric-picker-heading">
+          <h3 id={`${id}-title`}>{card.label}</h3>
+          <button
+            type="button"
+            className="metric-close"
+            onClick={() => setOpen(false)}
+            aria-label="Fechar filtro de período"
+          >
+            <X size={17} />
+          </button>
+        </div>
+        <div className="metric-presets" aria-label="Períodos rápidos">
+          {choices.map((choice) => (
+            <button
+              key={choice.period.kind}
+              type="button"
+              aria-pressed={period.kind === choice.period.kind}
+              onClick={() => apply(choice.period)}
             >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "absolute inset-x-0 top-0 h-[3px] opacity-70 transition-opacity group-hover:opacity-100",
-                  accentBar[card.accent],
-                )}
+              {choice.label}
+              {period.kind === choice.period.kind && <Check size={13} aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+        <fieldset className="metric-mode">
+          <legend className="sr-only">Tipo de período personalizado</legend>
+          <label>
+            <input
+              type="radio"
+              name={`${id}-mode`}
+              checked={mode === "month"}
+              onChange={() => {
+                setMode("month");
+                setError(null);
+              }}
+            />
+            Escolher mês
+          </label>
+          <label>
+            <input
+              type="radio"
+              name={`${id}-mode`}
+              checked={mode === "range"}
+              onChange={() => {
+                setMode("range");
+                setError(null);
+              }}
+            />
+            Intervalo de datas
+          </label>
+        </fieldset>
+        <form
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            const message =
+              mode === "month"
+                ? isValidMetricMonth(month)
+                  ? null
+                  : "Escolha um mês válido."
+                : validateMetricDates(start, end);
+            setError(message);
+            if (!message)
+              apply(
+                mode === "month"
+                  ? { kind: "selected-month", month }
+                  : { kind: "custom", start, end },
+              );
+          }}
+        >
+          {mode === "month" ? (
+            <label className="metric-field">
+              Mês e ano
+              <input
+                type="month"
+                required
+                value={month}
+                onChange={(event) => {
+                  setMonth(event.target.value);
+                  setError(null);
+                }}
+                aria-invalid={!!error}
+                aria-describedby={error ? `${id}-error` : undefined}
               />
-              <div className="flex items-start justify-between gap-2">
-                <span className="max-w-[9.5rem] text-[10.5px] font-extrabold uppercase leading-[1.35] tracking-[0.11em] text-foreground/55">
-                  {card.label}
-                </span>
-                <span
-                  className={cn(
-                    "grid size-7 shrink-0 place-items-center rounded-full",
-                    accentRing[card.accent],
-                  )}
-                >
-                  <Icon className="size-3.5" aria-hidden="true" />
-                </span>
-              </div>
+            </label>
+          ) : (
+            <div className="metric-date-fields">
+              <label className="metric-field">
+                Data inicial
+                <input
+                  type="date"
+                  required
+                  value={start}
+                  onChange={(event) => {
+                    setStart(event.target.value);
+                    setError(null);
+                  }}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? `${id}-error` : undefined}
+                />
+              </label>
+              <label className="metric-field">
+                Data final
+                <input
+                  type="date"
+                  required
+                  min={start || undefined}
+                  value={end}
+                  onChange={(event) => {
+                    setEnd(event.target.value);
+                    setError(null);
+                  }}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? `${id}-error` : undefined}
+                />
+              </label>
+            </div>
+          )}
+          {error && (
+            <p id={`${id}-error`} className="metric-date-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="metric-picker-actions">
+            <button
+              type="button"
+              className="metric-reset"
+              onClick={() => apply(defaultDashboardPeriods[card.id])}
+            >
+              <RotateCcw size={13} aria-hidden="true" />
+              Restaurar
+            </button>
+            <button type="submit" className="metric-apply">
+              Aplicar período
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
-              <div className="mt-4 min-h-8">
-                {metrics.isLoading ? (
-                  <>
+function MetricChart({ metric, label }: { metric: DashboardMetric; label: string }) {
+  const dated = metric.value - metric.undated;
+  return (
+    <div className="metric-chart-section">
+      <div className="metric-chart-caption">
+        <span>{metric.chartLabel}</span>
+        <span className="metric-chart-dot" aria-hidden="true" />
+      </div>
+      {dated === 0 ? (
+        <div className="metric-chart-empty">
+          <span>
+            {metric.undated ? "Registros sem data de cadastro" : "Nenhum registro no período"}
+          </span>
+        </div>
+      ) : (
+        <div
+          className="metric-chart"
+          role="group"
+          aria-label={`${label}: ${metric.chartLabel.toLowerCase()}. Use as setas para explorar as barras.`}
+        >
+          <ResponsiveContainer width="100%" height={72} minWidth={0}>
+            <BarChart
+              data={metric.buckets}
+              margin={{ top: 8, right: 0, bottom: 0, left: 0 }}
+              barCategoryGap="22%"
+              accessibilityLayer
+            >
+              <XAxis dataKey="label" hide />
+              <Tooltip
+                cursor={{ fill: "var(--metric-tint)" }}
+                allowEscapeViewBox={{ x: false, y: true }}
+                content={({ active, payload }) => {
+                  const bucket = payload?.[0]?.payload as MetricBucket | undefined;
+                  return active && bucket ? (
+                    <div className="metric-chart-tooltip">
+                      <span>{bucket.label}</span>
+                      <strong>
+                        {bucket.value.toLocaleString("pt-BR")}{" "}
+                        {bucket.value === 1 ? "registro" : "registros"}
+                      </strong>
+                    </div>
+                  ) : null;
+                }}
+              />
+              <Bar
+                dataKey="value"
+                name="Registros"
+                fill="var(--metric-color)"
+                fillOpacity={0.78}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={22}
+                isAnimationActive={false}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="sr-only">
+            <table>
+              <caption>
+                {label} — {metric.chartLabel}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Período</th>
+                  <th scope="col">Registros</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metric.buckets.map((bucket) => (
+                  <tr key={bucket.label}>
+                    <th scope="row">{bucket.label}</th>
+                    <td>{bucket.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <div className="metric-chart-axis" aria-hidden="true">
+        <span>{metric.startLabel}</span>
+        <span>{metric.endLabel}</span>
+      </div>
+      {metric.undated > 0 && (
+        <p className="metric-undated">{metric.undated} sem data, fora do gráfico</p>
+      )}
+    </div>
+  );
+}
+
+export function DashboardMetricCards() {
+  const [periods, setPeriods] = useState<DashboardPeriods>(defaultDashboardPeriods);
+  const metrics = useDashboardMetrics(periods);
+  return (
+    <section className="dashboard-metrics" aria-label="Indicadores do painel">
+      <div className="dashboard-metrics-grid">
+        {cards.map((card) => {
+          const metric = metrics.cards[card.id];
+          const state = card.id === "visitas" ? metrics.agendaState : metrics.attendanceState;
+          return (
+            <article
+              key={card.id}
+              className="dashboard-metric"
+              data-accent={card.accent}
+              aria-labelledby={`metric-title-${card.id}`}
+              aria-busy={state.isLoading}
+            >
+              <p className="sr-only">{metric.explanation}</p>
+              <div className="metric-body">
+                <div className="metric-heading">
+                  <div className="metric-heading-copy">
+                    <h2 id={`metric-title-${card.id}`}>
+                      <Link
+                        to={card.to}
+                        search={card.search as never}
+                        className="metric-link"
+                        title={`Abrir ${card.to === "/agenda" ? "agenda" : "atendimentos"}`}
+                      >
+                        {card.label}
+                        <ArrowUpRight size={13} aria-hidden="true" />
+                      </Link>
+                    </h2>
+                    <p className="metric-selected-period">
+                      <CalendarDays size={12} aria-hidden="true" />
+                      <span>{metric.periodLabel}</span>
+                    </p>
+                  </div>
+                  <PeriodPicker
+                    card={card}
+                    metric={metric}
+                    period={periods[card.id]}
+                    onChange={(period) =>
+                      setPeriods((current) => ({ ...current, [card.id]: period }))
+                    }
+                  />
+                </div>
+                <div className="metric-reading" aria-live="polite" aria-atomic="true">
+                  {state.isLoading ? (
+                    <>
+                      <span className="metric-skeleton" aria-hidden="true" />
+                      <span className="sr-only">Carregando {card.label}</span>
+                    </>
+                  ) : (
                     <span
-                      className="block h-7 w-16 animate-pulse rounded-lg bg-foreground/10 motion-reduce:animate-none"
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">Carregando indicador</span>
-                  </>
-                ) : metrics.isError ? (
-                  <span
-                    className="text-2xl font-black text-foreground/40"
-                    aria-label="Indicador indisponível"
-                  >
-                    —
-                  </span>
-                ) : (
-                  <span className="text-[clamp(1.6rem,3vw,2rem)] font-black leading-none tracking-[-0.03em] text-foreground tabular-nums">
-                    {String(card.value).padStart(2, "0")}
-                  </span>
-                )}
+                      className="metric-value"
+                      aria-label={state.isError ? "Indicador indisponível" : undefined}
+                    >
+                      {state.isError
+                        ? "—"
+                        : metric.value.toLocaleString("pt-BR", { minimumIntegerDigits: 2 })}
+                    </span>
+                  )}
+                  <p className="metric-detail">
+                    {state.isError
+                      ? "Não foi possível carregar"
+                      : state.isLoading
+                        ? "Atualizando indicador"
+                        : metric.detail}
+                  </p>
+                </div>
               </div>
-
-              <p className="mt-2 flex items-center gap-1 text-[11px] font-semibold leading-4 text-foreground/50">
-                <span className="truncate">
-                  {metrics.isError ? "indisponível no momento" : card.detail}
-                </span>
-                <ArrowUpRight className="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-70" />
-              </p>
-            </Link>
+              {state.isLoading ? (
+                <div className="metric-chart-state">
+                  <span className="metric-chart-skeleton" aria-hidden="true" />
+                </div>
+              ) : state.isError ? (
+                <div className="metric-chart-state">
+                  <button
+                    type="button"
+                    className="metric-retry"
+                    onClick={() =>
+                      void (card.id === "visitas"
+                        ? metrics.retryAgenda()
+                        : metrics.retryAttendances())
+                    }
+                  >
+                    <RotateCcw size={14} aria-hidden="true" />
+                    Tentar novamente
+                  </button>
+                </div>
+              ) : (
+                <MetricChart metric={metric} label={card.label} />
+              )}
+            </article>
           );
         })}
       </div>

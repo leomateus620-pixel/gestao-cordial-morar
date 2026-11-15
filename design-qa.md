@@ -1,38 +1,47 @@
-# Design QA — Morar
+# QA — indicadores da visão geral
 
-**Source visual truth:** `C:/Users/Leonardo/Downloads/Busca imobiliária em vidro fumê.png` (1295×1215 px), mais os dois prints atuais fornecidos. A imagem é uma referência recortada de material e hierarquia; o briefing funcional e o catálogo real determinam os controles e o conteúdo.
+final result: passed
 
-**Implementation:** `http://127.0.0.1:4174/site-morar`, componentes do repositório com API pública real e transporte de prévia somente para leitura. Evidências em `docs/qa/morar-charcoal/`.
+Relatório anterior preservado em [QA Morar](docs/qa/morar-charcoal/design-qa.md).
 
-## Comparação e normalização
+## Escopo e referências
 
-O print gerado é um recorte ampliado do card, sem metadados de viewport. A revisão comparou o card e seus ícones/campos com a região correspondente da implementação, além da composição completa da abertura, resultados e rodapé. Não se presume uma reprodução pixel a pixel da página inteira a partir desse recorte.
+Redesign dos cinco cards reais de `DashboardMetricCards`, sem alterar o restante da visão geral. A prévia usa o mesmo componente de produção, com o transporte substituído por dados fictícios determinísticos, sem conexão ao CRM. Não foi validada uma sessão autenticada em produção.
 
-A abertura desktop usa alvo CSS 1440×900; a captura final tem aproximadamente 1427×901 pixels úteis, com arredondamento/scrollbar do navegador. A captura completa tem 1440×4074 px. A home mobile usa alvo 390×844 e captura completa 390×8449 px. Os demais alvos, dimensões CSS observadas e colunas constam em `viewports.json`. A densidade do ambiente variou de 1 a aproximadamente 1,14; as capturas foram normalizadas pelo fator observado, sem recolorir fotografias ou logos.
+- Fonte visual: `/Users/leonardo/Desktop/Captura de Tela 2026-11-15 às 10.08.15.png` (2666 × 1440).
+- Refinamento solicitado durante a implementação: `/Users/leonardo/Desktop/Captura de Tela 2026-11-15 às 10.35.08.png` (616 × 870): remover descrições e compactar os filtros.
+- Inspiração consultada: https://github.com/dickwu/apple-design-skill/blob/main/SKILL.md e orientações oficiais de tipografia e gráficos da Apple. Mantidos Manrope/Sora, os ícones Lucide e a identidade do produto.
+- Implementação desktop: `docs/evidence/dashboard/cards-desktop.png`, 1333 × 720; filtro: `filter-desktop.png`, mesma dimensão.
+- Normalização: primeira fonte reduzida em 50% a 1333 × 720; implementação capturada nessa largura CSS, imagem de 1333 × 720 (1 pixel por pixel CSS). A densidade original da fonte não foi inferida como configuração real do navegador.
+- Comparação em conjunto: `/tmp/dashboard-qa/full-comparison.png`, `/tmp/dashboard-qa/cards-comparison.png` e `/tmp/dashboard-qa/filter-comparison.png`. As fontes com dados do usuário não foram copiadas para o repositório.
+- A comparação do filtro usa o recorte do novo popover com 304 × 377; a segunda fonte foi normalizada para comparação de composição, sem assumir sua densidade original.
 
-Referência e capturas finais foram abertas juntas na inspeção. Foram examinados separadamente campos, foco, combobox, ícones a 20/24 px, borda da ação, contraste do material, gaveta, galeria e rodapé.
+## Comparação e iterações
 
-## Histórico de revisão
+1. P2: versão inicial alta demais, com período abaixo de toda a linha do ícone. Período foi agrupado ao título, mantendo os ícones com 44 × 44. A faixa inferior acomoda as barras reais; o aumento de altura em relação à fonte é intencional para acrescentar gráficos e filtros.
+2. P2: tabela acessível diretamente com `sr-only` ainda produzia 4 px de overflow horizontal pela largura intrínseca da tabela. Corrigido com contêiner visualmente oculto. Largura de documento igual à viewport, confirmada em 320, 390, 768 e 1333 px.
+3. Feedback do usuário: removidos o texto explicativo e o título redundante do filtro, atalhos em três colunas, ações lado a lado e espaçamentos menores. Popover final 304 × 377 no desktop, sem rolagem a 1333 × 720. Recapturado em `filter-desktop.png`, `filter-detail.png` e `filter-mobile.png`.
 
-1. **[P1] Labels escuros herdados no vidro.** A regra compartilhada do vidro Cordial tinha especificidade maior que a variante Morar. O escopo Cordial foi explicitado e a variante passou a controlar seus campos. Evidência inicial: `iteration-1-desktop.jpg`; revisão: `after-desktop-hero.jpg` e `after-desktop-location.jpg`.
-2. **[P2] Limite da ação insuficiente no pior fundo claro.** O contorno com alpha 0,42 produzia 2,48:1. Alpha 0,56 elevou o resultado a 3,19:1. Evidência: `contrast.json` e captura da abertura.
-3. **[P2] Avançados apertados em duas colunas no celular.** Abaixo de 520 px a gaveta passou a uma coluna. Evidência posterior: `after-mobile-advanced.jpg`.
-4. **[P2] Chips herdavam superfície Cordial.** A especificidade da variante foi consolidada. O estado final usa `#e9edf1` com `#2a2f35`. Evidência: `after-desktop-results.jpg`.
-5. **[P1] Preenchimento vulnerável à resolução inicial da home.** A busca Morar foi movida para uma região estável; foto e card semanal têm fronteiras Suspense próprias. A seleção 5+15 continua no mesmo loader. Um teste resolve a promessa com a gaveta aberta e verifica preservação dos inputs e aplicação do rascunho.
-6. **[P1] Ícone do menu móvel herdava branco do cabeçalho compartilhado.** A variante clara Morar passou a declarar a cor grafite no cabeçalho. A conferência final confirmou ícone visível, abertura do menu, Escape e retorno de foco ao acionador. Evidência: `after-home-390x844.jpg` e `after-mobile-menu.jpg`.
+## Superfícies verificadas
 
-## Superfícies de fidelidade
+- Tipografia: famílias existentes, títulos em caixa normal, números tabulares com Sora, hierarquia mais clara, sem truncar títulos/períodos. Textos de apoio e controles usam os tokens de contraste do produto.
+- Layout: cinco colunas quando há espaço útil suficiente; três no tablet; uma no celular de 390 e na largura mínima de 320. Sem sobreposição ou rolagem lateral. Raio, bordas e sombras discretas coerentes com o painel.
+- Cores: mantidas as cinco associações de cor; rótulos, números e seleção marcada complementam a cor. Tema escuro inspecionado em `cards-dark.png`. Sem depender de cor para transmitir contagem ou seleção.
+- Assets: ícones Lucide já usados pelo produto, sem novos assets raster. Gráficos construídos com Recharts. Nenhum ícone/ilustração substituído por desenho improvisado.
+- Conteúdo: nomes dos indicadores preservados, período explícito; `Novos clientes` mantém o critério existente de etapa de fechamento. Aluguel/compra filtram a entrada dos atendimentos ativos hoje, não simulam uma série histórica de estoque.
 
-- **Tipografia:** Manrope existente, labels principais de 15 px e sublabels de 14 px; controles de 16 px, incluindo modo de contagem. Nomes acessíveis completos para dormitórios e banheiros. Hierarquia e quebras verificadas em desktop e mobile.
-- **Espaçamento/layout:** dois grupos por linha quando há largura, uma coluna no celular, orçamento em dupla e espaços reorganizados em 360 px. Abertura mantém foto e semanal. Controles e lista não expandem o card; o CTA teve variação de 0 px na seleção de localização.
-- **Cores/tokens:** chumbo, superfícies claras opacas e vidro moderado. Fotografia não determina o contraste dos inputs. Erro e sucesso preservam semântica. Portais recebem a marca no próprio contêiner. O ambiente respeita a preferência real de menor transparência; a flag exclusiva da prévia simula também o material padrão para a inspeção.
-- **Imagens/ícones:** foto, marca estampada na foto e logos preservados; sem filtros de imagem. SVGs Lucide permanecem vetoriais, com traço 1,7 e cor contextual. Não foram criados ícones raster nem uma nova logo.
-- **Texto/conteúdo:** labels e ações correspondem aos controles reais. Contagens, bairros, preços e ofertas vêm da API. A composição observada reteve cinco destaques e quinze adicionais. O modo exato recebido pela URL permanece explícito.
+## Interações verificadas no navegador integrado
 
-## Verificações e limites
+- Mês anterior altera somente o próprio card; mês personalizado (`out. de 2026`); intervalo personalizado inclusivo; datas invertidas produzem mensagem e não aplicam; restauração do padrão.
+- Popover aberto com Enter, fechado com Escape, foco devolvido ao ícone; gráfico explorável com setas e tooltip; tabela acessível mantém os valores disponíveis.
+- Link de aluguel preserva `track=aluguel` e chega ao destino da prévia. Rotas finais continuam as rotas existentes do aplicativo.
+- Estados sem registros, carregamento, falha isolada da agenda e recuperação via botão. Falha da agenda não apaga os quatro indicadores de atendimentos.
+- Viewports: 1333 × 720, 768 × 1024, 390 × 844 e 320 × 740. Popover permanece dentro da viewport, inclusive a 320 px.
+- Console do navegador: sem erros ou avisos durante a verificação.
+- Redução de movimento e de transparência implementadas em CSS; não foi simulado um dispositivo físico com leitor de tela.
 
-Foram exercitados teclado, Enter/Escape, seleção de cidade/bairro, limpeza, intervalo inválido, rascunho avançado, foco, retorno da ficha e o portal da galeria. A Cordial manteve os valores de cor e o formulário próprios. O viewport curto manteve a ação da gaveta dentro da área visível, com corpo rolável.
+## Validação técnica
 
-A prévia não certifica SSR completo com catálogo real, leitor de tela ou dispositivos físicos. Reflow e viewport curto não são prova de teclado virtual de SO ou zoom real. O relatório principal separa testes, prévia, build e publicação.
+19 testes de regras de período e paginação passaram. Typecheck, lint dos arquivos novos/alterados do painel e build de produção passaram. A paginação da agenda reutiliza o helper de leitura integral já testado; autenticação, RLS, ordenação estável e filtro de escopo continuam no servidor.
 
-**final result: passed** — capturas finais e referência conferidas; sem achados P1/P2 pendentes no escopo validado. Os limites de dispositivos, teclado virtual, zoom, leitor de tela e SSR completo permanecem explícitos.
+Nenhum P0/P1/P2 pendente no escopo verificado. A prévia é isolada: dados e navegação de destino são de demonstração, enquanto os cards e suas interações são os componentes reais.

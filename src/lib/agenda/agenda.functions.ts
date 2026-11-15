@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { readAllAttendancePages } from "@/lib/attendances/read-all-pages";
 import type {
   AgendaChecklistItem,
   AgendaEvent,
@@ -198,16 +199,21 @@ export const listAgendaEvents = createServerFn({ method: "GET" })
   .inputValidator((d?: { scope?: ListScope }) => d ?? {})
   .handler(async ({ data, context }) => {
     const scope: ListScope = data?.scope ?? "todos";
-    let query = context.supabase
-      .from("agenda_events")
-      .select(SELECT)
-      .is("deleted_at", null)
-      .order("inicio", { ascending: true });
-    if (scope === "fotos") query = query.in("tipo", PHOTO_TIPOS);
-    else if (scope === "geral") query = query.not("tipo", "in", `(${PHOTO_TIPOS.join(",")})`);
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
-    return (rows ?? []).map((row) => rowToEvent(row as unknown as DbEvent));
+    // Dashboard periods can span the full agenda. Do not silently truncate at the API cap.
+    const rows = await readAllAttendancePages<DbEvent>(async (from, to) => {
+      let query = context.supabase
+        .from("agenda_events")
+        .select(SELECT, { count: "exact" })
+        .is("deleted_at", null)
+        .order("inicio", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (scope === "fotos") query = query.in("tipo", PHOTO_TIPOS);
+      else if (scope === "geral") query = query.not("tipo", "in", `(${PHOTO_TIPOS.join(",")})`);
+      const page = await query;
+      return { ...page, data: page.data as unknown as DbEvent[] | null };
+    });
+    return rows.map(rowToEvent);
   });
 
 type UpsertInput = {
