@@ -74,6 +74,7 @@ import { Route as AppVistoriasVistoriaIdRouteImport } from './routes/_app.vistor
 import { Route as AppVistoriasNovaRouteImport } from './routes/_app.vistorias.nova'
 import { Route as ApiCordialSiteSplatRouteImport } from './routes/api/cordial-site/$'
 import { Route as ApiMorarSiteSplatRouteImport } from './routes/api/morar-site/$'
+import { Route as ApiPublicIngressProbeRouteImport } from './routes/api/public/ingress-probe'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as SiteMorarImovelPublicIdRouteImport } from './routes/site-morar.imovel.$publicId'
 import { Route as SiteMorarInformacoesSlugRouteImport } from './routes/site-morar.informacoes.$slug'
@@ -455,6 +456,11 @@ const ApiMorarSiteSplatRoute = ApiMorarSiteSplatRouteImport.update({
   path: '/api/morar-site/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicIngressProbeRoute = ApiPublicIngressProbeRouteImport.update({
+  id: '/api/public/ingress-probe',
+  path: '/api/public/ingress-probe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -821,6 +827,7 @@ export interface FileRoutesByFullPath {
   '/vistorias/nova': typeof AppVistoriasNovaRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/api/morar-site/$': typeof ApiMorarSiteSplatRoute
+  '/api/public/ingress-probe': typeof ApiPublicIngressProbeRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/site-morar/imovel/$publicId': typeof SiteMorarImovelPublicIdRoute
   '/site-morar/informacoes/$slug': typeof SiteMorarInformacoesSlugRoute
@@ -937,6 +944,7 @@ export interface FileRoutesByTo {
   '/vistorias/nova': typeof AppVistoriasNovaRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/api/morar-site/$': typeof ApiMorarSiteSplatRoute
+  '/api/public/ingress-probe': typeof ApiPublicIngressProbeRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/site-morar/imovel/$publicId': typeof SiteMorarImovelPublicIdRoute
   '/site-morar/informacoes/$slug': typeof SiteMorarInformacoesSlugRoute
@@ -1059,6 +1067,7 @@ export interface FileRoutesById {
   '/_app/vistorias/nova': typeof AppVistoriasNovaRoute
   '/api/cordial-site/$': typeof ApiCordialSiteSplatRoute
   '/api/morar-site/$': typeof ApiMorarSiteSplatRoute
+  '/api/public/ingress-probe': typeof ApiPublicIngressProbeRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/site-morar/imovel/$publicId': typeof SiteMorarImovelPublicIdRoute
   '/site-morar/informacoes/$slug': typeof SiteMorarInformacoesSlugRoute
@@ -1181,6 +1190,7 @@ export interface FileRouteTypes {
     | '/vistorias/nova'
     | '/api/cordial-site/$'
     | '/api/morar-site/$'
+    | '/api/public/ingress-probe'
     | '/lovable/email/suppression'
     | '/site-morar/imovel/$publicId'
     | '/site-morar/informacoes/$slug'
@@ -1297,6 +1307,7 @@ export interface FileRouteTypes {
     | '/vistorias/nova'
     | '/api/cordial-site/$'
     | '/api/morar-site/$'
+    | '/api/public/ingress-probe'
     | '/lovable/email/suppression'
     | '/site-morar/imovel/$publicId'
     | '/site-morar/informacoes/$slug'
@@ -1418,6 +1429,7 @@ export interface FileRouteTypes {
     | '/_app/vistorias/nova'
     | '/api/cordial-site/$'
     | '/api/morar-site/$'
+    | '/api/public/ingress-probe'
     | '/lovable/email/suppression'
     | '/site-morar/imovel/$publicId'
     | '/site-morar/informacoes/$slug'
@@ -1497,6 +1509,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
+  ApiPublicIngressProbeRoute: typeof ApiPublicIngressProbeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiCordialSiteBotChatRoute: typeof ApiCordialSiteBotChatRoute
   ApiCordialSiteBotEventsRoute: typeof ApiCordialSiteBotEventsRoute
@@ -1994,6 +2007,13 @@ declare module '@tanstack/react-router' {
       path: '/api/morar-site/$'
       fullPath: '/api/morar-site/$'
       preLoaderRoute: typeof ApiMorarSiteSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ingress-probe': {
+      id: '/api/public/ingress-probe'
+      path: '/api/public/ingress-probe'
+      fullPath: '/api/public/ingress-probe'
+      preLoaderRoute: typeof ApiPublicIngressProbeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/suppression': {
@@ -2575,6 +2595,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
+  ApiPublicIngressProbeRoute: ApiPublicIngressProbeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiCordialSiteBotChatRoute: ApiCordialSiteBotChatRoute,
   ApiCordialSiteBotEventsRoute: ApiCordialSiteBotEventsRoute,
