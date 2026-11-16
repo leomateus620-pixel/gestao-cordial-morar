@@ -199,29 +199,6 @@ function LoginPage() {
                 <p className="mt-2.5 text-sm leading-6 text-[#6B7280]">{subtitulo}</p>
               </header>
 
-              <div className="mt-5 inline-flex rounded-xl border border-[#E6DDD2] bg-white p-1 text-[13px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("signin");
-                    resetMessages();
-                  }}
-                  className={`rounded-lg px-3 py-1.5 transition ${mode === "signin" ? "bg-[#1E647D] text-white" : "text-[#1E2329]"}`}
-                >
-                  Entrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("signup");
-                    resetMessages();
-                  }}
-                  className={`rounded-lg px-3 py-1.5 transition ${mode === "signup" ? "bg-[#1E647D] text-white" : "text-[#1E2329]"}`}
-                >
-                  Criar conta
-                </button>
-              </div>
-
               <form onSubmit={submit} className="mt-6 space-y-4">
                 {mode === "signup" && (
                   <label className="block">
