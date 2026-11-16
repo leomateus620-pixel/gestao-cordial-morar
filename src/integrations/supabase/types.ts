@@ -14680,6 +14680,7 @@ export type Database = {
         Args: { _agencies: string[]; _user_id: string }
         Returns: undefined
       }
+      public_bot_gateway: { Args: { op: string; payload: Json }; Returns: Json }
       public_site_claim_derivative: { Args: { _key: string }; Returns: string }
       public_site_finish_derivative: {
         Args: { _checksum: string; _key: string; _lease: string }
