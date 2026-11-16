@@ -89,6 +89,16 @@ import { Route as AppAssistenteEquipeIndexRouteImport } from './routes/_app.assi
 import { Route as AppAssistenteEquipeBotIdRouteImport } from './routes/_app.assistente.equipe.$botId'
 import { Route as AppImoveisImovelIdIndexRouteImport } from './routes/_app.imoveis.$imovelId.index'
 import { Route as AppImoveisImovelIdEditarRouteImport } from './routes/_app.imoveis.$imovelId.editar'
+import { Route as ApiCordialSiteBotChatRouteImport } from './routes/api/cordial-site/bot/chat'
+import { Route as ApiCordialSiteBotEventsRouteImport } from './routes/api/cordial-site/bot/events'
+import { Route as ApiCordialSiteBotSessionRouteImport } from './routes/api/cordial-site/bot/session'
+import { Route as ApiCordialSiteBotSuggestionsRouteImport } from './routes/api/cordial-site/bot/suggestions'
+import { Route as ApiCordialSiteBotTranscribeRouteImport } from './routes/api/cordial-site/bot/transcribe'
+import { Route as ApiMorarSiteBotChatRouteImport } from './routes/api/morar-site/bot/chat'
+import { Route as ApiMorarSiteBotEventsRouteImport } from './routes/api/morar-site/bot/events'
+import { Route as ApiMorarSiteBotSessionRouteImport } from './routes/api/morar-site/bot/session'
+import { Route as ApiMorarSiteBotSuggestionsRouteImport } from './routes/api/morar-site/bot/suggestions'
+import { Route as ApiMorarSiteBotTranscribeRouteImport } from './routes/api/morar-site/bot/transcribe'
 import { Route as ApiPublicAdsOauthCallbackRouteImport } from './routes/api/public/ads-oauth.callback'
 import { Route as ApiPublicAssistantOauthCallbackRouteImport } from './routes/api/public/assistant-oauth.callback'
 import { Route as ApiPublicGoogleCalendarCallbackRouteImport } from './routes/api/public/google-calendar.callback'
@@ -524,6 +534,61 @@ const AppImoveisImovelIdEditarRoute =
     path: '/editar',
     getParentRoute: () => AppImoveisImovelIdRoute,
   } as any)
+const ApiCordialSiteBotChatRoute = ApiCordialSiteBotChatRouteImport.update({
+  id: '/api/cordial-site/bot/chat',
+  path: '/api/cordial-site/bot/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCordialSiteBotEventsRoute = ApiCordialSiteBotEventsRouteImport.update({
+  id: '/api/cordial-site/bot/events',
+  path: '/api/cordial-site/bot/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCordialSiteBotSessionRoute =
+  ApiCordialSiteBotSessionRouteImport.update({
+    id: '/api/cordial-site/bot/session',
+    path: '/api/cordial-site/bot/session',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCordialSiteBotSuggestionsRoute =
+  ApiCordialSiteBotSuggestionsRouteImport.update({
+    id: '/api/cordial-site/bot/suggestions',
+    path: '/api/cordial-site/bot/suggestions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCordialSiteBotTranscribeRoute =
+  ApiCordialSiteBotTranscribeRouteImport.update({
+    id: '/api/cordial-site/bot/transcribe',
+    path: '/api/cordial-site/bot/transcribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMorarSiteBotChatRoute = ApiMorarSiteBotChatRouteImport.update({
+  id: '/api/morar-site/bot/chat',
+  path: '/api/morar-site/bot/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMorarSiteBotEventsRoute = ApiMorarSiteBotEventsRouteImport.update({
+  id: '/api/morar-site/bot/events',
+  path: '/api/morar-site/bot/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMorarSiteBotSessionRoute = ApiMorarSiteBotSessionRouteImport.update({
+  id: '/api/morar-site/bot/session',
+  path: '/api/morar-site/bot/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMorarSiteBotSuggestionsRoute =
+  ApiMorarSiteBotSuggestionsRouteImport.update({
+    id: '/api/morar-site/bot/suggestions',
+    path: '/api/morar-site/bot/suggestions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMorarSiteBotTranscribeRoute =
+  ApiMorarSiteBotTranscribeRouteImport.update({
+    id: '/api/morar-site/bot/transcribe',
+    path: '/api/morar-site/bot/transcribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAdsOauthCallbackRoute =
   ApiPublicAdsOauthCallbackRouteImport.update({
     id: '/api/public/ads-oauth/callback',
@@ -774,6 +839,16 @@ export interface FileRoutesByFullPath {
   '/site/selecao/': typeof SiteSelecaoIndexRoute
   '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
+  '/api/cordial-site/bot/chat': typeof ApiCordialSiteBotChatRoute
+  '/api/cordial-site/bot/events': typeof ApiCordialSiteBotEventsRoute
+  '/api/cordial-site/bot/session': typeof ApiCordialSiteBotSessionRoute
+  '/api/cordial-site/bot/suggestions': typeof ApiCordialSiteBotSuggestionsRoute
+  '/api/cordial-site/bot/transcribe': typeof ApiCordialSiteBotTranscribeRoute
+  '/api/morar-site/bot/chat': typeof ApiMorarSiteBotChatRoute
+  '/api/morar-site/bot/events': typeof ApiMorarSiteBotEventsRoute
+  '/api/morar-site/bot/session': typeof ApiMorarSiteBotSessionRoute
+  '/api/morar-site/bot/suggestions': typeof ApiMorarSiteBotSuggestionsRoute
+  '/api/morar-site/bot/transcribe': typeof ApiMorarSiteBotTranscribeRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
@@ -880,6 +955,16 @@ export interface FileRoutesByTo {
   '/site/selecao': typeof SiteSelecaoIndexRoute
   '/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
+  '/api/cordial-site/bot/chat': typeof ApiCordialSiteBotChatRoute
+  '/api/cordial-site/bot/events': typeof ApiCordialSiteBotEventsRoute
+  '/api/cordial-site/bot/session': typeof ApiCordialSiteBotSessionRoute
+  '/api/cordial-site/bot/suggestions': typeof ApiCordialSiteBotSuggestionsRoute
+  '/api/cordial-site/bot/transcribe': typeof ApiCordialSiteBotTranscribeRoute
+  '/api/morar-site/bot/chat': typeof ApiMorarSiteBotChatRoute
+  '/api/morar-site/bot/events': typeof ApiMorarSiteBotEventsRoute
+  '/api/morar-site/bot/session': typeof ApiMorarSiteBotSessionRoute
+  '/api/morar-site/bot/suggestions': typeof ApiMorarSiteBotSuggestionsRoute
+  '/api/morar-site/bot/transcribe': typeof ApiMorarSiteBotTranscribeRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
@@ -992,6 +1077,16 @@ export interface FileRoutesById {
   '/site/selecao/': typeof SiteSelecaoIndexRoute
   '/_app/assistente/equipe/$botId': typeof AppAssistenteEquipeBotIdRoute
   '/_app/imoveis/$imovelId/editar': typeof AppImoveisImovelIdEditarRoute
+  '/api/cordial-site/bot/chat': typeof ApiCordialSiteBotChatRoute
+  '/api/cordial-site/bot/events': typeof ApiCordialSiteBotEventsRoute
+  '/api/cordial-site/bot/session': typeof ApiCordialSiteBotSessionRoute
+  '/api/cordial-site/bot/suggestions': typeof ApiCordialSiteBotSuggestionsRoute
+  '/api/cordial-site/bot/transcribe': typeof ApiCordialSiteBotTranscribeRoute
+  '/api/morar-site/bot/chat': typeof ApiMorarSiteBotChatRoute
+  '/api/morar-site/bot/events': typeof ApiMorarSiteBotEventsRoute
+  '/api/morar-site/bot/session': typeof ApiMorarSiteBotSessionRoute
+  '/api/morar-site/bot/suggestions': typeof ApiMorarSiteBotSuggestionsRoute
+  '/api/morar-site/bot/transcribe': typeof ApiMorarSiteBotTranscribeRoute
   '/api/public/ads-oauth/callback': typeof ApiPublicAdsOauthCallbackRoute
   '/api/public/assistant-oauth/callback': typeof ApiPublicAssistantOauthCallbackRoute
   '/api/public/google-calendar/callback': typeof ApiPublicGoogleCalendarCallbackRoute
@@ -1104,6 +1199,16 @@ export interface FileRouteTypes {
     | '/site/selecao/'
     | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
+    | '/api/cordial-site/bot/chat'
+    | '/api/cordial-site/bot/events'
+    | '/api/cordial-site/bot/session'
+    | '/api/cordial-site/bot/suggestions'
+    | '/api/cordial-site/bot/transcribe'
+    | '/api/morar-site/bot/chat'
+    | '/api/morar-site/bot/events'
+    | '/api/morar-site/bot/session'
+    | '/api/morar-site/bot/suggestions'
+    | '/api/morar-site/bot/transcribe'
     | '/api/public/ads-oauth/callback'
     | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
@@ -1210,6 +1315,16 @@ export interface FileRouteTypes {
     | '/site/selecao'
     | '/assistente/equipe/$botId'
     | '/imoveis/$imovelId/editar'
+    | '/api/cordial-site/bot/chat'
+    | '/api/cordial-site/bot/events'
+    | '/api/cordial-site/bot/session'
+    | '/api/cordial-site/bot/suggestions'
+    | '/api/cordial-site/bot/transcribe'
+    | '/api/morar-site/bot/chat'
+    | '/api/morar-site/bot/events'
+    | '/api/morar-site/bot/session'
+    | '/api/morar-site/bot/suggestions'
+    | '/api/morar-site/bot/transcribe'
     | '/api/public/ads-oauth/callback'
     | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
@@ -1321,6 +1436,16 @@ export interface FileRouteTypes {
     | '/site/selecao/'
     | '/_app/assistente/equipe/$botId'
     | '/_app/imoveis/$imovelId/editar'
+    | '/api/cordial-site/bot/chat'
+    | '/api/cordial-site/bot/events'
+    | '/api/cordial-site/bot/session'
+    | '/api/cordial-site/bot/suggestions'
+    | '/api/cordial-site/bot/transcribe'
+    | '/api/morar-site/bot/chat'
+    | '/api/morar-site/bot/events'
+    | '/api/morar-site/bot/session'
+    | '/api/morar-site/bot/suggestions'
+    | '/api/morar-site/bot/transcribe'
     | '/api/public/ads-oauth/callback'
     | '/api/public/assistant-oauth/callback'
     | '/api/public/google-calendar/callback'
@@ -1373,6 +1498,16 @@ export interface RootRouteChildren {
   ApiCordialSiteSplatRoute: typeof ApiCordialSiteSplatRoute
   ApiMorarSiteSplatRoute: typeof ApiMorarSiteSplatRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiCordialSiteBotChatRoute: typeof ApiCordialSiteBotChatRoute
+  ApiCordialSiteBotEventsRoute: typeof ApiCordialSiteBotEventsRoute
+  ApiCordialSiteBotSessionRoute: typeof ApiCordialSiteBotSessionRoute
+  ApiCordialSiteBotSuggestionsRoute: typeof ApiCordialSiteBotSuggestionsRoute
+  ApiCordialSiteBotTranscribeRoute: typeof ApiCordialSiteBotTranscribeRoute
+  ApiMorarSiteBotChatRoute: typeof ApiMorarSiteBotChatRoute
+  ApiMorarSiteBotEventsRoute: typeof ApiMorarSiteBotEventsRoute
+  ApiMorarSiteBotSessionRoute: typeof ApiMorarSiteBotSessionRoute
+  ApiMorarSiteBotSuggestionsRoute: typeof ApiMorarSiteBotSuggestionsRoute
+  ApiMorarSiteBotTranscribeRoute: typeof ApiMorarSiteBotTranscribeRoute
   ApiPublicAdsOauthCallbackRoute: typeof ApiPublicAdsOauthCallbackRoute
   ApiPublicAssistantOauthCallbackRoute: typeof ApiPublicAssistantOauthCallbackRoute
   ApiPublicGoogleCalendarCallbackRoute: typeof ApiPublicGoogleCalendarCallbackRoute
@@ -1966,6 +2101,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisImovelIdEditarRouteImport
       parentRoute: typeof AppImoveisImovelIdRoute
     }
+    '/api/cordial-site/bot/chat': {
+      id: '/api/cordial-site/bot/chat'
+      path: '/api/cordial-site/bot/chat'
+      fullPath: '/api/cordial-site/bot/chat'
+      preLoaderRoute: typeof ApiCordialSiteBotChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cordial-site/bot/events': {
+      id: '/api/cordial-site/bot/events'
+      path: '/api/cordial-site/bot/events'
+      fullPath: '/api/cordial-site/bot/events'
+      preLoaderRoute: typeof ApiCordialSiteBotEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cordial-site/bot/session': {
+      id: '/api/cordial-site/bot/session'
+      path: '/api/cordial-site/bot/session'
+      fullPath: '/api/cordial-site/bot/session'
+      preLoaderRoute: typeof ApiCordialSiteBotSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cordial-site/bot/suggestions': {
+      id: '/api/cordial-site/bot/suggestions'
+      path: '/api/cordial-site/bot/suggestions'
+      fullPath: '/api/cordial-site/bot/suggestions'
+      preLoaderRoute: typeof ApiCordialSiteBotSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cordial-site/bot/transcribe': {
+      id: '/api/cordial-site/bot/transcribe'
+      path: '/api/cordial-site/bot/transcribe'
+      fullPath: '/api/cordial-site/bot/transcribe'
+      preLoaderRoute: typeof ApiCordialSiteBotTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/morar-site/bot/chat': {
+      id: '/api/morar-site/bot/chat'
+      path: '/api/morar-site/bot/chat'
+      fullPath: '/api/morar-site/bot/chat'
+      preLoaderRoute: typeof ApiMorarSiteBotChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/morar-site/bot/events': {
+      id: '/api/morar-site/bot/events'
+      path: '/api/morar-site/bot/events'
+      fullPath: '/api/morar-site/bot/events'
+      preLoaderRoute: typeof ApiMorarSiteBotEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/morar-site/bot/session': {
+      id: '/api/morar-site/bot/session'
+      path: '/api/morar-site/bot/session'
+      fullPath: '/api/morar-site/bot/session'
+      preLoaderRoute: typeof ApiMorarSiteBotSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/morar-site/bot/suggestions': {
+      id: '/api/morar-site/bot/suggestions'
+      path: '/api/morar-site/bot/suggestions'
+      fullPath: '/api/morar-site/bot/suggestions'
+      preLoaderRoute: typeof ApiMorarSiteBotSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/morar-site/bot/transcribe': {
+      id: '/api/morar-site/bot/transcribe'
+      path: '/api/morar-site/bot/transcribe'
+      fullPath: '/api/morar-site/bot/transcribe'
+      preLoaderRoute: typeof ApiMorarSiteBotTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ads-oauth/callback': {
       id: '/api/public/ads-oauth/callback'
       path: '/api/public/ads-oauth/callback'
@@ -2371,6 +2576,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCordialSiteSplatRoute: ApiCordialSiteSplatRoute,
   ApiMorarSiteSplatRoute: ApiMorarSiteSplatRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiCordialSiteBotChatRoute: ApiCordialSiteBotChatRoute,
+  ApiCordialSiteBotEventsRoute: ApiCordialSiteBotEventsRoute,
+  ApiCordialSiteBotSessionRoute: ApiCordialSiteBotSessionRoute,
+  ApiCordialSiteBotSuggestionsRoute: ApiCordialSiteBotSuggestionsRoute,
+  ApiCordialSiteBotTranscribeRoute: ApiCordialSiteBotTranscribeRoute,
+  ApiMorarSiteBotChatRoute: ApiMorarSiteBotChatRoute,
+  ApiMorarSiteBotEventsRoute: ApiMorarSiteBotEventsRoute,
+  ApiMorarSiteBotSessionRoute: ApiMorarSiteBotSessionRoute,
+  ApiMorarSiteBotSuggestionsRoute: ApiMorarSiteBotSuggestionsRoute,
+  ApiMorarSiteBotTranscribeRoute: ApiMorarSiteBotTranscribeRoute,
   ApiPublicAdsOauthCallbackRoute: ApiPublicAdsOauthCallbackRoute,
   ApiPublicAssistantOauthCallbackRoute: ApiPublicAssistantOauthCallbackRoute,
   ApiPublicGoogleCalendarCallbackRoute: ApiPublicGoogleCalendarCallbackRoute,

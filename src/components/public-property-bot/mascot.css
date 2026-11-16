@@ -1,0 +1,137 @@
+.ppb-mascot {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.ppb-mascot-head,
+.ppb-mascot-hand,
+.ppb-mascot-character,
+.ppb-mascot-eyes,
+.ppb-mascot-audio {
+  transform-box: view-box;
+}
+.ppb-mascot-head {
+  transform-origin: 32px 44px;
+}
+.ppb-mascot-hand {
+  transform-origin: 45px 48px;
+}
+.ppb-mascot-character {
+  transform-origin: 32px 54px;
+}
+.ppb-mascot-eyes {
+  transform-origin: 32px 32px;
+}
+/* One welcome gesture, under five seconds. No perpetual decorative attention loop. */
+.ppb-mascot[data-state="neutral"] .ppb-mascot-head {
+  animation: ppb-mascot-hello 4.6s ease-in-out 1;
+}
+.ppb-mascot[data-state="neutral"] .ppb-mascot-eyes {
+  animation: ppb-mascot-blink 4.6s ease-in-out 1;
+}
+.ppb-mascot[data-state="neutral"] .ppb-mascot-hand {
+  animation: ppb-mascot-wave 4.6s ease-in-out 1;
+}
+.ppb-launcher:is(:hover, :focus-visible) .ppb-mascot-character {
+  animation: ppb-mascot-nod 0.7s ease-in-out 1;
+}
+.ppb-mascot[data-state="listening"] .ppb-mascot-head {
+  transform: rotate(-7deg);
+}
+.ppb-mascot[data-state="listening"] .ppb-mascot-audio {
+  animation: ppb-mascot-listen 1s ease-in-out infinite alternate;
+  transform-origin: 32px 31px;
+}
+.ppb-mascot[data-state="searching"] .ppb-mascot-gaze {
+  animation: ppb-mascot-look 2.2s ease-in-out infinite;
+}
+.ppb-mascot[data-state="searching"] .ppb-mascot-head {
+  animation: ppb-mascot-think 2.2s ease-in-out infinite;
+}
+.ppb-mascot[data-state="complete"] .ppb-mascot-character {
+  animation: ppb-mascot-nod 0.6s ease-in-out 1;
+}
+@keyframes ppb-mascot-hello {
+  0%,
+  12%,
+  80%,
+  100% {
+    transform: rotate(0);
+  }
+  25%,
+  40% {
+    transform: rotate(-8deg);
+  }
+  55%,
+  68% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes ppb-mascot-blink {
+  0%,
+  17%,
+  21%,
+  65%,
+  69%,
+  100% {
+    transform: scaleY(1);
+  }
+  19%,
+  67% {
+    transform: scaleY(0.12);
+  }
+}
+@keyframes ppb-mascot-wave {
+  0%,
+  20%,
+  65%,
+  100% {
+    transform: rotate(0);
+  }
+  30%,
+  48% {
+    transform: rotate(-17deg);
+  }
+  39%,
+  57% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes ppb-mascot-nod {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-2px) rotate(-4deg);
+  }
+}
+@keyframes ppb-mascot-look {
+  0%,
+  100% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+@keyframes ppb-mascot-think {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes ppb-mascot-listen {
+  to {
+    transform: scaleY(0.65);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ppb-mascot *,
+  .ppb-launcher:is(:hover, :focus-visible) .ppb-mascot-character {
+    animation: none !important;
+  }
+}

@@ -32,6 +32,7 @@ import {
 } from "@/lib/cordial-site/experience";
 import { SitePerformance } from "./SitePerformance";
 import { WhatsAppFloat } from "./WhatsAppFloat";
+import { PublicPropertyBotLauncher } from "@/components/public-property-bot/Launcher";
 import { SiteAnalytics } from "./SiteAnalytics";
 import { loadBootstrap } from "@/lib/cordial-site/data";
 import cordialLogo from "@/assets/logo-cordial-imoveis.png.asset.json";
@@ -289,6 +290,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 </SiteLink>
               </nav>
               <div className="cs-header-actions">
+                <PublicPropertyBotLauncher brand={brand} whatsapp={settings.whatsapp} />
                 {brand === "cordial" && (
                   <SiteLink
                     to={pathFor("/selecao")}
