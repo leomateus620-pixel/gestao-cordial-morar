@@ -38,4 +38,4 @@
 - Signed owner authorization (`autorizacao`) is informational only: owned-site publication of a completed Gestão registration never depends on it, and blank availability counts as available (only an explicit 'no' blocks) — why: the user ruled it out after it silently blocked registrations.
 - Re-finalizing a registration merges into the existing agenciamento via src/lib/agenciamentos/agency-merge.ts (checked items and description never downgrade) and the wizard hydrates the agency step from it — why: an empty resumed step was overwriting the broker's work.
 - `atendimentos_viewer` is deny-dominant like `meta_reviewer` (RESTRICTIVE block except read-only attendance tables, RPC guard) — why: new tables/RPCs need it.
-- Public bot visitor identity uses `cf-connecting-ip` (validated on both brand domains, IPv4/IPv6; forged copies are rejected/overwritten at the edge); re-validate before changing PUBLIC_BOT_TRUSTED_IP_HEADER — why: quota identity must come from the hosting edge, not the visitor.
+- Public bot IP identity = `cf-connecting-ip` (edge-validated on both brands); re-validate before changing it.
