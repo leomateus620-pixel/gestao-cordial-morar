@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -11,7 +11,7 @@ import {
   PropertyCards,
   safeCardUrls,
 } from "../../src/components/public-property-bot/PropertyCards";
-import { FilterChips } from "../../src/components/public-property-bot/FilterChips";
+import { FilterChips, filterLabel } from "../../src/components/public-property-bot/FilterChips";
 import Panel from "../../src/components/public-property-bot/Panel";
 const mocks = vi.hoisted(() => ({ open: vi.fn(), send: vi.fn(), transcribe: vi.fn() }));
 vi.mock("../../src/components/public-property-bot/transport", async (original) => ({
@@ -53,31 +53,107 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 describe("formulários públicos", () => {
-  it("confirma quartos/banheiros em um único envio com operadores independentes", async () => {
+  it("cards de quartos/banheiros escolhem quantidades exatas em um único envio", () => {
     const submit = vi.fn();
     render(<CountsQuestion filters={newDraft().filters} disabled={false} onSubmit={submit} />);
-    fireEvent.change(screen.getByLabelText("Quartos"), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText("Quantidade de quartos"), { target: { value: "eq" } });
-    fireEvent.change(screen.getByLabelText("Banheiros"), { target: { value: "2" } });
+    const bedrooms = within(screen.getByRole("group", { name: "Quartos", exact: true }));
+    const bathrooms = within(screen.getByRole("group", { name: "Banheiros", exact: true }));
+    expect(bedrooms.getAllByRole("radio")).toHaveLength(11);
+    expect(bathrooms.getAllByRole("radio")).toHaveLength(11);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    fireEvent.click(bedrooms.getByRole("radio", { name: "2 quartos" }));
+    fireEvent.click(bathrooms.getByRole("radio", { name: "3 banheiros" }));
     expect(submit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(submit).toHaveBeenCalledTimes(1);
     expect(submit.mock.calls[0][0]).toEqual({
       kind: "filters",
-      patch: { bedrooms: { value: 2, op: "eq" }, bathrooms: { value: 2, op: "gte" } },
+      patch: { bedrooms: { value: 2, op: "eq" }, bathrooms: { value: 3, op: "eq" } },
       countsAnswered: true,
     });
+    expect(filterLabel("bedrooms", submit.mock.calls[0][0].patch.bedrooms)).not.toContain("+");
   });
   it("sem preferência não vira zero e pergunta obsoleta não envia", () => {
     const submit = vi.fn();
     const view = render(
       <CountsQuestion filters={newDraft().filters} disabled={false} onSubmit={submit} />,
     );
+    const bedrooms = within(screen.getByRole("group", { name: "Quartos", exact: true }));
+    fireEvent.click(bedrooms.getByRole("radio", { name: "2 quartos" }));
+    fireEvent.click(bedrooms.getByRole("radio", { name: "Sem preferência" }));
+    expect(submit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(submit.mock.calls[0][0].patch).toEqual({ bedrooms: null, bathrooms: null });
     view.rerender(<CountsQuestion filters={newDraft().filters} disabled onSubmit={submit} />);
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
     expect(submit).toHaveBeenCalledTimes(1);
+  });
+  it("confirmar sem mexer nos grupos preserva todos os operadores herdados", () => {
+    const submit = vi.fn();
+    const filters = {
+      ...newDraft().filters,
+      bedrooms: { value: 3, op: "gte" as const },
+      bathrooms: { value: 2, op: "lt" as const },
+    };
+    render(<CountsQuestion filters={filters} disabled={false} onSubmit={submit} />);
+    const group = screen.getByRole("group", { name: "Quartos", exact: true });
+    expect(document.getElementById(group.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Filtro atual: 3+ quartos",
+    );
+    expect(
+      (within(group).getByRole("radio", { name: "3 quartos" }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(submit.mock.calls[0][0].patch).toEqual({
+      bedrooms: filters.bedrooms,
+      bathrooms: filters.bathrooms,
+    });
+  });
+  it("clicar novamente no número herdado converte só aquele grupo para quantidade exata", () => {
+    const submit = vi.fn();
+    const filters = {
+      ...newDraft().filters,
+      bedrooms: { value: 3, op: "gte" as const },
+      bathrooms: { value: 2, op: "gte" as const },
+    };
+    render(<CountsQuestion filters={filters} disabled={false} onSubmit={submit} />);
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Quartos", exact: true })).getByRole("radio", {
+        name: "3 quartos",
+      }),
+    );
+    expect(screen.queryByText("Filtro atual: 3+ quartos")).toBeNull();
+    expect(screen.getByText("Filtro atual: 2+ banheiros")).toBeTruthy();
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(submit.mock.calls[0][0].patch).toEqual({
+      bedrooms: { value: 3, op: "eq" },
+      bathrooms: filters.bathrooms,
+    });
+  });
+  it("setas do teclado percorrem radios de um grupo sem enviar ou alterar o outro", async () => {
+    const submit = vi.fn();
+    render(<CountsQuestion filters={newDraft().filters} disabled={false} onSubmit={submit} />);
+    const bedrooms = within(screen.getByRole("group", { name: "Quartos", exact: true }));
+    const first = bedrooms.getByRole("radio", { name: "1 quarto" });
+    first.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    const second = bedrooms.getByRole("radio", { name: "2 quartos" });
+    expect(document.activeElement).toBe(second);
+    expect((second as HTMLInputElement).checked).toBe(true);
+    expect(
+      (
+        within(screen.getByRole("group", { name: "Banheiros", exact: true })).getByRole("radio", {
+          name: "Sem preferência",
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(submit.mock.calls[0][0].patch).toEqual({
+      bedrooms: { value: 2, op: "eq" },
+      bathrooms: null,
+    });
   });
   it("acima de usa piso exclusivo e aluguel mostra faixas mensais próprias", () => {
     const submit = vi.fn();

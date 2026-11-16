@@ -23,7 +23,7 @@ Nenhuma variável secreta usa `VITE_`. Valores secretos nunca entram em docs, PR
 
 A emissão de JWT customizado não é suportada com segurança pelas ferramentas disponibilizadas do Lovable. Por isso a versão final usa `public.public_bot_gateway(op,payload)`: dispatcher estático autenticado por segredo opaco, executado sob `public_bot_runtime`, com apenas as operações fechadas do schema privado. Não instala Auth Hook global nem expõe `public_bot` ao PostgREST. A proposta inicial `PUBLIC_BOT_SCOPED_JWT` foi substituída.
 
-Em 16/11/2026 o Lovable confirmou a configuração de REST URL, chave publicável e segredo HMAC de 64 caracteres; confirmou também a presença de `LOVABLE_API_KEY`. O formulário de inserção do segredo final não é exposto pelo conector: o proprietário deve usar **Project Settings → Secrets → Add secret**, nome `PUBLIC_BOT_GATEWAY_SECRET`, sem `VITE`, e inserir o valor local protegido indicado na entrega. A hash correspondente foi registrada pelo conector, não o segredo, com validade até 15/05/2027 04:47:50 UTC. As migrações 0095, 0096 e 0097 foram aplicadas e o journal validado. O segredo local permanece fora do repositório em arquivo 0600.
+Em 16/11/2026 o Lovable confirmou a configuração de REST URL, chave publicável e segredo HMAC de 64 caracteres; confirmou também a presença de `LOVABLE_API_KEY`. O proprietário salvou `PUBLIC_BOT_GATEWAY_SECRET` pelo formulário seguro **Project Settings → Secrets → Add secret**, sem `VITE`; a configuração foi validada pelo gateway nas duas marcas. A hash correspondente foi registrada pelo conector, não o segredo, com validade até 15/05/2027 04:47:50 UTC. As migrações 0095, 0096 e 0097 foram aplicadas e o journal validado. O segredo local permanece fora do repositório em arquivo 0600.
 
 ## Confiança no IP
 
@@ -32,6 +32,8 @@ O solicitante salvou `PUBLIC_BOT_GATEWAY_SECRET` pelo formulário seguro. A veri
 A cota é 25 envios aceitos por IP/dia em America/Sao_Paulo, global entre marcas. IP nunca autoriza histórico; token de sessão e marca fazem isso. CGNAT compartilha franquia, mudança de rede pode criar outra chave; não se promete 25 por pessoa.
 
 O Lovable verificou que `CF-Connecting-IP` forjado recebe 403 nos dois domínios, enquanto outros headers passam. Isso não comprova sozinho qual IP chega ao worker final. A Morar usa uma camada Cloudflare adicional; os ingressos precisam ser testados separadamente. A documentação Cloudflare distingue requisições diretas, subrequisições na mesma zona e entre zonas; não presumir equivalência: [headers Cloudflare](https://developers.cloudflare.com/fundamentals/reference/http-headers/).
+
+A inspeção adicional pelo Lovable confirmou `CORDIAL_SITE_TRUSTED_IP_HEADER` e `MORAR_SITE_TRUSTED_IP_HEADER` ausentes, com os dois `RATE_SECRET` presentes. O limitador legado usa `shared` e não oferece evidência do IP recebido. Não houve alteração dessas variáveis nem teste de buckets. Os caminhos `/api/` em www/Gestão/preview não são bloqueados pelo roteamento atual; a futura atestação exige comprovar ingresso equivalente nesses caminhos ou restringir os hosts aceitos pelo bot às origens verificadas. Não habilitar a flag global com base apenas nos dois domínios principais.
 
 Antes de atestar o ingresso, fazer um diagnóstico controlado e autenticado no ambiente de implantação, comparando o endereço conhecido da conexão com o recebido, com/sem headers forjados e por ambos os domínios e hostname alternativo. Não expor IP público em resposta de diagnóstico aberta, não registrar IP bruto, não usar X-Forwarded-For arbitrário. Remover diagnóstico temporário após a validação. Se a plataforma não garantir a origem, a conversa permanece indisponível de modo honesto.
 
@@ -52,6 +54,12 @@ Antes de atestar o ingresso, fazer um diagnóstico controlado e autenticado no a
 5. Confirmar duas sessões/abas e marcas compartilham cota, 25º responde e 26º devolve 429/Retry-After. Teste sintético de concorrência é restrito a chaves descartáveis, sem imóveis comerciais fictícios.
 6. Verificar Safari/iPhone e Chrome/Android físicos: permissão negada, codecs, cancelamento, silêncio, erro, revisão; não confundir teste unitário/emulação com validação de dispositivo.
 7. Medir p95 com carga definida, volume/caches anotados e orçamento limitado. A execução isolada de EXPLAIN não prova latência fim a fim.
+
+## Ensaio manual de runtime
+
+`tests/public-property-bot/runtime-smoke.ts` é executado somente pelo fluxo autorizado do Lovable, em checkout e processo temporários, com `PUBLIC_BOT_RUN_RUNTIME_SMOKE=true`. O script limita o ensaio a duas extrações reais de IA com reserva de custo, usa catálogo publicado e cria apenas sessões de teste. Não cria anúncios, leads ou eventos comportamentais. Não faz parte da CI e nunca deve ser importado por um worker que atende visitantes.
+
+O endereço TEST-NET é uma fixture de request em memória. A substituição temporária das variáveis de ingresso no processo isolado verifica o handler, sem atestar nem ativar o ingresso público. O JSON final contém apenas estados, contagens, duração e identificadores sintéticos para limpeza exata pelo conector. Após executar, remover essas sessões/cotas/open_limits/usos; preservar o uso global pago e sua reserva, pois o ensaio consumiu IA real. Não repetir automaticamente uma chamada paga que falhou.
 
 ## Rollback e rotação
 

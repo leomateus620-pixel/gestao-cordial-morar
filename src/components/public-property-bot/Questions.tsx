@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Bath, BedDouble, Check } from "lucide-react";
 import type {
   BotAction,
   BotQuestion,
@@ -8,6 +9,18 @@ import type {
 import { parseAmount } from "@/lib/public-property-bot/state";
 const currency = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+function countLabel(value: SearchFilters["bedrooms"], singular: string, plural: string) {
+  if (!value) return `${plural} sem preferência`;
+  const prefix =
+    value.op === "gt"
+      ? "Mais de "
+      : value.op === "lte"
+        ? "Até "
+        : value.op === "lt"
+          ? "Menos de "
+          : "";
+  return `${prefix}${value.value}${value.op === "gte" ? "+" : ""} ${value.value === 1 ? singular : plural}`;
+}
 export function CountsQuestion({
   filters,
   disabled,
@@ -17,14 +30,8 @@ export function CountsQuestion({
   disabled: boolean;
   onSubmit(action: BotAction, label: string): void;
 }) {
-  const [bedrooms, setBedrooms] = useState(filters.bedrooms?.value.toString() ?? "");
-  const [bathrooms, setBathrooms] = useState(filters.bathrooms?.value.toString() ?? "");
-  const [bedroomMode, setBedroomMode] = useState<"eq" | "gte">(
-    filters.bedrooms?.op === "eq" ? "eq" : "gte",
-  );
-  const [bathroomMode, setBathroomMode] = useState<"eq" | "gte">(
-    filters.bathrooms?.op === "eq" ? "eq" : "gte",
-  );
+  const [bedrooms, setBedrooms] = useState(filters.bedrooms);
+  const [bathrooms, setBathrooms] = useState(filters.bathrooms);
   const id = useId();
   return (
     <form
@@ -33,21 +40,10 @@ export function CountsQuestion({
         event.preventDefault();
         if (disabled) return;
         onSubmit(
-          {
-            kind: "filters",
-            patch: {
-              bedrooms: bedrooms ? { value: Number(bedrooms), op: bedroomMode } : null,
-              bathrooms: bathrooms ? { value: Number(bathrooms), op: bathroomMode } : null,
-            },
-            countsAnswered: true,
-          },
+          { kind: "filters", patch: { bedrooms, bathrooms }, countsAnswered: true },
           [
-            bedrooms
-              ? `${bedroomMode === "eq" ? "Exatamente" : "Pelo menos"} ${bedrooms} quartos`
-              : "Quartos sem preferência",
-            bathrooms
-              ? `${bathroomMode === "eq" ? "exatamente" : "pelo menos"} ${bathrooms} banheiros`
-              : "banheiros sem preferência",
+            countLabel(bedrooms, "quarto", "quartos"),
+            countLabel(bathrooms, "banheiro", "banheiros"),
           ].join(" e "),
         );
       }}
@@ -55,53 +51,80 @@ export function CountsQuestion({
       <fieldset disabled={disabled}>
         <legend>Quartos e banheiros</legend>
         <div className="ppb-counts">
-          {(
-            [
-              {
-                key: "bedrooms",
-                label: "Quartos",
-                value: bedrooms,
-                set: setBedrooms,
-                mode: bedroomMode,
-                setMode: setBedroomMode,
-              },
-              {
-                key: "bathrooms",
-                label: "Banheiros",
-                value: bathrooms,
-                set: setBathrooms,
-                mode: bathroomMode,
-                setMode: setBathroomMode,
-              },
-            ] as const
-          ).map((field) => (
-            <div className="ppb-field" key={field.key}>
-              <label htmlFor={`${id}-${field.key}`}>{field.label}</label>
-              <select
-                id={`${id}-${field.key}`}
-                value={field.value}
-                onChange={(event) => field.set(event.target.value)}
-              >
-                <option value="">Sem preferência</option>
+          {[
+            {
+              key: "bedrooms",
+              label: "Quartos",
+              singular: "quarto",
+              plural: "quartos",
+              value: bedrooms,
+              set: setBedrooms,
+              Icon: BedDouble,
+            },
+            {
+              key: "bathrooms",
+              label: "Banheiros",
+              singular: "banheiro",
+              plural: "banheiros",
+              value: bathrooms,
+              set: setBathrooms,
+              Icon: Bath,
+            },
+          ].map((field) => (
+            <fieldset
+              className="ppb-count-group"
+              key={field.key}
+              aria-describedby={
+                field.value &&
+                (field.value.op !== "eq" || field.value.value < 1 || field.value.value > 10)
+                  ? `${id}-${field.key}-current`
+                  : undefined
+              }
+            >
+              <legend>{field.label}</legend>
+              {field.value &&
+                (field.value.op !== "eq" || field.value.value < 1 || field.value.value > 10) && (
+                  <p id={`${id}-${field.key}-current`} className="ppb-count-current">
+                    Filtro atual: {countLabel(field.value, field.singular, field.plural)}
+                  </p>
+                )}
+              <div className="ppb-count-options">
                 {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                    {field.mode === "gte" ? "+" : ""}
-                  </option>
+                  <label className="ppb-count-option" key={value}>
+                    <input
+                      className="ppb-count-radio"
+                      type="radio"
+                      name={`${id}-${field.key}`}
+                      value={value}
+                      checked={field.value?.value === value}
+                      aria-label={`${value} ${value === 1 ? field.singular : field.plural}`}
+                      onChange={() => field.set({ value, op: "eq" })}
+                      onClick={() => field.set({ value, op: "eq" })}
+                    />
+                    <span className="ppb-count-option-body">
+                      <field.Icon size={20} aria-hidden="true" />
+                      <span>{value}</span>
+                      {field.value?.value === value && (
+                        <Check className="ppb-count-check" size={12} aria-hidden="true" />
+                      )}
+                    </span>
+                  </label>
                 ))}
-              </select>
-              <label className="ppb-sr-only" htmlFor={`${id}-${field.key}-mode`}>
-                Quantidade de {field.label.toLowerCase()}
-              </label>
-              <select
-                id={`${id}-${field.key}-mode`}
-                value={field.mode}
-                onChange={(event) => field.setMode(event.target.value as "eq" | "gte")}
-              >
-                <option value="gte">Pelo menos</option>
-                <option value="eq">Exatamente</option>
-              </select>
-            </div>
+                <label className="ppb-count-option ppb-count-any">
+                  <input
+                    className="ppb-count-radio"
+                    type="radio"
+                    name={`${id}-${field.key}`}
+                    value=""
+                    checked={field.value === null}
+                    onChange={() => field.set(null)}
+                  />
+                  <span className="ppb-count-option-body">
+                    Sem preferência{field.value === null && <Check size={14} aria-hidden="true" />}
+                  </span>
+                </label>
+              </div>
+            </fieldset>
           ))}
         </div>
         <button type="submit" className="ppb-primary">
