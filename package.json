@@ -28,7 +28,9 @@
     "preview:dashboard": "vite --config tests/dashboard/vite.config.ts",
     "test:public-bot": "tsx --test tests/public-property-bot/*.test.ts",
     "preview:public-bot": "vite --config tests/public-property-bot/preview.vite.config.ts",
-    "test:public-bot:ui": "vitest run --config tests/public-property-bot/ui.vitest.config.ts"
+    "test:public-bot:ui": "vitest run --config tests/public-property-bot/ui.vitest.config.ts",
+    "test:public-bot-insights:ui": "vitest run --config tests/public-bot-insights/ui.vitest.config.ts",
+    "preview:public-bot-insights": "vite --config tests/public-bot-insights/preview.vite.config.ts"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.4.0",

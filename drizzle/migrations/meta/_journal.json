@@ -687,6 +687,13 @@
       "when": 1794803986071,
       "tag": "0097_public_bot_restricted_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794810273530,
+      "tag": "0098_public_bot_insights",
+      "breakpoints": true
     }
   ]
 }

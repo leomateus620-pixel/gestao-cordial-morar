@@ -27,6 +27,9 @@ async function rpc(
     | "finish_voice"
     | "event"
     | "reserve_cost"
+    | "insight_open"
+    | "insight_turn"
+    | "insight_whatsapp"
     | "usage",
   args: object,
   signal?: AbortSignal,
@@ -121,6 +124,49 @@ function documents(raw: unknown) {
     }));
 }
 export const repository = {
+  async insightOpen(brand: BotBrand, tokenHash: string, eventId: string, signal?: AbortSignal) {
+    return rpc("insight_open", { b: brand, token_hash: tokenHash, event_id: eventId }, signal);
+  },
+  async insightTurn(
+    brand: BotBrand,
+    tokenHash: string,
+    requestId: string,
+    question: string,
+    signal?: AbortSignal,
+  ) {
+    return rpc(
+      "insight_turn",
+      {
+        b: brand,
+        token_hash: tokenHash,
+        request_id: requestId,
+        question: publicPlainText(question).slice(0, 1000),
+      },
+      signal,
+    );
+  },
+  async insightWhatsapp(
+    brand: BotBrand,
+    tokenHash: string,
+    event: {
+      eventId: string;
+      publicId: string | null;
+      source: "header" | "card" | "quota" | "unavailable";
+    },
+    signal?: AbortSignal,
+  ) {
+    return rpc(
+      "insight_whatsapp",
+      {
+        b: brand,
+        token_hash: tokenHash,
+        event_id: event.eventId,
+        public_id: event.publicId,
+        source: event.source,
+      },
+      signal,
+    );
+  },
   async configuration(brand: BotBrand, signal?: AbortSignal) {
     return configSchema.parse(await rpc("configuration", { b: brand }, signal));
   },

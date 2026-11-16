@@ -126,6 +126,19 @@ export const chatInputSchema = z
   })
   .strict();
 export type ChatInput = z.infer<typeof chatInputSchema>;
+export const botSessionInputSchema = z.object({ openingId: z.string().uuid().optional() }).strict();
+export const botPanelOpenEventSchema = z
+  .object({ kind: z.literal("panel_open"), eventId: z.string().uuid() })
+  .strict();
+export const botOperationalEventSchema = z
+  .object({
+    kind: z.literal("contact_click"),
+    eventId: z.string().uuid(),
+    source: z.enum(["header", "card", "quota", "unavailable"]),
+    publicId: z.string().uuid().nullable(),
+  })
+  .strict()
+  .refine((event) => (event.source === "card" ? event.publicId !== null : event.publicId === null));
 const nullableNumber = z.number().finite().nonnegative().nullable();
 export const modelPropertySchema = z
   .object({

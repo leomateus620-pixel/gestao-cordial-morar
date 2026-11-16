@@ -86,6 +86,9 @@ function fake(initial = newDraft()) {
     received: [] as unknown[],
   };
   const repo: PublicRepository = {
+    insightOpen: async () => true,
+    insightTurn: async () => true,
+    insightWhatsapp: async () => true,
     configuration: async () => ({
       enabled: true,
       voice: true,
@@ -391,6 +394,20 @@ test("greetings and prompt injection consume accepted turns without tools or fac
   assert.equal(f.state.calls, 0);
   assert.match(result.answer, /imóveis publicados/);
   assert(!/senha|SQL|CPF/.test(result.answer));
+});
+test("accepted question is recorded minimized and a rejected turn never records a question", async () => {
+  const f = fake();
+  const captured: string[] = [];
+  f.repo.insightTurn = async (_brand, _hash, _requestId, question) => {
+    captured.push(question);
+    return true;
+  };
+  await execute(f, { kind: "text", text: "Olá, meu e-mail synthetic@example.test" });
+  assert.equal(captured.length, 1);
+  assert(!captured[0].includes("synthetic@example.test"));
+  f.state.accepts = "exhausted";
+  await assert.rejects(() => execute(f, { kind: "text", text: "Não aceito" }));
+  assert.equal(captured.length, 1);
 });
 test("25th response stays visible and exhaustion comes after verified results", async () => {
   const f = fake({
@@ -845,5 +862,94 @@ test("stalled request bodies are cancelled at a bounded deadline", async () => {
     assert.equal(cancelled, true);
   } finally {
     clearTimeout(keepAlive);
+  }
+});
+
+test("only cookie-authenticated client confirmation records an opening, never a lost session response", async () => {
+  const envKeys = [
+    "PUBLIC_BOT_TRUSTED_IP_HEADER",
+    "PUBLIC_BOT_INGRESS_VERIFIED",
+    "PUBLIC_BOT_IP_SECRET",
+  ] as const;
+  const saved = envKeys.map((key) => process.env[key]);
+  process.env.PUBLIC_BOT_TRUSTED_IP_HEADER = "cf-connecting-ip";
+  process.env.PUBLIC_BOT_INGRESS_VERIFIED = "true";
+  process.env.PUBLIC_BOT_IP_SECRET = "synthetic-http-opening-test-secret-00000000";
+  try {
+    const f = fake(),
+      hashes: string[] = [],
+      recorded: { brand: string; hash: string; eventId: string }[] = [];
+    f.repo.session = async (_brand, hash) => {
+      hashes.push(hash);
+      return f.state.session;
+    };
+    f.repo.insightOpen = async (brand, hash, eventId) => {
+      recorded.push({ brand, hash, eventId });
+      return true;
+    };
+    const openingId = id(985);
+    const request = (endpoint: "session" | "events", body: object, cookie?: string) =>
+      new Request(`https://cordialimoveis.com/api/cordial-site/bot/${endpoint}`, {
+        method: "POST",
+        headers: {
+          origin: "https://cordialimoveis.com",
+          "content-type": "application/json",
+          "cf-connecting-ip": "192.0.2.123",
+          ...(cookie ? { cookie } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    // The first cookie never reaches the client. A retry therefore creates another opaque session.
+    const lost = await handlePublicBot(
+      request("session", { openingId }),
+      "cordial",
+      "session",
+      f.deps,
+    );
+    const loaded = await handlePublicBot(
+      request("session", { openingId }),
+      "cordial",
+      "session",
+      f.deps,
+    );
+    assert.equal(lost.status, 200);
+    assert.equal(loaded.status, 200);
+    assert.equal(hashes.length, 2);
+    assert.notEqual(hashes[0], hashes[1]);
+    assert.equal(recorded.length, 0);
+    const body = { kind: "panel_open", eventId: openingId };
+    const missingCookie = await handlePublicBot(
+      request("events", body),
+      "cordial",
+      "events",
+      f.deps,
+    );
+    assert.equal(missingCookie.status, 401);
+    assert.equal(recorded.length, 0);
+    const cookie = loaded.headers.get("set-cookie")!.split(";")[0];
+    const confirmed = await handlePublicBot(
+      request("events", body, cookie),
+      "cordial",
+      "events",
+      f.deps,
+    );
+    assert.equal(confirmed.status, 204);
+    assert.equal(confirmed.headers.get("cache-control"), "no-store");
+    assert.deepEqual(recorded, [{ brand: "cordial", hash: hashes[1], eventId: openingId }]);
+    const extraAuthority = await handlePublicBot(
+      request("events", { ...body, brand: "morar" }, cookie),
+      "cordial",
+      "events",
+      f.deps,
+    );
+    assert.equal(extraAuthority.status, 400);
+    assert.equal(recorded.length, 1);
+    assert.equal(f.state.paid, 0);
+    assert.equal(f.state.calls, 0);
+  } finally {
+    envKeys.forEach((key, index) => {
+      if (saved[index] === undefined) delete process.env[key];
+      else process.env[key] = saved[index];
+    });
   }
 });

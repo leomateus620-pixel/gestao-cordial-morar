@@ -27,7 +27,7 @@ import { openSession, publicErrorText, sendTurn, TransportError } from "./transp
 import { Question } from "./Questions";
 import { FilterChips } from "./FilterChips";
 import { PropertyCards } from "./PropertyCards";
-import { suggestionEvent } from "./events";
+import { suggestionEvent, recordBotContact, recordBotOpen } from "./events";
 import { Mascot, type MascotState } from "./Mascot";
 import { BotBoundary } from "./BotBoundary";
 import "./panel.css";
@@ -91,6 +91,7 @@ export default function PublicPropertyBotPanel({
   const previousBrand = useRef(brand),
     opening = useRef(0),
     sentEvents = useRef(new Set<string>());
+  const openingId = useRef<string | null>(null);
   currentDraft.current = draft;
   const onVoiceStatus = useCallback(
     (next: "idle" | "permission" | "recording" | "transcribing") => setVoicePhase(next),
@@ -185,8 +186,10 @@ export default function PublicPropertyBotPanel({
     setErrorCode("");
     setReady(false);
     try {
-      const session = await openSession(brand, request.signal);
+      const confirmedOpeningId = (openingId.current ??= crypto.randomUUID());
+      const session = await openSession(brand, request.signal, confirmedOpeningId);
       if (run !== generation.current) return;
+      recordBotOpen(brand, confirmedOpeningId);
       setDraft(session.draft);
       currentDraft.current = session.draft;
       setVoice(session.voice);
@@ -242,6 +245,7 @@ export default function PublicPropertyBotPanel({
   useEffect(() => {
     if (previousBrand.current !== brand) {
       previousBrand.current = brand;
+      openingId.current = null;
       pending.current = null;
       sentEvents.current.clear();
       setMessages([]);
@@ -255,6 +259,7 @@ export default function PublicPropertyBotPanel({
       opening.current++;
       void refresh();
     } else {
+      openingId.current = null;
       generation.current++;
       controller.current?.abort();
       controller.current = null;
@@ -430,6 +435,9 @@ export default function PublicPropertyBotPanel({
               href={contact}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => {
+                if (contact.startsWith("https:")) recordBotContact(brand, "header");
+              }}
               aria-label={
                 contact.startsWith("https:")
                   ? "Falar com a equipe pelo WhatsApp"
@@ -531,12 +539,11 @@ export default function PublicPropertyBotPanel({
                     <PropertyCards
                       cards={message.cards}
                       brand={brand}
-                      onAction={
-                        message.sourceSuggestion
-                          ? (kind) =>
-                              recordSuggestion(kind, message.sourceSuggestion!, message.requestId)
-                          : undefined
-                      }
+                      onAction={(kind, publicId) => {
+                        if (kind === "whatsapp") recordBotContact(brand, "card", publicId);
+                        if (message.sourceSuggestion)
+                          recordSuggestion(kind, message.sourceSuggestion, message.requestId);
+                      }}
                     />
                   ) : message.cards.length ? (
                     <p className="ppb-status">
@@ -634,7 +641,15 @@ export default function PublicPropertyBotPanel({
             {exhausted && (
               <div className="ppb-quota" role="status">
                 <p>{QUOTA_MESSAGE}</p>
-                <a className="ppb-primary" href={contact} target="_blank" rel="noopener noreferrer">
+                <a
+                  className="ppb-primary"
+                  href={contact}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    if (contact.startsWith("https:")) recordBotContact(brand, "quota");
+                  }}
+                >
                   <MessageCircle size={18} />
                   {contact.startsWith("https:") ? "Continuar no WhatsApp" : "Falar com a equipe"}
                 </a>
@@ -643,6 +658,9 @@ export default function PublicPropertyBotPanel({
             {unavailable && (
               <a
                 className="ppb-primary ppb-unavailable-contact"
+                onClick={() => {
+                  if (contact.startsWith("https:")) recordBotContact(brand, "unavailable");
+                }}
                 href={contact}
                 target="_blank"
                 rel="noopener noreferrer"
